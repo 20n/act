@@ -11,6 +11,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public abstract class L2Expander {
@@ -20,7 +21,7 @@ public abstract class L2Expander {
   private static final String INCHI_IMPORT_SETTINGS = "inchi";
 
   // This SAR accepts every substrate
-  protected static final List<Sar> NO_SAR = new ArrayList<>();
+  protected static final List<Sar> NO_SAR = Collections.unmodifiableList(Collections.emptyList());
 
   private PredictionGenerator generator;
 

@@ -13,7 +13,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 
 public class DbAPI {
 
@@ -88,14 +88,15 @@ public class DbAPI {
   }
 
   public List<Molecule> getProductsAsMolecules(Reaction reaction) {
-    return Lists.transform(Arrays.asList(reaction.getProducts()), id -> importMolecule(getChemical(id)));
+    Lists.transform(Arrays.asList(reaction.getProducts()), id -> importMolecule(getChemical(id)));
+    return Lists.transform(Arrays.asList(reaction.getSubstrates()), id -> importMolecule(getChemical(id)));
   }
 
   public Molecule importMolecule(Chemical chemical) {
     try {
       return chemical.importAsMolecule();
     } catch (MolFormatException e) {
-      throw new IllegalArgumentException("DbAPI couldn't import chemical.");
+      throw new IllegalArgumentException("DbAPI couldn't import chemical:" + e.getMessage());
     }
   }
 

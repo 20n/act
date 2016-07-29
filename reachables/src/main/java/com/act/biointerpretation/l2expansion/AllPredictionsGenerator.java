@@ -14,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -21,8 +22,6 @@ import java.util.Map;
  * Generates all predictions for a given PredictionSeed.
  */
 public class AllPredictionsGenerator implements PredictionGenerator {
-
-  private static final Logger LOGGER = LogManager.getFormatterLogger(AllPredictionsGenerator.class);
 
   private static final String INCHI_SETTINGS = new StringBuilder("inchi:").
       append("SAbs").append(','). // Force absolute stereo to ensure standard InChIs are produced.
@@ -50,7 +49,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
     // If one or more SARs are supplied, test them before applying the reactor.
     for (Sar sar : sars) {
       if (!sar.test(substrates)) {
-        return new ArrayList<L2Prediction>();
+        return Collections.emptyList();
       }
     }
 

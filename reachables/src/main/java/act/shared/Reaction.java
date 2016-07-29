@@ -1,7 +1,6 @@
 package act.shared;
 
 import act.shared.helpers.P;
-import chemaxon.struc.RxnMolecule;
 import org.biopax.paxtools.model.level3.CatalysisDirectionType;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;

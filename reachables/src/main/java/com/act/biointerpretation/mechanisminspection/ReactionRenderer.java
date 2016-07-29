@@ -232,7 +232,8 @@ public class ReactionRenderer {
       try {
         return MolImporter.importMol(XENON_INCHI);
       } catch (MolFormatException f) {
-        throw Throwables.propagate(new MolFormatException("Could not import xenon inchi; something is very wrong."));
+        LOGGER.error("Could not import xenon inchi; something is very wrong.");
+        throw Throwables.propagate(f);
       }
     }
   }

@@ -142,7 +142,7 @@ public class ErosCorpus implements Iterable<Ero> {
     roIdToEroMap = new HashMap<>();
     for (Ero ro : ros) {
       if (roIdToEroMap.containsKey(ro.getId())) {
-        throw new FileFormatException("RO corpus contains two ROs with same Id.");
+        throw new FileFormatException("RO corpus contains two ROs with same Id: " + ro.getId());
       }
       roIdToEroMap.put(ro.getId(), ro);
     }

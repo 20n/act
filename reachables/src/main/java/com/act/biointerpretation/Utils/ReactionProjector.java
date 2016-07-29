@@ -39,6 +39,10 @@ public class ReactionProjector {
   private static final MolSearchOptions LAX_SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
   private static final MolSearch DEFAULT_SEARCHER = new MolSearch();
 
+  /**
+   * Set searcher to ignore stereo and bond type.  This will allow us to optimistically match products so that we don't
+   * end up throwing out a reactor that produces the right compound in a slightly different form.
+   */
   static {
     LAX_SEARCH_OPTIONS.setStereoSearchType(SearchConstants.STEREO_IGNORE);
     LAX_SEARCH_OPTIONS.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL4);
@@ -66,7 +70,7 @@ public class ReactionProjector {
   }
 
   /**
-   * Run the given reactor until it produces the expected product.
+   * Run the given reactor until it produces the expected product. Reactor must produce one product at a time.
    *
    * @param reactor The reactor to run.
    * @param expectedProduct The product we expect to see.
@@ -77,8 +81,11 @@ public class ReactionProjector {
    */
   public Molecule runTillProducesProduct(Reactor reactor, Molecule expectedProduct)
       throws ReactionException {
-    Molecule[] products;
+    if (reactor.getProductCount() != 1) {
+      throw new IllegalArgumentException("Reactor must produce exactly one product.");
+    }
 
+    Molecule[] products;
     while ((products = reactor.react()) != null) {
       if (substructureTest(products[0], expectedProduct) && substructureTest(expectedProduct, products[0])) {
         return products[0];
@@ -94,7 +101,7 @@ public class ReactionProjector {
       return searcher.findFirst() != null;
     } catch (SearchException e) {
       // Log error but don't propagate upward. Have never seen this before.
-      LOGGER.error("Error on ReactionProjector.substructureTest()");
+      LOGGER.error("Error on ReactionProjector.substructureTest(), %s", e.getMessage());
       return false;
     }
   }
