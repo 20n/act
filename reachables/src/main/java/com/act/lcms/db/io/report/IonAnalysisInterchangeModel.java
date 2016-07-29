@@ -27,6 +27,7 @@ package com.act.lcms.db.io.report;
   }
  </pre>
  */
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -36,9 +37,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class IonAnalysisInterchangeModel {
@@ -144,24 +143,22 @@ public class IonAnalysisInterchangeModel {
       this.plot = plot;
     }
 
-    public List<HitOrMiss> getHits() {
+    public List<HitOrMiss> getMolecules() {
       return molecules;
     }
 
-    public void addHit(HitOrMiss hit) {
-      this.molecules.add(hit);
-    }
-
-    public void addHits(List<HitOrMiss> hits) {
-      this.molecules.addAll(hits);
-    }
-
-    protected void setHits(List<HitOrMiss> hits) {
+    protected void setMolecules(List<HitOrMiss> hits) {
       this.molecules = new ArrayList<>(hits); // Copy to ensure sole ownership.
     }
 
-    public Set<HitOrMiss> getHitSet() {
-      return new HashSet<>(this.getHits());
+    @JsonIgnore
+    public void addMolecule(HitOrMiss hit) {
+      this.molecules.add(hit);
+    }
+
+    @JsonIgnore
+    public void addMolecules(List<HitOrMiss> hits) {
+      this.molecules.addAll(hits);
     }
 
     public Boolean getIsValid() {
