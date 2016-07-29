@@ -92,7 +92,6 @@ public class AnalysisDriver {
 
     Set<String> seenOutputIds = new HashSet<>();
 
-
     TSVWriter<String, String> tsvWriter = null;
     if (cl.hasOption(OPTION_OUTPUT_FILE)) {
       File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_FILE));

@@ -123,7 +123,7 @@ public class IonDetectionAnalysis {
     OPTION_BUILDERS.addAll(DB.DB_OPTION_BUILDERS);
   }
 
-  public static <T extends PlateWell<T>> Map<String, Pair<String, XZ>> getSnrResultsAndPlotDiagnosticsForEachMoleculeAndItsMetlinIon(
+  public static <T extends PlateWell<T>> Map<String, Pair<String, Pair<XZ, Double>>> getSnrResultsAndPlotDiagnosticsForEachMoleculeAndItsMetlinIon(
       File lcmsDir, DB db, T positiveWell, List<T> negativeWells, HashMap<Integer, Plate> plateCache, List<Pair<String, Double>> searchMZs,
       String plottingDir) throws Exception {
 
@@ -171,7 +171,7 @@ public class IonDetectionAnalysis {
       negativeWellsSignalProfiles.add(peakDataNeg);
     }
 
-    Map<String, XZ> snrResults =
+    Map<String, Pair<XZ, Double>> snrResults =
         WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
             positiveWellSignalProfiles, negativeWellsSignalProfiles, searchMZs, MIN_INTENSITY_THRESHOLD);
 
@@ -179,16 +179,17 @@ public class IonDetectionAnalysis {
         ChemicalToMapOfMetlinIonsToIntensityTimeValues.plotPositiveAndNegativeControlsForEachMZ(
             searchMZs, allWells, positiveWellSignalProfiles, negativeWellsSignalProfiles, plottingDir);
 
-    Map<String, Pair<String, XZ>> mzToPlotDirAndSNR = new HashMap<>();
-    for (Map.Entry<String, XZ> entry : snrResults.entrySet()) {
+    Map<String, Pair<String, Pair<XZ, Double>>> mzToPlotDirAndSNR = new HashMap<>();
+    for (Map.Entry<String, Pair<XZ, Double>> entry : snrResults.entrySet()) {
       String plottingPath = plottingFileMappings.get(entry.getKey());
-      XZ snr = entry.getValue();
+      XZ snr = entry.getValue().getLeft();
 
       if (plottingDir == null || snr == null) {
         System.err.format("Plotting directory or snr is null\n");
+        System.exit(1);
       }
 
-      mzToPlotDirAndSNR.put(entry.getKey(), Pair.of(plottingPath, snr));
+      mzToPlotDirAndSNR.put(entry.getKey(), Pair.of(plottingPath, entry.getValue()));
     }
 
     return mzToPlotDirAndSNR;
@@ -325,7 +326,7 @@ public class IonDetectionAnalysis {
         TSVWriter printer = new TSVWriter(Arrays.asList(headerStrings));
         printer.open(new File(outAnalysis));
 
-        Map<String, Pair<String, XZ>> result =
+        Map<String, Pair<String, Pair<XZ, Double>>> result =
             getSnrResultsAndPlotDiagnosticsForEachMoleculeAndItsMetlinIon(
                 lcmsDir,
                 db,
@@ -336,7 +337,7 @@ public class IonDetectionAnalysis {
                 plottingDirectory);
 
         int counter = 0;
-        for (Map.Entry<String, Pair<String, XZ>> mzToPlotAndSnr : result.entrySet()) {
+        for (Map.Entry<String, Pair<String, Pair<XZ, Double>>> mzToPlotAndSnr : result.entrySet()) {
 
           Double massCharge = chemIDToMassCharge.get(mzToPlotAndSnr.getKey());
           List<Pair<String, String>> inchisAndIon = massChargeToChemicalAndString.get(massCharge);
@@ -354,8 +355,8 @@ public class IonDetectionAnalysis {
           resultSet2.put("Inchis", inchiBuilder.toString());
           resultSet2.put("Ion Info", inchiIonBuilder.toString());
           resultSet2.put("Positive Sample ID", positiveWell.getMsid());
-          resultSet2.put("SNR", mzToPlotAndSnr.getValue().getRight().getIntensity().toString());
-          resultSet2.put("Time", mzToPlotAndSnr.getValue().getRight().getTime().toString());
+          resultSet2.put("SNR", mzToPlotAndSnr.getValue().getRight().getLeft().getIntensity().toString());
+          resultSet2.put("Time", mzToPlotAndSnr.getValue().getRight().getLeft().getTime().toString());
           resultSet2.put("Plots", mzToPlotAndSnr.getValue().getLeft());
 
           String[] resultSet = {
@@ -363,8 +364,8 @@ public class IonDetectionAnalysis {
               inchiBuilder.toString(),
               inchiIonBuilder.toString(),
               positiveWell.getMsid(),
-              mzToPlotAndSnr.getValue().getRight().getIntensity().toString(),
-              mzToPlotAndSnr.getValue().getRight().getTime().toString(),
+              mzToPlotAndSnr.getValue().getRight().getLeft().getIntensity().toString(),
+              mzToPlotAndSnr.getValue().getRight().getLeft().getTime().toString(),
               mzToPlotAndSnr.getValue().getLeft()
           };
 
