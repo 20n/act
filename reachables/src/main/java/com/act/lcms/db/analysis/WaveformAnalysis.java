@@ -170,66 +170,62 @@ public class WaveformAnalysis {
     return Pair.of(compressedResult, timeToIntensity);
   }
 
-  public static Map<MoleculeAndItsMetlinIon, XZ> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
+  public static Map<String, XZ> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
       ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityDataPos,
       List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> ionToIntensityDataNegList,
-      Set<String> includeIons,
       List<Pair<String, Double>> searchMZs,
       Double minIntensityThreshold) {
 
-    Map<MoleculeAndItsMetlinIon, XZ> result = new HashMap<>();
+    Map<String, XZ> result = new HashMap<>();
 
     for (Pair<String, Double> mz : searchMZs) {
-      for (String ion : includeIons) {
-        Pair<List<XZ>, Map<Double, Double>> positiveXZValuesAndMaxIntensity = compressIntensityAndTimeGraphs(
-            ionToIntensityDataPos.getMetlinIonsOfChemical(
-                AnalysisHelper.getChemicalNameFromWellInformation(
-                    mz.getLeft(), ScanData.KIND.POS_SAMPLE)).get(ion), COMPRESSION_CONSTANT);
+      Pair<List<XZ>, Map<Double, Double>> positiveXZValuesAndMaxIntensity = compressIntensityAndTimeGraphs(
+          ionToIntensityDataPos.getMetlinIonsOfChemical(
+              AnalysisHelper.getChemicalNameFromWellInformation(
+                  mz.getLeft(), ScanData.KIND.POS_SAMPLE)).get(mz.getLeft()), COMPRESSION_CONSTANT);
 
-        List<XZ> positiveIntensityTime =
-            detectPeaksInIntensityTimeWaveform(positiveXZValuesAndMaxIntensity.getLeft(), PEAK_DETECTION_THRESHOLD);
+      List<XZ> positiveIntensityTime =
+          detectPeaksInIntensityTimeWaveform(positiveXZValuesAndMaxIntensity.getLeft(), PEAK_DETECTION_THRESHOLD);
 
-        List<List<XZ>> negativeIntensityTimes = new ArrayList<>();
-        for (ChemicalToMapOfMetlinIonsToIntensityTimeValues neg : ionToIntensityDataNegList) {
-          negativeIntensityTimes.add(
-              compressIntensityAndTimeGraphs(
-                  neg.getMetlinIonsOfChemical(
-                      AnalysisHelper.getChemicalNameFromWellInformation(
-                          mz.getLeft(), ScanData.KIND.NEG_CONTROL)).get(ion), COMPRESSION_CONSTANT).getLeft());
-        }
-
-        List<XZ> rmsOfNegativeValues = rmsOfIntensityTimeGraphs(negativeIntensityTimes);
-
-        Double maxSNR = 0.0;
-        Double maxTime = 0.0;
-
-        // For each of the peaks detected in the positive control, find the spectral intensity values from the negative
-        // controls and calculate SNR based on that.
-        for (XZ positivePosition : positiveIntensityTime) {
-
-          Double time = positivePosition.getTime();
-
-          XZ negativeControlPosition = null;
-          for (XZ position : rmsOfNegativeValues) {
-            if (position.getTime() > time - POSITION_TIME_WINDOW_IN_SECONDS &&
-                position.getTime() < time + POSITION_TIME_WINDOW_IN_SECONDS) {
-              negativeControlPosition = position;
-              break;
-            }
-          }
-
-          Double snr = negativeControlPosition == null ? 0 :
-              Math.pow(positivePosition.getIntensity() / negativeControlPosition.getIntensity(), 2);
-
-          if (positiveXZValuesAndMaxIntensity.getRight().get(positivePosition.getTime()) > minIntensityThreshold) {
-            maxSNR = Math.max(maxSNR, snr);
-            maxTime = Math.max(maxTime, time);
-          }
-        }
-
-        MoleculeAndItsMetlinIon moleculeAndItsMetlinIon = new MoleculeAndItsMetlinIon(mz.getLeft(), mz.getRight(), ion);
-        result.put(moleculeAndItsMetlinIon, new XZ(maxTime, maxSNR));
+      List<List<XZ>> negativeIntensityTimes = new ArrayList<>();
+      for (ChemicalToMapOfMetlinIonsToIntensityTimeValues neg : ionToIntensityDataNegList) {
+        negativeIntensityTimes.add(
+            compressIntensityAndTimeGraphs(
+                neg.getMetlinIonsOfChemical(
+                    AnalysisHelper.getChemicalNameFromWellInformation(
+                        mz.getLeft(), ScanData.KIND.NEG_CONTROL)).get(mz.getLeft()), COMPRESSION_CONSTANT).getLeft());
       }
+
+      List<XZ> rmsOfNegativeValues = rmsOfIntensityTimeGraphs(negativeIntensityTimes);
+
+      Double maxSNR = 0.0;
+      Double maxTime = 0.0;
+
+      // For each of the peaks detected in the positive control, find the spectral intensity values from the negative
+      // controls and calculate SNR based on that.
+      for (XZ positivePosition : positiveIntensityTime) {
+
+        Double time = positivePosition.getTime();
+
+        XZ negativeControlPosition = null;
+        for (XZ position : rmsOfNegativeValues) {
+          if (position.getTime() > time - POSITION_TIME_WINDOW_IN_SECONDS &&
+              position.getTime() < time + POSITION_TIME_WINDOW_IN_SECONDS) {
+            negativeControlPosition = position;
+            break;
+          }
+        }
+
+        Double snr = negativeControlPosition == null ? 0 :
+            Math.pow(positivePosition.getIntensity() / negativeControlPosition.getIntensity(), 2);
+
+        if (positiveXZValuesAndMaxIntensity.getRight().get(positivePosition.getTime()) > minIntensityThreshold) {
+          maxSNR = Math.max(maxSNR, snr);
+          maxTime = Math.max(maxTime, time);
+        }
+      }
+
+      result.put(mz.getLeft(), new XZ(maxTime, maxSNR));
     }
 
     return result;
