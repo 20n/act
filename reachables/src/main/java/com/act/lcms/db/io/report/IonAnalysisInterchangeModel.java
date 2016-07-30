@@ -14,13 +14,13 @@ package com.act.lcms.db.io.report;
       {
         "inchi" : "InChI=1S/C5H6O3/c1-3-5(7)4(6)2-8-3/h7H,2H2,1H3",
         "ion" : "M+H",
-        "SNR" : 10.1,
+        "snr" : 10.1,
         "time" : 15.2
       },
       {
         "inchi" : "InChI=1S/C6H6O3/c1-3-5(7)4(6)2-8-3/h7H,2H2,1H3",
         "ion" : "M+Na",
-       "SNR" : 11,
+       "snr" : 11,
         "time" : 135.2
       }]
     }]
@@ -177,8 +177,8 @@ public class IonAnalysisInterchangeModel {
     @JsonProperty("ion")
     private String ion;
 
-    @JsonProperty("SNR")
-    private Double SNR;
+    @JsonProperty("snr")
+    private Double snr;
 
     @JsonProperty("time")
     private Double time;
@@ -191,10 +191,10 @@ public class IonAnalysisInterchangeModel {
 
     }
 
-    public HitOrMiss(String inchi, String ion, Double SNR, Double time, Double intensity) {
+    public HitOrMiss(String inchi, String ion, Double snr, Double time, Double intensity) {
       this.inchi = inchi;
       this.ion = ion;
-      this.SNR = SNR;
+      this.snr = snr;
       this.time = time;
       this.intensity = intensity;
     }
@@ -215,12 +215,12 @@ public class IonAnalysisInterchangeModel {
       this.ion = ion;
     }
 
-    public Double getSNR() {
-      return SNR;
+    public Double getSnr() {
+      return snr;
     }
 
-    protected void setSNR(Double SNR) {
-      this.SNR = SNR;
+    protected void setSnr(Double snr) {
+      this.snr = snr;
     }
 
     public Double getTime() {

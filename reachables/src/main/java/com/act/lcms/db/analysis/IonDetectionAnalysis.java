@@ -44,7 +44,6 @@ public class IonDetectionAnalysis {
   private static final String OPTION_OUTPUT_PREFIX = "o";
   private static final String OPTION_PLOTTING_DIR = "p";
   private static final String OPTION_INCLUDE_IONS = "i";
-  private static final String OPTION_EXCLUDE_IONS = "x";
   private static final String OPTION_INPUT_POSITIVE_AND_NEGATIVE_CONTROL_WELLS_FILE = "t";
   private static final String HEADER_WELL_TYPE = "WELL_TYPE";
   private static final String HEADER_WELL_ROW = "WELL_ROW";
@@ -93,12 +92,6 @@ public class IonDetectionAnalysis {
         .desc("A comma-separated list of ions to include in the search (ions not in this list will be ignored)")
         .hasArgs().valueSeparator(',')
         .longOpt("include-ions")
-    );
-    add(Option.builder(OPTION_EXCLUDE_IONS)
-        .argName("ion list")
-        .desc("A comma-separated list of ions to exclude from the search, takes precedence over include-ions")
-        .hasArgs().valueSeparator(',')
-        .longOpt("exclude-ions")
     );
     // This input file is structured as a tsv file with the following schema:
     //    WELL_TYPE  PLATE_BARCODE  WELL_ROW  WELL_COLUMN
@@ -230,13 +223,6 @@ public class IonDetectionAnalysis {
       includeIons.add(DEFAULT_ION);
     }
 
-    Set<String> excludeIons = null;
-    if (cl.hasOption(OPTION_EXCLUDE_IONS)) {
-      String[] ionNames = cl.getOptionValues(OPTION_EXCLUDE_IONS);
-      excludeIons = new HashSet<>(Arrays.asList(ionNames));
-      System.out.format("Excluding ions from search: %s\n", StringUtils.join(excludeIons, ", "));
-    }
-
     // Read product inchis from the prediction corpus
     File inputPredictionCorpus = new File(cl.getOptionValue(OPTION_INPUT_PREDICTION_CORPUS));
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputPredictionCorpus);
@@ -249,7 +235,7 @@ public class IonDetectionAnalysis {
       for (String product : prediction.getProductInchis()) {
         // Assume the ion modes are all positive!
         Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(product), MS1.IonMode.POS);
-        Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, excludeIons);
+        Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
         for (Map.Entry<String, Double> entry : metlinMasses.entrySet()) {
           List<Pair<String, String>> res = massChargeToChemicalAndIon.get(entry.getValue());
           if (res == null) {
