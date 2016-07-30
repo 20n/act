@@ -87,27 +87,22 @@ public class IonAnalysisInterchangeModel {
     @JsonProperty("molecules")
     private List<HitOrMiss> molecules;
 
-    @JsonProperty("plot")
-    private String plot;
-
     // For deserialization.
     protected ResultForMZ() {
 
     }
 
-    protected ResultForMZ(Long id, Double mz, List<HitOrMiss> molecules, String plot, Boolean hit) {
+    protected ResultForMZ(Long id, Double mz, List<HitOrMiss> molecules, Boolean hit) {
       this.id = id;
       this.mz = mz;
       this.molecules = molecules;
-      this.plot = plot;
       this.isValid = hit;
     }
 
-    public ResultForMZ(Double mz, List<HitOrMiss> molecules, String plot, Boolean hit) {
+    public ResultForMZ(Double mz, List<HitOrMiss> molecules, Boolean hit) {
       this.id = ID_COUNTER.incrementAndGet();
       this.mz = mz;
       this.molecules = molecules;
-      this.plot = plot;
       this.isValid = hit;
     }
 
@@ -115,7 +110,6 @@ public class IonAnalysisInterchangeModel {
       this.id = ID_COUNTER.incrementAndGet();
       this.mz = mz;
       this.molecules = new ArrayList<>();
-      this.plot = "";
       this.isValid = false;
     }
 
@@ -133,14 +127,6 @@ public class IonAnalysisInterchangeModel {
 
     protected void setMz(Double mz) {
       this.mz = mz;
-    }
-
-    public String getPlot() {
-      return plot;
-    }
-
-    public void setPlot(String plot) {
-      this.plot = plot;
     }
 
     public List<HitOrMiss> getMolecules() {
@@ -177,6 +163,9 @@ public class IonAnalysisInterchangeModel {
     @JsonProperty("ion")
     private String ion;
 
+    @JsonProperty("plot")
+    private String plot;
+
     @JsonProperty("snr")
     private Double snr;
 
@@ -191,12 +180,13 @@ public class IonAnalysisInterchangeModel {
 
     }
 
-    public HitOrMiss(String inchi, String ion, Double snr, Double time, Double intensity) {
+    public HitOrMiss(String inchi, String ion, Double snr, Double time, Double intensity, String plot) {
       this.inchi = inchi;
       this.ion = ion;
       this.snr = snr;
       this.time = time;
       this.intensity = intensity;
+      this.plot = plot;
     }
 
     public String getInchi() {
@@ -237,6 +227,14 @@ public class IonAnalysisInterchangeModel {
 
     protected void setIntensity(Double intensity) {
       this.intensity = intensity;
+    }
+
+    public String getPlot() {
+      return plot;
+    }
+
+    public void setPlot(String plot) {
+      this.plot = plot;
     }
   }
 }

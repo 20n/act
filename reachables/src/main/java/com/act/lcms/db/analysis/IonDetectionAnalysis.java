@@ -361,7 +361,6 @@ public class IonDetectionAnalysis {
           Double intensity = mzToPlotAndSnr.getValue().getRight().getRight();
 
           IonAnalysisInterchangeModel.ResultForMZ resultForMZ = new IonAnalysisInterchangeModel.ResultForMZ(massCharge);
-          resultForMZ.setPlot(plot);
 
           if (mzToPlotAndSnr.getValue().getRight().getLeft().getIntensity() > MIN_SNR_THRESHOLD &&
               mzToPlotAndSnr.getValue().getRight().getLeft().getTime() > MIN_TIME_THRESHOLD &&
@@ -375,7 +374,7 @@ public class IonDetectionAnalysis {
           for (ChemicalAndIon pair : inchisAndIon) {
             String inchi = pair.getChemical();
             String ion = pair.getIon();
-            IonAnalysisInterchangeModel.HitOrMiss hitOrMiss = new IonAnalysisInterchangeModel.HitOrMiss(inchi, ion, snr, time, intensity);
+            IonAnalysisInterchangeModel.HitOrMiss hitOrMiss = new IonAnalysisInterchangeModel.HitOrMiss(inchi, ion, snr, time, intensity, plot);
             resultForMZ.addMolecule(hitOrMiss);
           }
 
@@ -394,7 +393,6 @@ public class IonDetectionAnalysis {
         for (int i = 0; i < allExperimentalResults.get(0).size(); i++) {
           IonAnalysisInterchangeModel.ResultForMZ rep = allExperimentalResults.get(0).get(i);
           IonAnalysisInterchangeModel.ResultForMZ resultForMZ = new IonAnalysisInterchangeModel.ResultForMZ(rep.getMz());
-          resultForMZ.setPlot(rep.getPlot());
           Boolean areAllValid = true;
 
           for (List<IonAnalysisInterchangeModel.ResultForMZ> res : allExperimentalResults) {
