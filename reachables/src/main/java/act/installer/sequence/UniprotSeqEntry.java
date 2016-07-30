@@ -13,6 +13,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import scala.tools.cmd.gen.AnyVals;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,6 +31,9 @@ public class UniprotSeqEntry extends SequenceEntry {
   private static final String GENE = "gene";
   private static final String NAME = "name";
   private static final String TYPE = "type";
+  private static final String TEXT = "text";
+  private static final String COMMENT = "comment";
+  private static final String CATALYTIC_ACTIVITY = "catalytic activity";
   private static final String PRIMARY = "primary";
   private static final String SYNONYM = "synonym";
   private static final String FULL_NAME = "fullName";
@@ -67,9 +71,15 @@ public class UniprotSeqEntry extends SequenceEntry {
   private HashMap<Long, Set<Long>> catalyzedRxnsToSubstrates, catalyzedRxnsToProducts;
   private SAR sar;
 
+  private NodeList proteinNodeList;
+  private NodeList sequenceNodeList;
+  private NodeList organismNodeList;
+  private NodeList geneNodeList;
+
 
   public UniprotSeqEntry(Document doc, MongoDB db) {
     this.seqFile = doc;
+    checkNodeListLengths();
     this.ec = extractEc();
     this.accessions = extractAccessions();
     this.geneName = extractGeneName();
@@ -115,6 +125,42 @@ public class UniprotSeqEntry extends SequenceEntry {
     this.sar = new SAR();
   }
 
+  private void checkNodeListLengths() {
+    proteinNodeList = seqFile.getElementsByTagName(PROTEIN);
+    geneNodeList = seqFile.getElementsByTagName(GENE);
+    sequenceNodeList = seqFile.getElementsByTagName(SEQUENCE);
+    organismNodeList = seqFile.getElementsByTagName(ORGANISM);
+
+    if (proteinNodeList.getLength() > 1) {
+
+      throw new RuntimeException("multiple protein tags parsed");
+
+    }
+
+    if (geneNodeList.getLength() > 1) {
+
+      throw new RuntimeException("multiple gene tags parsed");
+
+    }
+
+    if (organismNodeList.getLength() > 1) {
+
+      throw new RuntimeException("multiple organism tags parsed");
+
+    }
+
+    if (sequenceNodeList.getLength() > 1) {
+
+      throw new RuntimeException("multiple sequence tags parsed");
+
+    } else if (sequenceNodeList.getLength() > 1) {
+
+      throw new RuntimeException("no sequence tags parsed");
+
+    }
+
+  }
+
   /**
    * EC Numbers are stored as:
    *  <protein>
@@ -128,17 +174,9 @@ public class UniprotSeqEntry extends SequenceEntry {
    * @return the Ecnum as a string
    */
   private String extractEc() {
-    NodeList proteinNodeList = seqFile.getElementsByTagName(PROTEIN);
+    proteinNodeList = seqFile.getElementsByTagName(PROTEIN);
 
-    if (proteinNodeList.getLength() != 1) {
-
-      if (proteinNodeList.getLength() == 0) {
-        return null;
-      } else {
-        throw new RuntimeException("multiple protein tags parsed");
-      }
-
-    } else {
+    if (proteinNodeList.getLength() == 1) {
       // since there is only one item in the list, retrieve the only node
       Node proteinNode = proteinNodeList.item(0);
 
@@ -153,15 +191,20 @@ public class UniprotSeqEntry extends SequenceEntry {
 
           Element recommendedNameElement = (Element) proteinChildNode;
 
-          if (recommendedNameElement.getElementsByTagName(EC_NUMBER).getLength() > 0) {
-            // should only be one EC Number per protein
+          if (recommendedNameElement.getElementsByTagName(EC_NUMBER).getLength() > 1) {
+
+            throw new RuntimeException("multiple ec numbers per protein");
+
+          } else if (recommendedNameElement.getElementsByTagName(EC_NUMBER).getLength() == 1) {
+
             return recommendedNameElement.getElementsByTagName(EC_NUMBER).item(0).getTextContent();
+
           }
         }
       }
-
-      return null;
     }
+
+    return null;
   }
 
   /**
@@ -247,7 +290,7 @@ public class UniprotSeqEntry extends SequenceEntry {
    * @return the primary gene name as a string
    */
   private String extractGeneName() {
-    NodeList geneNodeList = seqFile.getElementsByTagName(GENE);
+    geneNodeList = seqFile.getElementsByTagName(GENE);
 
     if (geneNodeList.getLength() == 1) {
       // since there is only one item in the list, retrieve the only node
@@ -266,18 +309,9 @@ public class UniprotSeqEntry extends SequenceEntry {
           }
         }
       }
-
-      return null;
-
-    } else if (geneNodeList.getLength() == 0) {
-
-      return null;
-
-    } else {
-
-      throw new RuntimeException("multiple gene tags parsed");
-
     }
+
+    return null;
   }
 
   /**
@@ -292,7 +326,7 @@ public class UniprotSeqEntry extends SequenceEntry {
    * @return the gene name synonyms as a list
    */
   private List<String> extractGeneSynonyms() {
-    NodeList geneNodeList = seqFile.getElementsByTagName(GENE);
+    geneNodeList = seqFile.getElementsByTagName(GENE);
 
     List<String> geneSynonyms = new ArrayList<>();
 
@@ -313,18 +347,9 @@ public class UniprotSeqEntry extends SequenceEntry {
           }
         }
       }
-
-      return geneSynonyms;
-
-    } else if (geneNodeList.getLength() == 0) {
-
-      return geneSynonyms;
-
-    } else {
-
-      throw new RuntimeException("multiple gene tags parsed");
-
     }
+
+    return geneSynonyms;
   }
 
   /**
@@ -346,7 +371,7 @@ public class UniprotSeqEntry extends SequenceEntry {
    * @return the list of product names
    */
   private List<String> extractProductNames() {
-    NodeList proteinNodeList = seqFile.getElementsByTagName(PROTEIN);
+    proteinNodeList = seqFile.getElementsByTagName(PROTEIN);
 
     if (proteinNodeList.getLength() == 1) {
       // since there is only one item in the list, retrieve the only node
@@ -370,26 +395,19 @@ public class UniprotSeqEntry extends SequenceEntry {
 
             // handles cases: Uncharacterized protein, Putative uncharacterized protein, etc
             if (productName.toLowerCase().contains("uncharacterized protein")) {
+              LOGGER.error("Skipping uncharacterized protein");
               break;
             }
 
+            // Collections.singletonList used over Arrays.asList because it takes less memory
             return Collections.singletonList(productName);
           }
 
         }
       }
-
-      return new ArrayList<>();
-
-    } else if (proteinNodeList.getLength() == 0) {
-
-      return new ArrayList<>();
-
-    } else {
-
-      throw new RuntimeException("multiple protein tags parsed");
-
     }
+
+    return new ArrayList<>();
   }
 
   /**
@@ -400,7 +418,7 @@ public class UniprotSeqEntry extends SequenceEntry {
    * @return the catalytic activity string
    */
   private String extractCatalyticActivity() {
-    NodeList commentNodeList = seqFile.getElementsByTagName("comment");
+    NodeList commentNodeList = seqFile.getElementsByTagName(COMMENT);
 
     for (int i = 0; i < commentNodeList.getLength(); i++) {
       Node commentNode = commentNodeList.item(i);
@@ -408,12 +426,18 @@ public class UniprotSeqEntry extends SequenceEntry {
       if (commentNode.getNodeType() == Node.ELEMENT_NODE) {
         Element commentElement = (Element) commentNode;
 
-        if (commentElement.hasAttribute("type") && commentElement.getAttribute("type").equals("catalytic activity")) {
+        if (commentElement.hasAttribute(TYPE) && commentElement.getAttribute(TYPE).equals(CATALYTIC_ACTIVITY)) {
           NodeList commentChildNodes = commentElement.getChildNodes();
 
           // there should only be one text element child containing the string of interest
-          if (commentChildNodes.getLength() == 1 && commentChildNodes.item(0).getNodeName().equals("text")) {
+          if (commentChildNodes.getLength() == 1 && commentChildNodes.item(0).getNodeName().equals(TEXT)) {
+
             return commentChildNodes.item(0).getTextContent();
+
+          } else if (commentChildNodes.getLength() > 1) {
+
+            LOGGER.error("more than one catalytic activity string");
+
           }
         }
 
@@ -454,19 +478,7 @@ public class UniprotSeqEntry extends SequenceEntry {
   private String extractSequence() {
     NodeList sequenceNodeList = seqFile.getElementsByTagName(SEQUENCE);
 
-    if (sequenceNodeList.getLength() == 1) {
-      // since there is only one item in the list, retrieve the text for the only node
-      return sequenceNodeList.item(0).getTextContent();
-
-    } else if (sequenceNodeList.getLength() == 0) {
-
-      throw new RuntimeException("no sequence tags parsed");
-
-    } else {
-
-      throw new RuntimeException("multiple sequence tags parsed");
-
-    }
+    return sequenceNodeList.item(0).getTextContent();
   }
 
   /**
@@ -479,7 +491,7 @@ public class UniprotSeqEntry extends SequenceEntry {
    * @return the organism as a string
    */
   private String extractOrg() {
-    NodeList organismNodeList = seqFile.getElementsByTagName(ORGANISM);
+    organismNodeList = seqFile.getElementsByTagName(ORGANISM);
 
     if (organismNodeList.getLength() == 1) {
       // since there is only one item in the list, retrieve the only node
@@ -498,23 +510,15 @@ public class UniprotSeqEntry extends SequenceEntry {
           }
         }
       }
-
-      return null;
-
-    } else if (organismNodeList.getLength() == 0) {
-
-      return null;
-
-    } else {
-
-      throw new RuntimeException("multiple organism tags parsed");
-
     }
+
+    return null;
   }
 
   private Long extractOrgId(MongoDB db) {
     long id = db.getOrganismId(org);
 
+    // if id == -1L, this means this organism does not exist in the database
     if (id != -1L) {
       return id;
     } else {
@@ -545,12 +549,21 @@ public class UniprotSeqEntry extends SequenceEntry {
 
     List<JSONObject> references = new ArrayList<>();
 
-
     for (int i = 0; i < referenceNodeList.getLength(); i++) {
       Node referenceNode = referenceNodeList.item(i);
 
       if (referenceNode.getNodeType() == Node.ELEMENT_NODE) {
         Element referenceElement = (Element) referenceNode;
+
+        if (referenceElement.getElementsByTagName(CITATION).getLength() > 1) {
+
+          LOGGER.error("more than one citation per reference");
+
+        } else if (referenceElement.getElementsByTagName(CITATION).getLength() == 0) {
+
+          break;
+
+        }
 
         Node citationNode = referenceElement.getElementsByTagName(CITATION).item(0);
 
@@ -581,6 +594,17 @@ public class UniprotSeqEntry extends SequenceEntry {
     return references;
   }
 
+  /**
+   * In the case that ecnum, sequence, & org are all found in the uniprot file, this retrieves all sequence matches from
+   * the installer database.
+   * In the case that there is no ecnum, but there is a genbank protein accession number, this
+   * retrieves all sequences that carry that genbank protein accession number.
+   * In the case that there is no ecnum or genbank protein accession number, but there is a genbank nucleotide accession
+   * number, this retrieves all sequences that carry that genbank nucleotide accession number and protein sequence.
+   * If none of this is the case, then returns the empty list.
+   * @param db
+   * @return the list of Seq entries that should be updated with the data from the uniprot file
+   */
   public List<Seq> getSeqs(MongoDB db) {
     JSONArray genbankProteinAccessions = accessions.getJSONArray(Seq.AccType.genbank_protein.toString());
     JSONArray genbankNucleotideAccessions = accessions.getJSONArray(Seq.AccType.genbank_nucleotide.toString());

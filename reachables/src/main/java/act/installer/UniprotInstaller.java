@@ -23,7 +23,9 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
@@ -201,17 +203,16 @@ public class UniprotInstaller {
       List<JSONObject> newPmidRefs = se.getRefs();
 
       if (!oldRefs.isEmpty()) {
-        for (JSONObject newPmidRef : newPmidRefs) {
-          Boolean pmidExists = false;
-          String newPmid = (String) newPmidRef.get(VAL);
+        Set<String> oldPmids = new HashSet<>();
 
-          for (JSONObject newRef : oldRefs) {
-            if (newRef.get(SRC).equals(PMID) && newRef.get(VAL).equals(newPmid)) {
-              pmidExists = true;
-            }
+        for (JSONObject oldRef : oldRefs) {
+          if (oldRef.get(SRC).equals(PMID)) {
+            oldPmids.add(oldRef.getString(VAL));
           }
+        }
 
-          if (!pmidExists) {
+        for (JSONObject newPmidRef : newPmidRefs) {
+          if (!oldPmids.contains(newPmidRef.getString(VAL))) {
             oldRefs.add(newPmidRef);
           }
         }
