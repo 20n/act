@@ -276,9 +276,6 @@ public class IonDetectionAnalysis {
         Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
 
         for (Map.Entry<String, Double> entry : metlinMasses.entrySet()) {
-          System.out.println(entry.getKey());
-          System.out.println(entry.getValue());
-
           Set<ChemicalAndIon> res = massChargeToChemicalAndIon.get(entry.getValue());
           if (res == null) {
             res = new HashSet<>();
@@ -379,7 +376,6 @@ public class IonDetectionAnalysis {
             String inchi = pair.getChemical();
             String ion = pair.getIon();
             IonAnalysisInterchangeModel.HitOrMiss hitOrMiss = new IonAnalysisInterchangeModel.HitOrMiss(inchi, ion, snr, time, intensity);
-            resultForMZ.addMolecule(hitOrMiss);
             resultForMZ.addMolecule(hitOrMiss);
           }
 
