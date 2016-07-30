@@ -80,8 +80,6 @@ public class LCMSNetCDFParser implements LCMSParser {
 
     final long size = scanTimeArray.getSize();
 
-    System.err.format("Total size of scantimearray: %d\n", size);
-
     return new Iterator<LCMSSpectrum>() {
       private int i = 0;
       @Override
