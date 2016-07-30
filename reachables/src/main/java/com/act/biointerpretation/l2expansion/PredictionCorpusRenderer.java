@@ -80,9 +80,9 @@ public class PredictionCorpusRenderer {
       LOGGER.error("Couldn't print prediction corpus to file.");
     }
 
-    // Print product inchis to file for Bing Search analysis.
     try {
-      predictionCorpus.writeProductInchiFile(inchiListFile);
+      L2InchiCorpus inchiCorpus = new L2InchiCorpus(predictionCorpus.getUniqueProductInchis());
+      inchiCorpus.writeToFile(inchiListFile);
     } catch (IOException e) {
       LOGGER.error("Couldn't print product inchis to file.");
     }
