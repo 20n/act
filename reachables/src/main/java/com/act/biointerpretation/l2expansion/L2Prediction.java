@@ -56,7 +56,6 @@ public class L2Prediction implements Serializable {
 
     this.reactionsRoMatch = new ArrayList<Long>(template.reactionsRoMatch);
     this.reactionsNoRoMatch = new ArrayList<Long>(template.reactionsNoRoMatch);
-
   }
 
   public L2Prediction(Integer id,
