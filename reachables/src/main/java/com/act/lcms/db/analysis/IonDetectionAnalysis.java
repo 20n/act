@@ -277,18 +277,22 @@ public class IonDetectionAnalysis {
     while ((product = br.readLine()) != null) {
       product = product.replace("\n", "");
       // Assume the ion modes are all positive!
-      Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(product), MS1.IonMode.POS);
-      Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
+      try {
+        Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(product), MS1.IonMode.POS);
+        Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
 
-      for (Map.Entry<String, Double> entry : metlinMasses.entrySet()) {
-        Set<ChemicalAndIon> res = massChargeToChemicalAndIon.get(entry.getValue());
-        if (res == null) {
-          res = new HashSet<>();
-          massChargeToChemicalAndIon.put(entry.getValue(), res);
+        for (Map.Entry<String, Double> entry : metlinMasses.entrySet()) {
+          Set<ChemicalAndIon> res = massChargeToChemicalAndIon.get(entry.getValue());
+          if (res == null) {
+            res = new HashSet<>();
+            massChargeToChemicalAndIon.put(entry.getValue(), res);
+          }
+
+          ChemicalAndIon chemicalAndIon = new ChemicalAndIon(product, entry.getKey());
+          res.add(chemicalAndIon);
         }
-
-        ChemicalAndIon chemicalAndIon = new ChemicalAndIon(product, entry.getKey());
-        res.add(chemicalAndIon);
+      } catch (Exception e) {
+        continue;
       }
     }
 
