@@ -59,6 +59,7 @@ public class MassCalculator {
     put("Hg", 201.970632d);
     put("Na", 22.989770d);
     put("Se", 79.916521d);
+    put("F",  18.998403d);
   }});
 
   public static Double calculateMass(String inchi) {
