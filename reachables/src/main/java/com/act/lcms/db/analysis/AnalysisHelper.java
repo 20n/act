@@ -281,8 +281,7 @@ public class AnalysisHelper {
 
   public static <T extends PlateWell<T>> ChemicalToMapOfMetlinIonsToIntensityTimeValues readScanData(
       DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer,
-      Plate> plateCache, T well, boolean useFineGrainedMZTolerance, Set<String> includeIons,
-      Set<String> excludeIons, boolean useSNRForPeakIdentification) throws Exception {
+      Plate> plateCache, T well, boolean useFineGrainedMZTolerance, boolean useSNRForPeakIdentification) throws Exception {
 
     ScanFile bestScanFile = pickNewestScanFileForWell(db, well);
     Map<Pair<String, Double>, ScanData<T>> result =
