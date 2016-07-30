@@ -266,11 +266,133 @@ public class MS1 {
     return scanResults;
   }
 
+  private void computeStats(MS1ScanForWellAndMassCharge scanResults, String ionDesc) {
+    List<XZ> curve = scanResults.getIonsToSpectra().get(ionDesc);
+
+    Double maxIntensity = null;
+    Double maxIntensityTime = null;
+
+    for (XZ signal : curve) {
+      Double intensity = signal.getIntensity();
+      if (maxIntensity == null) {
+        maxIntensity = intensity; maxIntensityTime = signal.getTime();
+      } else {
+        if (maxIntensity < intensity) {
+          maxIntensity = intensity; maxIntensityTime = signal.getTime();
+        }
+      }
+    }
+
+    // split the curve into parts that are the signal (+- from peak), and ambient
+    List<XZ> signalIntensities = new ArrayList<>();
+    List<XZ> ambientIntensities = new ArrayList<>();
+    for (XZ measured : curve) {
+      if (measured.getTime() > maxIntensityTime - PEAK_WIDTH/2.0d &&
+          measured.getTime() < maxIntensityTime + PEAK_WIDTH/2.0d) {
+        signalIntensities.add(measured);
+      } else {
+        ambientIntensities.add(measured);
+      }
+    }
+
+    Double avgIntensitySignal = average(signalIntensities);
+    Double avgIntensityAmbient = average(ambientIntensities);
+
+    Double logSNR = -100.0d, snr = null;
+    // only set SNR to real value if the signal is non-trivial
+    if (maxIntensity > NONTRIVIAL_SIGNAL) {
+      // snr = sigma_signal^2 / sigma_ambient^2
+      // where sigma = sqrt(E[(X-mean)^2])
+      Double mean = avgIntensityAmbient;
+      snr = sigmaSquared(signalIntensities, mean) / sigmaSquared(ambientIntensities, mean);
+      logSNR = Math.log(snr);
+    }
+
+    scanResults.setIntegralForIon(ionDesc, getAreaUnder(curve));
+    scanResults.setMaxIntensityForIon(ionDesc, maxIntensity);
+    scanResults.setAvgIntensityForIon(ionDesc, avgIntensitySignal, avgIntensityAmbient);
+    scanResults.setLogSNRForIon(ionDesc, logSNR);
+
+    if (logSNR > -100.0d) {
+      System.out.format("%10s: logSNR: %5.1f Max: %7.0f SignalAvg: %7.0f Ambient Avg: %7.0f %s\n", ionDesc, logSNR, maxIntensity, avgIntensitySignal, avgIntensityAmbient, isGoodPeak(scanResults, ionDesc) ? "INCLUDED" : "");
+    }
+  }
+
   public Map<Pair<String, Double>, MS1ScanForWellAndMassCharge> getMultipleMS1s(
       Set<Pair<String, Double>> metlinMasses, String ms1File)
       throws ParserConfigurationException, IOException, XMLStreamException {
 
-    throw new RuntimeException("Not yet implemented");
+    // In order for this to sit well with the data model we'll need to ensure the keys are all unique.
+    Set<String> uniqueKeys = new HashSet<>();
+    metlinMasses.stream().map(Pair::getLeft).forEach(x -> {
+      if (uniqueKeys.contains(x)) {
+        throw new RuntimeException(String.format("Assumption violation: found duplicate metlin mass keys: %s", x));
+      }
+      uniqueKeys.add(x);
+    });
+
+    Iterator<LCMSSpectrum> ms1Iterator = new LCMSNetCDFParser().getIterator(ms1File);
+
+    Map<Double, List<XZ>> scanLists = new HashMap<>(metlinMasses.size());
+    // Initialize reading buffers for all of the target masses.
+    metlinMasses.forEach(x -> {
+      if (!scanLists.containsKey(x.getRight())) {
+        scanLists.put(x.getRight(), new ArrayList<>());
+      }
+    });
+    // De-dupe by mass in case we have exact duplicates, sort for well-ordered extractions.
+    List<Double> sortedMasses = new ArrayList<>(scanLists.keySet());
+
+    /* Note: this operation is O(n * m) where n is the number of (mass, intensity) readings from the scan
+     * and m is the number of mass targets specified.  We might be able to get this down to O(m log n), but
+     * we'll save that for once we get this working at all. */
+    while (ms1Iterator.hasNext()) {
+      LCMSSpectrum timepoint = ms1Iterator.next();
+
+      // get all (mz, intensity) at this timepoint
+      List<Pair<Double, Double>> intensities = timepoint.getIntensities();
+
+      // for this timepoint, extract each of the ion masses from the METLIN set
+      for (Double ionMz : sortedMasses) {
+        // this time point is valid to look at if its max intensity is around
+        // the mass we care about. So lets first get the max peak location
+        double intensityForMz = extractMZ(ionMz, intensities);
+
+        // the above is Pair(mz_extracted, intensity), where mz_extracted = mz
+        // we now add the timepoint val and the intensity to the output
+        XZ intensityAtThisTime = new XZ(timepoint.getTimeVal(), intensityForMz);
+        scanLists.get(ionMz).add(intensityAtThisTime);
+      }
+    }
+
+    Map<Pair<String, Double>, MS1ScanForWellAndMassCharge> finalResults =
+        new HashMap<>(metlinMasses.size());
+
+    /* Note: we might be able to squeeze more performance out of this by computing the
+     * stats once per trace and then storing them.  But the time to compute will probably
+     * be dwarfed by the time to extract the data (assuming deduplication was done ahead
+     * of time), so we'll leave it as is for now. */
+    for (Pair<String, Double> pair : metlinMasses) {
+      String label = pair.getLeft();
+      Double mz = pair.getRight();
+      MS1ScanForWellAndMassCharge result = new MS1ScanForWellAndMassCharge();
+
+      result.setMetlinIons(Collections.singletonList(label));
+      result.getIonsToSpectra().put(label, scanLists.get(mz));
+      computeStats(result, label);
+
+      // DO NOT use isGoodPeak here.  We want positive and negative results alike.
+
+      // There's only one ion in this scan, so just use its max.
+      Double maxIntensity = result.getMaxIntensityForIon(label);
+      result.setMaxYAxis(maxIntensity);
+      // How/why is this not IonsToMax?  Just set it as such for this.
+      result.setIndividualMaxIntensities(Collections.singletonMap(label, maxIntensity));
+
+      finalResults.put(pair, result);
+    }
+
+    return finalResults;
   }
 
   boolean isGoodPeak(MS1ScanForWellAndMassCharge scans, String ion) {
