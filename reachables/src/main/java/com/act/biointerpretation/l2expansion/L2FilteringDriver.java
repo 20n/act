@@ -195,6 +195,20 @@ public class L2FilteringDriver {
       return;
     }
 
+
+    if (cl.hasOption(OPTION_SPLIT_BY_RO)) {
+      LOGGER.info("Splitting corpus into distinct corpuses for each ro.");
+      Map<String, L2PredictionCorpus> corpusMap = predictionCorpus.splitCorpus(prediction -> prediction.getProjectorName());
+
+      for (Map.Entry<String, L2PredictionCorpus> entry : corpusMap.entrySet()) {
+        String fileName = cl.getOptionValue(OPTION_OUTPUT_PATH) + "." + entry.getKey();
+        File oneOutputFile = new File(fileName);
+        entry.getValue().writePredictionsToJsonFile(oneOutputFile);
+      }
+      LOGGER.info("Done writing split corpuses to file.");
+      return;
+    }
+
     predictionCorpus = runDbLookups(cl, predictionCorpus, opts);
 
     LOGGER.info("Applying filters.");

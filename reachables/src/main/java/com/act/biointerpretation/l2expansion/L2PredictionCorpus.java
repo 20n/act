@@ -151,7 +151,7 @@ public class L2PredictionCorpus implements Serializable {
    * Get a list of all substrate inchis from corpus.
    */
   @JsonIgnore
-  public Set<String> getUniqueSubstrateInchis() {
+  public Collection<String> getUniqueSubstrateInchis() {
     Set<String> inchiSet = new HashSet<>();
     for (L2Prediction prediction : getCorpus()) {
       inchiSet.addAll(prediction.getSubstrateInchis());
