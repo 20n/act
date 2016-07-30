@@ -32,6 +32,9 @@ public class GenbankSeqEntry extends SequenceEntry {
   private static final String COUNTRY_CODE = "countryCode";
   private static final String PATENT_NUMBER = "patentNumber";
   private static final String PATENT_YEAR = "patentYear";
+  private static final String COUNTRY_CODE_SNAKE = "country_code";
+  private static final String PATENT_NUMBER_SNAKE = "patent_number";
+  private static final String PATENT_YEAR_SNAKE = "patent_year";
   private static final String SOURCE = "source";
   private static final String ORGANISM = "organism";
   private static final String PROTEIN_ID = "protein_id";
@@ -40,6 +43,13 @@ public class GenbankSeqEntry extends SequenceEntry {
   private static final String GENE = "gene";
   private static final String GENE_SYNONYM = "gene_synonym";
   private static final String PRODUCT = "product";
+  private static final String VAL = "val";
+  private static final String SRC = "src";
+  private static final String SYNONYMS = "synonyms";
+  private static final String PRODUCT_NAMES = "product_names";
+  private static final String COMMENT = "comment";
+  private static final String ACCESSION = "accession";
+  private static final String PROTEIN_EXISTENCE = "proteinExistence";
   private static final Pattern GENE_NAME_PATTERN = Pattern.compile("(\\S*)\\s*.*");
 
   private AbstractSequence seqObject;
@@ -164,8 +174,8 @@ public class GenbankSeqEntry extends SequenceEntry {
 
     for (String pmid : pmids) {
       JSONObject obj = new JSONObject();
-      obj.put("val", pmid);
-      obj.put("src", PMID);
+      obj.put(VAL, pmid);
+      obj.put(SRC, PMID);
       references.add(obj);
     }
 
@@ -179,10 +189,10 @@ public class GenbankSeqEntry extends SequenceEntry {
 
     for (Map patent : patents) {
       JSONObject obj = new JSONObject();
-      obj.put("src", PATENT);
-      obj.put("country_code", patent.get(COUNTRY_CODE));
-      obj.put("patent_number", patent.get(PATENT_NUMBER));
-      obj.put("patent_year", patent.get(PATENT_YEAR));
+      obj.put(SRC, PATENT);
+      obj.put(COUNTRY_CODE_SNAKE, patent.get(COUNTRY_CODE));
+      obj.put(PATENT_NUMBER_SNAKE, patent.get(PATENT_NUMBER));
+      obj.put(PATENT_YEAR_SNAKE, patent.get(PATENT_YEAR));
       references.add(obj);
     }
 
@@ -292,12 +302,12 @@ public class GenbankSeqEntry extends SequenceEntry {
   private DBObject extractMetadata() {
     JSONObject obj = new JSONObject();
 
-    obj.put("proteinExistence", new JSONObject());
-    obj.put("name", geneName);
-    obj.put("synonyms", geneSynonyms);
-    obj.put("product_names", productNames);
-    obj.put("comment", new ArrayList());
-    obj.put("accession", accessions);
+    obj.put(PROTEIN_EXISTENCE, new JSONObject());
+    obj.put(NAME, geneName);
+    obj.put(SYNONYMS, geneSynonyms);
+    obj.put(PRODUCT_NAMES, productNames);
+    obj.put(COMMENT, new ArrayList());
+    obj.put(ACCESSION, accessions);
 
     return MongoDBToJSON.conv(obj);
   }

@@ -33,6 +33,10 @@ public class UniprotSeqEntry extends SequenceEntry {
   private static final String TEXT = "text";
   private static final String COMMENT = "comment";
   private static final String CATALYTIC_ACTIVITY = "catalytic activity";
+  private static final String CATALYTIC_ACITIVITY_SNAKE = "catalytic_activity";
+  private static final String VAL = "val";
+  private static final String SRC = "src";
+  private static final String PROTEIN_EXISTENCE = "proteinExistence";
   private static final String PRIMARY = "primary";
   private static final String SYNONYM = "synonym";
   private static final String FULL_NAME = "fullName";
@@ -51,6 +55,9 @@ public class UniprotSeqEntry extends SequenceEntry {
   private static final String VALUE = "value";
   private static final String SUBMITTED_NAME = "submittedName";
   private static final String ALTERNATIVE_NAME = "alternativeName";
+  private static final String SYNONYMS = "synonyms";
+  private static final String PRODUCT_NAMES = "product_names";
+  private static final String UNCHARACTERIZED = "uncharacterized";
 
   private Document seqFile;
   private String ec;
@@ -393,7 +400,7 @@ public class UniprotSeqEntry extends SequenceEntry {
             String productName = recommendedNameElement.getElementsByTagName(FULL_NAME).item(0).getTextContent();
 
             // handles cases: Uncharacterized protein, Putative uncharacterized protein, etc
-            if (productName.toLowerCase().contains("uncharacterized")) {
+            if (productName.toLowerCase().contains(UNCHARACTERIZED)) {
               LOGGER.error("Skipping uncharacterized protein");
               break;
             }
@@ -450,13 +457,13 @@ public class UniprotSeqEntry extends SequenceEntry {
   private DBObject extractMetadata() {
     JSONObject obj = new JSONObject();
 
-    obj.put("proteinExistence", new JSONObject());
-    obj.put("name", geneName);
-    obj.put("synonyms", geneSynonyms);
-    obj.put("product_names", productNames);
-    obj.put("comment", new ArrayList());
-    obj.put("accession", accessions);
-    obj.put("catalytic_activity", catalyticActivity);
+    obj.put(PROTEIN_EXISTENCE, new JSONObject());
+    obj.put(NAME, geneName);
+    obj.put(SYNONYMS, geneSynonyms);
+    obj.put(PRODUCT_NAMES, productNames);
+    obj.put(COMMENT, new ArrayList());
+    obj.put(ACCESSION, accessions);
+    obj.put(CATALYTIC_ACITIVITY_SNAKE, catalyticActivity);
 
     return MongoDBToJSON.conv(obj);
   }
@@ -580,8 +587,8 @@ public class UniprotSeqEntry extends SequenceEntry {
               if (dbReferenceElement.hasAttribute(TYPE) && dbReferenceElement.getAttribute(TYPE).equals(PUBMED) &&
                   dbReferenceElement.hasAttribute(ID)) {
                 JSONObject obj = new JSONObject();
-                obj.put("val", dbReferenceElement.getAttribute(ID));
-                obj.put("src", PMID);
+                obj.put(VAL, dbReferenceElement.getAttribute(ID));
+                obj.put(SRC, PMID);
                 references.add(obj);
               }
             }
