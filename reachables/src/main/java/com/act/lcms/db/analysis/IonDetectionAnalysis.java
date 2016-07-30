@@ -224,10 +224,8 @@ public class IonDetectionAnalysis {
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputPredictionCorpus);
 
     List<Pair<String, Double>> searchMZs = new ArrayList<>();
-    Map<Double, List<Pair<String, String>>> massChargeToChemicalAndIon = new HashMap<>();
+    Map<Double, Set<Pair<String, String>>> massChargeToChemicalAndIon = new HashMap<>();
     Map<Double, List<Integer>> massChargeToListOfCorpusIds = new HashMap<>();
-
-    System.out.println("Total number of products is: " + predictionCorpus.getCorpus().size());
 
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
       for (String product : prediction.getProductInchis()) {
@@ -235,12 +233,10 @@ public class IonDetectionAnalysis {
         Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(product), MS1.IonMode.POS);
         Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
 
-        System.out.println("metlin mass size is: " + metlinMasses.keySet().size());
-
         for (Map.Entry<String, Double> entry : metlinMasses.entrySet()) {
-          List<Pair<String, String>> res = massChargeToChemicalAndIon.get(entry.getValue());
+          Set<Pair<String, String>> res = massChargeToChemicalAndIon.get(entry.getValue());
           if (res == null) {
-            res = new ArrayList<>();
+            res = new HashSet<>();
             massChargeToChemicalAndIon.put(entry.getValue(), res);
           }
           res.add(Pair.of(product, entry.getKey()));
@@ -254,8 +250,6 @@ public class IonDetectionAnalysis {
         }
       }
     }
-
-
 
     Integer chemicalCounter = 0;
     Map<String, Double> chemIDToMassCharge = new HashMap<>();
@@ -333,7 +327,7 @@ public class IonDetectionAnalysis {
             resultForMZ.setIsValid(false);
           }
 
-          List<Pair<String, String>> inchisAndIon = massChargeToChemicalAndIon.get(massCharge);
+          Set<Pair<String, String>> inchisAndIon = massChargeToChemicalAndIon.get(massCharge);
           for (Pair<String, String> pair : inchisAndIon) {
             String inchi = pair.getLeft();
             String ion = pair.getRight();
