@@ -250,6 +250,11 @@ public class IonSearchAnalysis {
         // Allow filtering on barcode even if we couldn't find any in the DB.
       }
 
+      //M+H,M+Na,M+H-H2O
+      includeIons.add("M+H");
+      includeIons.add("M+Na");
+      includeIons.add("M+H-H20");
+
       System.out.format("Loading/updating LCMS scan files into DB\n");
       ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
