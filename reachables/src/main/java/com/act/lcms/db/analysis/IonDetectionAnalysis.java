@@ -127,8 +127,6 @@ public class IonDetectionAnalysis {
         plateCache,
         positiveWell,
         USE_FINE_GRAINED_TOLERANCE,
-        null,
-        null,
         USE_SNR_FOR_LCMS_ANALYSIS);
 
     if (positiveWellSignalProfiles == null) {
@@ -150,8 +148,6 @@ public class IonDetectionAnalysis {
           plateCache,
           well,
           USE_FINE_GRAINED_TOLERANCE,
-          null,
-          null,
           USE_SNR_FOR_LCMS_ANALYSIS);
 
       negativeWellsSignalProfiles.add(peakDataNeg);
@@ -231,11 +227,16 @@ public class IonDetectionAnalysis {
     Map<Double, List<Pair<String, String>>> massChargeToChemicalAndIon = new HashMap<>();
     Map<Double, List<Integer>> massChargeToListOfCorpusIds = new HashMap<>();
 
+    System.out.println("Total number of products is: " + predictionCorpus.getCorpus().size());
+
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
       for (String product : prediction.getProductInchis()) {
         // Assume the ion modes are all positive!
         Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(product), MS1.IonMode.POS);
         Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
+
+        System.out.println("metlin mass size is: " + metlinMasses.keySet().size());
+
         for (Map.Entry<String, Double> entry : metlinMasses.entrySet()) {
           List<Pair<String, String>> res = massChargeToChemicalAndIon.get(entry.getValue());
           if (res == null) {
@@ -253,6 +254,8 @@ public class IonDetectionAnalysis {
         }
       }
     }
+
+
 
     Integer chemicalCounter = 0;
     Map<String, Double> chemIDToMassCharge = new HashMap<>();
