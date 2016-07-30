@@ -276,6 +276,9 @@ public class IonDetectionAnalysis {
         Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
 
         for (Map.Entry<String, Double> entry : metlinMasses.entrySet()) {
+          System.out.println(entry.getKey());
+          System.out.println(entry.getValue());
+
           Set<ChemicalAndIon> res = massChargeToChemicalAndIon.get(entry.getValue());
           if (res == null) {
             res = new HashSet<>();
