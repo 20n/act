@@ -24,7 +24,6 @@ import java.util.function.Predicate;
 public class L2PredictionCorpus {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
   static {
     OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
   }
@@ -133,6 +132,7 @@ public class L2PredictionCorpus {
   /**
    * Get a list of all product inchis from corpus.
    */
+  @JsonIgnore
   public Collection<String> getUniqueProductInchis() {
     Set<String> inchiSet = new HashSet<>();
     for (L2Prediction prediction : getCorpus()) {
@@ -144,6 +144,7 @@ public class L2PredictionCorpus {
   /**
    * Get a list of all substrate inchis from corpus.
    */
+  @JsonIgnore
   public Collection<String> getUniqueSubstrateInchis() {
     Set<String> inchiSet = new HashSet<>();
     for (L2Prediction prediction : getCorpus()) {

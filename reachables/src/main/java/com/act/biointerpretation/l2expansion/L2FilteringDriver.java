@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -29,6 +30,7 @@ public class L2FilteringDriver {
   private static final String OPTION_REACTION_FILTER = "r";
   private static final String OPTION_DB_LOOKUP = "d";
   private static final String OPTION_LOOKUP_TYPES = "L";
+  private static final String OPTION_SPLIT_BY_RO = "s";
   private static final String OPTION_HELP = "h";
 
   private static final String APPLY_FILTER_POSITIVE = "1";
@@ -83,6 +85,11 @@ public class L2FilteringDriver {
         .hasArgs()
         .valueSeparator(',')
         .longOpt("db-lookup-types"));
+    add(Option.builder(OPTION_SPLIT_BY_RO)
+        .argName("split by ro")
+        .desc("If this argument is selected, the input corpus is read in, split up by ro, and written out into a different" +
+            "output file for each ro.  The files have the ro id appended to the end of their names.")
+        .longOpt("split-by-ro"));
     add(Option.builder(OPTION_HELP)
         .argName("help")
         .desc("Prints this help message.")
@@ -146,6 +153,20 @@ public class L2FilteringDriver {
     LOGGER.info("Reading corpus from file.");
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(corpusFile);
     LOGGER.info("Read in corpus with %d predictions.", predictionCorpus.getCorpus().size());
+
+
+    if (cl.hasOption(OPTION_SPLIT_BY_RO)) {
+      LOGGER.info("Splitting corpus into distinct corpuses for each ro.");
+      Map<String, L2PredictionCorpus> corpusMap = predictionCorpus.splitCorpus(prediction -> prediction.getProjectorName());
+
+      for (Map.Entry<String, L2PredictionCorpus> entry : corpusMap.entrySet()) {
+        String fileName = cl.getOptionValue(OPTION_OUTPUT_PATH) + "." + entry.getKey();
+        File oneOutputFile = new File(fileName);
+        entry.getValue().writePredictionsToJsonFile(oneOutputFile);
+      }
+      LOGGER.info("Done writing split corpuses to file.");
+      return;
+    }
 
     predictionCorpus = runDbLookups(cl, predictionCorpus, opts);
 
