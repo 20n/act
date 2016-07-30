@@ -355,15 +355,15 @@ public class IonDetectionAnalysis {
         for (Map.Entry<String, Pair<String, Pair<XZ, Double>>> mzToPlotAndSnr : result.entrySet()) {
           Double massCharge = chemIDToMassCharge.get(mzToPlotAndSnr.getKey());
           String plot = mzToPlotAndSnr.getValue().getLeft();
-          Double snr = mzToPlotAndSnr.getValue().getRight().getLeft().getIntensity();
+          Double intensity = mzToPlotAndSnr.getValue().getRight().getLeft().getIntensity();
           Double time = mzToPlotAndSnr.getValue().getRight().getLeft().getTime();
-          Double intensity = mzToPlotAndSnr.getValue().getRight().getRight();
+          Double snr = mzToPlotAndSnr.getValue().getRight().getRight();
 
           IonAnalysisInterchangeModel.ResultForMZ resultForMZ = new IonAnalysisInterchangeModel.ResultForMZ(massCharge);
 
-          if (mzToPlotAndSnr.getValue().getRight().getLeft().getIntensity() > MIN_INTENSITY_THRESHOLD &&
-              mzToPlotAndSnr.getValue().getRight().getLeft().getTime() > MIN_TIME_THRESHOLD &&
-              mzToPlotAndSnr.getValue().getRight().getRight() > MIN_SNR_THRESHOLD) {
+          if (intensity > MIN_INTENSITY_THRESHOLD &&
+              time > MIN_TIME_THRESHOLD &&
+              snr > MIN_SNR_THRESHOLD) {
             resultForMZ.setIsValid(true);
           } else {
             resultForMZ.setIsValid(false);
