@@ -269,7 +269,6 @@ public class IonDetectionAnalysis {
 
     List<Pair<String, Double>> searchMZs = new ArrayList<>();
     Map<Double, Set<ChemicalAndIon>> massChargeToChemicalAndIon = new HashMap<>();
-    Map<Double, List<Integer>> massChargeToListOfCorpusIds = new HashMap<>();
 
     // Construct BufferedReader from FileReader
     BufferedReader br = new BufferedReader(new FileReader(inputPredictionCorpus));
@@ -362,9 +361,9 @@ public class IonDetectionAnalysis {
 
           IonAnalysisInterchangeModel.ResultForMZ resultForMZ = new IonAnalysisInterchangeModel.ResultForMZ(massCharge);
 
-          if (mzToPlotAndSnr.getValue().getRight().getLeft().getIntensity() > MIN_SNR_THRESHOLD &&
+          if (mzToPlotAndSnr.getValue().getRight().getLeft().getIntensity() > MIN_INTENSITY_THRESHOLD &&
               mzToPlotAndSnr.getValue().getRight().getLeft().getTime() > MIN_TIME_THRESHOLD &&
-              mzToPlotAndSnr.getValue().getRight().getRight() > MIN_INTENSITY_THRESHOLD) {
+              mzToPlotAndSnr.getValue().getRight().getRight() > MIN_SNR_THRESHOLD) {
             resultForMZ.setIsValid(true);
           } else {
             resultForMZ.setIsValid(false);
