@@ -109,6 +109,48 @@ public class IonDetectionAnalysis {
     OPTION_BUILDERS.addAll(DB.DB_OPTION_BUILDERS);
   }
 
+  public static class ChemicalAndIon {
+    private String chemical;
+    private String ion;
+
+    public ChemicalAndIon(String chemical, String ion) {
+      this.chemical = chemical;
+      this.ion = ion;
+    }
+
+    public String getIon() {
+      return ion;
+    }
+
+    public void setIon(String ion) {
+      this.ion = ion;
+    }
+
+    public String getChemical() {
+      return chemical;
+    }
+
+    public void setChemical(String chemical) {
+      this.chemical = chemical;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (!(o instanceof ChemicalAndIon)) return false;
+      ChemicalAndIon that = (ChemicalAndIon)o;
+
+      return this.chemical.equals(that.chemical) && this.getIon().equals(that.ion);
+    }
+
+    @Override
+    public int hashCode() {
+      int hash = "magic".hashCode();
+      if (this.chemical != null) hash ^= this.chemical.hashCode();
+      if (this.ion != null) hash ^= this.ion.hashCode();
+      return hash;
+    }
+  }
+
   public static <T extends PlateWell<T>> Map<String, Pair<String, Pair<XZ, Double>>> getSnrResultsAndPlotDiagnosticsForEachMoleculeAndItsMetlinIon(
       File lcmsDir, DB db, T positiveWell, List<T> negativeWells, HashMap<Integer, Plate> plateCache, List<Pair<String, Double>> searchMZs,
       String plottingDir) throws Exception {
@@ -224,7 +266,7 @@ public class IonDetectionAnalysis {
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputPredictionCorpus);
 
     List<Pair<String, Double>> searchMZs = new ArrayList<>();
-    Map<Double, Set<Pair<String, String>>> massChargeToChemicalAndIon = new HashMap<>();
+    Map<Double, Set<ChemicalAndIon>> massChargeToChemicalAndIon = new HashMap<>();
     Map<Double, List<Integer>> massChargeToListOfCorpusIds = new HashMap<>();
 
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
@@ -234,12 +276,14 @@ public class IonDetectionAnalysis {
         Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
 
         for (Map.Entry<String, Double> entry : metlinMasses.entrySet()) {
-          Set<Pair<String, String>> res = massChargeToChemicalAndIon.get(entry.getValue());
+          Set<ChemicalAndIon> res = massChargeToChemicalAndIon.get(entry.getValue());
           if (res == null) {
             res = new HashSet<>();
             massChargeToChemicalAndIon.put(entry.getValue(), res);
           }
-          res.add(Pair.of(product, entry.getKey()));
+
+          ChemicalAndIon chemicalAndIon = new ChemicalAndIon(product, entry.getKey());
+          res.add(chemicalAndIon);
 
           List<Integer> corpusIds = massChargeToListOfCorpusIds.get(entry.getValue());
           if (corpusIds == null) {
@@ -327,10 +371,10 @@ public class IonDetectionAnalysis {
             resultForMZ.setIsValid(false);
           }
 
-          Set<Pair<String, String>> inchisAndIon = massChargeToChemicalAndIon.get(massCharge);
-          for (Pair<String, String> pair : inchisAndIon) {
-            String inchi = pair.getLeft();
-            String ion = pair.getRight();
+          Set<ChemicalAndIon> inchisAndIon = massChargeToChemicalAndIon.get(massCharge);
+          for (ChemicalAndIon pair : inchisAndIon) {
+            String inchi = pair.getChemical();
+            String ion = pair.getIon();
             IonAnalysisInterchangeModel.HitOrMiss hitOrMiss = new IonAnalysisInterchangeModel.HitOrMiss(inchi, ion, snr, time, intensity);
             resultForMZ.addMolecule(hitOrMiss);
             resultForMZ.addMolecule(hitOrMiss);
