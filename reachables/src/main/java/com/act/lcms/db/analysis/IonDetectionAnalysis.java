@@ -22,7 +22,9 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -263,37 +265,35 @@ public class IonDetectionAnalysis {
 
     // Read product inchis from the prediction corpus
     File inputPredictionCorpus = new File(cl.getOptionValue(OPTION_INPUT_PREDICTION_CORPUS));
-    L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputPredictionCorpus);
+    //L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputPredictionCorpus);
 
     List<Pair<String, Double>> searchMZs = new ArrayList<>();
     Map<Double, Set<ChemicalAndIon>> massChargeToChemicalAndIon = new HashMap<>();
     Map<Double, List<Integer>> massChargeToListOfCorpusIds = new HashMap<>();
 
-    for (L2Prediction prediction : predictionCorpus.getCorpus()) {
-      for (String product : prediction.getProductInchis()) {
-        // Assume the ion modes are all positive!
-        Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(product), MS1.IonMode.POS);
-        Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
+    // Construct BufferedReader from FileReader
+    BufferedReader br = new BufferedReader(new FileReader(inputPredictionCorpus));
 
-        for (Map.Entry<String, Double> entry : metlinMasses.entrySet()) {
-          Set<ChemicalAndIon> res = massChargeToChemicalAndIon.get(entry.getValue());
-          if (res == null) {
-            res = new HashSet<>();
-            massChargeToChemicalAndIon.put(entry.getValue(), res);
-          }
+    String product = null;
+    while ((product = br.readLine()) != null) {
+      product = product.replace("\n", "");
+      // Assume the ion modes are all positive!
+      Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(product), MS1.IonMode.POS);
+      Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
 
-          ChemicalAndIon chemicalAndIon = new ChemicalAndIon(product, entry.getKey());
-          res.add(chemicalAndIon);
-
-          List<Integer> corpusIds = massChargeToListOfCorpusIds.get(entry.getValue());
-          if (corpusIds == null) {
-            corpusIds = new ArrayList<>();
-            massChargeToListOfCorpusIds.put(entry.getValue(), corpusIds);
-          }
-          corpusIds.add(prediction.getId());
+      for (Map.Entry<String, Double> entry : metlinMasses.entrySet()) {
+        Set<ChemicalAndIon> res = massChargeToChemicalAndIon.get(entry.getValue());
+        if (res == null) {
+          res = new HashSet<>();
+          massChargeToChemicalAndIon.put(entry.getValue(), res);
         }
+
+        ChemicalAndIon chemicalAndIon = new ChemicalAndIon(product, entry.getKey());
+        res.add(chemicalAndIon);
       }
     }
+
+    br.close();
 
     Integer chemicalCounter = 0;
     Map<String, Double> chemIDToMassCharge = new HashMap<>();
