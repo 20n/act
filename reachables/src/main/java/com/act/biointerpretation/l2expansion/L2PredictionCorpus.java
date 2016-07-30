@@ -107,13 +107,13 @@ public class L2PredictionCorpus {
 
     for (L2Prediction prediction : getCorpus()) {
       L2Prediction predictionCopy = new L2Prediction(prediction);
-      T key = classifier.apply(prediction);
+      T key = classifier.apply(predictionCopy);
       L2PredictionCorpus corpus = corpusMap.get(key);
       if (corpus == null) {
         corpus = new L2PredictionCorpus();
         corpusMap.put(key, corpus);
       }
-      corpus.addPrediction(prediction);
+      corpus.addPrediction(predictionCopy);
     }
 
     return corpusMap;
@@ -134,23 +134,23 @@ public class L2PredictionCorpus {
   /**
    * Get a list of all product inchis from corpus.
    */
-  public List<String> getProductInchis() {
+  public Collection<String> getUniqueProductInchis() {
     Set<String> inchiSet = new HashSet<>();
     for (L2Prediction prediction : getCorpus()) {
       inchiSet.addAll(prediction.getProductInchis());
     }
-    return new ArrayList<>(inchiSet);
+    return inchiSet;
   }
 
   /**
    * Get a list of all substrate inchis from corpus.
    */
-  public List<String> getSubstrateInchis() {
+  public Collection<String> getUniqueSubstrateInchis() {
     Set<String> inchiSet = new HashSet<>();
     for (L2Prediction prediction : getCorpus()) {
       inchiSet.addAll(prediction.getSubstrateInchis());
     }
-    return new ArrayList<>(inchiSet);
+    return inchiSet;
   }
 
   public void addPrediction(L2Prediction prediction) {

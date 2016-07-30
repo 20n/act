@@ -12,6 +12,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -23,10 +24,9 @@ public class L2InchiCorpus {
 
   private List<String> corpus = new ArrayList<>();
 
-  public L2InchiCorpus() {
-  }
+  public L2InchiCorpus() {}
 
-  public L2InchiCorpus(List<String> inchiList) {
+  public L2InchiCorpus(Collection<String> inchiList) {
     corpus = new ArrayList<>(inchiList);
   }
 
