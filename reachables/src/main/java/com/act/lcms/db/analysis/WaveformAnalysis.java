@@ -178,8 +178,7 @@ public class WaveformAnalysis {
   public static Map<String, Pair<XZ, Double>> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
       ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityDataPos,
       List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> ionToIntensityDataNegList,
-      List<Pair<String, Double>> searchMZs,
-      Double minIntensityThreshold) {
+      List<Pair<String, Double>> searchMZs) {
 
     Map<String, Pair<XZ, Double>> result = new HashMap<>();
 
