@@ -393,7 +393,7 @@ public class UniprotSeqEntry extends SequenceEntry {
             String productName = recommendedNameElement.getElementsByTagName(FULL_NAME).item(0).getTextContent();
 
             // handles cases: Uncharacterized protein, Putative uncharacterized protein, etc
-            if (productName.toLowerCase().contains("uncharacterized protein")) {
+            if (productName.toLowerCase().contains("uncharacterized")) {
               LOGGER.error("Skipping uncharacterized protein");
               break;
             }
