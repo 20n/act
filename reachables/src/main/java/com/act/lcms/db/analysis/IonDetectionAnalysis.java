@@ -197,7 +197,7 @@ public class IonDetectionAnalysis {
 
     Map<String, Pair<XZ, Double>> snrResults =
         WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
-            positiveWellSignalProfiles, negativeWellsSignalProfiles, searchMZs, MIN_INTENSITY_THRESHOLD);
+            positiveWellSignalProfiles, negativeWellsSignalProfiles, searchMZs);
 
     Map<String, String> plottingFileMappings =
         ChemicalToMapOfMetlinIonsToIntensityTimeValues.plotPositiveAndNegativeControlsForEachMZ(

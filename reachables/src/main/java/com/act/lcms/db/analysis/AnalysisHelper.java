@@ -157,21 +157,23 @@ public class AnalysisHelper {
 
     Map<Pair<String, Double>, ScanData<T>> result = new HashMap<>();
     MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdentification);
+
+    Set<Pair<String, Double>> setOfMZs = new HashSet<>();
     for (Pair<String, Double> searchMZ : searchMZs) {
-      Map<String, Double> singletonMass2 = new HashMap<>();
-      singletonMass2.put(searchMZ.getLeft(), searchMZ.getRight());
-
-      MS1ScanForWellAndMassCharge ms1ScanResults;
-
-      MS1 ms1 = new MS1();
-      ms1ScanResults = ms1.getMS1(singletonMass2, localScanFile.getAbsolutePath());
-
-      System.out.format("Max intensity for target %s (%f) in %s is %f\n",
-          searchMZ.getLeft(), searchMZ.getRight(), scanFile.getFilename(), ms1ScanResults.getMaxYAxis());
-
-      result.put(searchMZ, new ScanData<T>(kind, plate, well, scanFile, searchMZ.getLeft(), singletonMass2, ms1ScanResults));
+      setOfMZs.add(searchMZ);
     }
 
+    Map<Pair<String, Double>, MS1ScanForWellAndMassCharge> res = mm.getMultipleMS1s(setOfMZs, localScanFile.getAbsolutePath());
+
+    for (Map.Entry<Pair<String, Double>, MS1ScanForWellAndMassCharge> entry : res.entrySet()) {
+      Map<String, Double> singletonMass2 = new HashMap<>();
+      singletonMass2.put(entry.getKey().getLeft(), entry.getKey().getRight());
+
+      System.out.format("Max intensity for target %s (%f) in %s is %f\n",
+          entry.getKey().getLeft(), entry.getKey().getRight(), scanFile.getFilename(), entry.getValue().getMaxYAxis());
+
+      result.put(entry.getKey(), new ScanData<T>(kind, plate, well, scanFile, entry.getKey().getLeft(), singletonMass2, entry.getValue()));
+    }
     return result;
   }
 
