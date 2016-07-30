@@ -307,7 +307,8 @@ public class GenbankInterpreter {
       CommandLineParser parser = new DefaultParser();
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
-      System.err.format("Argument parsing failed: %s\n", e.getMessage());
+      String msg = String.format("Argument parsing failed: %s\n", e.getMessage());
+      LOGGER.error(msg);
       HELP_FORMATTER.printHelp(GenbankInterpreter.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }

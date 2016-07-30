@@ -22,7 +22,9 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class GenbankInstaller {
   private static final Logger LOGGER = LogManager.getFormatterLogger(GenbankInstaller.class);
@@ -36,6 +38,14 @@ public class GenbankInstaller {
   private static final String PATENT_YEAR = "patent_year";
   private static final String SYNONYMS = "synonyms";
   private static final String PRODUCT_NAMES = "product_names";
+  private static final String DNA = "DNA";
+  private static final String CDS = "CDS";
+  private static final String PROTEIN_ID = "protein_id";
+  private static final String PROTEIN = "Protein";
+  private static final String VAL = "val";
+  private static final String SRC = "src";
+  private static final String PMID = "PMID";
+  private static final String PATENT = "Patent";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class is the driver to write sequence data from a Genbank file to our database. It can be used on the ",
@@ -94,16 +104,16 @@ public class GenbankInstaller {
     int sequenceCount = 0;
 
     for (AbstractSequence sequence : sequences) {
-      if (seqType.equals("DNA")) {
+      if (seqType.equals(DNA)) {
         for (FeatureInterface<AbstractSequence<Compound>, Compound> feature :
             (List<FeatureInterface<AbstractSequence<Compound>, Compound>>) sequence.getFeatures()) {
-          if (feature.getType().equals("CDS") && feature.getQualifiers().containsKey("protein_id")) {
+          if (feature.getType().equals(CDS) && feature.getQualifiers().containsKey(PROTEIN_ID)) {
             addSeqEntryToDb(new GenbankSeqEntry(sequence, feature.getQualifiers(), db), db);
             sequenceCount++;
           }
         }
 
-      } else if (seqType.equals("Protein")) {
+      } else if (seqType.equals(PROTEIN)) {
         addSeqEntryToDb(new GenbankSeqEntry(sequence, db), db);
         sequenceCount++;
       }
@@ -122,11 +132,11 @@ public class GenbankInstaller {
    * @return the updated metadata JSONObject
    */
   private JSONObject updateArrayField(String field, String value, JSONObject data) {
-    if (data.has(field)) {
-      if (value == null || value.isEmpty()) {
-        return data;
-      }
+    if (value == null || value.isEmpty()) {
+      return data;
+    }
 
+    if (data.has(field)) {
       JSONArray fieldData = (JSONArray) data.get(field);
 
       for (int i = 0; i < fieldData.length(); i++) {
@@ -134,14 +144,9 @@ public class GenbankInstaller {
           return data;
         }
       }
-
-      data.append(field, value);
-
-    } else if (value != null && !value.isEmpty()) {
-        data.append(field, value);
     }
 
-    return data;
+    return data.append(field, value);
   }
 
   private JSONObject updateAccessions(JSONObject newAccessionObject, JSONObject metadata) {
@@ -219,17 +224,16 @@ public class GenbankInstaller {
       List<JSONObject> newPatentRefs = se.getPatents();
 
       if (!oldRefs.isEmpty()) {
-        for (JSONObject newPmidRef : newPmidRefs) {
-          Boolean pmidExists = false;
-          String newPmid = (String) newPmidRef.get("val");
+        Set<String> oldPmids = new HashSet<>();
 
-          for (JSONObject newRef : oldRefs) {
-            if (newRef.get("src").equals("PMID") && newRef.get("val").equals(newPmid)) {
-              pmidExists = true;
-            }
+        for (JSONObject oldRef : oldRefs) {
+          if (oldRef.get(SRC).equals(PMID)) {
+            oldPmids.add(oldRef.getString(VAL));
           }
+        }
 
-          if (!pmidExists) {
+        for (JSONObject newPmidRef : newPmidRefs) {
+          if (!oldPmids.contains(newPmidRef.getString(VAL))) {
             oldRefs.add(newPmidRef);
           }
         }
@@ -241,7 +245,7 @@ public class GenbankInstaller {
           String patentYear = (String) newPatentRef.get(PATENT_YEAR);
 
           for (JSONObject newRef : oldRefs) {
-            if (newRef.get("src").equals("Patent") && newRef.get(COUNTRY_CODE).equals(countryCode)
+            if (newRef.get(SRC).equals(PATENT) && newRef.get(COUNTRY_CODE).equals(countryCode)
                 && newRef.get(PATENT_NUMBER).equals(patentNumber) && newRef.get(PATENT_YEAR).equals(patentYear)) {
               patentExists = true;
             }
@@ -275,7 +279,8 @@ public class GenbankInstaller {
       CommandLineParser parser = new DefaultParser();
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
-      System.err.format("Argument parsing failed: %s\n", e.getMessage());
+      String msg = String.format("Argument parsing failed: %s\n", e.getMessage());
+      LOGGER.error(msg);
       HELP_FORMATTER.printHelp(GenbankInstaller.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }

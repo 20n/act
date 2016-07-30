@@ -26,8 +26,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class UniprotInstaller {
   private static final Logger LOGGER = LogManager.getFormatterLogger(UniprotInstaller.class);
@@ -93,6 +93,12 @@ public class UniprotInstaller {
 
   }
 
+  /**
+   * Verifies the accession string according to the standard Genbank/Uniprot accession qualifications
+   * @param proteinAccession the accession string to be validated
+   * @param accessionPattern the pattern that the accession string should match
+   * @return
+   */
   private boolean verifyAccession(String proteinAccession, Pattern accessionPattern) {
     Matcher m = accessionPattern.matcher(proteinAccession);
 
@@ -103,6 +109,14 @@ public class UniprotInstaller {
     return false;
   }
 
+  /**
+   * Checks if the new value already exists in the field. If so, doesn't update the metadata. If it doesn't exist,
+   * appends the new value to the data.
+   * @param field the key referring to the array in the metadata we wish to update
+   * @param value the value we wish to add to the array
+   * @param data the metadata
+   * @return the updated metadata JSONObject
+   */
   private JSONObject updateArrayField(String field, String value, JSONObject data) {
     if (value == null || value.isEmpty()) {
       return data;
@@ -121,6 +135,14 @@ public class UniprotInstaller {
     return data.append(field, value);
   }
 
+  /**
+   * Updates the accession JSONObject for the given accessions type
+   * @param newAccessionObject the new accession object to load in the new accessions of the given type
+   * @param metadata contains the accession object to be updated
+   * @param accType the type of accessions to update
+   * @param accessionPattern the accession pattern to validate the accession string according to Genbank/Uniprot standards
+   * @return the metadata containing the updated accession mapping
+   */
   private JSONObject updateAccessions(JSONObject newAccessionObject, JSONObject metadata, Seq.AccType accType,
                                       Pattern accessionPattern) {
     JSONObject oldAccessionObject = metadata.getJSONObject(ACCESSION);
