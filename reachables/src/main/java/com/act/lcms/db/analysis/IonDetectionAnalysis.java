@@ -99,6 +99,7 @@ public class IonDetectionAnalysis {
     add(Option.builder(OPTION_MIN_THRESHOLD)
         .argName("min threshold")
         .desc("The min threshold")
+        .hasArg()
         .longOpt("min-threshold")
     );
     // This input file is structured as a tsv file with the following schema:
