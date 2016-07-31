@@ -46,6 +46,7 @@ public class IonDetectionAnalysis {
   private static final String OPTION_OUTPUT_PREFIX = "o";
   private static final String OPTION_PLOTTING_DIR = "p";
   private static final String OPTION_INCLUDE_IONS = "i";
+  private static final String OPTION_MIN_THRESHOLD = "f";
   private static final String OPTION_INPUT_POSITIVE_AND_NEGATIVE_CONTROL_WELLS_FILE = "t";
   private static final String HEADER_WELL_TYPE = "WELL_TYPE";
   private static final String HEADER_WELL_ROW = "WELL_ROW";
@@ -94,6 +95,11 @@ public class IonDetectionAnalysis {
         .desc("A comma-separated list of ions to include in the search (ions not in this list will be ignored)")
         .hasArgs().valueSeparator(',')
         .longOpt("include-ions")
+    );
+    add(Option.builder(OPTION_MIN_THRESHOLD)
+        .argName("min threshold")
+        .desc("The min threshold")
+        .longOpt("min-threshold")
     );
     // This input file is structured as a tsv file with the following schema:
     //    WELL_TYPE  PLATE_BARCODE  WELL_ROW  WELL_COLUMN
@@ -307,6 +313,8 @@ public class IonDetectionAnalysis {
       chemicalCounter++;
     }
 
+    Double threshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_THRESHOLD));
+
     try (DB db = DB.openDBFromCLI(cl)) {
       //ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
@@ -365,7 +373,7 @@ public class IonDetectionAnalysis {
 
           IonAnalysisInterchangeModel.ResultForMZ resultForMZ = new IonAnalysisInterchangeModel.ResultForMZ(massCharge);
 
-          if (intensity > MIN_INTENSITY_THRESHOLD &&
+          if (intensity > threshold &&
               time > MIN_TIME_THRESHOLD &&
               snr > MIN_SNR_THRESHOLD) {
             resultForMZ.setIsValid(true);
