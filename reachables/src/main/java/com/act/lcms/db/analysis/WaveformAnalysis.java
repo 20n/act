@@ -231,7 +231,7 @@ public class WaveformAnalysis {
         }
       }
 
-      result.put(mz.getLeft(), Pair.of(new XZ(maxTime, maxSNR), peakIntensity));
+      result.put(mz.getLeft(), Pair.of(new XZ(maxTime, peakIntensity), maxSNR));
     }
 
     return result;
