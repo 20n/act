@@ -84,7 +84,7 @@ public class UniprotSeqEntry extends SequenceEntry {
   private NodeList geneNodeList;
 
 
-  public UniprotSeqEntry(Document doc) {
+  UniprotSeqEntry(Document doc) {
     this.seqFile = doc;
     checkNodeListLengths();
     this.ec = extractEc();
