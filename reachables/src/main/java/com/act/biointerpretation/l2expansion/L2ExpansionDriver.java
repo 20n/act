@@ -18,6 +18,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +35,7 @@ public class L2ExpansionDriver {
   private static final String OPTION_RO_IDS = "r";
   private static final String OPTION_SAR_CORPUS = "s";
   private static final String OPTION_OUTPUT_PATH = "o";
+  private static final String OPTION_PROGRESS_PATH = "p";
   private static final String OPTION_DB = "db";
   private static final String OPTION_EXPANSION_TYPE = "t";
   private static final String OPTION_ADDITIONAL_CHEMICALS = "p";
@@ -86,6 +88,13 @@ public class L2ExpansionDriver {
         .desc("The path to the file to which to write the json file of predicted reactions.")
         .hasArg()
         .longOpt("output-file-path")
+        .required(true)
+    );
+    add(Option.builder(OPTION_PROGRESS_PATH)
+        .argName("progress file path")
+        .desc("The path to the file to which to write the json file of predicted reactions as each projection runs.")
+        .hasArg()
+        .longOpt("progress-file-path")
         .required(true)
     );
     add(Option.builder(OPTION_DB)
@@ -165,12 +174,21 @@ public class L2ExpansionDriver {
     }
     outputFile.createNewFile();
 
+
+    String progressPath = cl.getOptionValue(OPTION_PROGRESS_PATH);
+    File progressFile = new File(progressPath);
+    if (progressFile.isDirectory() || progressFile.exists()) {
+      LOGGER.error("Supplied progress file is a directory or already exists.");
+      System.exit(1);
+    }
+    progressFile.createNewFile();
+
     // Get metabolite list
     List<String> metaboliteList = getInchiList(cl, OPTION_METABOLITES);
 
     PredictionGenerator generator = new AllPredictionsGenerator(new ReactionProjector());
     L2Expander expander = buildExpander(cl, metaboliteList, generator);
-    L2PredictionCorpus predictionCorpus = expander.getPredictions();
+    L2PredictionCorpus predictionCorpus = expander.getPredictions(new FileOutputStream(progressFile));
 
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
 
