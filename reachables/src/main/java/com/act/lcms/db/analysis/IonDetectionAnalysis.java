@@ -347,6 +347,9 @@ public class IonDetectionAnalysis {
         }
       }
 
+      System.out.println("Number of positive wells is: " + positiveWells.size());
+      System.out.println("Number of negative wells is: " + negativeWells.size());
+
       HashMap<Integer, Plate> plateCache = new HashMap<>();
       String outputPrefix = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
 
