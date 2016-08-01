@@ -6,6 +6,7 @@ import chemaxon.formats.MolImporter;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
+import com.act.biointerpretation.l2expansion.L2FilteringDriver;
 import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
@@ -84,10 +85,7 @@ public class ProductScorer {
 
 
   public static final String HELP_MESSAGE =
-      "This class is used to build sars from an L2Prediction run and LCMS analysis results.  The inputs are an " +
-          "L2PredictionCorpus and a file with all the product inchis that came up as positive in the LCMS analysis. " +
-          "The output is a list of Sars with confidence scores based on how predictive they are of the reactions in " +
-          "the corpus.";
+      "This class is used to rank the products of PredictionCorpus according to a set of SARs.";
 
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
@@ -95,10 +93,7 @@ public class ProductScorer {
     HELP_FORMATTER.setWidth(100);
   }
 
-  private static final Boolean ALL_NODES = false;
   private static final String INCHI_IMPORT_SETTINGS = "inchi";
-  private static final Double THRESHOLD_CONFIDENCE = 0.2;
-  private static final Integer THRESHOLD_TREE_SIZE = 4;
 
   public static Molecule importMolecule(String inchi) throws MolFormatException {
     return MolImporter.importMol(inchi, INCHI_IMPORT_SETTINGS);
@@ -117,6 +112,7 @@ public class ProductScorer {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       LOGGER.error("Argument parsing failed: %s", e.getMessage());
+      HELP_FORMATTER.printHelp(L2FilteringDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
@@ -124,27 +120,39 @@ public class ProductScorer {
     File positiveInchisFile = new File(cl.getOptionValue(OPTION_POSITIVE_INCHIS));
     File scoredSarsFile = new File(cl.getOptionValue(OPTION_SCORED_SARS));
     File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
-
     L2PredictionCorpus fullCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputCorpusFile);
+    LOGGER.info("Number of predictions: %d", fullCorpus.getCorpus().size());
 
     L2InchiCorpus positiveInchis = new L2InchiCorpus();
     positiveInchis.loadCorpus(positiveInchisFile);
     List<String> inchiList = positiveInchis.getInchiList();
 
+    L2PredictionCorpus positiveCorpus = fullCorpus.applyFilter(prediction -> inchiList.containsAll(prediction.getProductInchis()));
+    LOGGER.info("Number of LCMS positives: %d", positiveCorpus.getCorpus().size());
+
     ScoredSarCorpus scoredSars = new ScoredSarCorpus();
     scoredSars.loadFromFile(scoredSarsFile);
 
-    L2PredictionCorpus positiveCorpus = fullCorpus.applyFilter(prediction -> inchiList.contains(prediction.getSubstrateInchis().get(0)));
+    LOGGER.info("Number of sars: %d", scoredSars.getSarTreeNodes().size());
 
     Function<L2Prediction, Double> confidenceCalculator = new PredictionConfidenceCalculator(scoredSars);
 
     Map<L2Prediction, Double> predictionScoreMap = new HashMap<>();
 
     for (L2Prediction prediction : positiveCorpus.getCorpus()) {
-      predictionScoreMap.put(prediction, confidenceCalculator.apply(prediction));
+      Double score = confidenceCalculator.apply(prediction);
+      LOGGER.info("Scored prediction! %f", score);
+      predictionScoreMap.put(prediction, score);
     }
 
-    ScoredPredictionCorpus predictions = new ScoredPredictionCorpus(predictionScoreMap);
-    predictions.writeToFile(outputFile);
+    List<L2Prediction> predictions = new ArrayList<>(predictionScoreMap.keySet());
+    predictions.sort((a,b) -> (predictionScoreMap.get(a) - predictionScoreMap.get(b) >= 0) ? -1 : 1);
+
+    for (L2Prediction prediction : predictions) {
+      LOGGER.info("Score: %f", predictionScoreMap.get(prediction));
+    }
+
+    L2PredictionCorpus finalCorpus = new L2PredictionCorpus(predictions);
+    finalCorpus.writePredictionsToJsonFile(outputFile);
   }
 }

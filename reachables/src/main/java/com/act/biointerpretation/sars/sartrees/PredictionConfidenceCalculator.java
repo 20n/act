@@ -32,11 +32,11 @@ public class PredictionConfidenceCalculator implements Function<L2Prediction, Do
     }
 
     Double score = 0D;
-    for (Map.Entry<SarTreeNode, Double> scoredSar : sarCorpus.getSarScoreMap().entrySet()) {
-      Sar sar = scoredSar.getKey().getSar();
+    for (SarTreeNode scoredSar : sarCorpus.getSarTreeNodes()) {
+      Sar sar = scoredSar.getSar();
 
       if (sar.test(Arrays.asList(substrate))) {
-        Double sarScore = scoredSar.getValue();
+        Double sarScore = scoredSar.getConfidence();
         score += sarScore;
       }
     }
