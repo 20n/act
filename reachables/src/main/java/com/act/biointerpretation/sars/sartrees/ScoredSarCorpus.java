@@ -6,8 +6,8 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ScoredSarCorpus {
 
@@ -16,32 +16,32 @@ public class ScoredSarCorpus {
     OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
   }
 
-  @JsonProperty("sar_score_map")
-  Map<SarTreeNode, Double> sarScoreMap;
+  @JsonProperty("sar_tree_nodes")
+  List<SarTreeNode> sarTreeNodes;
 
   public ScoredSarCorpus() {
-    sarScoreMap = new HashMap<SarTreeNode, Double>();
+   sarTreeNodes = new ArrayList<>();
   }
 
-  public ScoredSarCorpus(Map<SarTreeNode, Double> sarScoreMap) {
-    this.sarScoreMap = sarScoreMap;
+  public ScoredSarCorpus(List<SarTreeNode> sarTreeNodes) {
+    this.sarTreeNodes = sarTreeNodes;
   }
 
 
   public void loadFromFile(File file) throws IOException {
     ScoredSarCorpus fromFile = OBJECT_MAPPER.readValue(file, ScoredSarCorpus.class);
-    this.setSarScoreMap(fromFile.getSarScoreMap());
+    this.setSarTreeNodes(fromFile.getSarTreeNodes());
   }
 
   public void writeToFile(File file) throws IOException {
     OBJECT_MAPPER.writeValue(file, this);
   }
 
-  public Map<SarTreeNode,Double> getSarScoreMap() {
-    return sarScoreMap;
+  public List<SarTreeNode> getSarTreeNodes() {
+    return sarTreeNodes;
   }
 
-  public void setSarScoreMap(Map<SarTreeNode, Double> sarScoreMap) {
-    this.sarScoreMap = sarScoreMap;
+  public void setSarTreeNodes(List<SarTreeNode> sarTreeNodes) {
+    this.sarTreeNodes = sarTreeNodes;
   }
 }

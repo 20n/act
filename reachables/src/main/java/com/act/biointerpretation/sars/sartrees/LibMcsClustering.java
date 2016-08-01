@@ -88,8 +88,8 @@ public class LibMcsClustering {
 
   private static final Boolean ALL_NODES = false;
   private static final String INCHI_IMPORT_SETTINGS = "inchi";
-  private static final Double THRESHOLD_CONFIDENCE = 0.2;
-  private static final Integer THRESHOLD_TREE_SIZE = 3;
+  private static final Double THRESHOLD_CONFIDENCE = 0D;
+  private static final Integer THRESHOLD_TREE_SIZE = 2;
 
   public static void main(String[] args) throws Exception {
 
@@ -145,10 +145,9 @@ public class LibMcsClustering {
         explanatorySars.size(), THRESHOLD_TREE_SIZE, THRESHOLD_CONFIDENCE);
     LOGGER.info("Producing and writing output.");
 
-    Map<SarTreeNode, Double> scoredSars = new HashMap<>();
-    explanatorySars.forEach(node -> scoredSars.put(node, node.getConfidence()));
+    explanatorySars.sort((a,b) -> a.getConfidence() > b.getConfidence() ? -1 : 1);
 
-    ScoredSarCorpus scoredSarCorpus = new ScoredSarCorpus(scoredSars);
+    ScoredSarCorpus scoredSarCorpus = new ScoredSarCorpus(explanatorySars);
     scoredSarCorpus.writeToFile(outputFile);
     LOGGER.info("Complete!.");
   }

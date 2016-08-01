@@ -5,6 +5,7 @@ import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.sars.OneSubstrateSubstructureSar;
 import com.act.biointerpretation.sars.Sar;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.IOException;
@@ -35,6 +36,7 @@ public class SarTreeNode {
     return hierarchyId;
   }
 
+  @JsonIgnore
   public Molecule getSubstructure() {
     return substructure;
   }
@@ -48,6 +50,7 @@ public class SarTreeNode {
     this.substructure = MolImporter.importMol(substructure, "inchi");
   }
 
+  @JsonIgnore
   public Sar getSar() {
     return new OneSubstrateSubstructureSar(substructure);
   }
