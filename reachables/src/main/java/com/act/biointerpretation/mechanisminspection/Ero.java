@@ -5,7 +5,10 @@ import chemaxon.reaction.Reactor;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class Ero {
+import java.io.Serializable;
+
+public class Ero implements Serializable {
+  private static final long serialVersionUID = 5679370596050943302L;
 
   @JsonProperty("id")
   private Integer id;
