@@ -11,6 +11,7 @@ import com.act.lcms.db.io.report.IonAnalysisInterchangeModel;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.PlateWell;
+import com.act.lcms.db.model.ScanFile;
 import com.act.utils.TSVParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -317,7 +318,7 @@ public class IonDetectionAnalysis {
     Double threshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_THRESHOLD));
 
     try (DB db = DB.openDBFromCLI(cl)) {
-      //ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
+      ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
       // Get experimental setup ie. positive and negative wells from config file
       List<LCMSWell> positiveWells = new ArrayList<>();
