@@ -325,7 +325,7 @@ public class IonDetectionAnalysis {
     Double threshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_THRESHOLD));
 
     try (DB db = DB.openDBFromCLI(cl)) {
-      ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
+      //ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
       // Get experimental setup ie. positive and negative wells from config file
       List<LCMSWell> positiveWells = new ArrayList<>();
