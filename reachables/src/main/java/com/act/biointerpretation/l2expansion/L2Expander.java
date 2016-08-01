@@ -6,10 +6,15 @@ import chemaxon.reaction.ReactionException;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.sars.Sar;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -31,13 +36,28 @@ public abstract class L2Expander {
     this.generator = generator;
   }
 
-  public L2PredictionCorpus getPredictions() {
+  public L2PredictionCorpus getPredictions(OutputStream outputStream) {
     L2PredictionCorpus result = new L2PredictionCorpus();
+
+    OutputStreamWriter writer = new OutputStreamWriter(outputStream);
+
+    ObjectMapper objectMapper = new ObjectMapper();
 
     for (PredictionSeed seed : getPredictionSeeds()) {
       // Apply reactor to substrate if possible
       try {
-        result.addAll(generator.getPredictions(seed));
+        List<L2Prediction> results = generator.getPredictions(seed);
+        if (outputStream != null) {
+          try {
+            String resultJson = objectMapper.writeValueAsString(results);
+            writer.write(resultJson);
+            writer.write("\n");
+            writer.flush();
+          } catch (Exception e) {
+            LOGGER.error("Caught exception when writing progress, skipping: %s", e.getMessage());
+          }
+        }
+        result.addAll(results);
         // If there is an error on a certain RO, metabolite pair, we should log the error, but the expansion may
         // produce some valid results, so no error is thrown.
       } catch (ReactionException e) {
