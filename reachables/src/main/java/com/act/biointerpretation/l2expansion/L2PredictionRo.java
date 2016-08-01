@@ -2,10 +2,13 @@ package com.act.biointerpretation.l2expansion;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.io.Serializable;
+
 /**
  * Represents the RO portion of an L2Prediction.
  */
-public class L2PredictionRo {
+public class L2PredictionRo implements Serializable {
+  private static final long serialVersionUID = -4242452694476880709L;
 
   @JsonProperty("_id")
   private Integer id;

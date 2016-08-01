@@ -5,15 +5,15 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Represents a single predicted reaction from the L2 expansion
  */
-public class L2Prediction {
-
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+public class L2Prediction implements Serializable {
+  private static final long serialVersionUID = -8781964186957158826L;
 
   @JsonProperty("_id")
   private Integer id;

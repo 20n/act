@@ -2,13 +2,15 @@ package com.act.biointerpretation.l2expansion;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Represents one substrate or product prediction in an L2Prediction
  */
-public class L2PredictionChemical {
+public class L2PredictionChemical implements Serializable {
+  private static final long serialVersionUID = -5587683103497903872L;
 
   public static final String NO_NAME = "no_name";
   public static final Long NO_ID = new Long(-1);
