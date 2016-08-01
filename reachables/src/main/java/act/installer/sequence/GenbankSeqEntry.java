@@ -75,12 +75,12 @@ public class GenbankSeqEntry extends SequenceEntry {
   private SAR sar;
 
 
-  public GenbankSeqEntry(AbstractSequence sequence) {
+  GenbankSeqEntry(AbstractSequence sequence) {
     this.seqObject = sequence;
     this.seqType = PROTEIN_SEQ_TYPE;
   }
 
-  public GenbankSeqEntry(AbstractSequence sequence, Map<String, List<Qualifier>> cdsQualifierMap) {
+  GenbankSeqEntry(AbstractSequence sequence, Map<String, List<Qualifier>> cdsQualifierMap) {
     this.seqObject = sequence;
     this.seqType = DNA_SEQ_TYPE;
     this.cdsQualifierMap = cdsQualifierMap;
