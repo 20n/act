@@ -84,7 +84,7 @@ public class UniprotSeqEntry extends SequenceEntry {
   private NodeList geneNodeList;
 
 
-  public UniprotSeqEntry(Document doc, MongoDB db) {
+  public UniprotSeqEntry(Document doc) {
     this.seqFile = doc;
     checkNodeListLengths();
     this.ec = extractEc();
@@ -96,10 +96,13 @@ public class UniprotSeqEntry extends SequenceEntry {
     this.metadata = extractMetadata();
     this.sequence = extractSequence();
     this.org = extractOrg();
-    this.orgId = extractOrgId(db);
     this.references = extractReferences();
-    this.matchingSeqs = extractMatchingSeqs(db);
     initCatalyzedReactions();
+  }
+
+  public void init(MongoDB db) {
+    this.orgId = extractOrgId(db);
+    this.matchingSeqs = extractMatchingSeqs(db);
   }
 
   public DBObject getMetadata() { return this.metadata; }

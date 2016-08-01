@@ -46,7 +46,9 @@ public class UniprotSeqEntryTest {
         new UniprotInterpreter(new File(this.getClass().getResource("uniprot_test_1.xml").getFile()));
     upProtein.init();
     sequences.add(upProtein.getSequence());
-    seqEntries.add(new UniprotSeqEntry(upProtein.getXmlDocument(), mockDb));
+    UniprotSeqEntry seqEntry = new UniprotSeqEntryFactory().createFromDocumentReference(upProtein.getXmlDocument(),
+        mockDb);
+    seqEntries.add(seqEntry);
   }
 
   @Test

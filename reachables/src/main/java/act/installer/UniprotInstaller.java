@@ -1,6 +1,7 @@
 package act.installer;
 
 import act.installer.sequence.UniprotSeqEntry;
+import act.installer.sequence.UniprotSeqEntryFactory;
 import act.server.MongoDB;
 import act.shared.Seq;
 import com.act.utils.parser.UniprotInterpreter;
@@ -17,7 +18,6 @@ import org.apache.logging.log4j.Logger;
 import org.biojava.nbio.core.exceptions.CompoundNotFoundException;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -93,7 +93,10 @@ public class UniprotInstaller {
   public void init() throws IOException, SAXException, ParserConfigurationException, CompoundNotFoundException {
     UniprotInterpreter uniprotInterpreter = new UniprotInterpreter(uniprotFile);
     uniprotInterpreter.init();
-    addSeqEntryToDb(uniprotInterpreter.getXmlDocument(), db);
+
+    UniprotSeqEntry seqEntry =
+        new UniprotSeqEntryFactory().createFromDocumentReference(uniprotInterpreter.getXmlDocument(), db);
+    addSeqEntryToDb(seqEntry, db);
   }
 
   /**
@@ -163,9 +166,13 @@ public class UniprotInstaller {
     return metadata.put(ACCESSION, oldAccessionObject);
   }
 
-  private void addSeqEntryToDb(Document document, MongoDB db) {
-    UniprotSeqEntry se = new UniprotSeqEntry(document, db);
-
+  /**
+   * Updates metadata and reference fields with the information extracted from file
+   * @param se an instance of the UniprotSeqEntry class that extracts all the relevant information from a sequence
+   *           object
+   * @param db reference to the database that should be queried and updated
+   */
+  private void addSeqEntryToDb(UniprotSeqEntry se, MongoDB db) {
     List<Seq> seqs = se.getMatchingSeqs();
 
     // no prior data on this sequence

@@ -16,7 +16,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.biojava.nbio.core.sequence.features.FeatureInterface;
-import org.biojava.nbio.core.sequence.features.Qualifier;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
 import org.biojava.nbio.core.sequence.template.Compound;
 import org.json.JSONArray;
@@ -26,7 +25,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -111,7 +109,6 @@ public class GenbankInstaller {
 
     int sequenceCount = 0;
 
-    GenbankSeqEntryFactory seqEntryFactory = new GenbankSeqEntryFactory();
     GenbankSeqEntry seqEntry;
 
     for (AbstractSequence sequence : sequences) {
@@ -119,14 +116,15 @@ public class GenbankInstaller {
         for (FeatureInterface<AbstractSequence<Compound>, Compound> feature :
             (List<FeatureInterface<AbstractSequence<Compound>, Compound>>) sequence.getFeatures()) {
           if (feature.getType().equals(CDS) && feature.getQualifiers().containsKey(PROTEIN_ID)) {
-            seqEntry = seqEntryFactory.createFromDNASequenceReference(sequence, feature.getQualifiers(), db);
+            seqEntry = new GenbankSeqEntryFactory().createFromDNASequenceReference(sequence,
+                feature.getQualifiers(), db);
             addSeqEntryToDb(seqEntry, db);
             sequenceCount++;
           }
         }
 
       } else if (seqType.equals(PROTEIN)) {
-        seqEntry = seqEntryFactory.createFromProteinSequenceReference(sequence, db);
+        seqEntry = new GenbankSeqEntryFactory().createFromProteinSequenceReference(sequence, db);
         addSeqEntryToDb(seqEntry, db);
         sequenceCount++;
       }
