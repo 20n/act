@@ -1,6 +1,8 @@
 package com.act.biointerpretation.sars.sartrees;
 
 import chemaxon.struc.Molecule;
+import com.act.biointerpretation.sars.OneSubstrateSubstructureSar;
+import com.act.biointerpretation.sars.Sar;
 
 public class SarTreeNode {
   final String hierarchyId;
@@ -23,6 +25,10 @@ public class SarTreeNode {
 
   public Molecule getSubstructure() {
     return substructure;
+  }
+
+  public Sar getSar() {
+    return new OneSubstrateSubstructureSar(substructure);
   }
 
   public Double getConfidence() {

@@ -12,8 +12,6 @@ import java.util.List;
  */
 public class L2Prediction {
 
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
   @JsonProperty("_id")
   private Integer id;
 
