@@ -81,15 +81,25 @@ public class UniprotInterpreter {
 
   }
 
+  private void checkInit() {
+    if (xmlDocument == null || seq == null) {
+      String msg = String.format("Class hasn't been appropriately initialized, no Document and/or ProteinSequence object");
+      LOGGER.error(msg);
+      throw new RuntimeException(msg);
+    }
+  }
+
   public UniprotInterpreter(File uniprotFile) {
     xmlFile = uniprotFile;
   }
 
   public Document getXmlDocument() {
+    checkInit();
     return this.xmlDocument;
   }
 
   public String getSequence() {
+    checkInit();
     return seq.getSequenceAsString();
   }
 
