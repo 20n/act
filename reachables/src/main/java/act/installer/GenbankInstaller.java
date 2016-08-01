@@ -30,6 +30,7 @@ import java.util.regex.Pattern;
 
 public class GenbankInstaller {
   private static final Logger LOGGER = LogManager.getFormatterLogger(GenbankInstaller.class);
+  private static final GenbankSeqEntryFactory seqEntryFactory = new GenbankSeqEntryFactory();
   private static final String OPTION_GENBANK_PATH = "p";
   private static final String OPTION_DB_NAME = "d";
   private static final String OPTION_SEQ_TYPE = "s";
@@ -116,15 +117,14 @@ public class GenbankInstaller {
         for (FeatureInterface<AbstractSequence<Compound>, Compound> feature :
             (List<FeatureInterface<AbstractSequence<Compound>, Compound>>) sequence.getFeatures()) {
           if (feature.getType().equals(CDS) && feature.getQualifiers().containsKey(PROTEIN_ID)) {
-            seqEntry = new GenbankSeqEntryFactory().createFromDNASequenceReference(sequence,
-                feature.getQualifiers(), db);
+            seqEntry = seqEntryFactory.createFromDNASequenceReference(sequence, feature.getQualifiers(), db);
             addSeqEntryToDb(seqEntry, db);
             sequenceCount++;
           }
         }
 
       } else if (seqType.equals(PROTEIN)) {
-        seqEntry = new GenbankSeqEntryFactory().createFromProteinSequenceReference(sequence, db);
+        seqEntry = seqEntryFactory.createFromProteinSequenceReference(sequence, db);
         addSeqEntryToDb(seqEntry, db);
         sequenceCount++;
       }

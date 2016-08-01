@@ -31,6 +31,7 @@ import java.util.regex.Pattern;
 
 public class UniprotInstaller {
   private static final Logger LOGGER = LogManager.getFormatterLogger(UniprotInstaller.class);
+  private static final UniprotSeqEntryFactory seqEntryFactory = new UniprotSeqEntryFactory();
   private static final String OPTION_UNIPROT_PATH = "p";
   private static final String OPTION_DB_NAME = "d";
   private static final String NAME = "name";
@@ -94,8 +95,7 @@ public class UniprotInstaller {
     UniprotInterpreter uniprotInterpreter = new UniprotInterpreter(uniprotFile);
     uniprotInterpreter.init();
 
-    UniprotSeqEntry seqEntry =
-        new UniprotSeqEntryFactory().createFromDocumentReference(uniprotInterpreter.getXmlDocument(), db);
+    UniprotSeqEntry seqEntry = seqEntryFactory.createFromDocumentReference(uniprotInterpreter.getXmlDocument(), db);
     addSeqEntryToDb(seqEntry, db);
   }
 
