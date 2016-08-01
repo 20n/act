@@ -187,9 +187,6 @@ public class IonDetectionAnalysis {
     }
 
     List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> negativeWellsSignalProfiles = new ArrayList<>();
-    List<T> allWells = new ArrayList<>();
-    allWells.add(positiveWell);
-    allWells.addAll(negativeWells);
 
     for (T well : negativeWells) {
       ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg = AnalysisHelper.readScanData(
@@ -202,12 +199,22 @@ public class IonDetectionAnalysis {
           USE_FINE_GRAINED_TOLERANCE,
           USE_SNR_FOR_LCMS_ANALYSIS);
 
+      if (peakDataNeg == null) {
+        System.out.println("Peak negative analysis was null");
+      }
+
       negativeWellsSignalProfiles.add(peakDataNeg);
     }
+
+    System.out.println("The number of peak negatives are " + negativeWellsSignalProfiles.size());
 
     Map<String, Pair<XZ, Double>> snrResults =
         WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
             positiveWellSignalProfiles, negativeWellsSignalProfiles, searchMZs);
+
+    List<T> allWells = new ArrayList<>();
+    allWells.add(positiveWell);
+    allWells.addAll(negativeWells);
 
     Map<String, String> plottingFileMappings =
         ChemicalToMapOfMetlinIonsToIntensityTimeValues.plotPositiveAndNegativeControlsForEachMZ(
