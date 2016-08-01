@@ -64,6 +64,7 @@ public class GenbankSeqEntry extends SequenceEntry {
   private String geneName;
   private List<String> productNames;
   private List<String> geneSynonyms;
+  private List<Seq> matchingSeqs;
   private String org;
   private Long orgId;
   private String ec;
@@ -98,7 +99,8 @@ public class GenbankSeqEntry extends SequenceEntry {
     this.org = extractOrg();
     this.orgId = extractOrgId(db);
     this.references = extractReferences();
-    extractCatalyzedReactions();
+    this.matchingSeqs = extractMatchingSeqs(db);
+    initCatalyzedReactions();
   }
 
   public DBObject getMetadata() { return this.metadata; }
@@ -109,6 +111,7 @@ public class GenbankSeqEntry extends SequenceEntry {
   public List<JSONObject> getPmids() { return this.pmids; }
   public List<JSONObject> getPatents() { return this.patents; }
   public List<JSONObject> getRefs() { return this.references; }
+  public List<Seq> getMatchingSeqs() { return this.matchingSeqs; }
   public Long getOrgId() { return this.orgId; }
   public String getOrg() { return this.org; }
   public String getSeq() { return this.sequence; }
@@ -122,7 +125,7 @@ public class GenbankSeqEntry extends SequenceEntry {
   public HashMap<Long, Set<Long>> getCatalyzedRxnsToProducts() { return this.catalyzedRxnsToProducts; }
   public SAR getSar() { return this.sar; }
 
-  private void extractCatalyzedReactions() {
+  private void initCatalyzedReactions() {
     this.catalyzedRxns = new HashSet<Long>();
     this.catalyzedSubstratesUniform = new HashSet<Long>();
     this.catalyzedSubstratesDiverse = new HashSet<Long>();
@@ -158,7 +161,7 @@ public class GenbankSeqEntry extends SequenceEntry {
       String ec_value = qualifierMap.get(EC_NUMBER).get(0).getValue();
 
       // there was a case where the EC_Number qualifier existed, but the value was empty or null
-      if (ec_value.isEmpty() || ec_value == null) {
+      if (ec_value == null || ec_value.isEmpty()) {
         return null;
       }
 
@@ -200,7 +203,7 @@ public class GenbankSeqEntry extends SequenceEntry {
     return references;
   }
 
-  public List<JSONObject> extractReferences() {
+  private List<JSONObject> extractReferences() {
     List<JSONObject> references = new ArrayList<>();
 
     references.addAll(extractPmids());
@@ -264,7 +267,7 @@ public class GenbankSeqEntry extends SequenceEntry {
 
   }
 
-  public List<Seq> getSeqs(MongoDB db) {
+  private List<Seq> extractMatchingSeqs(MongoDB db) {
     if (ec != null) {
       return db.getSeqFromSeqEcOrg(sequence, ec, org);
     } else {

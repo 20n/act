@@ -15,6 +15,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.biojava.nbio.core.sequence.features.FeatureInterface;
+import org.biojava.nbio.core.sequence.features.Qualifier;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
 import org.biojava.nbio.core.sequence.template.Compound;
 import org.json.JSONArray;
@@ -24,7 +25,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public class GenbankInstaller {
   private static final Logger LOGGER = LogManager.getFormatterLogger(GenbankInstaller.class);
@@ -46,6 +49,10 @@ public class GenbankInstaller {
   private static final String SRC = "src";
   private static final String PMID = "PMID";
   private static final String PATENT = "Patent";
+
+  //  http://www.ncbi.nlm.nih.gov/Sequin/acc.html
+  private static final Pattern PROTEIN_ACCESSION_PATTERN = Pattern.compile("\\w{3}\\d{5}");
+  private static final Pattern NUCLEOTIDE_ACCESSION_PATTERN = Pattern.compile("\\w\\d{5}|\\w{2}\\d{6}");
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class is the driver to write sequence data from a Genbank file to our database. It can be used on the ",
@@ -108,13 +115,13 @@ public class GenbankInstaller {
         for (FeatureInterface<AbstractSequence<Compound>, Compound> feature :
             (List<FeatureInterface<AbstractSequence<Compound>, Compound>>) sequence.getFeatures()) {
           if (feature.getType().equals(CDS) && feature.getQualifiers().containsKey(PROTEIN_ID)) {
-            addSeqEntryToDb(new GenbankSeqEntry(sequence, feature.getQualifiers(), db), db);
+            addSeqEntryToDb(sequence, feature.getQualifiers(), db);
             sequenceCount++;
           }
         }
 
       } else if (seqType.equals(PROTEIN)) {
-        addSeqEntryToDb(new GenbankSeqEntry(sequence, db), db);
+        addSeqEntryToDb(sequence, null, db);
         sequenceCount++;
       }
     }
@@ -122,6 +129,15 @@ public class GenbankInstaller {
     LOGGER.info("%s sequences installed in the db", sequenceCount);
   }
 
+  /**
+   * Verifies the accession string according to the standard Genbank/Uniprot accession qualifications
+   * @param proteinAccession the accession string to be validated
+   * @param accessionPattern the pattern that the accession string should match
+   * @return
+   */
+  private boolean verifyAccession(String proteinAccession, Pattern accessionPattern) {
+    return accessionPattern.matcher(proteinAccession).find();
+  }
 
   /**
    * Checks if the new value already exists in the field. If so, doesn't update the metadata. If it doesn't exist,
@@ -149,37 +165,51 @@ public class GenbankInstaller {
     return data.append(field, value);
   }
 
-  private JSONObject updateAccessions(JSONObject newAccessionObject, JSONObject metadata) {
-    JSONObject oldAccessionObject = (JSONObject) metadata.get(ACCESSION);
+  /**
+   * Updates the accession JSONObject for the given accessions type
+   * @param newAccessionObject the new accession object to load in the new accessions of the given type
+   * @param metadata contains the accession object to be updated
+   * @param accType the type of accessions to update
+   * @param accessionPattern the accession pattern to validate the accession string according to Genbank/Uniprot standards
+   * @return the metadata containing the updated accession mapping
+   */
+  private JSONObject updateAccessions(JSONObject newAccessionObject, JSONObject metadata, Seq.AccType accType,
+                                      Pattern accessionPattern) {
+    JSONObject oldAccessionObject = metadata.getJSONObject(ACCESSION);
 
-    if (newAccessionObject.has(Seq.AccType.genbank_protein.toString())) {
-      String newProteinAccession =
-          (String) newAccessionObject.getJSONArray(Seq.AccType.genbank_protein.toString()).get(0);
-      oldAccessionObject =
-          updateArrayField(Seq.AccType.genbank_protein.toString(), newProteinAccession, oldAccessionObject);
+    if (newAccessionObject.has(accType.toString())) {
+      JSONArray newAccTypeAccessions = newAccessionObject.getJSONArray(accType.toString());
+
+      for (int i = 0; i < newAccTypeAccessions.length(); i++) {
+        if (!verifyAccession(newAccTypeAccessions.getString(i), accessionPattern)) {
+          continue;
+        }
+
+        oldAccessionObject = updateArrayField(accType.toString(), newAccTypeAccessions.getString(i),
+            oldAccessionObject);
+      }
+
     }
 
-    if (newAccessionObject.has(Seq.AccType.genbank_nucleotide.toString())) {
-      String newNucleotideAccession =
-          (String) newAccessionObject.getJSONArray(Seq.AccType.genbank_nucleotide.toString()).get(0);
-      oldAccessionObject =
-          updateArrayField(Seq.AccType.genbank_nucleotide.toString(), newNucleotideAccession, oldAccessionObject);
-    }
-
-    metadata.put(ACCESSION, oldAccessionObject);
-
-    return metadata;
+    return metadata.put(ACCESSION, oldAccessionObject);
   }
 
-
   /**
-   * Updates metadata and references field with the information extracted from file
-   * @param se an instance of the GenbankSeqEntry class that extracts all the relevant information from a sequence
-   *           object
-   * @param db reference to the database that should be updated
+   * Updates metadata and reference fields with the information extracted from file
+   * @param sequence the AbstractSequence object to construct the GenbankSeqEntry object
+   * @param qualifiers the map of qualifier key to value that is used to construct the GenbankSeqEntry object
+   * @param db reference to the database that should be queried and updated
    */
-  private void addSeqEntryToDb(GenbankSeqEntry se, MongoDB db) {
-    List<Seq> seqs = se.getSeqs(db);
+  private void addSeqEntryToDb(AbstractSequence sequence, Map<String, List<Qualifier>> qualifiers, MongoDB db) {
+    GenbankSeqEntry se;
+
+    if (qualifiers == null) {
+      se = new GenbankSeqEntry(sequence, db);
+    } else {
+      se = new GenbankSeqEntry(sequence, qualifiers, db);
+    }
+
+    List<Seq> seqs = se.getMatchingSeqs();
 
     // no prior data on this sequence
     if (seqs.isEmpty()) {
@@ -191,8 +221,14 @@ public class GenbankInstaller {
     for (Seq seq : seqs) {
       JSONObject metadata = seq.get_metadata();
 
-      if (se.getAccession() != null && se.getAccession() != new JSONObject()) {
-        metadata = updateAccessions(se.getAccession(), metadata);
+      JSONObject accessions = se.getAccession();
+
+      if (!metadata.has(ACCESSION)) {
+        metadata.put(ACCESSION, accessions);
+      } else {
+        metadata = updateAccessions(accessions, metadata, Seq.AccType.genbank_nucleotide,
+            NUCLEOTIDE_ACCESSION_PATTERN);
+        metadata = updateAccessions(accessions, metadata, Seq.AccType.genbank_protein, PROTEIN_ACCESSION_PATTERN);
       }
 
       List<String> geneSynonyms = se.getGeneSynonyms();
@@ -244,6 +280,7 @@ public class GenbankInstaller {
           String patentNumber = (String) newPatentRef.get(PATENT_NUMBER);
           String patentYear = (String) newPatentRef.get(PATENT_YEAR);
 
+          // checks if any patents are equivalent
           for (JSONObject newRef : oldRefs) {
             if (newRef.get(SRC).equals(PATENT) && newRef.get(COUNTRY_CODE).equals(countryCode)
                 && newRef.get(PATENT_NUMBER).equals(patentNumber) && newRef.get(PATENT_YEAR).equals(patentYear)) {
@@ -287,7 +324,7 @@ public class GenbankInstaller {
 
     if (cl.hasOption("help")) {
       HELP_FORMATTER.printHelp(GenbankInstaller.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      return;
+      System.exit(1);
     }
 
     File genbankFile = new File(cl.getOptionValue(OPTION_GENBANK_PATH));

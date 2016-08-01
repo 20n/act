@@ -113,7 +113,7 @@ public class UniprotInterpreter {
 
     if (cl.hasOption("help")) {
       HELP_FORMATTER.printHelp(UniprotInterpreter.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      return;
+      System.exit(1);
     }
 
     File uniprotFile = new File(cl.getOptionValue(OPTION_UNIPROT_PATH));

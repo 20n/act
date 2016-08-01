@@ -65,6 +65,7 @@ public class UniprotSeqEntry extends SequenceEntry {
   private String geneName;
   private List<String> geneSynonyms;
   private List<String> productNames;
+  private List<Seq> matchingSeqs;
   private String catalyticActivity;
   private DBObject metadata;
   private String sequence;
@@ -97,7 +98,8 @@ public class UniprotSeqEntry extends SequenceEntry {
     this.org = extractOrg();
     this.orgId = extractOrgId(db);
     this.references = extractReferences();
-    extractCatalyzedReactions();
+    this.matchingSeqs = extractMatchingSeqs(db);
+    initCatalyzedReactions();
   }
 
   public DBObject getMetadata() { return this.metadata; }
@@ -105,6 +107,7 @@ public class UniprotSeqEntry extends SequenceEntry {
   public String getGeneName() { return this.geneName; }
   public List<String> getGeneSynonyms() { return this.geneSynonyms; }
   public List<String> getProductName() { return this.productNames; }
+  public List<Seq> getMatchingSeqs() { return this.matchingSeqs; }
   public List<JSONObject> getRefs() { return this.references; }
   public Long getOrgId() { return this.orgId; }
   public String getOrg() { return this.org; }
@@ -120,7 +123,7 @@ public class UniprotSeqEntry extends SequenceEntry {
   public HashMap<Long, Set<Long>> getCatalyzedRxnsToProducts() { return this.catalyzedRxnsToProducts; }
   public SAR getSar() { return this.sar; }
 
-  private void extractCatalyzedReactions() {
+  private void initCatalyzedReactions() {
     this.catalyzedRxns = new HashSet<Long>();
     this.catalyzedSubstratesUniform = new HashSet<Long>();
     this.catalyzedSubstratesDiverse = new HashSet<Long>();
@@ -159,7 +162,7 @@ public class UniprotSeqEntry extends SequenceEntry {
 
       throw new RuntimeException("multiple sequence tags parsed");
 
-    } else if (sequenceNodeList.getLength() > 1) {
+    } else if (sequenceNodeList.getLength() == 0) {
 
       throw new RuntimeException("no sequence tags parsed");
 
@@ -180,8 +183,6 @@ public class UniprotSeqEntry extends SequenceEntry {
    * @return the Ecnum as a string
    */
   private String extractEc() {
-    proteinNodeList = seqFile.getElementsByTagName(PROTEIN);
-
     if (proteinNodeList.getLength() == 1) {
       // since there is only one item in the list, retrieve the only node
       Node proteinNode = proteinNodeList.item(0);
@@ -296,8 +297,6 @@ public class UniprotSeqEntry extends SequenceEntry {
    * @return the primary gene name as a string
    */
   private String extractGeneName() {
-    geneNodeList = seqFile.getElementsByTagName(GENE);
-
     if (geneNodeList.getLength() == 1) {
       // since there is only one item in the list, retrieve the only node
       Node geneNode = geneNodeList.item(0);
@@ -332,8 +331,6 @@ public class UniprotSeqEntry extends SequenceEntry {
    * @return the gene name synonyms as a list
    */
   private List<String> extractGeneSynonyms() {
-    geneNodeList = seqFile.getElementsByTagName(GENE);
-
     List<String> geneSynonyms = new ArrayList<>();
 
     if (geneNodeList.getLength() == 1) {
@@ -377,8 +374,6 @@ public class UniprotSeqEntry extends SequenceEntry {
    * @return the list of product names
    */
   private List<String> extractProductNames() {
-    proteinNodeList = seqFile.getElementsByTagName(PROTEIN);
-
     if (proteinNodeList.getLength() == 1) {
       // since there is only one item in the list, retrieve the only node
       Node proteinNode = proteinNodeList.item(0);
@@ -482,8 +477,6 @@ public class UniprotSeqEntry extends SequenceEntry {
    * @return the sequence string
    */
   private String extractSequence() {
-    NodeList sequenceNodeList = seqFile.getElementsByTagName(SEQUENCE);
-
     return sequenceNodeList.item(0).getTextContent();
   }
 
@@ -497,8 +490,6 @@ public class UniprotSeqEntry extends SequenceEntry {
    * @return the organism as a string
    */
   private String extractOrg() {
-    organismNodeList = seqFile.getElementsByTagName(ORGANISM);
-
     if (organismNodeList.getLength() == 1) {
       // since there is only one item in the list, retrieve the only node
       Node organismNode = organismNodeList.item(0);
@@ -611,7 +602,7 @@ public class UniprotSeqEntry extends SequenceEntry {
    * @param db
    * @return the list of Seq entries that should be updated with the data from the uniprot file
    */
-  public List<Seq> getSeqs(MongoDB db) {
+  private List<Seq> extractMatchingSeqs(MongoDB db) {
     JSONArray genbankProteinAccessions = accessions.getJSONArray(Seq.AccType.genbank_protein.toString());
     JSONArray genbankNucleotideAccessions = accessions.getJSONArray(Seq.AccType.genbank_nucleotide.toString());
 

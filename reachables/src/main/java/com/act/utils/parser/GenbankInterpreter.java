@@ -315,7 +315,7 @@ public class GenbankInterpreter {
 
     if (cl.hasOption("help")) {
       HELP_FORMATTER.printHelp(GenbankInterpreter.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      return;
+      System.exit(1);
     }
 
     File genbankFile = new File(cl.getOptionValue(OPTION_GENBANK_PATH));

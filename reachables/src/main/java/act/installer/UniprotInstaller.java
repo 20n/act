@@ -17,6 +17,7 @@ import org.apache.logging.log4j.Logger;
 import org.biojava.nbio.core.exceptions.CompoundNotFoundException;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -26,7 +27,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class UniprotInstaller {
@@ -41,8 +41,12 @@ public class UniprotInstaller {
   private static final String SRC = "src";
   private static final String PMID = "PMID";
   private static final String CATALYTIC_ACTIVITY = "catalytic_activity";
+
+  //  http://www.ncbi.nlm.nih.gov/Sequin/acc.html
   private static final Pattern PROTEIN_ACCESSION_PATTERN = Pattern.compile("\\w{3}\\d{5}");
   private static final Pattern NUCLEOTIDE_ACCESSION_PATTERN = Pattern.compile("\\w\\d{5}|\\w{2}\\d{6}");
+
+  //  http://www.uniprot.org/help/accession_numbers
   private static final Pattern UNIPROT_ACCESSION_PATTERN = Pattern.compile("[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}");
 
 
@@ -89,8 +93,7 @@ public class UniprotInstaller {
   public void init() throws IOException, SAXException, ParserConfigurationException, CompoundNotFoundException {
     UniprotInterpreter uniprotInterpreter = new UniprotInterpreter(uniprotFile);
     uniprotInterpreter.init();
-    addSeqEntryToDb(new UniprotSeqEntry(uniprotInterpreter.getXmlDocument(), db), db);
-
+    addSeqEntryToDb(uniprotInterpreter.getXmlDocument(), db);
   }
 
   /**
@@ -100,13 +103,7 @@ public class UniprotInstaller {
    * @return
    */
   private boolean verifyAccession(String proteinAccession, Pattern accessionPattern) {
-    Matcher m = accessionPattern.matcher(proteinAccession);
-
-    if (m.find()) {
-      return true;
-    }
-
-    return false;
+    return accessionPattern.matcher(proteinAccession).find();
   }
 
   /**
@@ -152,6 +149,8 @@ public class UniprotInstaller {
 
       for (int i = 0; i < newAccTypeAccessions.length(); i++) {
         if (!verifyAccession(newAccTypeAccessions.getString(i), accessionPattern)) {
+          String msg = String.format("%s accession not the right format: %s\n", accType.toString(), newAccTypeAccessions.getString(i));
+          LOGGER.error(msg);
           continue;
         }
 
@@ -164,9 +163,10 @@ public class UniprotInstaller {
     return metadata.put(ACCESSION, oldAccessionObject);
   }
 
-  private void addSeqEntryToDb(UniprotSeqEntry se, MongoDB db) {
+  private void addSeqEntryToDb(Document document, MongoDB db) {
+    UniprotSeqEntry se = new UniprotSeqEntry(document, db);
 
-    List<Seq> seqs = se.getSeqs(db);
+    List<Seq> seqs = se.getMatchingSeqs();
 
     // no prior data on this sequence
     if (seqs.isEmpty()) {
@@ -192,7 +192,7 @@ public class UniprotInstaller {
       List<String> geneSynonyms = se.getGeneSynonyms();
 
       if (se.getGeneName() != null) {
-        if (!metadata.has(NAME) || metadata.get(NAME) == null) {
+        if (!metadata.has(NAME) || metadata.isNull(NAME)) {
           metadata.put(NAME, se.getGeneName());
         } else if (!se.getGeneName().equals(metadata.get(NAME))) {
           geneSynonyms.add(se.getGeneName());
@@ -271,7 +271,7 @@ public class UniprotInstaller {
 
     if (cl.hasOption("help")) {
       HELP_FORMATTER.printHelp(UniprotInstaller.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      return;
+      System.exit(1);
     }
 
     File uniprotFile = new File(cl.getOptionValue(OPTION_UNIPROT_PATH));
