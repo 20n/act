@@ -1,13 +1,25 @@
 package com.act.biointerpretation.sars.sartrees;
 
+import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.sars.OneSubstrateSubstructureSar;
 import com.act.biointerpretation.sars.Sar;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.io.IOException;
 
 public class SarTreeNode {
-  final String hierarchyId;
-  final Molecule substructure;
+
+  @JsonProperty
+  String hierarchyId;
+
+  Molecule substructure;
+
+  @JsonProperty
   Double confidence;
+
+  private SarTreeNode(){}
 
   public SarTreeNode(Molecule substructure, String hierarchyId) {
     this.substructure = substructure;
@@ -25,6 +37,15 @@ public class SarTreeNode {
 
   public Molecule getSubstructure() {
     return substructure;
+  }
+
+  @JsonProperty
+  public String getSubstructureInchi() throws IOException {
+    return MolExporter.exportToFormat(substructure, "inchi:AuxNone");
+  }
+
+  public void setSubstructureInchi(String substructure) throws IOException {
+    this.substructure = MolImporter.importMol(substructure, "inchi");
   }
 
   public Sar getSar() {

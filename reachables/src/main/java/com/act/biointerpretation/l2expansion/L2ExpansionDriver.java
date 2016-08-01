@@ -164,6 +164,12 @@ public class L2ExpansionDriver {
       System.exit(1);
     }
     outputFile.createNewFile();
+    File inchiOutputFile = new File(outputPath + ".inchis");
+    if (inchiOutputFile.isDirectory() || inchiOutputFile.exists()) {
+      LOGGER.error("Supplied inchi output file is a directory or already exists.");
+      System.exit(1);
+    }
+    inchiOutputFile.createNewFile();
 
     // Get metabolite list
     List<String> metaboliteList = getInchiList(cl, OPTION_METABOLITES);
@@ -176,7 +182,8 @@ public class L2ExpansionDriver {
 
     LOGGER.info("Writing corpus to file.");
     predictionCorpus.writePredictionsToJsonFile(outputFile);
-
+    L2InchiCorpus productInchis = new L2InchiCorpus(predictionCorpus.getUniqueProductInchis());
+    productInchis.writeToFile(inchiOutputFile);
     LOGGER.info("L2ExpansionDriver complete!");
   }
 
