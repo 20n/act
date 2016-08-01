@@ -34,10 +34,13 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class IonAnalysisInterchangeModel {
@@ -48,10 +51,27 @@ public class IonAnalysisInterchangeModel {
     results = new ArrayList<>();
   }
 
+  public void loadCorpusFromFile(File inputFile) throws IOException {
+    this.results = OBJECT_MAPPER.readValue(inputFile, IonAnalysisInterchangeModel.class).getResults();
+  }
+
   public void writeToJsonFile(File outputFile) throws IOException {
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile))) {
       OBJECT_MAPPER.writeValue(predictionWriter, this);
     }
+  }
+
+  public Set<String> getAllMoleculeHits() {
+    Set<String> resultSet = new HashSet<>();
+    for (ResultForMZ resultForMZ : results) {
+      if (resultForMZ.getIsValid()) {
+        for (HitOrMiss molecule : resultForMZ.getMolecules()) {
+          resultSet.add(molecule.getInchi());
+        }
+      }
+    }
+
+    return resultSet;
   }
 
   public IonAnalysisInterchangeModel(List<ResultForMZ> results) {
