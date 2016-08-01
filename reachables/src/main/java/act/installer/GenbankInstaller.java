@@ -1,6 +1,7 @@
 package act.installer;
 
 import act.installer.sequence.GenbankSeqEntry;
+import act.installer.sequence.GenbankSeqEntryFactory;
 import act.server.MongoDB;
 import act.shared.Seq;
 import com.act.utils.parser.GenbankInterpreter;
@@ -110,18 +111,23 @@ public class GenbankInstaller {
 
     int sequenceCount = 0;
 
+    GenbankSeqEntryFactory seqEntryFactory = new GenbankSeqEntryFactory();
+    GenbankSeqEntry seqEntry;
+
     for (AbstractSequence sequence : sequences) {
       if (seqType.equals(DNA)) {
         for (FeatureInterface<AbstractSequence<Compound>, Compound> feature :
             (List<FeatureInterface<AbstractSequence<Compound>, Compound>>) sequence.getFeatures()) {
           if (feature.getType().equals(CDS) && feature.getQualifiers().containsKey(PROTEIN_ID)) {
-            addSeqEntryToDb(sequence, feature.getQualifiers(), db);
+            seqEntry = seqEntryFactory.createFromDNASequenceReference(sequence, feature.getQualifiers(), db);
+            addSeqEntryToDb(seqEntry, db);
             sequenceCount++;
           }
         }
 
       } else if (seqType.equals(PROTEIN)) {
-        addSeqEntryToDb(sequence, null, db);
+        seqEntry = seqEntryFactory.createFromProteinSequenceReference(sequence, db);
+        addSeqEntryToDb(seqEntry, db);
         sequenceCount++;
       }
     }
@@ -196,19 +202,11 @@ public class GenbankInstaller {
 
   /**
    * Updates metadata and reference fields with the information extracted from file
-   * @param sequence the AbstractSequence object to construct the GenbankSeqEntry object
-   * @param qualifiers the map of qualifier key to value that is used to construct the GenbankSeqEntry object
+   * @param se an instance of the GenbankSeqEntry class that extracts all the relevant information from a sequence
+   *           object
    * @param db reference to the database that should be queried and updated
    */
-  private void addSeqEntryToDb(AbstractSequence sequence, Map<String, List<Qualifier>> qualifiers, MongoDB db) {
-    GenbankSeqEntry se;
-
-    if (qualifiers == null) {
-      se = new GenbankSeqEntry(sequence, db);
-    } else {
-      se = new GenbankSeqEntry(sequence, qualifiers, db);
-    }
-
+  private void addSeqEntryToDb(GenbankSeqEntry se, MongoDB db) {
     List<Seq> seqs = se.getMatchingSeqs();
 
     // no prior data on this sequence
