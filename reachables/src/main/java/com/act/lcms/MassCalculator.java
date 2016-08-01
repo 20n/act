@@ -6,8 +6,14 @@ import com.ggasoftware.indigo.IndigoObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -97,14 +103,37 @@ public class MassCalculator {
 
   public static void main(String[] args) throws Exception {
     if (args.length == 0) {
-      System.err.format("Usage: %s [InChI [...]]\n", MassCalculator.class.getCanonicalName());
+      System.err.format("Usage: %s [InChI [...]] or %s [File of InChIs]\n", MassCalculator.class.getCanonicalName(),
+          MassCalculator.class.getCanonicalName());
       return;
     }
 
+    List<String> inchis = null;
+    if (new File(args[0]).exists()) {
+      System.out.format("Reading InChIs from a file instead of the command line.\n");
+      // Sloppily slurp all the lines from the file, storing any that start with InChI.
+      inchis = new LinkedList<>();
+      try (BufferedReader reader = new BufferedReader(new FileReader(args[0]))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          line = line.trim();
+          if (line.startsWith("InChI=")) {
+            inchis.add(line);
+          }
+        }
+      }
+    } else {
+      inchis = Arrays.asList(args);
+    }
+
     System.out.format("InChI\tMass\tCharge\n");
-    for (String arg : args) {
-      Pair<Double, Integer> massCharge = calculateMassAndCharge(arg);
-      System.out.format("%s\t%.6f\t%d\n", arg, massCharge.getLeft(), massCharge.getRight());
+    for (String inchi : inchis) {
+      try {
+        Pair<Double, Integer> massCharge = calculateMassAndCharge(inchi);
+        System.out.format("%s\t%.6f\t%d\n", inchi, massCharge.getLeft(), massCharge.getRight());
+      } catch (Exception e) {
+        System.err.format("Caught exception when computing mass for %s: %s\n", inchi, e.getMessage());
+      }
     }
   }
 
