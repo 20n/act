@@ -32,6 +32,8 @@ object ROProjector {
   val OPTION_LICENSE_FILE = "l"
   val OPTION_SUBSTRATES_LIST = "i"
   val OPTION_OUTPUT_DIRECTORY = "o"
+  val OPTION_SPARK_MASTER= "m"
+  val OPTION_SPARK_HOME_DIR = "w"
 
   def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -48,9 +50,22 @@ object ROProjector {
         desc("A list of substrate InChIs onto which to project ROs"),
 
       CliOption.builder(OPTION_OUTPUT_DIRECTORY).
+        required(true).
         hasArg.
         longOpt("output-directory").
         desc("A directory in which to write per-RO result files"),
+
+      CliOption.builder(OPTION_SPARK_MASTER).
+        required(true).
+        hasArg.
+        longOpt("spark-master").
+        desc("URL to the spark master host"),
+
+      CliOption.builder(OPTION_SPARK_HOME_DIR).
+        required(true).
+        hasArg.
+        longOpt("spark-home").
+        desc("Path to the spark home directory, probably /var/20n/spark"),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -119,8 +134,10 @@ object ROProjector {
       outputDir.mkdirs()
     }
 
-    val conf = new SparkConf().setAppName("Spark RO Projection")
-    conf.getAll.foreach(x => LOGGER.info(s"Spar config pair: ${x._1}: ${x._2}"))
+    val conf = new SparkConf().setAppName("Spark RO Projection").
+      setMaster(cl.getOptionValue(OPTION_SPARK_MASTER)).setSparkHome(cl.getOptionValue(OPTION_SPARK_HOME_DIR))
+
+    conf.getAll.foreach(x => LOGGER.info(s"Spark config pair: ${x._1}: ${x._2}"))
     val spark = new SparkContext(conf)
 
     val eroRDD: RDD[Ero] = spark.makeRDD(erosList, erosList.size)
