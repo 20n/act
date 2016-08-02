@@ -116,7 +116,7 @@ public class UniprotInterpreter {
       CommandLineParser parser = new DefaultParser();
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
-      LOGGER.error("Argument parsing failed: %s\n", e.getMessage());
+      LOGGER.error("Argument parsing failed: %s", e.getMessage());
       HELP_FORMATTER.printHelp(UniprotInterpreter.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
