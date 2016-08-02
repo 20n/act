@@ -98,6 +98,19 @@ public class IonAnalysisInterchangeModel {
     return resultSet;
   }
 
+  public Set<String> getAllMoleculeHits3() {
+    Set<String> resultSet = new HashSet<>();
+    for (ResultForMZ resultForMZ : results) {
+      for (HitOrMiss hitOrMiss : resultForMZ.getMolecules()) {
+        if (hitOrMiss.getIntensity() > 10000.0) {
+          resultSet.add(hitOrMiss.getInchi());
+        }
+      }
+    }
+
+    return resultSet;
+  }
+
   public IonAnalysisInterchangeModel(List<ResultForMZ> results) {
     this.results = results;
   }
