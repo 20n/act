@@ -71,28 +71,14 @@ public class IonAnalysisInterchangeModel {
     model2.loadCorpusFromFile(new File(file2));
 
     for (int i = 0; i < model1.getResults().size(); i++) {
-      Boolean flag = true;
-      Set<String> miniResultSet = new HashSet<>();
+      List<HitOrMiss> model1Mols = model1.getResults().get(i).getMolecules();
+      List<HitOrMiss> model2Mols = model2.getResults().get(i).getMolecules();
 
-      for (HitOrMiss molecule : model1.getResults().get(i).getMolecules()) {
-        if (molecule.getIntensity() > 1000.0 && molecule.getSnr() > 10000.0 && molecule.getTime() > 15.0) {
-          // do nothing
-          miniResultSet.add(molecule.getInchi());
-        } else {
-          flag = false;
+      for (int j = 0; j < model1.getResults().size(); j++) {
+        if (model1Mols.get(j).getIntensity() > 1000.0 && model1Mols.get(j).getSnr() > 10000.0 && model1Mols.get(j).getTime() > 15.0 &&
+            model2Mols.get(j).getIntensity() > 1000.0 && model2Mols.get(j).getSnr() > 10000.0 && model2Mols.get(j).getTime() > 15.0) {
+          resultSet.add(model1Mols.get(j).getInchi());
         }
-      }
-
-      for (HitOrMiss molecule : model2.getResults().get(i).getMolecules()) {
-        if (molecule.getIntensity() > 1000.0 && molecule.getSnr() > 10000.0 && molecule.getTime() > 15.0) {
-          miniResultSet.add(molecule.getInchi());
-        } else {
-          flag = false;
-        }
-      }
-
-      if (flag) {
-        resultSet.addAll(miniResultSet);
       }
     }
 
