@@ -36,7 +36,9 @@ public class PredictionConfidenceCalculator implements Function<L2Prediction, Do
 
       if (sar.test(Arrays.asList(substrate))) {
         Double sarScore = scoredSar.getPercentageHits();
-        score += sarScore;
+        if (sarScore > score) {
+          score = sarScore;
+        }
       }
     }
 
