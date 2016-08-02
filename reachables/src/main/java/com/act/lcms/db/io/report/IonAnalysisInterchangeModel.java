@@ -102,7 +102,7 @@ public class IonAnalysisInterchangeModel {
     Set<String> resultSet = new HashSet<>();
     for (ResultForMZ resultForMZ : results) {
       for (HitOrMiss hitOrMiss : resultForMZ.getMolecules()) {
-        if (hitOrMiss.getIntensity() > 10000.0) {
+        if (hitOrMiss.getIntensity() > 10000.0 && hitOrMiss.getSnr() > 1000.0 && hitOrMiss.getTime() > 15.0) {
           resultSet.add(hitOrMiss.getInchi());
         }
       }
