@@ -3011,15 +3011,16 @@ public class MongoDB {
     String inchi = (String) c.get("InChI");
 
     NamesOfMolecule moleculeNames = new NamesOfMolecule(inchi);
-
     BasicDBObject names = (BasicDBObject) c.get("names");
-    BasicDBList brendaNamesList = (BasicDBList) names.get("brenda");
-    if (brendaNamesList != null) {
-      Set<String> brendaNames = new HashSet<>();
-      for (Object brendaName : brendaNamesList) {
-        brendaNames.add((String) brendaName);
+    if (names != null) {
+      BasicDBList brendaNamesList = (BasicDBList) names.get("brenda");
+      if (brendaNamesList != null) {
+        Set<String> brendaNames = new HashSet<>();
+        for (Object brendaName : brendaNamesList) {
+          brendaNames.add((String) brendaName);
+        }
+        moleculeNames.setBrendaNames(brendaNames);
       }
-      moleculeNames.setBrendaNames(brendaNames);
     }
     // XREF
     BasicDBObject xref = (BasicDBObject) c.get("xref");
@@ -3104,11 +3105,10 @@ public class MongoDB {
   }
 
   public DBCursor fetchNamesAndUsageForInchis(Set<String> inchis) {
-    BasicDBList or = new BasicDBList();
-    for (String inchi : inchis) {
-      or.add(new BasicDBObject("InChI", inchi));
-    }
-    BasicDBObject whereQuery = new BasicDBObject("$or", or);
+    BasicDBList inchiList = new BasicDBList();
+    inchiList.addAll(inchis);
+    BasicDBObject inClause = new BasicDBObject("$in", inchiList);
+    BasicDBObject whereQuery = new BasicDBObject("InChI", inClause);
     whereQuery.put("xref.BING", new BasicDBObject("$exists", true));
     BasicDBObject fields = new BasicDBObject();
     fields.put("InChI", true);

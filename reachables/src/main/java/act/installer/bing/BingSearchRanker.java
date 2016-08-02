@@ -22,6 +22,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -70,6 +71,7 @@ public class BingSearchRanker {
 
   // Other static variables
   public static final Integer DEFAULT_COUNT = 0;
+  private static final Integer INCHI_CHUNK_SIZE = 10000;
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class adds Bing Search results for a list of molecules in the Installer (actv01) database",
@@ -177,8 +179,8 @@ public class BingSearchRanker {
                           Boolean includeWikipediaUrl,
                           Boolean includeUsageExplorerUrl,
                           Boolean forceUpdate) {
-    mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, INSTALLER_DATABASE);
-    bingSearcher = new BingSearcher();
+    this.mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, INSTALLER_DATABASE);
+    this.bingSearcher = new BingSearcher();
     this.includeChebiApplications = includeChebiApplications;
     this.includeWikipediaUrl = includeWikipediaUrl;
     this.includeUsageExplorerUrl = includeUsageExplorerUrl;
@@ -343,12 +345,36 @@ public class BingSearchRanker {
   }
 
   /**
-   * This function writes the Bing Search ranks for a specific set of inchis in a TSV file.
-   * @param inchis set of InChI string representations
-   * @param outputPath path indicating the output file
+   * Divide a large set of Strings into a list of smaller sets (chunks) of size `chunkSize`
+   * @param inchis set of String (possibly representing InChIs)
+   * @param chunkSize (Integer) the size of resulting chunks
+   * @return inchiChunks: a list of "chunks", smaller sets of strings
+   */
+  private List<Set<String>> getInchiChunks(Set<String> inchis, Integer chunkSize) {
+    List<Set<String>> inchiChunks = new ArrayList<>();
+    Set<String> inchiChunk = new HashSet<>();
+    for (String inchi: inchis) {
+      inchiChunk.add(inchi);
+      if (inchiChunk.size() == chunkSize) {
+        inchiChunks.add(inchiChunk);
+        inchiChunk = new HashSet<>();
+      }
+    }
+    if (inchiChunk.size() > 0) {
+      inchiChunks.add(inchiChunk);
+    }
+    return inchiChunks;
+  }
+
+  /**
+   * This function writes the Bing Search ranks for a chunk of inchis in a TSV file, append only option.
+   * @param inchis (Set<String>) set of InChI string representations
+   * @param outputPath (String) path indicating the output file
+   * @param appendOutput (Boolean) whether to append the results to the output file
    * @throws IOException
    */
-  public void writeBingSearchRanksAsTSV(Set<String> inchis, String outputPath) throws IOException {
+  private void writeBingSearchRanksAsTSVForInchiChunk(Set<String> inchis, String outputPath, Boolean appendOutput)
+      throws IOException {
 
     // Define headers
     List<String> bingRankerHeaderFields = new ArrayList<>();
@@ -356,7 +382,7 @@ public class BingSearchRanker {
 
     // Open TSV writer
     try(TSVWriter<String, String> tsvWriter = new TSVWriter<>(bingRankerHeaderFields)) {
-      tsvWriter.open(new File(outputPath));
+      tsvWriter.open(new File(outputPath), appendOutput);
 
       int counter = 0;
       DBCursor cursor = mongoDB.fetchNamesAndUsageForInchis(inchis);
@@ -371,6 +397,26 @@ public class BingSearchRanker {
         tsvWriter.flush();
       }
       LOGGER.info("Wrote %d Bing Search results to %s", counter, outputPath);
+    }
+  }
+
+  /**
+   * This function writes the Bing Search ranks for a specific set of inchis in a TSV file.
+   * @param inchis set of InChI string representations
+   * @param outputPath path indicating the output file
+   * @throws IOException
+   */
+  public void writeBingSearchRanksAsTSV(Set<String> inchis, String outputPath) throws IOException {
+
+    List<Set<String>> inchiChunks = getInchiChunks(inchis, INCHI_CHUNK_SIZE);
+    LOGGER.info("%d chunks of maximum size %d were found!", inchiChunks.size(), INCHI_CHUNK_SIZE);
+    if (inchiChunks.size() == 0) {
+      LOGGER.info("No chunks found. Exiting!");
+      System.exit(1);
+    }
+    writeBingSearchRanksAsTSVForInchiChunk(inchiChunks.get(0), outputPath, false);
+    for (int chunkIndex = 1; chunkIndex < inchiChunks.size(); chunkIndex++) {
+      writeBingSearchRanksAsTSVForInchiChunk(inchiChunks.get(chunkIndex), outputPath, true);
     }
   }
 
