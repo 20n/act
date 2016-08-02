@@ -121,8 +121,8 @@ public class AnalysisHelper {
           }
 
           maxIntensity = Math.max(ms1ScanResults.getMaxYAxis(), maxIntensity);
-          System.out.format("Max intensity for target %s (%f) in %s is %f\n",
-              searchMZ.getLeft(), searchMZ.getRight(), sf.getFilename(), ms1ScanResults.getMaxYAxis());
+          //System.out.format("Max intensity for target %s (%f) in %s is %f\n",
+          //    searchMZ.getLeft(), searchMZ.getRight(), sf.getFilename(), ms1ScanResults.getMaxYAxis());
           // TODO: purge the MS1 spectra from ms1ScanResults if this ends up hogging too much memory.
           allScans.add(new ScanData<T>(kind, plate, well, sf, searchMZ.getLeft(), metlinMasses, ms1ScanResults));
         }
@@ -169,8 +169,8 @@ public class AnalysisHelper {
       Map<String, Double> singletonMass2 = new HashMap<>();
       singletonMass2.put(entry.getKey().getLeft(), entry.getKey().getRight());
 
-      System.out.format("Max intensity for target %s (%f) in %s is %f\n",
-          entry.getKey().getLeft(), entry.getKey().getRight(), scanFile.getFilename(), entry.getValue().getMaxYAxis());
+      //System.out.format("Max intensity for target %s (%f) in %s is %f\n",
+      //    entry.getKey().getLeft(), entry.getKey().getRight(), scanFile.getFilename(), entry.getValue().getMaxYAxis());
 
       result.put(entry.getKey(), new ScanData<T>(kind, plate, well, scanFile, entry.getKey().getLeft(), singletonMass2, entry.getValue()));
     }

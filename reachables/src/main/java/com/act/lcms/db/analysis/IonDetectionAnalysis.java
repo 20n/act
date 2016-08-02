@@ -323,15 +323,7 @@ public class IonDetectionAnalysis {
     }
 
     br.close();
-
-    for (Map.Entry<Double, Set<ChemicalAndIon>> test : massChargeToChemicalAndIon.entrySet()) {
-      System.out.println(test.getKey());
-      for (ChemicalAndIon i : test.getValue()) {
-        System.out.println(i.getChemical());
-        System.out.println(i.getIon());
-      }
-    }
-
+    
     Integer chemicalCounter = 0;
     Map<String, Double> chemIDToMassCharge = new HashMap<>();
     for (Double massCharge : massChargeToChemicalAndIon.keySet()) {
