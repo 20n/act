@@ -173,6 +173,8 @@ public class IonDetectionAnalysis {
       plateCache.put(plate.getId(), plate);
     }
 
+    System.out.println("Reading scan data for positive well");
+
     ChemicalToMapOfMetlinIonsToIntensityTimeValues positiveWellSignalProfiles = AnalysisHelper.readScanData(
         db,
         lcmsDir,
@@ -378,6 +380,7 @@ public class IonDetectionAnalysis {
         String outAnalysis = outputPrefix + "_" + positiveWell.getId().toString() + ".json";
 
         // TODO: Quantify time
+        System.out.println("Doing the snr jb now");
         Map<String, Pair<String, Pair<XZ, Double>>> result =
             getSnrResultsAndPlotDiagnosticsForEachMoleculeAndItsMetlinIon(
                 lcmsDir,
