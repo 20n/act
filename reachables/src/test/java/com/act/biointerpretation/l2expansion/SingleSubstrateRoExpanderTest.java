@@ -65,7 +65,7 @@ public class SingleSubstrateRoExpanderTest {
     SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(validRoCorpus, validMetaboliteCorpus, generator);
 
     // Execute
-    L2PredictionCorpus predictions = expander.getPredictions();
+    L2PredictionCorpus predictions = expander.getPredictions(null);
 
     // Assert
     assertEquals("Exactly one prediction made,",
@@ -84,7 +84,7 @@ public class SingleSubstrateRoExpanderTest {
     SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(validRoCorpus, invalidMetaboliteCorpus, generator);
 
     // Execute
-    L2PredictionCorpus predictions = expander.getPredictions();
+    L2PredictionCorpus predictions = expander.getPredictions(null);
 
     // Assert
     assertEquals("No predictions made", 0, predictions.getCorpus().size());
@@ -96,7 +96,7 @@ public class SingleSubstrateRoExpanderTest {
     SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(invalidRoCorpus, validMetaboliteCorpus, generator);
 
     // Execute
-    L2PredictionCorpus predictions = expander.getPredictions();
+    L2PredictionCorpus predictions = expander.getPredictions(null);
 
     // Assert
     assertEquals("No predictions made", 0, predictions.getCorpus().size());

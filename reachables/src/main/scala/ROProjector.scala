@@ -113,19 +113,23 @@ object ROProjector {
   }
 
   def main(args: Array[String]): Unit = {
-    val cl = parseCommandLineOptions(args)
+    //val cl = parseCommandLineOptions(args)
 
-    val licenseFile = cl.getOptionValue(OPTION_LICENSE_FILE)
-    LicenseManager.setLicenseFile(licenseFile)
+    //val licenseFile = cl.getOptionValue(OPTION_LICENSE_FILE)
+    val licenseFile = "/var/20n/spark/chemaxon_license_Start-up.cxl"
+    //LicenseManager.setLicenseFile(licenseFile)
 
     val eros = new ErosCorpus()
     eros.loadValidationCorpus()
     val erosList = eros.getRos.asScala
 
-    val inchis = Source.fromFile(cl.getOptionValue(OPTION_SUBSTRATES_LIST)).getLines().
+    //val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)
+    val substratesListFile = "/mnt/shared-data/Gil/untargetted_metabolomics/reachables_list"
+    val inchis = Source.fromFile(substratesListFile).getLines().
       filter(x => x.startsWith("InChI=")).toList
 
-    val outputDir = new File(cl.getOptionValue(OPTION_OUTPUT_DIRECTORY))
+    //val outputDir = new File(cl.getOptionValue(OPTION_OUTPUT_DIRECTORY))
+    val outputDir = new File("/mnt/shared-data/Mark/spark_ro_projections")
     if (outputDir.exists() && !outputDir.isDirectory) {
       LOGGER.error(s"Found output directory at ${outputDir.getAbsolutePath} but is not a directory")
       exitWithHelp(getCommandLineOptions)
@@ -134,8 +138,8 @@ object ROProjector {
       outputDir.mkdirs()
     }
 
-    val conf = new SparkConf().setAppName("Spark RO Projection").
-      setMaster(cl.getOptionValue(OPTION_SPARK_MASTER)).setSparkHome(cl.getOptionValue(OPTION_SPARK_HOME_DIR))
+    val conf = new SparkConf().setAppName("Spark RO Projection")
+      //setMaster(cl.getOptionValue(OPTION_SPARK_MASTER)).setSparkHome(cl.getOptionValue(OPTION_SPARK_HOME_DIR))
 
     conf.getAll.foreach(x => LOGGER.info(s"Spark config pair: ${x._1}: ${x._2}"))
     val spark = new SparkContext(conf)
