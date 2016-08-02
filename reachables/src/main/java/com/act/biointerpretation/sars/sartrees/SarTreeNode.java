@@ -18,18 +18,34 @@ public class SarTreeNode {
   Molecule substructure;
 
   @JsonProperty
-  Double confidence;
+  Integer numberMisses;
+
+  @JsonProperty
+  Integer numberHits;
 
   private SarTreeNode(){}
 
   public SarTreeNode(Molecule substructure, String hierarchyId) {
     this.substructure = substructure;
     this.hierarchyId = hierarchyId;
-    this.confidence = 0D;
+    this.numberMisses = 0;
+    this.numberHits = 0;
   }
 
-  public void setConfidence(Double confidence) {
-    this.confidence = confidence;
+  public void setNumberMisses(Integer numberMisses) {
+    this.numberMisses = numberMisses;
+  }
+
+  public void setNumberHits(Integer numberHits) {
+    this.numberHits = numberHits;
+  }
+
+  public Integer getNumberHits() {
+    return numberHits;
+  }
+
+  public Integer getNumberMisses() {
+    return numberMisses;
   }
 
   public String getHierarchyId() {
@@ -55,7 +71,8 @@ public class SarTreeNode {
     return new OneSubstrateSubstructureSar(substructure);
   }
 
-  public Double getConfidence() {
-    return confidence;
+  @JsonIgnore
+  public Double getPercentageHits() {
+    return new Double(numberHits) / new Double(numberHits + numberMisses);
   }
 }

@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Stack;
-import java.util.function.Function;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class SarTree {
@@ -62,27 +62,22 @@ public class SarTree {
   }
 
   public List<Molecule> getAllSarSubstructures() {
-    return getNodes().stream().map(n -> n.getSubstructure()).collect(Collectors.toList());
+    return getSubtreeNodes().stream().map(n -> n.getSubstructure()).collect(Collectors.toList());
   }
 
-  public void scoreSars(Function<Sar, Double> confidenceCalculator, Integer minSubtreeSize) throws IOException {
+  public void scoreSars(Consumer<SarTreeNode> confidenceCalculator, Integer minSubtreeSize) throws IOException {
     Collection<SarTreeNode> nodesToProcess = getNodesAboveThresholdDescendants(minSubtreeSize);
 
-    LOGGER.info("Scoring %d sars.", nodesToProcess.size());
-    int counter = 1;
     for (SarTreeNode node : nodesToProcess) {
-      Double score = confidenceCalculator.apply(node.getSar());
-      LOGGER.info("Generated score %f on node %s of size %d: %s",
-          score, node.getHierarchyId(), getSubtreeSize(node), node.getSubstructureInchi());
-      counter++;
-      node.setConfidence(score);
+      confidenceCalculator.accept(node);
+      LOGGER.info("Num hits, misses: %d,%d", node.getNumberHits(), node.getNumberMisses());
     }
   }
 
   private List<SarTreeNode> getNodesAboveThresholdDescendants(Integer minSubtreeSize) {
     List<SarTreeNode> result = new ArrayList<>();
 
-    for (SarTreeNode node : getNodes()) {
+    for (SarTreeNode node : getSubtreeNodes()) {
       if (getSubtreeSize(node) >= minSubtreeSize) {
         result.add(node);
       }
@@ -94,8 +89,8 @@ public class SarTree {
   public List<Pair<Sar, Double>> getScoredSars() {
     List<Pair<Sar, Double>> results = new ArrayList<>();
 
-    for (SarTreeNode node : getNodes()) {
-      results.add(new ImmutablePair<>(node.getSar(), node.getConfidence()));
+    for (SarTreeNode node : getSubtreeNodes()) {
+      results.add(new ImmutablePair<>(node.getSar(), node.getPercentageHits()));
     }
 
     return results;
@@ -107,12 +102,12 @@ public class SarTree {
 
     while (!nodes.isEmpty()) {
       SarTreeNode nextNode = nodes.remove();
-      if (nextNode.getConfidence() > thresholdConfidence && getSubtreeSize(nextNode) >= subtreeThreshold) {
+      if (nextNode.getPercentageHits() > thresholdConfidence && getSubtreeSize(nextNode) >= subtreeThreshold) {
         sarResults.add(nextNode);
-      } else {
+      } //else {
         for (SarTreeNode childNode : getChildren(nextNode)) {
           nodes.add(childNode);
-        }
+        //}
       }
     }
 
@@ -131,20 +126,26 @@ public class SarTree {
     return size;
   }
 
-  public Collection<SarTreeNode> getNodes() {
+  public Collection<SarTreeNode> getSubtreeNodes() {
     List<SarTreeNode> nodes = new ArrayList<>();
     Stack<SarTreeNode> nodeStack = new Stack<>();
     nodeStack.push(new SarTreeNode(new Molecule(), "DUMMY"));
 
     for (SarTreeNode node : getRootNodes()) {
-      nodes.addAll(getNodes(node, nodeStack));
+      nodes.addAll(getSubtreeNodes(node, nodeStack));
     }
 
     return nodes;
   }
 
+  public Collection<SarTreeNode> getSubtreeNodes(SarTreeNode subtreeRoot) {
+    Stack<SarTreeNode> nodeStack = new Stack<>();
+    nodeStack.push(new SarTreeNode(new Molecule(), "DUMMY"));
+    return getSubtreeNodes(subtreeRoot, nodeStack);
+  }
 
-  public Collection<SarTreeNode> getNodes(SarTreeNode subtreeRoot, Stack<SarTreeNode> stack) {
+
+  private Collection<SarTreeNode> getSubtreeNodes(SarTreeNode subtreeRoot, Stack<SarTreeNode> stack) {
     List<SarTreeNode> nodes = new ArrayList<>();
 
     SarTreeNode priorTop = stack.peek();
@@ -155,7 +156,7 @@ public class SarTree {
       SarTreeNode nextNode = stack.pop();
       nodes.add(nextNode);
       for (SarTreeNode childNode : getChildren(nextNode)) {
-        nodes.addAll(getNodes(childNode, stack));
+        nodes.addAll(getSubtreeNodes(childNode, stack));
       }
     }
     return nodes;

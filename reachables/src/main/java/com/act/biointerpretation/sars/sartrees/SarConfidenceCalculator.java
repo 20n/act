@@ -9,12 +9,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
-import java.util.function.Function;
-
-/**
- * Created by gil on 8/1/16.
- */
-public class SarConfidenceCalculator implements Function<Sar, Double> {
+import java.util.function.Consumer;
+public class SarConfidenceCalculator implements Consumer<SarTreeNode> {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(SarConfidenceCalculator.class);
 
@@ -27,8 +23,10 @@ public class SarConfidenceCalculator implements Function<Sar, Double> {
   }
 
   @Override
-  public Double apply(Sar sar) {
-    return new Double(getHits(sar, positivePredictionCorpus))/new Double(getHits(sar, fullPredictionCorpus));
+  public void accept(SarTreeNode node) {
+    Sar sar = node.getSar();
+    node.setNumberHits(getHits(sar, positivePredictionCorpus));
+    node.setNumberMisses(getHits(sar, fullPredictionCorpus) - node.getNumberHits());
   }
 
   private Integer getHits(Sar sar, L2PredictionCorpus corpus) {

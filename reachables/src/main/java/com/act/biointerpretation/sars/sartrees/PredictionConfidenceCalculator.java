@@ -9,7 +9,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
-import java.util.Map;
 import java.util.function.Function;
 
 public class PredictionConfidenceCalculator implements Function<L2Prediction, Double> {
@@ -36,7 +35,7 @@ public class PredictionConfidenceCalculator implements Function<L2Prediction, Do
       Sar sar = scoredSar.getSar();
 
       if (sar.test(Arrays.asList(substrate))) {
-        Double sarScore = scoredSar.getConfidence();
+        Double sarScore = scoredSar.getPercentageHits();
         score += sarScore;
       }
     }

@@ -30,9 +30,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
 
 public class LibMcsClustering {
 
@@ -41,6 +42,8 @@ public class LibMcsClustering {
   private static final String OPTION_PREDICTION_CORPUS = "c";
   private static final String OPTION_POSITIVE_INCHIS = "p";
   private static final String OPTION_OUTPUT_PATH = "o";
+  private static final String OPTION_CLUSTER_FIRST = "f";
+  private static final String OPTION_TREE_SCORING = "t";
   private static final String OPTION_HELP = "h";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {
@@ -66,22 +69,35 @@ public class LibMcsClustering {
           .longOpt("output-path")
           .required()
       );
-      add(Option.builder(OPTION_HELP)
-        .argName("help")
-        .desc("Prints this help message.")
-        .longOpt("help")
+      add(Option.builder(OPTION_CLUSTER_FIRST)
+          .argName("cluster first")
+          .desc("Use LibMCS to cluster substrates on full corpus, and only use pos/neg lcms results to score thereafter.")
+          .longOpt("cluster-first")
       );
-    }};
+      add(Option.builder(OPTION_TREE_SCORING)
+          .argName("tree scoring")
+          .desc("Score based on hits and misses found in subtree of SAR; don't apply SAR elsewhere. This should only be " +
+              "run if clustering is first.")
+          .longOpt("tree-scoring")
+      );
+      add(Option.builder(OPTION_HELP)
+          .argName("help")
+          .desc("Prints this help message.")
+          .longOpt("help")
+      );
+    }
+  };
 
 
   public static final String HELP_MESSAGE =
       "This class is used to build sars from an L2Prediction run and LCMS analysis results.  The inputs are an " +
           "L2PredictionCorpus and a file with all the product inchis that came up as positive in the LCMS analysis. " +
-          "The output is a list of Sars with confidence scores based on how predictive they are of the reactions in " +
+          "The output is a list of Sars with percentageHits scores based on how predictive they are of the reactions in " +
           "the corpus.";
 
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
+
   static {
     HELP_FORMATTER.setWidth(100);
   }
@@ -130,10 +146,22 @@ public class LibMcsClustering {
 
     LibraryMCS libMcs = new LibraryMCS();
 
-    SarConfidenceCalculator sarConfidenceCalculator = new SarConfidenceCalculator(positiveCorpus, fullCorpus);
+      LOGGER.info("Building sar tree.");
+    L2PredictionCorpus corpusToCluster = positiveCorpus;
 
-    LOGGER.info("Building sar tree.");
-    SarTree sarTree = buildSarTree(libMcs, positiveCorpus.getUniqueSubstrateInchis());
+    SarTree sarTree;
+    if (cl.hasOption(OPTION_CLUSTER_FIRST)) {
+      sarTree = buildSarTree(libMcs, positiveCorpus.getUniqueSubstrateInchis(), fullCorpus.getUniqueSubstrateInchis());
+    } else {
+      sarTree = buildSarTree(libMcs, fullCorpus.getUniqueSubstrateInchis());
+    }
+
+    Consumer<SarTreeNode> sarConfidenceCalculator = new SarConfidenceCalculator(positiveCorpus, fullCorpus);
+    if (cl.hasOption(OPTION_TREE_SCORING)) {
+      Set<String> positiveInchiSet = new HashSet<>();
+      positiveInchiSet.addAll(inchiList);
+      sarConfidenceCalculator = new TreeBasedHitCalculator(positiveInchiSet, sarTree);
+    }
 
     LOGGER.info("Scoring sars.");
     sarTree.scoreSars(sarConfidenceCalculator, THRESHOLD_TREE_SIZE);
@@ -141,25 +169,58 @@ public class LibMcsClustering {
     LOGGER.info("Getting explanatory nodes.");
     List<SarTreeNode> explanatorySars = sarTree.getExplanatoryNodes(THRESHOLD_TREE_SIZE, THRESHOLD_CONFIDENCE);
 
-    LOGGER.info("%d sars passed thresholds of subtree size %d, confidence %f.",
+    LOGGER.info("%d sars passed thresholds of subtree size %d, percentageHits %f.",
         explanatorySars.size(), THRESHOLD_TREE_SIZE, THRESHOLD_CONFIDENCE);
     LOGGER.info("Producing and writing output.");
 
-    explanatorySars.sort((a,b) -> a.getConfidence() > b.getConfidence() ? -1 : 1);
+    explanatorySars.sort((a, b) -> a.getPercentageHits() > b.getPercentageHits() ? -1 : 1);
 
     ScoredSarCorpus scoredSarCorpus = new ScoredSarCorpus(explanatorySars);
     scoredSarCorpus.writeToFile(outputFile);
     LOGGER.info("Complete!.");
   }
 
-  public static SarTree buildSarTree(LibraryMCS libMcs, Collection<String> inchiList) throws InterruptedException, IOException {
+  public static SarTree buildSarTree(LibraryMCS libMcs, Collection<String> positiveInchis, Collection<String> allInchis)
+      throws InterruptedException, IOException {
+    List<Molecule> molecules = new ArrayList<>();
 
-    for (String inchi : inchiList) {
+    for (String inchi : allInchis) {
       try {
-        libMcs.addMolecule(importMolecule(inchi));
+        Molecule mol = importMolecule(inchi);
+        if (positiveInchis.contains(inchi)) {
+          mol.setProperty("in_lcms","true");
+        } else {
+          mol.setProperty("in_lcms","false");
+        }
+        molecules.add(mol);
       } catch (MolFormatException e) {
         LOGGER.warn("Error importing inchi %s:%s", inchi, e.getMessage());
       }
+    }
+
+    return buildSarTree(libMcs, molecules);
+  }
+
+  public static SarTree buildSarTree(LibraryMCS libMcs, Collection<String> positiveInchis) throws InterruptedException, IOException {
+
+    List<Molecule> molecules = new ArrayList<>();
+    for (String inchi : positiveInchis) {
+      try {
+        Molecule mol = importMolecule(inchi);
+        mol.setProperty("in_lcms","true");
+        molecules.add(mol);
+      } catch (MolFormatException e) {
+        LOGGER.warn("Error importing inchi %s:%s", inchi, e.getMessage());
+      }
+    }
+
+    return buildSarTree(libMcs, molecules);
+  }
+
+
+  public static SarTree buildSarTree(LibraryMCS libMcs, List<Molecule> molecules) throws InterruptedException {
+    for (Molecule mol: molecules) {
+      libMcs.addMolecule(mol);
     }
 
     libMcs.search();
@@ -192,7 +253,7 @@ public class LibMcsClustering {
     SarTree sarTree = buildSarTree(new LibraryMCS(), substrateInchis);
 
     SarCorpus sarCorpus = new SarCorpus();
-    for (SarTreeNode node : sarTree.getNodes()) {
+    for (SarTreeNode node : sarTree.getSubtreeNodes()) {
       Molecule substructure = node.getSubstructure();
       List<Sar> sarContainer = Arrays.asList(new OneSubstrateSubstructureSar(substructure));
       String name = node.getHierarchyId();
