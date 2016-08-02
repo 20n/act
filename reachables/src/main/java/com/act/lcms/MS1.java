@@ -102,8 +102,8 @@ public class MS1 {
     }
 
     if (numWithinPrecision > maxDetectionsInWindow) {
-      System.out.format("Only expected %d, but found %d in the mz range [%f, %f]\n", maxDetectionsInWindow, 
-          numWithinPrecision, mzLowRange, mzHighRange);
+      //System.out.format("Only expected %d, but found %d in the mz range [%f, %f]\n", maxDetectionsInWindow,
+      //    numWithinPrecision, mzLowRange, mzHighRange);
     }
 
     return intensityFound;
@@ -240,7 +240,7 @@ public class MS1 {
       scanResults.setLogSNRForIon(ionDesc, logSNR);
 
       if (logSNR > -100.0d) {
-        System.out.format("%10s: logSNR: %5.1f Max: %7.0f SignalAvg: %7.0f Ambient Avg: %7.0f %s\n", ionDesc, logSNR, maxIntensity, avgIntensitySignal, avgIntensityAmbient, isGoodPeak(scanResults, ionDesc) ? "INCLUDED" : ""); 
+        //System.out.format("%10s: logSNR: %5.1f Max: %7.0f SignalAvg: %7.0f Ambient Avg: %7.0f %s\n", ionDesc, logSNR, maxIntensity, avgIntensitySignal, avgIntensityAmbient, isGoodPeak(scanResults, ionDesc) ? "INCLUDED" : "");
       }
     }
 
@@ -314,7 +314,7 @@ public class MS1 {
     scanResults.setLogSNRForIon(ionDesc, logSNR);
 
     if (logSNR > -100.0d) {
-      System.out.format("%10s: logSNR: %5.1f Max: %7.0f SignalAvg: %7.0f Ambient Avg: %7.0f %s\n", ionDesc, logSNR, maxIntensity, avgIntensitySignal, avgIntensityAmbient, isGoodPeak(scanResults, ionDesc) ? "INCLUDED" : "");
+      //System.out.format("%10s: logSNR: %5.1f Max: %7.0f SignalAvg: %7.0f Ambient Avg: %7.0f %s\n", ionDesc, logSNR, maxIntensity, avgIntensitySignal, avgIntensityAmbient, isGoodPeak(scanResults, ionDesc) ? "INCLUDED" : "");
     }
   }
 
