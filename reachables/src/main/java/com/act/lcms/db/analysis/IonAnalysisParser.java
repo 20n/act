@@ -20,7 +20,6 @@ public class IonAnalysisParser {
   public static final String OPTION_INPUT_FILE = "i";
   public static final String OPTION_INPUT_FILE_2 = "t";
 
-
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
       add(Option.builder(OPTION_INPUT_FILE)
                .argName("input file")
@@ -51,7 +50,12 @@ public class IonAnalysisParser {
       System.exit(1);
     }
 
-    Set<String> inchis = IonAnalysisInterchangeModel.getAllMoleculeHits2(cl.getOptionValue(OPTION_INPUT_FILE), cl.getOptionValue(OPTION_INPUT_FILE_2));
+    //Set<String> inchis = IonAnalysisInterchangeModel.getAllMoleculeHits2(cl.getOptionValue(OPTION_INPUT_FILE), cl.getOptionValue(OPTION_INPUT_FILE_2));
+
+    IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
+    model.loadCorpusFromFile(new File(cl.getOptionValue(OPTION_INPUT_FILE)));
+    Set<String> inchis = model.getAllMoleculeHits3();
+
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(new File("output_inchis.txt")))) {
       for (String inchi : inchis) {
         predictionWriter.append(inchi);

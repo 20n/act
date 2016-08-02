@@ -323,7 +323,7 @@ public class IonDetectionAnalysis {
     }
 
     br.close();
-    
+
     Integer chemicalCounter = 0;
     Map<String, Double> chemIDToMassCharge = new HashMap<>();
     for (Double massCharge : massChargeToChemicalAndIon.keySet()) {
