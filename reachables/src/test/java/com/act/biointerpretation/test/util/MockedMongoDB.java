@@ -91,7 +91,7 @@ public class MockedMongoDB {
     }
 
     return new Seq(seq.getUUID(), seq.get_ec(), seq.getOrgId(), seq.get_org_name(), seq.get_sequence(), references,
-        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+        MongoDBToJSON.conv(metadata), seq.get_srcdb());
   }
 
   public MockedMongoDB() { }
@@ -195,7 +195,7 @@ public class MockedMongoDB {
         String ec = invocation.getArgumentAt(1, String.class);
         String organism = invocation.getArgumentAt(2, String.class);
 
-        List<Seq> matchedSeqs = new ArrayList<Seq>();
+        List<Seq> matchedSeqs = new ArrayList<>();
 
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
           Seq sequence = entry.getValue();
@@ -209,7 +209,7 @@ public class MockedMongoDB {
 
         return matchedSeqs;
       }
-    }).when(mockMongoDB).getSeqFromGenbank(any(String.class), any(String.class), any(String.class));
+    }).when(mockMongoDB).getSeqFromSeqEcOrg(any(String.class), any(String.class), any(String.class));
 
     doAnswer(new Answer<List<Seq>> () {
       @Override
@@ -221,7 +221,14 @@ public class MockedMongoDB {
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
           Seq sequence = entry.getValue();
           JSONObject metadata = sequence.get_metadata();
-          JSONArray accessionArray = ((JSONObject) metadata.get("accession")).getJSONArray("genbank_protein");
+
+          if (!metadata.has("accession") ||
+              !metadata.getJSONObject("accession").has(Seq.AccType.genbank_protein.toString())) {
+            continue;
+          }
+
+          JSONArray accessionArray =
+              metadata.getJSONObject("accession").getJSONArray(Seq.AccType.genbank_protein.toString());
 
           for (int i = 0; i < accessionArray.length(); i++) {
             if (accessionArray.getString(i).equals(accession)) {
@@ -234,7 +241,44 @@ public class MockedMongoDB {
 
         return matchedSeqs;
       }
-    }).when(mockMongoDB).getSeqFromGenbank(any(String.class));
+    }).when(mockMongoDB).getSeqFromGenbankProtAccession(any(String.class));
+
+    doAnswer(new Answer<List<Seq>> () {
+      @Override
+      public List<Seq> answer(InvocationOnMock invocation) throws Throwable {
+        String accession = invocation.getArgumentAt(0, String.class);
+        String seq = invocation.getArgumentAt(1, String.class);
+
+        List<Seq> matchedSeqs = new ArrayList<>();
+
+        for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
+          Seq sequence = entry.getValue();
+          JSONObject metadata = sequence.get_metadata();
+          String databaseSequence = sequence.get_sequence();
+
+          if (!seq.equals(databaseSequence)) {
+            continue;
+          }
+
+          if (!metadata.has("accession") ||
+              !metadata.getJSONObject("accession").has(Seq.AccType.genbank_nucleotide.toString())) {
+            continue;
+          }
+
+          JSONArray accessionArray =
+              metadata.getJSONObject("accession").getJSONArray(Seq.AccType.genbank_nucleotide.toString());
+
+          for (int i = 0; i < accessionArray.length(); i++) {
+            if (accessionArray.getString(i).equals(accession)) {
+              matchedSeqs.add(copySeq(sequence));
+              break;
+            }
+          }
+        }
+
+        return matchedSeqs;
+      }
+    }).when(mockMongoDB).getSeqFromGenbankNucAccessionSeq(any(String.class), any(String.class));
 
     doAnswer(new Answer() {
       @Override

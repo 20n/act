@@ -32,6 +32,9 @@ public class GenbankSeqEntry extends SequenceEntry {
   private static final String COUNTRY_CODE = "countryCode";
   private static final String PATENT_NUMBER = "patentNumber";
   private static final String PATENT_YEAR = "patentYear";
+  private static final String COUNTRY_CODE_SNAKE = "country_code";
+  private static final String PATENT_NUMBER_SNAKE = "patent_number";
+  private static final String PATENT_YEAR_SNAKE = "patent_year";
   private static final String SOURCE = "source";
   private static final String ORGANISM = "organism";
   private static final String PROTEIN_ID = "protein_id";
@@ -40,6 +43,13 @@ public class GenbankSeqEntry extends SequenceEntry {
   private static final String GENE = "gene";
   private static final String GENE_SYNONYM = "gene_synonym";
   private static final String PRODUCT = "product";
+  private static final String VAL = "val";
+  private static final String SRC = "src";
+  private static final String SYNONYMS = "synonyms";
+  private static final String PRODUCT_NAMES = "product_names";
+  private static final String COMMENT = "comment";
+  private static final String ACCESSION = "accession";
+  private static final String PROTEIN_EXISTENCE = "proteinExistence";
   private static final Pattern GENE_NAME_PATTERN = Pattern.compile("(\\S*)\\s*.*");
 
   private AbstractSequence seqObject;
@@ -54,6 +64,7 @@ public class GenbankSeqEntry extends SequenceEntry {
   private String geneName;
   private List<String> productNames;
   private List<String> geneSynonyms;
+  private List<Seq> matchingSeqs;
   private String org;
   private Long orgId;
   private String ec;
@@ -64,20 +75,18 @@ public class GenbankSeqEntry extends SequenceEntry {
   private SAR sar;
 
 
-  public GenbankSeqEntry(AbstractSequence sequence, MongoDB db) {
+  GenbankSeqEntry(AbstractSequence sequence) {
     this.seqObject = sequence;
     this.seqType = PROTEIN_SEQ_TYPE;
-    init(db);
   }
 
-  public GenbankSeqEntry(AbstractSequence sequence, Map<String, List<Qualifier>> cdsQualifierMap, MongoDB db) {
+  GenbankSeqEntry(AbstractSequence sequence, Map<String, List<Qualifier>> cdsQualifierMap) {
     this.seqObject = sequence;
     this.seqType = DNA_SEQ_TYPE;
     this.cdsQualifierMap = cdsQualifierMap;
-    init(db);
   }
 
-  public void init(MongoDB db) {
+  void init(MongoDB db) {
     this.ec = extractEc();
     this.accessions = extractAccessions();
     this.geneName = extractGeneName();
@@ -88,7 +97,8 @@ public class GenbankSeqEntry extends SequenceEntry {
     this.org = extractOrg();
     this.orgId = extractOrgId(db);
     this.references = extractReferences();
-    extractCatalyzedReactions();
+    this.matchingSeqs = extractMatchingSeqs(db);
+    initCatalyzedReactions();
   }
 
   public DBObject getMetadata() { return this.metadata; }
@@ -99,6 +109,7 @@ public class GenbankSeqEntry extends SequenceEntry {
   public List<JSONObject> getPmids() { return this.pmids; }
   public List<JSONObject> getPatents() { return this.patents; }
   public List<JSONObject> getRefs() { return this.references; }
+  public List<Seq> getMatchingSeqs() { return this.matchingSeqs; }
   public Long getOrgId() { return this.orgId; }
   public String getOrg() { return this.org; }
   public String getSeq() { return this.sequence; }
@@ -112,7 +123,7 @@ public class GenbankSeqEntry extends SequenceEntry {
   public HashMap<Long, Set<Long>> getCatalyzedRxnsToProducts() { return this.catalyzedRxnsToProducts; }
   public SAR getSar() { return this.sar; }
 
-  private void extractCatalyzedReactions() {
+  private void initCatalyzedReactions() {
     this.catalyzedRxns = new HashSet<Long>();
     this.catalyzedSubstratesUniform = new HashSet<Long>();
     this.catalyzedSubstratesDiverse = new HashSet<Long>();
@@ -148,7 +159,7 @@ public class GenbankSeqEntry extends SequenceEntry {
       String ec_value = qualifierMap.get(EC_NUMBER).get(0).getValue();
 
       // there was a case where the EC_Number qualifier existed, but the value was empty or null
-      if (ec_value.isEmpty() || ec_value == null) {
+      if (ec_value == null || ec_value.isEmpty()) {
         return null;
       }
 
@@ -164,8 +175,8 @@ public class GenbankSeqEntry extends SequenceEntry {
 
     for (String pmid : pmids) {
       JSONObject obj = new JSONObject();
-      obj.put("val", pmid);
-      obj.put("src", PMID);
+      obj.put(VAL, pmid);
+      obj.put(SRC, PMID);
       references.add(obj);
     }
 
@@ -179,10 +190,10 @@ public class GenbankSeqEntry extends SequenceEntry {
 
     for (Map patent : patents) {
       JSONObject obj = new JSONObject();
-      obj.put("src", PATENT);
-      obj.put("country_code", patent.get(COUNTRY_CODE));
-      obj.put("patent_number", patent.get(PATENT_NUMBER));
-      obj.put("patent_year", patent.get(PATENT_YEAR));
+      obj.put(SRC, PATENT);
+      obj.put(COUNTRY_CODE_SNAKE, patent.get(COUNTRY_CODE));
+      obj.put(PATENT_NUMBER_SNAKE, patent.get(PATENT_NUMBER));
+      obj.put(PATENT_YEAR_SNAKE, patent.get(PATENT_YEAR));
       references.add(obj);
     }
 
@@ -190,7 +201,7 @@ public class GenbankSeqEntry extends SequenceEntry {
     return references;
   }
 
-  public List<JSONObject> extractReferences() {
+  private List<JSONObject> extractReferences() {
     List<JSONObject> references = new ArrayList<>();
 
     references.addAll(extractPmids());
@@ -254,11 +265,11 @@ public class GenbankSeqEntry extends SequenceEntry {
 
   }
 
-  public List<Seq> getSeqs(MongoDB db) {
+  private List<Seq> extractMatchingSeqs(MongoDB db) {
     if (ec != null) {
-      return db.getSeqFromGenbank(sequence, ec, org);
+      return db.getSeqFromSeqEcOrg(sequence, ec, org);
     } else {
-      return db.getSeqFromGenbank((accessions.getJSONArray(Seq.AccType.genbank_protein.toString())).getString(0));
+      return db.getSeqFromGenbankProtAccession((accessions.getJSONArray(Seq.AccType.genbank_protein.toString())).getString(0));
     }
   }
 
@@ -292,12 +303,12 @@ public class GenbankSeqEntry extends SequenceEntry {
   private DBObject extractMetadata() {
     JSONObject obj = new JSONObject();
 
-    obj.put("proteinExistence", new JSONObject());
-    obj.put("name", geneName);
-    obj.put("synonyms", geneSynonyms);
-    obj.put("product_names", productNames);
-    obj.put("comment", new ArrayList());
-    obj.put("accession", accessions);
+    obj.put(PROTEIN_EXISTENCE, new JSONObject());
+    obj.put(NAME, geneName);
+    obj.put(SYNONYMS, geneSynonyms);
+    obj.put(PRODUCT_NAMES, productNames);
+    obj.put(COMMENT, new ArrayList());
+    obj.put(ACCESSION, accessions);
 
     return MongoDBToJSON.conv(obj);
   }

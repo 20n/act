@@ -1,0 +1,107 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<uniprot xmlns="http://uniprot.org/uniprot" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://uniprot.org/uniprot http://www.uniprot.org/support/docs/uniprot.xsd">
+<entry dataset="TrEMBL" created="2015-11-11" modified="2016-07-06" version="5">
+<accession>A0A0K6JCJ7</accession>
+<name>A0A0K6JCJ7_BACCE</name>
+<protein>
+<submittedName>
+<fullName evidence="2">Arylamine N-acetyltransferase</fullName>
+<ecNumber evidence="2">2.3.1.5</ecNumber>
+</submittedName>
+</protein>
+<gene>
+<name type="primary" evidence="2">nat_1</name>
+<name type="ORF" evidence="2">BN2127_JRS1_04775</name>
+</gene>
+<organism evidence="2">
+<name type="scientific">Bacillus cereus</name>
+<dbReference type="NCBI Taxonomy" id="1396"/>
+<lineage>
+<taxon>Bacteria</taxon>
+<taxon>Firmicutes</taxon>
+<taxon>Bacilli</taxon>
+<taxon>Bacillales</taxon>
+<taxon>Bacillaceae</taxon>
+<taxon>Bacillus</taxon>
+<taxon>Bacillus cereus group</taxon>
+</lineage>
+</organism>
+<reference key="1" evidence="2">
+<citation type="submission" date="2015-07" db="EMBL/GenBank/DDBJ databases">
+<title>MeaNS - Measles Nucleotide Surveillance Program.</title>
+<authorList>
+<person name="Tran T."/>
+<person name="Druce J."/>
+</authorList>
+<dbReference type="PubMed" id="8493748"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE</scope>
+<source>
+<strain evidence="2">JRS1</strain>
+</source>
+</reference>
+<comment type="similarity">
+<text evidence="1">Belongs to the arylamine N-acetyltransferase family.</text>
+</comment>
+<comment type="catalytic activity">
+<text evidence="1">An aryl sulfate + a phenol = a phenol + an aryl sulfate.</text>
+</comment>
+<dbReference type="EC" id="2.3.1.5" evidence="2"/>
+<dbReference type="EMBL" id="CYHI01000402">
+<property type="protein sequence ID" value="CUB13083.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EnsemblBacteria" id="CUB13083">
+<property type="protein sequence ID" value="CUB13083"/>
+<property type="gene ID" value="BN2127_JRS1_04775"/>
+</dbReference>
+<dbReference type="GO" id="GO:0004060">
+<property type="term" value="F:arylamine N-acetyltransferase activity"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="UniProtKB-EC"/>
+</dbReference>
+<dbReference type="GO" id="GO:0008152">
+<property type="term" value="P:metabolic process"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="InterPro"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR001447">
+<property type="entry name" value="Arylamine_N-AcTrfase"/>
+</dbReference>
+<dbReference type="PANTHER" id="PTHR11786">
+<property type="entry name" value="PTHR11786"/>
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="Pfam" id="PF00797">
+<property type="entry name" value="Acetyltransf_2"/>
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="PRINTS" id="PR01543">
+<property type="entry name" value="ANATRNSFRASE"/>
+</dbReference>
+<proteinExistence type="inferred from homology"/>
+<keyword id="KW-0012" evidence="2">Acyltransferase</keyword>
+<keyword id="KW-0808" evidence="2">Transferase</keyword>
+<evidence key="1" type="ECO:0000256">
+<source>
+<dbReference type="RuleBase" id="RU003452"/>
+</source>
+</evidence>
+<evidence key="2" type="ECO:0000313">
+<source>
+<dbReference type="EMBL" id="CUB13083.1"/>
+</source>
+</evidence>
+<sequence length="279" mass="32033" checksum="4690A167656978EC" modified="2015-11-11" version="1">
+MMTNLQKEFFKRLKIPAKEITFNDLDEILLKMGLTLPYENLDIMAGTIKDISKNNLVEKI
+LIQKRGGLCYELNSLLYYFLMDCGFQVYKVAGTVYDLYDNKWKPDDGHVIIVLTHNNKDY
+VIDAGFASHLPLHPVPFNGEVISSQTGEYRIRKRTTRKGTHILEMRKGANGESTNFLQSE
+PSHEWKVGYAFTLDPIDEKKVNNIQKVIVEHKESPFNKGAITCKLTDYGHVSLTNKNYTE
+TFKGTKNKRPIESKDYAHILRESFGITQVKYVGKTLERG
+</sequence>
+</entry>
+<copyright>
+Copyrighted by the UniProt Consortium, see http://www.uniprot.org/terms
+Distributed under the Creative Commons Attribution-NoDerivs License
+</copyright>
+</uniprot>

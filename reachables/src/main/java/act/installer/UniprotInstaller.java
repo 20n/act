@@ -1,10 +1,10 @@
 package act.installer;
 
-import act.installer.sequence.GenbankSeqEntry;
-import act.installer.sequence.GenbankSeqEntryFactory;
+import act.installer.sequence.UniprotSeqEntry;
+import act.installer.sequence.UniprotSeqEntryFactory;
 import act.server.MongoDB;
 import act.shared.Seq;
-import com.act.utils.parser.GenbankInterpreter;
+import com.act.utils.parser.UniprotInterpreter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -15,57 +15,49 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.biojava.nbio.core.sequence.features.FeatureInterface;
-import org.biojava.nbio.core.sequence.template.AbstractSequence;
-import org.biojava.nbio.core.sequence.template.Compound;
+import org.biojava.nbio.core.exceptions.CompoundNotFoundException;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.xml.sax.SAXException;
 
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-public class GenbankInstaller {
-  private static final Logger LOGGER = LogManager.getFormatterLogger(GenbankInstaller.class);
-  private static final GenbankSeqEntryFactory seqEntryFactory = new GenbankSeqEntryFactory();
-  private static final String OPTION_GENBANK_PATH = "p";
+public class UniprotInstaller {
+  private static final Logger LOGGER = LogManager.getFormatterLogger(UniprotInstaller.class);
+  private static final UniprotSeqEntryFactory seqEntryFactory = new UniprotSeqEntryFactory();
+  private static final String OPTION_UNIPROT_PATH = "p";
   private static final String OPTION_DB_NAME = "d";
-  private static final String OPTION_SEQ_TYPE = "s";
-  private static final String ACCESSION = "accession";
   private static final String NAME = "name";
-  private static final String COUNTRY_CODE = "country_code";
-  private static final String PATENT_NUMBER = "patent_number";
-  private static final String PATENT_YEAR = "patent_year";
+  private static final String ACCESSION = "accession";
   private static final String SYNONYMS = "synonyms";
   private static final String PRODUCT_NAMES = "product_names";
-  private static final String DNA = "DNA";
-  private static final String CDS = "CDS";
-  private static final String PROTEIN_ID = "protein_id";
-  private static final String PROTEIN = "Protein";
   private static final String VAL = "val";
   private static final String SRC = "src";
   private static final String PMID = "PMID";
-  private static final String PATENT = "Patent";
+  private static final String CATALYTIC_ACTIVITY = "catalytic_activity";
 
-  //  http://www.ncbi.nlm.nih.gov/Sequin/acc.html
-  static final Pattern PROTEIN_ACCESSION_PATTERN = Pattern.compile("[a-zA-Z]{3}\\d{5}");
-  // matches WGS and MGA sequence accession patterns since they appear in Nucleotide files as well
-  static final Pattern NUCLEOTIDE_ACCESSION_PATTERN =
-      Pattern.compile("[a-zA-Z]\\d{5}|[a-zA-Z]{2}\\d{6}|[a-zA-Z]{4}\\d{8,10}|[a-zA-Z]{5}\\d{7}");
+  //  http://www.uniprot.org/help/accession_numbers
+  private static final Pattern UNIPROT_ACCESSION_PATTERN =
+      Pattern.compile("[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}");
+
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class is the driver to write sequence data from a Genbank file to our database. It can be used on the ",
+      "This class is the driver to write sequence data from a Uniprot file to our database. It can be used on the ",
       "command line with a file path as a parameter."}, "");
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
-    add(Option.builder(OPTION_GENBANK_PATH)
-        .argName("genbank file")
-        .desc("genbank file containing sequence and annotations")
+    add(Option.builder(OPTION_UNIPROT_PATH)
+        .argName("uniprot file")
+        .desc("uniprot file containing sequence and annotations")
         .hasArg()
-        .longOpt("genbank")
+        .longOpt("uniprot")
         .required()
     );
     add(Option.builder(OPTION_DB_NAME)
@@ -75,16 +67,9 @@ public class GenbankInstaller {
         .longOpt("database")
         .required()
     );
-    add(Option.builder(OPTION_SEQ_TYPE)
-        .argName("sequence type")
-        .desc("declares whether the sequence type is DNA or Protein")
-        .hasArg()
-        .longOpt("sequence")
-        .required()
-    );
     add(Option.builder("h")
         .argName("help")
-        .desc("Example of usage: -p filepath.gb -d marvin -s DNA")
+        .desc("Example of usage: -p filepath.gb -d marvin")
         .longOpt("help")
     );
   }};
@@ -95,44 +80,20 @@ public class GenbankInstaller {
     HELP_FORMATTER.setWidth(100);
   }
 
-  File genbankFile;
-  String seqType;
+  File uniprotFile;
   MongoDB db;
 
-  public GenbankInstaller (File genbankFile, String seqType, MongoDB db) {
-    this.genbankFile = genbankFile;
-    this.seqType = seqType;
+  public UniprotInstaller (File uniprotFile, MongoDB db) {
+    this.uniprotFile = uniprotFile;
     this.db = db;
   }
 
-  public void init() throws Exception {
-    GenbankInterpreter reader = new GenbankInterpreter(genbankFile, seqType);
-    reader.init();
-    List<AbstractSequence> sequences = reader.getSequences();
+  public void init() throws IOException, SAXException, ParserConfigurationException, CompoundNotFoundException {
+    UniprotInterpreter uniprotInterpreter = new UniprotInterpreter(uniprotFile);
+    uniprotInterpreter.init();
 
-    int sequenceCount = 0;
-
-    GenbankSeqEntry seqEntry;
-
-    for (AbstractSequence sequence : sequences) {
-      if (seqType.equals(DNA)) {
-        for (FeatureInterface<AbstractSequence<Compound>, Compound> feature :
-            (List<FeatureInterface<AbstractSequence<Compound>, Compound>>) sequence.getFeatures()) {
-          if (feature.getType().equals(CDS) && feature.getQualifiers().containsKey(PROTEIN_ID)) {
-            seqEntry = seqEntryFactory.createFromDNASequenceReference(sequence, feature.getQualifiers(), db);
-            addSeqEntryToDb(seqEntry, db);
-            sequenceCount++;
-          }
-        }
-
-      } else if (seqType.equals(PROTEIN)) {
-        seqEntry = seqEntryFactory.createFromProteinSequenceReference(sequence, db);
-        addSeqEntryToDb(seqEntry, db);
-        sequenceCount++;
-      }
-    }
-
-    LOGGER.info("%s sequences installed in the db", sequenceCount);
+    UniprotSeqEntry seqEntry = seqEntryFactory.createFromDocumentReference(uniprotInterpreter.getXmlDocument(), db);
+    addSeqEntryToDb(seqEntry, db);
   }
 
   /**
@@ -205,16 +166,16 @@ public class GenbankInstaller {
 
   /**
    * Updates metadata and reference fields with the information extracted from file
-   * @param se an instance of the GenbankSeqEntry class that extracts all the relevant information from a sequence
+   * @param se an instance of the UniprotSeqEntry class that extracts all the relevant information from a sequence
    *           object
    * @param db reference to the database that should be queried and updated
    */
-  private void addSeqEntryToDb(GenbankSeqEntry se, MongoDB db) {
+  private void addSeqEntryToDb(UniprotSeqEntry se, MongoDB db) {
     List<Seq> seqs = se.getMatchingSeqs();
 
     // no prior data on this sequence
     if (seqs.isEmpty()) {
-      se.writeToDB(db, Seq.AccDB.genbank);
+      se.writeToDB(db, Seq.AccDB.uniprot);
       return;
     }
 
@@ -228,14 +189,16 @@ public class GenbankInstaller {
         metadata.put(ACCESSION, accessions);
       } else {
         metadata = updateAccessions(accessions, metadata, Seq.AccType.genbank_nucleotide,
-            NUCLEOTIDE_ACCESSION_PATTERN);
-        metadata = updateAccessions(accessions, metadata, Seq.AccType.genbank_protein, PROTEIN_ACCESSION_PATTERN);
+            GenbankInstaller.NUCLEOTIDE_ACCESSION_PATTERN);
+        metadata = updateAccessions(accessions, metadata, Seq.AccType.genbank_protein,
+            GenbankInstaller.PROTEIN_ACCESSION_PATTERN);
+        metadata = updateAccessions(accessions, metadata, Seq.AccType.uniprot, UNIPROT_ACCESSION_PATTERN);
       }
 
       List<String> geneSynonyms = se.getGeneSynonyms();
 
       if (se.getGeneName() != null) {
-        if (!metadata.has(NAME) || metadata.get(NAME) == null) {
+        if (!metadata.has(NAME) || metadata.isNull(NAME)) {
           metadata.put(NAME, se.getGeneName());
         } else if (!se.getGeneName().equals(metadata.get(NAME))) {
           geneSynonyms.add(se.getGeneName());
@@ -248,8 +211,16 @@ public class GenbankInstaller {
         }
       }
 
-      if (se.getProductName() != null) {
-        metadata = updateArrayField(PRODUCT_NAMES, se.getProductName().get(0), metadata);
+      List<String> productNames = se.getProductName();
+
+      if (!productNames.isEmpty()) {
+        for (int i = 0; i < productNames.size(); i++) {
+          metadata = updateArrayField(PRODUCT_NAMES, productNames.get(i), metadata);
+        }
+      }
+
+      if (se.getCatalyticActivity() != null) {
+        metadata.put(CATALYTIC_ACTIVITY, se.getCatalyticActivity());
       }
 
       seq.set_metadata(metadata);
@@ -257,8 +228,7 @@ public class GenbankInstaller {
       db.updateMetadata(seq);
 
       List<JSONObject> oldRefs = seq.get_references();
-      List<JSONObject> newPmidRefs = se.getPmids();
-      List<JSONObject> newPatentRefs = se.getPatents();
+      List<JSONObject> newPmidRefs = se.getRefs();
 
       if (!oldRefs.isEmpty()) {
         Set<String> oldPmids = new HashSet<>();
@@ -275,25 +245,6 @@ public class GenbankInstaller {
           }
         }
 
-        for (JSONObject newPatentRef : newPatentRefs) {
-          Boolean patentExists = false;
-          String countryCode = (String) newPatentRef.get(COUNTRY_CODE);
-          String patentNumber = (String) newPatentRef.get(PATENT_NUMBER);
-          String patentYear = (String) newPatentRef.get(PATENT_YEAR);
-
-          // checks if any patents are equivalent
-          for (JSONObject newRef : oldRefs) {
-            if (newRef.get(SRC).equals(PATENT) && newRef.get(COUNTRY_CODE).equals(countryCode)
-                && newRef.get(PATENT_NUMBER).equals(patentNumber) && newRef.get(PATENT_YEAR).equals(patentYear)) {
-              patentExists = true;
-            }
-          }
-
-          if (!patentExists) {
-            oldRefs.add(newPatentRef);
-          }
-        }
-
         seq.set_references(oldRefs);
 
       } else {
@@ -306,7 +257,8 @@ public class GenbankInstaller {
     }
   }
 
-  public static void main(String[] args) throws Exception {
+  public static void main(String[] args) throws IOException, SAXException, ParserConfigurationException,
+      CompoundNotFoundException {
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
       opts.addOption(b.build());
@@ -318,29 +270,28 @@ public class GenbankInstaller {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       LOGGER.error("Argument parsing failed: %s", e.getMessage());
-      HELP_FORMATTER.printHelp(GenbankInstaller.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(UniprotInstaller.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     if (cl.hasOption("help")) {
-      HELP_FORMATTER.printHelp(GenbankInstaller.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(UniprotInstaller.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
-    File genbankFile = new File(cl.getOptionValue(OPTION_GENBANK_PATH));
+    File uniprotFile = new File(cl.getOptionValue(OPTION_UNIPROT_PATH));
     String dbName = cl.getOptionValue(OPTION_DB_NAME);
-    String seqType = cl.getOptionValue(OPTION_SEQ_TYPE);
 
-    if (!genbankFile.exists()) {
-      String msg = String.format("Genbank file path is null");
+    if (!uniprotFile.exists()) {
+      String msg = String.format("Uniprot file path is null");
       LOGGER.error(msg);
       throw new RuntimeException(msg);
     } else {
       MongoDB db = new MongoDB("localhost", 27017, dbName);
 
-      GenbankInstaller installer = new GenbankInstaller(genbankFile, seqType, db);
+      UniprotInstaller installer = new UniprotInstaller(uniprotFile, db);
       installer.init();
     }
-
   }
+
 }

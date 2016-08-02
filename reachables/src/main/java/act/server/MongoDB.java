@@ -2406,17 +2406,6 @@ public class MongoDB {
     return convertDBObjectToSeq(o);
   }
 
-  public Seq getSeqFromAccession(String accession) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("metadata.accession", accession);
-
-    BasicDBObject keys = new BasicDBObject();
-    DBObject o = this.dbSeq.findOne(query, keys);
-    if (o == null)
-      return null;
-    return convertDBObjectToSeq(o);
-  }
-
   public Seq getSeqFromSequence(String seq) {
     DBObject o = this.dbSeq.findOne(new BasicDBObject("seq", seq), new BasicDBObject());
     if (o == null)
@@ -2424,8 +2413,8 @@ public class MongoDB {
     return convertDBObjectToSeq(o);
   }
 
-  public List<Seq> getSeqFromGenbank(String seq, String ec, String organism) {
-    List<Seq> seqs = new ArrayList<Seq>();
+  public List<Seq> getSeqFromSeqEcOrg(String seq, String ec, String organism) {
+    List<Seq> seqs = new ArrayList<>();
     BasicDBObject query = new BasicDBObject();
     query.put("seq", seq);
     query.put("ecnum", ec);
@@ -2446,10 +2435,32 @@ public class MongoDB {
     return seqs;
   }
 
-  public List<Seq> getSeqFromGenbank(String accession) {
-    List<Seq> seqs = new ArrayList<Seq>();
+  public List<Seq> getSeqFromGenbankProtAccession(String accession) {
+    List<Seq> seqs = new ArrayList<>();
     BasicDBObject query = new BasicDBObject();
     query.put("metadata.accession.genbank_protein",
+        new BasicDBObject("$elemMatch", new BasicDBObject("$eq", accession)));
+
+    DBCursor cur = this.dbSeq.find(query, new BasicDBObject());
+    try {
+      while (cur.hasNext()) {
+        DBObject o = cur.next();
+        seqs.add(convertDBObjectToSeq(o));
+      }
+    } finally {
+      if (cur != null) {
+        cur.close();
+      }
+    }
+
+    return seqs;
+  }
+
+  public List<Seq> getSeqFromGenbankNucAccessionSeq(String accession, String seq) {
+    List<Seq> seqs = new ArrayList<>();
+    BasicDBObject query = new BasicDBObject();
+    query.put("seq", seq);
+    query.put("metadata.accession.genbank_nucleotide",
         new BasicDBObject("$elemMatch", new BasicDBObject("$eq", accession)));
 
     DBCursor cur = this.dbSeq.find(query, new BasicDBObject());
@@ -2789,8 +2800,8 @@ public class MongoDB {
 
     this.dbSeq.insert(doc);
 
-//    if (org != null && seq !=null)
-//      System.out.format("Inserted %s = [%s, %s] = %s %s\n", accession, ec, org.substring(0,Math.min(10, org.length())), seq.substring(0,Math.min(20, seq.length())), refs);
+    if (org != null && seq !=null)
+      System.out.format("Inserted %s = [%s, %s] = %s %s\n", accession, ec, org.substring(0,Math.min(10, org.length())), seq.substring(0,Math.min(20, seq.length())), refs);
 
     return id;
   }

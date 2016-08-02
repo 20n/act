@@ -53,13 +53,17 @@ public class GenbankSeqEntryTest {
         new GenbankInterpreter(new File(this.getClass().getResource("genbank_test_protein.gb").getFile()), "Protein");
     giProtein.init();
     sequences.add(giProtein.getSequences().get(0).getSequenceAsString());
-    proteinSeqEntries.add(new GenbankSeqEntry(giProtein.getSequences().get(0), mockDb));
+    GenbankSeqEntry seqEntry =
+        new GenbankSeqEntryFactory().createFromProteinSequenceReference(giProtein.getSequences().get(0), mockDb);
+    proteinSeqEntries.add(seqEntry);
 
     giProtein =
         new GenbankInterpreter(new File(this.getClass().getResource("genbank_test_protein_2.gb").getFile()), "Protein");
     giProtein.init();
     sequences.add(giProtein.getSequences().get(0).getSequenceAsString());
-    proteinSeqEntries.add(new GenbankSeqEntry(giProtein.getSequences().get(0), mockDb));
+    seqEntry =
+        new GenbankSeqEntryFactory().createFromProteinSequenceReference(giProtein.getSequences().get(0), mockDb);
+    proteinSeqEntries.add(seqEntry);
 
 
     GenbankInterpreter giDna =
@@ -72,7 +76,9 @@ public class GenbankSeqEntryTest {
     for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
       if (feature.getType().equals("CDS") && feature.getQualifiers().containsKey("EC_number")) {
         sequences.add(feature.getQualifiers().get("translation").get(0).getValue());
-        dnaSeqEntries.add(new GenbankSeqEntry(sequence, feature.getQualifiers(), mockDb));
+        seqEntry =
+            new GenbankSeqEntryFactory().createFromDNASequenceReference(sequence, feature.getQualifiers(), mockDb);
+        dnaSeqEntries.add(seqEntry);
       }
     }
   }

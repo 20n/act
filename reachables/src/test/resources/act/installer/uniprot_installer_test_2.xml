@@ -1,0 +1,213 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<uniprot xmlns="http://uniprot.org/uniprot" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://uniprot.org/uniprot http://www.uniprot.org/support/docs/uniprot.xsd">
+<entry dataset="Swiss-Prot" created="2006-02-07" modified="2016-06-08" version="91">
+<accession>O35403</accession>
+<name>ST3A1_MOUSE</name>
+<protein>
+<recommendedName>
+<fullName>Amine sulfotransferase</fullName>
+<ecNumber>2.8.2.3</ecNumber>
+</recommendedName>
+<alternativeName>
+<fullName>SULT-X2</fullName>
+</alternativeName>
+<alternativeName>
+<fullName>Sulfotransferase 3A1</fullName>
+<shortName>ST3A1</shortName>
+</alternativeName>
+</protein>
+<gene>
+<name type="primary">Sult3a1</name>
+<name type="synonym">St3a1</name>
+</gene>
+<organism>
+<name type="scientific">Mus musculus</name>
+<name type="common">Mouse</name>
+<dbReference type="NCBI Taxonomy" id="10090"/>
+<lineage>
+<taxon>Eukaryota</taxon>
+<taxon>Metazoa</taxon>
+<taxon>Chordata</taxon>
+<taxon>Craniata</taxon>
+<taxon>Vertebrata</taxon>
+<taxon>Euteleostomi</taxon>
+<taxon>Mammalia</taxon>
+<taxon>Eutheria</taxon>
+<taxon>Euarchontoglires</taxon>
+<taxon>Glires</taxon>
+<taxon>Rodentia</taxon>
+<taxon>Sciurognathi</taxon>
+<taxon>Muroidea</taxon>
+<taxon>Muridae</taxon>
+<taxon>Murinae</taxon>
+<taxon>Mus</taxon>
+<taxon>Mus</taxon>
+</lineage>
+</organism>
+<reference key="1">
+<citation type="journal article" date="1998" name="Biochem. Biophys. Res. Commun." volume="247" first="681" last="686">
+<title>Molecular cloning, expression, and functional characterization of novel mouse sulfotransferases.</title>
+<authorList>
+<person name="Sakakibara Y."/>
+<person name="Yanagisawa K."/>
+<person name="Takami Y."/>
+<person name="Nakayama T."/>
+<person name="Suiko M."/>
+<person name="Liu M.-C."/>
+</authorList>
+<dbReference type="PubMed" id="9647753"/>
+<dbReference type="DOI" id="10.1006/bbrc.1998.8872"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE [MRNA]</scope>
+</reference>
+<comment type="function">
+<text evidence="1">Sulfotransferase that utilizes 3'-phospho-5'-adenylyl sulfate (PAPS) as sulfonate donor to catalyze the N-sulfonation of amines.</text>
+</comment>
+<comment type="catalytic activity">
+<text>3'-phosphoadenylyl sulfate + an amine = adenosine 3',5'-bisphosphate + a sulfamate.</text>
+</comment>
+<comment type="subcellular location">
+<subcellularLocation>
+<location evidence="1">Cytoplasm</location>
+</subcellularLocation>
+</comment>
+<comment type="similarity">
+<text evidence="2">Belongs to the sulfotransferase 1 family.</text>
+</comment>
+<dbReference type="EC" id="2.8.2.3"/>
+<dbReference type="EMBL" id="AF026075">
+<property type="protein sequence ID" value="AAB82293.1"/>
+<property type="molecule type" value="mRNA"/>
+</dbReference>
+<dbReference type="CCDS" id="CCDS23771.1"/>
+<dbReference type="UniGene" id="Mm.6590"/>
+<dbReference type="ProteinModelPortal" id="O35403"/>
+<dbReference type="SMR" id="O35403">
+<property type="residue range" value="6-289"/>
+</dbReference>
+<dbReference type="IntAct" id="O35403">
+<property type="interactions" value="1"/>
+</dbReference>
+<dbReference type="MINT" id="MINT-4104709"/>
+<dbReference type="STRING" id="10090.ENSMUSP00000090259"/>
+<dbReference type="iPTMnet" id="O35403"/>
+<dbReference type="MaxQB" id="O35403"/>
+<dbReference type="PaxDb" id="O35403"/>
+<dbReference type="PRIDE" id="O35403"/>
+<dbReference type="MGI" id="MGI:1931469">
+<property type="gene designation" value="Sult3a1"/>
+</dbReference>
+<dbReference type="eggNOG" id="KOG1584">
+<property type="taxonomic scope" value="Eukaryota"/>
+</dbReference>
+<dbReference type="eggNOG" id="ENOG4111H56">
+<property type="taxonomic scope" value="LUCA"/>
+</dbReference>
+<dbReference type="HOGENOM" id="HOG000037209"/>
+<dbReference type="HOVERGEN" id="HBG001195"/>
+<dbReference type="InParanoid" id="O35403"/>
+<dbReference type="PhylomeDB" id="O35403"/>
+<dbReference type="BRENDA" id="2.8.2.3">
+<property type="organism ID" value="3474"/>
+</dbReference>
+<dbReference type="PRO" id="PR:O35403"/>
+<dbReference type="Proteomes" id="UP000000589">
+<property type="component" value="Unplaced"/>
+</dbReference>
+<dbReference type="CleanEx" id="MM_SULT3A1"/>
+<dbReference type="GO" id="GO:0005737">
+<property type="term" value="C:cytoplasm"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="UniProtKB-SubCell"/>
+</dbReference>
+<dbReference type="GO" id="GO:0047685">
+<property type="term" value="F:amine sulfotransferase activity"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="UniProtKB-EC"/>
+</dbReference>
+<dbReference type="GO" id="GO:0008146">
+<property type="term" value="F:sulfotransferase activity"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0051923">
+<property type="term" value="P:sulfation"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="Gene3D" id="3.40.50.300">
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR027417">
+<property type="entry name" value="P-loop_NTPase"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR000863">
+<property type="entry name" value="Sulfotransferase_dom"/>
+</dbReference>
+<dbReference type="Pfam" id="PF00685">
+<property type="entry name" value="Sulfotransfer_1"/>
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="SUPFAM" id="SSF52540">
+<property type="entry name" value="SSF52540"/>
+<property type="match status" value="1"/>
+</dbReference>
+<proteinExistence type="evidence at transcript level"/>
+<keyword id="KW-0181">Complete proteome</keyword>
+<keyword id="KW-0963">Cytoplasm</keyword>
+<keyword id="KW-1185">Reference proteome</keyword>
+<keyword id="KW-0808">Transferase</keyword>
+<feature type="chain" description="Amine sulfotransferase" id="PRO_0000085165">
+<location>
+<begin position="1"/>
+<end position="293"/>
+</location>
+</feature>
+<feature type="nucleotide phosphate-binding region" description="PAPS" evidence="1">
+<location>
+<begin position="46"/>
+<end position="51"/>
+</location>
+</feature>
+<feature type="nucleotide phosphate-binding region" description="PAPS" evidence="1">
+<location>
+<begin position="220"/>
+<end position="225"/>
+</location>
+</feature>
+<feature type="nucleotide phosphate-binding region" description="PAPS" evidence="1">
+<location>
+<begin position="252"/>
+<end position="254"/>
+</location>
+</feature>
+<feature type="active site" description="Proton acceptor" evidence="1">
+<location>
+<position position="101"/>
+</location>
+</feature>
+<feature type="binding site" description="PAPS" evidence="1">
+<location>
+<position position="123"/>
+</location>
+</feature>
+<feature type="binding site" description="PAPS" evidence="1">
+<location>
+<position position="131"/>
+</location>
+</feature>
+<evidence key="1" type="ECO:0000250"/>
+<evidence key="2" type="ECO:0000305"/>
+<sequence length="293" mass="35181" checksum="5BA84040453E0917" modified="1998-01-01" version="1">
+MDNKDEYLLNFKGYNFQKTLVKMEVVENIENYEIRDDDIFIVTYPKSGTIWTQQILSLIY
+FEGHRNRTENIETIDRAPFFEYNIHKLDYAKMPSPRIFSSHIPYYLVPKGLKDKKAKILY
+MYRNPKDVLISYFHFSNLMLIFQNPDTVESFMQTFLDGDVVGSLWFDHIRGWYEHRHDFN
+IMFMSFEDMKKDFRSSVLKICSFLEKELSEEDVDAVVRQATFQKMKADPRANYEHIIKDE
+LGTRNEMGSFLRKGVVGAWKHYLTVDQSERFDKIFHRNMKNIPLKFIWDINEE
+</sequence>
+</entry>
+<copyright>
+Copyrighted by the UniProt Consortium, see http://www.uniprot.org/terms
+Distributed under the Creative Commons Attribution-NoDerivs License
+</copyright>
+</uniprot>

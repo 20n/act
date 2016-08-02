@@ -47,6 +47,7 @@ public class Seq implements Serializable {
   private Set<String> uniprot_accs;
   private Set<String> synonyms;
   private Set<String> product_names;
+  private String catalytic_activity;
 
   private Set<String> keywords;
   private Set<String> caseInsensitiveKeywords;
@@ -67,12 +68,14 @@ public class Seq implements Serializable {
     this.uniprot_activity = meta(this.metadata, new String[] { "comment" }, "type", "catalytic activity", "text"); // comment: [ { "type": "catalytic activity", "text": uniprot_activity_annotation } ] .. extracts the text field
     if (this.metadata.has("accession")) {
       // accounts for new structure of accessions in seq collection
-      this.uniprot_accs = getJSONObjectValues((JSONObject) this.metadata.get("accession"));
+      this.uniprot_accs = getJSONObjectValues(this.metadata.getJSONObject("accession"));
     }
     if (this.metadata.has("product_names"))
       this.product_names = parseJSONArray((JSONArray) this.metadata.get("product_names"));
     if (this.metadata.has("synonyms"))
       this.synonyms = parseJSONArray((JSONArray) this.metadata.get("synonyms"));
+    if (this.metadata.has("catalytic_activity"))
+      this.catalytic_activity = this.metadata.getString("catalytic_activity");
 
     this.keywords = new HashSet<String>();
     this.caseInsensitiveKeywords = new HashSet<String>();
@@ -176,6 +179,18 @@ public class Seq implements Serializable {
     return not_found;
   }
 
+  private Set<String> getJSONObjectValues(JSONObject jsonObject) {
+    Set<String> listData = new HashSet<>();
+    Iterator<String> keys = jsonObject.keys();
+
+    while (keys.hasNext()) {
+      String key = keys.next();
+      listData.addAll(parseJSONArray(jsonObject.getJSONArray(key)));
+    }
+
+    return listData;
+  }
+
   private Set<String> parseJSONArray(JSONArray jArray) {
     Set<String> listdata = new HashSet<>();
     if (jArray != null) {
@@ -183,18 +198,6 @@ public class Seq implements Serializable {
         listdata.add(jArray.get(i).toString());
       }
     }
-    return listdata;
-  }
-
-  private Set<String> getJSONObjectValues(JSONObject jsonObject) {
-    Set<String> listdata = new HashSet<>();
-    Iterator<String> keys = jsonObject.keys();
-
-    while (keys.hasNext()) {
-      String key = keys.next();
-      listdata.addAll(parseJSONArray(jsonObject.getJSONArray(key)));
-    }
-
     return listdata;
   }
 
@@ -210,6 +213,7 @@ public class Seq implements Serializable {
   public void set_metadata(JSONObject metadata) { this.metadata = metadata; }
   public Set<String> get_product_names() { return this.product_names; }
   public Set<String> get_synonyms() { return this.synonyms; }
+  public String get_catalytic_activity() {return this.catalytic_activity; }
   public String get_gene_name() { return this.gene_name; }
   public String get_evidence() { return this.evidence; }
   public String get_uniprot_activity() { return this.uniprot_activity; }
