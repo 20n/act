@@ -43,7 +43,10 @@ public abstract class L2Expander {
   public L2PredictionCorpus getPredictions(OutputStream outputStream) {
     L2PredictionCorpus result = new L2PredictionCorpus();
 
-    OutputStreamWriter writer = new OutputStreamWriter(outputStream);
+    OutputStreamWriter writer = null;
+    if (outputStream != null) {
+      writer = new OutputStreamWriter(outputStream);
+    }
 
     ObjectMapper objectMapper = new ObjectMapper();
 
@@ -51,7 +54,7 @@ public abstract class L2Expander {
       // Apply reactor to substrate if possible
       try {
         List<L2Prediction> results = generator.getPredictions(seed);
-        if (outputStream != null) {
+        if (writer != null) {
           try {
             String resultJson = objectMapper.writeValueAsString(results);
             writer.write(resultJson);

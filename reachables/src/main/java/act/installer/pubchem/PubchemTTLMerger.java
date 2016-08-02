@@ -11,7 +11,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.eclipse.jetty.io.RuntimeIOException;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Statement;
 import org.eclipse.rdf4j.model.impl.SimpleIRI;
@@ -322,7 +321,7 @@ public class PubchemTTLMerger {
         // If we can't even recognize the type of the subject, something is very wrong.
         String msg = String.format("Unknown type of subject: %s", st.getSubject().getClass().getCanonicalName());
         LOGGER.error(msg);
-        throw new RuntimeIOException(msg);
+        throw new RuntimeException(msg);
       }
 
       SimpleIRI subjectIRI = (SimpleIRI) st.getSubject();
@@ -366,7 +365,7 @@ public class PubchemTTLMerger {
       } else {
         String msg = String.format("Unknown type of object: %s", st.getObject().getClass().getCanonicalName());
         LOGGER.error(msg);
-        throw new RuntimeIOException(msg);
+        throw new RuntimeException(msg);
       }
 
       /* I considered modeling this decision using subclasses, but it made the configuration to much of a pain.  Maybe

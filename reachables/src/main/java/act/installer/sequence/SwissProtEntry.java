@@ -1,10 +1,13 @@
 package act.installer.sequence;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
@@ -20,7 +23,6 @@ import act.shared.sar.SAR;
 
 import com.mongodb.DBObject;
 
-import org.apache.tools.ant.filters.StringInputStream;
 import org.json.JSONObject;
 import org.json.JSONArray;
 import org.json.XML;
@@ -59,7 +61,7 @@ public class SwissProtEntry extends SequenceEntry {
         results.add(entry);
       }
     };
-    StringInputStream sis = new StringInputStream(is);
+    InputStream sis = new ByteArrayInputStream(is.getBytes(StandardCharsets.UTF_8));
     parsePossiblyMany(handler, sis, "[String input]");
     return results;
   }
