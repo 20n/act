@@ -52,7 +52,9 @@ public class GenbankInstaller {
 
   //  http://www.ncbi.nlm.nih.gov/Sequin/acc.html
   static final Pattern PROTEIN_ACCESSION_PATTERN = Pattern.compile("[a-zA-Z]{3}\\d{5}");
-  static final Pattern NUCLEOTIDE_ACCESSION_PATTERN = Pattern.compile("[a-zA-Z]\\d{5}|[a-zA-Z]{2}\\d{6}");
+  // matches WGS and MGA sequence accession patterns since they appear in Nucleotide files as well
+  static final Pattern NUCLEOTIDE_ACCESSION_PATTERN =
+      Pattern.compile("[a-zA-Z]\\d{5}|[a-zA-Z]{2}\\d{6}|[a-zA-Z]{4}\\d{8,10}|[a-zA-Z]{5}\\d{7}");
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class is the driver to write sequence data from a Genbank file to our database. It can be used on the ",
