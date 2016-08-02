@@ -119,6 +119,8 @@ public class IonDetectionAnalysis {
     OPTION_BUILDERS.addAll(DB.DB_OPTION_BUILDERS);
   }
 
+  private static Double progress = 0.0;
+
   public static class ChemicalAndIon {
     private String chemical;
     private String ion;
@@ -186,6 +188,9 @@ public class IonDetectionAnalysis {
       System.exit(1);
     }
 
+    progress += 50.0/(1.0 + negativeWells.size());
+    printProgress();
+
     List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> negativeWellsSignalProfiles = new ArrayList<>();
 
     for (T well : negativeWells) {
@@ -204,6 +209,8 @@ public class IonDetectionAnalysis {
       }
 
       negativeWellsSignalProfiles.add(peakDataNeg);
+      progress += 50.0/(1.0 + negativeWells.size());
+      printProgress();
     }
 
     System.out.println("The number of peak negatives are " + negativeWellsSignalProfiles.size());
@@ -234,6 +241,10 @@ public class IonDetectionAnalysis {
     }
 
     return mzToPlotDirAndSNR;
+  }
+
+  public static void printProgress() {
+    System.out.println("Progress: " + progress.toString());
   }
 
   public static void main(String[] args) throws Exception {
@@ -366,6 +377,7 @@ public class IonDetectionAnalysis {
         List<IonAnalysisInterchangeModel.ResultForMZ> experimentalResults = new ArrayList<>();
         String outAnalysis = outputPrefix + "_" + positiveWell.getId().toString() + ".json";
 
+        // TODO: Quantify time
         Map<String, Pair<String, Pair<XZ, Double>>> result =
             getSnrResultsAndPlotDiagnosticsForEachMoleculeAndItsMetlinIon(
                 lcmsDir,
