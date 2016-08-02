@@ -23,16 +23,26 @@ import org.joda.time.DateTime;
 import com.twentyn.bioreactor.sensors.PHSensorData;
 
 public class ControlSystem {
-  private static final String SENSOR_READING_FILE_LOCATION = "/tmp/sensors/v1/pH/reading.json";
+
   private static final Logger LOGGER = LogManager.getFormatterLogger(ControlSystem.class);
+  private static final String SENSOR_READING_FILE_LOCATION = "/tmp/sensors/v1/pH/reading.json";
   private static final Double MARGIN_OF_ACCEPTANCE_IN_PH = 0.5;
   private static final Integer WAIT_TIME = 20000;
+  private static final Integer PUMP_TIME_WAIT_IN_MILLI_SECONDS = 1000;
+  private static final Integer WAIT_TIME_BETWEEN_ACTION_IN_MILLI_SECONDS = 100;
 
-  public static final String OPTION_TARGET_PH = "p";
-  public static final String OPTION_CONTROL_SOLUTION = "c";
-  public static final String HELP_MESSAGE = "This class runs the control system of one fermentation run";
+  private static final String OPTION_TARGET_PH = "p";
+  private static final String OPTION_SENSOR_READING_FILE_LOCATION = "s";
+  private static final String OPTION_CONTROL_SOLUTION = "c";
+  private static final String HELP_MESSAGE = "This class runs the control system of one fermentation run";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
+    add(Option.builder(OPTION_SENSOR_READING_FILE_LOCATION)
+        .argName("sensor reading file location")
+        .desc("The file location of sensor reading data")
+        .hasArg()
+        .longOpt("sensor-reading-file-location")
+    );
     add(Option.builder(OPTION_TARGET_PH)
         .argName("target ph")
         .desc("The target pH of the system")
@@ -66,25 +76,31 @@ public class ControlSystem {
   private SOLUTION solution;
   private Double targetPH;
   private ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private File sensorDataFile;
 
-  public ControlSystem(MotorPinConfiguration.PinNumberingScheme configurationScheme, SOLUTION solution, Double targetPH) {
+  public ControlSystem(MotorPinConfiguration.PinNumberingScheme configurationScheme,
+                       SOLUTION solution,
+                       Double targetPH,
+                       File sensorDataFile) {
     OBJECT_MAPPER.registerModule(new JodaModule());
     this.motorPinConfiguration = new MotorPinConfiguration(configurationScheme);
     this.motorPinConfiguration.initializeGPIOPinsAndSetConfigToStartState();
     this.solution = solution;
     this.targetPH = targetPH;
+    this.sensorDataFile = sensorDataFile;
   }
 
-  private PHSensorData readSensorData() throws IOException {
-    File file = new File(SENSOR_READING_FILE_LOCATION);
-    PHSensorData sensorData = OBJECT_MAPPER.readValue(file, PHSensorData.class);
+  // TODO: Move this functionality to the sensor module in the future since the control system is not responsible
+  // for where the data is in a file or not.
+  private PHSensorData readSensorData(File sensorDataFile) throws IOException {
+    PHSensorData sensorData = OBJECT_MAPPER.readValue(sensorDataFile, PHSensorData.class);
     return sensorData;
   }
 
   private void takeAction() throws InterruptedException {
     LOGGER.info("Pump more solution");
     this.motorPinConfiguration.getPumpEnablePin().high();
-    Thread.sleep(1000);
+    Thread.sleep(PUMP_TIME_WAIT_IN_MILLI_SECONDS);
     LOGGER.info("Stop pumping");
     this.motorPinConfiguration.getPumpEnablePin().low();
   }
@@ -111,7 +127,7 @@ public class ControlSystem {
         currTime = Time.now();
         Long timeDiff = timeDifference(currTime, lastTimeSinceDoseAdministered);
 
-        PHSensorData phSensorData = readSensorData();
+        PHSensorData phSensorData = readSensorData(this.sensorDataFile);
         Double phValue = phSensorData.getpH();
         LOGGER.info("PH value is %d", phValue);
 
@@ -129,7 +145,7 @@ public class ControlSystem {
         LOGGER.error("Could not read pH value due to InterruptedException. Error is %s:", e.getMessage());
       }
 
-      Thread.sleep(100);
+      Thread.sleep(WAIT_TIME_BETWEEN_ACTION_IN_MILLI_SECONDS);
     }
   }
 
@@ -172,7 +188,10 @@ public class ControlSystem {
 
     Double targetPH = Double.parseDouble(cl.getOptionValue(OPTION_TARGET_PH));
 
-    ControlSystem controlSystem = new ControlSystem(MotorPinConfiguration.PinNumberingScheme.BOARD, solution, targetPH);
+    File sensorReadingDataFile = new File(cl.getOptionValue(OPTION_SENSOR_READING_FILE_LOCATION, SENSOR_READING_FILE_LOCATION));
+
+    ControlSystem controlSystem =
+        new ControlSystem(MotorPinConfiguration.PinNumberingScheme.BOARD, solution, targetPH, sensorReadingDataFile);
     try {
       controlSystem.run();
     } finally {
