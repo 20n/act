@@ -67,10 +67,9 @@ public class SarTree {
 
   public void scoreSars(Consumer<SarTreeNode> confidenceCalculator, Integer minSubtreeSize) throws IOException {
     Collection<SarTreeNode> nodesToProcess = getNodesAboveThresholdDescendants(minSubtreeSize);
-
+    LOGGER.info("%d sars to score.", nodesToProcess.size());
     for (SarTreeNode node : nodesToProcess) {
       confidenceCalculator.accept(node);
-      LOGGER.info("Num hits, misses: %d,%d", node.getNumberHits(), node.getNumberMisses());
     }
   }
 

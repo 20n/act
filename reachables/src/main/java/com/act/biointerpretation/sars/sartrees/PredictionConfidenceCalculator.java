@@ -11,7 +11,7 @@ import org.apache.logging.log4j.Logger;
 import java.util.Arrays;
 import java.util.function.Function;
 
-public class PredictionConfidenceCalculator implements Function<L2Prediction, Double> {
+public class PredictionConfidenceCalculator implements Function<L2Prediction, SarTreeNode> {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(PredictionConfidenceCalculator.class);
 
@@ -21,16 +21,17 @@ public class PredictionConfidenceCalculator implements Function<L2Prediction, Do
     this.sarCorpus = sarCorpus;
   }
 
-  public Double apply(L2Prediction prediction) {
+  public SarTreeNode apply(L2Prediction prediction) {
     Molecule substrate;
     try {
       substrate = MolImporter.importMol(prediction.getSubstrateInchis().get(0), "inchi");
     } catch (MolFormatException e) {
       LOGGER.error("Couldn't import molecule %s: %s", prediction.getSubstrateInchis().get(0), e.getMessage());
-      return 0D;
+      return null;
     }
 
     Double score = 0D;
+    SarTreeNode bestSarTreeNode = null;
     for (SarTreeNode scoredSar : sarCorpus.getSarTreeNodes()) {
       Sar sar = scoredSar.getSar();
 
@@ -38,10 +39,11 @@ public class PredictionConfidenceCalculator implements Function<L2Prediction, Do
         Double sarScore = scoredSar.getPercentageHits();
         if (sarScore > score) {
           score = sarScore;
+          bestSarTreeNode = scoredSar;
         }
       }
     }
 
-    return score;
+    return bestSarTreeNode;
   }
 }

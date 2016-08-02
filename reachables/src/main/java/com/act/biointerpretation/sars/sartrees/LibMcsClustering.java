@@ -136,12 +136,13 @@ public class LibMcsClustering {
 
     L2PredictionCorpus fullCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputCorpusFile);
     LOGGER.info("Number of predictions: %d", fullCorpus.getCorpus().size());
+    LOGGER.info("Number of unique substrates: %d", fullCorpus.getUniqueSubstrateInchis().size());
 
     L2InchiCorpus positiveInchis = new L2InchiCorpus();
     positiveInchis.loadCorpus(positiveInchisFile);
     List<String> inchiList = positiveInchis.getInchiList();
 
-    L2PredictionCorpus positiveCorpus = fullCorpus.applyFilter(prediction -> inchiList.containsAll(prediction.getProductInchis()));
+    L2PredictionCorpus positiveCorpus = fullCorpus.applyFilter(prediction -> inchiList.contains(prediction.getProductInchis().get(0)));
     LOGGER.info("Number of LCMS positives: %d", positiveCorpus.getCorpus().size());
 
     LibraryMCS libMcs = new LibraryMCS();
