@@ -122,7 +122,7 @@ public class GenbankInterpreter {
       }
 
     } else {
-      String msg = String.format("No proper sequence type given; must be either DNA or Protein");
+      String msg = "No proper sequence type given; must be either DNA or Protein";
       LOGGER.error(msg);
       throw new RuntimeException(msg);
     }
@@ -133,7 +133,7 @@ public class GenbankInterpreter {
    */
   private void checkInit() {
     if (sequences == null) {
-      String msg = String.format("Class hasn't been appropriately initialized, no sequence object");
+      String msg = "Class hasn't been appropriately initialized, no sequence object";
       LOGGER.error(msg);
       throw new RuntimeException(msg);
     }
@@ -307,8 +307,7 @@ public class GenbankInterpreter {
       CommandLineParser parser = new DefaultParser();
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
-      String msg = String.format("Argument parsing failed: %s\n", e.getMessage());
-      LOGGER.error(msg);
+      LOGGER.error("Argument parsing failed: %s\n", e.getMessage());
       HELP_FORMATTER.printHelp(GenbankInterpreter.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
@@ -322,7 +321,7 @@ public class GenbankInterpreter {
     String seq_type = cl.getOptionValue(OPTION_SEQ_TYPE);
 
     if (!genbankFile.exists()) {
-      String msg = String.format("Genbank file path is null");
+      String msg = "Genbank file path is null";
       LOGGER.error(msg);
       throw new RuntimeException(msg);
     } else {

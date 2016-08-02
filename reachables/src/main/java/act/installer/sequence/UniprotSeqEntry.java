@@ -100,7 +100,7 @@ public class UniprotSeqEntry extends SequenceEntry {
     initCatalyzedReactions();
   }
 
-  public void init(MongoDB db) {
+  void init(MongoDB db) {
     this.orgId = extractOrgId(db);
     this.matchingSeqs = extractMatchingSeqs(db);
   }

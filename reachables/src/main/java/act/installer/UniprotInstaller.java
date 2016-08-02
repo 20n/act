@@ -102,7 +102,7 @@ public class UniprotInstaller {
    * @return
    */
   private boolean verifyAccession(String proteinAccession, Pattern accessionPattern) {
-    return accessionPattern.matcher(proteinAccession).find();
+    return accessionPattern.matcher(proteinAccession).matches();
   }
 
   /**
@@ -148,8 +148,7 @@ public class UniprotInstaller {
 
       for (int i = 0; i < newAccTypeAccessions.length(); i++) {
         if (!verifyAccession(newAccTypeAccessions.getString(i), accessionPattern)) {
-          String msg = String.format("%s accession not the right format: %s\n", accType.toString(), newAccTypeAccessions.getString(i));
-          LOGGER.error(msg);
+          LOGGER.error("%s accession not the right format: %s\n", accType.toString(), newAccTypeAccessions.getString(i));
           continue;
         }
 
@@ -267,8 +266,7 @@ public class UniprotInstaller {
       CommandLineParser parser = new DefaultParser();
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
-      String msg = String.format("Argument parsing failed: %s\n", e.getMessage());
-      LOGGER.error(msg);
+      LOGGER.error("Argument parsing failed: %s\n", e.getMessage());
       HELP_FORMATTER.printHelp(UniprotInstaller.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }

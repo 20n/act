@@ -83,7 +83,7 @@ public class UniprotInterpreter {
 
   private void checkInit() {
     if (xmlDocument == null || seq == null) {
-      String msg = String.format("Class hasn't been appropriately initialized, no Document and/or ProteinSequence object");
+      String msg = "Class hasn't been appropriately initialized, no Document and/or ProteinSequence object";
       LOGGER.error(msg);
       throw new RuntimeException(msg);
     }
@@ -115,8 +115,7 @@ public class UniprotInterpreter {
       CommandLineParser parser = new DefaultParser();
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
-      String msg = String.format("Argument parsing failed: %s\n", e.getMessage());
-      LOGGER.error(msg);
+      LOGGER.error("Argument parsing failed: %s\n", e.getMessage());
       HELP_FORMATTER.printHelp(UniprotInterpreter.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
@@ -129,7 +128,7 @@ public class UniprotInterpreter {
     File uniprotFile = new File(cl.getOptionValue(OPTION_UNIPROT_PATH));
 
     if (!uniprotFile.exists()) {
-      String msg = String.format("Uniprot file path is null");
+      String msg = "Uniprot file path is null";
       LOGGER.error(msg);
       throw new RuntimeException(msg);
     } else {

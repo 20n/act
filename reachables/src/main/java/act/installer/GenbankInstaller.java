@@ -140,7 +140,7 @@ public class GenbankInstaller {
    * @return
    */
   private boolean verifyAccession(String proteinAccession, Pattern accessionPattern) {
-    return accessionPattern.matcher(proteinAccession).find();
+    return accessionPattern.matcher(proteinAccession).matches();
   }
 
   /**
@@ -186,6 +186,7 @@ public class GenbankInstaller {
 
       for (int i = 0; i < newAccTypeAccessions.length(); i++) {
         if (!verifyAccession(newAccTypeAccessions.getString(i), accessionPattern)) {
+          LOGGER.error("%s accession not the right format: %s\n", accType.toString(), newAccTypeAccessions.getString(i));
           continue;
         }
 
@@ -312,8 +313,7 @@ public class GenbankInstaller {
       CommandLineParser parser = new DefaultParser();
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
-      String msg = String.format("Argument parsing failed: %s\n", e.getMessage());
-      LOGGER.error(msg);
+      LOGGER.error("Argument parsing failed: %s\n", e.getMessage());
       HELP_FORMATTER.printHelp(GenbankInstaller.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }

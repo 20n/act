@@ -86,7 +86,7 @@ public class GenbankSeqEntry extends SequenceEntry {
     this.cdsQualifierMap = cdsQualifierMap;
   }
 
-  public void init(MongoDB db) {
+  void init(MongoDB db) {
     this.ec = extractEc();
     this.accessions = extractAccessions();
     this.geneName = extractGeneName();
