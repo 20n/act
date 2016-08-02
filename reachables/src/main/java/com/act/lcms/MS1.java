@@ -102,8 +102,8 @@ public class MS1 {
     }
 
     if (numWithinPrecision > maxDetectionsInWindow) {
-      System.out.format("Only expected %d, but found %d in the mz range [%f, %f]\n", maxDetectionsInWindow,
-          numWithinPrecision, mzLowRange, mzHighRange);
+      //System.out.format("Only expected %d, but found %d in the mz range [%f, %f]\n", maxDetectionsInWindow,
+      //    numWithinPrecision, mzLowRange, mzHighRange);
     }
 
     return intensityFound;
