@@ -5,7 +5,9 @@ import chemaxon.formats.MolImporter;
 import chemaxon.reaction.ReactionException;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
+import com.act.biointerpretation.sars.NoSar;
 import com.act.biointerpretation.sars.Sar;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -13,19 +15,22 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public abstract class L2Expander {
+public abstract class L2Expander implements Serializable {
+  private static final long serialVersionUID = 5846728290095735668L;
 
   private static transient final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
 
   private static transient final String INCHI_IMPORT_SETTINGS = "inchi";
 
   // This SAR accepts every substrate
-  protected static final List<Sar> NO_SAR = Collections.unmodifiableList(Collections.emptyList());
+  protected static transient final Sar NO_SAR = new NoSar();
 
+  @JsonIgnore
   private PredictionGenerator generator;
 
   public abstract Iterable<PredictionSeed> getPredictionSeeds();
