@@ -303,15 +303,6 @@ public class AnalysisHelper {
       for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
         String ion = ms1ForIon.getKey();
         List<XZ> ms1 = ms1ForIon.getValue();
-
-        for (XZ ms12 : ms1) {
-          if (ms12.getIntensity() > 0.0) {
-            System.out.println("Value seems good");
-          } else {
-            System.out.println("Value seems bad");
-          }
-        }
-
         peakData.addIonIntensityTimeValueToChemical(chemicalName, ion, ms1);
       }
     }
