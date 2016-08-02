@@ -346,6 +346,7 @@ public class MS1 {
     /* Note: this operation is O(n * m) where n is the number of (mass, intensity) readings from the scan
      * and m is the number of mass targets specified.  We might be able to get this down to O(m log n), but
      * we'll save that for once we get this working at all. */
+    int counter = 0;
     while (ms1Iterator.hasNext()) {
       LCMSSpectrum timepoint = ms1Iterator.next();
 
@@ -362,6 +363,8 @@ public class MS1 {
         // we now add the timepoint val and the intensity to the output
         XZ intensityAtThisTime = new XZ(timepoint.getTimeVal(), intensityForMz);
         scanLists.get(ionMz).add(intensityAtThisTime);
+        System.out.println("counter is " + counter);
+        counter++;
       }
     }
 
