@@ -43,10 +43,6 @@ public class UniprotInstaller {
   private static final String PMID = "PMID";
   private static final String CATALYTIC_ACTIVITY = "catalytic_activity";
 
-  //  http://www.ncbi.nlm.nih.gov/Sequin/acc.html
-  private static final Pattern PROTEIN_ACCESSION_PATTERN = Pattern.compile("\\w{3}\\d{5}");
-  private static final Pattern NUCLEOTIDE_ACCESSION_PATTERN = Pattern.compile("\\w\\d{5}|\\w{2}\\d{6}");
-
   //  http://www.uniprot.org/help/accession_numbers
   private static final Pattern UNIPROT_ACCESSION_PATTERN = Pattern.compile("[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}");
 
@@ -191,8 +187,9 @@ public class UniprotInstaller {
         metadata.put(ACCESSION, accessions);
       } else {
         metadata = updateAccessions(accessions, metadata, Seq.AccType.genbank_nucleotide,
-            NUCLEOTIDE_ACCESSION_PATTERN);
-        metadata = updateAccessions(accessions, metadata, Seq.AccType.genbank_protein, PROTEIN_ACCESSION_PATTERN);
+            GenbankInstaller.NUCLEOTIDE_ACCESSION_PATTERN);
+        metadata = updateAccessions(accessions, metadata, Seq.AccType.genbank_protein,
+            GenbankInstaller.PROTEIN_ACCESSION_PATTERN);
         metadata = updateAccessions(accessions, metadata, Seq.AccType.uniprot, UNIPROT_ACCESSION_PATTERN);
       }
 

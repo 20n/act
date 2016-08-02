@@ -51,8 +51,8 @@ public class GenbankInstaller {
   private static final String PATENT = "Patent";
 
   //  http://www.ncbi.nlm.nih.gov/Sequin/acc.html
-  private static final Pattern PROTEIN_ACCESSION_PATTERN = Pattern.compile("\\w{3}\\d{5}");
-  private static final Pattern NUCLEOTIDE_ACCESSION_PATTERN = Pattern.compile("\\w\\d{5}|\\w{2}\\d{6}");
+  static final Pattern PROTEIN_ACCESSION_PATTERN = Pattern.compile("[a-zA-Z]{3}\\d{5}");
+  static final Pattern NUCLEOTIDE_ACCESSION_PATTERN = Pattern.compile("[a-zA-Z]\\d{5}|[a-zA-Z]{2}\\d{6}");
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class is the driver to write sequence data from a Genbank file to our database. It can be used on the ",
