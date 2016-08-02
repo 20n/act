@@ -161,7 +161,9 @@ public class AnalysisHelper {
       setOfMZs.add(searchMZ);
     }
 
+    System.out.println("getting multiple ms1s");
     Map<Pair<String, Double>, MS1ScanForWellAndMassCharge> res = mm.getMultipleMS1s(setOfMZs, localScanFile.getAbsolutePath());
+    System.out.println("finished getting multiple ms1s");
 
     for (Map.Entry<Pair<String, Double>, MS1ScanForWellAndMassCharge> entry : res.entrySet()) {
       Map<String, Double> singletonMass2 = new HashMap<>();
@@ -284,6 +286,8 @@ public class AnalysisHelper {
       Plate> plateCache, T well, boolean useFineGrainedMZTolerance, boolean useSNRForPeakIdentification) throws Exception {
 
     ScanFile bestScanFile = pickNewestScanFileForWell(db, well);
+
+    System.out.println("Going to process scan");
     Map<Pair<String, Double>, ScanData<T>> result =
     processScanAndMapToMZ(db, lcmsDir, searchMZs, kind, plateCache, bestScanFile, well, useFineGrainedMZTolerance, useSNRForPeakIdentification);
 

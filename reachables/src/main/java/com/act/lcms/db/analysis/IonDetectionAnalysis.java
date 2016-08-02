@@ -335,6 +335,8 @@ public class IonDetectionAnalysis {
       chemicalCounter++;
     }
 
+    System.out.println("The number of mass charges are: " + searchMZs.size());
+
     Double threshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_THRESHOLD));
 
     try (DB db = DB.openDBFromCLI(cl)) {
