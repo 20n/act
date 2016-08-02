@@ -149,17 +149,15 @@ public class IonDetectionAnalysis {
     @Override
     public boolean equals(Object o) {
       if (!(o instanceof ChemicalAndIon)) return false;
-      ChemicalAndIon that = (ChemicalAndIon)o;
-
-      return this.chemical.equals(that.chemical) && this.getIon().equals(that.ion);
+      ChemicalAndIon that = (ChemicalAndIon) o;
+      return this.chemical.equals(that.getChemical()) && this.getIon().equals(that.getIon());
     }
 
     @Override
     public int hashCode() {
-      int hash = "magic".hashCode();
-      if (this.chemical != null) hash ^= this.chemical.hashCode();
-      if (this.ion != null) hash ^= this.ion.hashCode();
-      return hash;
+      int result = this.chemical != null ? this.chemical.hashCode() : 0;
+      result = 31 * result + (this.ion != null ? this.ion.hashCode() : 0);
+      return result;
     }
   }
 
@@ -325,6 +323,14 @@ public class IonDetectionAnalysis {
     }
 
     br.close();
+
+    for (Map.Entry<Double, Set<ChemicalAndIon>> test : massChargeToChemicalAndIon.entrySet()) {
+      System.out.println(test.getKey());
+      for (ChemicalAndIon i : test.getValue()) {
+        System.out.println(i.getChemical());
+        System.out.println(i.getIon());
+      }
+    }
 
     Integer chemicalCounter = 0;
     Map<String, Double> chemIDToMassCharge = new HashMap<>();
