@@ -74,7 +74,11 @@ public class IonAnalysisInterchangeModel {
       List<HitOrMiss> model1Mols = model1.getResults().get(i).getMolecules();
       List<HitOrMiss> model2Mols = model2.getResults().get(i).getMolecules();
 
-      for (int j = 0; j < model1.getResults().size(); j++) {
+      if (model1Mols.size() != model2Mols.size()) {
+        System.out.println("Irregular");
+      }
+
+      for (int j = 0; j < model1Mols.size(); j++) {
         if (model1Mols.get(j).getIntensity() > 1000.0 && model1Mols.get(j).getSnr() > 10000.0 && model1Mols.get(j).getTime() > 15.0 &&
             model2Mols.get(j).getIntensity() > 1000.0 && model2Mols.get(j).getSnr() > 10000.0 && model2Mols.get(j).getTime() > 15.0) {
           resultSet.add(model1Mols.get(j).getInchi());
