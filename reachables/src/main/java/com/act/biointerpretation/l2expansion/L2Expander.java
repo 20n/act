@@ -21,9 +21,9 @@ import java.util.List;
 
 public abstract class L2Expander {
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
+  private static transient final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
 
-  private static final String INCHI_IMPORT_SETTINGS = "inchi";
+  private static transient final String INCHI_IMPORT_SETTINGS = "inchi";
 
   // This SAR accepts every substrate
   protected static final List<Sar> NO_SAR = Collections.unmodifiableList(Collections.emptyList());
