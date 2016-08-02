@@ -14,8 +14,6 @@ import java.util.Map;
 public class TSVWriter<K, V> implements AutoCloseable {
 
   public static final CSVFormat TSV_FORMAT = CSVFormat.newFormat('\t').
-      withRecordSeparator('\n').withQuote('"').withIgnoreEmptyLines(true).withHeader();
-  public static final CSVFormat TSV_FORMAT_NO_HEADERS = CSVFormat.newFormat('\t').
       withRecordSeparator('\n').withQuote('"').withIgnoreEmptyLines(true);
   private List<K> header;
   private CSVPrinter printer;
@@ -36,7 +34,7 @@ public class TSVWriter<K, V> implements AutoCloseable {
     if (!append) {
       open(f);
     } else {
-      printer = new CSVPrinter(new FileWriter(f, true), TSV_FORMAT_NO_HEADERS);
+      printer = new CSVPrinter(new FileWriter(f, true), TSV_FORMAT);
     }
   }
 

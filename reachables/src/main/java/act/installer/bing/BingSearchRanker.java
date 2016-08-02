@@ -351,13 +351,11 @@ public class BingSearchRanker {
    * @return inchiChunks: a list of "chunks", smaller sets of strings
    */
   private List<Set<String>> getInchiChunks(Set<String> inchis, Integer chunkSize) {
-    Integer counter = 0;
     List<Set<String>> inchiChunks = new ArrayList<>();
     Set<String> inchiChunk = new HashSet<>();
     for (String inchi: inchis) {
       inchiChunk.add(inchi);
-      counter++;
-      if (counter % chunkSize == 0) {
+      if (inchiChunk.size() == chunkSize) {
         inchiChunks.add(inchiChunk);
         inchiChunk = new HashSet<>();
       }
@@ -411,8 +409,9 @@ public class BingSearchRanker {
   public void writeBingSearchRanksAsTSV(Set<String> inchis, String outputPath) throws IOException {
 
     List<Set<String>> inchiChunks = getInchiChunks(inchis, INCHI_CHUNK_SIZE);
+    LOGGER.info("%d chunks of maximum size %d were found!", inchiChunks.size(), INCHI_CHUNK_SIZE);
     if (inchiChunks.size() == 0) {
-      LOGGER.error("0 chunks where found when dividing the set in chunks");
+      LOGGER.info("No chunks found. Exiting!");
       System.exit(1);
     }
     writeBingSearchRanksAsTSVForInchiChunk(inchiChunks.get(0), outputPath, false);
