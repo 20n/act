@@ -6,15 +6,14 @@ import chemaxon.reaction.ReactionException;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.sars.Sar;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,6 +24,7 @@ public abstract class L2Expander {
   private static transient final String INCHI_IMPORT_SETTINGS = "inchi";
 
   // This SAR accepts every substrate
+  @JsonIgnore
   protected static transient final Sar NO_SAR = new Sar() {
     @Override
     public boolean test(List<Molecule> substrates) {
