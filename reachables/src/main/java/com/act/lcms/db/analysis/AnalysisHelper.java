@@ -12,16 +12,13 @@ import com.act.lcms.db.model.ScanFile;
 import com.act.lcms.db.model.StandardIonResult;
 import com.act.lcms.db.model.StandardWell;
 import com.act.lcms.plotter.WriteAndPlotMS1Results;
-import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -91,6 +88,7 @@ public class AnalysisHelper {
 
       for (ScanFile sf : scanFiles) {
         if (sf.getFileType() != ScanFile.SCAN_FILE_TYPE.NC) {
+          // TODO: Migrate sysem.err to LOGGER framework
           System.err.format("Skipping scan file with non-NetCDF format: %s\n", sf.getFilename());
           continue;
         }
@@ -123,8 +121,8 @@ public class AnalysisHelper {
           }
 
           maxIntensity = Math.max(ms1ScanResults.getMaxYAxis(), maxIntensity);
-          //System.out.format("Max intensity for target %s (%f) in %s is %f\n",
-          //    searchMZ.getLeft(), searchMZ.getRight(), sf.getFilename(), ms1ScanResults.getMaxYAxis());
+          System.out.format("Max intensity for target %s (%f) in %s is %f\n",
+              searchMZ.getLeft(), searchMZ.getRight(), sf.getFilename(), ms1ScanResults.getMaxYAxis());
           // TODO: purge the MS1 spectra from ms1ScanResults if this ends up hogging too much memory.
           allScans.add(new ScanData<T>(kind, plate, well, sf, searchMZ.getLeft(), metlinMasses, ms1ScanResults));
         }
@@ -169,8 +167,8 @@ public class AnalysisHelper {
       Map<String, Double> singletonMass2 = new HashMap<>();
       singletonMass2.put(entry.getKey().getLeft(), entry.getKey().getRight());
 
-      //System.out.format("Max intensity for target %s (%f) in %s is %f\n",
-      //    entry.getKey().getLeft(), entry.getKey().getRight(), scanFile.getFilename(), entry.getValue().getMaxYAxis());
+      System.out.format("Max intensity for target %s (%f) in %s is %f\n",
+          entry.getKey().getLeft(), entry.getKey().getRight(), scanFile.getFilename(), entry.getValue().getMaxYAxis());
 
       result.put(entry.getKey(), new ScanData<T>(kind, plate, well, scanFile, entry.getKey().getLeft(), singletonMass2, entry.getValue()));
     }
@@ -277,7 +275,7 @@ public class AnalysisHelper {
     return newestScanFiles.get(REPRESENTATIVE_INDEX);
   }
 
-  public static String getChemicalNameFromWellInformation(String name, ScanData.KIND kind) {
+  public static String constructPlotName(String name, ScanData.KIND kind) {
     return kind.equals(ScanData.KIND.POS_SAMPLE) ? name + "_Positive" : name + "_Negative";
   }
 
@@ -297,7 +295,7 @@ public class AnalysisHelper {
       MS1ScanForWellAndMassCharge ms1ScanResults = scan.getMs1ScanResults();
       Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
 
-      String chemicalName = getChemicalNameFromWellInformation(entry.getKey().getLeft(), kind);
+      String chemicalName = constructPlotName(entry.getKey().getLeft(), kind);
 
       // read intensity and time data for each metlin mass
       for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {

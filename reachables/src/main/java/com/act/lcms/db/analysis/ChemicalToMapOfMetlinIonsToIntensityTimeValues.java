@@ -131,7 +131,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
       Double maxIntensity = 0.0d;
 
       // Get positive ion results
-      String positiveChemicalName = AnalysisHelper.getChemicalNameFromWellInformation(mz.getLeft(), ScanData.KIND.POS_SAMPLE);
+      String positiveChemicalName = AnalysisHelper.constructPlotName(mz.getLeft(), ScanData.KIND.POS_SAMPLE);
       List<XZ> ionValuesPos = peakDataPos.peakData.get(positiveChemicalName).get(mz.getLeft());
       ms1s.put(positiveChemicalName, ionValuesPos);
       Double localMaxIntensityPos = findMaxIntensity(ionValuesPos);
@@ -143,7 +143,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
 
       // Get negative ion results
       for (ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg : peakDataNegs) {
-        String negativeChemicalName = AnalysisHelper.getChemicalNameFromWellInformation(mz.getLeft(), ScanData.KIND.NEG_CONTROL);
+        String negativeChemicalName = AnalysisHelper.constructPlotName(mz.getLeft(), ScanData.KIND.NEG_CONTROL);
         String negativeChemicalNameId = negativeChemicalName + "_" + negNameCounter.toString();
         List<XZ> ionValuesNeg = peakDataNeg.peakData.get(negativeChemicalName).get(mz.getLeft());
         ms1s.put(negativeChemicalNameId, ionValuesNeg);

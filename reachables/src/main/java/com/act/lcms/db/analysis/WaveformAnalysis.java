@@ -13,7 +13,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 
 public class WaveformAnalysis {
@@ -185,7 +184,7 @@ public class WaveformAnalysis {
     for (Pair<String, Double> mz : searchMZs) {
       Pair<List<XZ>, Map<Double, Double>> positiveXZValuesAndMaxIntensity = compressIntensityAndTimeGraphs(
           ionToIntensityDataPos.getMetlinIonsOfChemical(
-              AnalysisHelper.getChemicalNameFromWellInformation(
+              AnalysisHelper.constructPlotName(
                   mz.getLeft(), ScanData.KIND.POS_SAMPLE)).get(mz.getLeft()), COMPRESSION_CONSTANT);
 
       List<XZ> positiveIntensityTime =
@@ -196,7 +195,7 @@ public class WaveformAnalysis {
         negativeIntensityTimes.add(
             compressIntensityAndTimeGraphs(
                 neg.getMetlinIonsOfChemical(
-                    AnalysisHelper.getChemicalNameFromWellInformation(
+                    AnalysisHelper.constructPlotName(
                         mz.getLeft(), ScanData.KIND.NEG_CONTROL)).get(mz.getLeft()), COMPRESSION_CONSTANT).getLeft());
       }
 
