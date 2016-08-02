@@ -102,12 +102,13 @@ public class SarTree {
 
     while (!nodes.isEmpty()) {
       SarTreeNode nextNode = nodes.remove();
-      if (nextNode.getPercentageHits() > thresholdConfidence && getSubtreeSize(nextNode) >= subtreeThreshold) {
-        sarResults.add(nextNode);
-      } //else {
-        for (SarTreeNode childNode : getChildren(nextNode)) {
-          nodes.add(childNode);
-        //}
+      if (getChildren(nextNode).size() > 1) {
+        if (nextNode.getPercentageHits() > thresholdConfidence && getSubtreeSize(nextNode) >= subtreeThreshold) {
+          sarResults.add(nextNode);
+        }
+      }
+      for (SarTreeNode childNode : getChildren(nextNode)) {
+        nodes.add(childNode);
       }
     }
 
@@ -161,7 +162,6 @@ public class SarTree {
     }
     return nodes;
   }
-
 
 
   private String getChildHierarchyId(SarTreeNode node, int index) {
