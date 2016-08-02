@@ -50,11 +50,11 @@ public class IonAnalysisParser {
       System.exit(1);
     }
 
-    //Set<String> inchis = IonAnalysisInterchangeModel.getAllMoleculeHits2(cl.getOptionValue(OPTION_INPUT_FILE), cl.getOptionValue(OPTION_INPUT_FILE_2));
+    Set<String> inchis = IonAnalysisInterchangeModel.getAllMoleculeHits2(cl.getOptionValue(OPTION_INPUT_FILE), cl.getOptionValue(OPTION_INPUT_FILE_2));
 
-    IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
-    model.loadCorpusFromFile(new File(cl.getOptionValue(OPTION_INPUT_FILE)));
-    Set<String> inchis = model.getAllMoleculeHits3();
+//    IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
+//    model.loadCorpusFromFile(new File(cl.getOptionValue(OPTION_INPUT_FILE)));
+//    Set<String> inchis = model.getAllMoleculeHits3();
 
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(new File("output_inchis.txt")))) {
       for (String inchi : inchis) {
