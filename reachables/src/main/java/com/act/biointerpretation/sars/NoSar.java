@@ -16,4 +16,12 @@ public class NoSar implements Sar, Serializable {
   public boolean test(List<Molecule> substrates) {
     return true;
   }
+
+  Molecule getSubstructure() {
+    return substructure;
+  }
+
+  void setSubstructure(Molecule substructure) {
+    this.substructure = substructure;
+  }
 }
