@@ -91,6 +91,9 @@ public abstract class BiointerpretationProcessor {
     processReactions();
     LOGGER.info("Done processing reactions");
     afterProcessReactions();
+    LOGGER.info("Processing sequences");
+    processSequences();
+    LOGGER.info("Done processing sequences");
 
     long endTime = new Date().getTime();
     LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
@@ -134,6 +137,14 @@ public abstract class BiointerpretationProcessor {
   protected String mapNewChemIdToInChI(Long newChemId) {
     return this.newChemIdToInchi.get(newChemId);
   }
+
+  /**
+   * Process and migrate sequences. This is meant to be overriden, as it does nothing by default.
+   */
+  protected void processSequences() {
+
+  }
+
 
   /**
    * Process and migrate reactions.  Default implementation merely copies, preserving source id.

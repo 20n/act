@@ -2517,7 +2517,7 @@ public class MongoDB {
     };
   }
 
-  private Seq convertDBObjectToSeq(DBObject o) {
+  public Seq convertDBObjectToSeq(DBObject o) {
     long id = (Integer)o.get("_id"); // checked: db type IS int
     String ecnum = (String)o.get("ecnum");
     String org_name = (String)o.get("org");

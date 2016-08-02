@@ -5,6 +5,7 @@ import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Cofactor;
 import act.shared.Reaction;
+import act.shared.Seq;
 import com.mongodb.DBObject;
 import org.json.JSONObject;
 
@@ -95,6 +96,26 @@ public class NoSQLAPI {
       public Chemical next() {
         DBObject o = iter.next();
         return readDB.convertDBObjectToChemical(o);
+      }
+    };
+  }
+
+  public Iterator<Seq> readSeqsFromInKnowledgeGraph() {
+    final DBIterator iter = this.readDB.getDbIteratorOverSeq();
+
+    return new Iterator<Seq>() {
+      @Override
+      public boolean hasNext() {
+        boolean hasNext = iter.hasNext();
+        if (!hasNext)
+          iter.close();
+        return hasNext;
+      }
+
+      @Override
+      public Seq next() {
+        DBObject o = iter.next();
+        return readDB.convertDBObjectToSeq(o);
       }
     };
   }
