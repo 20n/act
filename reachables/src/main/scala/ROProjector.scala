@@ -150,7 +150,7 @@ object ROProjector {
       eroRDD.map(ero => (ero, compute.run(licenseFile, ero, inchis)))
 
     resultsRDD.foreach(pair => {
-      LOGGER.info("Writing results for ERO %d", pair._1.getId)
+      LOGGER.info(s"Writing results for ERO ${pair._1.getId}")
       val outputFile = new File(outputDir, pair._1.getId.toString)
       OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(outputFile, pair._2)
     })
