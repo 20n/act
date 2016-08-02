@@ -44,7 +44,8 @@ public class UniprotInstaller {
   private static final String CATALYTIC_ACTIVITY = "catalytic_activity";
 
   //  http://www.uniprot.org/help/accession_numbers
-  private static final Pattern UNIPROT_ACCESSION_PATTERN = Pattern.compile("[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}");
+  private static final Pattern UNIPROT_ACCESSION_PATTERN =
+      Pattern.compile("[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}");
 
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
@@ -136,7 +137,8 @@ public class UniprotInstaller {
    * @param newAccessionObject the new accession object to load in the new accessions of the given type
    * @param metadata contains the accession object to be updated
    * @param accType the type of accessions to update
-   * @param accessionPattern the accession pattern to validate the accession string according to Genbank/Uniprot standards
+   * @param accessionPattern the accession pattern to validate the accession string according to Genbank/Uniprot
+   *                         standards
    * @return the metadata containing the updated accession mapping
    */
   private JSONObject updateAccessions(JSONObject newAccessionObject, JSONObject metadata, Seq.AccType accType,
@@ -148,7 +150,8 @@ public class UniprotInstaller {
 
       for (int i = 0; i < newAccTypeAccessions.length(); i++) {
         if (!verifyAccession(newAccTypeAccessions.getString(i), accessionPattern)) {
-          LOGGER.error("%s accession not the right format: %s\n", accType.toString(), newAccTypeAccessions.getString(i));
+          LOGGER.error("%s accession not the right format: %s\n", accType.toString(),
+              newAccTypeAccessions.getString(i));
           continue;
         }
 

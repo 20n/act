@@ -176,7 +176,8 @@ public class GenbankInstaller {
    * @param newAccessionObject the new accession object to load in the new accessions of the given type
    * @param metadata contains the accession object to be updated
    * @param accType the type of accessions to update
-   * @param accessionPattern the accession pattern to validate the accession string according to Genbank/Uniprot standards
+   * @param accessionPattern the accession pattern to validate the accession string according to Genbank/Uniprot
+   *                         standards
    * @return the metadata containing the updated accession mapping
    */
   private JSONObject updateAccessions(JSONObject newAccessionObject, JSONObject metadata, Seq.AccType accType,
@@ -188,7 +189,8 @@ public class GenbankInstaller {
 
       for (int i = 0; i < newAccTypeAccessions.length(); i++) {
         if (!verifyAccession(newAccTypeAccessions.getString(i), accessionPattern)) {
-          LOGGER.error("%s accession not the right format: %s\n", accType.toString(), newAccTypeAccessions.getString(i));
+          LOGGER.error("%s accession not the right format: %s\n", accType.toString(),
+              newAccTypeAccessions.getString(i));
           continue;
         }
 

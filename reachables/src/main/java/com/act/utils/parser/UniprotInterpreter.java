@@ -75,7 +75,8 @@ public class UniprotInterpreter {
 
     AminoAcidCompoundSet aminoAcidCompoundSet = AminoAcidCompoundSet.getAminoAcidCompoundSet();
 
-    UniprotProxySequenceReader uniprotProxySequenceReader = new UniprotProxySequenceReader(xmlDocument, aminoAcidCompoundSet);
+    UniprotProxySequenceReader uniprotProxySequenceReader =
+        new UniprotProxySequenceReader(xmlDocument, aminoAcidCompoundSet);
 
     seq = new ProteinSequence(uniprotProxySequenceReader);
 
