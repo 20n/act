@@ -160,6 +160,7 @@ public class L2FilteringDriver {
     LOGGER.info("Reading corpus from file.");
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(corpusFile);
     LOGGER.info("Read in corpus with %d predictions.", predictionCorpus.getCorpus().size());
+    LOGGER.info("Corpus has %d distinct substrates.", predictionCorpus.getUniqueSubstrateInchis().size());
 
     if (cl.hasOption(OPTION_FILTER_SUBSTRATES)) {
       LOGGER.info("Filtering by substrates.");

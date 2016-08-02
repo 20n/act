@@ -135,22 +135,26 @@ public class ProductScorer {
 
     LOGGER.info("Number of sars: %d", scoredSars.getSarTreeNodes().size());
 
-    Function<L2Prediction, Double> confidenceCalculator = new PredictionConfidenceCalculator(scoredSars);
+    Function<L2Prediction, SarTreeNode> confidenceCalculator = new PredictionConfidenceCalculator(scoredSars);
 
-    Map<L2Prediction, Double> predictionScoreMap = new HashMap<>();
+    Map<L2Prediction, SarTreeNode> predictionToSarMap = new HashMap<>();
 
     for (L2Prediction prediction : positiveCorpus.getCorpus()) {
-      Double score = confidenceCalculator.apply(prediction);
-      LOGGER.info("Scored prediction! %f", score);
-      predictionScoreMap.put(prediction, score);
+      SarTreeNode bestSar = confidenceCalculator.apply(prediction);
+      if (bestSar == null) {
+        LOGGER.warn("No SAR found for this prediction.");
+        continue;
+      }
+      predictionToSarMap.put(prediction, bestSar);
+      prediction.setProjectorName(
+          prediction.getProjectorName() + ":" +
+          bestSar.getHierarchyId() + ":" +
+          bestSar.getPercentageHits());
     }
 
-    List<L2Prediction> predictions = new ArrayList<>(predictionScoreMap.keySet());
-    predictions.sort((a,b) -> (predictionScoreMap.get(a) - predictionScoreMap.get(b) >= 0) ? -1 : 1);
-
-    for (L2Prediction prediction : predictions) {
-      LOGGER.info("Score: %f", predictionScoreMap.get(prediction));
-    }
+    List<L2Prediction> predictions = new ArrayList<>(predictionToSarMap.keySet());
+    predictions.sort((a,b) ->
+        (predictionToSarMap.get(a).getPercentageHits() - predictionToSarMap.get(b).getPercentageHits() > 0) ? -1 : 1);
 
     L2PredictionCorpus finalCorpus = new L2PredictionCorpus(predictions);
     finalCorpus.writePredictionsToJsonFile(outputFile);
