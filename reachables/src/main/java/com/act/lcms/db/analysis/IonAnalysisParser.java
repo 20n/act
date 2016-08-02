@@ -13,18 +13,27 @@ import java.io.File;
 import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class IonAnalysisParser {
 
   public static final String OPTION_INPUT_FILE = "i";
+  public static final String OPTION_INPUT_FILE_2 = "t";
 
-   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
+
+  public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
       add(Option.builder(OPTION_INPUT_FILE)
                .argName("input file")
                .desc("The directory where LCMS analysis results live")
                .hasArg().required()
                .longOpt("input-file")
       );
+     add(Option.builder(OPTION_INPUT_FILE_2)
+         .argName("input file2")
+         .desc("The directory where LCMS analysis results live")
+         .hasArg().required()
+         .longOpt("input-file")
+     );
     }};
 
   public static void main(String[] args) throws Exception {
@@ -42,11 +51,9 @@ public class IonAnalysisParser {
       System.exit(1);
     }
 
-    IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
-    model.loadCorpusFromFile(new File(cl.getOptionValue(OPTION_INPUT_FILE)));
-
+    Set<String> inchis = IonAnalysisInterchangeModel.getAllMoleculeHits2(cl.getOptionValue(OPTION_INPUT_FILE), cl.getOptionValue(OPTION_INPUT_FILE_2));
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(new File("output_inchis.txt")))) {
-      for (String inchi : model.getAllMoleculeHits()) {
+      for (String inchi : inchis) {
         predictionWriter.append(inchi);
         predictionWriter.newLine();
       }
