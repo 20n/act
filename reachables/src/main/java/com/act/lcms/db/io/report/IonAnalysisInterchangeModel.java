@@ -61,6 +61,44 @@ public class IonAnalysisInterchangeModel {
     }
   }
 
+  public static Set<String> getAllMoleculeHits2(String file1, String file2) throws IOException {
+
+    Set<String> resultSet = new HashSet<>();
+    IonAnalysisInterchangeModel model1 = new IonAnalysisInterchangeModel();
+    model1.loadCorpusFromFile(new File(file1));
+
+    IonAnalysisInterchangeModel model2 = new IonAnalysisInterchangeModel();
+    model2.loadCorpusFromFile(new File(file2));
+
+    for (int i = 0; i < model1.getResults().size(); i++) {
+      Boolean flag = true;
+      Set<String> miniResultSet = new HashSet<>();
+
+      for (HitOrMiss molecule : model1.getResults().get(i).getMolecules()) {
+        if (molecule.getIntensity() > 1000.0 && molecule.getSnr() > 10000.0 && molecule.getTime() > 15.0) {
+          // do nothing
+          miniResultSet.add(molecule.getInchi());
+        } else {
+          flag = false;
+        }
+      }
+
+      for (HitOrMiss molecule : model2.getResults().get(i).getMolecules()) {
+        if (molecule.getIntensity() > 1000.0 && molecule.getSnr() > 10000.0 && molecule.getTime() > 15.0) {
+          miniResultSet.add(molecule.getInchi());
+        } else {
+          flag = false;
+        }
+      }
+
+      if (flag) {
+        resultSet.addAll(miniResultSet);
+      }
+    }
+
+    return resultSet;
+  }
+
   public Set<String> getAllMoleculeHits() {
     Set<String> resultSet = new HashSet<>();
     for (ResultForMZ resultForMZ : results) {
