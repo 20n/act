@@ -154,7 +154,7 @@ public class ProductScorer {
 
     List<L2Prediction> predictions = new ArrayList<>(predictionToSarMap.keySet());
     predictions.sort((a,b) ->
-        (predictionToSarMap.get(a).getPercentageHits() - predictionToSarMap.get(b).getPercentageHits() > 0) ? -1 : 1);
+        (-Double.compare(predictionToSarMap.get(a).getPercentageHits(), predictionToSarMap.get(b).getPercentageHits())));
 
     L2PredictionCorpus finalCorpus = new L2PredictionCorpus(predictions);
     finalCorpus.writePredictionsToJsonFile(outputFile);
