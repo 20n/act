@@ -16,6 +16,22 @@ import org.joda.time.{DateTime, DateTimeZone}
 import scala.collection.JavaConverters._
 import scala.io.Source
 
+/**
+  * A Spark job that will project the set of single-substrate validation EROs over a list of substrate InChIs.
+  *
+  * Run like:
+  * $ sbt assembly
+  * $ $SPARK_HOME/bin/spark-submit \
+  *   --driver-class-path $PWD/target/scala-2.10/reachables-assembly-0.1.jar \
+  *   --class com.act.biointerpretation.l2expansion.ROProjector \
+  *   --master spark://spark-master:7077 \
+  *   --deploy-mode client --executor-memory 4G \
+  *   $PWD/target/scala-2.10/reachables-assembly-0.1.jar \
+  *   --substrates-list file_of_substrate_inchis \
+  *   -s \
+  *   -o output_file \
+  *   -l license file
+  */
 object compute {
   private val MS_PER_S = 1000.0d
   private val RUNTIME_WARNING_THRESHOLD_S = 60d * 15d; // 15 mins
@@ -24,17 +40,20 @@ object compute {
   def run(licenseFileName: String, ero: Ero, inchis: List[String]): (Double, L2PredictionCorpus) = {
     val startTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val localLicenseFile = SparkFiles.get(licenseFileName)
+
     LOGGER.info(s"Using license file at $localLicenseFile (file exists: ${new File(localLicenseFile).exists()})")
     LicenseManager.setLicenseFile(localLicenseFile)
+
     val expander = new SingleSubstrateRoExpander(List(ero).asJava, inchis.asJava,
       new AllPredictionsGenerator(new ReactionProjector()))
+    val results = expander.getPredictions(null)
+
     val endTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val deltaTS = (endTime.getMillis - startTime.getMillis).toDouble / MS_PER_S
-    LOGGER.info(s"Running projection of ERO with id ${ero.getId} in $deltaTS%0.3f")
+    LOGGER.info(f"Completed projection of ERO ${ero.getId} in $deltaTS%.3fs")
     if (deltaTS > RUNTIME_WARNING_THRESHOLD_S) {
       LOGGER.warn(s"ERO ${ero.getId} required excessive time to complete, please consider refining")
     }
-    val results = expander.getPredictions(null)
     (deltaTS, results)
   }
 }
@@ -87,7 +106,6 @@ object ROProjector {
   val HELP_MESSAGE = "A Spark job that will project the set of validation ROs over a list of substrates."
   HELP_FORMATTER.setWidth(100)
 
-
   // The following were stolen (in haste) from Workflow.scala.
   def parseCommandLineOptions(args: Array[String]): CommandLine = {
     val opts = getCommandLineOptions
@@ -139,7 +157,7 @@ object ROProjector {
     LOGGER.info(s"Loaded and validated ${validInchis.size} InChIs from source file at $substratesListFile")
 
     val inchis = if (cl.hasOption(OPTION_FILTER_FOR_SPECTROMETERY)) {
-      LOGGER.info("Filtering candidate substrates to range accessibly by LCMS")
+      LOGGER.info("Filtering candidate substrates to range accessible by LCMS")
       val filtered = validInchis.filter(x => MolImporter.importMol(x).getMass <= 950.0d)
       LOGGER.info(s"Reduction in substrate list size: ${validInchis.size} -> ${filtered.size}")
       filtered
@@ -184,7 +202,7 @@ object ROProjector {
     }).collect().toList
 
     LOGGER.info("Projection execution time report:")
-    timingPairs.sortWith((a, b) => b._2 >= a._2).foreach(pair => LOGGER.info(s"ERO ${pair._1}%4d: ${pair._2}%0.3f"))
+    timingPairs.sortWith((a, b) => b._2 < a._2).foreach(pair => LOGGER.info(f"ERO ${pair._1}%4d: ${pair._2}%.3fs"))
     LOGGER.info("Done")
   }
 }

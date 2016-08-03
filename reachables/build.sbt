@@ -22,8 +22,6 @@ resolvers ++= {
 test in assembly := {}
 
 libraryDependencies ++= {
-  val akkaV = "2.3.6"
-  val sprayV = "1.3.2"
   Seq(
       "org.mongodb"             %% "casbah" % "2.7.1"
       , "commons-logging"       % "commons-logging" % "1.1.1"
@@ -53,31 +51,9 @@ libraryDependencies ++= {
        * ChEBI is in OWL format, we use OWL API for parsing
        */
       "net.sourceforge.owlapi"  % "owlapi-distribution" % "3.5.1",
-      /*
-       * We have to hack around the fact that spark includes akka v2.2.3
-       * The way to do that is to include the akka dependencies
-       * BEFORE the spark include following this section. Then in assembly
-       * mergeStrategy we use MergeStrategy.last for all akka includes that picks
-       * only the spark included files, and nothing from this section
-      "io.spray"                %%  "spray-can"     % sprayV,
-      "io.spray"                %%  "spray-routing" % sprayV,
-      "io.spray"                %%  "spray-caching" % sprayV,
-      "io.spray"                %%  "spray-testkit" % sprayV  % "test",
-      "com.typesafe.akka"       %%  "akka-remote"   % akkaV,
-      "com.typesafe.akka"       %%  "akka-actor"    % akkaV,
-      "com.typesafe.akka"       %%  "akka-testkit"  % akkaV   % "test",
-      "org.specs2"              %%  "specs2-core"   % "2.3.11" % "test",
-      *
-      */
-       /* spark for distributed processing
-       */
+       /* Spark for distributed processing, now works with SBT assembly! */
       "org.apache.spark"        %% "spark-core" % "1.5.2",
       "org.apache.spark"        %% "spark-mllib" % "1.5.2",
-      /*
-       * breeze is the numerical processing lib used by spark
-       * it is automatically included as a dependency to spark-mllib
-      "org.biojava"             %  "biojava3-core" % "3.1.0"
-       */
       "org.biojava"             % "core"    % "1.9.1",
       "edu.ucar"                % "netcdf4" % "4.5.5",
       "edu.ucar"                % "cdm"     % "4.5.5",

@@ -95,7 +95,6 @@ public class L2ExpansionDriver {
         .desc("The path to the file to which to write the json file of predicted reactions as each projection runs.")
         .hasArg()
         .longOpt("progress-file-path")
-        .required(true)
     );
     add(Option.builder(OPTION_DB)
         .argName("db name")
@@ -174,21 +173,24 @@ public class L2ExpansionDriver {
     }
     outputFile.createNewFile();
 
-
-    String progressPath = cl.getOptionValue(OPTION_PROGRESS_PATH);
-    File progressFile = new File(progressPath);
-    if (progressFile.isDirectory() || progressFile.exists()) {
-      LOGGER.error("Supplied progress file is a directory or already exists.");
-      System.exit(1);
+    File progressFile = null;
+    if (cl.hasOption(OPTION_PROGRESS_PATH)) {
+      String progressPath = cl.getOptionValue(OPTION_PROGRESS_PATH);
+      progressFile = new File(progressPath);
+      LOGGER.info("Writing incremental results to file at %s", progressFile.getAbsolutePath());
+      if (progressFile.isDirectory() || progressFile.exists()) {
+        LOGGER.error("Supplied progress file is a directory or already exists.");
+        System.exit(1);
+      }
     }
-    progressFile.createNewFile();
 
     // Get metabolite list
     List<String> metaboliteList = getInchiList(cl, OPTION_METABOLITES);
 
     PredictionGenerator generator = new AllPredictionsGenerator(new ReactionProjector());
     L2Expander expander = buildExpander(cl, metaboliteList, generator);
-    L2PredictionCorpus predictionCorpus = expander.getPredictions(new FileOutputStream(progressFile));
+    L2PredictionCorpus predictionCorpus =
+        expander.getPredictions(progressFile == null ? null : new FileOutputStream(progressFile));
 
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
 
