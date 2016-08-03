@@ -8,13 +8,15 @@ import org.biojava.nbio.core.sequence.ProteinSequence
 import scala.collection.mutable.ListBuffer
 
 trait QuerySequencesByReactionId extends MongoWorkflowUtilities {
-  val ECNUM = "ecnum"
-  val SEQ = "seq"
-  val METADATA = "metadata"
-  val NAME = "name"
-  val ID = "_id"
-  val RXN_REFS = "rxn_refs"
-  val MECHANISTIC_VALIDATOR = "mechanistic_validator_result"
+  /*
+  Commonly used keywords for this mongo query
+  */
+  private val ECNUM = "ecnum"
+  private val SEQ = "seq"
+  private val METADATA = "metadata"
+  private val NAME = "name"
+  private val ID = "_id"
+  private val RXN_REFS = "rxn_refs"
 
   def querySequencesForSequencesByReactionId(reactionIds: List[String], mongoConnection: MongoDB): List[ProteinSequence] = {
     val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
