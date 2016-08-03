@@ -16,6 +16,8 @@ import java.util.Arrays;
 import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLStreamException;
@@ -45,6 +47,7 @@ public class MS1 {
   public static final Double MS1_MZ_TOLERANCE_FINE = 0.001;
   public static final Double MS1_MZ_TOLERANCE_COARSE = 0.01;
   public static final Double MS1_MZ_TOLERANCE_DEFAULT = MS1_MZ_TOLERANCE_COARSE;
+  private static final Logger LOGGER = LogManager.getFormatterLogger(MS1.class);
 
   // when aggregating the MS1 signal, we do not expect
   // more than these number of measurements within the
@@ -102,8 +105,8 @@ public class MS1 {
     }
 
     if (numWithinPrecision > maxDetectionsInWindow) {
-      //System.out.format("Only expected %d, but found %d in the mz range [%f, %f]\n", maxDetectionsInWindow,
-      //    numWithinPrecision, mzLowRange, mzHighRange);
+      LOGGER.info("Only expected %d, but found %d in the mz range [%f, %f]\n",
+          maxDetectionsInWindow, numWithinPrecision, mzLowRange, mzHighRange);
     }
 
     return intensityFound;
@@ -240,7 +243,9 @@ public class MS1 {
       scanResults.setLogSNRForIon(ionDesc, logSNR);
 
       if (logSNR > -100.0d) {
-        System.out.format("%10s: logSNR: %5.1f Max: %7.0f SignalAvg: %7.0f Ambient Avg: %7.0f %s\n", ionDesc, logSNR, maxIntensity, avgIntensitySignal, avgIntensityAmbient, isGoodPeak(scanResults, ionDesc) ? "INCLUDED" : "");
+        LOGGER.info("%10s: logSNR: %5.1f Max: %7.0f SignalAvg: %7.0f Ambient Avg: %7.0f %s\n",
+            ionDesc, logSNR, maxIntensity, avgIntensitySignal, avgIntensityAmbient,
+            isGoodPeak(scanResults, ionDesc) ? "INCLUDED" : "");
       }
     }
 
@@ -314,7 +319,8 @@ public class MS1 {
     scanResults.setLogSNRForIon(ionDesc, logSNR);
 
     if (logSNR > -100.0d) {
-      System.out.format("%10s: logSNR: %5.1f Max: %7.0f SignalAvg: %7.0f Ambient Avg: %7.0f %s\n", ionDesc, logSNR, maxIntensity, avgIntensitySignal, avgIntensityAmbient, isGoodPeak(scanResults, ionDesc) ? "INCLUDED" : "");
+      LOGGER.info("%10s: logSNR: %5.1f Max: %7.0f SignalAvg: %7.0f Ambient Avg: %7.0f %s\n", ionDesc, logSNR,
+          maxIntensity, avgIntensitySignal, avgIntensityAmbient, isGoodPeak(scanResults, ionDesc) ? "INCLUDED" : "");
     }
   }
 
@@ -343,8 +349,6 @@ public class MS1 {
     // De-dupe by mass in case we have exact duplicates, sort for well-ordered extractions.
     List<Double> sortedMasses = new ArrayList<>(scanLists.keySet());
 
-    System.out.println("before ms1 iterator");
-
     /* Note: this operation is O(n * m) where n is the number of (mass, intensity) readings from the scan
      * and m is the number of mass targets specified.  We might be able to get this down to O(m log n), but
      * we'll save that for once we get this working at all. */
@@ -366,8 +370,6 @@ public class MS1 {
         scanLists.get(ionMz).add(intensityAtThisTime);
       }
     }
-
-    System.out.println("after ms1 iterator");
 
     Map<Pair<String, Double>, MS1ScanForWellAndMassCharge> finalResults =
         new HashMap<>(metlinMasses.size());
@@ -530,7 +532,7 @@ public class MS1 {
 
   private static boolean areNCFiles(String[] fnames) {
     for (String n : fnames) {
-      System.out.println(".nc file = " + n);
+      LOGGER.debug(".nc file = " + n);
       if (!n.endsWith(".nc"))
         return false;
     }
@@ -658,7 +660,7 @@ public class MS1 {
           // until we read from the db, artificial values
           Double concentration = concIdx < concVals.length ? concVals[concIdx] : concVals[concVals.length - 1] * 10 * (concIdx - concVals.length + 1); 
           concIdx++;
-          System.out.format("Well %s label concentration: %e\n", ms1File, concentration);
+          LOGGER.info("Well %s label concentration: %e\n", ms1File, concentration);
           rampUp.add(Pair.of(concentration, ms1ScanResults));
         }
 

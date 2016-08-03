@@ -28,6 +28,8 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import com.act.lcms.XZ;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.joda.time.LocalDateTime;
 
 public class AnalysisHelper {
@@ -36,6 +38,7 @@ public class AnalysisHelper {
   private static final Double MANUAL_OVERRIDE_BEST_SCORE = 0.0d;
   private static final Integer REPRESENTATIVE_INDEX = 0;
   private static final Set<String> EMPTY_SET = Collections.unmodifiableSet(new HashSet<>(0));
+  private static final Logger LOGGER = LogManager.getFormatterLogger(AnalysisHelper.class);
 
   private static <A,B> Pair<List<A>, List<B>> split(List<Pair<A, B>> lpairs) {
     List<A> a = new ArrayList<>();
@@ -76,12 +79,13 @@ public class AnalysisHelper {
         plate = Plate.getPlateById(db, well.getPlateId());
         plateCache.put(plate.getId(), plate);
       }
-      System.out.format("Processing LCMS well %s %s\n", plate.getBarcode(), well.getCoordinatesString());
+
+      LOGGER.info("Processing LCMS well %s %s\n", plate.getBarcode(), well.getCoordinatesString());
 
       List<ScanFile> scanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
           db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
       if (scanFiles == null || scanFiles.size() == 0) {
-        System.err.format("WARNING: No scan files available for %s %s\n",
+        LOGGER.error("WARNING: No scan files available for %s %s\n",
             plate.getBarcode(), well.getCoordinatesString());
         continue;
       }
@@ -89,12 +93,12 @@ public class AnalysisHelper {
       for (ScanFile sf : scanFiles) {
         if (sf.getFileType() != ScanFile.SCAN_FILE_TYPE.NC) {
           // TODO: Migrate sysem.err to LOGGER framework
-          System.err.format("Skipping scan file with non-NetCDF format: %s\n", sf.getFilename());
+          LOGGER.error("Skipping scan file with non-NetCDF format: %s\n", sf.getFilename());
           continue;
         }
         File localScanFile = new File(lcmsDir, sf.getFilename());
         if (!localScanFile.exists() && localScanFile.isFile()) {
-          System.err.format("WARNING: could not find regular file at expected path: %s\n",
+          LOGGER.error("WARNING: could not find regular file at expected path: %s\n",
               localScanFile.getAbsolutePath());
           continue;
         }
@@ -121,8 +125,10 @@ public class AnalysisHelper {
           }
 
           maxIntensity = Math.max(ms1ScanResults.getMaxYAxis(), maxIntensity);
-          //System.out.format("Max intensity for target %s (%f) in %s is %f\n",
-          //    searchMZ.getLeft(), searchMZ.getRight(), sf.getFilename(), ms1ScanResults.getMaxYAxis());
+
+          LOGGER.info("Max intensity for target %s (%f) in %s is %f\n",
+              searchMZ.getLeft(), searchMZ.getRight(), sf.getFilename(), ms1ScanResults.getMaxYAxis());
+
           // TODO: purge the MS1 spectra from ms1ScanResults if this ends up hogging too much memory.
           allScans.add(new ScanData<T>(kind, plate, well, sf, searchMZ.getLeft(), metlinMasses, ms1ScanResults));
         }
@@ -131,7 +137,24 @@ public class AnalysisHelper {
     return Pair.of(allScans, maxIntensity);
   }
 
-  public static <T extends PlateWell<T>> Map<Pair<String, Double>, ScanData<T>> processScanAndMapToMZ(
+  /**
+   * This function gets the intensity-time values for each mass charge in a scan file and packages that up into a mapping
+   * between the mass charge pair and ScanData.
+   * @param db The db to query scan files from
+   * @param lcmsDir The lcms dir where the lcms files are found
+   * @param searchMZs The pair of chemical and mass charge pairs
+   * @param kind The kind of plate the lcms was run over
+   * @param plateCache The plate cache
+   * @param scanFile The scan file being examined
+   * @param well The well being analyzed
+   * @param useFineGrainedMZTolerance boolean for MZ tolerance
+   * @param useSNRForPeakIdentification If true, signal-to-noise ratio will be used for peak identification.  If not, 
+   *                                    peaks will be identified by intensity. 
+   * @param <T> The platewell abstraction
+   * @return A mapping of mass charge to scandata
+   * @throws Exception
+   */
+  public static <T extends PlateWell<T>> Map<Pair<String, Double>, ScanData<T>> getIntensityTimeValuesForEachMassChargeInScanFile(
       DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer, Plate> plateCache,
       ScanFile scanFile, T well, boolean useFineGrainedMZTolerance, boolean useSNRForPeakIdentification) throws Exception {
 
@@ -143,12 +166,13 @@ public class AnalysisHelper {
     }
 
     if (scanFile.getFileType() != ScanFile.SCAN_FILE_TYPE.NC) {
-      System.err.format("Skipping scan file with non-NetCDF format: %s\n", scanFile.getFilename());
+      LOGGER.error("Skipping scan file with non-NetCDF format: %s\n", scanFile.getFilename());
       return null;
     }
+
     File localScanFile = new File(lcmsDir, scanFile.getFilename());
     if (!localScanFile.exists() && localScanFile.isFile()) {
-      System.err.format("WARNING: could not find regular file at expected path: %s\n",
+      LOGGER.error("WARNING: could not find regular file at expected path: %s\n",
           localScanFile.getAbsolutePath());
       return null;
     }
@@ -161,18 +185,21 @@ public class AnalysisHelper {
       setOfMZs.add(searchMZ);
     }
 
-    System.out.println("getting multiple ms1s");
-    Map<Pair<String, Double>, MS1ScanForWellAndMassCharge> res = mm.getMultipleMS1s(setOfMZs, localScanFile.getAbsolutePath());
-    System.out.println("finished getting multiple ms1s");
+    Map<Pair<String, Double>, MS1ScanForWellAndMassCharge> massChargeToMS1Results =
+        mm.getMultipleMS1s(setOfMZs, localScanFile.getAbsolutePath());
 
-    for (Map.Entry<Pair<String, Double>, MS1ScanForWellAndMassCharge> entry : res.entrySet()) {
-      Map<String, Double> singletonMass2 = new HashMap<>();
-      singletonMass2.put(entry.getKey().getLeft(), entry.getKey().getRight());
+    for (Map.Entry<Pair<String, Double>, MS1ScanForWellAndMassCharge> entry : massChargeToMS1Results.entrySet()) {
+      String chemicalName = entry.getKey().getLeft();
+      Double massCharge = entry.getKey().getRight();
+      MS1ScanForWellAndMassCharge ms1ScanForWellAndMassCharge = entry.getValue();
 
-      //System.out.format("Max intensity for target %s (%f) in %s is %f\n",
-      //    entry.getKey().getLeft(), entry.getKey().getRight(), scanFile.getFilename(), entry.getValue().getMaxYAxis());
+      Map<String, Double> singletonMass = new HashMap<>();
+      singletonMass.put(chemicalName, massCharge);
 
-      result.put(entry.getKey(), new ScanData<T>(kind, plate, well, scanFile, entry.getKey().getLeft(), singletonMass2, entry.getValue()));
+      LOGGER.info("Max intensity for target %s (%f) in %s is %f\n",
+          chemicalName, massCharge, scanFile.getFilename(), ms1ScanForWellAndMassCharge.getMaxYAxis());
+
+      result.put(entry.getKey(), new ScanData<>(kind, plate, well, scanFile, chemicalName, singletonMass, ms1ScanForWellAndMassCharge));
     }
     return result;
   }
@@ -210,7 +237,7 @@ public class AnalysisHelper {
         ms1ScanResults.getIonsToSpectra(), maxIntensity, metlinMasses, fos, makeHeatmaps, applyThreshold, ionsToWrite);
     List<String> ionLabels = split(ionsAndLabels).getRight();
 
-    System.out.format("Scan for target %s has ion labels: %s\n", scanData.getTargetChemicalName(),
+    LOGGER.info("Scan for target %s has ion labels: %s\n", scanData.getTargetChemicalName(),
         StringUtils.join(ionLabels, ", "));
 
     List<String> graphLabels = new ArrayList<>(ionLabels.size());
@@ -226,7 +253,8 @@ public class AnalysisHelper {
             scanData.getTargetChemicalName(),
             label
         );
-        System.out.format("Adding graph w/ label %s\n", l);
+
+        LOGGER.info("Adding graph w/ label %s\n", l);
         graphLabels.add(l);
       }
     } else if (scanData.getWell() instanceof StandardWell) {
@@ -240,7 +268,7 @@ public class AnalysisHelper {
             scanData.getTargetChemicalName(),
             label
         );
-        System.out.format("Adding graph w/ label %s\n", l);
+        LOGGER.info("Adding graph w/ label %s\n", l);
         graphLabels.add(l);
       }
     } else {
@@ -248,16 +276,25 @@ public class AnalysisHelper {
           String.format("Graph request for well type %s", scanData.getWell().getClass().getCanonicalName()));
     }
 
-    System.out.format("Done processing file at %s\n", localScanFile.getAbsolutePath());
+    LOGGER.info("Done processing file at %s\n", localScanFile.getAbsolutePath());
     return graphLabels;
   }
 
-  private static <T extends PlateWell<T>> ScanFile pickNewestScanFileForWell(DB db, T well) throws Exception {
+  /**
+   * This function picks the best scan file based on two critereon: a) The scan file has to be a positive scan file
+   * b) The scan file has to be of the latest lcms run for the well.
+   * @param db The db to query scan files from
+   * @param well The well being used for the analysis
+   * @param <T> The platewell type abstraction
+   * @return The best ScanFile
+   * @throws Exception
+   */
+  private static <T extends PlateWell<T>> ScanFile pickBestScanFileForWell(DB db, T well) throws Exception {
     List<ScanFile> scanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
         db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
 
     // TODO: We only analyze positive scan files for now since we are not confident with the negative scan file results.
-    // Since we can perform multiple scans on the same well, we need to categorize the data based on date.
+    // Since we perform multiple scans on the same well, we need to categorize the data based on date.
     TreeMap<LocalDateTime, List<ScanFile>> filteredScansCategorizedByDate = new TreeMap<>();
 
     for (ScanFile scanFile : scanFiles) {
@@ -281,31 +318,54 @@ public class AnalysisHelper {
     return kind.equals(ScanData.KIND.POS_SAMPLE) ? name + "_Positive" : name + "_Negative";
   }
 
+  /**
+   * This function picks the best scan file for a single well and then constructs a
+   * ChemicalToMapOfMetlinIonsToIntensityTimeValues object that contains the intensity-time values for the respective
+   * mass charge values.
+   * @param db The db to query scan files from
+   * @param lcmsDir The lcms dir that contains all the lcms files
+   * @param searchMZs The list of chemical name, mass charge pairs
+   * @param kind The kind of scan files we are looking at
+   * @param plateCache The plate cache
+   * @param well The platewell that is undergoing the analysis
+   * @param useFineGrainedMZTolerance boolean for MZ tolerance
+   * @param useSNRForPeakIdentification If true, signal-to-noise ratio will be used for peak identification.  If not, 
+   *                                    peaks will be identified by intensity. 
+   * @param <T> The platewell type abstraction
+   * @return A ChemicalToMapOfMetlinIonsToIntensityTimeValues object
+   * @throws Exception
+   */
   public static <T extends PlateWell<T>> ChemicalToMapOfMetlinIonsToIntensityTimeValues readScanData(
       DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer,
       Plate> plateCache, T well, boolean useFineGrainedMZTolerance, boolean useSNRForPeakIdentification) throws Exception {
 
-    ScanFile bestScanFile = pickNewestScanFileForWell(db, well);
+    ScanFile bestScanFile = pickBestScanFileForWell(db, well);
 
-    System.out.println("Going to process scan");
-    Map<Pair<String, Double>, ScanData<T>> result =
-    processScanAndMapToMZ(db, lcmsDir, searchMZs, kind, plateCache, bestScanFile, well, useFineGrainedMZTolerance, useSNRForPeakIdentification);
+    Map<Pair<String, Double>, ScanData<T>> massChargePairToScanDataResult = getIntensityTimeValuesForEachMassChargeInScanFile(db, lcmsDir, searchMZs,
+        kind, plateCache, bestScanFile, well, useFineGrainedMZTolerance, useSNRForPeakIdentification);
+
+    if (massChargePairToScanDataResult == null) {
+      LOGGER.error("Scan data results for well does not exist");
+      return null;
+    }
 
     ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = new ChemicalToMapOfMetlinIonsToIntensityTimeValues();
 
-    for (Map.Entry<Pair<String, Double>, ScanData<T>> entry : result.entrySet()) {
+    for (Map.Entry<Pair<String, Double>, ScanData<T>> entry : massChargePairToScanDataResult.entrySet()) {
+      String chemicalName = entry.getKey().getLeft();
       ScanData<T> scan = entry.getValue();
+
       // get all the scan results for each metlin mass combination for a given compound.
       MS1ScanForWellAndMassCharge ms1ScanResults = scan.getMs1ScanResults();
       Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
 
-      String chemicalName = constructPlotName(entry.getKey().getLeft(), kind);
+      String plotName = constructPlotName(chemicalName, kind);
 
       // read intensity and time data for each metlin mass
       for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
         String ion = ms1ForIon.getKey();
         List<XZ> ms1 = ms1ForIon.getValue();
-        peakData.addIonIntensityTimeValueToChemical(chemicalName, ion, ms1);
+        peakData.addIonIntensityTimeValueToChemical(plotName, ion, ms1);
       }
     }
 
@@ -339,7 +399,7 @@ public class AnalysisHelper {
 
     // If there are no scans found, the client should handle this situation. So we return null.
     if (allScans.size() == 0) {
-      System.err.format("WARNING: No scans were found.");
+      LOGGER.error("WARNING: No scans were found.");
       return null;
     }
 
@@ -542,7 +602,7 @@ public class AnalysisHelper {
     }
 
     if (sortedScores.size() == 0) {
-      System.err.format("Could not find any ions corresponding to the positive and negative scan mode conditionals");
+      LOGGER.error("Could not find any ions corresponding to the positive and negative scan mode conditionals");
       return null;
     } else {
       List<String> topMetlinIons = sortedScores.get(sortedScores.keySet().iterator().next());
@@ -587,7 +647,7 @@ public class AnalysisHelper {
 
     File localScanFile = new File(lcmsDir, representativeScanFile.getFilename());
     if (!localScanFile.exists() && localScanFile.isFile()) {
-      System.err.format("WARNING: could not find regular file at expected path: %s\n", localScanFile.getAbsolutePath());
+      LOGGER.error("WARNING: could not find regular file at expected path: %s\n", localScanFile.getAbsolutePath());
       return null;
     }
 
