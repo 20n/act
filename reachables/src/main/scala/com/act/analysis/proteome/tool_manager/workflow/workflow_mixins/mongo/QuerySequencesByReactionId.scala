@@ -18,7 +18,7 @@ trait QuerySequencesByReactionId extends MongoWorkflowUtilities {
   private val ID = "_id"
   private val RXN_REFS = "rxn_refs"
 
-  def querySequencesForSequencesByReactionId(reactionIds: List[String], mongoConnection: MongoDB): List[ProteinSequence] = {
+  def querySequencesForSequencesByReactionId(reactionIds: List[AnyRef], mongoConnection: MongoDB): List[ProteinSequence] = {
     val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
     /*
     Query sequence database for enzyme sequences by looking for enzymes that have an rID

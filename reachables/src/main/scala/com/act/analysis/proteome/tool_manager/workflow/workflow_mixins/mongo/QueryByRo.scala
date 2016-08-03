@@ -11,7 +11,7 @@ trait QueryByRo extends MongoWorkflowUtilities {
   private val ID = "_id"
   private val MECHANISTIC_VALIDATOR = "mechanistic_validator_result"
 
-  def queryReactionsForReactionIdsByRo(roValues: List[String], mongoConnection: MongoDB): List[String] = {
+  def queryReactionsForReactionIdsByRo(roValues: List[String], mongoConnection: MongoDB): List[AnyRef] = {
     val methodLogger = LogManager.getLogger("queryReactionsForReactionIdsByRo")
     /*
       Query Database for Reaction IDs based on a given RO
@@ -34,7 +34,7 @@ trait QueryByRo extends MongoWorkflowUtilities {
       mongoQueryReactions(mongoConnection, reactionIdQuery, reactionIdReturnFilter)
     val dbReactionIds = mongoDbIteratorToSet(dbReactionIdsIterator)
     // Map reactions by their ID, which is the only value we care about here
-    val reactionIds = dbReactionIds.map(x => x.get(ID).asInstanceOf[String]).toList
+    val reactionIds = dbReactionIds.map(x => x.get(ID)).toList
 
     // Exit if there are no reactionIds matching the RO
     reactionIds.size match {
