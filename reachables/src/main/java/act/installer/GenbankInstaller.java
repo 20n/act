@@ -51,9 +51,9 @@ public class GenbankInstaller {
   private static final String PATENT = "Patent";
 
   //  http://www.ncbi.nlm.nih.gov/Sequin/acc.html
-  static final Pattern PROTEIN_ACCESSION_PATTERN = Pattern.compile("[a-zA-Z]{3}\\d{5}");
+  public static final Pattern PROTEIN_ACCESSION_PATTERN = Pattern.compile("[a-zA-Z]{3}\\d{5}");
   // matches WGS and MGA sequence accession patterns since they appear in Nucleotide files as well
-  static final Pattern NUCLEOTIDE_ACCESSION_PATTERN =
+  public static final Pattern NUCLEOTIDE_ACCESSION_PATTERN =
       Pattern.compile("[a-zA-Z]\\d{5}|[a-zA-Z]{2}\\d{6}|[a-zA-Z]{4}\\d{8,10}|[a-zA-Z]{5}\\d{7}");
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
@@ -141,7 +141,7 @@ public class GenbankInstaller {
    * @param accessionPattern the pattern that the accession string should match
    * @return
    */
-  private boolean verifyAccession(String proteinAccession, Pattern accessionPattern) {
+  public static boolean verifyAccession(String proteinAccession, Pattern accessionPattern) {
     return accessionPattern.matcher(proteinAccession).matches();
   }
 
@@ -153,13 +153,13 @@ public class GenbankInstaller {
    * @param data the metadata
    * @return the updated metadata JSONObject
    */
-  private JSONObject updateArrayField(String field, String value, JSONObject data) {
+  public static JSONObject updateArrayField(String field, String value, JSONObject data) {
     if (value == null || value.isEmpty()) {
       return data;
     }
 
     if (data.has(field)) {
-      JSONArray fieldData = (JSONArray) data.get(field);
+      JSONArray fieldData = data.getJSONArray(field);
 
       for (int i = 0; i < fieldData.length(); i++) {
         if (fieldData.get(i).toString().equals(value)) {
@@ -180,7 +180,7 @@ public class GenbankInstaller {
    *                         standards
    * @return the metadata containing the updated accession mapping
    */
-  private JSONObject updateAccessions(JSONObject newAccessionObject, JSONObject metadata, Seq.AccType accType,
+  public static JSONObject updateAccessions(JSONObject newAccessionObject, JSONObject metadata, Seq.AccType accType,
                                       Pattern accessionPattern) {
     JSONObject oldAccessionObject = metadata.getJSONObject(ACCESSION);
 

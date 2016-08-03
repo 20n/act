@@ -44,7 +44,7 @@ public class UniprotInstaller {
   private static final String CATALYTIC_ACTIVITY = "catalytic_activity";
 
   //  http://www.uniprot.org/help/accession_numbers
-  private static final Pattern UNIPROT_ACCESSION_PATTERN =
+  public static final Pattern UNIPROT_ACCESSION_PATTERN =
       Pattern.compile("[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}");
 
 
@@ -120,7 +120,7 @@ public class UniprotInstaller {
     }
 
     if (data.has(field)) {
-      JSONArray fieldData = (JSONArray) data.get(field);
+      JSONArray fieldData = data.getJSONArray(field);
 
       for (int i = 0; i < fieldData.length(); i++) {
         if (fieldData.get(i).toString().equals(value)) {
