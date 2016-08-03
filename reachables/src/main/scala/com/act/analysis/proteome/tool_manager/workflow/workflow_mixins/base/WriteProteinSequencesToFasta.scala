@@ -9,14 +9,8 @@ import org.biojava.nbio.core.sequence.io.FastaWriterHelper
 import scala.collection.JavaConverters._
 
 trait WriteProteinSequencesToFasta {
-  val OPTION_OUTPUT_FASTA_FILE_PREFIX: String
-
-  /*
-   Write to output
-  */
-  def writeProteinSequencesToFasta(proteinSequences: List[ProteinSequence], context: Map[String, Any]) {
+  def writeProteinSequencesToFasta(proteinSequences: List[ProteinSequence], outputFasta: String) {
     val methodLogger = LogManager.getLogger("writeProteinSequencesToFasta")
-    val outputFasta = context(OPTION_OUTPUT_FASTA_FILE_PREFIX).toString
 
     if (proteinSequences.length < 1) {
       methodLogger.error("No sequences found after filtering for values with no sequences")

@@ -4,8 +4,8 @@ import com.act.analysis.proteome.tool_manager.jobs.ScalaJob
 import com.act.analysis.proteome.tool_manager.jobs.management.JobManager
 
 object ScalaJobWrapper {
-  def wrapScalaFunction(f: Map[String, Any] => Unit, arguments: Map[String, Any], retryJob: Boolean = false): ScalaJob = {
-    val job = new ScalaJob(f, arguments)
+  def wrapScalaFunction(f: () => Unit, retryJob: Boolean = false): ScalaJob = {
+    val job = new ScalaJob(f)
     if (!retryJob)
       JobManager.addJob(job)
 

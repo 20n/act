@@ -1,4 +1,4 @@
-package com.act.analysis.proteome.tool_manager.workflow.workflow_mixins.base
+package com.act.analysis.proteome.tool_manager.workflow.workflow_mixins.mongo
 
 import act.server.MongoDB
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}

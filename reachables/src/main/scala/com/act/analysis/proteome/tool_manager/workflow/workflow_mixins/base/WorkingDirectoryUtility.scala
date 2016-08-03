@@ -3,14 +3,11 @@ package com.act.analysis.proteome.tool_manager.workflow.workflow_mixins.base
 import java.io.File
 
 import org.apache.commons.cli.CommandLine
+import org.apache.logging.log4j.LogManager
 
 trait WorkingDirectoryUtility {
-  // Setup file pathing
-  val OPTION_WORKING_DIRECTORY_PREFIX: String
-
-  def defineFilePath(cl: CommandLine, optionName: String, identifier: String, defaultValue: String): String = {
-    val workingDirectory = cl.getOptionValue(OPTION_WORKING_DIRECTORY_PREFIX, null)
-
+  def defineOutputFilePath(cl: CommandLine, optionName: String, identifier: String, defaultValue: String, workingDirectory: String): String = {
+    val methodLogger = LogManager.getLogger("workingDirectoryFilePathDefinition")
     // Spaces tend to be bad for file names
     val filteredIdentifier = identifier.replace(" ", "_")
 
@@ -18,6 +15,25 @@ trait WorkingDirectoryUtility {
     val fileNameHead = cl.getOptionValue(optionName, defaultValue)
     val fileName = s"${fileNameHead}_$filteredIdentifier"
 
-    new File(workingDirectory, fileName).getAbsolutePath
+    val finalFilePath = new File(workingDirectory, fileName).getAbsolutePath
+    methodLogger.info(s"The final file path for file $optionName was $finalFilePath")
+    finalFilePath
+  }
+
+  def verifyInputFilePath(inputFile: String, workingDirectory: String = null): Boolean = {
+    val methodLogger = LogManager.getLogger("verifyInputFilePath")
+    val filePath = new File(workingDirectory, inputFile)
+
+    if (!filePath.exists()) {
+      methodLogger.error(s"The input file ${filePath.getAbsolutePath} does not exist.")
+      return false
+    }
+
+    if (filePath.isDirectory) {
+      methodLogger.error(s"The input file ${filePath.getAbsolutePath} is a directory, not a file as required.")
+      return false
+    }
+
+    true
   }
 }

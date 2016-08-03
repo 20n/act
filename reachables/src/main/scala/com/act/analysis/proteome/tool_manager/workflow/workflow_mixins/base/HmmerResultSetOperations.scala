@@ -5,18 +5,16 @@ import java.io.{File, FileWriter}
 import com.act.analysis.proteome.files.HmmResultParser
 
 trait HmmerResultSetOperations {
-  val SET_LOCATION: String
-  val OPTION_RO_ARG_PREFIX: String
-  val OPTION_RESULT_FILE_PREFIX: String
 
-
+  private val UNION_SET = "union.set"
+  private val INTERSECTION_SET = "intersection.set"
   /**
     * On a list of hmmer result files, creates a file containing all the proteins available in those files.
     *
-    * @param context Passes which RO arg and the location that the set should be stored at.
     */
-  def setUnionCompareOfHmmerSearchResults(context: Map[String, Any]): Unit = {
-    val setList = createSetFromHmmerResults(context)
+  def setUnionCompareOfHmmerSearchResults(resultFile: List[String], setLocation: String, roArg: String)(): Unit = {
+
+    val setList = createSetFromHmmerResults(resultFile)
 
     // Sequentially apply sets
     var movingSet = setList.head
@@ -24,44 +22,44 @@ trait HmmerResultSetOperations {
       movingSet = movingSet.union(set)
     }
 
-    saveSet(new File(context(SET_LOCATION).asInstanceOf[String], s"${context(OPTION_RO_ARG_PREFIX)}.union.set"), movingSet)
+    saveSet(new File(setLocation, s"$roArg.$UNION_SET"), movingSet)
   }
 
   /**
     * On a list of hmmer result files,
     * creates a file containing the intersection between all the proteins in those files.
     *
-    * @param context Passes which RO arg and the location that the set should be stored at.
     */
-  def setIntersectionCompareOfHmmerSearchResults(context: Map[String, Any]): Unit = {
+  def setIntersectionCompareOfHmmerSearchResults(resultFile: List[String], setLocation: String, roArg: String)(): Unit = {
     // Given a set of result files, create a set of all proteins contained within, either disjoint or union
-    val setList = createSetFromHmmerResults(context)
+    val setList = createSetFromHmmerResults(resultFile)
 
     // Sequentially apply sets
     var movingSet = setList.head
     for (set <- setList.tail) {
       movingSet = movingSet.intersect(set)
     }
-    saveSet(new File(
-      context(SET_LOCATION).asInstanceOf[String],
-      s"${context(OPTION_RO_ARG_PREFIX)}.intersection.set"),
-      movingSet)
+    saveSet(new File(setLocation, s"$roArg.$INTERSECTION_SET"), movingSet)
   }
 
   /**
     * Given a set of hmmer files, creates sets from their top-ranked sequences.
     *
-    * @param context Passes all the result files.
-    *
     * @return
     */
-  private def createSetFromHmmerResults(context: Map[String, Any]): List[Set[String]] = {
+  private def createSetFromHmmerResults(resultFileNames: List[String]): List[Set[String]] = {
     // Given a set of result files, create a set of all proteins contained within, either disjoint or union
-    val resultFiles = context(OPTION_RESULT_FILE_PREFIX).asInstanceOf[List[String]]
-
     // Create list of sets
-    val fileList = resultFiles.map(HmmResultParser.parseFile)
-    fileList.map(x => x.map(y => y(HmmResultParser.HmmResultLine.SEQUENCE_NAME)).toSet)
+
+    // This is a List[List[HmmResultLines]]
+    // Each member of the first list is a unique file, and the List[HmmResultLines] are all the lines from that file.
+    val resultFileLinesForEachFile = resultFileNames.map(HmmResultParser.parseFile)
+
+    // For each file in our list, as defined above, we map all the lines in that files to
+    // a list of their sequence names, and then turn that list of names into a set.
+    // Therefore, we get a List[Set[String]] where each member of
+    // List is a unique Set of Sequence Names found in that result file.
+    resultFileLinesForEachFile.map(x => x.map(y => y(HmmResultParser.HmmResultLine.SEQUENCE_NAME)).toSet)
   }
 
   /**
