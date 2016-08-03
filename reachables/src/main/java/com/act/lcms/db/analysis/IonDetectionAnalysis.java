@@ -324,7 +324,7 @@ public class IonDetectionAnalysis {
     BufferedReader br = new BufferedReader(new FileReader(inputPredictionCorpus));
 
     // Get the inchis from input file
-    String product = null;
+    String product;
     while ((product = br.readLine()) != null) {
       product = product.replace("\n", "");
       try {
