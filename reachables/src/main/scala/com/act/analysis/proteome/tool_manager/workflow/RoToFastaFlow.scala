@@ -53,12 +53,15 @@ class RoToFastaFlow extends {
     // Grab the ec number
     val ro = cl.getOptionValue(OPTION_RO_ARG_PREFIX)
 
+    val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY_PREFIX, null)
+
     // Setup all the constant paths here
-    val outputFastaPath = defineFilePath(
+    val outputFastaPath = defineOutputFilePath(
       cl,
       OPTION_OUTPUT_FASTA_FILE_PREFIX,
       "RO_" + ro,
-      "output.fasta"
+      "output.fasta",
+      workingDir
     )
 
     // Create the FASTA file out of all the relevant sequences.
@@ -66,8 +69,7 @@ class RoToFastaFlow extends {
       OPTION_RO_ARG_PREFIX -> ro,
       OPTION_OUTPUT_FASTA_FILE_PREFIX -> outputFastaPath
     )
-    val ecNumberToFasta =
-      ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos, ecNumberToFastaContext)
+    val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos(List(ro), outputFastaPath) _)
     headerJob.thenRun(ecNumberToFasta)
 
     headerJob

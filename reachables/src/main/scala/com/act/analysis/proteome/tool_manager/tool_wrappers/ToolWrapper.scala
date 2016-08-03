@@ -28,6 +28,10 @@ abstract class ToolWrapper {
     val job = new ShellJob(command)
     if (!retryJob)
       JobManager.addJob(job)
+
+    // Auto log
+    job.writeOutputStreamToLogger()
+    job.writeErrorStreamToLogger()
     job
   }
 

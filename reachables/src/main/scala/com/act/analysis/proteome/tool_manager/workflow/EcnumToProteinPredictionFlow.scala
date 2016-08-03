@@ -86,67 +86,72 @@ class EcnumToProteinPredictionFlow extends {
   def defineWorkflow(cl: CommandLine): Job = {
     logger.info("Finished processing command line information")
     // Align sequence so we can build an HMM
+    val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY_PREFIX, null)
+
+    if (!verifyInputFilePath(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_ARG_PREFIX))) {
+      throw new RuntimeException(s"Clustal binary path was not valid. " +
+        s"Given path was ${cl.getOptionValue(OPTION_CLUSTAL_BINARIES_ARG_PREFIX)}")
+    }
+
     ClustalOmegaWrapper.setBinariesLocation(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_ARG_PREFIX))
     val proteomeLocation = cl.getOptionValue(OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX)
+
+    if (!verifyInputFilePath(proteomeLocation)) {
+      throw new RuntimeException(s"Proteome file location was not valid.  Given input was $proteomeLocation.")
+    }
+
 
     // Grab the ec number
     val ec_num = cl.getOptionValue(OPTION_EC_NUM_ARG_PREFIX)
 
 
     // Setup all the constant paths here
-    val outputFastaPath = defineFilePath(
+    val outputFastaPath = defineOutputFilePath(
       cl,
       OPTION_OUTPUT_FASTA_FILE_PREFIX,
       "EC_" + ec_num,
-      "output.fasta"
+      "output.fasta",
+      workingDir
     )
 
-    val alignedFastaPath = defineFilePath(
+    val alignedFastaPath = defineOutputFilePath(
       cl,
       OPTION_ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX,
       "EC_" + ec_num,
-      "output.aligned.fasta"
+      "output.aligned.fasta",
+      workingDir
     )
 
-    val outputHmmPath = defineFilePath(
+    val outputHmmPath = defineOutputFilePath(
       cl,
       OPTION_OUTPUT_HMM_ARG_PREFIX,
       "EC_" + ec_num,
-      "output.hmm"
+      "output.hmm",
+      workingDir
     )
 
-    val resultFilePath = defineFilePath(
+    val resultFilePath = defineOutputFilePath(
       cl,
       OPTION_RESULT_FILE_ARG_PREFIX,
       "EC_" + ec_num,
-      "output.hmm.result"
+      "output.hmm.result",
+      workingDir
     )
 
     // Create the FASTA file out of all the relevant sequences.
-    val ecNumberToFastaContext = Map(
-      OPTION_EC_NUM_ARG_PREFIX -> ec_num,
-      OPTION_OUTPUT_FASTA_FILE_PREFIX -> outputFastaPath
-    )
-    val ecNumberToFasta =
-      ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingEcnums, ecNumberToFastaContext)
+    val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingEcnums(ec_num, outputFastaPath) _)
     headerJob.thenRun(ecNumberToFasta)
 
     // Align Fasta sequence
     val alignFastaSequences = ClustalOmegaWrapper.alignProteinFastaFile(outputFastaPath, alignedFastaPath)
-    alignFastaSequences.writeOutputStreamToLogger()
-    alignFastaSequences.writeErrorStreamToLogger()
     headerJob.thenRun(alignFastaSequences)
 
     // Build a new HMM
     val buildHmmFromFasta = HmmerWrapper.hmmbuild(outputHmmPath, alignedFastaPath)
-    buildHmmFromFasta.writeErrorStreamToLogger()
-    buildHmmFromFasta.writeOutputStreamToLogger()
     headerJob.thenRun(buildHmmFromFasta)
 
     // Use the built HMM to find novel proteins
     val searchNewHmmAgainstPanProteome = HmmerWrapper.hmmsearch(outputHmmPath, proteomeLocation, resultFilePath)
-    searchNewHmmAgainstPanProteome.writeErrorStreamToLogger()
-    searchNewHmmAgainstPanProteome.writeOutputStreamToLogger()
     headerJob.thenRun(searchNewHmmAgainstPanProteome)
 
     headerJob

@@ -12,14 +12,8 @@ import org.apache.logging.log4j.LogManager
 import scala.collection.mutable.ListBuffer
 
 
-class RoToProteinPredictionFlow extends {
-  val SET_LOCATION = "setLocation"
-  val OPTION_OUTPUT_FASTA_FILE_PREFIX = "f"
-  val OPTION_RESULT_FILE_PREFIX = "o"
-  val OPTION_WORKING_DIRECTORY_PREFIX = "w"
-  val OPTION_RO_ARG_PREFIX = "r"
-}
-  with Workflow
+class RoToProteinPredictionFlow
+  extends Workflow
   with RoToSequences
   with HmmerResultSetOperations
   with WorkingDirectoryUtility {
@@ -27,11 +21,16 @@ class RoToProteinPredictionFlow extends {
   override val HELP_MESSAGE = "Workflow to convert RO numbers into protein predictions based on HMMs."
   private val logger = LogManager.getLogger(getClass.getName)
 
+  private val OPTION_OUTPUT_FASTA_FILE_PREFIX = "f"
+  private val OPTION_RESULT_FILE_PREFIX = "o"
+  private val OPTION_WORKING_DIRECTORY_PREFIX = "w"
+  private val OPTION_RO_ARG_PREFIX = "r"
   private val OPTION_ALIGNED_FASTA_FILE_OUTPUT_PREFIX = "a"
   private val OPTION_OUTPUT_HMM_PREFIX = "m"
   private val OPTION_SET_UNION_PREFIX = "u"
   private val OPTION_SET_INTERSECTION_PREFIX = "i"
   private val OPTION_CLUSTAL_BINARIES_PREFIX = "c"
+  private val OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX = "l"
 
 
   override def getCommandLineOptions: Options = {
@@ -82,6 +81,12 @@ class RoToProteinPredictionFlow extends {
         desc("Set the location of where the ClustalOmega binaries are located at").
         required(true),
 
+      CliOption.builder(OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX).
+        longOpt("proteome-location").
+        hasArg.
+        desc("Location of the proteome file that the constructed HMM should be searched against").
+        required(true),
+
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
 
@@ -94,28 +99,25 @@ class RoToProteinPredictionFlow extends {
 
   def defineWorkflow(cl: CommandLine): Job = {
     logger.info("Finished processing command line information")
+
+    val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY_PREFIX, null)
+
     // Align sequence so we can build an HMM
+    if (!verifyInputFilePath(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_PREFIX))) {
+      throw new RuntimeException(s"Clustal binary path was not valid. " +
+        s"Given path was ${cl.getOptionValue(OPTION_CLUSTAL_BINARIES_PREFIX)}")
+    }
+
     ClustalOmegaWrapper.setBinariesLocation(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_PREFIX))
+    val proteomeLocation = cl.getOptionValue(OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX)
 
-    val panProteomeLocation = "/Volumes/shared-data/Michael/PanProteome/pan_proteome.fasta"
-
-    // Setup file pathing
-    val workingDirectory = cl.getOptionValue(OPTION_WORKING_DIRECTORY_PREFIX, null)
-
-    def defineFilePath(optionName: String, identifier: String, defaultValue: String): String = {
-      // Spaces tend to be bad for file names
-      val filteredIdentifier = identifier.replace(" ", "_")
-
-      // <User chosen or default file name>_<UID> ... Add UID to end in case absolute file path is supplied
-      val fileNameHead = cl.getOptionValue(optionName, defaultValue)
-      val fileName = s"${fileNameHead}_$filteredIdentifier"
-
-      new File(workingDirectory, fileName).getAbsolutePath
+    if (!verifyInputFilePath(proteomeLocation)) {
+      throw new RuntimeException(s"Proteome file location was not valid.  Given input was $proteomeLocation.")
     }
 
     // Making into a list will make it so that we just send the whole package to one job.
     // Keeping as individual options will cause individual runs.
-    val ro_args = cl.getOptionValues(OPTION_RO_ARG_PREFIX).toList
+    val ro_args: List[String] = cl.getOptionValues(OPTION_RO_ARG_PREFIX).toList
     val setQuery = cl.hasOption(OPTION_SET_UNION_PREFIX) | cl.hasOption(OPTION_SET_INTERSECTION_PREFIX)
 
     /*
@@ -123,45 +125,49 @@ class RoToProteinPredictionFlow extends {
      if we are processing a list of single RO values, or a List[List[String]] to keep the API consistent.
      Then, it just iterates over only a single roContext in roContexts, passing the List[String] as the entire context
       */
-    val roContexts = if (setQuery) ro_args.asInstanceOf[List[String]] else List(ro_args.asInstanceOf[List[String]])
+    val roContexts: List[List[String]] = if (setQuery) ro_args.map(List(_)) else List(ro_args)
 
     // For use later by set compare if option is set.
     val resultFilesBuffer = ListBuffer[String]()
 
     for (roContext <- roContexts) {
       // Setup all the constant paths here
-      val outputFastaPath = defineFilePath(
+      val outputFastaPath = defineOutputFilePath(
+        cl,
         OPTION_OUTPUT_FASTA_FILE_PREFIX,
         roContext.toString,
-        "output.fasta"
+        "output.fasta",
+        workingDir
       )
 
-      val alignedFastaPath = defineFilePath(
+      val alignedFastaPath = defineOutputFilePath(
+        cl,
         OPTION_ALIGNED_FASTA_FILE_OUTPUT_PREFIX,
         roContext.toString,
-        "output.aligned.fasta"
+        "output.aligned.fasta",
+        workingDir
       )
 
-      val outputHmmPath = defineFilePath(
+      val outputHmmPath = defineOutputFilePath(
+        cl,
         OPTION_OUTPUT_HMM_PREFIX,
         roContext.toString,
-        "output.hmm"
+        "output.hmm",
+        workingDir
       )
 
-      val resultFilePath = defineFilePath(
+      val resultFilePath = defineOutputFilePath(
+        cl,
         OPTION_RESULT_FILE_PREFIX,
         roContext.toString,
-        "output.hmm.result"
+        "output.hmm.result",
+        workingDir
       )
 
       resultFilesBuffer.append(resultFilePath)
 
       // Create the FASTA file out of all the relevant sequences.
-      val roToFastaContext = Map(
-        OPTION_RO_ARG_PREFIX -> roContext,
-        OPTION_OUTPUT_FASTA_FILE_PREFIX -> outputFastaPath
-      )
-      val roToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos, roToFastaContext)
+      val roToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos(roContext, outputFastaPath) _)
       headerJob.thenRunAtPosition(roToFasta, 0)
 
       // Align Fasta sequence
@@ -177,26 +183,32 @@ class RoToProteinPredictionFlow extends {
       headerJob.thenRunAtPosition(buildHmmFromFasta, 2)
 
       // Use the built HMM to find novel proteins
-      val searchNewHmmAgainstPanProteome = HmmerWrapper.hmmsearch(outputHmmPath, panProteomeLocation, resultFilePath)
+      val searchNewHmmAgainstPanProteome = HmmerWrapper.hmmsearch(outputHmmPath, proteomeLocation, resultFilePath)
       searchNewHmmAgainstPanProteome.writeErrorStreamToLogger()
       searchNewHmmAgainstPanProteome.writeOutputStreamToLogger()
       headerJob.thenRunAtPosition(searchNewHmmAgainstPanProteome, 3)
     }
 
-    // Run set operations
-    val setContext = Map(
-      OPTION_RESULT_FILE_PREFIX -> resultFilesBuffer.toList,
-      SET_LOCATION -> new File(OPTION_RESULT_FILE_PREFIX).getParent,
-      OPTION_RO_ARG_PREFIX -> ro_args.mkString(sep = "_")
-    )
 
     if (cl.hasOption(OPTION_SET_UNION_PREFIX)) {
       // Context = All result files
-      val setJob = ScalaJobWrapper.wrapScalaFunction(setUnionCompareOfHmmerSearchResults, setContext)
+      val setJob = ScalaJobWrapper.wrapScalaFunction(setUnionCompareOfHmmerSearchResults(
+        resultFilesBuffer.toList,
+        new File(OPTION_RESULT_FILE_PREFIX).getParent,
+        ro_args.mkString(sep = "_")
+      ) _
+      )
+
       headerJob.thenRun(setJob)
     }
     if (cl.hasOption(OPTION_SET_INTERSECTION_PREFIX)) {
-      val setJob = ScalaJobWrapper.wrapScalaFunction(setIntersectionCompareOfHmmerSearchResults, setContext)
+      val setJob = ScalaJobWrapper.wrapScalaFunction(setIntersectionCompareOfHmmerSearchResults(
+        resultFilesBuffer.toList,
+        new File(OPTION_RESULT_FILE_PREFIX).getParent,
+        ro_args.mkString(sep = "_")
+      ) _
+      )
+
       headerJob.thenRun(setJob)
     }
 
