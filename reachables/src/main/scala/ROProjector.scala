@@ -139,7 +139,7 @@ object ROProjector {
     LOGGER.info(s"Loaded and validated ${validInchis.size} InChIs from source file at $substratesListFile")
 
     val inchis = if (cl.hasOption(OPTION_FILTER_FOR_SPECTROMETERY)) {
-      LOGGER.info("Filtering candidate substrates to range accessibly by LCMS")
+      LOGGER.info("Filtering candidate substrates to range accessible by LCMS")
       val filtered = validInchis.filter(x => MolImporter.importMol(x).getMass <= 950.0d)
       LOGGER.info(s"Reduction in substrate list size: ${validInchis.size} -> ${filtered.size}")
       filtered
