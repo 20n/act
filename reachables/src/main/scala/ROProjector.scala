@@ -24,17 +24,20 @@ object compute {
   def run(licenseFileName: String, ero: Ero, inchis: List[String]): (Double, L2PredictionCorpus) = {
     val startTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val localLicenseFile = SparkFiles.get(licenseFileName)
+
     LOGGER.info(s"Using license file at $localLicenseFile (file exists: ${new File(localLicenseFile).exists()})")
     LicenseManager.setLicenseFile(localLicenseFile)
+
     val expander = new SingleSubstrateRoExpander(List(ero).asJava, inchis.asJava,
       new AllPredictionsGenerator(new ReactionProjector()))
+    val results = expander.getPredictions(null)
+
     val endTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val deltaTS = (endTime.getMillis - startTime.getMillis).toDouble / MS_PER_S
     LOGGER.info(f"Running projection of ERO with id ${ero.getId} in $deltaTS%.3f")
     if (deltaTS > RUNTIME_WARNING_THRESHOLD_S) {
       LOGGER.warn(s"ERO ${ero.getId} required excessive time to complete, please consider refining")
     }
-    val results = expander.getPredictions(null)
     (deltaTS, results)
   }
 }
@@ -184,7 +187,7 @@ object ROProjector {
     }).collect().toList
 
     LOGGER.info("Projection execution time report:")
-    timingPairs.sortWith((a, b) => b._2 >= a._2).foreach(pair => LOGGER.info(f"ERO ${pair._1}%4d: ${pair._2}%.3f"))
+    timingPairs.sortWith((a, b) => b._2 < a._2).foreach(pair => LOGGER.info(f"ERO ${pair._1}%4d: ${pair._2}%.3f sec"))
     LOGGER.info("Done")
   }
 }
