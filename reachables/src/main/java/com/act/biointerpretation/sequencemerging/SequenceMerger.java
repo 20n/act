@@ -3,6 +3,7 @@ package com.act.biointerpretation.sequencemerging;
 import act.installer.GenbankInstaller;
 import act.installer.UniprotInstaller;
 import act.server.NoSQLAPI;
+import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import com.act.biointerpretation.BiointerpretationProcessor;
@@ -12,9 +13,11 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 public class SequenceMerger extends BiointerpretationProcessor {
   private static final Logger LOGGER = LogManager.getFormatterLogger(SequenceMerger.class);
@@ -60,8 +63,63 @@ public class SequenceMerger extends BiointerpretationProcessor {
     while (sequenceGroupIterator.hasNext()) {
       Map.Entry pair = (Map.Entry) sequenceGroupIterator.next();
       List<Seq> allMatchedSeqs = (List<Seq>) pair.getValue();
+
+      Set<Long> matchedSeqsIDs = new HashSet<>();
+      Set<Long> reactionRefs = new HashSet<>();
+      for (Seq sequence : allMatchedSeqs) {
+        matchedSeqsIDs.add((long) sequence.getUUID());
+        reactionRefs.addAll(sequence.getReactionsCatalyzed());
+      }
+
       Seq mergedSequence = mergeSequences(allMatchedSeqs);
-      // TODO: write mergedSequence to db
+
+      Long id = (long) getNoSQLAPI().getWriteDB().submitToActSeqDB(
+          mergedSequence.get_srcdb(),
+          mergedSequence.get_ec(),
+          mergedSequence.get_org_name(),
+          mergedSequence.getOrgId(),
+          mergedSequence.get_sequence(),
+          mergedSequence.get_references(),
+          mergedSequence.getReactionsCatalyzed(),
+          mergedSequence.getReaction2Substrates(), // HashMap<Long, Set<Long>>
+          mergedSequence.getReaction2Products(), // HashMap<Long, Set<Long>>
+          mergedSequence.getCatalysisSubstratesUniform(),
+          mergedSequence.getCatalysisSubstratesDiverse(),
+          mergedSequence.getCatalysisProductsUniform(),
+          mergedSequence.getCatalysisProductsDiverse(),
+          mergedSequence.getSAR(),
+          MongoDBToJSON.conv(mergedSequence.get_metadata())
+      );
+      // TODO: this id should be updated for the reactions referencing all these merged sequences; grab each reaction and any instance of those matchedids replace it with this new ID
+
+      for (Long reactionRef : reactionRefs) {
+        Reaction reaction = getNoSQLAPI().getReadDB().getReactionFromUUID(reactionRef);
+        Set<JSONObject> proteins = reaction.getProteinData();
+
+        for (JSONObject protein : proteins) {
+          JSONArray sequenceIDs = protein.getJSONArray("sequences");
+          Set<Long> newSequenceIDs = new HashSet<>();
+
+          for (int i = 0; i < sequenceIDs.length(); i++) {
+            if (matchedSeqsIDs.contains(sequenceIDs.getLong(i))) {
+              newSequenceIDs.add(id);
+            } else {
+              newSequenceIDs.add(sequenceIDs.getLong(i));
+            }
+          }
+
+          protein.put("sequences", new JSONArray(newSequenceIDs));
+        }
+
+        reaction.setProteinData(proteins);
+
+        // TODO: need to write new reaction to db, but doesn't this mean all reactions need to be written? This means we may have to call super.processReactions() and super.processChemicals()
+        // for each matching group of sequences, we'll have a new set of reactions that need to be updated
+        // all reactions should be copied to the writeDB prior to processSequences() being called, and then we can update the reactions here since we have the reaction id
+        getNoSQLAPI().getWriteDB().updateActReaction(reaction, reactionRef.intValue());
+
+      }
+
     }
 
   }
@@ -112,7 +170,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
       JSONObject mergedMetadata = mergeMetadata(mergedSequence.get_metadata(), sequence.get_metadata());
       mergedSequence.set_metadata(mergedMetadata);
 
-      // TODO: have to merge reaction and substrate data; are we still keeping this data?
+      // TODO: have to merge reaction refs and substrate and product and SAR data; are we still keeping all of this data?
 
     }
 
