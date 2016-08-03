@@ -47,7 +47,7 @@ public class GenbankSeqEntry extends SequenceEntry {
   private static final String SRC = "src";
   private static final String SYNONYMS = "synonyms";
   private static final String PRODUCT_NAMES = "product_names";
-  private static final String COMMENT = "comment";
+  private static final String XREF = "xref";
   private static final String ACCESSION = "accession";
   private static final Pattern GENE_NAME_PATTERN = Pattern.compile("(\\S*)\\s*.*");
 
@@ -283,7 +283,7 @@ public class GenbankSeqEntry extends SequenceEntry {
     obj.put(NAME, geneName);
     obj.put(SYNONYMS, geneSynonyms);
     obj.put(PRODUCT_NAMES, productNames);
-    obj.put(COMMENT, new ArrayList());
+    obj.put(XREF, new JSONObject());
     obj.put(ACCESSION, accessions);
 
     return MongoDBToJSON.conv(obj);

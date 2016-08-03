@@ -116,7 +116,31 @@ public class SequenceMerger extends BiointerpretationProcessor {
     }
 
     Seq firstSequence = sequences.get(0);
-    firstSequence.set_metadata((JSONObject) firstSequence.get_metadata().remove("proteinExistence"));
+    JSONObject firstSeqMetadata = firstSequence.get_metadata();
+
+    firstSeqMetadata.remove("proteinExistence");
+
+    JSONArray comment = firstSeqMetadata.getJSONArray("comment");
+
+    Set<Long> brendaIds = new HashSet<>();
+    for (int i = 0; i < comment.length(); i++) {
+      JSONObject commentObject = comment.getJSONObject(i);
+      if (commentObject.has("text") && commentObject.has("type") &&
+          commentObject.getString("type").equals("brenda_id")) {
+
+        brendaIds.add(commentObject.getLong("text"));
+
+      }
+    }
+
+    // converting comment JSONArray to xref JSONObject
+    firstSeqMetadata.remove("comment");
+
+    JSONObject xrefObject = new JSONObject();
+    xrefObject.put("brenda_id", brendaIds);
+
+    firstSeqMetadata.put("xref", xrefObject);
+    firstSequence.set_metadata(firstSeqMetadata);
 
     Seq mergedSequence = new Seq(
         -1, // assume ID will be set when the sequence is written to the DB
@@ -182,8 +206,6 @@ public class SequenceMerger extends BiointerpretationProcessor {
   }
 
   private JSONObject mergeMetadata(JSONObject mergedMetadata, JSONObject newMetadata) {
-
-    // we don't bother merging proteinExistence because there is no current Seq entry for which 'metadata.proteinExistence' != new JSONObject
 
     // used to ensure that the new gene name is added to the synonyms list in the case that it doesn't match the old gene name
     boolean geneNameMatches = true;
@@ -267,10 +289,41 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
     }
 
-    // TODO: merge comments; are these necessary? we're gonna move them to metadata.xref
+    // converts old comment JSONArrays to fit the new xref JSONObject model
+    if (newMetadata.has("comment")) {
 
-    JSONArray oldComment = mergedMetadata.getJSONArray("comment");
-    JSONArray newComment = newMetadata.getJSONArray("comment");
+      JSONArray comment = newMetadata.getJSONArray("comment");
+
+      Set<Long> brendaIds = new HashSet<>();
+      for (int i = 0; i < comment.length(); i++) {
+        JSONObject commentObject = comment.getJSONObject(i);
+        if (commentObject.has("text") && commentObject.has("type") &&
+            commentObject.getString("type").equals("brenda_id")) {
+
+          brendaIds.add(commentObject.getLong("text"));
+
+        }
+      }
+
+      if (mergedMetadata.has("xref") && mergedMetadata.getJSONObject("xref").has("brenda_id")) {
+
+        Set<Long> oldBrendaIds = (Set<Long>) mergedMetadata.getJSONObject("xref").getJSONArray("brenda_id");
+
+        for (Long brendaId : brendaIds) {
+          oldBrendaIds.add(brendaId);
+        }
+
+        mergedMetadata.getJSONObject("xref").put("brenda_id", oldBrendaIds);
+
+      } else {
+
+        JSONObject xrefObject = new JSONObject();
+        xrefObject.put("brenda_id", brendaIds);
+        mergedMetadata.put("xref", xrefObject);
+
+      }
+
+    }
 
 
     return mergedMetadata;

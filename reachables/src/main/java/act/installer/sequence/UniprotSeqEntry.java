@@ -32,6 +32,7 @@ public class UniprotSeqEntry extends SequenceEntry {
   private static final String TYPE = "type";
   private static final String TEXT = "text";
   private static final String COMMENT = "comment";
+  private static final String XREF = "xref";
   private static final String CATALYTIC_ACTIVITY = "catalytic activity";
   private static final String CATALYTIC_ACITIVITY_SNAKE = "catalytic_activity";
   private static final String VAL = "val";
@@ -435,7 +436,7 @@ public class UniprotSeqEntry extends SequenceEntry {
     obj.put(NAME, geneName);
     obj.put(SYNONYMS, geneSynonyms);
     obj.put(PRODUCT_NAMES, productNames);
-    obj.put(COMMENT, new ArrayList());
+    obj.put(XREF, new JSONObject());
     obj.put(ACCESSION, accessions);
     obj.put(CATALYTIC_ACITIVITY_SNAKE, catalyticActivity);
 
