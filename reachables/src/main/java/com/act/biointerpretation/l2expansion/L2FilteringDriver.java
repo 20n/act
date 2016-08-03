@@ -31,6 +31,7 @@ public class L2FilteringDriver {
   private static final String OPTION_DB_LOOKUP = "d";
   private static final String OPTION_LOOKUP_TYPES = "L";
   private static final String OPTION_SPLIT_BY_RO = "s";
+  private static final String OPTION_FILTER_SUBSTRATES = "S";
   private static final String OPTION_HELP = "h";
 
   private static final String APPLY_FILTER_POSITIVE = "1";
@@ -90,6 +91,12 @@ public class L2FilteringDriver {
         .desc("If this argument is selected, the input corpus is read in, split up by ro, and written out into a different" +
             "output file for each ro.  The files have the ro id appended to the end of their names.")
         .longOpt("split-by-ro"));
+    add(Option.builder(OPTION_FILTER_SUBSTRATES)
+        .argName("filter substrates path")
+        .desc("If this argument is selected, a list of substrates to keep is fed in, and the corpus is filtered " +
+            "to preserve only predictions with substrates among that list.")
+        .hasArg()
+        .longOpt("filter-substrates"));
     add(Option.builder(OPTION_HELP)
         .argName("help")
         .desc("Prints this help message.")
@@ -154,6 +161,21 @@ public class L2FilteringDriver {
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(corpusFile);
     LOGGER.info("Read in corpus with %d predictions.", predictionCorpus.getCorpus().size());
 
+    if (cl.hasOption(OPTION_FILTER_SUBSTRATES)) {
+      LOGGER.info("Filtering by substrates.");
+      File substratesFile = new File(cl.getOptionValue(OPTION_FILTER_SUBSTRATES));
+      L2InchiCorpus inchis = new L2InchiCorpus();
+      inchis.loadCorpus(substratesFile);
+      Set<String> inchiSet = new HashSet<String>();
+      inchiSet.addAll(inchis.getInchiList());
+
+      predictionCorpus = predictionCorpus.applyFilter(
+          prediction -> inchiSet.contains(prediction.getSubstrateInchis().get(0)));
+
+      predictionCorpus.writePredictionsToJsonFile(outputFile);
+      LOGGER.info("Done writing filtered corpus to file.");
+      return;
+    }
 
     if (cl.hasOption(OPTION_SPLIT_BY_RO)) {
       LOGGER.info("Splitting corpus into distinct corpuses for each ro.");
