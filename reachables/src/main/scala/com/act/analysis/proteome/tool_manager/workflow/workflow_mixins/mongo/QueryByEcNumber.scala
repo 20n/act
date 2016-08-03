@@ -13,7 +13,7 @@ trait QueryByEcNumber extends MongoWorkflowUtilities {
   private val ECNUM = "ecnum"
   private val ID = "_id"
 
-  def queryReactionsForReactionIdsByEcNumber(roughEcnum: String, mongoConnection: MongoDB): List[String] = {
+  def queryReactionsForReactionIdsByEcNumber(roughEcnum: String, mongoConnection: MongoDB): List[AnyRef] = {
     val methodLogger = LogManager.getLogger("queryDbForReactionIdsByEcNumber")
 
     /*
@@ -37,7 +37,7 @@ trait QueryByEcNumber extends MongoWorkflowUtilities {
     val dbReactionIds = mongoDbIteratorToSet(dbReactionIdsIterator)
 
     // Map reactions by their ID, which is the only value we care about here
-    val reactionIds: List[String] = dbReactionIds.map(x => x.get(ID).asInstanceOf[String]).toList
+    val reactionIds = dbReactionIds.map(x => x.get(ID)).toList
 
     // Exit if there are no reactionIds matching the Ecnum
     reactionIds.size match {
