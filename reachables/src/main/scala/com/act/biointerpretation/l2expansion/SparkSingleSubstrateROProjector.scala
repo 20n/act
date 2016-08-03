@@ -67,6 +67,7 @@ object SparkSingleSubstrateROProjector {
   val OPTION_SUBSTRATES_LIST = "i"
   val OPTION_OUTPUT_DIRECTORY = "o"
   val OPTION_FILTER_FOR_SPECTROMETERY = "s"
+  val OPTION_FILTER_REQUIRE_RO_NAMES = "n"
 
   def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -91,6 +92,10 @@ object SparkSingleSubstrateROProjector {
       CliOption.builder(OPTION_FILTER_FOR_SPECTROMETERY).
         longOpt("filter-for-spectrometery").
         desc("Filter potential substrates to those that we think could be detected via LCMS (i.e. <= 950 daltons"),
+
+      CliOption.builder(OPTION_FILTER_REQUIRE_RO_NAMES).
+        longOpt("only-named-eros").
+        desc("Only apply EROs from the validation corpus that have assigned names"),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -147,7 +152,11 @@ object SparkSingleSubstrateROProjector {
     eros.loadValidationCorpus()
     val fullErosList = eros.getRos.asScala
     LOGGER.info("Filtering eros to only those having names and single substrates")
-    val erosList = fullErosList.filter(x => x.getName != null && !x.getName.isEmpty && x.getSubstrate_count == 1)
+    val erosList = if(cl.hasOption(OPTION_FILTER_REQUIRE_RO_NAMES)) {
+      fullErosList.filter(x => x.getName != null && !x.getName.isEmpty && x.getSubstrate_count == 1)
+    } else {
+      fullErosList.filter(x => x.getSubstrate_count == 1)
+    }
     LOGGER.info(s"Reduction in ERO list size: ${fullErosList.size} -> ${erosList.size}")
 
     val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)
