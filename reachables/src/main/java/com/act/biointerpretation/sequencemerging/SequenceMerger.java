@@ -6,12 +6,14 @@ import act.server.NoSQLAPI;
 import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
+import chemaxon.reaction.ReactionException;
 import com.act.biointerpretation.BiointerpretationProcessor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -39,8 +41,12 @@ public class SequenceMerger extends BiointerpretationProcessor {
   }
 
   @Override
-  public void run() {
-    LOGGER.info("processing sequences");
+  public void run() throws IOException, ReactionException{
+    LOGGER.info("copying all reactions");
+    super.processReactions();
+    LOGGER.info("copying all chemicals");
+    super.processChemicals();
+    LOGGER.info("processing sequences for deduplication");
     processSequences();
   }
 
@@ -81,8 +87,8 @@ public class SequenceMerger extends BiointerpretationProcessor {
           mergedSequence.get_sequence(),
           mergedSequence.get_references(),
           mergedSequence.getReactionsCatalyzed(),
-          mergedSequence.getReaction2Substrates(), // HashMap<Long, Set<Long>>
-          mergedSequence.getReaction2Products(), // HashMap<Long, Set<Long>>
+          mergedSequence.getReaction2Substrates(),
+          mergedSequence.getReaction2Products(),
           mergedSequence.getCatalysisSubstratesUniform(),
           mergedSequence.getCatalysisSubstratesDiverse(),
           mergedSequence.getCatalysisProductsUniform(),
@@ -90,35 +96,8 @@ public class SequenceMerger extends BiointerpretationProcessor {
           mergedSequence.getSAR(),
           MongoDBToJSON.conv(mergedSequence.get_metadata())
       );
-      // TODO: this id should be updated for the reactions referencing all these merged sequences; grab each reaction and any instance of those matchedids replace it with this new ID
 
-      for (Long reactionRef : reactionRefs) {
-        Reaction reaction = getNoSQLAPI().getReadDB().getReactionFromUUID(reactionRef);
-        Set<JSONObject> proteins = reaction.getProteinData();
-
-        for (JSONObject protein : proteins) {
-          JSONArray sequenceIDs = protein.getJSONArray("sequences");
-          Set<Long> newSequenceIDs = new HashSet<>();
-
-          for (int i = 0; i < sequenceIDs.length(); i++) {
-            if (matchedSeqsIDs.contains(sequenceIDs.getLong(i))) {
-              newSequenceIDs.add(id);
-            } else {
-              newSequenceIDs.add(sequenceIDs.getLong(i));
-            }
-          }
-
-          protein.put("sequences", new JSONArray(newSequenceIDs));
-        }
-
-        reaction.setProteinData(proteins);
-
-        // TODO: need to write new reaction to db, but doesn't this mean all reactions need to be written? This means we may have to call super.processReactions() and super.processChemicals()
-        // for each matching group of sequences, we'll have a new set of reactions that need to be updated
-        // all reactions should be copied to the writeDB prior to processSequences() being called, and then we can update the reactions here since we have the reaction id
-        getNoSQLAPI().getWriteDB().updateActReaction(reaction, reactionRef.intValue());
-
-      }
+      updateReactionsReferencingDuplicatedSeqs(matchedSeqsIDs, reactionRefs, id);
 
     }
 
@@ -319,6 +298,36 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
     return mergedRefs;
   }
+
+  private void updateReactionsReferencingDuplicatedSeqs(Set<Long> matchedSeqsIDs, Set<Long> reactionRefs, Long newSeqID) {
+    for (Long reactionRef : reactionRefs) {
+      Reaction reaction = getNoSQLAPI().getReadDB().getReactionFromUUID(reactionRef);
+      Set<JSONObject> proteins = reaction.getProteinData();
+
+      for (JSONObject protein : proteins) {
+        JSONArray sequenceIDs = protein.getJSONArray("sequences");
+        Set<Long> newSequenceIDs = new HashSet<>();
+
+        for (int i = 0; i < sequenceIDs.length(); i++) {
+          if (matchedSeqsIDs.contains(sequenceIDs.getLong(i))) {
+            newSequenceIDs.add(newSeqID);
+          } else {
+            newSequenceIDs.add(sequenceIDs.getLong(i));
+          }
+        }
+
+        protein.put("sequences", new JSONArray(newSequenceIDs));
+      }
+
+      reaction.setProteinData(proteins);
+
+      // since reactions are already copied over to the write db while maintaining source ID, we update those reactions
+      getNoSQLAPI().getWriteDB().updateActReaction(reaction, reactionRef.intValue());
+
+    }
+  }
+
+
 
 //  There are multiple Seq entries that are identical in everything but ID (e.g. 93775, 93774)
 //  There are multiple Seq entries that are identical in everything but ID and 'metadata.comment.text', a seemingly irrelevant field that shouldn't warrant different Seq entries (e.g. 51784, 51785)
