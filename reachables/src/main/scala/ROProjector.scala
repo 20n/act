@@ -16,6 +16,22 @@ import org.joda.time.{DateTime, DateTimeZone}
 import scala.collection.JavaConverters._
 import scala.io.Source
 
+/**
+  * A Spark job that will project the set of single-substrate validation EROs over a list of substrate InChIs.
+  *
+  * Run like:
+  * $ sbt assembly
+  * $ $SPARK_HOME/bin/spark-submit \
+  *   --driver-class-path $PWD/target/scala-2.10/reachables-assembly-0.1.jar \
+  *   --class com.act.biointerpretation.l2expansion.ROProjector \
+  *   --master spark://spark-master:7077 \
+  *   --deploy-mode client --executor-memory 4G \
+  *   $PWD/target/scala-2.10/reachables-assembly-0.1.jar \
+  *   --substrates-list file_of_substrate_inchis \
+  *   -s \
+  *   -o output_file \
+  *   -l license file
+  */
 object compute {
   private val MS_PER_S = 1000.0d
   private val RUNTIME_WARNING_THRESHOLD_S = 60d * 15d; // 15 mins
@@ -89,7 +105,6 @@ object ROProjector {
   val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   val HELP_MESSAGE = "A Spark job that will project the set of validation ROs over a list of substrates."
   HELP_FORMATTER.setWidth(100)
-
 
   // The following were stolen (in haste) from Workflow.scala.
   def parseCommandLineOptions(args: Array[String]): CommandLine = {
