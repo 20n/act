@@ -10,13 +10,8 @@ trait QueryByEcNumber extends MongoWorkflowUtilities {
   /*
   Commonly used keywords for this mongo query
   */
-  val ECNUM = "ecnum"
-  val SEQ = "seq"
-  val METADATA = "metadata"
-  val NAME = "name"
-  val ID = "_id"
-  val RXN_REFS = "rxn_refs"
-  val MECHANISTIC_VALIDATOR = "mechanistic_validator_result"
+  private val ECNUM = "ecnum"
+  private val ID = "_id"
 
   def queryReactionsForReactionIdsByEcNumber(roughEcnum: String, mongoConnection: MongoDB): List[String] = {
     val methodLogger = LogManager.getLogger("queryDbForReactionIdsByEcNumber")
