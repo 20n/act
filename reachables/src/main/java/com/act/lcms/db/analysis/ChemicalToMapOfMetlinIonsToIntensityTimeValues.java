@@ -16,8 +16,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
-  private static String fmt = "pdf";
 
+  private static String FMT = "pdf";
   private Map<String, Map<String, List<XZ>>> peakData;
 
   protected ChemicalToMapOfMetlinIonsToIntensityTimeValues() {
@@ -91,7 +91,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
       for (String chemical : orderedPlotChemicalTitles) {
         List<XZ> ionValues = this.peakData.get(chemical).get(ion);
         ms1s.put(chemical, ionValues);
-        Double localMaxIntensity = this.findMaxIntensity(ionValues);
+        Double localMaxIntensity = findMaxIntensity(ionValues);
         maxIntensity = Math.max(maxIntensity, localMaxIntensity);
         individualMaxIntensities.put(chemical, localMaxIntensity);
         metlinMasses.put(chemical, searchMz.getValue());
@@ -103,23 +103,28 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
       String absolutePathWithoutExtension = absolutePathFileWithoutExtension.getAbsolutePath();
 
       plottingUtil.plotSpectra(
-          ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePathWithoutExtension, this.fmt, false, false);
-      ionToPlottingFilePath.put(ion, relativePath + "." + this.fmt);
+          ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePathWithoutExtension, this.FMT, false, false);
+      ionToPlottingFilePath.put(ion, relativePath + "." + this.FMT);
     }
 
     return ionToPlottingFilePath;
   }
 
+  /**
+   * This function plots a combination of positive and negative control intensity-time values.
+   * @param searchMzs A list of mass charge values
+   * @param plottingPath The wells used for the analysis. This variable is mainly used for
+   * @param peakDataPos The postive intensity-time value
+   * @param peakDataNegs The negative controls intensity-time values
+   * @param plottingDirectory The directory where the plots are going to be placed in
+   * @param <T> The platewell abstraction
+   * @return
+   * @throws IOException
+   */
   public static <T extends PlateWell<T>> Map<String, String> plotPositiveAndNegativeControlsForEachMZ(
-      List<Pair<String, Double>> searchMzs, List<T> wells, ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataPos,
+      List<Pair<String, Double>> searchMzs, String plottingPath, ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataPos,
       List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> peakDataNegs, String plottingDirectory)
       throws IOException {
-
-    // This variable is used as a part of the file path dir to uniquely identify the pos/neg wells for the chemical.
-    StringBuilder indexedPath = new StringBuilder();
-    for (T well : wells) {
-      indexedPath.append(Integer.toString(well.getId()) + "-");
-    }
 
     Map<String, String> result = new HashMap<>();
     Map<String, Double> individualMaxIntensities = new HashMap<>();
@@ -139,9 +144,8 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
       individualMaxIntensities.put(positiveChemicalName, localMaxIntensityPos);
       metlinMasses.put(positiveChemicalName, mz.getRight());
 
-      Integer negNameCounter = 0;
-
       // Get negative ion results
+      Integer negNameCounter = 0;
       for (ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg : peakDataNegs) {
         String negativeChemicalName = AnalysisHelper.constructPlotName(mz.getLeft(), ScanData.KIND.NEG_CONTROL);
         String negativeChemicalNameId = negativeChemicalName + "_" + negNameCounter.toString();
@@ -154,15 +158,15 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
         negNameCounter++;
       }
 
-      String relativePath = mz.getRight() + "_" + indexedPath.toString() + "_" + mz.getLeft();
+      String relativePath = mz.getRight() + "_" + plottingPath + "_" + mz.getLeft();
 
       File absolutePathFileWithoutExtension = new File(plottingDirectory, relativePath);
       String absolutePathWithoutExtension = absolutePathFileWithoutExtension.getAbsolutePath();
 
       plottingUtil.plotSpectra(
-          ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePathWithoutExtension, "pdf", false, false);
+          ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePathWithoutExtension, FMT, false, false);
 
-      result.put(mz.getLeft(), relativePath + "." + "pdf");
+      result.put(mz.getLeft(), relativePath + "." + FMT);
     }
 
     return result;

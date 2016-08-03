@@ -18,22 +18,29 @@ import java.util.Set;
 public class IonAnalysisParser {
 
   public static final String OPTION_INPUT_FILE = "i";
-  public static final String OPTION_INPUT_FILE_2 = "t";
+  public static final String OPTION_SECOND_INPUT_FILE = "t";
+  public static final String OPTION_OUTPUT_FILE = "o";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
-      add(Option.builder(OPTION_INPUT_FILE)
-               .argName("input file")
-               .desc("The directory where LCMS analysis results live")
-               .hasArg().required()
-               .longOpt("input-file")
-      );
-     add(Option.builder(OPTION_INPUT_FILE_2)
-         .argName("input file2")
-         .desc("The directory where LCMS analysis results live")
-         .hasArg().required()
-         .longOpt("input-file")
-     );
-    }};
+    add(Option.builder(OPTION_INPUT_FILE)
+        .argName("input file")
+        .desc("The input file containing molecular hit results")
+        .hasArg().required()
+        .longOpt("input-file")
+    );
+    add(Option.builder(OPTION_SECOND_INPUT_FILE)
+        .argName("second input file")
+        .desc("The input file containing molecular hit results")
+        .hasArg().required()
+        .longOpt("second-input-file")
+    );
+    add(Option.builder(OPTION_OUTPUT_FILE)
+        .argName("output file")
+        .desc("The output file to write to")
+        .hasArg().required()
+        .longOpt("output-file")
+    );
+  }};
 
   public static void main(String[] args) throws Exception {
     Options opts = new Options();
@@ -50,13 +57,10 @@ public class IonAnalysisParser {
       System.exit(1);
     }
 
-    Set<String> inchis = IonAnalysisInterchangeModel.getAllMoleculeHits2(cl.getOptionValue(OPTION_INPUT_FILE), cl.getOptionValue(OPTION_INPUT_FILE_2));
+    Set<String> inchis = IonAnalysisInterchangeModel.getAllMoleculeHitsFromTwoGeneratedFiles(
+        cl.getOptionValue(OPTION_INPUT_FILE), cl.getOptionValue(OPTION_SECOND_INPUT_FILE), 1000.0, 10000.0, 15.0);
 
-//    IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
-//    model.loadCorpusFromFile(new File(cl.getOptionValue(OPTION_INPUT_FILE)));
-//    Set<String> inchis = model.getAllMoleculeHits3();
-
-    try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(new File("output_inchis.txt")))) {
+    try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(new File(cl.getOptionValue(OPTION_OUTPUT_FILE))))) {
       for (String inchi : inchis) {
         predictionWriter.append(inchi);
         predictionWriter.newLine();
