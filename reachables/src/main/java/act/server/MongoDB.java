@@ -888,63 +888,14 @@ public class MongoDB {
     this.dbReactions.update(query, obj);
   }
 
-  public void updateSARConstraint(Seq seq) {
-    BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
-    DBObject obj = this.dbSeq.findOne(query);
-    BasicDBList constraints = new BasicDBList();
-    HashMap<Object, SARConstraint> sarConstraints = seq.getSAR().getConstraints();
-    for (Object data : sarConstraints.keySet()) {
-      SARConstraint sc = sarConstraints.get(data);
-      DBObject c = new BasicDBObject();
-      c.put("data"         , data);
-      c.put("presence_req" , sc.presence.toString()); // should_have/should_not_have
-      c.put("contents_req" , sc.contents.toString()); // substructure
-      c.put("requires_req" , sc.requires.toString()); // soft/hard
-      constraints.add(c);
-    }
-    obj.put("sar_constraints", constraints);
-
-    this.dbSeq.update(query, obj);
-  }
-
   public void updateReactionRefsOf(Seq seq) {
     BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
     DBObject obj = this.dbSeq.findOne(query);
     BasicDBList refs = new BasicDBList();
-    BasicDBList substrates_uniform = new BasicDBList();
-    BasicDBList substrates_diverse = new BasicDBList();
-    BasicDBList products_uniform = new BasicDBList();
-    BasicDBList products_diverse = new BasicDBList();
-    BasicDBList rxn2reactants = new BasicDBList();
     for (Long r : seq.getReactionsCatalyzed())
       refs.add(r);
-    for (Long s : seq.getCatalysisSubstratesUniform())
-      substrates_uniform.add(s);
-    for (Long s : seq.getCatalysisSubstratesDiverse())
-      substrates_diverse.add(s);
-    for (Long p : seq.getCatalysisProductsUniform())
-      products_uniform.add(p);
-    for (Long p : seq.getCatalysisProductsDiverse())
-      products_diverse.add(p);
-    HashMap<Long, Set<Long>> rxn2substrates = seq.getReaction2Substrates();
-    HashMap<Long, Set<Long>> rxn2products = seq.getReaction2Products();
-    for (Long r : rxn2substrates.keySet()) {
-      BasicDBList rsub = to_dblist(rxn2substrates.get(r));
-      BasicDBList rprd = to_dblist(rxn2products.get(r));
 
-      DBObject robj = new BasicDBObject();
-      robj.put("rxn", r);
-      robj.put("substrates", rsub);
-      robj.put("products", rprd);
-      rxn2reactants.add(robj);
-    }
     obj.put("rxn_refs", refs);
-    obj.put("substrates_diverse_refs", substrates_diverse);
-    obj.put("substrates_uniform_refs", substrates_uniform);
-    obj.put("products_diverse_refs", products_diverse);
-    obj.put("products_uniform_refs", products_uniform);
-    obj.put("rxn_to_reactants", rxn2reactants);
-
     this.dbSeq.update(query, obj);
   }
 
@@ -2549,43 +2500,11 @@ public class MongoDB {
     Set<String> kywrds = from_dblist(keywords, dummyString);
     Set<String> cikywrds = from_dblist(cikeywords, dummyString);
     Set<Long> rxns_catalyzed = from_dblist(rxn_refs, dummyLong);
-    Set<Long> substrates_uniform = from_dblist(substrates_uniform_refs, dummyLong);
-    Set<Long> substrates_diverse = from_dblist(substrates_diverse_refs, dummyLong);
-    Set<Long> products_uniform = from_dblist(products_uniform_refs, dummyLong);
-    Set<Long> products_diverse = from_dblist(products_diverse_refs, dummyLong);
-
-    HashMap<Long, Set<Long>> rxn2substrates = new HashMap<Long, Set<Long>>();
-    HashMap<Long, Set<Long>> rxn2products = new HashMap<Long, Set<Long>>();
-    if (rxn2reactants != null) {
-      for (Object oo : rxn2reactants) {
-        DBObject robj = (DBObject) oo;
-        Long rid = (Long) robj.get("rxn");
-        Set<Long> r_substrates = from_dblist((BasicDBList) robj.get("substrates"), dummyLong);
-        Set<Long> r_products = from_dblist((BasicDBList) robj.get("products"), dummyLong);
-        rxn2substrates.put(rid, r_substrates);
-        rxn2products.put(rid, r_products);
-      }
-    }
-
-    SAR sar = new SAR();
-    if (sar_constraints != null) {
-      for (Object oo : sar_constraints) {
-        DBObject sc_obj = (DBObject) oo;
-        Object d = sc_obj.get("data");
-        SAR.ConstraintPresent p = SAR.ConstraintPresent.valueOf((String) sc_obj.get("presence_req")); // should_have/should_not_have
-        SAR.ConstraintContent c = SAR.ConstraintContent.valueOf((String) sc_obj.get("contents_req")); // substructure
-        SAR.ConstraintRequire r = SAR.ConstraintRequire.valueOf((String) sc_obj.get("requires_req")); // soft/hard
-        sar.addConstraint(p, c, r, d);
-      }
-    }
 
     return Seq.rawInit(id, ecnum, org_id, org_name, aa_seq, references, meta, src,
                         // the rest of the params are the ones that are typically
                         // "constructed". But since we are reading from the DB, we manually init
-                        kywrds, cikywrds, rxns_catalyzed,
-                        substrates_uniform, substrates_diverse,
-                        products_uniform, products_diverse,
-                        rxn2substrates, rxn2products, sar
+                        kywrds, cikywrds, rxns_catalyzed
                        );
   }
 
@@ -2749,7 +2668,7 @@ public class MongoDB {
     this.dbOrganismNames.createIndex(new BasicDBObject(field,1));
   }
 
-  public int submitToActSeqDB(Seq.AccDB src, String ec, String org, Long org_id, String seq, List<JSONObject> references, Set<Long> rxns, HashMap<Long, Set<Long>> rxn2substrates, HashMap<Long, Set<Long>> rxn2products, Set<Long> substrates_uniform, Set<Long> substrates_diverse, Set<Long> products_uniform, Set<Long> products_diverse, SAR sar, DBObject meta) {
+  public int submitToActSeqDB(Seq.AccDB src, String ec, String org, Long org_id, String seq, List<JSONObject> references, Set<Long> rxns, DBObject meta) {
     BasicDBObject doc = new BasicDBObject();
     int id = new Long(this.dbSeq.count()).intValue();
     doc.put("_id", id);
@@ -2769,35 +2688,6 @@ public class MongoDB {
     Object accession = meta.get("accession");
 
     doc.put("rxn_refs", to_dblist(rxns));
-    doc.put("substrates_uniform_refs", to_dblist(substrates_uniform));
-    doc.put("substrates_diverse_refs", to_dblist(substrates_diverse));
-    doc.put("products_uniform_refs", to_dblist(products_uniform));
-    doc.put("products_diverse_refs", to_dblist(products_diverse));
-
-    Set<DBObject> rxn2reactants = new HashSet<DBObject>();
-    for (Long r : rxn2substrates.keySet()) {
-      BasicDBList rsub = to_dblist(rxn2substrates.get(r));
-      BasicDBList rprd = to_dblist(rxn2products.get(r));
-
-      DBObject robj = new BasicDBObject();
-      robj.put("rxn", r);
-      robj.put("substrates", rsub);
-      robj.put("products", rprd);
-      rxn2reactants.add(robj);
-    }
-    doc.put("rxn_to_reactants", to_dblist(rxn2reactants));
-    BasicDBList constraints = new BasicDBList();
-    HashMap<Object, SARConstraint> sarConstraints = sar.getConstraints();
-    for (Object data : sarConstraints.keySet()) {
-      SARConstraint sc = sarConstraints.get(data);
-      DBObject c = new BasicDBObject();
-      c.put("data"         , data);
-      c.put("presence_req" , sc.presence.toString()); // should_have/should_not_have
-      c.put("contents_req" , sc.contents.toString()); // substructure
-      c.put("requires_req" , sc.requires.toString()); // soft/hard
-      constraints.add(c);
-    }
-    doc.put("sar_constraints", constraints);
 
     this.dbSeq.insert(doc);
 

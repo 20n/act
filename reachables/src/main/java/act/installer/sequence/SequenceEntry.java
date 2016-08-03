@@ -15,13 +15,6 @@ public abstract class SequenceEntry {
   abstract String getSeq();
   abstract List<JSONObject> getRefs();
   abstract Set<Long> getCatalyzedRxns();
-  abstract HashMap<Long, Set<Long>> getCatalyzedRxnsToSubstrates();
-  abstract HashMap<Long, Set<Long>> getCatalyzedRxnsToProducts();
-  abstract Set<Long> getCatalyzedSubstratesUniform();
-  abstract Set<Long> getCatalyzedSubstratesDiverse();
-  abstract Set<Long> getCatalyzedProductsUniform();
-  abstract Set<Long> getCatalyzedProductsDiverse();
-  abstract SAR getSar();
   abstract DBObject getMetadata();
 
   public int writeToDB(MongoDB db, Seq.AccDB src) {
@@ -38,10 +31,6 @@ public abstract class SequenceEntry {
                 getSeq(),
                 getRefs(),
                 getCatalyzedRxns(),
-                getCatalyzedRxnsToSubstrates(), getCatalyzedRxnsToProducts(),
-                getCatalyzedSubstratesUniform(), getCatalyzedSubstratesDiverse(),
-                getCatalyzedProductsUniform(), getCatalyzedProductsDiverse(),
-                getSar(),
                 getMetadata());
 
     return id;

@@ -73,10 +73,6 @@ public class UniprotSeqEntry extends SequenceEntry {
   private Long orgId;
   private List<JSONObject> references;
   private Set<Long> catalyzedRxns;
-  private Set<Long> catalyzedSubstratesDiverse, catalyzedSubstratesUniform;
-  private Set<Long> catalyzedProductsDiverse, catalyzedProductsUniform;
-  private HashMap<Long, Set<Long>> catalyzedRxnsToSubstrates, catalyzedRxnsToProducts;
-  private SAR sar;
 
   private NodeList proteinNodeList;
   private NodeList sequenceNodeList;
@@ -97,7 +93,7 @@ public class UniprotSeqEntry extends SequenceEntry {
     this.sequence = extractSequence();
     this.org = extractOrg();
     this.references = extractReferences();
-    initCatalyzedReactions();
+    this.catalyzedRxns = new HashSet<>();
   }
 
   void init(MongoDB db) {
@@ -118,24 +114,6 @@ public class UniprotSeqEntry extends SequenceEntry {
   public String getEc() { return this.ec; }
   public String getCatalyticActivity() {return this.catalyticActivity; }
   public Set<Long> getCatalyzedRxns() { return this.catalyzedRxns; }
-  public Set<Long> getCatalyzedSubstratesUniform() { return this.catalyzedSubstratesUniform; }
-  public Set<Long> getCatalyzedSubstratesDiverse() { return this.catalyzedSubstratesDiverse; }
-  public Set<Long> getCatalyzedProductsUniform() { return this.catalyzedProductsUniform; }
-  public Set<Long> getCatalyzedProductsDiverse() { return this.catalyzedProductsDiverse; }
-  public HashMap<Long, Set<Long>> getCatalyzedRxnsToSubstrates() { return this.catalyzedRxnsToSubstrates; }
-  public HashMap<Long, Set<Long>> getCatalyzedRxnsToProducts() { return this.catalyzedRxnsToProducts; }
-  public SAR getSar() { return this.sar; }
-
-  private void initCatalyzedReactions() {
-    this.catalyzedRxns = new HashSet<Long>();
-    this.catalyzedSubstratesUniform = new HashSet<Long>();
-    this.catalyzedSubstratesDiverse = new HashSet<Long>();
-    this.catalyzedProductsDiverse = new HashSet<Long>();
-    this.catalyzedProductsUniform = new HashSet<Long>();
-    this.catalyzedRxnsToSubstrates = new HashMap<Long, Set<Long>>();
-    this.catalyzedRxnsToProducts = new HashMap<Long, Set<Long>>();
-    this.sar = new SAR();
-  }
 
   private void checkNodeListLengths() {
     proteinNodeList = seqFile.getElementsByTagName(PROTEIN);

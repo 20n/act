@@ -32,14 +32,6 @@ public class Seq implements Serializable {
   private JSONObject metadata;
 
   private Set<Long> reactionsCatalyzed;
-  private Set<Long> catalysisSubstratesDiverse;
-  private Set<Long> catalysisSubstratesUniform;
-  private Set<Long> catalysisProductsDiverse;
-  private Set<Long> catalysisProductsUniform;
-  private HashMap<Long, Set<Long>> rxn2substrates;
-  private HashMap<Long, Set<Long>> rxn2products;
-
-  private SAR sar;
 
   private String gene_name;
   private String uniprot_activity;
@@ -77,16 +69,7 @@ public class Seq implements Serializable {
     if (this.metadata.has("catalytic_activity"))
       this.catalytic_activity = this.metadata.getString("catalytic_activity");
 
-    this.keywords = new HashSet<String>();
-    this.caseInsensitiveKeywords = new HashSet<String>();
     this.reactionsCatalyzed = new HashSet<Long>();
-    this.catalysisSubstratesDiverse = new HashSet<Long>();
-    this.catalysisSubstratesUniform = new HashSet<Long>();
-    this.catalysisProductsDiverse = new HashSet<Long>();
-    this.catalysisProductsUniform = new HashSet<Long>();
-
-    this.rxn2substrates = new HashMap<Long, Set<Long>>();
-    this.rxn2products = new HashMap<Long, Set<Long>>();
   }
 
   public static Seq rawInit(
@@ -94,11 +77,7 @@ public class Seq implements Serializable {
     long id, String e, Long oid, String o, String s, List<JSONObject> r, DBObject m, AccDB d,
     // the next set of arguments are the ones that are typically "constructed"
     // but here, passed as raw input, e.g., when reading directly from db
-    Set<String> keywords, Set<String> ciKeywords, Set<Long> rxns,
-    Set<Long> substrates_uniform, Set<Long> substrates_diverse,
-    Set<Long> products_uniform, Set<Long> products_diverse,
-    HashMap<Long, Set<Long>> rxn2substrates, HashMap<Long, Set<Long>> rxn2products,
-    SAR sar
+    Set<String> keywords, Set<String> ciKeywords, Set<Long> rxns
   ) {
     Seq seq = new Seq(id, e, oid, o, s, r, m, d);
 
@@ -106,13 +85,6 @@ public class Seq implements Serializable {
     seq.keywords = keywords;
     seq.caseInsensitiveKeywords = ciKeywords;
     seq.reactionsCatalyzed = rxns;
-    seq.catalysisSubstratesDiverse = substrates_diverse;
-    seq.catalysisSubstratesUniform = substrates_uniform;
-    seq.catalysisProductsDiverse = products_diverse;
-    seq.catalysisProductsUniform = products_uniform;
-    seq.rxn2substrates = rxn2substrates;
-    seq.rxn2products = rxn2products;
-    seq.sar = sar;
 
     return seq;
   }
@@ -226,49 +198,10 @@ public class Seq implements Serializable {
   public void addCaseInsensitiveKeyword(String k) { this.caseInsensitiveKeywords.add(k); }
   public void addReactionsCatalyzed(Long r) { this.reactionsCatalyzed.add(r); }
   public Set<Long> getReactionsCatalyzed() { return this.reactionsCatalyzed; }
-  public Set<Long> getCatalysisSubstratesDiverse() { return this.catalysisSubstratesDiverse; }
-  public Set<Long> getCatalysisSubstratesUniform() { return this.catalysisSubstratesUniform; }
-  public Set<Long> getCatalysisProductsDiverse() { return this.catalysisProductsDiverse; }
-  public Set<Long> getCatalysisProductsUniform() { return this.catalysisProductsUniform; }
-  public HashMap<Long, Set<Long>> getReaction2Substrates() { return this.rxn2substrates; }
-  public HashMap<Long, Set<Long>> getReaction2Products() { return this.rxn2products; }
-
-  public void setSAR(SAR sar) { this.sar = sar; }
-  public SAR getSAR() { return this.sar; }
 
   public void set_references(List<JSONObject> refs) { this.references = refs; }
+  public void setReactionsCatalyzed(Set<Long> reactionsCatalyzed) { this.reactionsCatalyzed = reactionsCatalyzed; }
 
-
-  public void addCatalysisSubstrates(Long rxnid, Set<Long> substrates) {
-    // assumes received non-cofactor substrates
-    // splits those received as "diversity" substrates or "common" substrates
-    // e.g., consider gene P11466
-    //     octanoyl-CoA       + L-carnitine <-> CoA + L-octanoylcarnitine
-    //     butanoyl-CoA       + L-carnitine -?> CoA + L-butanoylcarnitine
-    //     dodecanoyl-CoA     + L-carnitine -?> CoA + L-dodecanoylcarnitine
-    //     hexadecanoyl-CoA   + L-carnitine -?> CoA + L-hexadecanoylcarnitine
-    //     acetyl-CoA         + L-carnitine -?> CoA + L-acetylcarnitine
-    //     tetradecanoyl-CoA  + L-carnitine -?> CoA + L-tetradecanoylcarnitine
-    //     acyl-CoA           + L-carnitine <-> CoA + acyl-L-carnitine
-    //     hexanoyl-CoA       + L-carnitine -?> CoA + L-hexanoylcarnitine
-    //     decanoyl-CoA       + L-carnitine -?> CoA + L-decanoylcarnitine
-    //
-    // so for each of these reactions when we receive the entire substrate set
-    // we compare the set against all previously received substrates and any
-    // substrate that is shared with all reactions, we move that to "common"
-    this.rxn2substrates.put(rxnid, substrates);
-
-    this.catalysisSubstratesUniform = get_common(this.rxn2substrates.values());
-    this.catalysisSubstratesDiverse = get_diversity(this.rxn2substrates.values(), this.catalysisSubstratesUniform);
-  }
-
-  public void addCatalysisProducts(Long rxnid, Set<Long> products) {
-    // See commentary in addCatalysisSubstrates for discussion of this code
-    this.rxn2products.put(rxnid, products);
-
-    this.catalysisProductsUniform = get_common(this.rxn2products.values());
-    this.catalysisProductsDiverse = get_diversity(this.rxn2products.values(), this.catalysisProductsUniform);
-  }
 
   private Set<Long> get_common(Collection<Set<Long>> reactants_across_all_rxns) {
     Set<Long> common = null;

@@ -56,7 +56,6 @@ public class SequenceMerger extends BiointerpretationProcessor {
     Map<UniqueSeq, List<Seq>> sequenceGroups = new HashMap<>();
 
     // stores all sequences with the same ecnum, organism, and protein sequence in the same list
-    // TODO: organism prefix matching
     while (sequences.hasNext()) {
       Seq sequence = sequences.next();
       UniqueSeq uniqueSeq = new UniqueSeq(sequence);
@@ -87,13 +86,6 @@ public class SequenceMerger extends BiointerpretationProcessor {
           mergedSequence.get_sequence(),
           mergedSequence.get_references(),
           mergedSequence.getReactionsCatalyzed(),
-          mergedSequence.getReaction2Substrates(),
-          mergedSequence.getReaction2Products(),
-          mergedSequence.getCatalysisSubstratesUniform(),
-          mergedSequence.getCatalysisSubstratesDiverse(),
-          mergedSequence.getCatalysisProductsUniform(),
-          mergedSequence.getCatalysisProductsDiverse(),
-          mergedSequence.getSAR(),
           MongoDBToJSON.conv(mergedSequence.get_metadata())
       );
 
@@ -103,6 +95,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
   }
 
+  // TODO: this class should handle organism prefix matching; will have to adjust orgId as well
   private static class UniqueSeq {
     String ecnum;
     String organism;
@@ -149,11 +142,43 @@ public class SequenceMerger extends BiointerpretationProcessor {
       JSONObject mergedMetadata = mergeMetadata(mergedSequence.get_metadata(), sequence.get_metadata());
       mergedSequence.set_metadata(mergedMetadata);
 
-      // TODO: have to merge reaction refs and substrate and product and SAR data; are we still keeping all of this data?
+      Set<Long> reactionRefs = mergeReactionRefs(mergedSequence.getReactionsCatalyzed(), sequence.getReactionsCatalyzed());
+      mergedSequence.setReactionsCatalyzed(reactionRefs);
+
+      // TODO: we are not merging substrate, product, rxn_to_reactant, sar data; need to get rid of them from everything lol
 
     }
 
     return mergedSequence;
+  }
+
+  private Set<Long> mergeReactionRefs(Set<Long> mergedReactionRefs, Set<Long> newReactionRefs) {
+
+    if (mergedReactionRefs == null || mergedReactionRefs.size() == 0) {
+
+      if (newReactionRefs == null || newReactionRefs.size() == 0) {
+
+        return null;
+
+      }
+
+      return newReactionRefs;
+
+    }
+
+    if (newReactionRefs != null && newReactionRefs.size() != 0) {
+
+      for (Long newReactionRef : newReactionRefs) {
+
+        // Set operations automatically handle the case that the newReactionRef already exists in the mergedReactionRefs
+        mergedReactionRefs.add(newReactionRef);
+
+      }
+
+    }
+
+    return mergedReactionRefs;
+
   }
 
   private JSONObject mergeMetadata(JSONObject mergedMetadata, JSONObject newMetadata) {
@@ -242,7 +267,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
     }
 
-    // TODO: merge comments; are these necessary?
+    // TODO: merge comments; are these necessary? we're gonna move them to metadata.xref
 
     JSONArray oldComment = mergedMetadata.getJSONArray("comment");
     JSONArray newComment = newMetadata.getJSONArray("comment");

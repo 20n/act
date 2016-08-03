@@ -387,14 +387,6 @@ public abstract class BiointerpretationProcessor {
 
     Set<Long> rxnIds = Collections.singleton(newRxnId);
 
-    // Can't use Collections.singletonMap, as MongoDB expects a HashMap explicitly.
-    HashMap<Long, Set<Long>> rxnToSubstrates = new HashMap<>(1);
-    // With help from http://stackoverflow.com/questions/3064423/in-java-how-to-easily-convert-an-array-to-a-set.
-    rxnToSubstrates.put(newRxnId, new HashSet<>(Arrays.asList(rxn.getSubstrates())));
-
-    HashMap<Long, Set<Long>> rxnToProducts = new HashMap<>(1);
-    rxnToProducts.put(newRxnId, new HashSet<>(Arrays.asList(rxn.getProducts())));
-
     JSONArray sequences = oldProtein.getJSONArray("sequences");
     List<Long> newSequenceIds = new ArrayList<>(sequences.length());
     for (int i = 0; i < sequences.length(); i++) {
@@ -420,13 +412,6 @@ public abstract class BiointerpretationProcessor {
           seq.get_sequence(),
           seq.get_references(),
           rxnIds, // Use the reaction's new id (also in substrates/products) instead of the old one.
-          rxnToSubstrates,
-          rxnToProducts,
-          seq.getCatalysisSubstratesUniform(), // These should not have changed due to the migration.
-          seq.getCatalysisSubstratesDiverse(),
-          seq.getCatalysisProductsUniform(),
-          seq.getCatalysisProductsDiverse(),
-          seq.getSAR(),
           MongoDBToJSON.conv(seq.get_metadata())
       );
       // TODO: we should migrate all the seq documents with zero references over to the new DB.

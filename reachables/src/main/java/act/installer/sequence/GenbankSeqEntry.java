@@ -69,10 +69,6 @@ public class GenbankSeqEntry extends SequenceEntry {
   private Long orgId;
   private String ec;
   private Set<Long> catalyzedRxns;
-  private Set<Long> catalyzedSubstratesDiverse, catalyzedSubstratesUniform;
-  private Set<Long> catalyzedProductsDiverse, catalyzedProductsUniform;
-  private HashMap<Long, Set<Long>> catalyzedRxnsToSubstrates, catalyzedRxnsToProducts;
-  private SAR sar;
 
 
   GenbankSeqEntry(AbstractSequence sequence) {
@@ -98,7 +94,7 @@ public class GenbankSeqEntry extends SequenceEntry {
     this.orgId = extractOrgId(db);
     this.references = extractReferences();
     this.matchingSeqs = extractMatchingSeqs(db);
-    initCatalyzedReactions();
+    this.catalyzedRxns = new HashSet<>();
   }
 
   public DBObject getMetadata() { return this.metadata; }
@@ -115,24 +111,6 @@ public class GenbankSeqEntry extends SequenceEntry {
   public String getSeq() { return this.sequence; }
   public String getEc() { return this.ec; }
   public Set<Long> getCatalyzedRxns() { return this.catalyzedRxns; }
-  public Set<Long> getCatalyzedSubstratesUniform() { return this.catalyzedSubstratesUniform; }
-  public Set<Long> getCatalyzedSubstratesDiverse() { return this.catalyzedSubstratesDiverse; }
-  public Set<Long> getCatalyzedProductsUniform() { return this.catalyzedProductsUniform; }
-  public Set<Long> getCatalyzedProductsDiverse() { return this.catalyzedProductsDiverse; }
-  public HashMap<Long, Set<Long>> getCatalyzedRxnsToSubstrates() { return this.catalyzedRxnsToSubstrates; }
-  public HashMap<Long, Set<Long>> getCatalyzedRxnsToProducts() { return this.catalyzedRxnsToProducts; }
-  public SAR getSar() { return this.sar; }
-
-  private void initCatalyzedReactions() {
-    this.catalyzedRxns = new HashSet<Long>();
-    this.catalyzedSubstratesUniform = new HashSet<Long>();
-    this.catalyzedSubstratesDiverse = new HashSet<Long>();
-    this.catalyzedProductsDiverse = new HashSet<Long>();
-    this.catalyzedProductsUniform = new HashSet<Long>();
-    this.catalyzedRxnsToSubstrates = new HashMap<Long, Set<Long>>();
-    this.catalyzedRxnsToProducts = new HashMap<Long, Set<Long>>();
-    this.sar = new SAR();
-  }
 
   private String extractSequence() {
     if (seqType.equals(PROTEIN_SEQ_TYPE)) {

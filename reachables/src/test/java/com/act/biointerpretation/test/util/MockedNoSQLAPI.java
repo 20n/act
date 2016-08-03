@@ -314,18 +314,10 @@ public class MockedNoSQLAPI {
         String seq = invocation.getArgumentAt(4, String.class);
         List<JSONObject> pmids = invocation.getArgumentAt(5, List.class);
         Set<Long> rxns = invocation.getArgumentAt(6, Set.class);
-        HashMap<Long, Set<Long>> rxn2substrates = invocation.getArgumentAt(7, HashMap.class);
-        HashMap<Long, Set<Long>> rxn2products = invocation.getArgumentAt(8, HashMap.class);
-        Set<Long> substrates_uniform = invocation.getArgumentAt(9, Set.class);
-        Set<Long> substrates_diverse = invocation.getArgumentAt(10, Set.class);
-        Set<Long> products_uniform = invocation.getArgumentAt(11, Set.class);
-        Set<Long> products_diverse = invocation.getArgumentAt(12, Set.class);
-        SAR sar = invocation.getArgumentAt(13, SAR.class);
-        DBObject meta = invocation.getArgumentAt(14, DBObject.class);
+        DBObject meta = invocation.getArgumentAt(7, DBObject.class);
 
         writtenSequences.put(id, Seq.rawInit(id, ec, org_id, org, seq, pmids, meta, src,
-            new HashSet<String>(), new HashSet<String>(), rxns, substrates_uniform, substrates_diverse,
-            products_uniform, products_diverse, rxn2substrates, rxn2products, sar));
+            new HashSet<String>(), new HashSet<String>(), rxns));
 
         return id.intValue();
       }
@@ -337,13 +329,6 @@ public class MockedNoSQLAPI {
         any(String.class),
         any(List.class),
         any(Set.class),
-        any(HashMap.class),
-        any(HashMap.class),
-        any(Set.class),
-        any(Set.class),
-        any(Set.class),
-        any(Set.class),
-        any(SAR.class),
         any(DBObject.class)
     );
   }
