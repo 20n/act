@@ -23,7 +23,7 @@ import scala.io.Source
   * $ sbt assembly
   * $ $SPARK_HOME/bin/spark-submit \
   *   --driver-class-path $PWD/target/scala-2.10/reachables-assembly-0.1.jar \
-  *   --class com.act.biointerpretation.l2expansion.ROProjector \
+  *   --class com.act.biointerpretation.l2expansion.SparkSingleROProjector \
   *   --master spark://spark-master:7077 \
   *   --deploy-mode client --executor-memory 4G \
   *   $PWD/target/scala-2.10/reachables-assembly-0.1.jar \
@@ -58,7 +58,7 @@ object compute {
   }
 }
 
-object ROProjector {
+object SparkSingleROProjector {
   private val LOGGER = LogManager.getLogger(getClass)
 
   private val OBJECT_MAPPER = new ObjectMapper()
