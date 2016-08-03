@@ -50,7 +50,7 @@ object compute {
 
     val endTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val deltaTS = (endTime.getMillis - startTime.getMillis).toDouble / MS_PER_S
-    LOGGER.info(f"Running projection of ERO with id ${ero.getId} in $deltaTS%.3f")
+    LOGGER.info(f"Completed projection of ERO ${ero.getId} in $deltaTS%.3fs")
     if (deltaTS > RUNTIME_WARNING_THRESHOLD_S) {
       LOGGER.warn(s"ERO ${ero.getId} required excessive time to complete, please consider refining")
     }
@@ -202,7 +202,7 @@ object ROProjector {
     }).collect().toList
 
     LOGGER.info("Projection execution time report:")
-    timingPairs.sortWith((a, b) => b._2 < a._2).foreach(pair => LOGGER.info(f"ERO ${pair._1}%4d: ${pair._2}%.3f sec"))
+    timingPairs.sortWith((a, b) => b._2 < a._2).foreach(pair => LOGGER.info(f"ERO ${pair._1}%4d: ${pair._2}%.3fs"))
     LOGGER.info("Done")
   }
 }
