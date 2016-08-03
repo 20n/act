@@ -19,7 +19,6 @@ resolvers ++= {
 }
 
 /* To disable tests during assembly, add this directive: `test in assembly := {}` */
-test in assembly := {}
 
 libraryDependencies ++= {
   Seq(
