@@ -30,7 +30,7 @@ object compute {
       new AllPredictionsGenerator(new ReactionProjector()))
     val endTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val deltaTS = (endTime.getMillis - startTime.getMillis).toDouble / MS_PER_S
-    LOGGER.info(s"Running projection of ERO with id ${ero.getId} in $deltaTS%0.3f")
+    LOGGER.info(f"Running projection of ERO with id ${ero.getId} in $deltaTS%0.3f")
     if (deltaTS > RUNTIME_WARNING_THRESHOLD_S) {
       LOGGER.warn(s"ERO ${ero.getId} required excessive time to complete, please consider refining")
     }
@@ -184,7 +184,7 @@ object ROProjector {
     }).collect().toList
 
     LOGGER.info("Projection execution time report:")
-    timingPairs.sortWith((a, b) => b._2 >= a._2).foreach(pair => LOGGER.info(s"ERO ${pair._1}%4d: ${pair._2}%0.3f"))
+    timingPairs.sortWith((a, b) => b._2 >= a._2).foreach(pair => LOGGER.info(f"ERO ${pair._1}%4d: ${pair._2}%0.3f"))
     LOGGER.info("Done")
   }
 }
