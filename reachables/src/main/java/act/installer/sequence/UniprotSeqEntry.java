@@ -36,7 +36,6 @@ public class UniprotSeqEntry extends SequenceEntry {
   private static final String CATALYTIC_ACITIVITY_SNAKE = "catalytic_activity";
   private static final String VAL = "val";
   private static final String SRC = "src";
-  private static final String PROTEIN_EXISTENCE = "proteinExistence";
   private static final String PRIMARY = "primary";
   private static final String SYNONYM = "synonym";
   private static final String FULL_NAME = "fullName";
@@ -433,7 +432,6 @@ public class UniprotSeqEntry extends SequenceEntry {
   private DBObject extractMetadata() {
     JSONObject obj = new JSONObject();
 
-    obj.put(PROTEIN_EXISTENCE, new JSONObject());
     obj.put(NAME, geneName);
     obj.put(SYNONYMS, geneSynonyms);
     obj.put(PRODUCT_NAMES, productNames);

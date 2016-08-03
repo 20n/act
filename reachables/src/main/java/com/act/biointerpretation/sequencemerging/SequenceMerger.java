@@ -116,6 +116,8 @@ public class SequenceMerger extends BiointerpretationProcessor {
     }
 
     Seq firstSequence = sequences.get(0);
+    firstSequence.set_metadata((JSONObject) firstSequence.get_metadata().remove("proteinExistence"));
+
     Seq mergedSequence = new Seq(
         -1, // assume ID will be set when the sequence is written to the DB
         firstSequence.get_ec(),
@@ -144,8 +146,6 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
       Set<Long> reactionRefs = mergeReactionRefs(mergedSequence.getReactionsCatalyzed(), sequence.getReactionsCatalyzed());
       mergedSequence.setReactionsCatalyzed(reactionRefs);
-
-      // TODO: we are not merging substrate, product, rxn_to_reactant, sar data; need to get rid of them from everything lol
 
     }
 
@@ -291,11 +291,15 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
           if (mergedRef.getString("src").equals("PMID") &&
               mergedRef.getString("val").equals(newPmid)) {
+
             pmidExists = true;
+
           }
 
           if (!pmidExists) {
+
             mergedRefs.add(newRef);
+
           }
         }
       } else if (newRef.getString("src").equals("Patent")) {
@@ -311,11 +315,15 @@ public class SequenceMerger extends BiointerpretationProcessor {
               mergedRef.getString("country_code").equals(newCountryCode) &&
               mergedRef.getString("patent_number").equals(newPatentNumber) &&
               mergedRef.getString("patent_year").equals(newPatentYear)) {
+
             patentExists = true;
+
           }
 
           if (!patentExists) {
+
             mergedRefs.add(newRef);
+
           }
         }
       }

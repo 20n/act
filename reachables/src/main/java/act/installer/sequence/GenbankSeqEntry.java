@@ -49,7 +49,6 @@ public class GenbankSeqEntry extends SequenceEntry {
   private static final String PRODUCT_NAMES = "product_names";
   private static final String COMMENT = "comment";
   private static final String ACCESSION = "accession";
-  private static final String PROTEIN_EXISTENCE = "proteinExistence";
   private static final Pattern GENE_NAME_PATTERN = Pattern.compile("(\\S*)\\s*.*");
 
   private AbstractSequence seqObject;
@@ -281,7 +280,6 @@ public class GenbankSeqEntry extends SequenceEntry {
   private DBObject extractMetadata() {
     JSONObject obj = new JSONObject();
 
-    obj.put(PROTEIN_EXISTENCE, new JSONObject());
     obj.put(NAME, geneName);
     obj.put(SYNONYMS, geneSynonyms);
     obj.put(PRODUCT_NAMES, productNames);
