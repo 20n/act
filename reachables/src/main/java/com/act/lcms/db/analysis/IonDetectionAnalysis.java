@@ -1,7 +1,5 @@
 package com.act.lcms.db.analysis;
 
-import com.act.biointerpretation.l2expansion.L2Prediction;
-import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
 import com.act.lcms.MS1;
 import com.act.lcms.MassCalculator;
 import com.act.lcms.XZ;
@@ -22,6 +20,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -36,10 +36,10 @@ import java.util.Set;
 
 public class IonDetectionAnalysis {
 
+  private static final Logger LOGGER = LogManager.getFormatterLogger(IonDetectionAnalysis.class);
   private static final boolean USE_SNR_FOR_LCMS_ANALYSIS = true;
   private static final boolean USE_FINE_GRAINED_TOLERANCE = false;
   private static final String DEFAULT_ION = "M+H";
-  private static final Double MIN_INTENSITY_THRESHOLD = 10000.0;
   private static final Double MIN_SNR_THRESHOLD = 1000.0;
   private static final Double MIN_TIME_THRESHOLD = 15.0;
   private static final String OPTION_LCMS_FILE_DIRECTORY = "d";
@@ -55,9 +55,12 @@ public class IonDetectionAnalysis {
   private static final String HEADER_PLATE_BARCODE = "PLATE_BARCODE";
   private static final Set<String> ALL_HEADERS =
       new HashSet<>(Arrays.asList(HEADER_WELL_TYPE, HEADER_WELL_ROW, HEADER_WELL_COLUMN, HEADER_PLATE_BARCODE));
+  private static Double PROGRESS = 0.0;
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "TODO: write a help message."
+      "This class takes as input an experimental setup containing positive wells and negative control well. Along with this " +
+      "the class also takes in a list of chemicals to be validated by the LCMS analysis. It then performs SNR analysis " +
+      "to detect which chemicals are strongly represented in the LCMS analysis and outputs those in a json file per positive sample"
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
@@ -119,8 +122,6 @@ public class IonDetectionAnalysis {
     OPTION_BUILDERS.addAll(DB.DB_OPTION_BUILDERS);
   }
 
-  private static Double progress = 0.0;
-
   public static class ChemicalAndIon {
     private String chemical;
     private String ion;
@@ -161,6 +162,20 @@ public class IonDetectionAnalysis {
     }
   }
 
+  /**
+   * This function takes a positive well, associated negative control wells and target mass charge values and returns
+   * the peak intensity, time and snr values for each mass charge in a map.
+   * @param lcmsDir The dir where the lcms data live
+   * @param db The db used to extract scan files
+   * @param positiveWell The positive LCMS well under analysis
+   * @param negativeWells The negative LCMS wells to control against
+   * @param plateCache The plate cache
+   * @param searchMZs A list of mass charge values to validate
+   * @param plottingDir The plotting directory
+   * @param <T> The platewell abstraction
+   * @return A mapping of chemical to ion to intensity, time and max peak values
+   * @throws Exception
+   */
   public static <T extends PlateWell<T>> Map<String, Pair<String, Pair<XZ, Double>>> getSnrResultsAndPlotDiagnosticsForEachMoleculeAndItsMetlinIon(
       File lcmsDir, DB db, T positiveWell, List<T> negativeWells, HashMap<Integer, Plate> plateCache, List<Pair<String, Double>> searchMZs,
       String plottingDir) throws Exception {
@@ -171,7 +186,7 @@ public class IonDetectionAnalysis {
       plateCache.put(plate.getId(), plate);
     }
 
-    System.out.println("Reading scan data for positive well");
+    LOGGER.info("Reading scan data for positive well");
 
     ChemicalToMapOfMetlinIonsToIntensityTimeValues positiveWellSignalProfiles = AnalysisHelper.readScanData(
         db,
@@ -184,16 +199,21 @@ public class IonDetectionAnalysis {
         USE_SNR_FOR_LCMS_ANALYSIS);
 
     if (positiveWellSignalProfiles == null) {
-      System.err.println("no positive data available");
+      LOGGER.error("No positive data available.");
       System.exit(1);
     }
 
-    progress += 50.0/(1.0 + negativeWells.size());
-    printProgress();
+    PROGRESS += 50.0/(1.0 + negativeWells.size());
+    printProgress(PROGRESS);
 
     List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> negativeWellsSignalProfiles = new ArrayList<>();
 
+    LOGGER.info("The number of peak negatives to process are %d", negativeWellsSignalProfiles.size());
+
     for (T well : negativeWells) {
+
+      LOGGER.info("Reading scan data for negative well");
+
       ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg = AnalysisHelper.readScanData(
           db,
           lcmsDir,
@@ -205,15 +225,13 @@ public class IonDetectionAnalysis {
           USE_SNR_FOR_LCMS_ANALYSIS);
 
       if (peakDataNeg == null) {
-        System.out.println("Peak negative analysis was null");
+        LOGGER.info("Peak negative analysis was null");
       }
 
       negativeWellsSignalProfiles.add(peakDataNeg);
-      progress += 50.0/(1.0 + negativeWells.size());
-      printProgress();
+      PROGRESS += 50.0/(1.0 + negativeWells.size());
+      printProgress(PROGRESS);
     }
-
-    System.out.println("The number of peak negatives are " + negativeWellsSignalProfiles.size());
 
     Map<String, Pair<XZ, Double>> snrResults =
         WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
@@ -223,9 +241,15 @@ public class IonDetectionAnalysis {
     allWells.add(positiveWell);
     allWells.addAll(negativeWells);
 
+    // This variable is used as a part of the file path dir to uniquely identify the pos/neg wells for the chemical.
+    StringBuilder indexedPath = new StringBuilder();
+    for (T well : allWells) {
+      indexedPath.append(Integer.toString(well.getId()) + "-");
+    }
+
     Map<String, String> plottingFileMappings =
         ChemicalToMapOfMetlinIonsToIntensityTimeValues.plotPositiveAndNegativeControlsForEachMZ(
-            searchMZs, allWells, positiveWellSignalProfiles, negativeWellsSignalProfiles, plottingDir);
+            searchMZs, indexedPath.toString(), positiveWellSignalProfiles, negativeWellsSignalProfiles, plottingDir);
 
     Map<String, Pair<String, Pair<XZ, Double>>> mzToPlotDirAndSNR = new HashMap<>();
     for (Map.Entry<String, Pair<XZ, Double>> entry : snrResults.entrySet()) {
@@ -243,8 +267,8 @@ public class IonDetectionAnalysis {
     return mzToPlotDirAndSNR;
   }
 
-  public static void printProgress() {
-    System.out.println("Progress: " + progress.toString());
+  public static void printProgress(Double progressStatus) {
+    LOGGER.info("Progress: %d", progressStatus);
   }
 
   public static void main(String[] args) throws Exception {
@@ -283,7 +307,7 @@ public class IonDetectionAnalysis {
     if (cl.hasOption(OPTION_INCLUDE_IONS)) {
       String[] ionNames = cl.getOptionValues(OPTION_INCLUDE_IONS);
       includeIons = new HashSet<>(Arrays.asList(ionNames));
-      System.out.format("Including ions in search: %s\n", StringUtils.join(includeIons, ", "));
+      LOGGER.info("Including ions in search: %s\n", StringUtils.join(includeIons, ", "));
     } else {
       includeIons = new HashSet<>();
       includeIons.add(DEFAULT_ION);
@@ -299,11 +323,12 @@ public class IonDetectionAnalysis {
     // Construct BufferedReader from FileReader
     BufferedReader br = new BufferedReader(new FileReader(inputPredictionCorpus));
 
+    // Get the inchis from input file
     String product = null;
     while ((product = br.readLine()) != null) {
       product = product.replace("\n", "");
-      // Assume the ion modes are all positive!
       try {
+        // Assume the ion modes are all positive!
         Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(product), MS1.IonMode.POS);
         Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
 
@@ -324,6 +349,7 @@ public class IonDetectionAnalysis {
 
     br.close();
 
+    // Make a mapping between fake chemical name and mass charge to de-duplicate against.
     Integer chemicalCounter = 0;
     Map<String, Double> chemIDToMassCharge = new HashMap<>();
     for (Double massCharge : massChargeToChemicalAndIon.keySet()) {
@@ -333,12 +359,12 @@ public class IonDetectionAnalysis {
       chemicalCounter++;
     }
 
-    System.out.println("The number of mass charges are: " + searchMZs.size());
+    LOGGER.info("The number of mass charges are: %d", searchMZs.size());
 
-    Double threshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_THRESHOLD));
+    Double intensityThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_THRESHOLD));
 
     try (DB db = DB.openDBFromCLI(cl)) {
-      //ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
+      ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
       // Get experimental setup ie. positive and negative wells from config file
       List<LCMSWell> positiveWells = new ArrayList<>();
@@ -349,7 +375,7 @@ public class IonDetectionAnalysis {
       Set<String> headerSet = new HashSet<>(parser.getHeader());
 
       if (!headerSet.equals(ALL_HEADERS)) {
-        System.err.format("Invalid header type");
+        LOGGER.error("Invalid header type");
         System.exit(1);
       }
 
@@ -367,8 +393,8 @@ public class IonDetectionAnalysis {
         }
       }
 
-      System.out.println("Number of positive wells is: " + positiveWells.size());
-      System.out.println("Number of negative wells is: " + negativeWells.size());
+      LOGGER.info("Number of positive wells is: %d", positiveWells.size());
+      LOGGER.info("Number of negative wells is: %d", negativeWells.size());
 
       HashMap<Integer, Plate> plateCache = new HashMap<>();
       String outputPrefix = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
@@ -379,8 +405,7 @@ public class IonDetectionAnalysis {
         List<IonAnalysisInterchangeModel.ResultForMZ> experimentalResults = new ArrayList<>();
         String outAnalysis = outputPrefix + "_" + positiveWell.getId().toString() + ".json";
 
-        // TODO: Quantify time
-        System.out.println("Doing the snr jb now");
+        LOGGER.info("Performing SNR analysis");
         Map<String, Pair<String, Pair<XZ, Double>>> result =
             getSnrResultsAndPlotDiagnosticsForEachMoleculeAndItsMetlinIon(
                 lcmsDir,
@@ -400,7 +425,7 @@ public class IonDetectionAnalysis {
 
           IonAnalysisInterchangeModel.ResultForMZ resultForMZ = new IonAnalysisInterchangeModel.ResultForMZ(massCharge);
 
-          if (intensity > threshold &&
+          if (intensity > intensityThreshold &&
               time > MIN_TIME_THRESHOLD &&
               snr > MIN_SNR_THRESHOLD) {
             resultForMZ.setIsValid(true);
@@ -426,7 +451,7 @@ public class IonDetectionAnalysis {
 
       if (positiveWells.size() > 1) {
         // Post process analysis
-        String outAnalysis = outputPrefix + "_post_process" + ".json";
+        String outAnalysis = outputPrefix + "_post_process.json";
         List<IonAnalysisInterchangeModel.ResultForMZ> experimentalResults = new ArrayList<>();
         for (int i = 0; i < allExperimentalResults.get(0).size(); i++) {
           IonAnalysisInterchangeModel.ResultForMZ rep = allExperimentalResults.get(0).get(i);

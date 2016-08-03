@@ -61,8 +61,9 @@ public class IonAnalysisInterchangeModel {
     }
   }
 
-  public static Set<String> getAllMoleculeHits2(String file1, String file2) throws IOException {
-
+  public static Set<String> getAllMoleculeHitsFromTwoGeneratedFiles(String file1, String file2, Double snrThreshold,
+                                                                    Double intensityThreshold, Double timeThreshold)
+      throws IOException {
     Set<String> resultSet = new HashSet<>();
     IonAnalysisInterchangeModel model1 = new IonAnalysisInterchangeModel();
     model1.loadCorpusFromFile(new File(file1));
@@ -75,8 +76,10 @@ public class IonAnalysisInterchangeModel {
       List<HitOrMiss> model2Mols = model2.getResults().get(i).getMolecules();
 
       for (int j = 0; j < model1Mols.size(); j++) {
-        if (model1Mols.get(j).getIntensity() > 10000.0 && model1Mols.get(j).getSnr() > 1000.0 && model1Mols.get(j).getTime() > 15.0 &&
-            model2Mols.get(j).getIntensity() > 10000.0 && model2Mols.get(j).getSnr() > 1000.0 && model2Mols.get(j).getTime() > 15.0) {
+        if (model1Mols.get(j).getIntensity() > intensityThreshold && model1Mols.get(j).getSnr() > snrThreshold &&
+            model1Mols.get(j).getTime() > timeThreshold &&
+            model2Mols.get(j).getIntensity() > intensityThreshold && model2Mols.get(j).getSnr() > snrThreshold &&
+            model2Mols.get(j).getTime() > timeThreshold) {
           resultSet.add(model1Mols.get(j).getInchi());
         }
       }
@@ -85,29 +88,16 @@ public class IonAnalysisInterchangeModel {
     return resultSet;
   }
 
-  public Set<String> getAllMoleculeHits() {
-    Set<String> resultSet = new HashSet<>();
-    for (ResultForMZ resultForMZ : results) {
-      if (resultForMZ.getIsValid()) {
-        for (HitOrMiss molecule : resultForMZ.getMolecules()) {
-          resultSet.add(molecule.getInchi());
-        }
-      }
-    }
-
-    return resultSet;
-  }
-
-  public Set<String> getAllMoleculeHits3() {
+  public Set<String> getAllMoleculeHits(Double snrThreshold, Double intensityThreshold, Double timeThreshold) {
     Set<String> resultSet = new HashSet<>();
     for (ResultForMZ resultForMZ : results) {
       for (HitOrMiss hitOrMiss : resultForMZ.getMolecules()) {
-        if (hitOrMiss.getIntensity() > 10000.0 && hitOrMiss.getSnr() > 1000.0 && hitOrMiss.getTime() > 15.0) {
+        if (hitOrMiss.getIntensity() > intensityThreshold && hitOrMiss.getSnr() > snrThreshold &&
+            hitOrMiss.getTime() > timeThreshold) {
           resultSet.add(hitOrMiss.getInchi());
         }
       }
     }
-
     return resultSet;
   }
 
@@ -138,6 +128,7 @@ public class IonAnalysisInterchangeModel {
     @JsonProperty("mass_charge")
     private Double mz;
 
+    // TODO: Remove this field once backwards compatibility is no longer an issue.
     @JsonProperty("valid")
     private Boolean isValid;
 
