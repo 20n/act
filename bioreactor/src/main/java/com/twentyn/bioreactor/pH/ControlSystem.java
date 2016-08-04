@@ -1,5 +1,6 @@
 package com.twentyn.bioreactor.pH;
 
+import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.twentyn.bioreactor.util.Time;
 import org.apache.commons.cli.CommandLine;
@@ -76,33 +77,35 @@ public class ControlSystem {
   private SOLUTION solution;
   private Double targetPH;
   private ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-  private File sensorDataFile;
+  private File pHSensorDataFile;
 
-  public ControlSystem(MotorPinConfiguration.PinNumberingScheme configurationScheme,
+  public ControlSystem(MotorPinConfiguration initializedMotorPinConfiguration,
                        SOLUTION solution,
                        Double targetPH,
-                       File sensorDataFile) {
-    OBJECT_MAPPER.registerModule(new JodaModule());
-    this.motorPinConfiguration = new MotorPinConfiguration(configurationScheme);
-    this.motorPinConfiguration.initializeGPIOPinsAndSetConfigToStartState();
+                       File pHSensorDataFile) {
+    this.motorPinConfiguration = initializedMotorPinConfiguration;
     this.solution = solution;
     this.targetPH = targetPH;
-    this.sensorDataFile = sensorDataFile;
+    this.pHSensorDataFile = pHSensorDataFile;
+  }
+
+  public void registerModuleForObjectMapper(Module module) {
+    this.OBJECT_MAPPER.registerModule(module);
   }
 
   // TODO: Move this functionality to the sensor module in the future since the control system is not responsible
   // for where the data is in a file or not.
-  private PHSensorData readSensorData(File sensorDataFile) throws IOException {
+  private PHSensorData readPhSensorData(File sensorDataFile) throws IOException {
     PHSensorData sensorData = OBJECT_MAPPER.readValue(sensorDataFile, PHSensorData.class);
     return sensorData;
   }
 
   private void takeAction() throws InterruptedException {
     LOGGER.info("Pump more solution");
-    this.motorPinConfiguration.getPumpEnablePin().high();
+    this.motorPinConfiguration.switchMotorOn();
     Thread.sleep(PUMP_TIME_WAIT_IN_MILLI_SECONDS);
     LOGGER.info("Stop pumping");
-    this.motorPinConfiguration.getPumpEnablePin().low();
+    this.motorPinConfiguration.switchMotorOff();
   }
 
   private Long timeDifference(DateTime longerTime, DateTime shorterTime) {
@@ -124,10 +127,12 @@ public class ControlSystem {
 
     while (true) {
       try {
+        Thread.sleep(WAIT_TIME_BETWEEN_ACTION_IN_MILLI_SECONDS);
+
         currTime = Time.now();
         Long timeDiff = timeDifference(currTime, lastTimeSinceDoseAdministered);
 
-        PHSensorData phSensorData = readSensorData(this.sensorDataFile);
+        PHSensorData phSensorData = readPhSensorData(this.pHSensorDataFile);
         Double phValue = phSensorData.getpH();
         LOGGER.info("PH value is %d", phValue);
 
@@ -144,8 +149,6 @@ public class ControlSystem {
       } catch (InterruptedException e) {
         LOGGER.error("Could not read pH value due to InterruptedException. Error is %s:", e.getMessage());
       }
-
-      Thread.sleep(WAIT_TIME_BETWEEN_ACTION_IN_MILLI_SECONDS);
     }
   }
 
@@ -173,6 +176,7 @@ public class ControlSystem {
 
     SOLUTION solution = null;
     String acidOrBase = cl.getOptionValue(OPTION_CONTROL_SOLUTION);
+
     if (acidOrBase.equals(SOLUTION.ACID.name())) {
       solution = SOLUTION.ACID;
     }
@@ -190,8 +194,11 @@ public class ControlSystem {
 
     File sensorReadingDataFile = new File(cl.getOptionValue(OPTION_SENSOR_READING_FILE_LOCATION, SENSOR_READING_FILE_LOCATION));
 
-    ControlSystem controlSystem =
-        new ControlSystem(MotorPinConfiguration.PinNumberingScheme.BOARD, solution, targetPH, sensorReadingDataFile);
+    MotorPinConfiguration motorPinConfiguration = new MotorPinConfiguration(MotorPinConfiguration.PinNumberingScheme.BOARD);
+    motorPinConfiguration.initializeGPIOPinsAndSetConfigToStartState();
+
+    ControlSystem controlSystem = new ControlSystem(motorPinConfiguration, solution, targetPH, sensorReadingDataFile);
+    controlSystem.registerModuleForObjectMapper(new JodaModule());
     try {
       controlSystem.run();
     } finally {

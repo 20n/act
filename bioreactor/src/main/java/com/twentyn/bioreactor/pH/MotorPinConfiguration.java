@@ -66,4 +66,12 @@ public class MotorPinConfiguration {
   public GpioPinDigitalOutput getPumpEnablePin() {
     return pumpEnablePin;
   }
+
+  public void switchMotorOn() {
+    pumpEnablePin.high();
+  }
+
+  public void switchMotorOff() {
+    pumpEnablePin.low();
+  }
 }
