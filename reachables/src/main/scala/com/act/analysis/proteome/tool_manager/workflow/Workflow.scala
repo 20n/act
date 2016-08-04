@@ -9,6 +9,7 @@ trait Workflow {
   val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   val HELP_MESSAGE = ""
   HELP_FORMATTER.setWidth(100)
+
   // Header job allows us to have multiple start jobs all line up with this one.
   val headerJob = new HeaderJob()
   private val logger = LogManager.getLogger(getClass.getName)
@@ -57,6 +58,7 @@ trait Workflow {
 
     if (cl.get.hasOption("help")) exitWithHelp(opts)
 
+    logger.info("Finished processing command line information")
     cl.get
   }
 

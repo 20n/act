@@ -39,22 +39,23 @@ class EcnumToProteinPredictionFlow extends {
       CliOption.builder(OPTION_OUTPUT_FASTA_FILE_PREFIX).
         hasArg.
         longOpt("output-fasta-from-ecnum-location").
-        desc(s"Output FASTA sequence containing all the enzyme sequences that catalyze a reaction within the ecnum."),
+        desc("The file path to write the FASTA file " +
+          "containing all the enzyme sequences that catalyze a reaction within the ecnum."),
 
       CliOption.builder(OPTION_ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX).
         hasArg.
         longOpt("aligned-fasta-file-output-location").
-        desc(s"Output FASTA file after being aligned."),
+        desc("The file path to write the FASTA file after alignment with CLUSTAL."),
 
       CliOption.builder(OPTION_OUTPUT_HMM_ARG_PREFIX).
         hasArg.
         longOpt("output-hmm-profile-location").
-        desc(s"Output HMM profile produced from the aligned FASTA."),
+        desc("The file path to write the output HMM profile produced from the aligned FASTA."),
 
       CliOption.builder(OPTION_RESULT_FILE_ARG_PREFIX).
         hasArg.
         longOpt("results-file-location").
-        desc(s"Output HMM search on pan proteome with the produced HMM"),
+        desc("The file path to write the results of the HMM search with the created HMM on the supplied proteome"),
 
       CliOption.builder(OPTION_WORKING_DIRECTORY_PREFIX).
         hasArg.
@@ -64,13 +65,13 @@ class EcnumToProteinPredictionFlow extends {
       CliOption.builder(OPTION_CLUSTAL_BINARIES_ARG_PREFIX).
         longOpt("clustal-omega-binary-location").
         hasArg.
-        desc("Set the location of where the ClustalOmega binaries are located at").
+        desc("The file path of the ClustalOmega binaries used in alignment.").
         required(true),
 
       CliOption.builder(OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX).
         longOpt("proteome-location").
         hasArg.
-        desc("Location of the proteome file that the constructed HMM should be searched against").
+        desc("The file path of the proteome file that the constructed HMM should be searched against").
         required(true),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
@@ -84,7 +85,6 @@ class EcnumToProteinPredictionFlow extends {
   }
 
   def defineWorkflow(cl: CommandLine): Job = {
-    logger.info("Finished processing command line information")
     // Align sequence so we can build an HMM
     val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY_PREFIX, null)
 

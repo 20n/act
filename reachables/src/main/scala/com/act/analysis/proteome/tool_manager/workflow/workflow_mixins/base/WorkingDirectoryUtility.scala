@@ -8,6 +8,7 @@ import org.apache.logging.log4j.LogManager
 trait WorkingDirectoryUtility {
   def defineOutputFilePath(cl: CommandLine, optionName: String, identifier: String, defaultValue: String, workingDirectory: String): String = {
     val methodLogger = LogManager.getLogger("workingDirectoryFilePathDefinition")
+
     // Spaces tend to be bad for file names
     val filteredIdentifier = identifier.replace(" ", "_")
 

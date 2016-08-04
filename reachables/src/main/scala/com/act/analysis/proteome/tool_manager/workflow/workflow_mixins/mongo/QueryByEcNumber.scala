@@ -1,34 +1,30 @@
 package com.act.analysis.proteome.tool_manager.workflow.workflow_mixins.mongo
 
 import act.server.MongoDB
+import com.act.analysis.proteome.tool_manager.workflow.workflow_mixins.mongo.mongo_db_keywords.ReactionDatabaseKeywords
 import com.mongodb.{BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
 
 import scala.collection.mutable.ListBuffer
 
-trait QueryByEcNumber extends MongoWorkflowUtilities {
-  /*
-  Commonly used keywords for this mongo query
-  */
-  private val ECNUM = "ecnum"
-  private val ID = "_id"
-
+trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywords {
   def queryReactionsForReactionIdsByEcNumber(roughEcnum: String, mongoConnection: MongoDB): List[AnyRef] = {
     val methodLogger = LogManager.getLogger("queryDbForReactionIdsByEcNumber")
 
     /*
-    Query Database for Reaction IDs based on a given EC Number
+      Query Database for Reaction IDs based on a given EC Number
 
-    EC Numbers are formatted at X.X.X.X so we use a regex match of
+      EC Numbers are formatted at X.X.X.X so we use a regex match of
 
-    ^6\.1\.1\.1$
+      ^6\.1\.1\.1$
    */
+
     val ecnumRegex = formatEcNumberAsRegex(roughEcnum)
 
     // Setup the query and filter for just the reaction ID
     val regex = defineMongoRegex(ecnumRegex)
-    val reactionIdQuery = new BasicDBObject(ECNUM, regex)
-    val reactionIdReturnFilter = new BasicDBObject(ID, 1)
+    val reactionIdQuery = new BasicDBObject(REACTION_DB_KEYWORD_ECNUM, regex)
+    val reactionIdReturnFilter = new BasicDBObject(REACTION_DB_KEYWORD_ID, 1)
 
     // Deploy DB query w/ error checking to ensure we got something
     methodLogger.info(s"Running query $reactionIdQuery against DB.  Return filter is $reactionIdReturnFilter")
@@ -37,7 +33,7 @@ trait QueryByEcNumber extends MongoWorkflowUtilities {
     val dbReactionIds = mongoDbIteratorToSet(dbReactionIdsIterator)
 
     // Map reactions by their ID, which is the only value we care about here
-    val reactionIds = dbReactionIds.map(x => x.get(ID)).toList
+    val reactionIds = dbReactionIds.map(x => x.get(REACTION_DB_KEYWORD_ID)).toList
 
     // Exit if there are no reactionIds matching the Ecnum
     reactionIds.size match {
@@ -73,10 +69,11 @@ trait QueryByEcNumber extends MongoWorkflowUtilities {
     }
 
     /*
-      ^ is the start of the string, $ is the end of the string.
+      The ^ is the start of the string, $ is the end of the string.
 
-      We use a \\. seperator so that we match periods (Periods must be escaped in regex).
+      We use a \\. separator so that we match periods (Periods must be escaped in regex).
     */
+
     "^" + basicRegex.mkString(sep = "\\.") + "$"
   }
 }
