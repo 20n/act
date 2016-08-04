@@ -20,8 +20,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Runs L2 Expansion
@@ -173,15 +175,16 @@ public class L2ExpansionDriver {
     }
     outputFile.createNewFile();
 
-    File progressFile = null;
+    Optional<OutputStream> maybeProgressStream = null;
     if (cl.hasOption(OPTION_PROGRESS_PATH)) {
       String progressPath = cl.getOptionValue(OPTION_PROGRESS_PATH);
-      progressFile = new File(progressPath);
+      File progressFile = new File(progressPath);
       LOGGER.info("Writing incremental results to file at %s", progressFile.getAbsolutePath());
       if (progressFile.isDirectory() || progressFile.exists()) {
         LOGGER.error("Supplied progress file is a directory or already exists.");
         System.exit(1);
       }
+      maybeProgressStream = Optional.of(new FileOutputStream(progressFile));
     }
 
     // Get metabolite list
@@ -189,8 +192,7 @@ public class L2ExpansionDriver {
 
     PredictionGenerator generator = new AllPredictionsGenerator(new ReactionProjector());
     L2Expander expander = buildExpander(cl, metaboliteList, generator);
-    L2PredictionCorpus predictionCorpus =
-        expander.getPredictions(progressFile == null ? null : new FileOutputStream(progressFile));
+    L2PredictionCorpus predictionCorpus = expander.getPredictions(maybeProgressStream);
 
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
 
