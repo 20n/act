@@ -192,7 +192,9 @@ public class SequenceMergerTest {
     xrefObject.put("brenda_id", new JSONArray(Arrays.asList(128931, 128930, 128932)));
     metadata.put("xref", xrefObject);
 
-    Seq mergedSeq = new Seq(1L, "1.1.1.1", 4000003474L, "Mus musculus", "AJKFLGKJDFS", references,
+    metadata.put("source_sequence_ids", Arrays.asList(1,2,3));
+
+    Seq mergedSeq = new Seq(1L, "1.1.1.1", 0L, "Mus musculus", "AJKFLGKJDFS", references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     Reaction reaction = new Reaction(1L,
