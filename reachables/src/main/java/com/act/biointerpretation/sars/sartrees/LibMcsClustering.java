@@ -62,13 +62,13 @@ public class LibMcsClustering {
       );
       add(Option.builder(OPTION_CLUSTER_FIRST)
           .argName("cluster first")
-          .desc("Use LibMCS to cluster substrates on full corpus, and only use pos/neg lcms results to score thereafter.")
+          .desc("Use LibMCS to cluster substrates on full corpus before applying the LCMS results.")
           .longOpt("cluster-first")
       );
       add(Option.builder(OPTION_TREE_SCORING)
           .argName("tree scoring")
-          .desc("Score based on hits and misses found in subtree of SAR; don't apply SAR elsewhere. This should only be " +
-              "run if clustering is first.")
+          .desc("Score based on hits and misses found in subtree of SAR; don't apply SAR elsewhere. This should only " +
+              "be run in conjunction with the <cluster first> option.")
           .longOpt("tree-scoring")
       );
       add(Option.builder(OPTION_HELP)
@@ -79,13 +79,11 @@ public class LibMcsClustering {
     }
   };
 
-
   public static final String HELP_MESSAGE =
       "This class is used to build sars from an L2Prediction run and LCMS analysis results.  The inputs are an " +
           "L2PredictionCorpus and a file with all the product inchis that came up as positive in the LCMS analysis. " +
-          "The output is a list of Sars with percentageHits scores based on how predictive they are of the reactions in " +
-          "the corpus.";
-
+          "The output is a list of Sars with percentageHits scores based on how predictive they are of the " +
+          "reactions in the corpus.";
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
@@ -93,10 +91,10 @@ public class LibMcsClustering {
     HELP_FORMATTER.setWidth(100);
   }
 
-  private static final Boolean ALL_NODES = false;
+  private static final Boolean ALL_NODES = false; // Tell LibMCS to return all nodes in the tree in its clustering
   private static final String INCHI_IMPORT_SETTINGS = "inchi";
-  private static final Double THRESHOLD_CONFIDENCE = 0D;
-  private static final Integer THRESHOLD_TREE_SIZE = 2;
+  private static final Double THRESHOLD_CONFIDENCE = 0D; // no threshold is applied
+  private static final Integer THRESHOLD_TREE_SIZE = 2; // any SAR that is not simply one specific substrate is allowed
 
   public static void main(String[] args) throws Exception {
 
@@ -178,9 +176,9 @@ public class LibMcsClustering {
       try {
         Molecule mol = importMolecule(inchi);
         if (positiveInchis.contains(inchi)) {
-          mol.setProperty("in_lcms","true");
+          mol.setProperty("in_lcms", "true");
         } else {
-          mol.setProperty("in_lcms","false");
+          mol.setProperty("in_lcms", "false");
         }
         molecules.add(mol);
       } catch (MolFormatException e) {
@@ -197,7 +195,7 @@ public class LibMcsClustering {
     for (String inchi : positiveInchis) {
       try {
         Molecule mol = importMolecule(inchi);
-        mol.setProperty("in_lcms","true");
+        mol.setProperty("in_lcms", "true");
         molecules.add(mol);
       } catch (MolFormatException e) {
         LOGGER.warn("Error importing inchi %s:%s", inchi, e.getMessage());
@@ -209,7 +207,7 @@ public class LibMcsClustering {
 
 
   public static SarTree buildSarTree(LibraryMCS libMcs, List<Molecule> molecules) throws InterruptedException {
-    for (Molecule mol: molecules) {
+    for (Molecule mol : molecules) {
       libMcs.addMolecule(mol);
     }
 
