@@ -8,7 +8,6 @@ import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import chemaxon.reaction.ReactionException;
 import com.act.biointerpretation.BiointerpretationProcessor;
-import com.mongodb.util.JSON;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
@@ -16,7 +15,6 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -28,6 +26,9 @@ import java.util.Set;
 public class SequenceMerger extends BiointerpretationProcessor {
   private static final Logger LOGGER = LogManager.getFormatterLogger(SequenceMerger.class);
   private static final String PROCESSOR_NAME = "Sequence Merger";
+  private Map<Long, Long> sequenceMigrationMap = new HashMap<>();
+  private Map<Long, Long> organismMigrationMap = new HashMap<>();
+  private Map<Long, Long> reactionMigrationMap = new HashMap<>();
 
   public SequenceMerger(NoSQLAPI noSQLAPI) {
     super(noSQLAPI);
@@ -55,7 +56,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
   }
 
   /**
-   * Copies all reactions over to the WriteDB
+   * Copies all reactions over to the WriteDB and stores the mapping from old ID to new ID in reactionMigrationMap
    */
   @Override
   public void processReactions() {
@@ -66,8 +67,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
       Reaction oldRxn = iterator.next();
       Long oldId = (long) oldRxn.getUUID();
       int newId = getNoSQLAPI().writeToOutKnowlegeGraph(oldRxn);
-
-      // TODO: Store the oldId somewhere; you can maybe cache it in some HashMap of oldId to newId
+      reactionMigrationMap.put(oldId, (long) newId);
 
     }
   }
@@ -80,15 +80,23 @@ public class SequenceMerger extends BiointerpretationProcessor {
     // stores all sequences with the same ecnum, organism, and protein sequence in the same list
     while (sequences.hasNext()) {
       Seq sequence = sequences.next();
+      migrateOrganism(sequence);
       UniqueSeq uniqueSeq = new UniqueSeq(sequence);
       List<Seq> matchingSeqs = sequenceGroups.get(uniqueSeq);
+
       if (matchingSeqs != null) {
+
+        // add UniqueSeq object to already existent list that shares the same ecnum, organism & protein sequence
         matchingSeqs.add(sequence);
         sequenceGroups.put(uniqueSeq, matchingSeqs);
+
       } else {
+
+        // create a new modifiable list for the UniqueSeq object and add a new mapping
         List<Seq> seqs = new ArrayList<>();
         seqs.add(sequence);
         sequenceGroups.put(uniqueSeq, seqs);
+
       }
     }
 
@@ -98,16 +106,20 @@ public class SequenceMerger extends BiointerpretationProcessor {
       Map.Entry pair = (Map.Entry) sequenceGroupIterator.next();
       List<Seq> allMatchedSeqs = (List<Seq>) pair.getValue();
 
+      // stores the IDs of all sequences that are about to be merged
       Set<Long> matchedSeqsIDs = new HashSet<>();
+      // stores the IDs of all reactions that referenced these merged sequences and now need to refer to the merged Sequence ID
       Set<Long> reactionRefs = new HashSet<>();
+
       for (Seq sequence : allMatchedSeqs) {
         matchedSeqsIDs.add((long) sequence.getUUID());
         reactionRefs.addAll(sequence.getReactionsCatalyzed());
       }
 
+      // merges all sequences that share the same ecnum, organism and protein sequence
       Seq mergedSequence = mergeSequences(allMatchedSeqs);
 
-      Long id = (long) getNoSQLAPI().getWriteDB().submitToActSeqDB(
+      Long mergedSeqId = (long) getNoSQLAPI().getWriteDB().submitToActSeqDB(
           mergedSequence.get_srcdb(),
           mergedSequence.get_ec(),
           mergedSequence.get_org_name(),
@@ -118,15 +130,49 @@ public class SequenceMerger extends BiointerpretationProcessor {
           MongoDBToJSON.conv(mergedSequence.get_metadata())
       );
 
-      // TODO: copy organisms; do we need to copy cofactors?
+      // maps the old duplicate sequences to the new merged sequence entry
+      for (Long matchedSeqId : matchedSeqsIDs) {
+        sequenceMigrationMap.put(matchedSeqId, mergedSeqId);
+      }
 
-      updateReactionsReferencingDuplicatedSeqs(matchedSeqsIDs, reactionRefs, id);
+      // TODO: also need to handle organism changes
+      updateReactionsReferencingDuplicatedSeqs(matchedSeqsIDs, reactionRefs, mergedSeqId);
 
     }
 
   }
 
-  // TODO: this class should handle organism prefix matching; will have to adjust orgId as well
+  private void migrateOrganism(Seq sequence) {
+    // TODO: prefix matching, adjust orgName
+    String organismName = checkForOrgPrefix(sequence.get_org_name());
+    sequence.set_organism_name(organismName);
+
+    Long newOrgId = getNoSQLAPI().getWriteDB().getOrganismId(organismName);
+
+    if (newOrgId == -1) {
+
+      newOrgId = getNoSQLAPI().getWriteDB().submitToActOrganismNameDB(organismName);
+
+    }
+
+    organismMigrationMap.put(sequence.getOrgId(), newOrgId);
+    sequence.setOrgId(newOrgId);
+
+  }
+
+  /**
+   * Checks if there is an existing organism prefix in the prefix tree; NEEDS TO BE IMPLEMENTED
+   * @param orgName the organism name you are checking for a valid prefix
+   * @return a valid prefix
+   */
+  private String checkForOrgPrefix(String orgName) {
+    return orgName;
+  }
+
+  /**
+   * TODO: check if hash code AND equals overrides are both necessary
+   * This class is used to group sequences that share the same ecnum, organism and protein sequence
+   */
   private static class UniqueSeq {
     String ecnum;
     String organism;

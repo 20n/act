@@ -218,6 +218,8 @@ public class SequenceMergerTest {
       compareReactions("for testMergeEndToEnd", reaction, mockAPI.getMockWriteMongoDB().getReactionFromUUID(1L));
     }
 
+    // TODO: need to add test for organisms
+
   }
 
   private void compareSeqs(String message, Seq expectedSeq, Seq testSeq) {

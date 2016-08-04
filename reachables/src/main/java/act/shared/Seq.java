@@ -188,7 +188,6 @@ public class Seq implements Serializable {
   }
   public List<JSONObject> get_references() { return this.references; }
   public JSONObject get_metadata() { return this.metadata; }
-  public void set_metadata(JSONObject metadata) { this.metadata = metadata; }
   public Set<String> get_product_names() { return this.product_names; }
   public Set<String> get_synonyms() { return this.synonyms; }
   public String get_catalytic_activity() {return this.catalytic_activity; }
@@ -208,6 +207,9 @@ public class Seq implements Serializable {
 
   public void set_references(List<JSONObject> refs) { this.references = refs; }
   public void setReactionsCatalyzed(Set<Long> reactionsCatalyzed) { this.reactionsCatalyzed = reactionsCatalyzed; }
+  public void set_metadata(JSONObject metadata) { this.metadata = metadata; }
+  public void set_organism_name(String orgName) { this.organism = orgName; }
+  public void setOrgId(Long orgId) { this.organismIDs = orgId; }
 
 
   private Set<Long> get_common(Collection<Set<Long>> reactants_across_all_rxns) {
