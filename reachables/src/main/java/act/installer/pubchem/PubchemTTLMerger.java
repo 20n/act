@@ -1,6 +1,8 @@
 package act.installer.pubchem;
 
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -294,8 +296,7 @@ public class PubchemTTLMerger {
     }
   }
 
-  @JsonSerialize(using = PC_SYNONYM_TYPES.SynonymTypeSerializer.class)
-  @JsonDeserialize(using = PC_SYNONYM_TYPES.SynonymTypeDeserializer.class)
+  // Note: @JsonSerialize and @JsonDeserialize didn't work here, so I've used @JsonCreator and @JsonValue instead.
   public enum PC_SYNONYM_TYPES {
     // Names derived from the Semantic Chemistry Ontology: https://github.com/egonw/semanticchemistry
     TRIVIAL_NAME("CHEMINF_000109", "trivial name", "trivial_name"),
@@ -333,6 +334,7 @@ public class PubchemTTLMerger {
       return CHEMINF_TO_TYPE.getOrDefault(cheminfId, UNKNOWN);
     }
 
+    @JsonCreator
     public static PC_SYNONYM_TYPES getByJsonLabel(String cheminfId) {
       return JSON_LABEL_TO_TYPE.getOrDefault(cheminfId, UNKNOWN);
     }
@@ -355,25 +357,9 @@ public class PubchemTTLMerger {
       return label;
     }
 
+    @JsonValue
     public String getJsonLabel() {
       return jsonLabel;
-    }
-
-    // Use the JSON labels defined in the constructors to serialize/deserialize these.
-    public static class SynonymTypeSerializer extends JsonSerializer<PC_SYNONYM_TYPES> {
-      @Override
-      public void serialize(PC_SYNONYM_TYPES value, JsonGenerator gen, SerializerProvider serializers)
-          throws IOException, JsonProcessingException {
-        gen.writeString(value.getJsonLabel());
-      }
-    }
-
-    public static class SynonymTypeDeserializer extends JsonDeserializer<PC_SYNONYM_TYPES> {
-      @Override
-      public PC_SYNONYM_TYPES deserialize(JsonParser p, DeserializationContext ctxt)
-          throws IOException, JsonProcessingException {
-        return PC_SYNONYM_TYPES.getByJsonLabel(p.getValueAsString());
-      }
     }
   }
 
