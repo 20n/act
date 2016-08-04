@@ -150,7 +150,7 @@ public class ExpandedReactionSearcher {
   }
 
   /**
-   * Get the next search hit from the current searcher.  Modifies the instance variable currentHIt to its new value
+   * Get the next search hit from the current searcher.  Modifies the instance variable currentHit to its new value
    * if successful, or to null if unsuccessful.
    */
   private void getNextSearchHit() {

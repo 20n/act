@@ -56,7 +56,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
     try {
       Map<Molecule[], List<Molecule[]>> projectionMap =
           projector.getRoProjectionMap(substratesArray, reactor.getReactor());
-      return getAllPredictions(projectionMap, reactor, sars, seed.getProjectorName());
+      return getAllPredictions(projectionMap, seed.getProjectorName());
     } catch (ReactionException e) {
       StringBuilder builder = new StringBuilder();
       builder.append(e.getMessage())
@@ -70,14 +70,10 @@ public class AllPredictionsGenerator implements PredictionGenerator {
    * Returns all predictions corresponding to a given projection map
    *
    * @param projectionMap The map from substrates to products.
-   * @param reactor The reactor.
-   * @param sars The SARs.
    * @return The list of predictions.
    * @throws IOException
    */
   private List<L2Prediction> getAllPredictions(Map<Molecule[], List<Molecule[]>> projectionMap,
-                                               SerializableReactor reactor,
-                                               List<Sar> sars,
                                                String name) throws IOException {
 
     List<L2Prediction> result = new ArrayList<>();

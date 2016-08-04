@@ -21,7 +21,8 @@ public class L2Prediction {
   private List<L2PredictionChemical> substrates;
 
   // This field corresponds either to the RO id, in the case of an RO expansion, or the name of the characterized group,
-  // in the case of a SAR expansion.
+  // in the case of a SAR expansion. This field replaced explicit fields that stored the SAR/RO used to generate this
+  // prediction. Instead to find that info one must look up the name in the RO or SAR Corpus used in the predictions.
   @JsonProperty("projector_name")
   private String projectorName;
 

@@ -25,7 +25,6 @@ public class CharacterizedGroup {
   }
 
   public CharacterizedGroup(String groupName, List<Sar> sars, SerializableReactor reactor) {
-
     this.groupName = groupName;
     this.sars = sars;
     this.reactor = reactor;

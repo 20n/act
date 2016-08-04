@@ -88,12 +88,24 @@ public class ReactionProjector {
 
     Molecule[] products;
     while ((products = reactor.react()) != null) {
-      if (substructureTest(products[0], expectedProduct) && substructureTest(expectedProduct, products[0])) {
+      if (testEquality(products[0], expectedProduct)) {
         return products[0];
       }
     }
 
     throw new ReactionException("Expected product not among Reactor's predictions.");
+  }
+
+  /**
+   * Tests equality of molecules based on two substructure queries. This is desirable because it makes the
+   * equality comparison very configurable as compared to comparing inchis.
+   *
+   * @param A One molecule.
+   * @param B Another molecule.
+   * @return True if they are equivalent.
+   */
+  private boolean testEquality(Molecule A, Molecule B) {
+    return substructureTest(A,B) && substructureTest(B,A);
   }
 
   private boolean substructureTest(Molecule substructure, Molecule superstructure) {
