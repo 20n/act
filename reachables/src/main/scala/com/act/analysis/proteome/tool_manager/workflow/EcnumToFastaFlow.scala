@@ -23,7 +23,7 @@ class EcnumToFastaFlow extends Workflow
         required(true).
         hasArg.
         longOpt("ec-number").
-        desc("EC number to query against in format of X.X.X.X, " +
+        desc("The EC number to query against in format of X.X.X.X, " +
           "if you do not enter a fully defined sequence of four, " +
           "it will assume you want all reactions within a subgroup, " +
           "such as the value 6.1.1 will match 6.1.1.1 as well as 6.1.1.2"),
@@ -31,7 +31,8 @@ class EcnumToFastaFlow extends Workflow
       CliOption.builder(OPTION_OUTPUT_FASTA_FILE_PREFIX).
         hasArg.
         longOpt("output-fasta-from-ecnum-location").
-        desc(s"Output FASTA sequence containing all the enzyme sequences that catalyze a reaction within the ecnum."),
+        desc("The file path to write the FASTA file " +
+          "containing all the enzyme sequences that catalyze a reaction within the ecnum."),
 
       CliOption.builder(OPTION_WORKING_DIRECTORY_PREFIX).
         hasArg.
@@ -48,8 +49,6 @@ class EcnumToFastaFlow extends Workflow
   }
 
   def defineWorkflow(cl: CommandLine): Job = {
-    logger.info("Finished processing command line information")
-
     // Grab the ec number
     val ec_num = cl.getOptionValue(OPTION_EC_NUM_ARG_PREFIX)
 

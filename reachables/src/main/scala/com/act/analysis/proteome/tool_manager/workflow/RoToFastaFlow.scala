@@ -31,7 +31,8 @@ class RoToFastaFlow extends {
       CliOption.builder(OPTION_OUTPUT_FASTA_FILE_PREFIX).
         hasArg.
         longOpt("output-fasta-from-ros-location").
-        desc(s"Output FASTA sequence containing all the enzyme sequences that catalyze a reaction within the RO."),
+        desc("The file path to write the output FASTA file containing" +
+          " all the enzyme sequences that catalyze a reaction within the RO."),
 
       CliOption.builder(OPTION_WORKING_DIRECTORY_PREFIX).
         hasArg.
@@ -48,11 +49,7 @@ class RoToFastaFlow extends {
   }
 
   def defineWorkflow(cl: CommandLine): Job = {
-    logger.info("Finished processing command line information")
-
-    // Grab the ec number
     val ro = cl.getOptionValue(OPTION_RO_ARG_PREFIX)
-
     val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY_PREFIX, null)
 
     // Setup all the constant paths here
@@ -65,10 +62,6 @@ class RoToFastaFlow extends {
     )
 
     // Create the FASTA file out of all the relevant sequences.
-    val ecNumberToFastaContext = Map(
-      OPTION_RO_ARG_PREFIX -> ro,
-      OPTION_OUTPUT_FASTA_FILE_PREFIX -> outputFastaPath
-    )
     val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos(List(ro), outputFastaPath) _)
     headerJob.thenRun(ecNumberToFasta)
 

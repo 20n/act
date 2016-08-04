@@ -20,7 +20,6 @@ trait MongoWorkflowUtilities {
 
   private val host = "localhost"
   private val port = 27017
-  private val db = "marvin"
 
   def getMongoExists: BasicDBObject = {
     EXISTS
@@ -30,7 +29,7 @@ trait MongoWorkflowUtilities {
     DOESNT_EXIST
   }
 
-  def connectToMongoDatabase(): MongoDB = {
+  def connectToMongoDatabase(db: String): MongoDB = {
     logger.info("Setting up Mongo database connection")
 
     // Instantiate Mongo host.

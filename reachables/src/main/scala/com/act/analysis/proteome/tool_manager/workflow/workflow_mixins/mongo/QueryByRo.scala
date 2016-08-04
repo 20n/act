@@ -1,32 +1,27 @@
 package com.act.analysis.proteome.tool_manager.workflow.workflow_mixins.mongo
 
 import act.server.MongoDB
+import com.act.analysis.proteome.tool_manager.workflow.workflow_mixins.mongo.mongo_db_keywords.ReactionDatabaseKeywords
 import com.mongodb.{BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
 
-trait QueryByRo extends MongoWorkflowUtilities {
-  /*
-  Commonly used keywords for this mongo query
-  */
-  private val ID = "_id"
-  private val MECHANISTIC_VALIDATOR = "mechanistic_validator_result"
-
+trait QueryByRo extends MongoWorkflowUtilities with ReactionDatabaseKeywords {
   def queryReactionsForReactionIdsByRo(roValues: List[String], mongoConnection: MongoDB): List[AnyRef] = {
     val methodLogger = LogManager.getLogger("queryReactionsForReactionIdsByRo")
-    /*
-      Query Database for Reaction IDs based on a given RO
-     */
 
     /*
-   Map RO values to a list of mechanistic validator things we will want to see
-  */
+      Query Database for Reaction IDs based on a given RO
+
+      Map RO values to a list of mechanistic validator things we will want to see
+    */
+
     val roObjects = roValues.map(x =>
-      new BasicDBObject(s"$MECHANISTIC_VALIDATOR.$x", getMongoExists))
+      new BasicDBObject(s"$REACTION_DB_KEYWORD_MECHANISTIC_VALIDATOR.$x", getMongoExists))
     val queryRoValue = convertListToMongoDbList(roObjects)
 
     // Setup the query and filter for just the reaction ID
     val reactionIdQuery = defineMongoOr(queryRoValue)
-    val reactionIdReturnFilter = new BasicDBObject(ID, 1)
+    val reactionIdReturnFilter = new BasicDBObject(REACTION_DB_KEYWORD_ID, 1)
 
     // Deploy DB query w/ error checking to ensure we got something
     methodLogger.info(s"Running query $reactionIdQuery against DB.  Return filter is $reactionIdReturnFilter")
@@ -34,7 +29,7 @@ trait QueryByRo extends MongoWorkflowUtilities {
       mongoQueryReactions(mongoConnection, reactionIdQuery, reactionIdReturnFilter)
     val dbReactionIds = mongoDbIteratorToSet(dbReactionIdsIterator)
     // Map reactions by their ID, which is the only value we care about here
-    val reactionIds = dbReactionIds.map(x => x.get(ID)).toList
+    val reactionIds = dbReactionIds.map(x => x.get(REACTION_DB_KEYWORD_ID)).toList
 
     // Exit if there are no reactionIds matching the RO
     reactionIds.size match {
