@@ -1,4 +1,4 @@
-package com.act.analysis.proteome.tool_manager.workflow_utilities
+package com.act.analysis.proteome.tool_manager.workflow.workflow_mixins.mongo
 
 import act.server.MongoDB
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
@@ -7,12 +7,12 @@ import org.apache.logging.log4j.LogManager
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-object MongoWorkflowUtilities {
+trait MongoWorkflowUtilities {
   // Commonly used operators for this mongo query
-  val EXISTS = new BasicDBObject("$exists", 1)
-  val DOESNT_EXIST = new BasicDBObject("$exists", 0)
-  val ELEMMATCH = "$elemMatch"
   private val logger = LogManager.getLogger(getClass.getName)
+  private val EXISTS = new BasicDBObject("$exists", 1)
+  private val DOESNT_EXIST = new BasicDBObject("$exists", 0)
+  private val ELEMMATCH = "$elemMatch"
   private val OR = "$or"
   private val AND = "$and"
   private val IN = "$in"
@@ -20,32 +20,39 @@ object MongoWorkflowUtilities {
 
   private val host = "localhost"
   private val port = 27017
-  private val db = "marvin"
 
-  def connectToDatabase(): MongoDB = {
+  def getMongoExists: BasicDBObject = {
+    EXISTS
+  }
+
+  def getMongoDoesntExist: BasicDBObject = {
+    DOESNT_EXIST
+  }
+
+  def connectToMongoDatabase(db: String): MongoDB = {
     logger.info("Setting up Mongo database connection")
 
     // Instantiate Mongo host.
     new MongoDB(host, port, db)
   }
 
-  def defineOr(truthValueList: BasicDBList): BasicDBObject = {
+  def defineMongoOr(truthValueList: BasicDBList): BasicDBObject = {
     new BasicDBObject(OR, truthValueList)
   }
 
-  def defineAnd(truthValueList: BasicDBList): BasicDBObject = {
+  def defineMongoAnd(truthValueList: BasicDBList): BasicDBObject = {
     new BasicDBObject(AND, truthValueList)
   }
 
-  def defineIn(queryList: BasicDBList): BasicDBObject = {
+  def defineMongoIn(queryList: BasicDBList): BasicDBObject = {
     new BasicDBObject(IN, queryList)
   }
 
-  def defineRegex(regex: String): BasicDBObject = {
+  def defineMongoRegex(regex: String): BasicDBObject = {
     new BasicDBObject(REGEX, regex)
   }
 
-  def toDbList(normalList: List[BasicDBObject]): BasicDBList = {
+  def convertListToMongoDbList(normalList: List[BasicDBObject]): BasicDBList = {
     val copyList = new BasicDBList
     copyList.addAll(normalList)
     copyList
@@ -62,7 +69,7 @@ object MongoWorkflowUtilities {
   }
 
 
-  def dbIteratorToSet(iterator: Iterator[DBObject]): Set[DBObject] = {
+  def mongoDbIteratorToSet(iterator: Iterator[DBObject]): Set[DBObject] = {
     val buffer = mutable.Set[DBObject]()
     for (value <- iterator) {
       buffer add value
