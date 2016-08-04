@@ -1,0 +1,32 @@
+<templateSet group="user">
+  <template name="FileWriter" value="try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(new File($par$)))) {&#10;      &#10;}" toReformat="false" toShortenFQNames="true">
+    <variable name="par" expression="" defaultValue="" alwaysStopAt="true" />
+    <context>
+      <option name="JAVA_STATEMENT" value="true" />
+    </context>
+  </template>
+  <template name="logger" value="private static final Logger LOGGER = LogManager.getFormatterLogger($param$.class);" toReformat="false" toShortenFQNames="true">
+    <variable name="param" expression="" defaultValue="" alwaysStopAt="true" />
+    <context>
+      <option name="JAVA_CODE" value="false" />
+      <option name="JAVA_STATEMENT" value="true" />
+      <option name="JAVA_EXPRESSION" value="true" />
+      <option name="JAVA_DECLARATION" value="true" />
+      <option name="JAVA_COMMENT" value="false" />
+      <option name="JAVA_STRING" value="false" />
+      <option name="COMPLETION" value="false" />
+    </context>
+  </template>
+  <template name="print" value="System.out.println($param$);" toReformat="false" toShortenFQNames="true">
+    <variable name="param" expression="" defaultValue="" alwaysStopAt="true" />
+    <context>
+      <option name="JAVA_CODE" value="true" />
+      <option name="JAVA_STATEMENT" value="true" />
+      <option name="JAVA_EXPRESSION" value="true" />
+      <option name="JAVA_DECLARATION" value="true" />
+      <option name="JAVA_COMMENT" value="true" />
+      <option name="JAVA_STRING" value="true" />
+      <option name="COMPLETION" value="true" />
+    </context>
+  </template>
+</templateSet>
