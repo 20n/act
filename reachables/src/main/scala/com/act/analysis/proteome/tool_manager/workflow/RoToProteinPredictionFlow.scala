@@ -172,20 +172,14 @@ class RoToProteinPredictionFlow
 
       // Align Fasta sequence
       val alignFastaSequences = ClustalOmegaWrapper.alignProteinFastaFile(outputFastaPath, alignedFastaPath)
-      alignFastaSequences.writeOutputStreamToLogger()
-      alignFastaSequences.writeErrorStreamToLogger()
       headerJob.thenRunAtPosition(alignFastaSequences, 1)
 
       // Build a new HMM
       val buildHmmFromFasta = HmmerWrapper.hmmbuild(outputHmmPath, alignedFastaPath)
-      buildHmmFromFasta.writeErrorStreamToLogger()
-      buildHmmFromFasta.writeOutputStreamToLogger()
       headerJob.thenRunAtPosition(buildHmmFromFasta, 2)
 
       // Use the built HMM to find novel proteins
       val searchNewHmmAgainstPanProteome = HmmerWrapper.hmmsearch(outputHmmPath, proteomeLocation, resultFilePath)
-      searchNewHmmAgainstPanProteome.writeErrorStreamToLogger()
-      searchNewHmmAgainstPanProteome.writeOutputStreamToLogger()
       headerJob.thenRunAtPosition(searchNewHmmAgainstPanProteome, 3)
     }
 
