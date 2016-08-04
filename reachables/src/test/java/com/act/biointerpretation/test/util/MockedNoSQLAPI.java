@@ -185,6 +185,8 @@ public class MockedNoSQLAPI {
       }
     }).when(mockNoSQLAPI).readChemsFromInKnowledgeGraph();
 
+    doReturn(sequences.iterator()).when(mockNoSQLAPI).readSeqsFromInKnowledgeGraph();
+
     // Look up reactions/chems by id in the maps we just created.
     doAnswer(new Answer<Reaction>() {
       @Override
@@ -331,6 +333,14 @@ public class MockedNoSQLAPI {
         any(Set.class),
         any(DBObject.class)
     );
+
+    doAnswer(new Answer<Seq>() {
+      @Override
+      public Seq answer(InvocationOnMock invocation) throws Throwable {
+        return writtenSequences.get(invocation.getArgumentAt(0, Long.class));
+      }
+    }).when(mockWriteMongoDB).getSeqFromID(any(Long.class));
+
   }
 
   public NoSQLAPI getMockNoSQLAPI() {

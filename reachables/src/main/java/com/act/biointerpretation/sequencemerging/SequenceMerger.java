@@ -8,17 +8,21 @@ import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import chemaxon.reaction.ReactionException;
 import com.act.biointerpretation.BiointerpretationProcessor;
+import com.mongodb.util.JSON;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
 import java.util.Set;
 
 public class SequenceMerger extends BiointerpretationProcessor {
@@ -42,10 +46,10 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
   @Override
   public void run() throws IOException, ReactionException{
-    LOGGER.info("copying all reactions");
-    super.processReactions();
     LOGGER.info("copying all chemicals");
     super.processChemicals();
+    LOGGER.info("copying all reactions");
+    super.processReactions();
     LOGGER.info("processing sequences for deduplication");
     processSequences();
   }
@@ -59,8 +63,15 @@ public class SequenceMerger extends BiointerpretationProcessor {
     while (sequences.hasNext()) {
       Seq sequence = sequences.next();
       UniqueSeq uniqueSeq = new UniqueSeq(sequence);
-      List<Seq> matchingSeqs = sequenceGroups.get(uniqueSeq);
-      matchingSeqs.add(sequence);
+      List<Seq> matchingSeqs = sequenceGroups.get(uniqueSeq); // TODO: unique seqs aren't matching
+      if (matchingSeqs != null) {
+        matchingSeqs.add(sequence);
+        sequenceGroups.put(uniqueSeq, matchingSeqs);
+      } else {
+        List<Seq> seqs = new ArrayList<>();
+        seqs.add(sequence);
+        sequenceGroups.put(uniqueSeq, seqs);
+      }
     }
 
     Iterator sequenceGroupIterator = sequenceGroups.entrySet().iterator();
@@ -105,6 +116,32 @@ public class SequenceMerger extends BiointerpretationProcessor {
       ecnum = sequence.get_ec();
       organism = sequence.get_org_name();
       protSeq = sequence.get_sequence();
+    }
+
+    @Override
+    public int hashCode() {
+      return ecnum.hashCode() + organism.hashCode() + protSeq.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == null) {
+        return false;
+      }
+
+      if (getClass() != obj.getClass()) {
+        return false;
+      }
+
+      final UniqueSeq other = (UniqueSeq) obj;
+
+      if (this.ecnum.equals(other.ecnum) &&
+          this.organism.equals(other.organism) &&
+          this.protSeq.equals(other.protSeq)) {
+        return true;
+      }
+
+      return false;
     }
   }
 
@@ -294,22 +331,28 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
       JSONArray comment = newMetadata.getJSONArray("comment");
 
-      Set<Long> brendaIds = new HashSet<>();
+      Set<Long> newBrendaIds = new HashSet<>();
       for (int i = 0; i < comment.length(); i++) {
         JSONObject commentObject = comment.getJSONObject(i);
         if (commentObject.has("text") && commentObject.has("type") &&
             commentObject.getString("type").equals("brenda_id")) {
 
-          brendaIds.add(commentObject.getLong("text"));
+          newBrendaIds.add(commentObject.getLong("text"));
 
         }
       }
 
       if (mergedMetadata.has("xref") && mergedMetadata.getJSONObject("xref").has("brenda_id")) {
 
-        Set<Long> oldBrendaIds = (Set<Long>) mergedMetadata.getJSONObject("xref").getJSONArray("brenda_id");
+        JSONArray brendaIds = mergedMetadata.getJSONObject("xref").getJSONArray("brenda_id");
+        Set<Long> oldBrendaIds = new HashSet<>();
+        for (int i = 0; i < brendaIds.length(); i++) {
+          oldBrendaIds.add((Long) brendaIds.get(i));
+        }
 
-        for (Long brendaId : brendaIds) {
+        for (Long brendaId : newBrendaIds) {
+
+          // set operations handle duplicate case
           oldBrendaIds.add(brendaId);
         }
 
@@ -318,7 +361,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
       } else {
 
         JSONObject xrefObject = new JSONObject();
-        xrefObject.put("brenda_id", brendaIds);
+        xrefObject.put("brenda_id", newBrendaIds);
         mergedMetadata.put("xref", xrefObject);
 
       }
@@ -333,6 +376,8 @@ public class SequenceMerger extends BiointerpretationProcessor {
   // may not need to return anything at all since you're changing the referenced mergedRefs
   private List<JSONObject> mergeReferences(List<JSONObject> mergedRefs, List<JSONObject> newRefs) {
 
+    ListIterator<JSONObject> mergedRefsIterator = mergedRefs.listIterator();
+
     for (JSONObject newRef : newRefs) {
 
       if (newRef.getString("src").equals("PMID")) {
@@ -340,7 +385,8 @@ public class SequenceMerger extends BiointerpretationProcessor {
         boolean pmidExists = false;
         String newPmid = newRef.getString("val");
 
-        for (JSONObject mergedRef : mergedRefs) {
+        while (mergedRefsIterator.hasNext()) {
+          JSONObject mergedRef = mergedRefsIterator.next();
 
           if (mergedRef.getString("src").equals("PMID") &&
               mergedRef.getString("val").equals(newPmid)) {
@@ -351,7 +397,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
           if (!pmidExists) {
 
-            mergedRefs.add(newRef);
+            mergedRefsIterator.add(newRef);
 
           }
         }
@@ -362,7 +408,8 @@ public class SequenceMerger extends BiointerpretationProcessor {
         String newPatentNumber = newRef.getString("patent_number");
         String newPatentYear = newRef.getString("patent_year");
 
-        for (JSONObject mergedRef : mergedRefs) {
+        while (mergedRefsIterator.hasNext()) {
+          JSONObject mergedRef = mergedRefsIterator.next();
 
           if (mergedRef.getString("src").equals("Patent") &&
               mergedRef.getString("country_code").equals(newCountryCode) &&
@@ -375,7 +422,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
           if (!patentExists) {
 
-            mergedRefs.add(newRef);
+            mergedRefsIterator.add(newRef);
 
           }
         }
@@ -387,7 +434,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
   private void updateReactionsReferencingDuplicatedSeqs(Set<Long> matchedSeqsIDs, Set<Long> reactionRefs, Long newSeqID) {
     for (Long reactionRef : reactionRefs) {
-      Reaction reaction = getNoSQLAPI().getReadDB().getReactionFromUUID(reactionRef);
+      Reaction reaction = getNoSQLAPI().readReactionFromInKnowledgeGraph(reactionRef);
       Set<JSONObject> proteins = reaction.getProteinData();
 
       for (JSONObject protein : proteins) {
@@ -412,13 +459,5 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
     }
   }
-
-
-
-//  There are multiple Seq entries that are identical in everything but ID (e.g. 93775, 93774)
-//  There are multiple Seq entries that are identical in everything but ID and 'metadata.comment.text', a seemingly irrelevant field that shouldn't warrant different Seq entries (e.g. 51784, 51785)
-//  There are multiple Seq entries that are identical in everything but ID and the reactions they reference (e.g. 6924, 6937)
-//  There are multiple Seq entries that are identical in everything but organism post-fixes (different strains)
-//  We believe each Seq entry that shares the same ecnum, org and seq should collapse into one entry.
 
 }
