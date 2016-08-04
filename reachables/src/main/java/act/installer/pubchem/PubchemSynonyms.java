@@ -13,8 +13,10 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class PubchemSynonyms implements Serializable {
@@ -24,8 +26,8 @@ public class PubchemSynonyms implements Serializable {
   String pubchemId;
 
   @JsonProperty("synonyms")
-  @JsonSerialize(using = SortingSetSerializer.class)
-  Set<String> synonyms = new HashSet<>();
+  @JsonSerialize(contentUsing = SortingSetSerializer.class)
+  Map<PubchemTTLMerger.PC_SYNONYM_TYPES, Set<String>> synonyms = new HashMap<>();
 
   @JsonProperty("MeSH_ids")
   @JsonSerialize(using = SortingSetSerializer.class)
@@ -35,21 +37,32 @@ public class PubchemSynonyms implements Serializable {
     this.pubchemId = pubchemId;
   }
 
-  public PubchemSynonyms(String pubchemId, Collection<String> synonyms, Collection<String> meshIds) {
+  public PubchemSynonyms(String pubchemId,
+                         Map<PubchemTTLMerger.PC_SYNONYM_TYPES, Set<String>> synonyms,
+                         Collection<String> meshIds) {
     this.pubchemId = pubchemId;
-    this.synonyms.addAll(synonyms);
+    this.synonyms.putAll(synonyms);
     this.meshIds.addAll(meshIds);
   }
 
-  protected void addSynonym(String synonym) {
-    this.synonyms.add(synonym);
+  private Set<String> getOrCreateAndSetForType(PubchemTTLMerger.PC_SYNONYM_TYPES type) {
+    Set<String> existingVals = this.synonyms.get(type);
+    if (existingVals == null) {
+      existingVals = new HashSet<>();
+      this.synonyms.put(type, existingVals);
+    }
+    return existingVals;
   }
 
-  protected void addSynonyms(List<String> synonyms) {
-    this.synonyms.addAll(synonyms);
+  protected void addSynonym(PubchemTTLMerger.PC_SYNONYM_TYPES type, String synonym) {
+    getOrCreateAndSetForType(type).add(synonym);
   }
 
-  public Set<String> getSynonyms() {
+  protected void addSynonyms(PubchemTTLMerger.PC_SYNONYM_TYPES type, Set<String> synonyms) {
+    getOrCreateAndSetForType(type).addAll(synonyms);
+  }
+
+  public Map<PubchemTTLMerger.PC_SYNONYM_TYPES, Set<String>> getSynonyms() {
     return synonyms;
   }
 
