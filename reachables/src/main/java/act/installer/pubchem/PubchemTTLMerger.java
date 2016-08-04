@@ -776,6 +776,9 @@ public class PubchemTTLMerger {
        * hash in both the MeSH and synonym collections, as the key may legitimately exist in both (and serve to link
        * cid to synonym and cid to MeSH). */
       for (String hash : hashes) {
+        /* Note: these ids are not proper MeSH topic ids, but are internal MeSH ids found in the RDF and TTL
+         * representations of the MeSH corpus.  You can find them in the MeSH .nt or .xml files, but they won't turn up
+         * anything on the MeSH website. */
         List<String> meshIds = getValueAsObject(db, meshCFH, hash);
         if (meshIds != null) {
           pubchemSynonyms.addMeSHIds(meshIds);
