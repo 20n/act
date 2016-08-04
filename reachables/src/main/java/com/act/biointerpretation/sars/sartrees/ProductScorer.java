@@ -28,6 +28,7 @@ import java.util.function.Function;
 
 public class ProductScorer {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
   static {
     OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
   }
@@ -66,7 +67,8 @@ public class ProductScorer {
           .longOpt("output-path")
           .required(true)
       );
-    }};
+    }
+  };
 
 
   public static final String HELP_MESSAGE =
@@ -74,6 +76,7 @@ public class ProductScorer {
 
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
+
   static {
     HELP_FORMATTER.setWidth(100);
   }
@@ -133,12 +136,12 @@ public class ProductScorer {
       predictionToSarMap.put(prediction, bestSar);
       prediction.setProjectorName(
           prediction.getProjectorName() + ":" +
-          bestSar.getHierarchyId() + ":" +
-          bestSar.getPercentageHits());
+              bestSar.getHierarchyId() + ":" +
+              bestSar.getPercentageHits());
     }
 
     List<L2Prediction> predictions = new ArrayList<>(predictionToSarMap.keySet());
-    predictions.sort((a,b) ->
+    predictions.sort((a, b) ->
         (-Double.compare(predictionToSarMap.get(a).getPercentageHits(), predictionToSarMap.get(b).getPercentageHits())));
 
     L2PredictionCorpus finalCorpus = new L2PredictionCorpus(predictions);

@@ -9,9 +9,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * A simple list of SarTreeNodes that can be serialized for curation and deserialized for later use.
+ */
 public class SarTreeNodeCorpus {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
   static {
     OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
   }
@@ -20,7 +24,7 @@ public class SarTreeNodeCorpus {
   List<SarTreeNode> sarTreeNodes;
 
   public SarTreeNodeCorpus() {
-   sarTreeNodes = new ArrayList<>();
+    sarTreeNodes = new ArrayList<>();
   }
 
   public SarTreeNodeCorpus(List<SarTreeNode> sarTreeNodes) {

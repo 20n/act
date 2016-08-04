@@ -1,24 +1,20 @@
 package com.act.biointerpretation.sars.sartrees;
 
-import com.act.biointerpretation.sars.Sar;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Stack;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 
+/**
+ * Provides a nice interface over the results of a LibMCS clustering run.
+ */
 public class SarTree {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(SarTree.class);
