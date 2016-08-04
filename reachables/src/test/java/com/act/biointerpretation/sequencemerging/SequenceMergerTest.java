@@ -121,6 +121,8 @@ public class SequenceMergerTest {
 
     references = new ArrayList<>();
 
+    pmid = new JSONObject();
+    pmid.put("src", "PMID");
     pmid.put("val", "218394");
     references.add(pmid);
 
@@ -160,6 +162,11 @@ public class SequenceMergerTest {
   public void testMergeEndToEnd() {
     List<JSONObject> references = new ArrayList<>();
 
+    JSONObject pmid = new JSONObject();
+    pmid.put("src", "PMID");
+    pmid.put("val", "2423423");
+    references.add(pmid);
+
     JSONObject patent = new JSONObject();
     patent.put("src", "Patent");
     patent.put("country_code", "JP");
@@ -174,14 +181,18 @@ public class SequenceMergerTest {
     patent.put("patent_year", "2015");
     references.add(patent);
 
+    pmid = new JSONObject();
+    pmid.put("src", "PMID");
+    pmid.put("val", "218394");
+    references.add(pmid);
+
     JSONObject metadata = new JSONObject();
-    metadata.put("proteinExistence", new JSONObject());
 
     JSONObject xrefObject = new JSONObject();
-    xrefObject.put("xref", new JSONArray(Arrays.asList(128930, 128931, 128932)));
+    xrefObject.put("brenda_id", new JSONArray(Arrays.asList(128931, 128930, 128932)));
     metadata.put("xref", xrefObject);
 
-    Seq mergedSeq = new Seq(1L, "1.1.1.1", 400003474L, "Mus musculus", "AJFLGJKJFDS", references,
+    Seq mergedSeq = new Seq(1L, "1.1.1.1", 4000003474L, "Mus musculus", "AJKFLGKJDFS", references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     Reaction reaction = new Reaction(1L,
@@ -197,9 +208,15 @@ public class SequenceMergerTest {
     reaction.addProteinData(proteinData);
 
     Seq testSeq = mockAPI.getMockWriteMongoDB().getSeqFromID(1L);
+    Reaction testReaction = mockAPI.getMockWriteMongoDB().getReactionFromUUID(1L);
 
-    compareSeqs("for testMergeEndToEnd", mergedSeq, testSeq);
-    compareReactions("for testMergeEndToEnd", reaction, mockAPI.getMockWriteMongoDB().getReactionFromUUID(1L));
+    if (testSeq != null) {
+      compareSeqs("for testMergeEndToEnd", mergedSeq, testSeq);
+    }
+
+    if (testReaction != null) {
+      compareReactions("for testMergeEndToEnd", reaction, mockAPI.getMockWriteMongoDB().getReactionFromUUID(1L));
+    }
 
   }
 
@@ -217,7 +234,8 @@ public class SequenceMergerTest {
 
   private void compareReactions(String message, Reaction expectedReaction, Reaction testReaction) {
     assertEquals("comparing ec " + message, expectedReaction.getECNum(), testReaction.getECNum());
-    assertEquals("comparing protein data " + message, expectedReaction.getProteinData(), testReaction.getProteinData());
+    assertEquals("comparing protein data " + message, expectedReaction.getProteinData().toString(),
+        testReaction.getProteinData().toString());
   }
 
 }

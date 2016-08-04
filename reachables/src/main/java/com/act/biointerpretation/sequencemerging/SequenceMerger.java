@@ -49,9 +49,27 @@ public class SequenceMerger extends BiointerpretationProcessor {
     LOGGER.info("copying all chemicals");
     super.processChemicals();
     LOGGER.info("copying all reactions");
-    super.processReactions();
+    processReactions();
     LOGGER.info("processing sequences for deduplication");
     processSequences();
+  }
+
+  /**
+   * Copies all reactions over to the WriteDB
+   */
+  @Override
+  public void processReactions() {
+    Iterator<Reaction> iterator = getNoSQLAPI().readRxnsFromInKnowledgeGraph();
+
+    while (iterator.hasNext()) {
+
+      Reaction oldRxn = iterator.next();
+      Long oldId = (long) oldRxn.getUUID();
+      int newId = getNoSQLAPI().writeToOutKnowlegeGraph(oldRxn);
+
+      // TODO: Store the oldId somewhere; you can maybe cache it in some HashMap of oldId to newId
+
+    }
   }
 
   @Override
@@ -63,7 +81,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
     while (sequences.hasNext()) {
       Seq sequence = sequences.next();
       UniqueSeq uniqueSeq = new UniqueSeq(sequence);
-      List<Seq> matchingSeqs = sequenceGroups.get(uniqueSeq); // TODO: unique seqs aren't matching
+      List<Seq> matchingSeqs = sequenceGroups.get(uniqueSeq);
       if (matchingSeqs != null) {
         matchingSeqs.add(sequence);
         sequenceGroups.put(uniqueSeq, matchingSeqs);
@@ -99,6 +117,8 @@ public class SequenceMerger extends BiointerpretationProcessor {
           mergedSequence.getReactionsCatalyzed(),
           MongoDBToJSON.conv(mergedSequence.get_metadata())
       );
+
+      // TODO: copy organisms; do we need to copy cofactors?
 
       updateReactionsReferencingDuplicatedSeqs(matchedSeqsIDs, reactionRefs, id);
 
@@ -376,14 +396,14 @@ public class SequenceMerger extends BiointerpretationProcessor {
   // may not need to return anything at all since you're changing the referenced mergedRefs
   private List<JSONObject> mergeReferences(List<JSONObject> mergedRefs, List<JSONObject> newRefs) {
 
-    ListIterator<JSONObject> mergedRefsIterator = mergedRefs.listIterator();
-
     for (JSONObject newRef : newRefs) {
 
       if (newRef.getString("src").equals("PMID")) {
 
         boolean pmidExists = false;
         String newPmid = newRef.getString("val");
+
+        ListIterator<JSONObject> mergedRefsIterator = mergedRefs.listIterator();
 
         while (mergedRefsIterator.hasNext()) {
           JSONObject mergedRef = mergedRefsIterator.next();
@@ -392,14 +412,16 @@ public class SequenceMerger extends BiointerpretationProcessor {
               mergedRef.getString("val").equals(newPmid)) {
 
             pmidExists = true;
+            break;
 
           }
 
-          if (!pmidExists) {
+        }
 
-            mergedRefsIterator.add(newRef);
+        if (!pmidExists) {
 
-          }
+          mergedRefsIterator.add(newRef);
+
         }
       } else if (newRef.getString("src").equals("Patent")) {
 
@@ -407,6 +429,8 @@ public class SequenceMerger extends BiointerpretationProcessor {
         String newCountryCode = newRef.getString("country_code");
         String newPatentNumber = newRef.getString("patent_number");
         String newPatentYear = newRef.getString("patent_year");
+
+        ListIterator<JSONObject> mergedRefsIterator = mergedRefs.listIterator();
 
         while (mergedRefsIterator.hasNext()) {
           JSONObject mergedRef = mergedRefsIterator.next();
@@ -417,14 +441,17 @@ public class SequenceMerger extends BiointerpretationProcessor {
               mergedRef.getString("patent_year").equals(newPatentYear)) {
 
             patentExists = true;
+            break;
 
           }
 
-          if (!patentExists) {
 
-            mergedRefsIterator.add(newRef);
+        }
 
-          }
+        if (!patentExists) {
+
+          mergedRefsIterator.add(newRef);
+
         }
       }
     }

@@ -341,6 +341,22 @@ public class MockedNoSQLAPI {
       }
     }).when(mockWriteMongoDB).getSeqFromID(any(Long.class));
 
+    doAnswer(new Answer<Reaction>() {
+      @Override
+      public Reaction answer(InvocationOnMock invocation) throws Throwable {
+
+        Long id = invocation.getArgumentAt(0, Long.class);
+
+        for (int i = 0; i < writtenReactions.size(); i++) {
+          if (writtenReactions.get(i).getUUID() == id) {
+            return writtenReactions.get(i);
+          }
+        }
+
+        return null;
+      }
+    }).when(mockWriteMongoDB).getReactionFromUUID(any(Long.class));
+
   }
 
   public NoSQLAPI getMockNoSQLAPI() {
