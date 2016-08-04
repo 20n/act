@@ -108,7 +108,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
       // stores the IDs of all sequences that are about to be merged
       Set<Long> matchedSeqsIDs = new HashSet<>();
-      // stores the IDs of all reactions that referenced these merged sequences and now need to refer to the merged Sequence ID
+      // stores the IDs of all reactions that referenced merged sequences and should now refer to the merged Sequence ID
       Set<Long> reactionRefs = new HashSet<>();
 
       for (Seq sequence : allMatchedSeqs) {
@@ -140,18 +140,15 @@ public class SequenceMerger extends BiointerpretationProcessor {
         sequenceMigrationMap.put(matchedSeqId, mergedSeqId);
       }
 
-
       updateReactionsReferencingDuplicatedSeqs(matchedSeqsIDs, reactionRefs, mergedSeqId);
 
     }
 
-    // TODO: also need to handle organism changes; Mark says to not worry about this now
-    mergeReactionProteinDataBasedOnOrg();
+    // TODO: need to handle organism prefixes in the Reactions collection; Mark says to not worry about this just yet
 
   }
 
   private void migrateOrganism(Seq sequence) {
-    // TODO: prefix matching, adjust orgName
     String organismName = checkForOrgPrefix(sequence.get_org_name());
     sequence.set_organism_name(organismName);
 
@@ -178,7 +175,6 @@ public class SequenceMerger extends BiointerpretationProcessor {
   }
 
   /**
-   * TODO: check if hash code AND equals overrides are both necessary
    * This class is used to group sequences that share the same ecnum, organism and protein sequence
    */
   private static class UniqueSeq {
@@ -316,7 +312,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
     }
 
-    // used to ensure that the new gene name is added to the synonyms list in the case that it doesn't match the old gene name
+    // ensures that the new gene name is added to the synonyms list in the case that it doesn't match the old gene name
     boolean geneNameMatches = true;
 
     if (newMetadata.has("name")) {
@@ -373,7 +369,8 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
         for (int i = 0; i < newProductNames.length(); i++) {
 
-          mergedMetadata = GenbankInstaller.updateArrayField("product_names", newProductNames.getString(i), mergedMetadata);
+          mergedMetadata = GenbankInstaller.updateArrayField("product_names", newProductNames.getString(i),
+              mergedMetadata);
 
         }
 
@@ -454,8 +451,6 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
   }
 
-  // can use set operations in order to have less logic
-  // may not need to return anything at all since you're changing the referenced mergedRefs
   private void mergeReferences(List<JSONObject> mergedRefs, List<JSONObject> newRefs) {
 
     if (mergedRefs == null || mergedRefs.size() == 0) {
@@ -523,7 +518,8 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
   }
 
-  private void updateReactionsReferencingDuplicatedSeqs(Set<Long> matchedSeqsIDs, Set<Long> reactionRefs, Long newSeqID) {
+  private void updateReactionsReferencingDuplicatedSeqs(Set<Long> matchedSeqsIDs, Set<Long> reactionRefs,
+                                                        Long newSeqID) {
     for (Long reactionRef : reactionRefs) {
       Reaction reaction = getNoSQLAPI().readReactionFromInKnowledgeGraph(reactionRef);
       Set<JSONObject> proteins = reaction.getProteinData();
@@ -549,16 +545,6 @@ public class SequenceMerger extends BiointerpretationProcessor {
       getNoSQLAPI().getWriteDB().updateActReaction(reaction, reactionRef.intValue());
 
     }
-  }
-
-  /**
-   * Iterates over all reactions. For each reaction, checks if the proteinData has multiple organism entries that share
-   * the same organism prefix (if the orgIds map to the same new OrgId in the organismMigrationMap). For the entries
-   * that map to the same prefix, combine their data. Is this always valid to combine? Do we need to compare sequences
-   * and recommended name as well to confirm that data is safe to combine?
-   */
-  private void mergeReactionProteinDataBasedOnOrg() {
-
   }
 
 }
