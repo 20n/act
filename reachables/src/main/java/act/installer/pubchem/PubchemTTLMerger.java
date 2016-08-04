@@ -222,7 +222,7 @@ public class PubchemTTLMerger {
 
   /**
    * Each triple in the RDF files takes the form:
-   * <pre>[subject namespace]:[subject value] ppredicate namespace]:[predicate value] [object namespace]:[object value] .</pre>
+   * <pre>[subject namespace]:[subject value] predicate namespace]:[predicate value] [object namespace]:[object value] .</pre>
    * Some of the files contain multiple types of values, only some of which we want to store.  For example, the
    * `topics` file contains both MeSH ids and "concepts" (I'm not sure what the latter actually represents).  We can
    * identify the MeSH ids based on their namespace and throw everything else away.
@@ -330,13 +330,11 @@ public class PubchemTTLMerger {
     }};
 
     public static PC_SYNONYM_TYPES getByCheminfId(String cheminfId) {
-      PC_SYNONYM_TYPES result = CHEMINF_TO_TYPE.get(cheminfId);
-      return result != null ? result : UNKNOWN;
+      return CHEMINF_TO_TYPE.getOrDefault(cheminfId, UNKNOWN);
     }
 
     public static PC_SYNONYM_TYPES getByJsonLabel(String cheminfId) {
-      PC_SYNONYM_TYPES result = JSON_LABEL_TO_TYPE.get(cheminfId);
-      return result != null ? result : UNKNOWN;
+      return JSON_LABEL_TO_TYPE.getOrDefault(cheminfId, UNKNOWN);
     }
 
     String cheminfId;
