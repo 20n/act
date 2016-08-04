@@ -34,8 +34,9 @@ import scala.io.Source
   */
 object compute {
   private val MS_PER_S = 1000.0d
-  private val RUNTIME_WARNING_THRESHOLD_S = 60d * 15d; // 15 mins
+  private val RUNTIME_WARNING_THRESHOLD_S = 60d * 15d // 15 mins
   private val LOGGER = LogManager.getLogger(getClass)
+
   // Create one job per ERO to cut down on time spent compiling.  TODO: segment more efficiently and cache Eros.
   def run(licenseFileName: String, ero: Ero, inchis: List[String]): (Double, L2PredictionCorpus) = {
     val startTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)

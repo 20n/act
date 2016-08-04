@@ -18,6 +18,7 @@ import java.io.OutputStreamWriter;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public abstract class L2Expander implements Serializable {
   private static final long serialVersionUID = 5846728290095735668L;
@@ -43,20 +44,20 @@ public abstract class L2Expander implements Serializable {
    * @return A corpus of L2 predictions using the specified generator.
    */
   public L2PredictionCorpus getPredictions() {
-    return getPredictions(null);
+    return getPredictions(Optional.empty());
   }
 
   /**
    * Get predicitions for this expander, logging progress to the specified output stream.
-   * @param outputStream A stream to which to write incremental results.
+   * @param maybeOutputStream A stream to which to write incremental results.
    * @return A corpus of L2 predicitions using the specified generator.
    */
-  public L2PredictionCorpus getPredictions(OutputStream outputStream) {
+  public L2PredictionCorpus getPredictions(Optional<OutputStream> maybeOutputStream) {
     L2PredictionCorpus result = new L2PredictionCorpus();
 
-    OutputStreamWriter writer = null;
-    if (outputStream != null) {
-      writer = new OutputStreamWriter(outputStream);
+    Optional<OutputStreamWriter> maybeWriter = Optional.empty();
+    if (maybeOutputStream.isPresent()) {
+      maybeWriter = Optional.of(new OutputStreamWriter(maybeOutputStream.get()));
     }
 
     ObjectMapper objectMapper = new ObjectMapper();
@@ -65,15 +66,15 @@ public abstract class L2Expander implements Serializable {
       // Apply reactor to substrate if possible
       try {
         List<L2Prediction> results = generator.getPredictions(seed);
-        if (writer != null) {
+        if (maybeWriter.isPresent()) {
           try {
             /* Write results as string to ensure the object mapper doesn't close the stream we give it.  See
              * https://fasterxml.github.io/jackson-databind/javadoc/2.6/com/fasterxml/jackson/databind/ObjectMapper.html#writeValue-java.io.OutputStream-java.lang.Object-
              * for a confusing explanation of why we worry about this. */
             String resultJson = objectMapper.writeValueAsString(results);
-            writer.write(resultJson);
-            writer.write("\n");
-            writer.flush(); // Flush to ensure the user can actually see the progress output.
+            maybeWriter.get().write(resultJson);
+            maybeWriter.get().write("\n");
+            maybeWriter.get().flush(); // Flush to ensure the user can actually see the progress output.
           } catch (Exception e) {
             LOGGER.error("Caught exception when writing progress, skipping: %s", e.getMessage());
           }
