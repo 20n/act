@@ -58,6 +58,7 @@ public class ReactionProjector {
 
   public ReactionProjector(MolSearch searcher) {
     this.searcher = searcher;
+    this.molToInchiMap = new HashMap<>();
   }
 
   /**
@@ -74,12 +75,12 @@ public class ReactionProjector {
    *
    * @param reactor The reactor to run.
    * @param expectedProduct The product we expect to see.
-   * @return The produces product; this is necessary because the reactor will produce the product with atom maps
+   * @return The produced product; this is necessary because the reactor will produce the product with atom maps
    * corresponding to the substrate, whereas the expectedProduct Molecule will not have such atom maps.
-   * @throws ReactionException
+   * @throws ReactionException If the expected product is not produced at all by the Reactor.
    * @throws IOException
    */
-  public Molecule runTillProducesProduct(Reactor reactor, Molecule expectedProduct)
+  public Molecule reactUntilProducesProduct(Reactor reactor, Molecule expectedProduct)
       throws ReactionException {
     if (reactor.getProductCount() != 1) {
       throw new IllegalArgumentException("Reactor must produce exactly one product.");
@@ -91,6 +92,7 @@ public class ReactionProjector {
         return products[0];
       }
     }
+
     throw new ReactionException("Expected product not among Reactor's predictions.");
   }
 

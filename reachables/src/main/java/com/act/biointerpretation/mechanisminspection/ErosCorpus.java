@@ -3,7 +3,6 @@ package com.act.biointerpretation.mechanisminspection;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.xmlbeans.impl.piccolo.io.FileFormatException;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -138,11 +137,11 @@ public class ErosCorpus implements Iterable<Ero> {
     return getRos().iterator();
   }
 
-  private void buildRoIdToReactorMap() throws FileFormatException {
+  private void buildRoIdToReactorMap() {
     roIdToEroMap = new HashMap<>();
     for (Ero ro : ros) {
       if (roIdToEroMap.containsKey(ro.getId())) {
-        throw new FileFormatException("RO corpus contains two ROs with same Id: " + ro.getId());
+        throw new IllegalArgumentException("RO corpus contains two ROs with same Id: " + ro.getId());
       }
       roIdToEroMap.put(ro.getId(), ro);
     }

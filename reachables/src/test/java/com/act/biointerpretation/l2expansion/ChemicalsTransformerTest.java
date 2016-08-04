@@ -2,14 +2,10 @@ package com.act.biointerpretation.l2expansion;
 
 import act.server.MongoDB;
 import act.shared.Chemical;
-import chemaxon.reaction.Reactor;
-import com.act.biointerpretation.sars.Sar;
-import com.act.biointerpretation.sars.SerializableReactor;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;

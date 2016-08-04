@@ -81,7 +81,7 @@ public class FullReactionBuilder {
     try {
       for (RxnMolecule reaction : reactions) {
         fullReactor.setReactants(new Molecule[] {getOnlySubstrate(reaction)});
-        projector.runTillProducesProduct(fullReactor, getOnlyProduct(reaction));
+        projector.reactUntilProducesProduct(fullReactor, getOnlyProduct(reaction));
       }
     } catch (ReactionException e) {
       return false;

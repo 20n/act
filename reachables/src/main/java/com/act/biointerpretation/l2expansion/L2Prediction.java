@@ -1,7 +1,5 @@
 package com.act.biointerpretation.l2expansion;
 
-import com.act.biointerpretation.sars.Sar;
-import com.act.biointerpretation.sars.SerializableReactor;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;

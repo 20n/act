@@ -17,6 +17,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -40,6 +41,7 @@ public class ExpandedReactionSearcher {
   private final ReactionProjector projector;
   private final MolSearch searcher;
 
+  // This value should always store the smallest value that has not thus far been used as atom map value.
   private int nextLabel;
 
   private Reactor seedReactor;
@@ -93,12 +95,13 @@ public class ExpandedReactionSearcher {
       throw e;
     }
     try {
-      predictedProduct = projector.runTillProducesProduct(seedReactor, expectedProduct);
+      predictedProduct = projector.reactUntilProducesProduct(seedReactor, expectedProduct);
     } catch (ReactionException e) {
       LOGGER.warn("Validation RO doesn't take substrate to expectedProduct: %s", e.getMessage());
       throw e;
     }
-    // convertToFrags() destroys the molecule, so this cloning is necessary.
+    // convertToFrags() destroys the molecule, so this cloning is necessary. The clone method is from chemaxon and
+    // produces a proper, deep copy of the molecule.
     Molecule substructureCopy = substructure.clone();
     fragmentPointer = Arrays.asList(substructureCopy.convertToFrags()).iterator();
     getNextFrag();
@@ -118,7 +121,9 @@ public class ExpandedReactionSearcher {
         try {
           Reactor fullReactor = getExpandedReaction(currentHit);
           getNextSearchHit();
-          return fullReactor;
+          if (fullReactor != null) {
+            return fullReactor;
+          }
         } catch (ReactionException e) {
         }
         getNextSearchHit();
@@ -157,14 +162,20 @@ public class ExpandedReactionSearcher {
   }
 
   /**
-   * Gets the expanded reactior corresponding to a particular search hit against a substructure fragment.
+   * Gets the expanded reactor corresponding to a particular search hit against a substructure fragment. Returns
+   * null if no valid expansion is found.
    *
    * @param hit The SearchHit.
    * @return The Reactor.
-   * @throws ReactionException If no reaction is generated.
+   * @throws ReactionException
    */
   private Reactor getExpandedReaction(SearchHit hit) throws ReactionException {
     Set<Integer> relevantAtomMaps = getRelevantSubstrateAtomMaps(substrate, hit, seedReactor);
+
+    if (relevantAtomMaps.isEmpty()) {
+      return null;
+    }
+
     relevantAtomMaps.addAll(labelNewAtomsAndReturnAtomMaps(predictedProduct));
 
     // Copy molecules and then destructively remove portions that don't match the RO or substructure
@@ -197,7 +208,7 @@ public class ExpandedReactionSearcher {
 
   /**
    * Get the atom maps of the substrate that are either in the substructure or affected by the seedReactor,
-   * if there is overlap between the two sets. Throw an exception if there is no overlap, as this indicates that the
+   * if there is overlap between the two sets. Return an empty set if there is no overlap, as this indicates that the
    * given search hit does not indicate any further constraint on where the RO can be applied.
    *
    * @param substrate The substrate of the reaction.
@@ -222,11 +233,14 @@ public class ExpandedReactionSearcher {
       return roAtomMaps;
     }
 
-    throw new ReactionException("RO does not overlap this substructure fragment.");
+    return Collections.emptySet();
   }
 
   /**
-   * Get the atom map values of atoms in the substrate that are involved in the reaction.
+   * Get the atom map values of atoms in the substrate that are involved in the reaction. This corresponds to all
+   * atoms which are explicitly encoded in the reactor. In practice, to extract these, we must first extract the
+   * atoms that correspond to product atoms included in the Reactor, and then add on "virgin" substrate atoms that
+   * disappear in the transformation from substrate to product.
    *
    * @param substrate The substrate.
    * @param reactor The seedReactor.
@@ -236,28 +250,48 @@ public class ExpandedReactionSearcher {
     Set<Integer> roAtomMaps = new HashSet<>();
     Set<Integer> substrateIndicesInProduct = new HashSet<>();
 
-    // Add all substrate atoms that are explicitly marked as active by the reactionMap.
-    // The maps added in this block all correspond to atoms in the product, since the map keys are product atoms.
+    /**
+     * The reactionMap is a map whose keys are MolAtoms in the product, and whose values are AtomIdentifiers that tell
+     * you about how those atoms relate to the reaction that produced the product.
+     *
+     * In this loop, we add all substrate atoms that are explicitly marked as active by the reactionMap.
+     */
     Map<MolAtom, AtomIdentifier> reactionMap = reactor.getReactionMap();
+    for (AtomIdentifier id : reactionMap.values()) { // Iterate over the AtomIdentifier values of the ReactionMap.
+      // If this AtomIdentifier is an orphan, this product atom does not correspond to an atom of the substrate.
+      if (id.isOrphanAtom()) {
+        continue;
+      }
+      // At this point, we know we have an AtomIdentifier that corresponds to an atom that is in both the substrate
+      // and the product, but we don't know if it's involved in the reaction, or just untouched by it.
 
-    for (MolAtom atom : reactionMap.keySet()) { // Iterate over product atoms in the map
-      AtomIdentifier id = reactionMap.get(atom);
+      // Keep tabs on the corresponding atom for later, but don't yet conclude that it's relevant.
       Integer substrateAtomIndex = id.getAtomIndex(); // Index of the corresponding atom in the substrate's atom array
+      substrateIndicesInProduct.add(substrateAtomIndex); // Save for later.
 
-      if (substrateAtomIndex >= 0) {
-        substrateIndicesInProduct.add(substrateAtomIndex); // Keep tabs on all substrate atoms that occur in product.
-        boolean productAtomActiveInRo = id.getReactionSchemaMap() > 0;
-
-        if (productAtomActiveInRo) {
-          roAtomMaps.add(substrate.getAtomArray()[substrateAtomIndex].getAtomMap());
-        }
+      // The reactionSchemaMap has to do with how the Reactor internally keeps track of the mapping between
+      // substrate and product atoms, I believe these values are only a property of the Reactor, not of these particular
+      // substrates and products. The key is that, to tell if a product atom is explicitly included in the Reactor, we
+      // can simply test if its associated reactionSchemaMap value is nonzero. If it is, then the reactor does
+      // explicitly encode that atom.
+      if (id.getReactionSchemaMap() > 0) {
+        roAtomMaps.add(substrate.getAtomArray()[substrateAtomIndex].getAtomMap());
       }
     }
 
-    // Now add in all substrate atoms which occur nowhere in the product: these are also implicitly acted upon.
-    for (int i = 0; i < substrate.getAtomArray().length; i++) {
-      if (!substrateIndicesInProduct.contains(i)) {
-        roAtomMaps.add(substrate.getAtomArray()[i].getAtomMap());
+    /**
+     * Now add in all substrate atoms which occur nowhere in the product: these are also implicitly acted upon.
+     * In theory we should be able to find these atoms with the built-in isVirgin() method, but I didn't figure how to
+     * get that to work. So instead, we iterate over all substrate atoms and filter out those we already saw correspoded
+     * to product atoms.
+     *
+     * How I thought this could work with isVirginAtom is:
+     * if (atomIdentifier.isVirginAtom(new Molecule[]{predictedProduct})) { add corresponding atom map to set }
+     * But this throws indexOutOfBoundsExceptions within the isVirginAtom call.
+     */
+    for (int i = 0; i < substrate.getAtomArray().length; i++) { // Iterate over indices in the substrate atom array.
+      if (!substrateIndicesInProduct.contains(i)) { // Test if this atom was NOT seen in the product
+        roAtomMaps.add(substrate.getAtomArray()[i].getAtomMap()); // If it was not, add its atom map to the result set.
       }
     }
 
