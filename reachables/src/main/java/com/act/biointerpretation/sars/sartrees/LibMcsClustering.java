@@ -136,19 +136,27 @@ public class LibMcsClustering {
 
     LibraryMCS libMcs = new LibraryMCS();
 
+    Consumer<SarTreeNode> sarConfidenceCalculator = new SarHitPercentageCalculator(positiveCorpus, fullCorpus);
+
     LOGGER.info("Building sar tree.");
     SarTree sarTree;
     if (cl.hasOption(OPTION_CLUSTER_FIRST)) {
       sarTree = buildSarTree(libMcs, positiveCorpus.getUniqueSubstrateInchis(), fullCorpus.getUniqueSubstrateInchis());
-    } else {
-      sarTree = buildSarTree(libMcs, fullCorpus.getUniqueSubstrateInchis());
-    }
 
-    Consumer<SarTreeNode> sarConfidenceCalculator = new SarHitPercentageCalculator(positiveCorpus, fullCorpus);
-    if (cl.hasOption(OPTION_TREE_SCORING)) {
-      Set<String> positiveInchiSet = new HashSet<>();
-      positiveInchiSet.addAll(inchiList);
-      sarConfidenceCalculator = new SarTreeBasedCalculator(positiveInchiSet, sarTree);
+      if (cl.hasOption(OPTION_TREE_SCORING)) {
+        Set<String> positiveInchiSet = new HashSet<>();
+        positiveInchiSet.addAll(inchiList);
+        sarConfidenceCalculator = new SarTreeBasedCalculator(positiveInchiSet, sarTree);
+      }
+
+    } else {
+      sarTree = buildSarTreeOnPositives(libMcs, fullCorpus.getUniqueSubstrateInchis());
+
+      if (cl.hasOption(OPTION_TREE_SCORING)) {
+        LOGGER.error("Cannot run tree scoring if clustering is not first.");
+        HELP_FORMATTER.printHelp(L2FilteringDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      }
+
     }
 
     LOGGER.info("Scoring sars.");
@@ -165,10 +173,23 @@ public class LibMcsClustering {
 
     SarTreeNodeCorpus sarTreeNodeCorpus = new SarTreeNodeCorpus(explanatorySars);
     sarTreeNodeCorpus.writeToFile(outputFile);
+
     LOGGER.info("Complete!.");
   }
 
-  public static SarTree buildSarTree(LibraryMCS libMcs, Collection<String> positiveInchis, Collection<String> allInchis)
+  /**
+   * Builds a SarTree by clustering all inchis, labelling them according to whether they are or are not an LCMS hit.
+   *
+   * @param libMcs The clusterer.
+   * @param positiveInchis A collection of inchis that are LCMS positives.
+   * @param allInchis All inchis to cluster.
+   * @return The SAR tree.
+   * @throws InterruptedException
+   * @throws IOException
+   */
+  private static SarTree buildSarTree(LibraryMCS libMcs,
+                                      Collection<String> positiveInchis,
+                                      Collection<String> allInchis)
       throws InterruptedException, IOException {
     List<Molecule> molecules = new ArrayList<>();
 
@@ -189,7 +210,17 @@ public class LibMcsClustering {
     return buildSarTree(libMcs, molecules);
   }
 
-  public static SarTree buildSarTree(LibraryMCS libMcs, Collection<String> positiveInchis) throws InterruptedException, IOException {
+  /**
+   * Imports the inchis into molecules and then builds a SAR tree.  Labels all molecules as LCMS positives.
+   *
+   * @param libMcs The clusterer.
+   * @param positiveInchis A list of inchis
+   * @return
+   * @throws InterruptedException
+   * @throws IOException
+   */
+  private static SarTree buildSarTreeOnPositives(LibraryMCS libMcs, Collection<String> positiveInchis)
+      throws InterruptedException, IOException {
 
     List<Molecule> molecules = new ArrayList<>();
     for (String inchi : positiveInchis) {
@@ -206,7 +237,15 @@ public class LibMcsClustering {
   }
 
 
-  public static SarTree buildSarTree(LibraryMCS libMcs, List<Molecule> molecules) throws InterruptedException {
+  /**
+   * Clusters the molecules using LibMCS and returns a SarTree of the clustering.
+   *
+   * @param libMcs The clusterer.
+   * @param molecules The substrate molecules.
+   * @return The SarTree.
+   * @throws InterruptedException
+   */
+  private static SarTree buildSarTree(LibraryMCS libMcs, List<Molecule> molecules) throws InterruptedException {
     for (Molecule mol : molecules) {
       libMcs.addMolecule(mol);
     }

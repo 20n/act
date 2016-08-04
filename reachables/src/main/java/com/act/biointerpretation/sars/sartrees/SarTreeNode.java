@@ -10,6 +10,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.IOException;
 
+/**
+ * A single node in a SarTree, which corresponds to a substructure pulled out by LibMCS clustering.
+ */
 public class SarTreeNode {
 
   @JsonProperty
@@ -23,7 +26,8 @@ public class SarTreeNode {
   @JsonProperty
   Integer numberHits;
 
-  private SarTreeNode(){}
+  private SarTreeNode() {
+  }
 
   public SarTreeNode(Molecule substructure, String hierarchyId) {
     this.substructure = substructure;

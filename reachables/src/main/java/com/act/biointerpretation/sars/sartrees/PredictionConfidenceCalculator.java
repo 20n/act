@@ -11,6 +11,9 @@ import org.apache.logging.log4j.Logger;
 import java.util.Arrays;
 import java.util.function.Function;
 
+/**
+ * Test a given prediction against all Sars in a corpus, and returns the highest-scored matching Sar.
+ */
 public class PredictionConfidenceCalculator implements Function<L2Prediction, SarTreeNode> {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(PredictionConfidenceCalculator.class);

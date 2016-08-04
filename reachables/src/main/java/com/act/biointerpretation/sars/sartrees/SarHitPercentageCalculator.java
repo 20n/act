@@ -10,6 +10,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
 import java.util.function.Consumer;
+
 public class SarHitPercentageCalculator implements Consumer<SarTreeNode> {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(SarHitPercentageCalculator.class);
