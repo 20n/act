@@ -168,7 +168,6 @@ public class ExpandedReactionSearcherTest {
         primarySubstrate,
         expectedProduct,
         substructure);
-    ;
 
     // Act
     Reactor fullReactor = searcher.getNextReactor();
@@ -211,6 +210,6 @@ public class ExpandedReactionSearcherTest {
 
     // Act
     Reactor fullReactor = searcher.getNextReactor();
-    assertNotNull("Shouldn't return null.", fullReactor);
+    assertNotNull("There should be at least one expanded reaction result.", fullReactor);
   }
 }

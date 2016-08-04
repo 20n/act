@@ -7,7 +7,7 @@ import java.util.List;
 
 public class SarCorpusBuilder {
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(SarCorpus.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(SarCorpusBuilder.class);
 
   private final Iterable<ReactionGroup> reactionGroups;
   private final ReactionGroupCharacterizer characterizer;
@@ -27,9 +27,7 @@ public class SarCorpusBuilder {
         corpus.addCharacterizedGroup(characterization);
       }
 
-      if (counter % 1 == 0) {
-        LOGGER.info("Processed %d groups, characterized %d so far.", counter, corpus.size());
-      }
+      LOGGER.info("Processed %d groups, characterized %d so far.", counter, corpus.size());
       counter++;
     }
     return corpus;

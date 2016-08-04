@@ -68,16 +68,19 @@ public class ReactionGroupCorpus implements Iterable<ReactionGroup> {
 
   /**
    * Read a ReactionGroupCorpus from a text file.
-   * File should contain one group of reactions per line, written as a tab separated list of reaction IDs
+   * File should contain DB name on the first line.
+   * Thereafter each line should have one group of reactions, written as a tab separated list of reaction IDs
    */
   public static ReactionGroupCorpus loadFromTextFile(File corpusFile) throws IOException {
     ReactionGroupCorpus corpus = new ReactionGroupCorpus();
 
     try (BufferedReader reader = new BufferedReader(new FileReader(corpusFile))) {
-      while (reader.ready()) {
-        String line = reader.readLine();
+      String dbName = reader.readLine();
+
+      String line;
+      while ((line = reader.readLine()) != null) {
         List<String> fields = Arrays.asList(line.split(","));
-        ReactionGroup group = new ReactionGroup(fields.get(0));
+        ReactionGroup group = new ReactionGroup(fields.get(0), dbName);
         for (String idString : fields.subList(1, fields.size())) {
           group.addReactionId(Long.parseLong(idString));
         }

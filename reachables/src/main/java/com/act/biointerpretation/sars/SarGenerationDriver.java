@@ -111,6 +111,7 @@ public class SarGenerationDriver {
     File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
     if (outputFile.isDirectory() || outputFile.exists()) {
       LOGGER.error("Supplied output file is a directory or already exists.");
+      HELP_FORMATTER.printHelp(SarGenerationDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
     outputFile.createNewFile();
@@ -118,18 +119,20 @@ public class SarGenerationDriver {
     // Check that there is exactly one reaction group input option
     if (cl.hasOption(OPTION_REACTION_LIST) && cl.hasOption(OPTION_REACTIONS_FILE)) {
       LOGGER.error("Cannot process both a reaction list and a reactions file as input.");
-      return;
+      HELP_FORMATTER.printHelp(SarGenerationDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      System.exit(1);
     }
     if (!cl.hasOption(OPTION_REACTION_LIST) && !cl.hasOption(OPTION_REACTIONS_FILE)) {
       LOGGER.error("Must supply either a reaction list or a reactions file as input.");
-      return;
+      HELP_FORMATTER.printHelp(SarGenerationDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      System.exit(1);
     }
 
     // Build input reaction group corpus.
     Iterable<ReactionGroup> groups = null;
     if (cl.hasOption(OPTION_REACTION_LIST)) {
       LOGGER.info("Using specific input reactions.");
-      ReactionGroup group = new ReactionGroup("ONLY_GROUP");
+      ReactionGroup group = new ReactionGroup("ONLY_GROUP", "NO_DB");
       for (String idString : cl.getOptionValues(OPTION_REACTION_LIST)) {
         group.addReactionId(Long.parseLong(idString));
       }
@@ -148,7 +151,7 @@ public class SarGenerationDriver {
           LOGGER.info("Successfully parsed input as text file.");
         } catch (IOException f) {
           LOGGER.error("Reactions input file not parseable. %s", f.getMessage());
-          return;
+          throw f;
         }
       }
     }
@@ -162,15 +165,15 @@ public class SarGenerationDriver {
 
     FullReactionBuilder reactionBuilder = new FullReactionBuilder(reactionMcsCalculator, generalizer, projector);
 
-    SarBuilder substructureSarBuilder = new OneSubstrateSubstructureSar.Builder(sarMcsCalculator);
-    SarBuilder carbonCountSarBuilder = new OneSubstrateCarbonCountSar.Builder();
-    List<SarBuilder> sarBuilders = Arrays.asList(carbonCountSarBuilder, substructureSarBuilder);
+    SarFactory substructureSarFactory = new OneSubstrateSubstructureSar.Factory(sarMcsCalculator);
+    SarFactory carbonCountSarFactory = new OneSubstrateCarbonCountSar.Factory();
+    List<SarFactory> sarFactories = Arrays.asList(carbonCountSarFactory, substructureSarFactory);
 
     ErosCorpus roCorpus = new ErosCorpus();
     roCorpus.loadValidationCorpus();
 
     ReactionGroupCharacterizer reactionGroupCharacterizer =
-        new OneSubstrateOneRoCharacterizer(dbApi, sarBuilders, reactionBuilder, roCorpus);
+        new OneSubstrateOneRoCharacterizer(dbApi, sarFactories, reactionBuilder, roCorpus);
     SarCorpusBuilder corpusBuilder = new SarCorpusBuilder(groups, reactionGroupCharacterizer);
     LOGGER.info("Parsed arguments and constructed SAR corpus builder. Building corpus.");
 

@@ -16,6 +16,9 @@ public class ReactionGroup {
   @JsonProperty("name")
   private String name;
 
+  @JsonProperty("db_name")
+  private String dbName;
+
   @JsonProperty("reaction_ids")
   private Set<Long> reactionIds;
 
@@ -25,8 +28,9 @@ public class ReactionGroup {
   private ReactionGroup() {
   }
 
-  public ReactionGroup(String name) {
+  public ReactionGroup(String name, String dbName) {
     this.name = name;
+    this.dbName = dbName;
     reactionIds = new HashSet<>();
   }
 
@@ -40,5 +44,9 @@ public class ReactionGroup {
 
   public String getName() {
     return name;
+  }
+
+  public String getDbName() {
+    return dbName;
   }
 }

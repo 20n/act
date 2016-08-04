@@ -99,18 +99,18 @@ public class OneSubstrateSubstructureSar implements Sar {
     searcher.setQuery(substructure);
   }
 
-  public static class Builder implements SarBuilder {
+  public static class Factory implements SarFactory {
 
     private final McsCalculator mcsCalculator;
 
-    public Builder(McsCalculator mcsCalculator) {
+    public Factory(McsCalculator mcsCalculator) {
       this.mcsCalculator = mcsCalculator;
     }
 
     @Override
-    public Sar buildSar(List<RxnMolecule> reactions) throws MolFormatException {
+    public Sar buildSar(List<RxnMolecule> reactions) {
       if (!DbAPI.areAllOneSubstrate(reactions)) {
-        throw new MolFormatException("Reactions are not all one substrate.");
+        throw new IllegalArgumentException("Reactions are not all one substrate.");
       }
 
       List<Molecule> substrates = reactions.stream().map(rxn -> rxn.getReactants()[0]).collect(Collectors.toList());

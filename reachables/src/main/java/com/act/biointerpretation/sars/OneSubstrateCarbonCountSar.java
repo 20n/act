@@ -1,6 +1,6 @@
 package com.act.biointerpretation.sars;
 
-import chemaxon.formats.MolFormatException;
+import chemaxon.core.ChemConst;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -11,10 +11,18 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * This class is used to filter the potential substrates of an enzyme based on their number of carbons.
+ * This should generally not be used alone, but as an extra filter on top of a substructure based SAR.
+ *
+ * This is useful primarily to avoid matching very large, complicated molecules, to SARs for which all
+ * of our evidence points to relatively small substrates. For example, if a substructure SAR was constructed on 5
+ * substrates, with Carbon counts between 10 and 20, we wouldn't necessarily want to assume that the corresponding
+ * enzyme would also act on a molecule with 100 Carbon atoms, even if that molecule matched the substructure SAR.
+ */
 public class OneSubstrateCarbonCountSar implements Sar {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(OneSubstrateCarbonCountSar.class);
-  private static final int CARBON = 6;
 
   @JsonProperty("min_carbon_count")
   private int minCount;
@@ -63,9 +71,7 @@ public class OneSubstrateCarbonCountSar implements Sar {
     }
 
     Molecule oneSubstrate = substrates.get(0);
-    LOGGER.info("Min, max, count: %d, %d, %d", minCount, maxCount, oneSubstrate.getAtomCount(CARBON));
-    LOGGER.info("Return value: %b", oneSubstrate.getAtomCount(CARBON) >= minCount && oneSubstrate.getAtomCount(CARBON) <= maxCount);
-    return oneSubstrate.getAtomCount(CARBON) >= minCount && oneSubstrate.getAtomCount(CARBON) <= maxCount;
+    return oneSubstrate.getAtomCount(ChemConst.C) >= minCount && oneSubstrate.getAtomCount(ChemConst.C) <= maxCount;
   }
 
   /**
@@ -73,14 +79,12 @@ public class OneSubstrateCarbonCountSar implements Sar {
    * This would allow it to build a SAR to accept atoms with carbon counts within some range of the seen reactions'
    * counts, rather than only those strictly within the observed bounds.
    */
-  public static class Builder implements SarBuilder {
-
-    private static final Integer CARBON = 6;
+  public static class Factory implements SarFactory {
 
     @Override
-    public Sar buildSar(List<RxnMolecule> reactions) throws MolFormatException {
+    public Sar buildSar(List<RxnMolecule> reactions) {
       if (!DbAPI.areAllOneSubstrate(reactions)) {
-        throw new MolFormatException("Reactions are not all one substrate.");
+        throw new IllegalArgumentException("Reactions are not all one substrate.");
       }
 
       List<Integer> carbonCounts = getSubstrateCarbonCounts(reactions);
@@ -91,7 +95,7 @@ public class OneSubstrateCarbonCountSar implements Sar {
     private List<Integer> getSubstrateCarbonCounts(List<RxnMolecule> reactions) {
       return reactions.stream()
           .map(rxn -> rxn.getReactants()[0])
-          .map(molecule -> molecule.getAtomCount(CARBON))
+          .map(molecule -> molecule.getAtomCount(ChemConst.C))
           .collect(Collectors.toList());
     }
   }

@@ -14,6 +14,7 @@ public class McsCalculator {
    * connectedMode = true --> only return one fragment
    * ringHandlingMode = KEEP_RINGS --> don't allow a ring to be only partially matched by substructure; all or nothing
    * We do not match bond type because it throws off a lot of matches on benzene rings with bonds shifted.
+   * TODO: further investigate bond type regarding aromatization and rings.
    */
   public static final McsSearchOptions REACTION_BUILDING_OPTIONS =
       new McsSearchOptions.Builder()

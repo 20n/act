@@ -37,6 +37,8 @@ public class SeqDBReactionGrouperTest {
     reactionSetC.add(REACTION_3);
   }
 
+  final static private String DB_NAME = "THE_DB";
+
   Seq mockSeqA;
   Seq mockSeqB;
   Seq mockSeqC;
@@ -65,7 +67,7 @@ public class SeqDBReactionGrouperTest {
     sequences.add(mockSeqA);
     sequences.add(mockSeqB);
 
-    SeqDBReactionGrouper seqGrouper = new SeqDBReactionGrouper(sequences.iterator());
+    SeqDBReactionGrouper seqGrouper = new SeqDBReactionGrouper(sequences.iterator(), DB_NAME);
 
     int counter = 0;
     for (ReactionGroup group : seqGrouper.getReactionGroupCorpus()) {
@@ -87,7 +89,7 @@ public class SeqDBReactionGrouperTest {
     sequences.add(mockSeqB);
     sequences.add(mockSeqC);
 
-    SeqDBReactionGrouper seqGrouper = new SeqDBReactionGrouper(sequences.iterator());
+    SeqDBReactionGrouper seqGrouper = new SeqDBReactionGrouper(sequences.iterator(), DB_NAME);
 
     int counter = 0;
     Set<String> outputSequences = new HashSet<>();
@@ -110,7 +112,7 @@ public class SeqDBReactionGrouperTest {
     sequences.add(mockSeqB);
     sequences.add(mockSeqC);
 
-    SeqDBReactionGrouper seqGrouper = new SeqDBReactionGrouper(sequences.iterator(), 1);
+    SeqDBReactionGrouper seqGrouper = new SeqDBReactionGrouper(sequences.iterator(), DB_NAME, 1);
 
     int counter = 0;
     for (ReactionGroup group : seqGrouper.getReactionGroupCorpus()) {

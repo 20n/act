@@ -1,12 +1,10 @@
 package com.act.biointerpretation.sars;
 
 import act.shared.Reaction;
-import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
-import com.google.common.collect.Maps;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
@@ -18,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class OneSubstrateOneRoCharacterizer implements ReactionGroupCharacterizer {
 
@@ -26,14 +25,14 @@ public class OneSubstrateOneRoCharacterizer implements ReactionGroupCharacterize
   private final DbAPI dbApi;
   private final FullReactionBuilder reactionBuilder;
   private final ErosCorpus roCorpus;
-  private final List<SarBuilder> sarBuilders;
+  private final List<SarFactory> sarFactories;
 
   public OneSubstrateOneRoCharacterizer(DbAPI dbApi,
-                                        List<SarBuilder> sarBuilders,
+                                        List<SarFactory> sarFactories,
                                         FullReactionBuilder reactionBuilder,
                                         ErosCorpus roCorpus) {
     this.dbApi = dbApi;
-    this.sarBuilders = sarBuilders;
+    this.sarFactories = sarFactories;
     this.reactionBuilder = reactionBuilder;
     this.roCorpus = roCorpus;
   }
@@ -49,19 +48,20 @@ public class OneSubstrateOneRoCharacterizer implements ReactionGroupCharacterize
   @Override
   public List<CharacterizedGroup> characterizeGroup(ReactionGroup group) {
     List<CharacterizedGroup> resultGroups = new ArrayList<>();
-    List<Reaction> allReactions = dbApi.getReactions(group);
-    allReactions.removeIf(r -> r.getSubstrates().length != 1 || r.getProducts().length != 1);
+    List<Reaction> workingReactionList = dbApi.getReactions(group);
+    workingReactionList.removeIf(r -> r.getSubstrates().length != 1 || r.getProducts().length != 1);
+    Integer initialReactionCount = workingReactionList.size();
 
-    while (allReactions.size() > 1) {
-      Integer roId = getMostCommonRo(allReactions);
+    while (workingReactionList.size() > 1) {
+      Integer roId = getMostCommonRo(workingReactionList);
       // If no RO explains any of the reactions, reject this set.
       if (roId == null) {
         break;
       }
 
-      List<Reaction> matchingReactions = getReactionsMatching(allReactions, roId);
-      LOGGER.info("%d reactions matching RO %d", matchingReactions.size(), roId);
-      allReactions.removeAll(matchingReactions);
+      List<Reaction> matchingReactions = getReactionsMatching(workingReactionList, roId);
+      LOGGER.info("%d of %d reactions matching RO %d", matchingReactions.size(), initialReactionCount, roId);
+      workingReactionList.removeAll(matchingReactions);
 
       if (matchingReactions.size() == 1) {
         LOGGER.warn("Group %s has only 1 substrate for RO %d", group.getName(), roId);
@@ -89,12 +89,7 @@ public class OneSubstrateOneRoCharacterizer implements ReactionGroupCharacterize
   private Optional<CharacterizedGroup> characterizeUniformGroup(List<RxnMolecule> reactions,
                                                                 Integer roId,
                                                                 String groupName) {
-    List<Sar> sars;
-    try {
-      sars = buildSars(reactions);
-    } catch (MolFormatException e) {
-      return Optional.empty();
-    }
+    List<Sar> sars = buildSars(reactions);
 
     Reactor fullReactor;
     try {
@@ -111,9 +106,9 @@ public class OneSubstrateOneRoCharacterizer implements ReactionGroupCharacterize
     return reactionBuilder.buildReaction(reactions, seedReactor);
   }
 
-  private List<Sar> buildSars(List<RxnMolecule> reactions) throws MolFormatException {
+  private List<Sar> buildSars(List<RxnMolecule> reactions) {
     List<Sar> sars = new ArrayList<>();
-    for (SarBuilder builder : sarBuilders) {
+    for (SarFactory builder : sarFactories) {
       sars.add(builder.buildSar(reactions));
     }
     return sars;
@@ -127,7 +122,8 @@ public class OneSubstrateOneRoCharacterizer implements ReactionGroupCharacterize
    */
   private Integer getMostCommonRo(List<Reaction> reactions) {
     Map<Integer, List<Reaction>> roIdToReactions = getRoIdToReactionsMap(reactions);
-    Map<Integer, Integer> roIdToCount = Maps.transformValues(roIdToReactions, reactionList -> reactionList.size());
+    Map<Integer, Integer> roIdToCount = roIdToReactions.entrySet().stream()
+        .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().size()));
     return Collections.max(roIdToCount.entrySet(), Map.Entry.comparingByValue()).getKey();
   }
 

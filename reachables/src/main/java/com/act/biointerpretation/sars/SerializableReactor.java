@@ -14,6 +14,7 @@ public class SerializableReactor {
   @JsonProperty("ro_id")
   private Integer roId;
 
+  @JsonIgnore
   private Reactor reactor;
 
   /**

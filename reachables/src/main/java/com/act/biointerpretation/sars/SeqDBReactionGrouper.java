@@ -42,7 +42,6 @@ public class SeqDBReactionGrouper {
         .desc("The name of the mongo DB to use.")
         .hasArg()
         .longOpt("db-name")
-        .type(String.class)
         .required(true)
     );
     add(Option.builder(OPTION_OUTPUT_PATH)
@@ -101,7 +100,8 @@ public class SeqDBReactionGrouper {
     }
 
     // Handle arguments
-    MongoDB mongoDB = new MongoDB(LOCAL_HOST, MONGO_PORT, cl.getOptionValue(OPTION_DB));
+    String mongoDBName = cl.getOptionValue(OPTION_DB);
+    MongoDB mongoDB = new MongoDB(LOCAL_HOST, MONGO_PORT, mongoDBName);
 
     File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
     if (outputFile.isDirectory() || outputFile.exists()) {
@@ -116,7 +116,7 @@ public class SeqDBReactionGrouper {
     }
     LOGGER.info("Only processing first %d entries in Seq DB.", limit);
 
-    SeqDBReactionGrouper enzymeGrouper = new SeqDBReactionGrouper(mongoDB.getSeqIterator(), limit);
+    SeqDBReactionGrouper enzymeGrouper = new SeqDBReactionGrouper(mongoDB.getSeqIterator(), mongoDBName, limit);
 
     LOGGER.info("Scanning seq db for reactions with same seq.");
     ReactionGroupCorpus groupCorpus = enzymeGrouper.getReactionGroupCorpus();
@@ -129,6 +129,7 @@ public class SeqDBReactionGrouper {
 
 
   final Integer limit;
+  final String dbName;
   final Iterator<Seq> seqIterator;
 
   /**
@@ -137,8 +138,9 @@ public class SeqDBReactionGrouper {
    * @param seqIterator The Seq entries to group.
    * @param limit The maximum number of entries to process. This can be used to limit memory and time.
    */
-  public SeqDBReactionGrouper(Iterator<Seq> seqIterator, Integer limit) {
+  public SeqDBReactionGrouper(Iterator<Seq> seqIterator, String dbName, Integer limit) {
     this.seqIterator = seqIterator;
+    this.dbName = dbName;
     this.limit = limit;
   }
 
@@ -147,8 +149,9 @@ public class SeqDBReactionGrouper {
    *
    * @param seqIterator The Seq entries to group.
    */
-  public SeqDBReactionGrouper(Iterator<Seq> seqIterator) {
-    this(seqIterator, DEFAULT_LIMIT_INFINITY);
+  public SeqDBReactionGrouper(Iterator<Seq> seqIterator, String dbName) {
+
+    this(seqIterator, dbName, DEFAULT_LIMIT_INFINITY);
   }
 
   /**
@@ -189,7 +192,7 @@ public class SeqDBReactionGrouper {
       ReactionGroup group = sequenceToReactionGroupMap.get(sequence);
 
       if (group == null) {
-        group = new ReactionGroup("SEQ_ID_" + Integer.toString(seq.getUUID()));
+        group = new ReactionGroup("SEQ_ID_" + Integer.toString(seq.getUUID()), dbName);
         sequenceToReactionGroupMap.put(sequence, group);
       }
 

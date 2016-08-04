@@ -64,7 +64,7 @@ public class McsCalculatorTest {
   }
 
   @Test
-  public void testSarCalculatorRingStructuresMatchDifferentBondTypes() throws IOException {
+  public void testSarOptionsMatchDifferentBondTypes() throws IOException {
     // Arrange
     String firstSubstrateInchi =
         "InChI=1S/C7H12O2/c8-7(9)6-4-2-1-3-5-6/h6H,1-5H2,(H,8,9)";
@@ -87,7 +87,7 @@ public class McsCalculatorTest {
   }
 
   @Test
-  public void testReactionCalculatorRingStructuresMismatchDifferentBondTypes() throws IOException {
+  public void testReactionOptionsMismatchDifferentBondTypes() throws IOException {
     // Arrange
     String firstSubstrateInchi =
         "InChI=1S/C7H12O2/c8-7(9)6-4-2-1-3-5-6/h6H,1-5H2,(H,8,9)";
@@ -106,7 +106,7 @@ public class McsCalculatorTest {
 
     // Assert
     String mcsInchi = MolExporter.exportToFormat(mcs, INCHI_EXPORT_SETTINGS);
-    assertEquals("MCS should not contain the ring dueto different bond types in substrates.", expectedMcs, mcsInchi);
+    assertEquals("MCS should not contain the ring due to different bond types in substrates.", expectedMcs, mcsInchi);
   }
 
   @Test
