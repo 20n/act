@@ -10,14 +10,14 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
 import java.util.function.Consumer;
-public class SarConfidenceCalculator implements Consumer<SarTreeNode> {
+public class SarHitPercentageCalculator implements Consumer<SarTreeNode> {
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(SarConfidenceCalculator.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(SarHitPercentageCalculator.class);
 
   private final L2PredictionCorpus positivePredictionCorpus;
   private final L2PredictionCorpus fullPredictionCorpus;
 
-  public SarConfidenceCalculator(L2PredictionCorpus positivePredictions, L2PredictionCorpus fullPredictionCorpus) {
+  public SarHitPercentageCalculator(L2PredictionCorpus positivePredictions, L2PredictionCorpus fullPredictionCorpus) {
     this.positivePredictionCorpus = positivePredictions;
     this.fullPredictionCorpus = fullPredictionCorpus;
   }

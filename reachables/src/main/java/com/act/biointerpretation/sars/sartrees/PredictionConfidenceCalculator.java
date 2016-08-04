@@ -15,9 +15,9 @@ public class PredictionConfidenceCalculator implements Function<L2Prediction, Sa
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(PredictionConfidenceCalculator.class);
 
-  ScoredSarCorpus sarCorpus;
+  SarTreeNodeCorpus sarCorpus;
 
-  public PredictionConfidenceCalculator(ScoredSarCorpus sarCorpus) {
+  public PredictionConfidenceCalculator(SarTreeNodeCorpus sarCorpus) {
     this.sarCorpus = sarCorpus;
   }
 

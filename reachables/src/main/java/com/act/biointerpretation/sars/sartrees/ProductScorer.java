@@ -1,21 +1,12 @@
 package com.act.biointerpretation.sars.sartrees;
 
-import chemaxon.clustering.LibraryMCS;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
-import chemaxon.reaction.ReactionException;
-import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.l2expansion.L2FilteringDriver;
 import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
-import com.act.biointerpretation.mechanisminspection.ErosCorpus;
-import com.act.biointerpretation.sars.CharacterizedGroup;
-import com.act.biointerpretation.sars.OneSubstrateSubstructureSar;
-import com.act.biointerpretation.sars.Sar;
-import com.act.biointerpretation.sars.SarCorpus;
-import com.act.biointerpretation.sars.SerializableReactor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.commons.cli.CommandLine;
@@ -25,21 +16,15 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class ProductScorer {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -130,7 +115,7 @@ public class ProductScorer {
     L2PredictionCorpus positiveCorpus = fullCorpus.applyFilter(prediction -> inchiList.containsAll(prediction.getProductInchis()));
     LOGGER.info("Number of LCMS positives: %d", positiveCorpus.getCorpus().size());
 
-    ScoredSarCorpus scoredSars = new ScoredSarCorpus();
+    SarTreeNodeCorpus scoredSars = new SarTreeNodeCorpus();
     scoredSars.loadFromFile(scoredSarsFile);
 
     LOGGER.info("Number of sars: %d", scoredSars.getSarTreeNodes().size());

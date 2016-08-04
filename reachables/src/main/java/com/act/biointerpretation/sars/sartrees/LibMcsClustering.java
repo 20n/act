@@ -3,18 +3,10 @@ package com.act.biointerpretation.sars.sartrees;
 import chemaxon.clustering.LibraryMCS;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
-import chemaxon.reaction.ReactionException;
-import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.l2expansion.L2FilteringDriver;
 import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
-import com.act.biointerpretation.mechanisminspection.ErosCorpus;
-import com.act.biointerpretation.sars.CharacterizedGroup;
-import com.act.biointerpretation.sars.OneSubstrateSubstructureSar;
-import com.act.biointerpretation.sars.Sar;
-import com.act.biointerpretation.sars.SarCorpus;
-import com.act.biointerpretation.sars.SerializableReactor;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -28,7 +20,6 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -147,9 +138,7 @@ public class LibMcsClustering {
 
     LibraryMCS libMcs = new LibraryMCS();
 
-      LOGGER.info("Building sar tree.");
-    L2PredictionCorpus corpusToCluster = positiveCorpus;
-
+    LOGGER.info("Building sar tree.");
     SarTree sarTree;
     if (cl.hasOption(OPTION_CLUSTER_FIRST)) {
       sarTree = buildSarTree(libMcs, positiveCorpus.getUniqueSubstrateInchis(), fullCorpus.getUniqueSubstrateInchis());
@@ -157,15 +146,15 @@ public class LibMcsClustering {
       sarTree = buildSarTree(libMcs, fullCorpus.getUniqueSubstrateInchis());
     }
 
-    Consumer<SarTreeNode> sarConfidenceCalculator = new SarConfidenceCalculator(positiveCorpus, fullCorpus);
+    Consumer<SarTreeNode> sarConfidenceCalculator = new SarHitPercentageCalculator(positiveCorpus, fullCorpus);
     if (cl.hasOption(OPTION_TREE_SCORING)) {
       Set<String> positiveInchiSet = new HashSet<>();
       positiveInchiSet.addAll(inchiList);
-      sarConfidenceCalculator = new TreeBasedHitCalculator(positiveInchiSet, sarTree);
+      sarConfidenceCalculator = new SarTreeBasedCalculator(positiveInchiSet, sarTree);
     }
 
     LOGGER.info("Scoring sars.");
-    sarTree.scoreSars(sarConfidenceCalculator, THRESHOLD_TREE_SIZE);
+    sarTree.applyToNodes(sarConfidenceCalculator, THRESHOLD_TREE_SIZE);
 
     LOGGER.info("Getting explanatory nodes.");
     List<SarTreeNode> explanatorySars = sarTree.getExplanatoryNodes(THRESHOLD_TREE_SIZE, THRESHOLD_CONFIDENCE);
@@ -176,8 +165,8 @@ public class LibMcsClustering {
 
     explanatorySars.sort((a, b) -> a.getPercentageHits() > b.getPercentageHits() ? -1 : 1);
 
-    ScoredSarCorpus scoredSarCorpus = new ScoredSarCorpus(explanatorySars);
-    scoredSarCorpus.writeToFile(outputFile);
+    SarTreeNodeCorpus sarTreeNodeCorpus = new SarTreeNodeCorpus(explanatorySars);
+    sarTreeNodeCorpus.writeToFile(outputFile);
     LOGGER.info("Complete!.");
   }
 
@@ -240,28 +229,5 @@ public class LibMcsClustering {
 
   public static Molecule importMolecule(String inchi) throws MolFormatException {
     return MolImporter.importMol(inchi, INCHI_IMPORT_SETTINGS);
-  }
-
-  public static SarCorpus getSarCorpus(String projectorName, L2PredictionCorpus predictionCorpus, ErosCorpus roCorpus) throws ReactionException, IOException, InterruptedException {
-    Integer roId = Integer.parseInt(projectorName);
-    Reactor reactor = roCorpus.getEro(roId).getReactor();
-    SerializableReactor serReactor = new SerializableReactor(reactor, roId);
-
-    return getSarCorpus(serReactor, predictionCorpus.getUniqueSubstrateInchis());
-  }
-
-  public static SarCorpus getSarCorpus(SerializableReactor reactor, Collection<String> substrateInchis) throws IOException, InterruptedException {
-    SarTree sarTree = buildSarTree(new LibraryMCS(), substrateInchis);
-
-    SarCorpus sarCorpus = new SarCorpus();
-    for (SarTreeNode node : sarTree.getSubtreeNodes()) {
-      Molecule substructure = node.getSubstructure();
-      List<Sar> sarContainer = Arrays.asList(new OneSubstrateSubstructureSar(substructure));
-      String name = node.getHierarchyId();
-      CharacterizedGroup group = new CharacterizedGroup(name, sarContainer, reactor);
-      sarCorpus.addCharacterizedGroup(group);
-    }
-
-    return sarCorpus;
   }
 }

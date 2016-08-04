@@ -9,7 +9,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ScoredSarCorpus {
+public class SarTreeNodeCorpus {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   static {
@@ -19,17 +19,17 @@ public class ScoredSarCorpus {
   @JsonProperty("sar_tree_nodes")
   List<SarTreeNode> sarTreeNodes;
 
-  public ScoredSarCorpus() {
+  public SarTreeNodeCorpus() {
    sarTreeNodes = new ArrayList<>();
   }
 
-  public ScoredSarCorpus(List<SarTreeNode> sarTreeNodes) {
+  public SarTreeNodeCorpus(List<SarTreeNode> sarTreeNodes) {
     this.sarTreeNodes = sarTreeNodes;
   }
 
 
   public void loadFromFile(File file) throws IOException {
-    ScoredSarCorpus fromFile = OBJECT_MAPPER.readValue(file, ScoredSarCorpus.class);
+    SarTreeNodeCorpus fromFile = OBJECT_MAPPER.readValue(file, SarTreeNodeCorpus.class);
     this.setSarTreeNodes(fromFile.getSarTreeNodes());
   }
 

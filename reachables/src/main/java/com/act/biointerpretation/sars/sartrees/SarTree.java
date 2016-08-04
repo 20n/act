@@ -1,6 +1,5 @@
 package com.act.biointerpretation.sars.sartrees;
 
-import chemaxon.struc.Molecule;
 import com.act.biointerpretation.sars.Sar;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -10,6 +9,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Stack;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
+import java.util.function.Predicate;
 
 public class SarTree {
 
@@ -29,6 +29,10 @@ public class SarTree {
 
   public SarTree() {
     nodeMap = new HashMap<>();
+  }
+
+  public Collection<SarTreeNode> getNodes() {
+    return nodeMap.values();
   }
 
   public void addNode(SarTreeNode node) {
@@ -61,22 +65,16 @@ public class SarTree {
     return result;
   }
 
-  public List<Molecule> getAllSarSubstructures() {
-    return getSubtreeNodes().stream().map(n -> n.getSubstructure()).collect(Collectors.toList());
-  }
-
-  public void scoreSars(Consumer<SarTreeNode> confidenceCalculator, Integer minSubtreeSize) throws IOException {
+  public void applyToNodes(Consumer<SarTreeNode> consumer, Integer minSubtreeSize) throws IOException {
     Collection<SarTreeNode> nodesToProcess = getNodesAboveThresholdDescendants(minSubtreeSize);
     LOGGER.info("%d sars to score.", nodesToProcess.size());
-    for (SarTreeNode node : nodesToProcess) {
-      confidenceCalculator.accept(node);
-    }
+    nodesToProcess.forEach(consumer);
   }
 
   private List<SarTreeNode> getNodesAboveThresholdDescendants(Integer minSubtreeSize) {
     List<SarTreeNode> result = new ArrayList<>();
 
-    for (SarTreeNode node : getSubtreeNodes()) {
+    for (SarTreeNode node : getNodes()) {
       if (getSubtreeSize(node) >= minSubtreeSize) {
         result.add(node);
       }
@@ -85,85 +83,70 @@ public class SarTree {
     return result;
   }
 
-  public List<Pair<Sar, Double>> getScoredSars() {
-    List<Pair<Sar, Double>> results = new ArrayList<>();
+  public List<SarTreeNode> getExplanatoryNodes(int subtreeThreshold, double thresholdConfidence) {
+    List<SarTreeNode> results = new ArrayList<>();
 
-    for (SarTreeNode node : getSubtreeNodes()) {
-      results.add(new ImmutablePair<>(node.getSar(), node.getPercentageHits()));
+    for (SarTreeNode node : getNodes()) {
+      if (getChildren(node).size() > 1) {
+        if (node.getPercentageHits() > thresholdConfidence && getSubtreeSize(node) >= subtreeThreshold) {
+          results.add(node);
+        }
+      }
     }
 
     return results;
   }
 
-  public List<SarTreeNode> getExplanatoryNodes(int subtreeThreshold, double thresholdConfidence) {
-    Queue<SarTreeNode> nodes = new LinkedList<>(getRootNodes());
-    List<SarTreeNode> sarResults = new ArrayList<>();
-
-    while (!nodes.isEmpty()) {
-      SarTreeNode nextNode = nodes.remove();
-      if (getChildren(nextNode).size() > 1) {
-        if (nextNode.getPercentageHits() > thresholdConfidence && getSubtreeSize(nextNode) >= subtreeThreshold) {
-          sarResults.add(nextNode);
-        }
-      }
-      for (SarTreeNode childNode : getChildren(nextNode)) {
-        nodes.add(childNode);
-      }
-    }
-
-    return sarResults;
-  }
-
   public Integer getSubtreeSize(SarTreeNode node) {
-    if (getChildren(node).isEmpty()) {
-      return 1;
-    }
-
-    int size = 0;
-    for (SarTreeNode child : getChildren(node)) {
-      size += getSubtreeSize(child);
-    }
-    return size;
+    return traverseSubtree(node).size();
   }
 
-  public Collection<SarTreeNode> getSubtreeNodes() {
-    List<SarTreeNode> nodes = new ArrayList<>();
+  /**
+   * Depth first traversal of the subtree with a given root.
+   *
+   * @param subtreeRoot The root.
+   * @return The list of SarTreeNodes in the given subtree.
+   */
+  public List<SarTreeNode> traverseSubtree(SarTreeNode subtreeRoot) {
     Stack<SarTreeNode> nodeStack = new Stack<>();
-    nodeStack.push(new SarTreeNode(new Molecule(), "DUMMY"));
-
-    for (SarTreeNode node : getRootNodes()) {
-      nodes.addAll(getSubtreeNodes(node, nodeStack));
-    }
-
-    return nodes;
+    return traverseSubtree(subtreeRoot, nodeStack);
   }
 
-  public Collection<SarTreeNode> getSubtreeNodes(SarTreeNode subtreeRoot) {
-    Stack<SarTreeNode> nodeStack = new Stack<>();
-    nodeStack.push(new SarTreeNode(new Molecule(), "DUMMY"));
-    return getSubtreeNodes(subtreeRoot, nodeStack);
-  }
-
-
-  private Collection<SarTreeNode> getSubtreeNodes(SarTreeNode subtreeRoot, Stack<SarTreeNode> stack) {
+  /**
+   * Utility function to implement a depth first traversal.
+   * test().
+   *
+   * @param subtreeRoot The root of the subtree to search.
+   * @param stack A stack to use to facilitate the search.
+   * @return
+   */
+  private List<SarTreeNode> traverseSubtree(SarTreeNode subtreeRoot,
+                                            Stack<SarTreeNode> stack) {
     List<SarTreeNode> nodes = new ArrayList<>();
-
-    SarTreeNode priorTop = stack.peek();
-
+    Integer initialSize = stack.size();
     stack.push(subtreeRoot);
 
-    while (stack.peek() != priorTop) {
+    while (stack.size() > initialSize) {
       SarTreeNode nextNode = stack.pop();
       nodes.add(nextNode);
       for (SarTreeNode childNode : getChildren(nextNode)) {
-        nodes.addAll(getSubtreeNodes(childNode, stack));
+        nodes.addAll(traverseSubtree(childNode, stack));
       }
     }
     return nodes;
   }
 
-
+  /**
+   * Gets the hierarchyId of the child of node with a particular index.
+   *
+   * @param node The parent node.
+   * @param index A child index. Children are numbered from 1.
+   * @return The child's hierarchy ID.
+   */
   private String getChildHierarchyId(SarTreeNode node, int index) {
+    if (index == 0) {
+      throw new IllegalArgumentException("HierarchyIDs only use positive integer indices.");
+    }
     return new StringBuilder(node.getHierarchyId())
         .append(".")
         .append(Integer.toString(index))
