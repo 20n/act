@@ -47,7 +47,7 @@ object compute {
 
     val expander = new SingleSubstrateRoExpander(List(ero).asJava, inchis.asJava,
       new AllPredictionsGenerator(new ReactionProjector()))
-    val results = expander.getPredictions(null)
+    val results = expander.getPredictions()
 
     val endTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val deltaTS = (endTime.getMillis - startTime.getMillis).toDouble / MS_PER_S
