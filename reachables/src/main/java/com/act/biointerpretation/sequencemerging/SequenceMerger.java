@@ -26,6 +26,27 @@ import java.util.Set;
 public class SequenceMerger extends BiointerpretationProcessor {
   private static final Logger LOGGER = LogManager.getFormatterLogger(SequenceMerger.class);
   private static final String PROCESSOR_NAME = "Sequence Merger";
+  private static final String SYNONYMS = "synonyms";
+  private static final String SOURCE_SEQUENCE_IDS = "source_sequence_ids";
+  private static final String PROTEIN_EXISTENCE = "proteinExistence";
+  private static final String COMMENT = "comment";
+  private static final String TEXT = "text";
+  private static final String TYPE = "type";
+  private static final String BRENDA_ID = "brenda_id";
+  private static final String XREF = "xref";
+  private static final String NAME = "name";
+  private static final String PRODUCT_NAMES = "product_names";
+  private static final String ACCESSION = "accession";
+  private static final String SRC = "src";
+  private static final String PATENT = "Patent";
+  private static final String VAL = "val";
+  private static final String PATENT_YEAR = "patent_year";
+  private static final String COUNTRY_CODE = "country_code";
+  private static final String PATENT_NUMBER = "patent_number";
+  private static final String PMID = "PMID";
+  private static final String SEQUENCES = "sequences";
+
+  // currently never queried, only used for storage that could be useful for later purposes
   private Map<Long, Long> sequenceMigrationMap = new HashMap<>();
   private Map<Long, Long> organismMigrationMap = new HashMap<>();
   private Map<Long, Long> reactionMigrationMap = new HashMap<>();
@@ -121,7 +142,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
       // for reference, adds all the seq IDs that were merged
       JSONObject mergedMetadata = mergedSequence.get_metadata();
-      mergedMetadata.put("source_sequence_ids", matchedSeqsIDs);
+      mergedMetadata.put(SOURCE_SEQUENCE_IDS, matchedSeqsIDs);
       mergedSequence.set_metadata(mergedMetadata);
 
       Long mergedSeqId = (long) getNoSQLAPI().getWriteDB().submitToActSeqDB(
@@ -225,31 +246,31 @@ public class SequenceMerger extends BiointerpretationProcessor {
     JSONObject firstSeqMetadata = firstSequence.get_metadata();
 
     // we don't want proteinExistence as a field in our Seq metadata anymore
-    firstSeqMetadata.remove("proteinExistence");
+    firstSeqMetadata.remove(PROTEIN_EXISTENCE);
 
     /* we want to convert the brenda_ids from being stored in a comment JSONArray to being stored in
     an xref map (JSONObject) */
-    JSONArray comment = firstSeqMetadata.getJSONArray("comment");
+    JSONArray comment = firstSeqMetadata.getJSONArray(COMMENT);
 
     Set<Long> brendaIds = new HashSet<>();
     for (int i = 0; i < comment.length(); i++) {
 
       JSONObject commentObject = comment.getJSONObject(i);
 
-      if (commentObject.has("text") && commentObject.has("type") &&
-          commentObject.getString("type").equals("brenda_id")) {
+      if (commentObject.has(TEXT) && commentObject.has(TYPE) &&
+          commentObject.getString(TYPE).equals(BRENDA_ID)) {
 
-        brendaIds.add(commentObject.getLong("text"));
+        brendaIds.add(commentObject.getLong(TEXT));
 
       }
     }
 
-    firstSeqMetadata.remove("comment");
+    firstSeqMetadata.remove(COMMENT);
 
     JSONObject xrefObject = new JSONObject();
-    xrefObject.put("brenda_id", brendaIds);
+    xrefObject.put(BRENDA_ID, brendaIds);
 
-    firstSeqMetadata.put("xref", xrefObject);
+    firstSeqMetadata.put(XREF, xrefObject);
     firstSequence.set_metadata(firstSeqMetadata);
 
     // initialized mergedSequence with firstSequence
@@ -315,13 +336,13 @@ public class SequenceMerger extends BiointerpretationProcessor {
     // ensures that the new gene name is added to the synonyms list in the case that it doesn't match the old gene name
     boolean geneNameMatches = true;
 
-    if (newMetadata.has("name")) {
+    if (newMetadata.has(NAME)) {
 
-      String newName = newMetadata.getString("name");
+      String newName = newMetadata.getString(NAME);
 
-      if (mergedMetadata.has("name")) {
+      if (mergedMetadata.has(NAME)) {
 
-        String oldName = mergedMetadata.getString("name");
+        String oldName = mergedMetadata.getString(NAME);
 
         if (!oldName.equals(newName)) {
 
@@ -331,62 +352,62 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
       } else {
 
-        mergedMetadata.put("name", newName);
+        mergedMetadata.put(NAME, newName);
 
       }
     }
 
-    if (newMetadata.has("synonyms")) {
+    if (newMetadata.has(SYNONYMS)) {
 
       if (!geneNameMatches) {
 
-        newMetadata.append("synonyms", newMetadata.getString("name"));
+        newMetadata.append(SYNONYMS, newMetadata.getString(NAME));
 
       }
 
-      JSONArray newSynonyms = newMetadata.getJSONArray("synonyms");
+      JSONArray newSynonyms = newMetadata.getJSONArray(SYNONYMS);
 
-      if (mergedMetadata.has("synonyms")) {
+      if (mergedMetadata.has(SYNONYMS)) {
 
         for (int i = 0; i < newSynonyms.length(); i++) {
 
-          mergedMetadata = GenbankInstaller.updateArrayField("synonyms", newSynonyms.getString(i), mergedMetadata);
+          mergedMetadata = GenbankInstaller.updateArrayField(SYNONYMS, newSynonyms.getString(i), mergedMetadata);
 
         }
 
       } else {
 
-        mergedMetadata.put("synonyms", newSynonyms);
+        mergedMetadata.put(SYNONYMS, newSynonyms);
 
       }
     }
 
-    if (newMetadata.has("product_names")) {
+    if (newMetadata.has(PRODUCT_NAMES)) {
 
-      JSONArray newProductNames = newMetadata.getJSONArray("product_names");
+      JSONArray newProductNames = newMetadata.getJSONArray(PRODUCT_NAMES);
 
-      if (mergedMetadata.has("product_names")) {
+      if (mergedMetadata.has(PRODUCT_NAMES)) {
 
         for (int i = 0; i < newProductNames.length(); i++) {
 
-          mergedMetadata = GenbankInstaller.updateArrayField("product_names", newProductNames.getString(i),
+          mergedMetadata = GenbankInstaller.updateArrayField(PRODUCT_NAMES, newProductNames.getString(i),
               mergedMetadata);
 
         }
 
       } else {
 
-        mergedMetadata.put("product_names", newProductNames);
+        mergedMetadata.put(PRODUCT_NAMES, newProductNames);
 
       }
 
     }
 
-    if (newMetadata.has("accession")) {
+    if (newMetadata.has(ACCESSION)) {
 
-      JSONObject newAccession = newMetadata.getJSONObject("accession");
+      JSONObject newAccession = newMetadata.getJSONObject(ACCESSION);
 
-      if (mergedMetadata.has("accession")) {
+      if (mergedMetadata.has(ACCESSION)) {
 
         mergedMetadata = GenbankInstaller.updateAccessions(newAccession, mergedMetadata, Seq.AccType.genbank_nucleotide,
             GenbankInstaller.NUCLEOTIDE_ACCESSION_PATTERN);
@@ -397,33 +418,33 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
       } else {
 
-        mergedMetadata.put("accession", newAccession);
+        mergedMetadata.put(ACCESSION, newAccession);
 
       }
 
     }
 
     // converts old comment JSONArrays to fit the new xref JSONObject model
-    if (newMetadata.has("comment")) {
+    if (newMetadata.has(COMMENT)) {
 
-      JSONArray comment = newMetadata.getJSONArray("comment");
+      JSONArray comment = newMetadata.getJSONArray(COMMENT);
 
       Set<Long> newBrendaIds = new HashSet<>();
       for (int i = 0; i < comment.length(); i++) {
 
         JSONObject commentObject = comment.getJSONObject(i);
-        if (commentObject.has("text") && commentObject.has("type") &&
-            commentObject.getString("type").equals("brenda_id")) {
+        if (commentObject.has(TEXT) && commentObject.has(TYPE) &&
+            commentObject.getString(TYPE).equals(BRENDA_ID)) {
 
-          newBrendaIds.add(commentObject.getLong("text"));
+          newBrendaIds.add(commentObject.getLong(TEXT));
 
         }
 
       }
 
-      if (mergedMetadata.has("xref") && mergedMetadata.getJSONObject("xref").has("brenda_id")) {
+      if (mergedMetadata.has(XREF) && mergedMetadata.getJSONObject(XREF).has(BRENDA_ID)) {
 
-        JSONArray brendaIds = mergedMetadata.getJSONObject("xref").getJSONArray("brenda_id");
+        JSONArray brendaIds = mergedMetadata.getJSONObject(XREF).getJSONArray(BRENDA_ID);
         Set<Long> oldBrendaIds = new HashSet<>();
         for (int i = 0; i < brendaIds.length(); i++) {
 
@@ -437,13 +458,13 @@ public class SequenceMerger extends BiointerpretationProcessor {
           oldBrendaIds.add(brendaId);
         }
 
-        mergedMetadata.getJSONObject("xref").put("brenda_id", oldBrendaIds);
+        mergedMetadata.getJSONObject(XREF).put(BRENDA_ID, oldBrendaIds);
 
       } else {
 
         JSONObject xrefObject = new JSONObject();
-        xrefObject.put("brenda_id", newBrendaIds);
-        mergedMetadata.put("xref", xrefObject);
+        xrefObject.put(BRENDA_ID, newBrendaIds);
+        mergedMetadata.put(XREF, xrefObject);
 
       }
 
@@ -461,9 +482,9 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
     for (JSONObject newRef : newRefs) {
 
-      if (newRef.getString("src").equals("PMID")) {
+      if (newRef.getString(SRC).equals(PMID)) {
 
-        String newPmid = newRef.getString("val");
+        String newPmid = newRef.getString(VAL);
 
         ListIterator<JSONObject> mergedRefsIterator = mergedRefs.listIterator();
 
@@ -471,9 +492,9 @@ public class SequenceMerger extends BiointerpretationProcessor {
         while (mergedRefsIterator.hasNext()) {
           JSONObject mergedRef = mergedRefsIterator.next();
 
-          if (mergedRef.getString("src").equals("PMID")) {
+          if (mergedRef.getString(SRC).equals(PMID)) {
 
-            oldPmids.add(mergedRef.getString("val"));
+            oldPmids.add(mergedRef.getString(VAL));
 
           }
         }
@@ -483,22 +504,22 @@ public class SequenceMerger extends BiointerpretationProcessor {
           mergedRefsIterator.add(newRef);
 
         }
-      } else if (newRef.getString("src").equals("Patent")) {
+      } else if (newRef.getString(SRC).equals(PATENT)) {
 
         boolean patentExists = false;
-        String newCountryCode = newRef.getString("country_code");
-        String newPatentNumber = newRef.getString("patent_number");
-        String newPatentYear = newRef.getString("patent_year");
+        String newCountryCode = newRef.getString(COUNTRY_CODE);
+        String newPatentNumber = newRef.getString(PATENT_NUMBER);
+        String newPatentYear = newRef.getString(PATENT_YEAR);
 
         ListIterator<JSONObject> mergedRefsIterator = mergedRefs.listIterator();
 
         while (mergedRefsIterator.hasNext()) {
           JSONObject mergedRef = mergedRefsIterator.next();
 
-          if (mergedRef.getString("src").equals("Patent") &&
-              mergedRef.getString("country_code").equals(newCountryCode) &&
-              mergedRef.getString("patent_number").equals(newPatentNumber) &&
-              mergedRef.getString("patent_year").equals(newPatentYear)) {
+          if (mergedRef.getString(SRC).equals(PATENT) &&
+              mergedRef.getString(COUNTRY_CODE).equals(newCountryCode) &&
+              mergedRef.getString(PATENT_NUMBER).equals(newPatentNumber) &&
+              mergedRef.getString(PATENT_YEAR).equals(newPatentYear)) {
 
             patentExists = true;
             break;
@@ -525,7 +546,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
       Set<JSONObject> proteins = reaction.getProteinData();
 
       for (JSONObject protein : proteins) {
-        JSONArray sequenceIDs = protein.getJSONArray("sequences");
+        JSONArray sequenceIDs = protein.getJSONArray(SEQUENCES);
         Set<Long> newSequenceIDs = new HashSet<>();
 
         for (int i = 0; i < sequenceIDs.length(); i++) {
@@ -536,7 +557,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
           }
         }
 
-        protein.put("sequences", new JSONArray(newSequenceIDs));
+        protein.put(SEQUENCES, new JSONArray(newSequenceIDs));
       }
 
       reaction.setProteinData(proteins);
