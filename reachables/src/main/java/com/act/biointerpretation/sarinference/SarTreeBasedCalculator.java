@@ -1,4 +1,4 @@
-package com.act.biointerpretation.sars.sartrees;
+package com.act.biointerpretation.sarinference;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

@@ -1,4 +1,4 @@
-package com.act.biointerpretation.sars.sartrees;
+package com.act.biointerpretation.sarinference;
 
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
@@ -18,9 +18,9 @@ public class PredictionConfidenceCalculator implements Function<L2Prediction, Sa
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(PredictionConfidenceCalculator.class);
 
-  SarTreeNodeCorpus sarCorpus;
+  SarTreeNodeList sarCorpus;
 
-  public PredictionConfidenceCalculator(SarTreeNodeCorpus sarCorpus) {
+  public PredictionConfidenceCalculator(SarTreeNodeList sarCorpus) {
     this.sarCorpus = sarCorpus;
   }
 

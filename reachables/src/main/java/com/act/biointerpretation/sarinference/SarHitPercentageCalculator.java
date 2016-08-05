@@ -1,4 +1,4 @@
-package com.act.biointerpretation.sars.sartrees;
+package com.act.biointerpretation.sarinference;
 
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;

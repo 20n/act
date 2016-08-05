@@ -1,4 +1,4 @@
-package com.act.biointerpretation.sars.sartrees;
+package com.act.biointerpretation.sarinference;
 
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
@@ -118,7 +118,7 @@ public class ProductScorer {
     L2PredictionCorpus positiveCorpus = fullCorpus.applyFilter(prediction -> inchiList.containsAll(prediction.getProductInchis()));
     LOGGER.info("Number of LCMS positives: %d", positiveCorpus.getCorpus().size());
 
-    SarTreeNodeCorpus scoredSars = new SarTreeNodeCorpus();
+    SarTreeNodeList scoredSars = new SarTreeNodeList();
     scoredSars.loadFromFile(scoredSarsFile);
 
     LOGGER.info("Number of sars: %d", scoredSars.getSarTreeNodes().size());
