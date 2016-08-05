@@ -31,6 +31,13 @@ public class SarTreeNodeList {
     this.sarTreeNodes = sarTreeNodes;
   }
 
+  public void addNode(SarTreeNode node) {
+    sarTreeNodes.add(node);
+  }
+
+  public void sortByDecreasingConfidence() {
+    sarTreeNodes.sort((a, b) -> a.getPercentageHits() > b.getPercentageHits() ? -1 : 1);
+  }
 
   public void loadFromFile(File file) throws IOException {
     SarTreeNodeList fromFile = OBJECT_MAPPER.readValue(file, SarTreeNodeList.class);
@@ -39,6 +46,10 @@ public class SarTreeNodeList {
 
   public void writeToFile(File file) throws IOException {
     OBJECT_MAPPER.writeValue(file, this);
+  }
+
+  public Integer size() {
+    return sarTreeNodes.size();
   }
 
   public List<SarTreeNode> getSarTreeNodes() {

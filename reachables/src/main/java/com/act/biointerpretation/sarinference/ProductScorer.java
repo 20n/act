@@ -1,8 +1,5 @@
 package com.act.biointerpretation.sarinference;
 
-import chemaxon.formats.MolFormatException;
-import chemaxon.formats.MolImporter;
-import chemaxon.struc.Molecule;
 import com.act.biointerpretation.l2expansion.L2FilteringDriver;
 import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.act.biointerpretation.l2expansion.L2Prediction;
@@ -24,16 +21,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 
 public class ProductScorer {
+
+  private static final Logger LOGGER = LogManager.getFormatterLogger(ProductScorer.class);
+
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   static {
     OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
   }
-
-  private static final Logger LOGGER = LogManager.getFormatterLogger(ProductScorer.class);
 
   private static final String OPTION_PREDICTION_CORPUS = "c";
   private static final String OPTION_POSITIVE_INCHIS = "p";
@@ -74,17 +73,10 @@ public class ProductScorer {
   public static final String HELP_MESSAGE =
       "This class is used to rank the products of PredictionCorpus according to a set of SARs.";
 
-
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
   static {
     HELP_FORMATTER.setWidth(100);
-  }
-
-  private static final String INCHI_IMPORT_SETTINGS = "inchi";
-
-  public static Molecule importMolecule(String inchi) throws MolFormatException {
-    return MolImporter.importMol(inchi, INCHI_IMPORT_SETTINGS);
   }
 
   public static void main(String[] args) throws Exception {
@@ -123,16 +115,19 @@ public class ProductScorer {
 
     LOGGER.info("Number of sars: %d", scoredSars.getSarTreeNodes().size());
 
-    Function<L2Prediction, SarTreeNode> confidenceCalculator = new PredictionConfidenceCalculator(scoredSars);
+    Function<L2Prediction, Optional<SarTreeNode>> bestSarFinder = new BestSarFinder(scoredSars);
 
     Map<L2Prediction, SarTreeNode> predictionToSarMap = new HashMap<>();
 
+    LOGGER.info("Scoring predictions.");
     for (L2Prediction prediction : positiveCorpus.getCorpus()) {
-      SarTreeNode bestSar = confidenceCalculator.apply(prediction);
-      if (bestSar == null) {
+      Optional<SarTreeNode> maybeBestSar = bestSarFinder.apply(prediction);
+      if (!maybeBestSar.isPresent()) {
         LOGGER.warn("No SAR found for this prediction.");
         continue;
       }
+      SarTreeNode bestSar = maybeBestSar.get();
+
       predictionToSarMap.put(prediction, bestSar);
       prediction.setProjectorName(
           prediction.getProjectorName() + ":" +
@@ -140,11 +135,14 @@ public class ProductScorer {
               bestSar.getPercentageHits());
     }
 
+    LOGGER.info("Sorting predictions.");
     List<L2Prediction> predictions = new ArrayList<>(predictionToSarMap.keySet());
     predictions.sort((a, b) ->
         (-Double.compare(predictionToSarMap.get(a).getPercentageHits(), predictionToSarMap.get(b).getPercentageHits())));
 
+    LOGGER.info("Writing predictions to file.");
     L2PredictionCorpus finalCorpus = new L2PredictionCorpus(predictions);
     finalCorpus.writePredictionsToJsonFile(outputFile);
+    LOGGER.info("Complete!.");
   }
 }

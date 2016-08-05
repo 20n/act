@@ -25,7 +25,7 @@ public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
     for (SarTreeNode node : sarTree.traverseSubtree(sarTreeNode)) {
       // Only calculate on leaves
       if (sarTree.getChildren(node).isEmpty()) {
-        if (node.getSubstructure().getPropertyObject("in_lcms").equals("true")) {
+        if (node.getSubstructure().getPropertyObject(SarTreeNode.IN_LCMS_PROPERTY).equals(SarTreeNode.IN_LCMS_TRUE)) {
           hits++;
         } else {
           misses++;
