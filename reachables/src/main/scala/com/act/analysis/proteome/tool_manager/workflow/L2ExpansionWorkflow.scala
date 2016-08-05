@@ -1,0 +1,36 @@
+package com.act.analysis.proteome.tool_manager.workflow
+
+import com.act.analysis.proteome.tool_manager.jobs.Job
+import com.act.analysis.proteome.tool_manager.tool_wrappers.ShellWrapper
+import org.apache.commons.cli.CommandLine
+
+class L2ExpansionWorkflow extends Workflow {
+  def defineWorkflow(commandLine: CommandLine): Job = {
+
+    val command = "/usr/local/software/spark-1.5.2-bin-hadoop2.6/bin/spark-submit " +
+      "--driver-class-path ~/act/reachables/target/scala-2.10/reachables-assembly-0.1.jar " +
+      "--class com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector " +
+      "--master spark://10.0.20.19:7077 --deploy-mode client --executor-memory 4G " +
+      "~/act/reachables/target/scala-2.10/reachables-assembly-0.1.jar " +
+      "--substrates-list output_inchis.txt -s -o /home/vijay/output_spark/ " +
+      "-l /mnt/shared-data/3rdPartySoftware/Chemaxon/license_Start-up.cxl"
+
+    // Print working directory
+    val job1 = ShellWrapper.shellCommand(List(command))
+
+    // See which files are available
+    val job2 = ShellWrapper.shellCommand(List("ls"))
+
+    // Get today's date
+    val job3 = ShellWrapper.shellCommand(List("date"))
+
+    // Print date as just the hour
+    val job4 = ShellWrapper.shellCommand(List("date", "+%H"))
+
+    // Check directory again
+    val job5 = ShellWrapper.shellCommand(List("pwd"))
+
+    // Returns first job
+    job1.thenRunBatch(List(job2, job3)).thenRun(job4).thenRun(job5)
+  }
+}
