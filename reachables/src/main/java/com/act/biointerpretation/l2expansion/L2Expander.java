@@ -72,11 +72,11 @@ public abstract class L2Expander {
       }
     }
 
-    LOGGER.info("Proceeding with %d substrate ROs.", nSubstrateReactions.size(), n);
+    LOGGER.info("Proceeding with %d %d substrate ROs.", nSubstrateReactions.size(), n);
     return nSubstrateReactions;
   }
 
-  protected List<Molecule> getMolecules(List<String> inchis, Integer massCutoff) {
+  protected List<Molecule> getMassBoundedMolecules(List<String> inchis, Integer massCutoff) {
     List<Molecule> result = new ArrayList<>();
     for (String inchi : inchis) {
       try {
@@ -102,7 +102,6 @@ public abstract class L2Expander {
    * @return The resulting Molecule.
    * @throws MolFormatException
    */
-
   protected Molecule importMolecule(String inchi) throws MolFormatException {
     return MolImporter.importMol(inchi, INCHI_IMPORT_SETTINGS);
   }

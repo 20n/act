@@ -1,6 +1,5 @@
 package com.act.biointerpretation.l2expansion;
 
-import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
@@ -46,7 +45,7 @@ public class SingleSubstrateRoExpander extends L2Expander {
 
     // Use only single substrate reactions
     List<Ero> singleSubstrateRoList = getNSubstrateRos(roList, ONE_SUBSTRATES);
-    List<Molecule> substrates = getMolecules(metaboliteList, massCutoff);
+    List<Molecule> substrates = getMassBoundedMolecules(metaboliteList, massCutoff);
 
     for (Ero ro : singleSubstrateRoList) {
       SerializableReactor reactor;

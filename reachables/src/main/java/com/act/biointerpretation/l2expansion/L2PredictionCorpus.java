@@ -1,5 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -24,6 +25,7 @@ import java.util.function.Predicate;
 public class L2PredictionCorpus {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
   static {
     OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
   }
