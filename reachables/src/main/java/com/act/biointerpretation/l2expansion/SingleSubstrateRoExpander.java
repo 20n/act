@@ -45,6 +45,10 @@ public class SingleSubstrateRoExpander extends L2Expander {
 
     // Use only single substrate reactions
     List<Ero> singleSubstrateRoList = getNSubstrateRos(roList, ONE_SUBSTRATES);
+<<<<<<< HEAD
+=======
+    List<Molecule> substrates = getMassBoundedMolecules(metaboliteList, massCutoff);
+>>>>>>> Final cleanup
 
     for (Ero ro : singleSubstrateRoList) {
       SerializableReactor reactor;
