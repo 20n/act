@@ -9,7 +9,8 @@ object CLI {
     "RoToProteinPredictionFlow",
     "EcnumToProteinPredictionFlow",
     "EcnumToFastaFlow",
-    "RoToFastaFlow"
+    "RoToFastaFlow",
+    "L2ExpansionWorkflow"
   )
 
   def main(args: Array[String]): Unit = {
