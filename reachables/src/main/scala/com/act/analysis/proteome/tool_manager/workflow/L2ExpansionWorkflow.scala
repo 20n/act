@@ -21,16 +21,7 @@ class L2ExpansionWorkflow extends Workflow {
     // See which files are available
     val job2 = ShellWrapper.shellCommand(List("ls"))
 
-    // Get today's date
-    val job3 = ShellWrapper.shellCommand(List("date"))
-
-    // Print date as just the hour
-    val job4 = ShellWrapper.shellCommand(List("date", "+%H"))
-
-    // Check directory again
-    val job5 = ShellWrapper.shellCommand(List("pwd"))
-
     // Returns first job
-    job1.thenRunBatch(List(job2, job3)).thenRun(job4).thenRun(job5)
+    job1.thenRunBatch(List(job2))
   }
 }
