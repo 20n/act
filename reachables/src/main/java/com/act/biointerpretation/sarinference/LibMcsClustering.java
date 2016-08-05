@@ -1,4 +1,4 @@
-package com.act.biointerpretation.sars.sartrees;
+package com.act.biointerpretation.sarinference;
 
 import chemaxon.clustering.LibraryMCS;
 import chemaxon.formats.MolFormatException;
@@ -141,7 +141,7 @@ public class LibMcsClustering {
     LOGGER.info("Building sar tree.");
     SarTree sarTree;
     if (cl.hasOption(OPTION_CLUSTER_FIRST)) {
-      sarTree = buildSarTree(libMcs, positiveCorpus.getUniqueSubstrateInchis(), fullCorpus.getUniqueSubstrateInchis());
+      sarTree = buildSarTreeOnAll(libMcs, positiveCorpus.getUniqueSubstrateInchis(), fullCorpus.getUniqueSubstrateInchis());
 
       if (cl.hasOption(OPTION_TREE_SCORING)) {
         Set<String> positiveInchiSet = new HashSet<>();
@@ -171,8 +171,8 @@ public class LibMcsClustering {
 
     explanatorySars.sort((a, b) -> a.getPercentageHits() > b.getPercentageHits() ? -1 : 1);
 
-    SarTreeNodeCorpus sarTreeNodeCorpus = new SarTreeNodeCorpus(explanatorySars);
-    sarTreeNodeCorpus.writeToFile(outputFile);
+    SarTreeNodeList sarTreeNodeList = new SarTreeNodeList(explanatorySars);
+    sarTreeNodeList.writeToFile(outputFile);
 
     LOGGER.info("Complete!.");
   }
@@ -187,9 +187,9 @@ public class LibMcsClustering {
    * @throws InterruptedException
    * @throws IOException
    */
-  private static SarTree buildSarTree(LibraryMCS libMcs,
-                                      Collection<String> positiveInchis,
-                                      Collection<String> allInchis)
+  private static SarTree buildSarTreeOnAll(LibraryMCS libMcs,
+                                           Collection<String> positiveInchis,
+                                           Collection<String> allInchis)
       throws InterruptedException, IOException {
     List<Molecule> molecules = new ArrayList<>();
 

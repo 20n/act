@@ -1,4 +1,4 @@
-package com.act.biointerpretation.sars.sartrees;
+package com.act.biointerpretation.sarinference;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * A simple list of SarTreeNodes that can be serialized for curation and deserialized for later use.
  */
-public class SarTreeNodeCorpus {
+public class SarTreeNodeList {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -23,17 +23,17 @@ public class SarTreeNodeCorpus {
   @JsonProperty("sar_tree_nodes")
   List<SarTreeNode> sarTreeNodes;
 
-  public SarTreeNodeCorpus() {
+  public SarTreeNodeList() {
     sarTreeNodes = new ArrayList<>();
   }
 
-  public SarTreeNodeCorpus(List<SarTreeNode> sarTreeNodes) {
+  public SarTreeNodeList(List<SarTreeNode> sarTreeNodes) {
     this.sarTreeNodes = sarTreeNodes;
   }
 
 
   public void loadFromFile(File file) throws IOException {
-    SarTreeNodeCorpus fromFile = OBJECT_MAPPER.readValue(file, SarTreeNodeCorpus.class);
+    SarTreeNodeList fromFile = OBJECT_MAPPER.readValue(file, SarTreeNodeList.class);
     this.setSarTreeNodes(fromFile.getSarTreeNodes());
   }
 
