@@ -60,6 +60,14 @@ public class SequenceMergerTest {
 
     proteinData.add(proteinDataObj);
     reaction.setProteinData(proteinData);
+
+    sequenceSet = new HashSet<>(Arrays.asList(1L, 2L));
+
+    proteinDataObj = new JSONObject();
+    proteinDataObj.put("sequences", sequenceSet);
+
+    reaction.addProteinData(proteinDataObj);
+
     testReactions.add(reaction);
 
     // ========================================
@@ -209,6 +217,11 @@ public class SequenceMergerTest {
 
     reaction.addProteinData(proteinData);
 
+    proteinData = new JSONObject();
+    proteinData.put("sequences", sequenceSet);
+
+    reaction.addProteinData(proteinData);
+
     Seq testSeq = mockAPI.getMockWriteMongoDB().getSeqFromID(1L);
     Reaction testReaction = mockAPI.getMockWriteMongoDB().getReactionFromUUID(1L);
 
@@ -240,6 +253,10 @@ public class SequenceMergerTest {
     assertEquals("comparing ec " + message, expectedReaction.getECNum(), testReaction.getECNum());
     assertEquals("comparing protein data " + message, expectedReaction.getProteinData().toString(),
         testReaction.getProteinData().toString());
+  }
+
+  private void compareOrganisms() {
+
   }
 
 }
