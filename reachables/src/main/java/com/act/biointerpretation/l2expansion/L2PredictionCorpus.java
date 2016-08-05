@@ -8,6 +8,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -21,9 +22,10 @@ import java.util.function.Predicate;
 /**
  * Represents the set of all predictions made by an L2 expansion run
  */
-public class L2PredictionCorpus {
+public class L2PredictionCorpus implements Serializable {
+  private static final long serialVersionUID = 2502953593841339815L;
 
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static transient final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   static {
     OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
