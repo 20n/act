@@ -75,11 +75,11 @@ public class ControlSystem {
   }
 
   private MotorPinConfiguration motorPinConfiguration;
-  protected SOLUTION solution;
-
-  private Double targetPH;
   private ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private File pHSensorDataFile;
+
+  protected SOLUTION solution;
+  protected Double targetPH;
 
   public ControlSystem() {}
 
@@ -116,7 +116,7 @@ public class ControlSystem {
     return longerTime.getMillis() - shorterTime.getMillis();
   }
   
-  private void shutdownFermentation() {
+  protected void shutdownFermentation() {
     this.motorPinConfiguration.shutdownFermentation();
   }
 
@@ -125,7 +125,7 @@ public class ControlSystem {
         (phValue > this.targetPH + MARGIN_OF_ACCEPTANCE_IN_PH && this.solution.equals(SOLUTION.ACID));
   }
 
-  private void run() throws InterruptedException {
+  protected void run() throws InterruptedException {
     DateTime lastTimeSinceDoseAdministered = Time.now();
     DateTime currTime;
 
@@ -138,14 +138,14 @@ public class ControlSystem {
 
         PHSensorData phSensorData = readPhSensorData(this.pHSensorDataFile);
         Double phValue = phSensorData.getpH();
-        LOGGER.info("PH value is %d", phValue);
+        LOGGER.info("PH value is %.2f", phValue);
 
         if (timeDiff <= PUMP_TIME_WAIT_IN_MILLI_SECONDS || !pHOutOfRange(phValue)) {
           continue;
         }
 
         takeAction();
-        LOGGER.info("Took action when pH was %d", phValue);
+        LOGGER.info("Took action when pH was %.2f", phValue);
         lastTimeSinceDoseAdministered = new DateTime();
       } catch (IOException e) {
         LOGGER.error("Could not read pH value due to IOException. Error is %s:", e.getMessage());

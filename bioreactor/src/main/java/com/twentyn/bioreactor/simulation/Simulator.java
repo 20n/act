@@ -95,8 +95,8 @@ public class Simulator extends ControlSystem {
 
   @Override
   protected void takeAction() {
-    lastAction = new Action(solution, PUMP_ACTION_DURATION, new DateTime());
-    LOGGER.debug("Last action was updated to: {solution: %s, duration: %d}", solution, PUMP_ACTION_DURATION);
+    lastAction = new Action(solution, PUMP_TIME_WAIT_IN_MILLI_SECONDS, new DateTime());
+    LOGGER.debug("Last action was updated to: {solution: %s, duration: %d}", solution, PUMP_TIME_WAIT_IN_MILLI_SECONDS);
   }
 
   private void updateSystemStateWithLastAction() {
@@ -119,7 +119,7 @@ public class Simulator extends ControlSystem {
   }
 
   @Override
-  protected PHSensorData readSensorData() {
+  protected PHSensorData readPhSensorData(File f) {
     try {
       Thread.sleep(SENSOR_READ_TIME);
     } catch (InterruptedException e) {
