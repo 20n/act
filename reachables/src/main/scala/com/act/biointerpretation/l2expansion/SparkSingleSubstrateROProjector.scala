@@ -221,7 +221,11 @@ object SparkSingleSubstrateROProjector {
     }
 
     // DO THE THING!  Run the mapper on all the executors over the projection results, and collect timing info.
-    val timingPairs: List[(Integer, Double)] = resultsRDD.collect().map(t => mapper(t._1, t._2, t._3)).toList
+    //val timingPairs: List[(Integer, Double)] = resultsRDD.collect().map(t => mapper(t._1, t._2, t._3)).toList
+    val timingPairs: List[(Integer, Double)] = resultsRDD.persist().toLocalIterator.map(t => mapper(t._1, t._2, t._3)).toList
+
+    // Un-persist the RDD to free up the memory we held onto so we could iterate over the result partitions.
+    resultsRDD.unpersist()
 
     LOGGER.info("Projection execution time report:")
     timingPairs.sortWith((a, b) => b._2 < a._2).foreach(pair => LOGGER.info(f"ERO ${pair._1}%4d: ${pair._2}%.3fs"))
