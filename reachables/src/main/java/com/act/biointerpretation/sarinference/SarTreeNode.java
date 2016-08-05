@@ -15,6 +15,10 @@ import java.io.IOException;
  */
 public class SarTreeNode {
 
+  public static final String IN_LCMS_PROPERTY = "lcms_positive";
+  public static final String IN_LCMS_TRUE = "true";
+  public static final String IN_LCMS_FALSE = "false";
+
   @JsonProperty
   String hierarchyId;
 

@@ -1,5 +1,7 @@
 package com.act.biointerpretation.sarinference;
 
+import chemaxon.clustering.LibraryMCS;
+import chemaxon.struc.Molecule;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -20,6 +22,7 @@ public class SarTree {
   private static final Logger LOGGER = LogManager.getFormatterLogger(SarTree.class);
 
   private static final Integer FIRST_ID = 1;
+  private static final Boolean ALL_NODES = false; // Tell LibMCS to return all nodes in the tree in its clustering
 
   private Map<String, SarTreeNode> nodeMap;
 
@@ -33,6 +36,38 @@ public class SarTree {
 
   public void addNode(SarTreeNode node) {
     nodeMap.put(node.getHierarchyId(), node);
+  }
+
+  /**
+   * Builds this SAR tree by running LibraryMCS clustering on the given set of molecules.
+   *
+   * @param libMcs The clusterer.
+   * @param molecules The molecules.
+   * @throws InterruptedException
+   */
+  public void buildByClustering(LibraryMCS libMcs, List<Molecule> molecules) throws InterruptedException {
+    for (Molecule mol : molecules) {
+      libMcs.addMolecule(mol);
+    }
+
+    libMcs.search();
+    LibraryMCS.ClusterEnumerator enumerator = libMcs.getClusterEnumerator(ALL_NODES);
+
+    this.buildFromEnumerator(enumerator);
+  }
+
+  /**
+   * Builds this SAR tree based on the results of a LibMCS clustering.
+   *
+   * @param enumerator An enumerator for the LibMCS clusters.
+   */
+  private void buildFromEnumerator(LibraryMCS.ClusterEnumerator enumerator) {
+    while (enumerator.hasNext()) {
+      Molecule molecule = enumerator.next();
+      String hierId = molecule.getPropertyObject("HierarchyID").toString();
+      SarTreeNode thisNode = new SarTreeNode(molecule, hierId);
+      this.addNode(thisNode);
+    }
   }
 
   public List<SarTreeNode> getRootNodes() {
@@ -79,13 +114,21 @@ public class SarTree {
     return result;
   }
 
-  public List<SarTreeNode> getExplanatoryNodes(int subtreeThreshold, double thresholdConfidence) {
-    List<SarTreeNode> results = new ArrayList<>();
+  /**
+   * Pulls the SARs we care about out of a SarTree. These are chosen to be above a certain confidence level, and
+   * explain at least a certain number of nodes.
+   *
+   * @param subtreeThreshold The min size of the subtree explained by a relevant SAR.
+   * @param thresholdConfidence The min confidence score for a relevant SAR.
+   * @return A list of SarTreeNodes
+   */
+  public SarTreeNodeList getExplanatoryNodes(int subtreeThreshold, double thresholdConfidence) {
+    SarTreeNodeList results = new SarTreeNodeList();
 
     for (SarTreeNode node : getNodes()) {
       if (getChildren(node).size() > 1) {
         if (node.getPercentageHits() > thresholdConfidence && getSubtreeSize(node) >= subtreeThreshold) {
-          results.add(node);
+          results.addNode(node);
         }
       }
     }

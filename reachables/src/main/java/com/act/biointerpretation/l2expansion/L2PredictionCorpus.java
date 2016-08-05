@@ -139,7 +139,7 @@ public class L2PredictionCorpus implements Serializable {
    * Get a list of all product inchis from corpus.
    */
   @JsonIgnore
-  public Collection<String> getUniqueProductInchis() {
+  public Set<String> getUniqueProductInchis() {
     Set<String> inchiSet = new HashSet<>();
     for (L2Prediction prediction : getCorpus()) {
       inchiSet.addAll(prediction.getProductInchis());
@@ -151,7 +151,7 @@ public class L2PredictionCorpus implements Serializable {
    * Get a list of all substrate inchis from corpus.
    */
   @JsonIgnore
-  public Collection<String> getUniqueSubstrateInchis() {
+  public Set<String> getUniqueSubstrateInchis() {
     Set<String> inchiSet = new HashSet<>();
     for (L2Prediction prediction : getCorpus()) {
       inchiSet.addAll(prediction.getSubstrateInchis());

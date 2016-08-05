@@ -9,32 +9,33 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.function.Function;
 
 /**
  * Test a given prediction against all Sars in a corpus, and returns the highest-scored matching Sar.
  */
-public class PredictionConfidenceCalculator implements Function<L2Prediction, SarTreeNode> {
+public class BestSarFinder implements Function<L2Prediction, Optional<SarTreeNode>> {
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(PredictionConfidenceCalculator.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(BestSarFinder.class);
 
   SarTreeNodeList sarCorpus;
 
-  public PredictionConfidenceCalculator(SarTreeNodeList sarCorpus) {
+  public BestSarFinder(SarTreeNodeList sarCorpus) {
     this.sarCorpus = sarCorpus;
   }
 
-  public SarTreeNode apply(L2Prediction prediction) {
+  public Optional<SarTreeNode> apply(L2Prediction prediction) {
     Molecule substrate;
     try {
       substrate = MolImporter.importMol(prediction.getSubstrateInchis().get(0), "inchi");
     } catch (MolFormatException e) {
       LOGGER.error("Couldn't import molecule %s: %s", prediction.getSubstrateInchis().get(0), e.getMessage());
-      return null;
+      return Optional.empty();
     }
 
     Double score = 0D;
-    SarTreeNode bestSarTreeNode = null;
+    Optional<SarTreeNode> bestSarTreeNode = Optional.empty();
     for (SarTreeNode scoredSar : sarCorpus.getSarTreeNodes()) {
       Sar sar = scoredSar.getSar();
 
@@ -42,7 +43,7 @@ public class PredictionConfidenceCalculator implements Function<L2Prediction, Sa
         Double sarScore = scoredSar.getPercentageHits();
         if (sarScore > score) {
           score = sarScore;
-          bestSarTreeNode = scoredSar;
+          bestSarTreeNode = Optional.of(scoredSar);
         }
       }
     }

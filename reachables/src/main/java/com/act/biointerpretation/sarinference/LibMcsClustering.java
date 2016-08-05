@@ -18,13 +18,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 public class LibMcsClustering {
 
@@ -91,7 +90,6 @@ public class LibMcsClustering {
     HELP_FORMATTER.setWidth(100);
   }
 
-  private static final Boolean ALL_NODES = false; // Tell LibMCS to return all nodes in the tree in its clustering
   private static final String INCHI_IMPORT_SETTINGS = "inchi";
   private static final Double THRESHOLD_CONFIDENCE = 0D; // no threshold is applied
   private static final Integer THRESHOLD_TREE_SIZE = 2; // any SAR that is not simply one specific substrate is allowed
@@ -109,8 +107,7 @@ public class LibMcsClustering {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       LOGGER.error("Argument parsing failed: %s", e.getMessage());
-      HELP_FORMATTER.printHelp(L2FilteringDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      System.exit(1);
+      exitWithHelp(opts);
     }
 
     // Print help.
@@ -126,145 +123,73 @@ public class LibMcsClustering {
     L2PredictionCorpus fullCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputCorpusFile);
     LOGGER.info("Number of predictions: %d", fullCorpus.getCorpus().size());
     LOGGER.info("Number of unique substrates: %d", fullCorpus.getUniqueSubstrateInchis().size());
+    Collection<String> allSubstrateInchis = fullCorpus.getUniqueSubstrateInchis();
 
-    L2InchiCorpus positiveInchis = new L2InchiCorpus();
-    positiveInchis.loadCorpus(positiveInchisFile);
-    List<String> inchiList = positiveInchis.getInchiList();
+    L2InchiCorpus positiveProducts = new L2InchiCorpus();
+    positiveProducts.loadCorpus(positiveInchisFile);
+    List<String> positiveProductList = positiveProducts.getInchiList();
 
-    L2PredictionCorpus positiveCorpus = fullCorpus.applyFilter(prediction -> inchiList.contains(prediction.getProductInchis().get(0)));
-    LOGGER.info("Number of LCMS positives: %d", positiveCorpus.getCorpus().size());
+    L2PredictionCorpus positiveCorpus = fullCorpus.applyFilter(prediction -> positiveProductList.contains(prediction.getProductInchis().get(0)));
+    LOGGER.info("Number of LCMS positive predictions: %d", positiveCorpus.getCorpus().size());
+    Set<String> positiveSubstrateInchis = positiveCorpus.getUniqueSubstrateInchis();
+    LOGGER.info("Number of substrates with positive LCMS products: %d", positiveCorpus.getCorpus().size());
 
+    if (cl.hasOption(OPTION_TREE_SCORING) && !cl.hasOption(OPTION_CLUSTER_FIRST)) {
+      LOGGER.error("Cannot use tree scoring if clustering only builds tree on positive substrates.");
+      exitWithHelp(opts);
+    }
+
+    LOGGER.info("Importing molecules from inchi lists.");
+    List<Molecule> molecules = null;
+    if (cl.hasOption(OPTION_CLUSTER_FIRST)) {
+      molecules = importInchis(allSubstrateInchis, inchi -> positiveSubstrateInchis.contains(inchi));
+    } else {
+      molecules = importInchis(positiveSubstrateInchis, inchi -> true);
+    }
+    LOGGER.info("Building SAR tree with LibraryMCS.");
     LibraryMCS libMcs = new LibraryMCS();
+    SarTree sarTree = new SarTree();
+    sarTree.buildByClustering(libMcs, molecules);
 
     Consumer<SarTreeNode> sarConfidenceCalculator = new SarHitPercentageCalculator(positiveCorpus, fullCorpus);
-
-    LOGGER.info("Building sar tree.");
-    SarTree sarTree;
-    if (cl.hasOption(OPTION_CLUSTER_FIRST)) {
-      sarTree = buildSarTreeOnAll(libMcs, positiveCorpus.getUniqueSubstrateInchis(), fullCorpus.getUniqueSubstrateInchis());
-
-      if (cl.hasOption(OPTION_TREE_SCORING)) {
-        Set<String> positiveInchiSet = new HashSet<>();
-        positiveInchiSet.addAll(inchiList);
-        sarConfidenceCalculator = new SarTreeBasedCalculator(positiveInchiSet, sarTree);
-      }
-
-    } else {
-      sarTree = buildSarTreeOnPositives(libMcs, fullCorpus.getUniqueSubstrateInchis());
-
-      if (cl.hasOption(OPTION_TREE_SCORING)) {
-        LOGGER.error("Cannot run tree scoring if clustering is not first.");
-        HELP_FORMATTER.printHelp(L2FilteringDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      }
-
+    if (cl.hasOption(OPTION_TREE_SCORING)) {
+      sarConfidenceCalculator = new SarTreeBasedCalculator(positiveSubstrateInchis, sarTree);
     }
 
     LOGGER.info("Scoring sars.");
     sarTree.applyToNodes(sarConfidenceCalculator, THRESHOLD_TREE_SIZE);
 
-    LOGGER.info("Getting explanatory nodes.");
-    List<SarTreeNode> explanatorySars = sarTree.getExplanatoryNodes(THRESHOLD_TREE_SIZE, THRESHOLD_CONFIDENCE);
-
+    LOGGER.info("Getting explanatory sars.");
+    SarTreeNodeList explanatorySars = sarTree.getExplanatoryNodes(THRESHOLD_TREE_SIZE, THRESHOLD_CONFIDENCE);
     LOGGER.info("%d sars passed thresholds of subtree size %d, percentageHits %f.",
         explanatorySars.size(), THRESHOLD_TREE_SIZE, THRESHOLD_CONFIDENCE);
     LOGGER.info("Producing and writing output.");
 
-    explanatorySars.sort((a, b) -> a.getPercentageHits() > b.getPercentageHits() ? -1 : 1);
-
-    SarTreeNodeList sarTreeNodeList = new SarTreeNodeList(explanatorySars);
-    sarTreeNodeList.writeToFile(outputFile);
-
+    explanatorySars.sortByDecreasingConfidence();
+    explanatorySars.writeToFile(outputFile);
     LOGGER.info("Complete!.");
   }
 
-  /**
-   * Builds a SarTree by clustering all inchis, labelling them according to whether they are or are not an LCMS hit.
-   *
-   * @param libMcs The clusterer.
-   * @param positiveInchis A collection of inchis that are LCMS positives.
-   * @param allInchis All inchis to cluster.
-   * @return The SAR tree.
-   * @throws InterruptedException
-   * @throws IOException
-   */
-  private static SarTree buildSarTreeOnAll(LibraryMCS libMcs,
-                                           Collection<String> positiveInchis,
-                                           Collection<String> allInchis)
-      throws InterruptedException, IOException {
+  private static List<Molecule> importInchis(Collection<String> inchis, Predicate<String> lcmsTester) {
     List<Molecule> molecules = new ArrayList<>();
-
-    for (String inchi : allInchis) {
+    for (String inchi : inchis) {
       try {
-        Molecule mol = importMolecule(inchi);
-        if (positiveInchis.contains(inchi)) {
-          mol.setProperty("in_lcms", "true");
+        Molecule mol = MolImporter.importMol(inchi, INCHI_IMPORT_SETTINGS);
+        if (lcmsTester.test(inchi)) {
+          mol.setProperty(SarTreeNode.IN_LCMS_PROPERTY, SarTreeNode.IN_LCMS_TRUE);
         } else {
-          mol.setProperty("in_lcms", "false");
+          mol.setProperty(SarTreeNode.IN_LCMS_PROPERTY, SarTreeNode.IN_LCMS_FALSE);
         }
         molecules.add(mol);
       } catch (MolFormatException e) {
         LOGGER.warn("Error importing inchi %s:%s", inchi, e.getMessage());
       }
     }
-
-    return buildSarTree(libMcs, molecules);
+    return molecules;
   }
 
-  /**
-   * Imports the inchis into molecules and then builds a SAR tree.  Labels all molecules as LCMS positives.
-   *
-   * @param libMcs The clusterer.
-   * @param positiveInchis A list of inchis
-   * @return
-   * @throws InterruptedException
-   * @throws IOException
-   */
-  private static SarTree buildSarTreeOnPositives(LibraryMCS libMcs, Collection<String> positiveInchis)
-      throws InterruptedException, IOException {
-
-    List<Molecule> molecules = new ArrayList<>();
-    for (String inchi : positiveInchis) {
-      try {
-        Molecule mol = importMolecule(inchi);
-        mol.setProperty("in_lcms", "true");
-        molecules.add(mol);
-      } catch (MolFormatException e) {
-        LOGGER.warn("Error importing inchi %s:%s", inchi, e.getMessage());
-      }
-    }
-
-    return buildSarTree(libMcs, molecules);
-  }
-
-
-  /**
-   * Clusters the molecules using LibMCS and returns a SarTree of the clustering.
-   *
-   * @param libMcs The clusterer.
-   * @param molecules The substrate molecules.
-   * @return The SarTree.
-   * @throws InterruptedException
-   */
-  private static SarTree buildSarTree(LibraryMCS libMcs, List<Molecule> molecules) throws InterruptedException {
-    for (Molecule mol : molecules) {
-      libMcs.addMolecule(mol);
-    }
-
-    libMcs.search();
-    LibraryMCS.ClusterEnumerator enumerator = libMcs.getClusterEnumerator(ALL_NODES);
-
-    SarTree sarTree = new SarTree();
-    while (enumerator.hasNext()) {
-      Molecule molecule = enumerator.next();
-      String hierId = molecule.getPropertyObject("HierarchyID").toString();
-      SarTreeNode thisNode = new SarTreeNode(molecule, hierId);
-      sarTree.addNode(thisNode);
-    }
-
-    return sarTree;
-  }
-
-  public static Molecule importMolecule(String inchi) throws MolFormatException {
-    return MolImporter.importMol(inchi, INCHI_IMPORT_SETTINGS);
+  private static void exitWithHelp(Options opts) {
+    HELP_FORMATTER.printHelp(L2FilteringDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+    System.exit(1);
   }
 }
