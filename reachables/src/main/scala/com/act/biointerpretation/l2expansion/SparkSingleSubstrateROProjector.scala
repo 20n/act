@@ -37,7 +37,19 @@ object compute {
   private val RUNTIME_WARNING_THRESHOLD_S = 60d * 15d // 15 mins
   private val LOGGER = LogManager.getLogger(getClass)
 
-  // Create one job per ERO to cut down on time spent compiling.  TODO: segment more efficiently and cache Eros.
+  /* The current parallelism scheme partitions projections by ERO, using one worker thread to project one ERO over all
+   * input InChIs.  Given the respective size of our sets of EROs and InChIs (i.e. ERO << InChIs), it might make sense
+   * to partition on InChIs and run all ERO projections over small InChI groups.  However, the absence of obvious
+   * pre-execution set up hooks for Spark executors means that we might end up compiling the EROs (at worst) once per
+   * InChI, meaning we'd probably spend more time compiling EROs than we would running the projections.  Yikes!
+   * We'd also need a separate shuffle and sort phase (which might be trivial?) to group together results by ERO id to
+   * give us the nice one-ERO-per-output-file result partitioning we enjoy today.
+   *
+   * The current scheme gives us a big performance boost over serial RO projections.  That said, we can probably do
+   * much better with added investigation.
+   *
+   * TODO: try out other partitioning schemes and/or pre-compile and cache ERO Reactors for improved performance.
+   */
   def run(licenseFileName: String, ero: Ero, inchis: List[String]): (Double, L2PredictionCorpus) = {
     val startTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val localLicenseFile = SparkFiles.get(licenseFileName)
@@ -47,7 +59,7 @@ object compute {
 
     val expander = new SingleSubstrateRoExpander(List(ero).asJava, inchis.asJava,
       new AllPredictionsGenerator(new ReactionProjector()))
-    val results = expander.getPredictions(null)
+    val results = expander.getPredictions()
 
     val endTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val deltaTS = (endTime.getMillis - startTime.getMillis).toDouble / MS_PER_S
@@ -149,32 +161,6 @@ object SparkSingleSubstrateROProjector {
     LOGGER.info(s"Validating license file at $licenseFile")
     LicenseManager.setLicenseFile(licenseFile)
 
-    val eros = new ErosCorpus()
-    eros.loadValidationCorpus()
-    val fullErosList = eros.getRos.asScala
-    LOGGER.info("Filtering eros to only those having names and single substrates")
-    val erosList = if(cl.hasOption(OPTION_FILTER_REQUIRE_RO_NAMES)) {
-      fullErosList.filter(x => x.getName != null && !x.getName.isEmpty && x.getSubstrate_count == 1)
-    } else {
-      fullErosList.filter(x => x.getSubstrate_count == 1)
-    }
-    LOGGER.info(s"Reduction in ERO list size: ${fullErosList.size} -> ${erosList.size}")
-
-    val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)
-    val validInchis = Source.fromFile(substratesListFile).getLines().
-      filter(x => x.startsWith("InChI=")).
-      filter(x => try { MolImporter.importMol(x); true } catch { case e : Exception => false }).toList
-    LOGGER.info(s"Loaded and validated ${validInchis.size} InChIs from source file at $substratesListFile")
-
-    val inchis = if (cl.hasOption(OPTION_FILTER_FOR_SPECTROMETERY)) {
-      LOGGER.info("Filtering candidate substrates to range accessible by LCMS")
-      val filtered = validInchis.filter(x => MolImporter.importMol(x).getMass <= 950.0d)
-      LOGGER.info(s"Reduction in substrate list size: ${validInchis.size} -> ${filtered.size}")
-      filtered
-    } else {
-      validInchis
-    }
-
     val outputDir = new File(cl.getOptionValue(OPTION_OUTPUT_DIRECTORY))
     if (outputDir.exists() && !outputDir.isDirectory) {
       LOGGER.error(s"Found output directory at ${outputDir.getAbsolutePath} but is not a directory")
@@ -183,6 +169,27 @@ object SparkSingleSubstrateROProjector {
       LOGGER.info(s"Creating output directory at ${outputDir.getAbsolutePath}")
       outputDir.mkdirs()
     }
+
+    val eros = new ErosCorpus()
+    eros.loadValidationCorpus()
+    val fullErosList = eros.getRos.asScala
+    LOGGER.info("Filtering eros to only those having names and single substrates")
+    val erosList = (if (cl.hasOption(OPTION_FILTER_REQUIRE_RO_NAMES)) {
+      fullErosList.filter(x => x.getName != null && !x.getName.isEmpty)
+    } else {
+      fullErosList
+    }).filter(_.getSubstrate_count == 1)
+    LOGGER.info(s"Reduction in ERO list size: ${fullErosList.size} -> ${erosList.size}")
+
+    val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)
+    val validInchis = Source.fromFile(substratesListFile).getLines().
+      filter(_.startsWith("InChI=")).
+      filter(x => try { MolImporter.importMol(x); true } catch { case e : Exception => false }).toList
+    LOGGER.info(s"Loaded and validated ${validInchis.size} InChIs from source file at $substratesListFile")
+
+    val inchis = validInchis.filter(
+      x => if (cl.hasOption(OPTION_FILTER_FOR_SPECTROMETERY)) MolImporter.importMol(x).getMass <= 950.0d else true)
+    LOGGER.info(s"Reduction in substrate list size after filtering: ${validInchis.size} -> ${inchis.size}")
 
     // Don't set a master here, spark-submit will do that for us.
     val conf = new SparkConf().setAppName("Spark RO Projection")
@@ -197,6 +204,7 @@ object SparkSingleSubstrateROProjector {
     val eroRDD: RDD[Ero] = spark.makeRDD(erosList, erosList.size)
 
     LOGGER.info("Starting execution")
+    // PROJECT!  Run ERO projection over all InChIs.
     val resultsRDD: RDD[(Ero, Double, L2PredictionCorpus)] =
       eroRDD.map(ero => {
         val results = compute.run(licenseFileName, ero, inchis)
@@ -204,12 +212,16 @@ object SparkSingleSubstrateROProjector {
       })
 
     LOGGER.info("Collecting")
-    val timingPairs: List[(Integer, Double)] = resultsRDD.map(triple => {
-      LOGGER.info(s"Writing results for ERO ${triple._1.getId}")
-      val outputFile = new File(outputDir, triple._1.getId.toString)
-      OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(outputFile, triple._3)
-      (triple._1.getId, triple._2)
-    }).collect().toList
+    // Map over results and runtime, writing results to appropriate output files and collecting ids/runtime for reports.
+    val mapper: (Ero, Double, L2PredictionCorpus) => (Integer, Double) = (ero, runtime, projectionResults) => {
+      LOGGER.info(s"Writing results for ERO ${ero.getId}")
+      val outputFile = new File(outputDir, ero.getId.toString)
+      OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(outputFile, projectionResults)
+      (ero.getId, runtime)
+    }
+
+    // DO THE THING!  Run the mapper on all the executors over the projection results, and collect timing info.
+    val timingPairs: List[(Integer, Double)] = resultsRDD.map(t => mapper(t._1, t._2, t._3)).collect().toList
 
     LOGGER.info("Projection execution time report:")
     timingPairs.sortWith((a, b) => b._2 < a._2).foreach(pair => LOGGER.info(f"ERO ${pair._1}%4d: ${pair._2}%.3fs"))

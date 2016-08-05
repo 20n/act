@@ -50,7 +50,12 @@ libraryDependencies ++= {
        * ChEBI is in OWL format, we use OWL API for parsing
        */
       "net.sourceforge.owlapi"  % "owlapi-distribution" % "3.5.1",
-       /* Spark for distributed processing, now works with SBT assembly! */
+       /* Spark for distributed processing, now works with SBT assembly!
+        * Note: once upon a time we had to explicitly define the versions of Akka and Spray that we wanted
+        * to import thanks to some conflicts between transitive dependencies in early Spark packages.  No more!
+        * Spark seems to be doing The Right Thing(R) now-a-days, so we can import the Spark pckages on their own with
+        * impunity.  If you find/feel the need to revisit our old ways of importing these packages, check out build.sbt
+        * at commit cb6e822.  Good luck--you will probably need it. */
       "org.apache.spark"        %% "spark-core" % "1.5.2",
       "org.apache.spark"        %% "spark-mllib" % "1.5.2",
       "org.biojava"             % "core"    % "1.9.1",
