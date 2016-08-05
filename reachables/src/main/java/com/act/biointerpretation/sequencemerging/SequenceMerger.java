@@ -187,11 +187,13 @@ public class SequenceMerger extends BiointerpretationProcessor {
   }
 
   /**
-   * Checks if there is an existing organism prefix in the prefix tree; NEEDS TO BE IMPLEMENTED
+   * Checks if there is an existing organism prefix in the prefix tree;
    * @param orgName the organism name you are checking for a valid prefix
    * @return a valid prefix
    */
   private String checkForOrgPrefix(String orgName) {
+
+    // TODO: NEEDS TO BE IMPLEMENTED
     return orgName;
   }
 

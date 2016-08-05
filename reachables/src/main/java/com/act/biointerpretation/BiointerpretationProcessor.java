@@ -34,6 +34,7 @@ public abstract class BiointerpretationProcessor {
   private Map<Long, Long> oldChemIdToNewChemId = new HashMap<>();
   private Map<Long, String> newChemIdToInchi = new HashMap<>();
   private HashMap<Long, Long> organismMigrationMap = new HashMap<>();
+  private HashMap<Long, Long> sequenceMigrationMap = new HashMap<>();
 
   boolean initCalled = false;
 
@@ -139,9 +140,30 @@ public abstract class BiointerpretationProcessor {
   }
 
   /**
-   * Process and migrate sequences. This is meant to be overriden, as it does nothing by default.
+   * Process and migrate sequences. Default implementation merely copies, preserving source id.
    */
   protected void processSequences() {
+
+    Iterator<Seq> iterator = getNoSQLAPI().readSeqsFromInKnowledgeGraph();
+
+    while (iterator.hasNext()) {
+
+      Seq oldSeq = iterator.next();
+      Long oldId = (long) oldSeq.getUUID();
+      Long newId = (long) getNoSQLAPI().getWriteDB().submitToActSeqDB(
+          oldSeq.get_srcdb(),
+          oldSeq.get_ec(),
+          oldSeq.get_org_name(),
+          oldSeq.getOrgId(),
+          oldSeq.get_sequence(),
+          oldSeq.get_references(),
+          oldSeq.getReactionsCatalyzed(),
+          MongoDBToJSON.conv(oldSeq.get_metadata())
+      );
+
+      sequenceMigrationMap.put(oldId, newId);
+
+    }
 
   }
 
