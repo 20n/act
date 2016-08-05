@@ -1,6 +1,7 @@
 package com.act.biointerpretation.sequencemerging;
 
 import act.server.NoSQLAPI;
+import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
@@ -20,6 +21,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,26 +31,15 @@ import static org.junit.Assert.assertEquals;
 public class SequenceMergerTest {
 
   private MockedNoSQLAPI mockAPI;
-  TestUtils utilsObject;
 
   @Before
   public void setUp() throws IOException, ReactionException {
-
-    // will need duplicate sequences that have proteinexistence, comment
-
-    // will need maybe 2 or 3 reactions that reference these sequences
-
-    // sequences should be merged into one, proteinexistence should be gone, comment should be xref, rest of data should be merged
-
-    // reaction sequence references should be combined into the new proper ID
-
-    // once organism name prefix matching is fixed, test that as well
 
     // ==========================================
     // assembling reaction
     // ==========================================
     List<Reaction> testReactions = new ArrayList<>();
-    utilsObject = new TestUtils();
+    TestUtils utilsObject = new TestUtils();
 
     Reaction reaction = utilsObject.makeTestReaction(new Long[]{1L, 2L, 3L}, new Long[]{4L, 5L, 6L}, false);
 
@@ -86,6 +77,15 @@ public class SequenceMergerTest {
 
     metadata.put("name", "ADH1");
 
+    JSONObject accessions = new JSONObject();
+
+    List<String> genbankProteinAccs = Collections.singletonList("PAH84937");
+    List<String> genbankNucAccs = Arrays.asList("P04839", "N84937");
+
+    accessions.put(Seq.AccType.genbank_protein.toString(), genbankProteinAccs);
+    accessions.put(Seq.AccType.genbank_nucleotide.toString(), genbankNucAccs);
+    metadata.put("accession", accessions);
+
     List<JSONObject> references = new ArrayList<>();
 
     JSONObject pmid = new JSONObject();
@@ -113,6 +113,16 @@ public class SequenceMergerTest {
     metadata.put("synonyms", Arrays.asList("ADH2", "ADH3"));
     metadata.put("product_names", Arrays.asList("Alcohol dehydrogenase"));
 
+    accessions = new JSONObject();
+    genbankProteinAccs = Arrays.asList("PAH84937", "JFH67382");
+    genbankNucAccs = Arrays.asList("B83472", "P04839");
+    List<String> uniprotAccs = Arrays.asList("O0ABC3", "B8NJH9");
+
+    accessions.put(Seq.AccType.genbank_protein.toString(), genbankProteinAccs);
+    accessions.put(Seq.AccType.genbank_nucleotide.toString(), genbankNucAccs);
+    accessions.put(Seq.AccType.uniprot.toString(), uniprotAccs);
+    metadata.put("accession", accessions);
+
     references = new ArrayList<>();
 
     references.add(pmid);
@@ -137,6 +147,11 @@ public class SequenceMergerTest {
     metadata.put("synonyms", Arrays.asList("ADH3", "ADH5"));
     metadata.put("product_names", Arrays.asList("Alcohol dehydrogenase", "Alcohol de-hydrogenase"));
 
+    accessions = new JSONObject();
+    uniprotAccs = Arrays.asList("B3NTY7", "O0ABC3");
+    accessions.put(Seq.AccType.uniprot.toString(), uniprotAccs);
+    metadata.put("accession", accessions);
+
     references = new ArrayList<>();
 
     pmid = new JSONObject();
@@ -157,15 +172,22 @@ public class SequenceMergerTest {
 
     testSequences.add(sequence3);
 
-    Seq sequence4 = new Seq(4L, "1.1.1.2", 4000003474L, "Mus musculus", "AJKFLGKJDFS", references,
+    Seq sequence4 = new Seq(4L, "1.1.1.2", 4000008594L, "Homo sapiens", "AJKFLGKJDFS", references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
     sequence4.addReactionsCatalyzed(1L);
 
     testSequences.add(sequence4);
 
+    // ========================================
+    // assembling organisms
+    // ========================================
     Map<Long, String> testOrgNames = new HashMap<>();
     testOrgNames.put(4000003474L, "Mus musculus");
+    testOrgNames.put(400008594L, "Homo sapiens");
 
+    // ========================================
+    // installing and merging all data
+    // ========================================
     mockAPI = new MockedNoSQLAPI();
     mockAPI.installMocks(testReactions, testSequences, testOrgNames, new HashMap<>());
 
@@ -210,11 +232,21 @@ public class SequenceMergerTest {
     xrefObject.put("brenda_id", new JSONArray(Arrays.asList(128931, 128930, 128932)));
     metadata.put("xref", xrefObject);
 
-    metadata.put("source_sequence_ids", Arrays.asList(1,2,3));
-
     metadata.put("name", "ADH1");
     metadata.put("synonyms", Arrays.asList("ADH2", "ADH3", "ADH5", "ADH4"));
     metadata.put("product_names", Arrays.asList("Alcohol dehydrogenase", "Alcohol de-hydrogenase"));
+
+    JSONObject accessions = new JSONObject();
+    List<String> genbankProteinAccs = Arrays.asList("PAH84937", "JFH67382");
+    List<String> genbankNucAccs = Arrays.asList("P04839", "N84937", "B83472");
+    List<String> uniprotAccs = Arrays.asList("O0ABC3", "B8NJH9", "B3NTY7");
+
+    accessions.put(Seq.AccType.genbank_protein.toString(), genbankProteinAccs);
+    accessions.put(Seq.AccType.genbank_nucleotide.toString(), genbankNucAccs);
+    accessions.put(Seq.AccType.uniprot.toString(), uniprotAccs);
+    metadata.put("accession", accessions);
+
+    metadata.put("source_sequence_ids", Arrays.asList(1,2,3));
 
     Seq mergedSeq = new Seq(1L, "1.1.1.1", 0L, "Mus musculus", "AJKFLGKJDFS", references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
@@ -248,7 +280,31 @@ public class SequenceMergerTest {
       compareReactions("for testMergeEndToEnd", reaction, mockAPI.getMockWriteMongoDB().getReactionFromUUID(1L));
     }
 
-    // TODO: need to add test for organisms
+  }
+
+  @Test
+  public void testOrgPrefixMatching() {
+
+    List<Organism> organismList = new ArrayList<>();
+
+    Organism musMusculus = new Organism(1L, -1, "Mus musculus");
+    organismList.add(musMusculus);
+
+    Organism homoSapiens = new Organism(2L, -1, "Homo sapiens");
+    organismList.add(homoSapiens);
+
+    Map<Long, String> writtenOrganisms = mockAPI.getWrittenOrganismNames();
+
+    Iterator organismIterator = writtenOrganisms.entrySet().iterator();
+
+    int iteratorIndex = 0;
+    while (organismIterator.hasNext()) {
+
+      Map.Entry pair = (Map.Entry) organismIterator.next();
+      compareOrgs("for testOrgPrefixMatching", organismList.get(iteratorIndex), pair);
+      iteratorIndex++;
+
+    }
 
   }
 
@@ -270,8 +326,9 @@ public class SequenceMergerTest {
         testReaction.getProteinData().toString());
   }
 
-  private void compareOrganisms() {
-
+  private void compareOrgs(String message, Organism expectedOrg, Map.Entry writtenOrg) {
+    assertEquals("comparing org_id " + message, expectedOrg.getUUID(), writtenOrg.getKey());
+    assertEquals("comparing organism name " + message, expectedOrg.getName(), writtenOrg.getValue());
   }
 
 }
