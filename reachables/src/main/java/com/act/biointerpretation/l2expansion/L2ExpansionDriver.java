@@ -175,7 +175,7 @@ public class L2ExpansionDriver {
     }
     outputFile.createNewFile();
 
-    Optional<OutputStream> maybeProgressStream = null;
+    Optional<OutputStream> maybeProgressStream = Optional.empty();
     if (cl.hasOption(OPTION_PROGRESS_PATH)) {
       String progressPath = cl.getOptionValue(OPTION_PROGRESS_PATH);
       File progressFile = new File(progressPath);

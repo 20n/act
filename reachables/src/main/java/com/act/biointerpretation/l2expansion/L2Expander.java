@@ -49,17 +49,14 @@ public abstract class L2Expander implements Serializable {
   }
 
   /**
-   * Get predicitions for this expander, logging progress to the specified output stream.
+   * Get predictions for this expander, logging progress to the specified output stream.
    * @param maybeOutputStream A stream to which to write incremental results.
    * @return A corpus of L2 predicitions using the specified generator.
    */
   public L2PredictionCorpus getPredictions(Optional<OutputStream> maybeOutputStream) {
     L2PredictionCorpus result = new L2PredictionCorpus();
 
-    Optional<OutputStreamWriter> maybeWriter = Optional.empty();
-    if (maybeOutputStream.isPresent()) {
-      maybeWriter = Optional.of(new OutputStreamWriter(maybeOutputStream.get()));
-    }
+    Optional<OutputStreamWriter> maybeWriter = maybeOutputStream.map(OutputStreamWriter::new);
 
     ObjectMapper objectMapper = new ObjectMapper();
 
