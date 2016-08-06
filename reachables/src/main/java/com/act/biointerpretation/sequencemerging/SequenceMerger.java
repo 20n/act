@@ -174,6 +174,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
         sequenceMigrationMap.put(matchedSeqId, mergedSeqId);
       }
 
+      // update reactions that were referencing the merged sequences so that they new refer to the new merged sequence
       updateReactionsReferencingDuplicatedSeqs(matchedSeqsIDs, reactionRefs, mergedSeqId);
 
     }
@@ -266,7 +267,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
   private Seq mergeSequences(List<Seq> sequences) {
     if (sequences.size() < 1) {
 
-      return null;
+      throw new RuntimeException("0 matched sequences in this sequence group");
 
     } else if (sequences.size() == 1) {
 
@@ -277,7 +278,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
     Seq firstSequence = sequences.get(0);
     JSONObject firstSeqMetadata = firstSequence.get_metadata();
 
-    // we don't want proteinExistence as a field in our Seq metadata anymore
+    // this field is empty for every Seq entry, so we're removing it
     firstSeqMetadata.remove(PROTEIN_EXISTENCE);
 
     /* we want to convert the brenda_ids from being stored in a comment JSONArray to being stored in
@@ -303,7 +304,6 @@ public class SequenceMerger extends BiointerpretationProcessor {
     xrefObject.put(BRENDA_ID, brendaIds);
 
     firstSeqMetadata.put(XREF, xrefObject);
-    firstSequence.set_metadata(firstSeqMetadata);
 
     // initialized mergedSequence with firstSequence
     Seq mergedSequence = new Seq(
@@ -323,9 +323,11 @@ public class SequenceMerger extends BiointerpretationProcessor {
           mergedSequence.get_sequence() != sequence.get_sequence() ||
           mergedSequence.get_org_name() != sequence.get_org_name()) {
 
-        LOGGER.error("matching sequence map constructed improperly; at least one of ec #, protein sequence, & " +
-            "organism don't match");
-        continue;
+        String msg = "matching sequence map constructed improperly; at least one of ec #, protein sequence, & " +
+            "organism don't match";
+
+        LOGGER.error(msg);
+        throw new RuntimeException(msg);
 
       }
 
@@ -571,6 +573,12 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
   }
 
+  /**
+   * Update reactions that were referencing the merged sequences so that they new refer to the new merged sequence
+   * @param matchedSeqsIDs the IDs of the sequences that were merged
+   * @param reactionRefs the IDs of the reactions that referenced those merged sequences
+   * @param newSeqID the ID of the merged sequence that should replace the IDs of the sequences that were merged
+   */
   private void updateReactionsReferencingDuplicatedSeqs(Set<Long> matchedSeqsIDs, Set<Long> reactionRefs,
                                                         Long newSeqID) {
     for (Long reactionRef : reactionRefs) {
