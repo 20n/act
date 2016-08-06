@@ -174,7 +174,7 @@ public class WaveformAnalysis {
     return Pair.of(compressedResult, timeToIntensity);
   }
 
-  public static Map<String, Pair<XZ, Double>> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
+  public static Map<String, Pair<XZ, Double>> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForWells(
       ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityDataPos,
       List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> ionToIntensityDataNegList,
       List<Pair<String, Double>> searchMZs) {
