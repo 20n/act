@@ -61,26 +61,43 @@ public class IonAnalysisInterchangeModel {
     }
   }
 
-  public static Set<String> getAllMoleculeHitsFromTwoGeneratedFiles(String file1, String file2, Double snrThreshold,
-                                                                    Double intensityThreshold, Double timeThreshold)
-      throws IOException {
+  public static Set<String> getAllMoleculeHitsFromMultiplePositiveReplicateFiles(List<String> filepaths,
+                                                                                 Double snrThreshold,
+                                                                                 Double intensityThreshold,
+                                                                                 Double timeThreshold) throws IOException {
+
+
+    List<IonAnalysisInterchangeModel> deserializedResultsForPositiveReplicates = new ArrayList<>();
+    for (String filePath : filepaths) {
+      IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
+      model.loadCorpusFromFile(new File(filePath));
+      deserializedResultsForPositiveReplicates.add(model);
+    }
+
+    int totalNumberOfMassCharges = deserializedResultsForPositiveReplicates.get(0).getResults().size();
+
     Set<String> resultSet = new HashSet<>();
-    IonAnalysisInterchangeModel model1 = new IonAnalysisInterchangeModel();
-    model1.loadCorpusFromFile(new File(file1));
 
-    IonAnalysisInterchangeModel model2 = new IonAnalysisInterchangeModel();
-    model2.loadCorpusFromFile(new File(file2));
+    for (int i = 0; i < totalNumberOfMassCharges; i++) {
+      int totalNumberOfMoleculesInMassChargeResult =
+          deserializedResultsForPositiveReplicates.get(0).getResults().get(i).getMolecules().size();
 
-    for (int i = 0; i < model1.getResults().size(); i++) {
-      List<HitOrMiss> model1Mols = model1.getResults().get(i).getMolecules();
-      List<HitOrMiss> model2Mols = model2.getResults().get(i).getMolecules();
+      for (int j = 0; j < totalNumberOfMoleculesInMassChargeResult; j++) {
+        Boolean moleculePassedThresholdsForAllPositiveReplicates = true;
 
-      for (int j = 0; j < model1Mols.size(); j++) {
-        if (model1Mols.get(j).getIntensity() > intensityThreshold && model1Mols.get(j).getSnr() > snrThreshold &&
-            model1Mols.get(j).getTime() > timeThreshold &&
-            model2Mols.get(j).getIntensity() > intensityThreshold && model2Mols.get(j).getSnr() > snrThreshold &&
-            model2Mols.get(j).getTime() > timeThreshold) {
-          resultSet.add(model1Mols.get(j).getInchi());
+        for (int k = 0; k < deserializedResultsForPositiveReplicates.size(); k++) {
+          HitOrMiss molecule = deserializedResultsForPositiveReplicates.get(k).getResults().get(i).getMolecules().get(j);
+
+          if (molecule.getIntensity() < intensityThreshold ||
+              molecule.getSnr() < snrThreshold ||
+              molecule.getTime() < timeThreshold) {
+           moleculePassedThresholdsForAllPositiveReplicates = false;
+          }
+        }
+
+        if (moleculePassedThresholdsForAllPositiveReplicates) {
+          HitOrMiss molecule = deserializedResultsForPositiveReplicates.get(0).getResults().get(i).getMolecules().get(j);
+          resultSet.add(molecule.getInchi());
         }
       }
     }
