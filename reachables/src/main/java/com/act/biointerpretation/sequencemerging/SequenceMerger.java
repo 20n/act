@@ -165,9 +165,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
       Seq mergedSequence = mergeSequences(allMatchedSeqs);
 
       // for reference, adds all the seq IDs that were merged
-      JSONObject mergedMetadata = mergedSequence.get_metadata();
-      mergedMetadata.put(SOURCE_SEQUENCE_IDS, matchedSeqsIDs);
-      mergedSequence.set_metadata(mergedMetadata);
+      mergedSequence.get_metadata().put(SOURCE_SEQUENCE_IDS, matchedSeqsIDs);
 
       Long mergedSeqId = writeSequence(mergedSequence);
 
@@ -197,6 +195,10 @@ public class SequenceMerger extends BiointerpretationProcessor {
     );
   }
 
+  /**
+   * Changes organism name to its minimal prefix and updates the organism ID appropriately
+   * @param sequence the Seq entry we are updating
+   */
   private void migrateOrganism(Seq sequence) {
     String organismName = checkForOrgPrefix(sequence.get_org_name());
     sequence.set_organism_name(organismName);
