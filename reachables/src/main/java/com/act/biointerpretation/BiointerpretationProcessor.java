@@ -143,11 +143,11 @@ public abstract class BiointerpretationProcessor {
    */
   protected void processSequences() {
 
-    Iterator<Seq> iterator = getNoSQLAPI().readSeqsFromInKnowledgeGraph();
+    Iterator<Seq> seqIterator = getNoSQLAPI().readSeqsFromInKnowledgeGraph();
 
-    while (iterator.hasNext()) {
+    while (seqIterator.hasNext()) {
 
-      Seq oldSeq = iterator.next();
+      Seq oldSeq = seqIterator.next();
       Long oldId = (long) oldSeq.getUUID();
       Long newId = (long) getNoSQLAPI().getWriteDB().submitToActSeqDB(
           oldSeq.get_srcdb(),

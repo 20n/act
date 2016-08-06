@@ -3,11 +3,13 @@ package com.act.biointerpretation.sequencemerging;
 import act.installer.GenbankInstaller;
 import act.installer.UniprotInstaller;
 import act.server.NoSQLAPI;
+import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import chemaxon.reaction.ReactionException;
 import com.act.biointerpretation.BiointerpretationProcessor;
+import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
@@ -51,6 +53,8 @@ public class SequenceMerger extends BiointerpretationProcessor {
   private Map<Long, Long> organismMigrationMap = new HashMap<>();
   private Map<Long, Long> reactionMigrationMap = new HashMap<>();
 
+  private PatriciaTrie orgPrefixTrie;
+
   public SequenceMerger(NoSQLAPI noSQLAPI) {
     super(noSQLAPI);
   }
@@ -62,7 +66,17 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
   @Override
   public void init() {
-    // Do nothing for this class, as there's no initialization necessary.
+    Map<String, Long> orgMap = new HashMap<>();
+
+    Iterator<Organism> orgIterator = getNoSQLAPI().readOrgsFromInKnowledgeGraph();
+
+    while (orgIterator.hasNext()) {
+      Organism org = orgIterator.next();
+      orgMap.put(org.getName(), 1L);
+    }
+
+    orgPrefixTrie = new PatriciaTrie<>(orgMap);
+
     markInitialized();
   }
 
@@ -70,6 +84,9 @@ public class SequenceMerger extends BiointerpretationProcessor {
   public void run() throws IOException, ReactionException {
     LOGGER.info("copying all chemicals");
     super.processChemicals();
+
+    /* reactions should be written before the sequence merging so that the sequence references in the
+    reactions collection can be updated  */
     LOGGER.info("copying all reactions");
     processReactions();
     LOGGER.info("processing sequences for deduplication");
@@ -81,16 +98,15 @@ public class SequenceMerger extends BiointerpretationProcessor {
    */
   @Override
   public void processReactions() {
-    Iterator<Reaction> iterator = getNoSQLAPI().readRxnsFromInKnowledgeGraph();
+    Iterator<Reaction> reactionIterator = getNoSQLAPI().readRxnsFromInKnowledgeGraph();
 
-    while (iterator.hasNext()) {
-
-      Reaction oldRxn = iterator.next();
+    while (reactionIterator.hasNext()) {
+      Reaction oldRxn = reactionIterator.next();
       Long oldId = (long) oldRxn.getUUID();
       Long newId = (long) getNoSQLAPI().writeToOutKnowlegeGraph(oldRxn);
       reactionMigrationMap.put(oldId, newId);
-
     }
+
   }
 
   @Override
@@ -101,7 +117,18 @@ public class SequenceMerger extends BiointerpretationProcessor {
     // stores all sequences with the same ecnum, organism (accounts for prefix), and protein sequence in the same list
     while (sequences.hasNext()) {
       Seq sequence = sequences.next();
+
+      if (sequence.get_org_name() == null ||
+          sequence.get_sequence() == null ||
+          sequence.get_ec() == null) {
+        // copy sequence directly, no merging will be possible
+        writeSequence(sequence);
+      }
+
+      /* changes the organism name to its minimal prefix; must occur before stored in the sequenceGroup map so that
+      all seq entries with the same minimal prefix org name, ecnum, & protein sequence are merged */
       migrateOrganism(sequence);
+
       UniqueSeq uniqueSeq = new UniqueSeq(sequence);
       List<Seq> matchingSeqs = sequenceGroups.get(uniqueSeq);
 
@@ -121,11 +148,8 @@ public class SequenceMerger extends BiointerpretationProcessor {
       }
     }
 
-    Iterator sequenceGroupIterator = sequenceGroups.entrySet().iterator();
-
-    while (sequenceGroupIterator.hasNext()) {
-      Map.Entry pair = (Map.Entry) sequenceGroupIterator.next();
-      List<Seq> allMatchedSeqs = (List<Seq>) pair.getValue();
+    for (Map.Entry<UniqueSeq, List<Seq>> sequenceGroup : sequenceGroups.entrySet()) {
+      List<Seq> allMatchedSeqs = sequenceGroup.getValue();
 
       // stores the IDs of all sequences that are about to be merged
       Set<Long> matchedSeqsIDs = new HashSet<>();
@@ -145,16 +169,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
       mergedMetadata.put(SOURCE_SEQUENCE_IDS, matchedSeqsIDs);
       mergedSequence.set_metadata(mergedMetadata);
 
-      Long mergedSeqId = (long) getNoSQLAPI().getWriteDB().submitToActSeqDB(
-          mergedSequence.get_srcdb(),
-          mergedSequence.get_ec(),
-          mergedSequence.get_org_name(),
-          mergedSequence.getOrgId(),
-          mergedSequence.get_sequence(),
-          mergedSequence.get_references(),
-          mergedSequence.getReactionsCatalyzed(),
-          MongoDBToJSON.conv(mergedSequence.get_metadata())
-      );
+      Long mergedSeqId = writeSequence(mergedSequence);
 
       // maps the old duplicate sequences to the new merged sequence entry
       for (Long matchedSeqId : matchedSeqsIDs) {
@@ -167,6 +182,19 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
     // TODO: need to handle organism prefixes in the Reactions collection; Mark says to not worry about this just yet
 
+  }
+
+  private Long writeSequence(Seq sequence) {
+    return (long) getNoSQLAPI().getWriteDB().submitToActSeqDB(
+        sequence.get_srcdb(),
+        sequence.get_ec(),
+        sequence.get_org_name(),
+        sequence.getOrgId(),
+        sequence.get_sequence(),
+        sequence.get_references(),
+        sequence.getReactionsCatalyzed(),
+        MongoDBToJSON.conv(sequence.get_metadata())
+    );
   }
 
   private void migrateOrganism(Seq sequence) {
@@ -206,14 +234,14 @@ public class SequenceMerger extends BiointerpretationProcessor {
     String protSeq;
 
     private UniqueSeq (Seq sequence) {
-      ecnum = sequence.get_ec();
-      organism = sequence.get_org_name();
-      protSeq = sequence.get_sequence();
+      this.ecnum = sequence.get_ec();
+      this.organism = sequence.get_org_name();
+      this.protSeq = sequence.get_sequence();
     }
 
     @Override
     public int hashCode() {
-      return ecnum.hashCode() + organism.hashCode() + protSeq.hashCode();
+      return ecnum.hashCode() ^ organism.hashCode() ^ protSeq.hashCode();
     }
 
     @Override

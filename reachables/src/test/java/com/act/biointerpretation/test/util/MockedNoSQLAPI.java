@@ -43,6 +43,7 @@ public class MockedNoSQLAPI {
   Map<Long, Reaction> idToReactionMap = new HashMap<>();
   Map<Long, Chemical> idToChemicalMap = new HashMap<>();
   List<Chemical> chemicals = new ArrayList<>();
+  List<Organism> orgs = new ArrayList<>();
 
   final List<Reaction> writtenReactions = new ArrayList<>();
   final Map<Long, Chemical> writtenChemicals = new HashMap<>();
@@ -89,6 +90,11 @@ public class MockedNoSQLAPI {
   public void installMocks(List<Reaction> testReactions, List<Long> testChemIds,
                            List<Seq> sequences, Map<Long, String> orgNames, Map<Long, String> chemIdToInchi) {
     this.organismNames.putAll(orgNames);
+
+    for (Map.Entry<Long, String> orgName : organismNames.entrySet()) {
+      orgs.add(new Organism(orgName.getKey(), -1, orgName.getValue()));
+    }
+
     for (Seq seq : sequences) {
       seqMap.put(Long.valueOf(seq.getUUID()), seq);
     }
@@ -186,6 +192,8 @@ public class MockedNoSQLAPI {
     }).when(mockNoSQLAPI).readChemsFromInKnowledgeGraph();
 
     doReturn(sequences.iterator()).when(mockNoSQLAPI).readSeqsFromInKnowledgeGraph();
+
+    doReturn(orgs.iterator()).when(mockNoSQLAPI).readOrgsFromInKnowledgeGraph();
 
     // Look up reactions/chems by id in the maps we just created.
     doAnswer(new Answer<Reaction>() {

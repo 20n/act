@@ -2508,6 +2508,18 @@ public class MongoDB {
                        );
   }
 
+  public Organism convertDBObjectToOrg(DBObject o) {
+    Long id = (long) o.get("org_id");
+    String name = (String) o.get("name");
+
+    return new Organism(id, -1, name);
+  }
+
+  public DBIterator getDbIteratorOverOrgs() {
+    DBCursor cursor = this.dbOrganismNames.find();
+    return new DBIterator(cursor);
+  }
+
   public String getOrganismNameFromId(Long id) {
     BasicDBObject query = new BasicDBObject();
     query.put("org_id", id);
