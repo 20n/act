@@ -43,11 +43,15 @@ public class IonDetectionAnalysis {
   private static final Double MIN_SNR_THRESHOLD = 1000.0;
   private static final Double MIN_TIME_THRESHOLD = 15.0;
   private static final String OPTION_LCMS_FILE_DIRECTORY = "d";
-  private static final String OPTION_INPUT_PREDICTION_CORPUS = "sc";
+  // The OPTION_INPUT_PREDICTION_CORPUS file is a json formatted file that is serialized from the class "L2PredictionCorpus"
+  private static final String OPTION_INPUT_PREDICTION_CORPUS = "s";
   private static final String OPTION_OUTPUT_PREFIX = "o";
   private static final String OPTION_PLOTTING_DIR = "p";
   private static final String OPTION_INCLUDE_IONS = "i";
   private static final String OPTION_MIN_THRESHOLD = "f";
+  // This input file is structured as a tsv file with the following schema:
+  //    WELL_TYPE  PLATE_BARCODE  WELL_ROW  WELL_COLUMN
+  // eg.   POS        12389        0           1
   private static final String OPTION_INPUT_POSITIVE_AND_NEGATIVE_CONTROL_WELLS_FILE = "t";
   private static final String HEADER_WELL_TYPE = "WELL_TYPE";
   private static final String HEADER_WELL_ROW = "WELL_ROW";
@@ -55,11 +59,11 @@ public class IonDetectionAnalysis {
   private static final String HEADER_PLATE_BARCODE = "PLATE_BARCODE";
   private static final Set<String> ALL_HEADERS =
       new HashSet<>(Arrays.asList(HEADER_WELL_TYPE, HEADER_WELL_ROW, HEADER_WELL_COLUMN, HEADER_PLATE_BARCODE));
-  private static Double PROGRESS = 0.0;
+  private static Double OVERALL_PROGRESS_OF_RUN = 0.0;
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class takes as input an experimental setup containing positive wells and negative control well. Along with this " +
-      "the class also takes in a list of chemicals to be validated by the LCMS analysis. It then performs SNR analysis " +
+      "This class takes as input an experimental setup containing positive wells and negative control well. Along with this ",
+      "the class also takes in a list of chemicals to be validated by the LCMS analysis. It then performs SNR analysis ",
       "to detect which chemicals are strongly represented in the LCMS analysis and outputs those in a json file per positive sample"
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
@@ -75,7 +79,6 @@ public class IonDetectionAnalysis {
         .hasArg().required()
         .longOpt("data-dir")
     );
-    // The OPTION_INPUT_PREDICTION_CORPUS file is a json formatted file that is serialized from the class "L2PredictionCorpus"
     add(Option.builder(OPTION_INPUT_PREDICTION_CORPUS)
         .argName("input prediction corpus")
         .desc("The input prediction corpus")
@@ -106,14 +109,11 @@ public class IonDetectionAnalysis {
         .hasArg()
         .longOpt("min-threshold")
     );
-    // This input file is structured as a tsv file with the following schema:
-    //    WELL_TYPE  PLATE_BARCODE  WELL_ROW  WELL_COLUMN
-    // eg.   POS        12389        0           1
     add(Option.builder(OPTION_INPUT_POSITIVE_AND_NEGATIVE_CONTROL_WELLS_FILE)
         .argName("input positive and negative control wells")
         .desc("A tsv file containing positive and negative wells")
         .hasArg().required()
-        .longOpt("input-positive-negative-control-wells")
+        .longOpt("wells-config")
     );
   }};
 
@@ -177,7 +177,7 @@ public class IonDetectionAnalysis {
    * @throws Exception
    */
   public static <T extends PlateWell<T>> Map<String, Pair<String, Pair<XZ, Double>>> getSnrResultsAndPlotDiagnosticsForEachMoleculeAndItsMetlinIon(
-      File lcmsDir, DB db, T positiveWell, List<T> negativeWells, HashMap<Integer, Plate> plateCache, List<Pair<String, Double>> searchMZs,
+      File lcmsDir, DB db, T positiveWell, List<T> negativeWells, HashMap<Integer, Plate> plateCache, Set<Pair<String, Double>> searchMZs,
       String plottingDir) throws Exception {
 
     Plate plate = plateCache.get(positiveWell.getPlateId());
@@ -188,10 +188,12 @@ public class IonDetectionAnalysis {
 
     LOGGER.info("Reading scan data for positive well");
 
+    List<Pair<String, Double>> listOfMassCharges = new ArrayList<>(searchMZs);
+
     ChemicalToMapOfMetlinIonsToIntensityTimeValues positiveWellSignalProfiles = AnalysisHelper.readScanData(
         db,
         lcmsDir,
-        searchMZs,
+        listOfMassCharges,
         ScanData.KIND.POS_SAMPLE,
         plateCache,
         positiveWell,
@@ -203,8 +205,8 @@ public class IonDetectionAnalysis {
       System.exit(1);
     }
 
-    PROGRESS += 50.0/(1.0 + negativeWells.size());
-    printProgress(PROGRESS);
+    OVERALL_PROGRESS_OF_RUN += 50.0/(1.0 + negativeWells.size());
+    printProgress(OVERALL_PROGRESS_OF_RUN);
 
     List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> negativeWellsSignalProfiles = new ArrayList<>();
 
@@ -217,7 +219,7 @@ public class IonDetectionAnalysis {
       ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg = AnalysisHelper.readScanData(
           db,
           lcmsDir,
-          searchMZs,
+          listOfMassCharges,
           ScanData.KIND.NEG_CONTROL,
           plateCache,
           well,
@@ -229,13 +231,13 @@ public class IonDetectionAnalysis {
       }
 
       negativeWellsSignalProfiles.add(peakDataNeg);
-      PROGRESS += 50.0/(1.0 + negativeWells.size());
-      printProgress(PROGRESS);
+      OVERALL_PROGRESS_OF_RUN += 50.0/(1.0 + negativeWells.size());
+      printProgress(OVERALL_PROGRESS_OF_RUN);
     }
 
     Map<String, Pair<XZ, Double>> snrResults =
-        WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
-            positiveWellSignalProfiles, negativeWellsSignalProfiles, searchMZs);
+        WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForWells(
+            positiveWellSignalProfiles, negativeWellsSignalProfiles, listOfMassCharges);
 
     List<T> allWells = new ArrayList<>();
     allWells.add(positiveWell);
@@ -317,7 +319,7 @@ public class IonDetectionAnalysis {
     File inputPredictionCorpus = new File(cl.getOptionValue(OPTION_INPUT_PREDICTION_CORPUS));
     //L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputPredictionCorpus);
 
-    List<Pair<String, Double>> searchMZs = new ArrayList<>();
+    Set<Pair<String, Double>> searchMZs = new HashSet<>();
     Map<Double, Set<ChemicalAndIon>> massChargeToChemicalAndIon = new HashMap<>();
 
     // Construct BufferedReader from FileReader
