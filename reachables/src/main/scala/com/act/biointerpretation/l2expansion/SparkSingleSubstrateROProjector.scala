@@ -216,7 +216,6 @@ object SparkSingleSubstrateROProjector {
         (ero, results._1, results._2)
       })
 
-    LOGGER.info("Collecting")
     /* Ugh.  Run an aggregation on the results to force their evaluation.  Then we can iterate by partition.
      * Make sure to call persist() or Spark will likely try to recompute the whole thing. */
     val resultCount = resultsRDD.persist().count()
