@@ -35,20 +35,12 @@ public class SingleSubstrateRoExpander extends L2Expander {
     this.massCutoff = DEFAULT_MASS_CUTOFF;
   }
 
-  public void setMassCutoff(Integer cutoff) {
-    massCutoff = cutoff;
-  }
-
   @Override
   public Iterable<PredictionSeed> getPredictionSeeds() {
     List<PredictionSeed> result = new ArrayList<>();
 
     // Use only single substrate reactions
     List<Ero> singleSubstrateRoList = getNSubstrateRos(roList, ONE_SUBSTRATES);
-<<<<<<< HEAD
-=======
-    List<Molecule> substrates = getMassBoundedMolecules(metaboliteList, massCutoff);
->>>>>>> Final cleanup
 
     for (Ero ro : singleSubstrateRoList) {
       SerializableReactor reactor;
