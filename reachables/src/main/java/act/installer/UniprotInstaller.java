@@ -2,9 +2,13 @@ package act.installer;
 
 import act.installer.sequence.UniprotSeqEntry;
 import act.installer.sequence.UniprotSeqEntryFactory;
+import act.server.DBIterator;
 import act.server.MongoDB;
+import act.shared.Organism;
 import act.shared.Seq;
+import com.act.biointerpretation.Utils.OrgMinimalPrefixGenerator;
 import com.act.utils.parser.UniprotInterpreter;
+import com.mongodb.DBObject;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -24,8 +28,11 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -82,17 +89,20 @@ public class UniprotInstaller {
 
   File uniprotFile;
   MongoDB db;
+  Map<String, String> minimalPrefixMapping;
 
-  public UniprotInstaller (File uniprotFile, MongoDB db) {
+  public UniprotInstaller (File uniprotFile, MongoDB db, Map<String, String> minimalPrefixMapping) {
     this.uniprotFile = uniprotFile;
     this.db = db;
+    this.minimalPrefixMapping = minimalPrefixMapping;
   }
 
   public void init() throws IOException, SAXException, ParserConfigurationException, CompoundNotFoundException {
     UniprotInterpreter uniprotInterpreter = new UniprotInterpreter(uniprotFile);
     uniprotInterpreter.init();
 
-    UniprotSeqEntry seqEntry = seqEntryFactory.createFromDocumentReference(uniprotInterpreter.getXmlDocument(), db);
+    UniprotSeqEntry seqEntry = seqEntryFactory.createFromDocumentReference(uniprotInterpreter.getXmlDocument(), db,
+        minimalPrefixMapping);
     addSeqEntryToDb(seqEntry, db);
   }
 
@@ -289,7 +299,35 @@ public class UniprotInstaller {
     } else {
       MongoDB db = new MongoDB("localhost", 27017, dbName);
 
-      UniprotInstaller installer = new UniprotInstaller(uniprotFile, db);
+      Map<String, Long> orgMap = new HashMap<>();
+      DBIterator iter = db.getDbIteratorOverOrgs();
+
+      Iterator<Organism> orgIterator = new Iterator<Organism> () {
+        @Override
+        public boolean hasNext() {
+          boolean hasNext = iter.hasNext();
+          if (!hasNext)
+            iter.close();
+          return hasNext;
+        }
+
+        @Override
+        public Organism next() {
+          DBObject o = iter.next();
+          return db.convertDBObjectToOrg(o);
+        }
+
+      };
+
+      while (orgIterator.hasNext()) {
+        Organism org = orgIterator.next();
+        orgMap.put(org.getName(), 1L);
+      }
+
+      OrgMinimalPrefixGenerator prefixGenerator = new OrgMinimalPrefixGenerator(orgMap);
+      Map<String, String> minimalPrefixMapping = prefixGenerator.getMinimalPrefixMapping();
+
+      UniprotInstaller installer = new UniprotInstaller(uniprotFile, db, minimalPrefixMapping);
       installer.init();
     }
   }

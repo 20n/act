@@ -3,7 +3,6 @@ package act.installer.sequence;
 import act.server.MongoDB;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
-import act.shared.sar.SAR;
 import com.mongodb.DBObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -16,10 +15,10 @@ import org.w3c.dom.NodeList;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
 
 public class UniprotSeqEntry extends SequenceEntry {
   private static final Logger LOGGER = LogManager.getFormatterLogger(UniprotSeqEntry.class);
@@ -73,6 +72,7 @@ public class UniprotSeqEntry extends SequenceEntry {
   private Long orgId;
   private List<JSONObject> references;
   private Set<Long> catalyzedRxns;
+  private Map<String, String> minimalPrefixMapping;
 
   private NodeList proteinNodeList;
   private NodeList sequenceNodeList;
@@ -80,9 +80,10 @@ public class UniprotSeqEntry extends SequenceEntry {
   private NodeList geneNodeList;
 
 
-  UniprotSeqEntry(Document doc) {
+  UniprotSeqEntry(Document doc, Map<String, String> minimalPrefixMapping) {
     this.seqFile = doc;
     checkNodeListLengths();
+    this.minimalPrefixMapping = minimalPrefixMapping;
     this.ec = extractEc();
     this.accessions = extractAccessions();
     this.geneName = extractGeneName();
@@ -483,7 +484,13 @@ public class UniprotSeqEntry extends SequenceEntry {
           Element organismChildElement = (Element) organismChildNode;
 
           if (organismChildElement.hasAttribute(TYPE) && organismChildElement.getAttribute(TYPE).equals(SCIENTIFIC)) {
-            return organismChildElement.getTextContent();
+            String orgName = organismChildElement.getTextContent();
+
+            if (minimalPrefixMapping.containsKey(orgName)) {
+              return minimalPrefixMapping.get(orgName);
+            } else {
+              return orgName;
+            }
           }
         }
       }

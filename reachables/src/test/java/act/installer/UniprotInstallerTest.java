@@ -1,8 +1,10 @@
 package act.installer;
 
 import act.server.MongoDB;
+import act.shared.Organism;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
+import com.act.biointerpretation.Utils.OrgMinimalPrefixGenerator;
 import com.act.biointerpretation.test.util.MockedMongoDB;
 import com.mongodb.BasicDBObject;
 import org.junit.Before;
@@ -14,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -165,6 +168,24 @@ public class UniprotInstallerTest {
     orgNames.put(4000001398L, "Citrobacter freundii");
     orgNames.put(4000008473L, "Lactobacillus casei 5b");
 
+    Map<String, Long> orgMap = new HashMap<>();
+
+    // manually assemble an Org Iterator since you can't mock DBCollection in getDbIteratorOverOrgs()
+    List<Organism> orgs = new ArrayList<>();
+    for (Map.Entry<Long, String> orgName : orgNames.entrySet()) {
+      orgs.add(new Organism(orgName.getKey(), -1, orgName.getValue()));
+    }
+
+    Iterator<Organism> orgIterator = orgs.iterator();
+
+    while (orgIterator.hasNext()) {
+      Organism org = orgIterator.next();
+      orgMap.put(org.getName(), 1L);
+    }
+
+    OrgMinimalPrefixGenerator prefixGenerator = new OrgMinimalPrefixGenerator(orgMap);
+    Map<String, String> minimalPrefixMapping = prefixGenerator.getMinimalPrefixMapping();
+
     mockAPI.installMocks(new ArrayList<>(),
         Arrays.asList(nullNullTestSeq, fullNullTestSeq, fullFullTestSeq, nullFullTestSeq, protAccessionQueryTestSeq,
             nucAccessionQueryTestSeq), orgNames, new HashMap<>());
@@ -173,47 +194,47 @@ public class UniprotInstallerTest {
 
     // loading test file for testProteinEcSeqOrgQuery
     UniprotInstaller uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_1.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_1.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
     // loading test file for testProteinFullFull
     uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_2.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_2.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
     // loading test file for testProteinNullFull
     uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_3.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_3.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
     // loading test file for testProteinAccessionQuery with database match
     uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_4.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_4.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
     // loading test file for testNucleotideAccessionQuery with database match
     uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_5.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_5.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
     // loading test file for testProteinAccessionQuery without database match
     uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_6.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_6.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
     // loading test file for testNucleotideAccessionQuery without database match
     uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_7.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_7.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
     // loading test file for testProteinNullNull
     uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_8.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_8.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
     // loading test file for testProteinFullNull
     uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_9.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_9.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
   }
