@@ -1,8 +1,8 @@
-package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo
+package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.reaction_db
 
 import act.server.MongoDB
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.mongo_db_keywords.ReactionDatabaseKeywords
-import com.mongodb.{BasicDBObject, DBObject}
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
+import com.mongodb.casbah.Imports.{BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
 
 import scala.collection.mutable.ListBuffer
@@ -16,6 +16,15 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
     queryResult.head
   }
 
+  def queryReactionsForKmValuesByEcNumber(roughEcnum: String, mongoConnection: MongoDB): List[AnyRef] = {
+    val methodLogger = LogManager.getLogger("queryReactionsForKmValuesByEcNumber")
+
+    val queryResult = queryReactionsForValuesByEcNumber(roughEcnum, mongoConnection,
+      List(REACTION_DB_KEYWORD_ID, REACTION_DB_KEYWORD_PROTEINS))
+
+
+    null
+  }
 
   def queryReactionsForValuesByEcNumber(roughEcnum: String,
                                         mongoConnection: MongoDB,
@@ -54,7 +63,7 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
 
     // Exit if none of the values are nonempty.
     returnValues match {
-      case n if n.exists(_.nonEmpty) =>
+      case n if n.exists(!_.nonEmpty) =>
         methodLogger.error("No values found matching any of the Ecnum supplied")
         throw new Exception(s"No values found matching any of the Ecnum supplied.")
       case default =>
@@ -92,5 +101,23 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
     */
 
     "^" + basicRegex.mkString(sep = "\\.") + "$"
+  }
+
+  def aggregateReactionsByEcNumberWithKm(roughEcnum: String, mongoConnection: MongoDB) = {
+    val pipeline = new ListBuffer[DBObject]
+
+    val ecnumRegex = formatEcNumberAsRegex(roughEcnum)
+
+    // Setup the query and filter for just the reaction ID
+    val regex = defineMongoRegex(ecnumRegex)
+    val reactionIdQuery = new BasicDBObject(REACTION_DB_KEYWORD_ECNUM, regex)
+
+    pipeline.append(defineMongoMatch(reactionIdQuery))
+    pipeline.append(defineMongoUnwind(REACTION_DB_KEYWORD_PROTEINS))
+    pipeline.append(defineMongoGroup(formatUnwoundName(REACTION_DB_KEYWORD_PROTEINS, REACTION_DB_KEYWORD_KM)))
+    pipeline.append(defineMongoUnwind(REACTION_DB_KEYWORD_KM))
+    pipeline.append(defineMongoGroup(formatUnwoundName(REACTION_DB_KEYWORD_KM, REACTION_DB_KEYWORD_VALUE)))
+
+    mongoApplyPipelineReactions(mongoConnection, pipeline.toList)
   }
 }

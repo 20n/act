@@ -1,7 +1,7 @@
-package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo
+package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.reaction_db
 
 import act.server.MongoDB
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.mongo_db_keywords.ReactionDatabaseKeywords
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
 import com.mongodb.{BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
 
