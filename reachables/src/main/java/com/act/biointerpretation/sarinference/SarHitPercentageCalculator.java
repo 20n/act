@@ -11,6 +11,10 @@ import org.apache.logging.log4j.Logger;
 import java.util.Arrays;
 import java.util.function.Consumer;
 
+/**
+ * Calculates a SARs hit percentage score by testing the SAR against all substrates in a prediction corpus, and
+ * counting LCMS positives and negatives among the substrates that match the SAR.
+ */
 public class SarHitPercentageCalculator implements Consumer<SarTreeNode> {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(SarHitPercentageCalculator.class);

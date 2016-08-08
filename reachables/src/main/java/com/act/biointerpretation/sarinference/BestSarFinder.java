@@ -13,7 +13,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 /**
- * Test a given prediction against all Sars in a corpus, and returns the highest-scored matching Sar.
+ * Test a given prediction against all Sars in a corpus, and return the highest-scored matching Sar.
  */
 public class BestSarFinder implements Function<L2Prediction, Optional<SarTreeNode>> {
 
@@ -34,15 +34,15 @@ public class BestSarFinder implements Function<L2Prediction, Optional<SarTreeNod
       return Optional.empty();
     }
 
-    Double score = 0D;
+    Double bestScore = 0D;
     Optional<SarTreeNode> bestSarTreeNode = Optional.empty();
     for (SarTreeNode scoredSar : sarCorpus.getSarTreeNodes()) {
       Sar sar = scoredSar.getSar();
 
       if (sar.test(Arrays.asList(substrate))) {
         Double sarScore = scoredSar.getPercentageHits();
-        if (sarScore > score) {
-          score = sarScore;
+        if (sarScore > bestScore) {
+          bestScore = sarScore;
           bestSarTreeNode = Optional.of(scoredSar);
         }
       }

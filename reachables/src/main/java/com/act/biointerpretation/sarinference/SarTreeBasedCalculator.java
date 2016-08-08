@@ -1,14 +1,14 @@
 package com.act.biointerpretation.sarinference;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.util.Set;
 import java.util.function.Consumer;
 
+/**
+ * Calculates a SARs hit percentage score by seeing which of the leaves of its subtree are LCMS hits,
+ * and which are LCMS misses.
+ */
 public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(SarTreeBasedCalculator.class);
   Set<String> inchiSet;
   SarTree sarTree;
 

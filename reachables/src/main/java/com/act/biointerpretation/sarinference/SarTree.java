@@ -116,7 +116,9 @@ public class SarTree {
 
   /**
    * Pulls the SARs we care about out of a SarTree. These are chosen to be above a certain confidence level, and
-   * explain at least a certain number of nodes.
+   * explain at least a certain number of nodes. Additionally no SAR with less than one direct child is chosen:
+   * no direct child indicates a leaf node, while one direct child means we can throw this node out and use its
+   * child instead of it, to avoid duplicating SARs along a non-branching path.
    *
    * @param subtreeThreshold The min size of the subtree explained by a relevant SAR.
    * @param thresholdConfidence The min confidence score for a relevant SAR.
