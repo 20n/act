@@ -129,7 +129,10 @@ public class LibMcsClustering {
     positiveProducts.loadCorpus(positiveInchisFile);
     List<String> positiveProductList = positiveProducts.getInchiList();
 
-    L2PredictionCorpus positiveCorpus = fullCorpus.applyFilter(prediction -> positiveProductList.contains(prediction.getProductInchis().get(0)));
+    // This only filters based on the first product of the prediction.
+    // TODO: generalize the pipeline to ROs that produce multiple products.
+    L2PredictionCorpus positiveCorpus = fullCorpus.applyFilter(
+        prediction -> positiveProductList.contains(prediction.getProductInchis().get(0)));
     LOGGER.info("Number of LCMS positive predictions: %d", positiveCorpus.getCorpus().size());
     Set<String> positiveSubstrateInchis = positiveCorpus.getUniqueSubstrateInchis();
     LOGGER.info("Number of substrates with positive LCMS products: %d", positiveCorpus.getCorpus().size());
@@ -154,6 +157,7 @@ public class LibMcsClustering {
     Consumer<SarTreeNode> sarConfidenceCalculator = new SarHitPercentageCalculator(positiveCorpus, fullCorpus);
     if (cl.hasOption(OPTION_TREE_SCORING)) {
       sarConfidenceCalculator = new SarTreeBasedCalculator(positiveSubstrateInchis, sarTree);
+      LOGGER.info("Only scoring SARs based on hits and misses within their subtrees.");
     }
 
     LOGGER.info("Scoring sars.");
@@ -170,6 +174,14 @@ public class LibMcsClustering {
     LOGGER.info("Complete!.");
   }
 
+  /**
+   * Imports inchis into molecules for use in clustering. Label all returned molecules with a property that says whether
+   * they were an LCMS positive or negative, so this can be read from the clustering tree directly later.
+   *
+   * @param inchis The inchis to import.
+   * @param lcmsTester The function used to classify inchis as LCMS positives or negatives.
+   * @return The inchis as molecules.
+   */
   private static List<Molecule> importInchis(Collection<String> inchis, Predicate<String> lcmsTester) {
     List<Molecule> molecules = new ArrayList<>();
     for (String inchi : inchis) {
