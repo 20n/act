@@ -118,9 +118,9 @@ public class SequenceMerger extends BiointerpretationProcessor {
     while (sequences.hasNext()) {
       Seq sequence = sequences.next();
 
-      if (sequence.get_org_name() == null ||
-          sequence.get_sequence() == null ||
-          sequence.get_ec() == null) {
+      if (sequence.get_org_name() == null || sequence.get_org_name().isEmpty() ||
+          sequence.get_sequence() == null || sequence.get_sequence().isEmpty() ||
+          sequence.get_ec() == null || sequence.get_ec().isEmpty()) {
         // copy sequence directly, no merging will be possible
         writeSequence(sequence);
       }
