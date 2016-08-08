@@ -7,9 +7,9 @@ import act.shared.helpers.MongoDBToJSON;
 import com.act.biointerpretation.Utils.OrgMinimalPrefixGenerator;
 import com.act.biointerpretation.test.util.MockedMongoDB;
 import com.mongodb.BasicDBObject;
+import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.util.ArrayList;

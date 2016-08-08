@@ -2,11 +2,9 @@ package act.installer.sequence;
 
 import java.util.List;
 import java.util.Set;
-import java.util.HashMap;
 import act.server.MongoDB;
 import com.mongodb.DBObject;
 import act.shared.Seq;
-import act.shared.sar.SAR;
 import org.json.JSONObject;
 
 public abstract class SequenceEntry {

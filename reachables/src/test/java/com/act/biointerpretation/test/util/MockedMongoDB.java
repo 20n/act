@@ -6,7 +6,6 @@ import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
-import act.shared.sar.SAR;
 import com.mongodb.DBObject;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -25,7 +24,6 @@ import java.util.Set;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
 public class MockedMongoDB {

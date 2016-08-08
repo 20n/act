@@ -1,25 +1,21 @@
 package act.server;
 
-import act.server.DBIterator;
-import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Cofactor;
 import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
+import com.act.reachables.LoadAct;
+import com.act.reachables.Network;
 import com.mongodb.DBObject;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 import java.util.Map;
-import java.util.HashMap;
-
-import com.act.reachables.LoadAct;
-import com.act.reachables.ActData;
-import com.act.reachables.Network;
+import java.util.Set;
 
 public class NoSQLAPI {
 

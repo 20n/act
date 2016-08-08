@@ -1,19 +1,17 @@
 package act.shared;
 
-import java.io.Serializable;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Arrays;
-import java.util.Set;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.HashMap;
 import act.shared.helpers.MongoDBToJSON;
-import act.shared.sar.SAR;
 import com.mongodb.DBObject;
-import org.json.JSONObject;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.Serializable;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class Seq implements Serializable {
   public enum AccDB { genbank, uniprot, swissprot, trembl, embl, ncbi_protein, metacyc, brenda };

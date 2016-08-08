@@ -6,7 +6,6 @@ import act.shared.Chemical;
 import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
-import act.shared.sar.SAR;
 import com.mongodb.DBObject;
 import org.json.JSONObject;
 import org.mockito.invocation.InvocationOnMock;
