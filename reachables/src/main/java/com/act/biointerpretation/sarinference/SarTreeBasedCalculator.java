@@ -9,11 +9,9 @@ import java.util.function.Consumer;
  */
 public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
 
-  Set<String> inchiSet;
   SarTree sarTree;
 
-  public SarTreeBasedCalculator(Set<String> inchiSet, SarTree sarTree) {
-    this.inchiSet = inchiSet;
+  public SarTreeBasedCalculator(SarTree sarTree) {
     this.sarTree = sarTree;
   }
 
