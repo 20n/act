@@ -250,7 +250,7 @@ public class SequenceMergerTest {
 
     metadata.put("source_sequence_ids", Arrays.asList(1,2,3));
 
-    Seq mergedSeq = new Seq(1L, "1.1.1.1", 1L, "Mus musculus", "AJKFLGKJDFS", references,
+    Seq mergedSeq = new Seq(1L, "1.1.1.1", 0L, "Mus musculus", "AJKFLGKJDFS", references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     Reaction reaction = new Reaction(1L,
