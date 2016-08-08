@@ -76,5 +76,4 @@ trait MongoWorkflowUtilities {
     }
     buffer.toSet
   }
-
 }

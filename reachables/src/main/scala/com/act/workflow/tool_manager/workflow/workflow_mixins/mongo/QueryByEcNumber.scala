@@ -11,40 +11,57 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
   def queryReactionsForReactionIdsByEcNumber(roughEcnum: String, mongoConnection: MongoDB): List[AnyRef] = {
     val methodLogger = LogManager.getLogger("queryDbForReactionIdsByEcNumber")
 
+    val queryResult = queryReactionsForValuesByEcNumber(roughEcnum, mongoConnection, List(REACTION_DB_KEYWORD_ID))
+    // Head = Keyword location, given that length is only 1.
+    queryResult.head
+  }
+
+
+  def queryReactionsForValuesByEcNumber(roughEcnum: String,
+                                        mongoConnection: MongoDB,
+                                        returnFilterFields: List[String]): List[List[AnyRef]] = {
+    val methodLogger = LogManager.getLogger("queryReactionsForValuesByEcNumber")
+
     /*
-      Query Database for Reaction IDs based on a given EC Number
+      Query Database for something based on a given EC Number
 
       EC Numbers are formatted at X.X.X.X so we use a regex match of
 
       ^6\.1\.1\.1$
-   */
+    */
 
     val ecnumRegex = formatEcNumberAsRegex(roughEcnum)
 
     // Setup the query and filter for just the reaction ID
     val regex = defineMongoRegex(ecnumRegex)
     val reactionIdQuery = new BasicDBObject(REACTION_DB_KEYWORD_ECNUM, regex)
-    val reactionIdReturnFilter = new BasicDBObject(REACTION_DB_KEYWORD_ID, 1)
+
+    // Create the return filter by adding all fields onto
+    val reactionIdReturnFilter = new BasicDBObject()
+    for (field <- returnFilterFields) {
+      reactionIdReturnFilter.append(field, 1)
+    }
 
     // Deploy DB query w/ error checking to ensure we got something
     methodLogger.info(s"Running query $reactionIdQuery against DB.  Return filter is $reactionIdReturnFilter")
     val dbReactionIdsIterator: Iterator[DBObject] =
       mongoQueryReactions(mongoConnection, reactionIdQuery, reactionIdReturnFilter)
-    val dbReactionIds = mongoDbIteratorToSet(dbReactionIdsIterator)
+    val dbReactionReturnValues = mongoDbIteratorToSet(dbReactionIdsIterator)
 
-    // Map reactions by their ID, which is the only value we care about here
-    val reactionIds = dbReactionIds.map(x => x.get(REACTION_DB_KEYWORD_ID)).toList
+    // For each field name, pull out the values of that document and add it to a list, and make a list of those.
+    val returnValues =
+      returnFilterFields.map(fieldName => dbReactionReturnValues.map(outputDocument => outputDocument.get(fieldName)).toList)
 
-    // Exit if there are no reactionIds matching the Ecnum
-    reactionIds.size match {
-      case n if n < 1 =>
-        methodLogger.error("No Reaction IDs found matching any of the Ecnum supplied")
-        throw new Exception(s"No reaction IDs found for the given Ecnum.")
+    // Exit if none of the values are nonempty.
+    returnValues match {
+      case n if n.exists(_.nonEmpty) =>
+        methodLogger.error("No values found matching any of the Ecnum supplied")
+        throw new Exception(s"No values found matching any of the Ecnum supplied.")
       case default =>
-        methodLogger.info(s"Found $default Reaction IDs matching the Ecnum.")
+        methodLogger.info(s"Found $default values matching the Ecnum.")
     }
 
-    reactionIds
+    returnValues
   }
 
   /**
