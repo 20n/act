@@ -7,6 +7,7 @@ import chemaxon.struc.Molecule;
 import com.act.biointerpretation.l2expansion.L2FilteringDriver;
 import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
+import com.act.jobs.JavaRunnable;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -156,7 +157,7 @@ public class LibMcsClustering {
 
     Consumer<SarTreeNode> sarConfidenceCalculator = null;
     if (cl.hasOption(OPTION_TREE_SCORING)) {
-      sarConfidenceCalculator = new SarTreeBasedCalculator(positiveSubstrateInchis, sarTree);
+      sarConfidenceCalculator = new SarTreeBasedCalculator(sarTree);
       LOGGER.info("Only scoring SARs based on hits and misses within their subtrees.");
     } else {
       sarConfidenceCalculator = new SarHitPercentageCalculator(positiveCorpus, fullCorpus);
@@ -205,5 +206,65 @@ public class LibMcsClustering {
   private static void exitWithHelp(Options opts) {
     HELP_FORMATTER.printHelp(L2FilteringDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
     System.exit(1);
+  }
+
+  /**
+   * Reads in a prediction corpus, containing only one RO's predictions, and builds a clustering tree of the
+   * substrates. Returns every SarTreeNode in the tree.
+   *
+   * @param predictionCorpusInput The prediction corpus.
+   * @param sarTreeNodesOutput A SarTreeNodeList of every node in the clustering tree.
+   * @return A job to run the appropriate clustering.
+   */
+  private static JavaRunnable getClusteringJob(File predictionCorpusInput, File sarTreeNodesOutput) {
+
+
+    return () -> {
+      L2PredictionCorpus inputCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(predictionCorpusInput);
+      L2InchiCorpus substrateInchis = new L2InchiCorpus(inputCorpus.getUniqueProductInchis());
+
+      SarTree sarTree = new SarTree();
+      try {
+        sarTree.buildByClustering(new LibraryMCS(), substrateInchis.getMolecules());
+      } catch (InterruptedException e) {
+        LOGGER.error("Interrupted exception on LibMCS clustering.");
+        System.exit(1);
+      }
+
+      SarTreeNodeList nodeList = new SarTreeNodeList(new ArrayList<>(sarTree.getNodes()));
+      nodeList.writeToFile(sarTreeNodesOutput);
+    };
+  }
+
+  /**
+   * Reads in an already-built SarTree from a SarTreeNodeList, as well as a list of LCMS positives from an
+   * LCMS analysis.  Scores the SARs based on the LCMS results.
+   * TODO: fix this up to apply the scoring to the nodes of the tree
+   * 
+   * @param sarTreeInput A SarTreeNodeList containing all Sars from the clustering tree.
+   * @param positiveInchiInput A list of positive inchis from LCMS.
+   * @param sarTreeNodeOutput The relevant SARs from the corpus, sorted in decreasing order of confidence.
+   * @return A job to run the SAR scoring.
+   */
+  private static JavaRunnable getScoringJob(File sarTreeInput, File positiveInchiInput, File sarTreeNodeOutput) {
+
+    Double confidenceThreshold = 0D;
+    Integer subtreeThreshold = 2;
+
+    return () -> {
+      SarTreeNodeList nodeList = new SarTreeNodeList();
+
+      SarTree sarTree = new SarTree();
+      nodeList.getSarTreeNodes().forEach(node -> sarTree.addNode(node));
+
+      L2InchiCorpus positiveInchis = new L2InchiCorpus();
+      positiveInchis.loadCorpus(positiveInchiInput);
+      SarTreeBasedCalculator sarConfidenceCalculator = new SarTreeBasedCalculator(sarTree);
+
+      sarTree.applyToNodes(sarConfidenceCalculator, subtreeThreshold);
+      SarTreeNodeList treeNodeList = sarTree.getExplanatoryNodes(subtreeThreshold, confidenceThreshold);
+
+      treeNodeList.writeToFile(sarTreeNodeOutput);
+    };
   }
 }
