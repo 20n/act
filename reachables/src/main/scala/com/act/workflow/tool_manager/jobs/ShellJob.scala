@@ -28,7 +28,9 @@ class ShellJob(commands: List[String]) extends Job {
       // Does not mean that the job succeeded, just that the future did
       case Success(x) => markJobSuccessBasedOnReturnCode(x.exitValue())
       // This is a failure of the future to complete because of a JVM exception
-      case Failure(x) => markAsFailure()
+      case Failure(x) =>
+        markAsFailure()
+        logger.error(s"Cause of failure was ${x.getMessage}")
     })
   }
 
@@ -74,14 +76,14 @@ class ShellJob(commands: List[String]) extends Job {
     this
   }
 
-  // To Logger
-  private def writeStreamToLogger(loggerType: (String) => Unit)(output: String): Unit = {
-    loggerType(output)
-  }
-
   def writeErrorStreamToLogger(): Job = {
     errorMethod = Option(writeStreamToLogger(logger.error))
     this
+  }
+
+  // To Logger
+  private def writeStreamToLogger(loggerType: (String) => Unit)(output: String): Unit = {
+    loggerType(output)
   }
 
   override def toString: String = {
