@@ -1,8 +1,10 @@
 package com.act.biointerpretation.l2expansion;
 
 import chemaxon.formats.MolFormatException;
+import chemaxon.reaction.ReactionException;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
+import com.act.biointerpretation.sars.SerializableReactor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -38,19 +40,29 @@ public class SingleSubstrateRoExpander extends L2Expander {
     // Use only single substrate reactions
     List<Ero> singleSubstrateRoList = getNSubstrateRos(roList, ONE_SUBSTRATES);
 
-    //iterate over every (metabolite, ro) pair
-    for (String inchi : metaboliteList) {
-      // Get Molecule from metabolite
-      // Continue to next metabolite if this fails
-      List<Molecule> singleSubstrateContainer;
+    for (Ero ro : singleSubstrateRoList) {
+
+      SerializableReactor reactor;
       try {
-        singleSubstrateContainer = Arrays.asList(importMolecule(inchi));
-      } catch (MolFormatException e) {
-        LOGGER.error("MolFormatException on metabolite %s. %s", inchi, e.getMessage());
+        reactor = new SerializableReactor(ro.getReactor(), ro.getId());
+      } catch (ReactionException e) {
+        LOGGER.info("Skipping ro %d, couldn't get Reactor.", ro.getId());
         continue;
       }
-      for (Ero ro : singleSubstrateRoList) {
-        result.add(new PredictionSeed(singleSubstrateContainer, ro, NO_SAR));
+
+      //iterate over every (metabolite, ro) pair
+      for (String inchi : metaboliteList) {
+        // Get Molecule from metabolite
+        // Continue to next metabolite if this fails
+        List<Molecule> singleSubstrateContainer;
+        try {
+          singleSubstrateContainer = Arrays.asList(importMolecule(inchi));
+        } catch (MolFormatException e) {
+          LOGGER.error("MolFormatException on metabolite %s. %s", inchi, e.getMessage());
+          continue;
+        }
+
+        result.add(new PredictionSeed(ro.getId().toString(), singleSubstrateContainer, reactor, NO_SAR));
       }
     }
 

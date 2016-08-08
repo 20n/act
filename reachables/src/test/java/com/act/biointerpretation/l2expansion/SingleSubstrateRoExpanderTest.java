@@ -73,7 +73,7 @@ public class SingleSubstrateRoExpanderTest {
     assertEquals("Correct metabolite predicted",
         VALID_TEST_METABOLITE, predictions.getCorpus().get(0).getSubstrateInchis().get(0));
     assertEquals("Correct RO predicted",
-        VALID_RO_ID, predictions.getCorpus().get(0).getRo().getId());
+        VALID_RO_ID.toString(), predictions.getCorpus().get(0).getProjectorName());
     assertEquals("Correct product predicted",
         EXPECTED_PRODUCT, predictions.getCorpus().get(0).getProductInchis().get(0));
   }

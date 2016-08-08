@@ -24,7 +24,8 @@ public class L2InchiCorpus {
 
   private List<String> corpus = new ArrayList<>();
 
-  public L2InchiCorpus() {}
+  public L2InchiCorpus() {
+  }
 
   public L2InchiCorpus(Collection<String> inchiList) {
     corpus = new ArrayList<>(inchiList);

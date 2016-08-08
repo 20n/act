@@ -26,7 +26,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public class ReactionRenderer {
 
@@ -138,7 +137,7 @@ public class ReactionRenderer {
   }
 
 
-  public RxnMolecule getRxnMolecule(MongoDB db, Long reactionId, boolean includeCofactors) throws MolFormatException {
+  public RxnMolecule getRxnMolecule(MongoDB db, Long reactionId, boolean includeCofactors) {
     RxnMolecule renderedReactionMolecule = new RxnMolecule();
 
     List<Long> substrateIds = getSubstrates(db, reactionId, includeCofactors);
@@ -223,13 +222,18 @@ public class ReactionRenderer {
    *
    * @throws MolFormatException
    */
-  private Molecule importMoleculeOrXenon(Chemical chemical) throws MolFormatException {
-    Optional<Molecule> result = chemical.importAsMolecule();
-    if (result.isPresent()) {
-      return result.get();
+  private Molecule importMoleculeOrXenon(Chemical chemical) {
+    try {
+      return chemical.importAsMolecule();
+    } catch (MolFormatException e) {
+      LOGGER.warn("No molecule returned for chemical %d. Replacing with Xenon.", chemical.getUuid());
+      try {
+        return MolImporter.importMol(XENON_INCHI);
+      } catch (MolFormatException f) {
+        LOGGER.error("Could not import xenon inchi; something is very wrong.");
+        throw new RuntimeException(f);
+      }
     }
-    LOGGER.warn("No molecule returned for chemical %d.", chemical.getUuid());
-    return MolImporter.importMol(XENON_INCHI);
   }
 
   public String getFormat() {

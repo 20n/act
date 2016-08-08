@@ -8,12 +8,14 @@ import chemaxon.sss.search.MolSearch;
 import chemaxon.sss.search.MolSearchOptions;
 import chemaxon.sss.search.SearchException;
 import chemaxon.struc.Molecule;
+import chemaxon.struc.RxnMolecule;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * A SAR that accepts only single substrates which contain a particular substructure.
@@ -21,35 +23,40 @@ import java.util.List;
 public class OneSubstrateSubstructureSar implements Sar {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(OneSubstrateSubstructureSar.class);
+
   private static final String INCHI_SETTINGS = "inchi:AuxNone";
   private static final String PRINT_FAILURE = "FAILED_TO_PRINT_SAR";
-  private static final MolSearchOptions SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
 
   /**
-   *
+   * Search loosely by default to avoid weeding out potentially viable matches.
    */
+  private static final MolSearchOptions LOOSE_SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
+
   static {
-    // The suggested setting for substructure searching
-    SEARCH_OPTIONS.setStereoModel(SearchConstants.STEREO_MODEL_LOCAL);
-    // Incorporates stereo info but allows non-specific structure to match specific structure
-    SEARCH_OPTIONS.setStereoSearchType(SearchConstants.STEREO_SPECIFIC);
+    LOOSE_SEARCH_OPTIONS.setStereoModel(SearchConstants.STEREO_IGNORE);
+    LOOSE_SEARCH_OPTIONS.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL4);
+    LOOSE_SEARCH_OPTIONS.setTimeoutLimitMilliseconds(1000);
   }
 
-  Molecule substructure;
-  MolSearch searcher;
+  private Molecule substructure;
+  private MolSearch searcher;
 
   /**
    * For Json reading.
    */
   private OneSubstrateSubstructureSar() {
     searcher = new MolSearch();
-    searcher.setSearchOptions(SEARCH_OPTIONS);
+    searcher.setSearchOptions(LOOSE_SEARCH_OPTIONS);
   }
 
-  public OneSubstrateSubstructureSar(Molecule substructure) {
+  public OneSubstrateSubstructureSar(Molecule substructure, MolSearchOptions searchOptions) {
     this();
     this.substructure = substructure;
     searcher.setQuery(substructure);
+  }
+
+  public OneSubstrateSubstructureSar(Molecule substructure) {
+    this(substructure, LOOSE_SEARCH_OPTIONS);
   }
 
   @Override
@@ -63,7 +70,7 @@ public class OneSubstrateSubstructureSar implements Sar {
     searcher.setTarget(substrates.get(0));
 
     try {
-      return searcher.getMatchCount() > 0;
+      return searcher.findFirst() != null;
     } catch (SearchException e) {
       // Log error but don't propagate upward. Have never seen this before.
       LOGGER.error("Error on testing substrates with SAR %s", getSubstructureInchi());
@@ -90,5 +97,25 @@ public class OneSubstrateSubstructureSar implements Sar {
   private void setSubstructureInchi(String inchi) throws MolFormatException {
     substructure = MolImporter.importMol(inchi);
     searcher.setQuery(substructure);
+  }
+
+  public static class Factory implements SarFactory {
+
+    private final McsCalculator mcsCalculator;
+
+    public Factory(McsCalculator mcsCalculator) {
+      this.mcsCalculator = mcsCalculator;
+    }
+
+    @Override
+    public Sar buildSar(List<RxnMolecule> reactions) {
+      if (!DbAPI.areAllOneSubstrate(reactions)) {
+        throw new IllegalArgumentException("Reactions are not all one substrate.");
+      }
+
+      List<Molecule> substrates = reactions.stream().map(rxn -> rxn.getReactants()[0]).collect(Collectors.toList());
+      Molecule sarMcs = mcsCalculator.getMCS(substrates);
+      return new OneSubstrateSubstructureSar(sarMcs);
+    }
   }
 }

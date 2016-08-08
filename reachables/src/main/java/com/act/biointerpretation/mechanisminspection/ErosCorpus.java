@@ -12,9 +12,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class ErosCorpus implements Iterable<Ero> {
@@ -26,6 +28,7 @@ public class ErosCorpus implements Iterable<Ero> {
   private static final String VALIDATION_EROS_FILE_NAME = "validation_eros.json";
 
   private List<Ero> ros;
+  private Map<Integer, Ero> roIdToEroMap;
 
   public List<Ero> getRos() {
     return ros;
@@ -54,6 +57,7 @@ public class ErosCorpus implements Iterable<Ero> {
   public void loadCorpus(InputStream erosStream) throws IOException {
     ErosCorpus erosCorpus = OBJECT_MAPPER.readValue(erosStream, ErosCorpus.class);
     setRos(erosCorpus.getRos());
+    buildRoIdToReactorMap();
   }
 
   /**
@@ -107,13 +111,13 @@ public class ErosCorpus implements Iterable<Ero> {
   }
 
   /**
-   * Gets a reader for the RO ID file.
+   * Gets the ERO with the given roId from the corpus.
    *
-   * @param eroFileName A file containing the RO ids, with one RO ID per line.
-   * @return A reader for the list of RO Ids.
+   * @param roId The ro id.
+   * @return The Ero.
    */
-  private BufferedReader getErosReader(String eroFileName) throws FileNotFoundException {
-    return getErosReader(new File(eroFileName));
+  public Ero getEro(Integer roId) {
+    return roIdToEroMap.get(roId);
   }
 
   /**
@@ -131,5 +135,15 @@ public class ErosCorpus implements Iterable<Ero> {
   @Override
   public Iterator<Ero> iterator() {
     return getRos().iterator();
+  }
+
+  private void buildRoIdToReactorMap() {
+    roIdToEroMap = new HashMap<>();
+    for (Ero ro : ros) {
+      if (roIdToEroMap.containsKey(ro.getId())) {
+        throw new IllegalArgumentException("RO corpus contains two ROs with same Id: " + ro.getId());
+      }
+      roIdToEroMap.put(ro.getId(), ro);
+    }
   }
 }

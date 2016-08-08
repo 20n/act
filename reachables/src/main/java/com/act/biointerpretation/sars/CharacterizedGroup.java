@@ -2,21 +2,21 @@ package com.act.biointerpretation.sars;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.util.Set;
+import java.util.List;
 
 /**
  * Represents a group of sequences and reactions characterized by the same SAR.
  */
 public class CharacterizedGroup {
 
-  @JsonProperty("seq_group")
-  SeqGroup group;
+  @JsonProperty("reaction_group_name")
+  private String groupName;
 
-  @JsonProperty("sar")
-  Sar sar;
+  @JsonProperty("sars")
+  private List<Sar> sars;
 
-  @JsonProperty("ros")
-  Set<Integer> ros;
+  @JsonProperty("reactor")
+  private SerializableReactor reactor;
 
   /**
    * Needed for JSON.
@@ -24,21 +24,25 @@ public class CharacterizedGroup {
   private CharacterizedGroup() {
   }
 
-  public CharacterizedGroup(SeqGroup group, Sar sar, Set<Integer> ros) {
-    this.group = group;
-    this.sar = sar;
-    this.ros = ros;
+  public CharacterizedGroup(String groupName, List<Sar> sars, SerializableReactor reactor) {
+    this.groupName = groupName;
+    this.sars = sars;
+    this.reactor = reactor;
   }
 
-  public Sar getSar() {
-    return sar;
+  public List<Sar> getSars() {
+    return sars;
   }
 
-  public SeqGroup getGroup() {
-    return group;
+  public String getGroupName() {
+    return groupName;
   }
 
-  public Set<Integer> getRos() {
-    return ros;
+  public SerializableReactor getReactor() {
+    return reactor;
+  }
+
+  private void setReactor(SerializableReactor reactor) {
+    this.reactor = reactor;
   }
 }

@@ -46,7 +46,7 @@ public class McsCalculatorTest {
   @Test
   public void testMcsCalculatorSimplePairs() throws IOException {
     // Arrange
-    McsCalculator calculator = new McsCalculator();
+    McsCalculator calculator = new McsCalculator(McsCalculator.SAR_OPTIONS);
 
     // Act
     Molecule mcs12 = calculator.getMCS(Arrays.asList(methylPyreneMol1, methylPyreneMol2));
@@ -64,27 +64,49 @@ public class McsCalculatorTest {
   }
 
   @Test
-  public void testMcsCalculatorRingStructuresDifferentBondTypes() throws IOException {
+  public void testSarOptionsMatchDifferentBondTypes() throws IOException {
     // Arrange
     String firstSubstrateInchi =
-        "InChI=1S/C7H12O6/c8-3-1-7(13,6(11)12)2-4(9)5(3)10/h3-5,8-10,13H,1-2H2,(H,11,12)/t3-,4-,5-,7+/m1/s1";
+        "InChI=1S/C7H12O2/c8-7(9)6-4-2-1-3-5-6/h6H,1-5H2,(H,8,9)";
     String secondSubstrateInchi =
-        "InChI=1S/C7H10O5/c8-4-1-3(7(11)12)2-5(9)6(4)10/h1,4-6,8-10H,2H2,(H,11,12)/t4-,5-,6-/m1/s1";
+        "InChI=1S/C7H10O2/c8-7(9)6-4-2-1-3-5-6/h4H,1-3,5H2,(H,8,9)";
     String expectedMcs =
-        "InChI=1S/C7H10O5/c8-4-1-3(7(11)12)2-5(9)6(4)10/h1,4-6,8-10H,2H2,(H,11,12)/t4-,5-,6-/m1/s1";
+        "InChI=1S/C7H10O2/c8-7(9)6-4-2-1-3-5-6/h4H,1-3,5H2,(H,8,9)";
 
     Molecule firstSubstrate = MolImporter.importMol(firstSubstrateInchi, INCHI_IMPORT_SETTINGS);
     Molecule secondSubstrate = MolImporter.importMol(secondSubstrateInchi, INCHI_IMPORT_SETTINGS);
 
-    McsCalculator calculator = new McsCalculator();
+    McsCalculator calculator = new McsCalculator(McsCalculator.SAR_OPTIONS);
 
     // Act
     Molecule mcs = calculator.getMCS(Arrays.asList(firstSubstrate, secondSubstrate));
 
     // Assert
     String mcsInchi = MolExporter.exportToFormat(mcs, INCHI_EXPORT_SETTINGS);
-
     assertEquals("MCS should contain the ring despite different bond types in substrates.", expectedMcs, mcsInchi);
+  }
+
+  @Test
+  public void testReactionOptionsMismatchDifferentBondTypes() throws IOException {
+    // Arrange
+    String firstSubstrateInchi =
+        "InChI=1S/C7H12O2/c8-7(9)6-4-2-1-3-5-6/h6H,1-5H2,(H,8,9)";
+    String secondSubstrateInchi =
+        "InChI=1S/C7H10O2/c8-7(9)6-4-2-1-3-5-6/h4H,1-3,5H2,(H,8,9)";
+    String expectedMcs =
+        "InChI=1S/C2H4O2/c1-2(3)4/h1H3,(H,3,4)";
+
+    Molecule firstSubstrate = MolImporter.importMol(firstSubstrateInchi, INCHI_IMPORT_SETTINGS);
+    Molecule secondSubstrate = MolImporter.importMol(secondSubstrateInchi, INCHI_IMPORT_SETTINGS);
+
+    McsCalculator calculator = new McsCalculator(McsCalculator.REACTION_BUILDING_OPTIONS);
+
+    // Act
+    Molecule mcs = calculator.getMCS(Arrays.asList(firstSubstrate, secondSubstrate));
+
+    // Assert
+    String mcsInchi = MolExporter.exportToFormat(mcs, INCHI_EXPORT_SETTINGS);
+    assertEquals("MCS should not contain the ring due to different bond types in substrates.", expectedMcs, mcsInchi);
   }
 
   @Test
@@ -93,7 +115,7 @@ public class McsCalculatorTest {
     List<Molecule> molecules = Arrays.asList(methylPyreneMol1, methylPyreneMol1, methylPyreneMol, methylPyreneMol2,
         methylPyreneMol3, methylPyreneMol1, methylPyreneMol3, methylPyreneMol, methylPyreneMol2);
 
-    McsCalculator calculator = new McsCalculator();
+    McsCalculator calculator = new McsCalculator(McsCalculator.SAR_OPTIONS);
 
     // Act
     Molecule mcs = calculator.getMCS(molecules);
@@ -115,7 +137,7 @@ public class McsCalculatorTest {
     Molecule chain = MolImporter.importMol(chainInchi, INCHI_IMPORT_SETTINGS);
     List<Molecule> inputMolecules = Arrays.asList(benzene, chain);
 
-    McsCalculator calculator = new McsCalculator();
+    McsCalculator calculator = new McsCalculator(McsCalculator.SAR_OPTIONS);
 
     // Act
     Molecule mcs = calculator.getMCS(inputMolecules);

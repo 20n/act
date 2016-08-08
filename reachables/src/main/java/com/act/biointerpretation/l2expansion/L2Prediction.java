@@ -1,6 +1,5 @@
 package com.act.biointerpretation.l2expansion;
 
-import com.act.biointerpretation.sars.Sar;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,11 +20,11 @@ public class L2Prediction {
   @JsonProperty("substrates")
   private List<L2PredictionChemical> substrates;
 
-  @JsonProperty("ro")
-  private L2PredictionRo ro;
-
-  @JsonProperty("sar")
-  private Sar sar;
+  // This field corresponds either to the RO id, in the case of an RO expansion, or the name of the characterized group,
+  // in the case of a SAR expansion. This field replaced explicit fields that stored the SAR/RO used to generate this
+  // prediction. Instead to find that info one must look up the name in the RO or SAR Corpus used in the predictions.
+  @JsonProperty("projector_name")
+  private String projectorName;
 
   @JsonProperty("products")
   private List<L2PredictionChemical> products;
@@ -48,7 +47,7 @@ public class L2Prediction {
       this.substrates.add(new L2PredictionChemical(substrate));
     }
 
-    this.ro = new L2PredictionRo(template.ro);
+    this.projectorName = template.projectorName;
 
     this.products = new ArrayList<>(template.products.size());
     for (L2PredictionChemical product : template.products) {
@@ -58,14 +57,16 @@ public class L2Prediction {
     this.reactionsRoMatch = new ArrayList<Long>(template.reactionsRoMatch);
     this.reactionsNoRoMatch = new ArrayList<Long>(template.reactionsNoRoMatch);
 
-    this.sar = template.getSar();
   }
 
-  public L2Prediction(Integer id, List<L2PredictionChemical> substrates, L2PredictionRo ro, List<L2PredictionChemical> products) {
+  public L2Prediction(Integer id,
+                      List<L2PredictionChemical> substrates,
+                      String projectorName,
+                      List<L2PredictionChemical> products) {
     this.id = id;
     this.substrates = substrates;
     this.products = products;
-    this.ro = ro;
+    this.projectorName = projectorName;
     this.reactionsRoMatch = new ArrayList<Long>();
     this.reactionsNoRoMatch = new ArrayList<Long>();
   }
@@ -161,10 +162,6 @@ public class L2Prediction {
     this.products = products;
   }
 
-  public L2PredictionRo getRo() {
-    return ro;
-  }
-
   public List<Long> getReactionsRoMatch() {
     return reactionsRoMatch;
   }
@@ -181,11 +178,11 @@ public class L2Prediction {
     this.reactionsNoRoMatch = reactionsNoRoMatch;
   }
 
-  public Sar getSar() {
-    return sar;
+  public String getProjectorName() {
+    return projectorName;
   }
 
-  public void setSar(Sar sar) {
-    this.sar = sar;
+  public void setProjectorName(String projectorName) {
+    this.projectorName = projectorName;
   }
 }

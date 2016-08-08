@@ -1,6 +1,5 @@
 package com.act.biointerpretation.l2expansion;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -177,25 +176,5 @@ public class L2PredictionCorpus {
       }
     }
     return count;
-  }
-
-  /**
-   * Gets a list of distinct ROs seen in this prediction corpus.
-   *
-   * @return The list of ROs.
-   */
-  @JsonIgnore
-  public List<L2PredictionRo> getAllRos() {
-    Set<Integer> rosSeen = new HashSet();
-    List<L2PredictionRo> result = new ArrayList<>();
-
-    for (L2Prediction prediction : getCorpus()) {
-      if (!rosSeen.contains(prediction.getRo().getId())) {
-        result.add(prediction.getRo());
-        rosSeen.add(prediction.getRo().getId());
-      }
-    }
-
-    return result;
   }
 }

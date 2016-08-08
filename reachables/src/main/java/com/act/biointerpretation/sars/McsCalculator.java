@@ -4,43 +4,42 @@ import chemaxon.struc.Molecule;
 import com.chemaxon.search.mcs.MaxCommonSubstructure;
 import com.chemaxon.search.mcs.McsSearchOptions;
 import com.chemaxon.search.mcs.RingHandlingMode;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.List;
 
 public class McsCalculator {
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(McsCalculator.class);
-
   /**
+   * Bond matching = true --> only bonds of same order will match
+   * connectedMode = true --> only return one fragment
+   * ringHandlingMode = KEEP_RINGS --> don't allow a ring to be only partially matched by substructure; all or nothing
    * We do not match bond type because it throws off a lot of matches on benzene rings with bonds shifted.
-   * We choose KEEP_RINGS to preserve the "spirit" of a molecule with a ring: i.e. if two molecules
-   * both have a ring, but one has a nitrogen in the ring, we don't want to conclude that we found a SAR
-   * indicating that the enzyme only needs to match a 5 carbon chain. Instead this option forces us to not
-   * match that ring, which may end up causing such a SAR to be filtered out for now as uninformative.
+   * TODO: further investigate bond type regarding aromatization and rings.
    */
-  private static final McsSearchOptions DEFAULT_OPTIONS =
+  public static final McsSearchOptions REACTION_BUILDING_OPTIONS =
+      new McsSearchOptions.Builder()
+          .bondTypeMatching(true)
+          .connectedMode(false)
+          .ringHandlingMode(RingHandlingMode.KEEP_RINGS)
+          .build();
+  public static final McsSearchOptions SAR_OPTIONS =
       new McsSearchOptions.Builder()
           .bondTypeMatching(false)
+          .connectedMode(false)
           .ringHandlingMode(RingHandlingMode.KEEP_RINGS)
           .build();
 
+
   private final MaxCommonSubstructure mcs;
 
-  public McsCalculator() {
-    mcs = MaxCommonSubstructure.newInstance(DEFAULT_OPTIONS);
-  }
-
-  public McsCalculator(MaxCommonSubstructure mcs) {
-    this.mcs = mcs;
+  public McsCalculator(McsSearchOptions mcsOptions) {
+    this.mcs = MaxCommonSubstructure.newInstance(mcsOptions);
   }
 
   /**
    * Gets MCS of any number of molecules by iteratively applying Chemaxon's MCS search to all substrates.
-   * For an array of n molecules, this will use n-1 MCS operations, but the hope is that they will
-   * get faster as we go because we'll be computing between the prefix MCS and a new molecule,
-   * rather than two full molecules.
+   * For an array of n molecules, this will use n-1 MCS operations.
+   * TODO: experiment with LibraryMcs instead of MaxCommonSubstructure here; it may find a better overall match.
    *
    * @param molecules The molecules to get the MCS of.
    * @return The MCS of all input molecules.
