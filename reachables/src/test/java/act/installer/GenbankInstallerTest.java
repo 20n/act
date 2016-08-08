@@ -1,10 +1,14 @@
 package act.installer;
 
+import act.server.DBIterator;
 import act.server.MongoDB;
+import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
+import com.act.biointerpretation.Utils.OrgMinimalPrefixGenerator;
 import com.act.biointerpretation.test.util.MockedMongoDB;
+import com.mongodb.DBObject;
 import org.json.JSONArray;
 import org.junit.Before;
 import org.junit.Test;
@@ -15,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -81,7 +86,6 @@ public class GenbankInstallerTest {
 
   @Before
   public void setUp() throws Exception {
-
     JSONObject accessionObject = new JSONObject();
     accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("CUB13083")));
 
@@ -226,12 +230,32 @@ public class GenbankInstallerTest {
 
     MongoDB mockDb = mockAPI.getMockMongoDB();
 
+    Map<String, Long> orgMap = new HashMap<>();
+
+    // manually assemble an Org Iterator since you can't mock DBCollection in getDbIteratorOverOrgs()
+    List<Organism> orgs = new ArrayList<>();
+    for (Map.Entry<Long, String> orgName : orgNames.entrySet()) {
+      orgs.add(new Organism(orgName.getKey(), -1, orgName.getValue()));
+    }
+
+    Iterator<Organism> orgIterator = orgs.iterator();
+
+    while (orgIterator.hasNext()) {
+      Organism org = orgIterator.next();
+      orgMap.put(org.getName(), 1L);
+    }
+
+    OrgMinimalPrefixGenerator prefixGenerator = new OrgMinimalPrefixGenerator(orgMap);
+    Map<String, String> minimalPrefixMapping = prefixGenerator.getMinimalPrefixMapping();
+
     GenbankInstaller genbankInstaller = new GenbankInstaller(
-        new File(this.getClass().getResource("genbank_installer_test_protein.gb").getFile()), "Protein", mockDb);
+        new File(this.getClass().getResource("genbank_installer_test_protein.gb").getFile()), "Protein", mockDb,
+        minimalPrefixMapping);
     genbankInstaller.init();
 
     genbankInstaller = new GenbankInstaller(
-        new File(this.getClass().getResource("genbank_installer_test_dna.gb").getFile()), "DNA", mockDb);
+        new File(this.getClass().getResource("genbank_installer_test_dna.gb").getFile()), "DNA", mockDb,
+        minimalPrefixMapping);
     genbankInstaller.init();
 
   }

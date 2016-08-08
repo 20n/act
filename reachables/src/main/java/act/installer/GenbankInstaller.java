@@ -2,9 +2,14 @@ package act.installer;
 
 import act.installer.sequence.GenbankSeqEntry;
 import act.installer.sequence.GenbankSeqEntryFactory;
+import act.server.DBIterator;
 import act.server.MongoDB;
+import act.server.NoSQLAPI;
+import act.shared.Organism;
 import act.shared.Seq;
+import com.act.biointerpretation.Utils.OrgMinimalPrefixGenerator;
 import com.act.utils.parser.GenbankInterpreter;
+import com.mongodb.DBObject;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -23,8 +28,11 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -98,11 +106,13 @@ public class GenbankInstaller {
   File genbankFile;
   String seqType;
   MongoDB db;
+  Map<String, String> minimalPrefixMapping;
 
-  public GenbankInstaller (File genbankFile, String seqType, MongoDB db) {
+  public GenbankInstaller (File genbankFile, String seqType, MongoDB db, Map<String, String> minimalPrefixMapping) {
     this.genbankFile = genbankFile;
     this.seqType = seqType;
     this.db = db;
+    this.minimalPrefixMapping = minimalPrefixMapping;
   }
 
   public void init() throws Exception {
@@ -119,14 +129,15 @@ public class GenbankInstaller {
         for (FeatureInterface<AbstractSequence<Compound>, Compound> feature :
             (List<FeatureInterface<AbstractSequence<Compound>, Compound>>) sequence.getFeatures()) {
           if (feature.getType().equals(CDS) && feature.getQualifiers().containsKey(PROTEIN_ID)) {
-            seqEntry = seqEntryFactory.createFromDNASequenceReference(sequence, feature.getQualifiers(), db);
+            seqEntry = seqEntryFactory.createFromDNASequenceReference(sequence, feature.getQualifiers(), db,
+                minimalPrefixMapping);
             addSeqEntryToDb(seqEntry, db);
             sequenceCount++;
           }
         }
 
       } else if (seqType.equals(PROTEIN)) {
-        seqEntry = seqEntryFactory.createFromProteinSequenceReference(sequence, db);
+        seqEntry = seqEntryFactory.createFromProteinSequenceReference(sequence, db, minimalPrefixMapping);
         addSeqEntryToDb(seqEntry, db);
         sequenceCount++;
       }
@@ -338,7 +349,35 @@ public class GenbankInstaller {
     } else {
       MongoDB db = new MongoDB("localhost", 27017, dbName);
 
-      GenbankInstaller installer = new GenbankInstaller(genbankFile, seqType, db);
+      Map<String, Long> orgMap = new HashMap<>();
+      DBIterator iter = db.getDbIteratorOverOrgs();
+
+      Iterator<Organism> orgIterator = new Iterator<Organism> () {
+        @Override
+        public boolean hasNext() {
+          boolean hasNext = iter.hasNext();
+          if (!hasNext)
+            iter.close();
+          return hasNext;
+        }
+
+        @Override
+        public Organism next() {
+          DBObject o = iter.next();
+          return db.convertDBObjectToOrg(o);
+        }
+
+      };
+
+      while (orgIterator.hasNext()) {
+        Organism org = orgIterator.next();
+        orgMap.put(org.getName(), 1L);
+      }
+
+      OrgMinimalPrefixGenerator prefixGenerator = new OrgMinimalPrefixGenerator(orgMap);
+      Map<String, String> minimalPrefixMapping = prefixGenerator.getMinimalPrefixMapping();
+
+      GenbankInstaller installer = new GenbankInstaller(genbankFile, seqType, db, minimalPrefixMapping);
       installer.init();
     }
 

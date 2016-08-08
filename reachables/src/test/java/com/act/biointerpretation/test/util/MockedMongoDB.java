@@ -25,6 +25,7 @@ import java.util.Set;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
 public class MockedMongoDB {
@@ -104,6 +105,7 @@ public class MockedMongoDB {
   public void installMocks(List<Reaction> testReactions, List<Long> testChemIds,
                            List<Seq> sequences, Map<Long, String> orgNames, Map<Long, String> chemIdToInchi) {
     this.organismMap.putAll(orgNames);
+
     for (Seq seq : sequences) {
       seqMap.put(Long.valueOf(seq.getUUID()), seq);
     }
@@ -149,7 +151,6 @@ public class MockedMongoDB {
 
     /* ****************************************
      * Method mocking */
-
 
     doAnswer(new Answer<String>() {
       @Override

@@ -10,14 +10,16 @@ import java.util.Map;
 public class GenbankSeqEntryFactory {
 
   public GenbankSeqEntry createFromDNASequenceReference(AbstractSequence sequence,
-                                                        Map<String, List<Qualifier>> qualifierMap, MongoDB db) {
-    GenbankSeqEntry se = new GenbankSeqEntry(sequence, qualifierMap);
+                                                        Map<String, List<Qualifier>> qualifierMap, MongoDB db,
+                                                        Map<String, String> minimalPrefixMapping) {
+    GenbankSeqEntry se = new GenbankSeqEntry(sequence, qualifierMap, minimalPrefixMapping);
     se.init(db);
     return se;
   }
 
-  public GenbankSeqEntry createFromProteinSequenceReference(AbstractSequence sequence, MongoDB db) {
-    GenbankSeqEntry se = new GenbankSeqEntry(sequence);
+  public GenbankSeqEntry createFromProteinSequenceReference(AbstractSequence sequence, MongoDB db,
+                                                            Map<String, String> minimalPrefixMapping) {
+    GenbankSeqEntry se = new GenbankSeqEntry(sequence, minimalPrefixMapping);
     se.init(db);
     return se;
   }

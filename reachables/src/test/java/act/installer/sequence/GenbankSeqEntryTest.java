@@ -1,9 +1,13 @@
 package act.installer.sequence;
 
+import act.server.DBIterator;
 import act.server.MongoDB;
+import act.server.NoSQLAPI;
+import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
+import com.act.biointerpretation.Utils.OrgMinimalPrefixGenerator;
 import com.act.biointerpretation.test.util.MockedMongoDB;
 import com.act.utils.parser.GenbankInterpreter;
 import com.mongodb.DBObject;
@@ -20,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -45,6 +50,24 @@ public class GenbankSeqEntryTest {
 
     MongoDB mockDb = mockAPI.getMockMongoDB();
 
+    Map<String, Long> orgMap = new HashMap<>();
+
+    // manually assemble an Org Iterator since you can't mock DBCollection in getDbIteratorOverOrgs()
+    List<Organism> orgs = new ArrayList<>();
+    for (Map.Entry<Long, String> orgName : organismNames.entrySet()) {
+      orgs.add(new Organism(orgName.getKey(), -1, orgName.getValue()));
+    }
+
+    Iterator<Organism> orgIterator = orgs.iterator();
+
+    while (orgIterator.hasNext()) {
+      Organism org = orgIterator.next();
+      orgMap.put(org.getName(), 1L);
+    }
+
+    OrgMinimalPrefixGenerator prefixGenerator = new OrgMinimalPrefixGenerator(orgMap);
+    Map<String, String> minimalPrefixMapping = prefixGenerator.getMinimalPrefixMapping();
+
     dnaSeqEntries = new ArrayList<>();
     proteinSeqEntries = new ArrayList<>();
     sequences = new ArrayList<>();
@@ -54,7 +77,8 @@ public class GenbankSeqEntryTest {
     giProtein.init();
     sequences.add(giProtein.getSequences().get(0).getSequenceAsString());
     GenbankSeqEntry seqEntry =
-        new GenbankSeqEntryFactory().createFromProteinSequenceReference(giProtein.getSequences().get(0), mockDb);
+        new GenbankSeqEntryFactory().createFromProteinSequenceReference(giProtein.getSequences().get(0), mockDb,
+            minimalPrefixMapping);
     proteinSeqEntries.add(seqEntry);
 
     giProtein =
@@ -62,7 +86,8 @@ public class GenbankSeqEntryTest {
     giProtein.init();
     sequences.add(giProtein.getSequences().get(0).getSequenceAsString());
     seqEntry =
-        new GenbankSeqEntryFactory().createFromProteinSequenceReference(giProtein.getSequences().get(0), mockDb);
+        new GenbankSeqEntryFactory().createFromProteinSequenceReference(giProtein.getSequences().get(0), mockDb,
+            minimalPrefixMapping);
     proteinSeqEntries.add(seqEntry);
 
 
@@ -77,7 +102,8 @@ public class GenbankSeqEntryTest {
       if (feature.getType().equals("CDS") && feature.getQualifiers().containsKey("EC_number")) {
         sequences.add(feature.getQualifiers().get("translation").get(0).getValue());
         seqEntry =
-            new GenbankSeqEntryFactory().createFromDNASequenceReference(sequence, feature.getQualifiers(), mockDb);
+            new GenbankSeqEntryFactory().createFromDNASequenceReference(sequence, feature.getQualifiers(), mockDb,
+                minimalPrefixMapping);
         dnaSeqEntries.add(seqEntry);
       }
     }

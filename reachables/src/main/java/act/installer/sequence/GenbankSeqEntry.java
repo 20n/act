@@ -68,17 +68,20 @@ public class GenbankSeqEntry extends SequenceEntry {
   private Long orgId;
   private String ec;
   private Set<Long> catalyzedRxns;
+  private Map<String, String> minimalPrefixMapping;
 
 
-  GenbankSeqEntry(AbstractSequence sequence) {
+  GenbankSeqEntry(AbstractSequence sequence, Map<String, String> minimalPrefixMapping) {
     this.seqObject = sequence;
     this.seqType = PROTEIN_SEQ_TYPE;
+    this.minimalPrefixMapping = minimalPrefixMapping;
   }
 
-  GenbankSeqEntry(AbstractSequence sequence, Map<String, List<Qualifier>> cdsQualifierMap) {
+  GenbankSeqEntry(AbstractSequence sequence, Map<String, List<Qualifier>> cdsQualifierMap, Map<String, String> minimalPrefixMapping) {
     this.seqObject = sequence;
     this.seqType = DNA_SEQ_TYPE;
     this.cdsQualifierMap = cdsQualifierMap;
+    this.minimalPrefixMapping = minimalPrefixMapping;
   }
 
   void init(MongoDB db) {
@@ -191,7 +194,13 @@ public class GenbankSeqEntry extends SequenceEntry {
     Map<String, List<Qualifier>> qualifierMap = getQualifierMap(SOURCE);
 
     if (qualifierMap != null && qualifierMap.containsKey(ORGANISM)) {
-      return qualifierMap.get(ORGANISM).get(0).getValue();
+      String orgName = qualifierMap.get(ORGANISM).get(0).getValue();
+
+      if (minimalPrefixMapping.containsKey(orgName)) {
+        return minimalPrefixMapping.get(orgName);
+      } else {
+        return orgName;
+      }
     }
 
     return null;
