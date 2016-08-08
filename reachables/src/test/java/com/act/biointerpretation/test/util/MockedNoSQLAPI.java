@@ -51,7 +51,7 @@ public class MockedNoSQLAPI {
   final Map<Long, Seq> writtenSequences = new HashMap<>();
 
   final Map<Long, Seq> seqMap = new HashMap<>();
-  final Map<Long, String> organismNames = new HashMap<>();
+  final Map<Long, String> readOrganismNames = new HashMap<>();
 
   public static Reaction copyReaction(Reaction r, Long newId) {
     Reaction newR = new Reaction(newId, r.getSubstrates(), r.getProducts(),
@@ -89,9 +89,9 @@ public class MockedNoSQLAPI {
 
   public void installMocks(List<Reaction> testReactions, List<Long> testChemIds,
                            List<Seq> sequences, Map<Long, String> orgNames, Map<Long, String> chemIdToInchi) {
-    this.organismNames.putAll(orgNames);
+    this.readOrganismNames.putAll(orgNames);
 
-    for (Map.Entry<Long, String> orgName : organismNames.entrySet()) {
+    for (Map.Entry<Long, String> orgName : readOrganismNames.entrySet()) {
       orgs.add(new Organism(orgName.getKey(), -1, orgName.getValue()));
     }
 
@@ -212,7 +212,7 @@ public class MockedNoSQLAPI {
     doAnswer(new Answer<String>() {
       @Override
       public String answer(InvocationOnMock invocation) throws Throwable {
-        return organismNames.get(invocation.getArgumentAt(0, Long.class));
+        return readOrganismNames.get(invocation.getArgumentAt(0, Long.class));
       }
     }).when(mockReadMongoDB).getOrganismNameFromId(any(Long.class));
 
@@ -228,7 +228,7 @@ public class MockedNoSQLAPI {
       @Override
       public Long answer(InvocationOnMock invocation) throws Throwable {
         String targetOrganism = invocation.getArgumentAt(0, String.class);
-        for (Map.Entry<Long, String> entry : organismNames.entrySet()) {
+        for (Map.Entry<Long, String> entry : readOrganismNames.entrySet()) {
           if (entry.getValue().equals(targetOrganism)) {
             return entry.getKey();
           }
@@ -299,6 +299,15 @@ public class MockedNoSQLAPI {
       }
     }).when(mockWriteMongoDB).submitToActOrganismNameDB(any(Organism.class));
 
+    doAnswer(new Answer() {
+      @Override
+      public Long answer(InvocationOnMock invocation) throws Throwable {
+        Long id = writtenOrganismNames.size() + 1L;
+        writtenOrganismNames.put(id, invocation.getArgumentAt(0, String.class));
+        return id;
+      }
+    }).when(mockWriteMongoDB).submitToActOrganismNameDB(any(String.class));
+
     doAnswer(new Answer<Long>() {
       @Override
       public Long answer(InvocationOnMock invocation) throws Throwable {
@@ -308,7 +317,7 @@ public class MockedNoSQLAPI {
             return entry.getKey();
           }
         }
-        return null;
+        return -1L;
       }
     }).when(mockWriteMongoDB).getOrganismId(any(String.class));
 

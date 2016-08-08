@@ -458,8 +458,7 @@ public class GenbankInstallerTest {
     metadata.put("accession", accessionObject);
     metadata.put("synonyms", new ArrayList());
     metadata.put("product_names", Collections.singletonList("urease subunit gamma"));
-    metadata.put("proteinExistence", new JSONObject());
-    metadata.put("comment", new ArrayList());
+    metadata.put("xref", new JSONObject());
 
     Seq proteinEcSeqOrgTestQuery = new Seq(89342L, "3.5.1.5", 7L,
         "Pandoraea oxalativorans", protSeqEcSeqOrgQuery, new ArrayList<>(),
@@ -514,8 +513,7 @@ public class GenbankInstallerTest {
     metadata.put("accession", accessionObject);
     metadata.put("synonyms", new ArrayList());
     metadata.put("product_names", Collections.singletonList("transcriptional regulator PadR-like family protein"));
-    metadata.put("proteinExistence", new JSONObject());
-    metadata.put("comment", new ArrayList());
+    metadata.put("xref", new JSONObject());
 
     Seq proteinAccessionTestQuery2 = new Seq(79542L, null, 6L, "uncultured microorganism", protSeqAccQuery2,
         references, MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
@@ -611,10 +609,9 @@ public class GenbankInstallerTest {
     metadata = new JSONObject();
     metadata.put("accession", accessionObject);
     metadata.put("name", "ureG");
-    metadata.put("proteinExistence", new JSONObject());
+    metadata.put("xref", new JSONObject());
     metadata.put("synonyms", new ArrayList());
     metadata.put("product_names", new ArrayList());
-    metadata.put("comment", new ArrayList());
 
     Seq dnaTestSeq5 = new Seq(23894L, null, 4000005381L, "Rhodobacter capsulatus", dnaSeq5, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
@@ -625,10 +622,9 @@ public class GenbankInstallerTest {
 
     metadata = new JSONObject();
     metadata.put("accession", accessionObject);
-    metadata.put("proteinExistence", new JSONObject());
+    metadata.put("xref", new JSONObject());
     metadata.put("synonyms", new ArrayList());
     metadata.put("product_names", Collections.singletonList("class III acidic endochitinase"));
-    metadata.put("comment", new ArrayList());
 
     Seq dnaTestSeq6 = new Seq(89345L, "3.2.1.14", 4000005381L, "Rhodobacter capsulatus", dnaSeq6, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);

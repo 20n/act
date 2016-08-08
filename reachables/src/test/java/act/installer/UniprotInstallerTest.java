@@ -405,9 +405,8 @@ public class UniprotInstallerTest {
     accessions.put(Seq.AccType.genbank_protein.toString(), genbankProteinAccessions);
 
     JSONObject metadata = new JSONObject();
-    metadata.put("proteinExistence", new JSONObject());
+    metadata.put("xref", new JSONObject());
     metadata.put("accession", accessions);
-    metadata.put("comment", new ArrayList());
     metadata.put("synonyms", Arrays.asList("ADH"));
     metadata.put("product_names", Arrays.asList("Alcohol dehydrogenase class-P"));
     metadata.put("name", "ADH1");
@@ -500,8 +499,7 @@ public class UniprotInstallerTest {
     metadata.put("accession", accessions);
     metadata.put("synonyms", new ArrayList());
     metadata.put("product_names", new ArrayList());
-    metadata.put("proteinExistence", new JSONObject());
-    metadata.put("comment", new ArrayList());
+    metadata.put("xref", new JSONObject());
     metadata.put("name", "Nrg1");
 
     Seq protAccessionQueryTestSeq2 = new Seq(48922, null, 4000003474L, "Mus musculus", protSeqAccessionQuery,
@@ -576,8 +574,7 @@ public class UniprotInstallerTest {
     metadata.put("accession", accessions);
     metadata.put("synonyms", new ArrayList());
     metadata.put("product_names", new ArrayList());
-    metadata.put("proteinExistence", new JSONObject());
-    metadata.put("comment", new ArrayList());
+    metadata.put("xref", new JSONObject());
     metadata.put("name", "CTNNB1");
 
     references = new ArrayList<>();

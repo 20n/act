@@ -95,10 +95,9 @@ public class GenbankSeqEntryTest {
     JSONObject accessionObject = new JSONObject();
     accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("CUB13083")));
 
-    obj.put("proteinExistence", new JSONObject());
+    obj.put("xref", new JSONObject());
     obj.put("synonyms", emptyGeneSynonyms);
     obj.put("product_names", Collections.singletonList("Arylamine N-acetyltransferase"));
-    obj.put("comment", new ArrayList());
     obj.put("accession", accessionObject);
 
     metadatas.add(MongoDBToJSON.conv(obj));
@@ -108,11 +107,10 @@ public class GenbankSeqEntryTest {
     accessionObject = new JSONObject();
     accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("P50225")));
 
-    obj.put("proteinExistence", new JSONObject());
+    obj.put("xref", new JSONObject());
     obj.put("name", "ST1A1_HUMAN");
     obj.put("synonyms", geneSynonyms);
     obj.put("product_names", Collections.singletonList("Sulfotransferase 1A1"));
-    obj.put("comment", new ArrayList());
     obj.put("accession", accessionObject);
 
     metadatas.add(MongoDBToJSON.conv(obj));
@@ -123,11 +121,10 @@ public class GenbankSeqEntryTest {
     accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21065")));
     accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
-    obj.put("proteinExistence", new JSONObject());
+    obj.put("xref", new JSONObject());
     obj.put("name", "ureA");
     obj.put("synonyms", emptyGeneSynonyms);
     obj.put("product_names", Collections.singletonList("gamma subunit of urase"));
-    obj.put("comment", new ArrayList());
     obj.put("accession", accessionObject);
 
     metadatas.add(MongoDBToJSON.conv(obj));
@@ -138,11 +135,10 @@ public class GenbankSeqEntryTest {
     accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21066")));
     accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
-    obj.put("proteinExistence", new JSONObject());
+    obj.put("xref", new JSONObject());
     obj.put("name", "ureB");
     obj.put("synonyms", emptyGeneSynonyms);
     obj.put("product_names", Collections.singletonList("beta subunit of urease"));
-    obj.put("comment", new ArrayList());
     obj.put("accession", accessionObject);
 
     metadatas.add(MongoDBToJSON.conv(obj));
@@ -153,11 +149,10 @@ public class GenbankSeqEntryTest {
     accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21067")));
     accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
-    obj.put("proteinExistence", new JSONObject());
+    obj.put("xref", new JSONObject());
     obj.put("name", "ureC");
     obj.put("synonyms", emptyGeneSynonyms);
     obj.put("product_names", Collections.singletonList("alpha subunit of urease"));
-    obj.put("comment", new ArrayList());
     obj.put("accession", accessionObject);
 
     metadatas.add(MongoDBToJSON.conv(obj));

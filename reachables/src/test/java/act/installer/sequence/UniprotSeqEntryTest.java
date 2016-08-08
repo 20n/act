@@ -75,11 +75,10 @@ public class UniprotSeqEntryTest {
 
     JSONObject obj = new JSONObject();
 
-    obj.put("proteinExistence", new JSONObject());
+    obj.put("xref", new JSONObject());
     obj.put("name", "ADH1");
     obj.put("synonyms", Collections.singletonList("ADH"));
     obj.put("product_names", Collections.singletonList("Alcohol dehydrogenase class-P"));
-    obj.put("comment", new ArrayList());
     obj.put("accession", accessions);
     obj.put("catalytic_activity", "An alcohol + NAD(+) = an aldehyde or ketone + NADH.");
 
