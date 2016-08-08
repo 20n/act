@@ -76,6 +76,8 @@ object SparkSingleSubstrateROProjector {
 
   private val OBJECT_MAPPER = new ObjectMapper()
 
+  private val SPARK_LOG_LEVEL = "WARN"
+
   val OPTION_LICENSE_FILE = "l"
   val OPTION_SUBSTRATES_LIST = "i"
   val OPTION_OUTPUT_DIRECTORY = "o"
@@ -196,6 +198,9 @@ object SparkSingleSubstrateROProjector {
     conf.getAll.foreach(x => LOGGER.info(s"Spark config pair: ${x._1}: ${x._2}"))
     val spark = new SparkContext(conf)
 
+    // Silence Spark's verbose logging, which can make it difficult to find our own log messages.
+    spark.setLogLevel(SPARK_LOG_LEVEL)
+
     LOGGER.info("Distributing license file to spark workers")
     spark.addFile(licenseFile)
     val licenseFileName = new File(licenseFile).getName
@@ -212,16 +217,26 @@ object SparkSingleSubstrateROProjector {
       })
 
     LOGGER.info("Collecting")
+    /* Ugh.  Run an aggregation on the results to force their evaluation.  Then we can iterate by partition.
+     * Make sure to call persist() or Spark will likely try to recompute the whole thing. */
+    val resultCount = resultsRDD.persist().count()
+    LOGGER.info(s"Projection completed with ${resultCount} results")
+
     // Map over results and runtime, writing results to appropriate output files and collecting ids/runtime for reports.
     val mapper: (Ero, Double, L2PredictionCorpus) => (Integer, Double) = (ero, runtime, projectionResults) => {
-      LOGGER.info(s"Writing results for ERO ${ero.getId}")
       val outputFile = new File(outputDir, ero.getId.toString)
       OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(outputFile, projectionResults)
+      LOGGER.info(s"Wrote results for ERO ${ero.getId} (${outputFile.getTotalSpace}B)")
       (ero.getId, runtime)
     }
 
     // DO THE THING!  Run the mapper on all the executors over the projection results, and collect timing info.
-    val timingPairs: List[(Integer, Double)] = resultsRDD.collect().map(t => mapper(t._1, t._2, t._3)).toList
+
+    // Output results one at a time and collect timing info.
+    val timingPairs: List[(Integer, Double)] = resultsRDD.toLocalIterator.map(t => mapper(t._1, t._2, t._3)).toList
+
+    // Release the RDD now that we're done reading it.
+    resultsRDD.unpersist()
 
     LOGGER.info("Projection execution time report:")
     timingPairs.sortWith((a, b) => b._2 < a._2).foreach(pair => LOGGER.info(f"ERO ${pair._1}%4d: ${pair._2}%.3fs"))
