@@ -316,7 +316,7 @@ public class MockedNoSQLAPI {
             return entry.getKey();
           }
         }
-        return -1L;
+        return null;
       }
     }).when(mockWriteMongoDB).getOrganismId(any(String.class));
 
