@@ -105,7 +105,7 @@ public class ReactionProjector {
    * @return True if they are equivalent.
    */
   private boolean testEquality(Molecule A, Molecule B) {
-    return substructureTest(A,B) && substructureTest(B,A);
+    return substructureTest(A, B) && substructureTest(B, A);
   }
 
   private boolean substructureTest(Molecule substructure, Molecule superstructure) {

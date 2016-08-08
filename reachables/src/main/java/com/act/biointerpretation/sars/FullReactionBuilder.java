@@ -30,7 +30,10 @@ public class FullReactionBuilder {
   }
 
   /**
-   * Builds a Reactor that matches every reaction in the list and expands the seedReactor.
+   * Builds a Reactor that matches every reaction in the list and expands the seedReactor. To do this, we pull
+   * out the first substrate,product pair, build possible generalizations of that reaction, and then test them against
+   * the other reactions. If a generalization is found that matches every reaction in the list, that Reactor is
+   * returned.
    *
    * @param rxnMolecules The reactions that the expansion must match.
    * @param seedReactor The seed reactor to expand.
