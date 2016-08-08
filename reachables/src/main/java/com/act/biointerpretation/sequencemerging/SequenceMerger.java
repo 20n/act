@@ -9,7 +9,7 @@ import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import chemaxon.reaction.ReactionException;
 import com.act.biointerpretation.BiointerpretationProcessor;
-import org.apache.commons.collections4.trie.PatriciaTrie;
+import com.act.biointerpretation.Utils.OrgMinimalPrefixGenerator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
@@ -53,7 +53,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
   private Map<Long, Long> organismMigrationMap = new HashMap<>();
   private Map<Long, Long> reactionMigrationMap = new HashMap<>();
 
-  private PatriciaTrie orgPrefixTrie;
+  private Map<String, String> minimalPrefixMapping;
 
   public SequenceMerger(NoSQLAPI noSQLAPI) {
     super(noSQLAPI);
@@ -75,7 +75,8 @@ public class SequenceMerger extends BiointerpretationProcessor {
       orgMap.put(org.getName(), 1L);
     }
 
-    orgPrefixTrie = new PatriciaTrie<>(orgMap);
+    OrgMinimalPrefixGenerator prefixGenerator = new OrgMinimalPrefixGenerator(orgMap);
+    minimalPrefixMapping = prefixGenerator.getMinimalPrefixMapping();
 
     markInitialized();
   }
@@ -135,13 +136,11 @@ public class SequenceMerger extends BiointerpretationProcessor {
         // add UniqueSeq object to already existent list that shares the same ecnum, organism & protein sequence
         matchingSeqs.add(sequence);
         sequenceGroups.put(uniqueSeq, matchingSeqs);
-
       } else {
         // create a new modifiable list for the UniqueSeq object and add a new mapping
         List<Seq> seqs = new ArrayList<>();
         seqs.add(sequence);
         sequenceGroups.put(uniqueSeq, seqs);
-
       }
     }
 
@@ -217,9 +216,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
    * @return a valid prefix
    */
   private String checkForOrgPrefix(String orgName) {
-
-    // TODO: NEEDS TO BE IMPLEMENTED
-    return orgName;
+    return minimalPrefixMapping.get(orgName);
   }
 
   /**
