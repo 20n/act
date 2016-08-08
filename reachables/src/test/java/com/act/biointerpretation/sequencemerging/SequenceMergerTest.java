@@ -134,7 +134,7 @@ public class SequenceMergerTest {
     patent.put("patent_year", "2015");
     references.add(patent);
 
-    Seq sequence2 = new Seq(2L, "1.1.1.1", 4000003474L, "Mus musculus", "AJKFLGKJDFS", references,
+    Seq sequence2 = new Seq(2L, "1.1.1.1", 4000003474L, "Mus musculus sp.", "AJKFLGKJDFS", references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
     sequence2.addReactionsCatalyzed(1L);
 
@@ -166,7 +166,7 @@ public class SequenceMergerTest {
     patent.put("patent_year", "2008");
     references.add(patent);
 
-    Seq sequence3 = new Seq(3L, "1.1.1.1", 4000003474L, "Mus musculus", "AJKFLGKJDFS", references,
+    Seq sequence3 = new Seq(3L, "1.1.1.1", 4000003474L, "Mus musculus sp. 123", "AJKFLGKJDFS", references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
     sequence3.addReactionsCatalyzed(1L);
 
@@ -183,6 +183,8 @@ public class SequenceMergerTest {
     // ========================================
     Map<Long, String> testOrgNames = new HashMap<>();
     testOrgNames.put(4000003474L, "Mus musculus");
+    testOrgNames.put(4000003475L, "Mus musculus sp.");
+    testOrgNames.put(4000003476L, "Mus musculus sp. 123");
     testOrgNames.put(400008594L, "Homo sapiens");
 
     // ========================================
@@ -258,13 +260,13 @@ public class SequenceMergerTest {
 
     JSONObject proteinData = new JSONObject();
 
-    Set<Long> sequenceSet = new HashSet<>(Arrays.asList(1L, 2L));
+    Set<Long> sequenceSet = new HashSet<>(Collections.singletonList(1L));
     proteinData.put("sequences", sequenceSet);
 
     reaction.addProteinData(proteinData);
 
     proteinData = new JSONObject();
-    sequenceSet = new HashSet<>(Collections.singletonList(1L));
+    sequenceSet = new HashSet<>(Arrays.asList(1L, 2L));
     proteinData.put("sequences", sequenceSet);
 
     reaction.addProteinData(proteinData);
