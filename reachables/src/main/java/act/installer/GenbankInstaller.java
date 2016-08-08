@@ -4,7 +4,6 @@ import act.installer.sequence.GenbankSeqEntry;
 import act.installer.sequence.GenbankSeqEntryFactory;
 import act.server.DBIterator;
 import act.server.MongoDB;
-import act.server.NoSQLAPI;
 import act.shared.Organism;
 import act.shared.Seq;
 import com.act.biointerpretation.Utils.OrgMinimalPrefixGenerator;

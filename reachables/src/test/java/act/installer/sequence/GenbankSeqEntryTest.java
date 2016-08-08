@@ -1,8 +1,6 @@
 package act.installer.sequence;
 
-import act.server.DBIterator;
 import act.server.MongoDB;
-import act.server.NoSQLAPI;
 import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;

@@ -1,6 +1,5 @@
 package act.installer;
 
-import act.server.DBIterator;
 import act.server.MongoDB;
 import act.shared.Organism;
 import act.shared.Reaction;
@@ -8,11 +7,10 @@ import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import com.act.biointerpretation.Utils.OrgMinimalPrefixGenerator;
 import com.act.biointerpretation.test.util.MockedMongoDB;
-import com.mongodb.DBObject;
 import org.json.JSONArray;
+import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.util.ArrayList;

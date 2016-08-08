@@ -3,7 +3,6 @@ package act.installer.sequence;
 import act.server.MongoDB;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
-import act.shared.sar.SAR;
 import com.mongodb.DBObject;
 import org.biojava.nbio.core.sequence.features.FeatureInterface;
 import org.biojava.nbio.core.sequence.features.Qualifier;
@@ -14,7 +13,6 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -77,7 +75,8 @@ public class GenbankSeqEntry extends SequenceEntry {
     this.minimalPrefixMapping = minimalPrefixMapping;
   }
 
-  GenbankSeqEntry(AbstractSequence sequence, Map<String, List<Qualifier>> cdsQualifierMap, Map<String, String> minimalPrefixMapping) {
+  GenbankSeqEntry(AbstractSequence sequence, Map<String, List<Qualifier>> cdsQualifierMap, Map<String,
+      String> minimalPrefixMapping) {
     this.seqObject = sequence;
     this.seqType = DNA_SEQ_TYPE;
     this.cdsQualifierMap = cdsQualifierMap;
