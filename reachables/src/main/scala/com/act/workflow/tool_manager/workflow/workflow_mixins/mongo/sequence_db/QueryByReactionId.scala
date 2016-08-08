@@ -1,14 +1,14 @@
-package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo
+package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.sequence_db
 
 import act.server.MongoDB
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.mongo_db_keywords.SequenceDatabaseKeywords
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
 import org.biojava.nbio.core.sequence.ProteinSequence
 
 import scala.collection.mutable.ListBuffer
 
-trait QuerySequencesByReactionId extends MongoWorkflowUtilities with SequenceDatabaseKeywords {
+trait QueryByReactionId extends MongoWorkflowUtilities with SequenceDatabaseKeywords {
   def querySequencesForSequencesByReactionId(reactionIds: List[AnyRef], mongoConnection: MongoDB): List[ProteinSequence] = {
     val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
 
