@@ -21,8 +21,10 @@ public class SingleSubstrateRoExpanderTest {
 
   final String EXPECTED_PRODUCT = "InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)"; //Acetaminophen
 
-  List<String> validMetaboliteCorpus = new ArrayList<>();
-  List<String> invalidMetaboliteCorpus = new ArrayList<>();
+  List<String> validMetaboliteList = new ArrayList<>();
+  List<String> invalidMetaboliteList = new ArrayList<>();
+  L2InchiCorpus validMetaboliteCorpus;
+  L2InchiCorpus invalidMetaboliteCorpus;
 
   Integer VALID_RO_ID = new Integer(1);
   Integer INVALID_RO_ID = new Integer(2);
@@ -51,10 +53,12 @@ public class SingleSubstrateRoExpanderTest {
     invalidRoCorpus.add(invalidTestEro);
 
     //Set up metabolite corpus with one metabolite, which should successfully react with RO
-    validMetaboliteCorpus.add(VALID_TEST_METABOLITE);
+    validMetaboliteList.add(VALID_TEST_METABOLITE);
+    validMetaboliteCorpus = new L2InchiCorpus(validMetaboliteList);
 
     //Set up metabolite corpus with one metabolite, which should not successfully react with RO
-    invalidMetaboliteCorpus.add(INVALID_TEST_METABOLITE);
+    invalidMetaboliteList.add(INVALID_TEST_METABOLITE);
+    invalidMetaboliteCorpus = new L2InchiCorpus(invalidMetaboliteList);
 
     generator = new AllPredictionsGenerator(new ReactionProjector());
   }
@@ -62,7 +66,9 @@ public class SingleSubstrateRoExpanderTest {
   @Test
   public void testL2ExpanderPositive() throws Exception {
     // Arrange
-    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(validRoCorpus, validMetaboliteCorpus, generator);
+    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(validRoCorpus,
+        validMetaboliteCorpus.getMolecules(),
+        generator);
 
     // Execute
     L2PredictionCorpus predictions = expander.getPredictions();
@@ -81,7 +87,9 @@ public class SingleSubstrateRoExpanderTest {
   @Test
   public void testL2ExpanderNegative_ZeroResults() throws Exception {
     // Arrange
-    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(validRoCorpus, invalidMetaboliteCorpus, generator);
+    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(validRoCorpus,
+        invalidMetaboliteCorpus.getMolecules(),
+        generator);
 
     // Execute
     L2PredictionCorpus predictions = expander.getPredictions();
@@ -93,7 +101,9 @@ public class SingleSubstrateRoExpanderTest {
   @Test
   public void testL2ExpanderMultipleSubstrates_ZeroResults() throws Exception {
     // Arrange
-    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(invalidRoCorpus, validMetaboliteCorpus, generator);
+    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(invalidRoCorpus,
+        validMetaboliteCorpus.getMolecules(),
+        generator);
 
     // Execute
     L2PredictionCorpus predictions = expander.getPredictions();

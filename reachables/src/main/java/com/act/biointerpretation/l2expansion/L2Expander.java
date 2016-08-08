@@ -1,9 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
-import chemaxon.formats.MolFormatException;
-import chemaxon.formats.MolImporter;
 import chemaxon.reaction.ReactionException;
-import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.sars.NoSar;
 import com.act.biointerpretation.sars.Sar;
@@ -25,8 +22,6 @@ public abstract class L2Expander implements Serializable {
   private static final long serialVersionUID = 5846728290095735668L;
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
-
-  private static final String INCHI_IMPORT_SETTINGS = "inchi";
 
   // This SAR accepts every substrate.
   @JsonIgnore
@@ -115,35 +110,4 @@ public abstract class L2Expander implements Serializable {
     LOGGER.info("Proceeding with %d %d substrate ROs.", nSubstrateReactions.size(), n);
     return nSubstrateReactions;
   }
-
-  protected List<Molecule> getMassBoundedMolecules(List<String> inchis, Integer massCutoff) {
-    List<Molecule> result = new ArrayList<>();
-    for (String inchi : inchis) {
-      try {
-        Molecule mol = importMolecule(inchi);
-        if (mol.getMass() > massCutoff) {
-          LOGGER.warn("Throwing out molecule %s because of mass %f and %d atoms.", inchi, mol.getMass(), mol.getAtomCount());
-          continue;
-        }
-        result.add(importMolecule(inchi));
-      } catch (MolFormatException e) {
-        LOGGER.error("MolFormatException on metabolite %s. %s", inchi, e.getMessage());
-        continue;
-      }
-    }
-    LOGGER.info("Imported %d inchis.", result.size());
-    return result;
-  }
-
-  /**
-   * This function imports a given inchi to a Molecule.
-   *
-   * @param inchi Input inchi.
-   * @return The resulting Molecule.
-   * @throws MolFormatException
-   */
-  protected Molecule importMolecule(String inchi) throws MolFormatException {
-    return MolImporter.importMol(inchi, INCHI_IMPORT_SETTINGS);
-  }
-
 }

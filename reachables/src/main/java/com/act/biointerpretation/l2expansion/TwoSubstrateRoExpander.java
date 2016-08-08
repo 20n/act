@@ -102,7 +102,7 @@ public class TwoSubstrateRoExpander extends L2Expander {
     Map<Integer, Set<Molecule>> result = new HashMap<>();
     for (Chemical chemical : chemicals) {
       try {
-        Molecule mol = importMolecule(chemical.getInChI());
+        Molecule mol = L2InchiCorpus.importMolecule(chemical.getInChI());
 
         for (Integer roId : chemical.getSubstructureRoIds()) {
           Set<Molecule> molecules = result.get(roId);
