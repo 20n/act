@@ -1,5 +1,8 @@
 package com.act.biointerpretation.l2expansion;
 
+import chemaxon.formats.MolFormatException;
+import chemaxon.formats.MolImporter;
+import chemaxon.struc.Molecule;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -22,6 +25,8 @@ public class L2InchiCorpus {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2InchiCorpus.class);
 
+  private static final String INCHI_IMPORT_SETTINGS = "inchi";
+
   private List<String> corpus = new ArrayList<>();
 
   public L2InchiCorpus() {
@@ -29,6 +34,38 @@ public class L2InchiCorpus {
 
   public L2InchiCorpus(Collection<String> inchiList) {
     corpus = new ArrayList<>(inchiList);
+  }
+
+  public void filterByMass(Integer massCutoff) {
+    corpus.removeIf(
+        inchi ->
+        {
+          try {
+            Molecule mol = importMolecule(inchi);
+            if (mol.getMass() > massCutoff) {
+              LOGGER.warn("Throwing out molecule %s because of mass %f and %d atoms.",
+                  inchi, mol.getMass(), mol.getAtomCount());
+              return true;
+            }
+            return false;
+          } catch (MolFormatException e) {
+            LOGGER.error("MolFormatException on metabolite %s. %s", inchi, e.getMessage());
+            return true;
+          }
+        }
+    );
+  }
+
+  public List<Molecule> getMolecules() {
+    List<Molecule> results = new ArrayList<>(getInchiList().size());
+    for (String inchi : getInchiList()) {
+      try {
+        results.add(importMolecule(inchi));
+      } catch (MolFormatException e) {
+        LOGGER.error("MolFormatException on metabolite %s. %s", inchi, e.getMessage());
+      }
+    }
+    return results;
   }
 
   /**
@@ -76,5 +113,17 @@ public class L2InchiCorpus {
 
   public List<String> getInchiList() {
     return corpus;
+  }
+
+  /**
+   * This function imports a given inchi to a Molecule.
+   * TODO: Add a cache map from inchis -> molecules to this class to avoid redoing import
+   *
+   * @param inchi Input inchi.
+   * @return The resulting Molecule.
+   * @throws MolFormatException
+   */
+  public static Molecule importMolecule(String inchi) throws MolFormatException {
+    return MolImporter.importMol(inchi, INCHI_IMPORT_SETTINGS);
   }
 }

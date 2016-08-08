@@ -18,25 +18,17 @@ public class SingleSubstrateRoExpander extends L2Expander {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(SingleSubstrateRoExpander.class);
   private static final Integer ONE_SUBSTRATES = 1;
-  private static final Integer DEFAULT_MASS_CUTOFF = 950; // Don't project on anything > 950 daltons, it takes forever.
-
   private List<Ero> roList;
-  private List<String> metaboliteList;
-  private Integer massCutoff;
+  private List<Molecule> metaboliteList;
 
   /**
    * @param roList A list of all ros to be tested
    * @param metaboliteList A list of all metabolites on which to test the ROs.
    */
-  public SingleSubstrateRoExpander(List<Ero> roList, List<String> metaboliteList, PredictionGenerator generator) {
+  public SingleSubstrateRoExpander(List<Ero> roList, List<Molecule> metaboliteList, PredictionGenerator generator) {
     super(generator);
     this.roList = roList;
     this.metaboliteList = metaboliteList;
-    this.massCutoff = DEFAULT_MASS_CUTOFF;
-  }
-
-  public void setMassCutoff(Integer cutoff) {
-    massCutoff = cutoff;
   }
 
   @Override
@@ -45,7 +37,6 @@ public class SingleSubstrateRoExpander extends L2Expander {
 
     // Use only single substrate reactions
     List<Ero> singleSubstrateRoList = getNSubstrateRos(roList, ONE_SUBSTRATES);
-    List<Molecule> substrates = getMassBoundedMolecules(metaboliteList, massCutoff);
 
     for (Ero ro : singleSubstrateRoList) {
       SerializableReactor reactor;
@@ -57,7 +48,7 @@ public class SingleSubstrateRoExpander extends L2Expander {
       }
 
       //iterate over every (metabolite, ro) pair
-      for (Molecule substrate : substrates) {
+      for (Molecule substrate : metaboliteList) {
         result.add(new PredictionSeed(ro.getId().toString(), Arrays.asList(substrate), reactor, NO_SAR));
       }
     }

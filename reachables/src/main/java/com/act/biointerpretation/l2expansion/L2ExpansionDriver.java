@@ -29,7 +29,10 @@ public class L2ExpansionDriver {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2ExpansionDriver.class);
 
+  private static Integer NO_MASS_THRESHOLD = Integer.MAX_VALUE;
+
   private static final String OPTION_METABOLITES = "m";
+  private static final String OPTION_MASS_THRESHOLD = "M";
   private static final String OPTION_RO_CORPUS = "c";
   private static final String OPTION_RO_IDS = "r";
   private static final String OPTION_SAR_CORPUS = "s";
@@ -53,6 +56,13 @@ public class L2ExpansionDriver {
         .hasArg()
         .longOpt("metabolite-file")
         .required(true)
+    );
+    add(Option.builder(OPTION_MASS_THRESHOLD)
+        .argName("mass threshold")
+        .desc("The maximum mass of a substrate, in daltons. Substrates with higher mass will be discarded.")
+        .hasArg()
+        .longOpt("mass-threshold")
+        .type(Integer.class)
     );
     add(Option.builder(OPTION_RO_CORPUS)
         .argName("ro corpus")
@@ -172,10 +182,19 @@ public class L2ExpansionDriver {
     inchiOutputFile.createNewFile();
 
     // Get metabolite list
-    List<String> metaboliteList = getInchiList(cl, OPTION_METABOLITES);
+    L2InchiCorpus inchiCorpus = getInchiCorpus(cl, OPTION_METABOLITES);
+    LOGGER.info("%d substrate inchis.", inchiCorpus.getInchiList().size());
+
+    Integer maxMass = NO_MASS_THRESHOLD;
+    if (cl.hasOption(OPTION_MASS_THRESHOLD)) {
+      maxMass = Integer.parseInt(cl.getOptionValue(OPTION_MASS_THRESHOLD));
+      LOGGER.info("Filtering out substrates with mass more than %d daltons.", maxMass);
+    }
+    inchiCorpus.filterByMass(maxMass);
+    LOGGER.info("%d substrate inchis that are importable as molecules.", inchiCorpus.getInchiList().size());
 
     PredictionGenerator generator = new AllPredictionsGenerator(new ReactionProjector());
-    L2Expander expander = buildExpander(cl, metaboliteList, generator);
+    L2Expander expander = buildExpander(cl, inchiCorpus, generator);
     L2PredictionCorpus predictionCorpus = expander.getPredictions();
 
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
@@ -188,7 +207,7 @@ public class L2ExpansionDriver {
   }
 
   private static L2Expander buildExpander(CommandLine cl,
-                                          List<String> metaboliteList,
+                                          L2InchiCorpus inchiCorpus,
                                           PredictionGenerator generator) throws IOException {
 
     ExpansionType expansionType = ExpansionType.valueOf(cl.getOptionValue(OPTION_EXPANSION_TYPE));
@@ -196,7 +215,7 @@ public class L2ExpansionDriver {
     switch (expansionType) {
       case ONE_SUB:
         LOGGER.info("Running one substrate expansion");
-        return new SingleSubstrateRoExpander(getRoList(cl), metaboliteList, generator);
+        return new SingleSubstrateRoExpander(getRoList(cl), inchiCorpus.getMolecules(), generator);
 
       case TWO_SUB:
         LOGGER.info("Running two substrate expansion.");
@@ -206,11 +225,11 @@ public class L2ExpansionDriver {
           System.exit(1);
         }
         MongoDB mongoDB = new MongoDB(LOCAL_HOST, PORT_NUMBER, cl.getOptionValue(OPTION_DB)); // Start mongo instance.
-        List<String> additionalChemicals = getInchiList(cl, OPTION_ADDITIONAL_CHEMICALS);
+        L2InchiCorpus chemicalInchis = getInchiCorpus(cl, OPTION_ADDITIONAL_CHEMICALS);
         List<Chemical> chemicalsOfInterest =
-            L2ExpansionDriver.convertListOfInchisToMolecules(additionalChemicals, mongoDB);
+            L2ExpansionDriver.convertListOfInchisToMolecules(chemicalInchis.getInchiList(), mongoDB);
         List<Chemical> metaboliteChemicals =
-            L2ExpansionDriver.convertListOfInchisToMolecules(metaboliteList, mongoDB);
+            L2ExpansionDriver.convertListOfInchisToMolecules(inchiCorpus.getInchiList(), mongoDB);
         return new TwoSubstrateRoExpander(chemicalsOfInterest, metaboliteChemicals, getRoList(cl), generator);
 
       case SAR:
@@ -221,7 +240,7 @@ public class L2ExpansionDriver {
           System.exit(1);
         }
         SarCorpus sarCorpus = SarCorpus.readCorpusFromJsonFile(sarCorpusFile);
-        return new SingleSubstrateSarExpander(sarCorpus, metaboliteList, getRoCorpus(cl), generator);
+        return new SingleSubstrateSarExpander(sarCorpus, inchiCorpus.getMolecules(), getRoCorpus(cl), generator);
 
       default:
         throw new IllegalArgumentException("Invalid expansion type.");
@@ -278,15 +297,12 @@ public class L2ExpansionDriver {
    * @return The list of inchis contained in the file.
    * @throws IOException
    */
-  private static List<String> getInchiList(CommandLine cl, String optionForFileName) throws IOException {
+  private static L2InchiCorpus getInchiCorpus(CommandLine cl, String optionForFileName) throws IOException {
     File inchisFile = new File(cl.getOptionValue(optionForFileName));
     LOGGER.info("Getting inchi list from %s", inchisFile);
     L2InchiCorpus inchiCorpus = new L2InchiCorpus();
     inchiCorpus.loadCorpus(inchisFile);
-
-    List<String> inchiList = inchiCorpus.getInchiList();
-    LOGGER.info("Inchi list contains %d inchis", inchiList.size());
-    return inchiList;
+    return inchiCorpus;
   }
 
   /**
