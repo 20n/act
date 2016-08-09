@@ -3188,11 +3188,32 @@ public class MongoDB {
     }
   }
 
+  /**
+   * Setup the ability to use MongoDB's aggregation framework.
+   * This greatly greatly simplifies pulling out highly nested and unstructured data from the db.
+   *
+   * This method performs the query over the sequence database.
+   *
+   * References: https://docs.mongodb.com/manual/aggregation/
+   * @param pipeline A list of DBObjects that will be sequentially applied via aggregate.
+   * @return An iterator over all the matching objects.
+     */
   public Iterator<DBObject> applyPipelineOverSequences(List<DBObject> pipeline){
     AggregationOutput cursor = this.dbSeq.aggregate(pipeline);
     return cursor.results().iterator();
   }
 
+
+  /**
+   * Setup the ability to use MongoDB's aggregation framework.
+   * This greatly greatly simplifies pulling out highly nested and unstructured data from the db.
+   *
+   * This method performs the query over the sequence reaction.
+   *
+   * References: https://docs.mongodb.com/manual/aggregation/
+   * @param pipeline A list of DBObjects that will be sequentially applied via aggregate.
+   * @return An iterator over all the matching objects.
+   */
   public Iterator<DBObject> applyPipelineOverReactions(List<DBObject> pipeline){
     AggregationOutput cursor = this.dbReactions.aggregate(pipeline);
     return cursor.results().iterator();
