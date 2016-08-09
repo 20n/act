@@ -13,10 +13,10 @@ class L2ExpansionWorkflow extends Workflow {
       "--master spark://10.0.20.19:7077 --deploy-mode client --executor-memory 4G " +
       "/home/vijay/act/reachables/act/reachables/target/scala-2.10/reachables-assembly-0.1.jar " +
       "--substrates-list /home/vijay/act/reachables/output_inchis.txt -s -o /home/vijay/output_spark/ " +
-      "-l /mnt/shared-data/3rdPartySoftware/Chemaxon/license_Start-up.cxl"
+      "-l /mnt/shared-data/3rdPartySoftware/Chemaxon/license_Start-up.cxl".split(" ").toList
 
     // Print working directory
-    val job1 = ShellWrapper.shellCommand(List(command))
+    val job1 = ShellWrapper.shellCommand(command)
 
     // See which files are available
     val job2 = ShellWrapper.shellCommand(List("ls"))
