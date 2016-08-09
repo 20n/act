@@ -48,11 +48,18 @@ trait MongoWorkflowUtilities {
   }
 
   def defineMongoUnwind(nameOfListToWind: String): BasicDBObject = {
-    new BasicDBObject(UNWIND, nameOfListToWind)
+    new BasicDBObject(UNWIND, dollarString(nameOfListToWind))
   }
 
-  def defineMongoGroup(whatToGroupBy: String): BasicDBObject = {
-    val groupMap = Map(ID -> ID, whatToGroupBy -> new BasicDBObject(PUSH, whatToGroupBy))
+  private def dollarString(input: String): String = {
+    // Escape one dollar and do the input as well
+    s"$$$input"
+  }
+
+  def defineMongoGroup(whatToGroupBy: String, outputListName: String): BasicDBObject = {
+    val pushing = new BasicDBObject(PUSH, dollarString(whatToGroupBy))
+    val groupMap = new BasicDBObject(outputListName, pushing)
+    groupMap.append(ID, dollarString(ID))
     new BasicDBObject(GROUP, groupMap)
   }
 
@@ -95,6 +102,7 @@ trait MongoWorkflowUtilities {
   }
 
   def mongoApplyPipelineReactions(mongo: MongoDB, pipeline: List[DBObject]): Iterator[DBObject] = {
+    println(pipeline)
     mongo.applyPipelineOverReactions(pipeline)
   }
 
