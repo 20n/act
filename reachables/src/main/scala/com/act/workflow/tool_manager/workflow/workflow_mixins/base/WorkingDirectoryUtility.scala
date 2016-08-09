@@ -21,17 +21,20 @@ trait WorkingDirectoryUtility {
     finalFilePath
   }
 
-  def verifyInputFilePath(inputFile: String, workingDirectory: String = null): Boolean = {
-    val methodLogger = LogManager.getLogger("verifyInputFilePath")
+  def verifyInputFile(inputFile: String, workingDirectory: String = null): Boolean = {
     val filePath = new File(workingDirectory, inputFile)
+    verifyInputFile(filePath)
+  }
 
-    if (!filePath.exists()) {
-      methodLogger.error(s"The input file ${filePath.getAbsolutePath} does not exist.")
+  def verifyInputFile(inputFile : File): Boolean = {
+    val methodLogger = LogManager.getLogger("verifyInputFilePath")
+    if (!inputFile.exists()) {
+      methodLogger.error(s"The input file ${inputFile.getAbsolutePath} does not exist.")
       return false
     }
 
-    if (filePath.isDirectory) {
-      methodLogger.error(s"The input file ${filePath.getAbsolutePath} is a directory, not a file as required.")
+    if (inputFile.isDirectory) {
+      methodLogger.error(s"The input file ${inputFile.getAbsolutePath} is a directory, not a file as required.")
       return false
     }
 
