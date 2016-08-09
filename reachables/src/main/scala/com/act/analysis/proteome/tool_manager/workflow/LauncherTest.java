@@ -9,7 +9,7 @@ public class LauncherTest {
         .setSparkHome("/usr/local/software/spark-1.5.2-bin-hadoop2.6")
         .setAppResource("/home/vijay/act/reachables/target/scala-2.10/reachables-assembly-0.1.jar")
         .setMainClass("com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector")
-        .setMaster("spark://10.0.20.19:7077")
+        .setMaster("local")
         .setDeployMode("client")
         .addAppArgs(args)
         .launch();
