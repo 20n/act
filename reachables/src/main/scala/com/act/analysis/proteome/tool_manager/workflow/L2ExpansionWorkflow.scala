@@ -11,7 +11,7 @@ class L2ExpansionWorkflow extends Workflow {
       "--driver-class-path /home/vijay/act/reachables/target/scala-2.10/reachables-assembly-0.1.jar " +
       "--class com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector " +
       "--master spark://10.0.20.19:7077 --deploy-mode client --executor-memory 4G " +
-      "/home/vijay/act/reachables/act/reachables/target/scala-2.10/reachables-assembly-0.1.jar " +
+      "/home/vijay/act/reachables/target/scala-2.10/reachables-assembly-0.1.jar " +
       "--substrates-list /home/vijay/act/reachables/output_inchis.txt -s -o /home/vijay/output_spark/ " +
       "-l /mnt/shared-data/3rdPartySoftware/Chemaxon/license_Start-up.cxl"
 
