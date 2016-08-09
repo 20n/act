@@ -8,7 +8,7 @@ class L2ExpansionWorkflow extends Workflow {
   def defineWorkflow(commandLine: CommandLine): Job = {
 
     val command:String = "/usr/local/software/spark-1.5.2-bin-hadoop2.6/bin/spark-submit " +
-      "--driver-class-path /home/vijay/act/reachables/act/reachables/target/scala-2.10/reachables-assembly-0.1.jar " +
+      "--driver-class-path /home/vijay/act/reachables/target/scala-2.10/reachables-assembly-0.1.jar " +
       "--class com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector " +
       "--master spark://10.0.20.19:7077 --deploy-mode client --executor-memory 4G " +
       "/home/vijay/act/reachables/act/reachables/target/scala-2.10/reachables-assembly-0.1.jar " +
