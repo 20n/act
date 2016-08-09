@@ -200,7 +200,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     Integer chemicalCounter = 0;
     Map<String, Double> chemIDToMassCharge = new HashMap<>();
     for (Double massCharge : massChargeToChemicalAndIon.keySet()) {
-      String chemID = String.format(FAKE_CHEM_PREFIX + "_%05d", chemicalCounter);
+      String chemID = String.format(FAKE_CHEM_PREFIX + "%05d", chemicalCounter);
       chemIDToMassCharge.put(chemID, massCharge);
       searchMZs.add(Pair.of(chemID, massCharge));
       chemicalCounter++;
