@@ -297,25 +297,22 @@ public class AnalysisHelper {
 
     // TODO: We only analyze positive scan files for now since we are not confident with the negative scan file results.
     // Since we perform multiple scans on the same well, we need to categorize the data based on date.
-    TreeMap<LocalDateTime, List<ScanFile>> filteredScansCategorizedByDate = new TreeMap<>();
-
-    List<ScanFile> latestScanFiles = null;
+    ScanFile latestScanFiles = null;
     LocalDateTime latestDateTime = null;
 
     for (ScanFile scanFile : scanFiles) {
       if (!scanFile.isNegativeScanFile()) {
         LocalDateTime scanDate = scanFile.getDateFromScanFileTitle();
-        List<ScanFile> scanDataForDate = filteredScansCategorizedByDate.get(scanDate);
 
         // Pick the newest scan files
         if (latestDateTime == null || scanDate.isAfter(latestDateTime)) {
-          latestScanFiles = scanDataForDate;
+          latestScanFiles = scanFile;
           latestDateTime = scanDate;
         }
       }
     }
 
-    return latestScanFiles.get(REPRESENTATIVE_INDEX);
+    return latestScanFiles;
   }
 
   public static String constructChemicalAndScanTypeName(String name, ScanData.KIND kind) {
