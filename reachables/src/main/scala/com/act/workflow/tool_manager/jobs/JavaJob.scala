@@ -1,19 +1,21 @@
 package com.act.workflow.tool_manager.jobs
 
+import com.act.jobs.JavaRunnable
 import org.apache.logging.log4j.LogManager
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, blocking}
 import scala.util.{Failure, Success}
 
-class JavaJob(command: () => Unit) extends Job {
+class JavaJob(runnable: JavaRunnable) extends Job {
+
   private val logger = LogManager.getLogger(getClass.getName)
 
   def asyncJob() {
     // Run the call in the future
     val future: Future[Any] = Future {
       blocking {
-        this.command()
+        this.runnable.run()
       }
     }
 
