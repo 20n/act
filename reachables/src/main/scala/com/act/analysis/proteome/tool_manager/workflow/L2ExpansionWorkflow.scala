@@ -22,6 +22,6 @@ class L2ExpansionWorkflow extends Workflow {
     val job2 = ShellWrapper.shellCommand(List("ls"))
 
     // Returns first job
-    job1.thenRunBatch(List(job2))
+    job1.thenRun(job2)
   }
 }
