@@ -17,9 +17,9 @@ object L2ExpansionWorkflow {
       .setMaster("spark://10.0.20.19:7077")
       .setDeployMode("client")
       .addAppArgs("--substrates-list /home/vijay/act/reachables/output_inchis.txt -s -o /mnt/shared-data/Vijay/l2projection/ -l /mnt/shared-data/3rdPartySoftware/Chemaxon/license_Start-up.cxl")
-      .launch();
+      .launch()
 
-    spark.waitFor();
+    spark.waitFor()
   }
 
   def defineWorkflow(commandLine: CommandLine): Job = {
