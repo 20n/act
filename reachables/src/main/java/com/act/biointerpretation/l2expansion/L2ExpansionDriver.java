@@ -2,10 +2,13 @@ package com.act.biointerpretation.l2expansion;
 
 import act.server.MongoDB;
 import act.shared.Chemical;
+import chemaxon.struc.Molecule;
 import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import com.act.biointerpretation.sars.SarCorpus;
+import com.act.jobs.FileChecker;
+import com.act.jobs.JavaRunnable;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -341,5 +344,38 @@ public class L2ExpansionDriver {
       result.add(mongoDB.getChemicalFromInChI(inchi));
     }
     return result;
+  }
+
+  public static JavaRunnable getRunnableOneSubstrateRoExpander(File roListFile,
+                                                               File substrateListFile,
+                                                               File outputFile,
+                                                               Integer massThreshold) {
+    return () -> {
+      // Verify files
+      FileChecker.verifyInputFile(roListFile);
+      FileChecker.verifyInputFile(substrateListFile);
+      FileChecker.verifyAndCreateOutputFile(outputFile);
+
+      // Handle input ros
+      ErosCorpus roCorpus = new ErosCorpus();
+      roCorpus.loadValidationCorpus();
+      List<Ero> roList = roCorpus.getRos(roCorpus.getRoIdListFromFile(roListFile));
+
+      // Handle input substrates
+      L2InchiCorpus inchis = new L2InchiCorpus();
+      inchis.loadCorpus(substrateListFile);
+      inchis.filterByMass(massThreshold);
+      List<Molecule> moleculeList = inchis.getMolecules();
+
+      // Bulid expander
+      PredictionGenerator generator = new AllPredictionsGenerator(new ReactionProjector());
+      L2Expander expander = new SingleSubstrateRoExpander(roList, moleculeList, generator);
+
+      // Run expander
+      L2PredictionCorpus predictions = expander.getPredictions();
+
+      // Write output
+      predictions.writePredictionsToJsonFile(outputFile);
+    };
   }
 }
