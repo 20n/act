@@ -18,9 +18,9 @@ class costmodel(modelName: String) {
 
   def getPerKgCost(strainYield: Percentage, strainTiter: GramPerLiter) = 670.0
 
-  var strainTiter = constants.DefaultTiter;
-  var strainYield = constants.DefaultYield;
-  var fermRunTime = constants.DefaultFermRunTime;
+  var strainTiter: GramPerLiter = constants.DefaultTiter;
+  var strainYield: Percentage = constants.DefaultYield;
+  var fermRunTime: Hour = constants.DefaultFermRunTime;
   var location: constants.Location = constants.GER;
 
   object constants {
