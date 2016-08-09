@@ -102,7 +102,6 @@ trait MongoWorkflowUtilities {
   }
 
   def mongoApplyPipelineReactions(mongo: MongoDB, pipeline: List[DBObject]): Iterator[DBObject] = {
-    println(pipeline)
     mongo.applyPipelineOverReactions(pipeline)
   }
 
