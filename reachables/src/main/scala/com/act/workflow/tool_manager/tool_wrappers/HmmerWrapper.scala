@@ -18,7 +18,8 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile Where to write the output to
     */
   def hmmalign(hmmFile: File, seqFile: File, outputFile: File): ShellJob = {
-    constructJob(HmmCommands.HmmAlign, List("--amino", hmmFile.getAbsolutePath, seqFile.getAbsolutePath))
+    constructJob(HmmCommands.HmmAlign,
+      List("--amino", hmmFile.getAbsolutePath, seqFile.getAbsolutePath, "-o", outputFile.getAbsolutePath))
   }
 
   /**
@@ -83,7 +84,8 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile       Where to place the results
     */
   def jackhmmer(sequenceFile: File, sequenceDatabase: String, outputFile: File): ShellJob  = {
-    constructJob(HmmCommands.JackHammr, List(sequenceFile.getAbsolutePath, sequenceDatabase))
+    constructJob(HmmCommands.JackHammr,
+      List(sequenceFile.getAbsolutePath, sequenceDatabase, "-o", outputFile.getAbsolutePath))
   }
 
   /**
@@ -94,7 +96,8 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile       Where to place the results
     */
   def phmmer(sequenceFile: File, sequenceDatabase: String, outputFile: File): ShellJob  = {
-    constructJob(HmmCommands.Phmmer, List(sequenceFile.getAbsolutePath, sequenceDatabase))
+    constructJob(HmmCommands.Phmmer,
+      List(sequenceFile.getAbsolutePath, sequenceDatabase, "-o", outputFile.getAbsolutePath))
     }
 
   /*
