@@ -14,7 +14,7 @@ trait RoToSequences extends QueryByRo with QueryByReactionId with WriteProteinSe
     val mongoConnection = connectToMongoDatabase("marvin")
 
     val reactionIds = queryReactionsForReactionIdsByRo(roValues, mongoConnection)
-    val proteinSequences = querySequencesForSequencesByReactionId(reactionIds, mongoConnection)
+    val proteinSequences = querySequencesForSequencesByReactionId(reactionIds.keySet.toList, mongoConnection)
 
     methodLogger.info("Writing sequences to FASTA file")
     writeProteinSequencesToFasta(proteinSequences, outputFasta)
