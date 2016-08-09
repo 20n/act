@@ -89,7 +89,7 @@ class EcnumToProteinPredictionFlow extends {
     // Align sequence so we can build an HMM
     val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY_PREFIX, null)
 
-    if (!verifyInputFilePath(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_ARG_PREFIX))) {
+    if (!verifyInputFile(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_ARG_PREFIX))) {
       throw new RuntimeException(s"Clustal binary path was not valid. " +
         s"Given path was ${cl.getOptionValue(OPTION_CLUSTAL_BINARIES_ARG_PREFIX)}")
     }
@@ -97,7 +97,7 @@ class EcnumToProteinPredictionFlow extends {
     ClustalOmegaWrapper.setBinariesLocation(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_ARG_PREFIX))
     val proteomeLocation = cl.getOptionValue(OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX)
 
-    if (!verifyInputFilePath(proteomeLocation)) {
+    if (!verifyInputFile(proteomeLocation)) {
       throw new RuntimeException(s"Proteome file location was not valid.  Given input was $proteomeLocation.")
     }
 
