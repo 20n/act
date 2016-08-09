@@ -54,22 +54,6 @@ trait MongoWorkflowUtilities {
    */
 
   /**
-    * Many Mongo queries require a dollar sign in front of the keyword.  Example: $exists
-    *
-    * The dollar sign is also used during aggregation to reference intermediate documents. Example: $_id
-    *
-    * Thus, this function changes f("String") -> "$String"
-    *
-    * @param inputString The string to be converted into dollar format
-    *
-    * @return Modified string
-    */
-  private def dollarString(inputString: String): String = {
-    // Escape one dollar and do the input as well
-    s"$$$inputString"
-  }
-
-  /**
     * Unwinding a list creates a value that can be found by the name <PreviousListName>.<ValueName>.
     * This function standardizes that naming procedure for use in querying unwound variables within lists.
     *
@@ -90,11 +74,6 @@ trait MongoWorkflowUtilities {
     s"$listName.$valueName"
   }
 
-
-  /*
-    General Mongo functionality
-   */
-
   /**
     * Creates a new query that checks if something exists
     * True: Exists
@@ -107,6 +86,11 @@ trait MongoWorkflowUtilities {
   def getMongoExists: BasicDBObject = {
     new BasicDBObject(EXISTS, true)
   }
+
+
+  /*
+    General Mongo functionality
+   */
 
   /**
     * Creates a new query that checks if something doesn't exist
@@ -205,10 +189,6 @@ trait MongoWorkflowUtilities {
     mongo.getDbIteratorOverSeq(key, false, filter).toIterator
   }
 
-  /*
-   Mongo aggregation handling.
-   */
-
   /**
     * Filters all documents that case thingsToMatch to be true.
     *
@@ -224,6 +204,10 @@ trait MongoWorkflowUtilities {
   def defineMongoMatch(thingsToMatch: BasicDBObject): BasicDBObject = {
     new BasicDBObject(MATCH, thingsToMatch)
   }
+
+  /*
+   Mongo aggregation handling.
+   */
 
   /**
     * Takes a a list within the Mongo document and unwinds it.  Unwinding a list creates the pattern shown below:
@@ -241,6 +225,22 @@ trait MongoWorkflowUtilities {
     */
   def defineMongoUnwind(listName: String): BasicDBObject = {
     new BasicDBObject(UNWIND, dollarString(listName))
+  }
+
+  /**
+    * Many Mongo queries require a dollar sign in front of the keyword.  Example: $exists
+    *
+    * The dollar sign is also used during aggregation to reference intermediate documents. Example: $_id
+    *
+    * Thus, this function changes f("String") -> "$String"
+    *
+    * @param inputString The string to be converted into dollar format
+    *
+    * @return Modified string
+    */
+  private def dollarString(inputString: String): String = {
+    // Escape one dollar and do the input as well
+    s"$$$inputString"
   }
 
   /**
@@ -336,41 +336,46 @@ trait MongoWorkflowUtilities {
   }
 
   /**
+    * Overload of the Iterable version, but converts iterator to a stream for processing
+    *
+    * @param iterator Iterator DBObject
+    * @param fields   List of fields in the document
+    *
+    * @return The map of map of documents.
+    */
+  def mongoReturnQueryToMap(iterator: Iterator[DBObject], fields: List[String]): Map[Long, Map[String, AnyRef]] = {
+    mongoReturnQueryToMap(iterator.toStream, fields)
+  }
+
+  /**
     * Converts an iterable into a Map of Maps,
     * where the first Map is keyed on the document ID and the second map on the document fields.
     *
     * @param iterator Iterable of DBObjects
     * @param fields List of fields in the document
+    *
     * @return The map of map of documents.
     */
-  def mongoReturnQueryToMap(iterator: Iterable[DBObject], fields: List[String]): Map[String, Map[String, AnyRef]] = {
+  def mongoReturnQueryToMap(iterator: Iterable[DBObject], fields: List[String]): Map[Long, Map[String, AnyRef]] = {
     // For each field name, pull out the values of that document and add it to a list, and make a list of those.
     val filteredFields = fields.filter(!_.equals(ID))
+
+    // Map each field as the key and the information in the document to what it goes to.
     def defineFields(document: DBObject): Map[String, AnyRef] = {
       filteredFields map (field => field -> document.get(field)) toMap
     }
 
     // Each document mapped by the ID mapped to a map of fields
-    val mapOfMaps = iterator map (document => document.get(ID).toString -> defineFields(document)) toMap
+    val mapOfMaps = iterator map (document => document.get(ID).asInstanceOf[Int].toLong -> defineFields(document)) toMap
 
-
-    // Exit if all values are empty.
+    // Exit if all values are empty, so error check here as we convert to a map.
     mapOfMaps.size match {
-      case n if n > 0 =>
+      case n if n <= 0 =>
         throw new Exception(s"No values found matching any of the key supplied.")
+      case default =>
+        logger.info(s"Successfully found $default documents matching your query.")
     }
 
     mapOfMaps
-  }
-
-  /**
-    * Overload of the Iterable version, but converts iterator to a stream for processing
-    *
-    * @param iterator Iterator DBObject
-    * @param fields List of fields in the document
-    * @return The map of map of documents.
-    */
-  def mongoReturnQueryToMap(iterator: Iterator[DBObject], fields: List[String]): Map[String, Map[String, AnyRef]] ={
-    mongoReturnQueryToMap(iterator.toStream, fields)
   }
 }

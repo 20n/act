@@ -14,10 +14,11 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
     *
     * @param roughEcnum EcNumber that can be regex matched
     * @param mongoConnection Connection to MongoDB
+    *
     * @return Map of documents containing a map of their fields.
     */
   def queryReactionsForReactionIdsByEcNumber(roughEcnum: String,
-                                             mongoConnection: MongoDB): Map[String, Map[String, AnyRef]] = {
+                                             mongoConnection: MongoDB): Map[Long, Map[String, AnyRef]] = {
     queryReactionsForValuesByEcNumber(roughEcnum, mongoConnection, List(REACTION_DB_KEYWORD_ID))
   }
 
@@ -27,11 +28,12 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
     * @param roughEcnum EcNumber that can be regex matched
     * @param mongoConnection Connection to MongoDB
     * @param returnFilterFields Which fields of the document should be returned.
+    *
     * @return Map of documents containing a map of their fields.
     */
   def queryReactionsForValuesByEcNumber(roughEcnum: String,
                                         mongoConnection: MongoDB,
-                                        returnFilterFields: List[String]): Map[String, Map[String, AnyRef]]= {
+                                        returnFilterFields: List[String]): Map[Long, Map[String, AnyRef]] = {
     val methodLogger = LogManager.getLogger("queryReactionsForValuesByEcNumber")
 
     /*
@@ -64,44 +66,15 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
   }
 
   /**
-    * Input is a value of form #.#.#.# where the value can stop at any #
-    *
-    * Valid inputs would therefore be 1, 1.2, 1.2.3, 1.2.3.4
-    *
-    * Invalid inputs would be 1., 1.2.3.4.5
-    *
-    * @param ecnum A supplied EC Number
-    *
-    * @return
-    */
-  def formatEcNumberAsRegex(ecnum: String): String = {
-    val allValues = "[^.]+"
-    val basicRegex = ListBuffer(allValues, allValues, allValues, allValues)
-
-    val dividedInput = ecnum.split('.')
-
-    for (i <- dividedInput.indices) {
-      basicRegex(i) = dividedInput(i)
-    }
-
-    /*
-      The ^ is the start of the string, $ is the end of the string.
-
-      We use a \\. separator so that we match periods (Periods must be escaped in regex).
-    */
-
-    "^" + basicRegex.mkString(sep = "\\.") + "$"
-  }
-
-  /**
     * Aggregates all the KM values for a given document into a list.
     *
     * @param roughEcnum Regex of ecnumbers
     * @param mongoConnection Connection to MongoDB
+    *
     * @return Map of maps containing ID and KM values for that document.
     */
   def aggregateReactionsByEcNumberWithKm(roughEcnum: String,
-                                         mongoConnection: MongoDB): Map[String, Map[String, AnyRef]] = {
+                                         mongoConnection: MongoDB): Map[Long, Map[String, AnyRef]] = {
     val methodLogger = LogManager.getLogger("aggregateReactionsByEcNumberWithKm")
     val ecnumRegex = formatEcNumberAsRegex(roughEcnum)
 
@@ -130,5 +103,35 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
     // Convert the iterator to a list and return
     val finalDocumentIterator = mongoApplyPipelineReactions(mongoConnection, pipeline)
     mongoReturnQueryToMap(finalDocumentIterator, List(REACTION_DB_KEYWORD_ID, REACTION_DB_KEYWORD_VALUE))
+  }
+
+  /**
+    * Input is a value of form #.#.#.# where the value can stop at any #
+    *
+    * Valid inputs would therefore be 1, 1.2, 1.2.3, 1.2.3.4
+    *
+    * Invalid inputs would be 1., 1.2.3.4.5
+    *
+    * @param ecnum A supplied EC Number
+    *
+    * @return
+    */
+  def formatEcNumberAsRegex(ecnum: String): String = {
+    val allValues = "[^.]+"
+    val basicRegex = ListBuffer(allValues, allValues, allValues, allValues)
+
+    val dividedInput = ecnum.split('.')
+
+    for (i <- dividedInput.indices) {
+      basicRegex(i) = dividedInput(i)
+    }
+
+    /*
+      The ^ is the start of the string, $ is the end of the string.
+
+      We use a \\. separator so that we match periods (Periods must be escaped in regex).
+    */
+
+    "^" + basicRegex.mkString(sep = "\\.") + "$"
   }
 }

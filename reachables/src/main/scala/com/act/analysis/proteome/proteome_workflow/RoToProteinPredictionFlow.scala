@@ -104,7 +104,7 @@ class RoToProteinPredictionFlow
 
   def defineWorkflow(cl: CommandLine): Job = {
     val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY_PREFIX, null)
-    val clustalBinaries = new File(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_PREFIX)
+    val clustalBinaries = new File(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_PREFIX))
 
     // Align sequence so we can build an HMM, needs to know where aligner binaries are
     if (!verifyInputFile(clustalBinaries)) {
