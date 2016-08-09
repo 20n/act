@@ -30,6 +30,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
   private static final String PROCESSOR_NAME = "Sequence Merger";
   private static final String SYNONYMS = "synonyms";
   private static final String SOURCE_SEQUENCE_IDS = "source_sequence_ids";
+  private static final String SOURCE_REACTION_ID = "source_reaction_id";
   private static final String PROTEIN_EXISTENCE = "proteinExistence";
   private static final String COMMENT = "comment";
   private static final String TEXT = "text";
@@ -47,11 +48,10 @@ public class SequenceMerger extends BiointerpretationProcessor {
   private static final String PATENT_NUMBER = "patent_number";
   private static final String PMID = "PMID";
   private static final String SEQUENCES = "sequences";
+  private static final String ORGANISM = "organism";
 
-  // currently never queried, only used for storage that could be useful for later purposes
   private Map<Long, Long> sequenceMigrationMap = new HashMap<>();
   private Map<Long, Long> organismMigrationMap = new HashMap<>();
-  private Map<Long, Long> reactionMigrationMap = new HashMap<>();
 
   private Map<String, String> minimalPrefixMapping;
 
@@ -86,16 +86,23 @@ public class SequenceMerger extends BiointerpretationProcessor {
     LOGGER.info("copying all chemicals");
     super.processChemicals();
 
-    /* reactions should be written before the sequence merging so that the sequence references in the
-    reactions collection can be updated  */
-    LOGGER.info("copying all reactions");
-    processReactions();
     LOGGER.info("processing sequences for deduplication");
     processSequences();
+
+    /* reactions should be written after the sequence merging so that the sequence, organism and source reaction IDs can
+    all be updated properly */
+    LOGGER.info("copying all reactions");
+    processReactions();
   }
 
   /**
    * Copies all reactions over to the WriteDB and stores the mapping from old ID to new ID in reactionMigrationMap
+   *
+   * For each Reaction:
+   * 1) Updates the IDs of the merged sequences to the new merged Sequence ID
+   * 2) Since organism names were mapped to their minimal prefix, updates the IDs of the organisms to the
+   * ID of the minimal prefix
+   * 3) Updates the source_reaction_id
    */
   @Override
   public void processReactions() {
@@ -103,11 +110,29 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
     while (reactionIterator.hasNext()) {
       Reaction oldRxn = reactionIterator.next();
-      Long oldId = (long) oldRxn.getUUID();
-      Long newId = (long) getNoSQLAPI().writeToOutKnowlegeGraph(oldRxn);
-      reactionMigrationMap.put(oldId, newId);
+      Set<JSONObject> proteins = oldRxn.getProteinData();
+
+      for (JSONObject protein : proteins) {
+        JSONArray sequenceIDs = protein.getJSONArray(SEQUENCES);
+        Set<Long> newSequenceIDs = new HashSet<>();
+
+        for (int i = 0; i < sequenceIDs.length(); i++) {
+          newSequenceIDs.add(sequenceMigrationMap.get(sequenceIDs.getLong(i)));
+        }
+
+        protein.put(SEQUENCES, new JSONArray(newSequenceIDs));
+
+        protein.put(ORGANISM, organismMigrationMap.get(protein.getLong(ORGANISM)));
+
+        protein.put(SOURCE_REACTION_ID, (long) oldRxn.getUUID());
+      }
+
+      oldRxn.setProteinData(proteins);
+
+      getNoSQLAPI().writeToOutKnowlegeGraph(oldRxn);
     }
   }
+
 
   @Override
   public void processSequences() {
@@ -135,7 +160,6 @@ public class SequenceMerger extends BiointerpretationProcessor {
       if (matchingSeqs != null) {
         // add UniqueSeq object to already existent list that shares the same ecnum, organism & protein sequence
         matchingSeqs.add(sequence);
-        sequenceGroups.put(uniqueSeq, matchingSeqs);
       } else {
         // create a new modifiable list for the UniqueSeq object and add a new mapping
         List<Seq> seqs = new ArrayList<>();
@@ -149,12 +173,9 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
       // stores the IDs of all sequences that are about to be merged
       Set<Long> matchedSeqsIDs = new HashSet<>();
-      // stores the IDs of all reactions that referenced merged sequences and should now refer to the merged Sequence ID
-      Set<Long> reactionRefs = new HashSet<>();
 
       for (Seq sequence : allMatchedSeqs) {
         matchedSeqsIDs.add((long) sequence.getUUID());
-        reactionRefs.addAll(sequence.getReactionsCatalyzed());
       }
 
       // merges all sequences that share the same ecnum, organism and protein sequence
@@ -169,14 +190,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
       for (Long matchedSeqId : matchedSeqsIDs) {
         sequenceMigrationMap.put(matchedSeqId, mergedSeqId);
       }
-
-      // update reactions that were referencing the merged sequences so that they new refer to the new merged sequence
-      updateReactionsReferencingDuplicatedSeqs(matchedSeqsIDs, reactionRefs, mergedSeqId);
-
     }
-
-    // TODO: need to handle organism prefixes in the Reactions collection; Mark says to not worry about this just yet
-
   }
 
   private Long writeSequence(Seq sequence) {
@@ -385,7 +399,6 @@ public class SequenceMerger extends BiointerpretationProcessor {
       } else {
         mergedMetadata.put(PRODUCT_NAMES, newProductNames);
       }
-
     }
 
     if (newMetadata.has(ACCESSION)) {
@@ -437,9 +450,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
         xrefObject.put(BRENDA_ID, newBrendaIds);
         mergedMetadata.put(XREF, xrefObject);
       }
-
     }
-
   }
 
   private void mergeReferences(List<JSONObject> mergedRefs, List<JSONObject> newRefs) {
@@ -492,40 +503,4 @@ public class SequenceMerger extends BiointerpretationProcessor {
       }
     }
   }
-
-  /**
-   * Update reactions that were referencing the merged sequences so that they new refer to the new merged sequence
-   * @param matchedSeqsIDs the IDs of the sequences that were merged
-   * @param reactionRefs the IDs of the reactions that referenced those merged sequences
-   * @param newSeqID the ID of the merged sequence that should replace the IDs of the sequences that were merged
-   */
-  private void updateReactionsReferencingDuplicatedSeqs(Set<Long> matchedSeqsIDs, Set<Long> reactionRefs,
-                                                        Long newSeqID) {
-    for (Long reactionRef : reactionRefs) {
-      Reaction reaction = getNoSQLAPI().readReactionFromInKnowledgeGraph(reactionRef);
-      Set<JSONObject> proteins = reaction.getProteinData();
-
-      for (JSONObject protein : proteins) {
-        JSONArray sequenceIDs = protein.getJSONArray(SEQUENCES);
-        Set<Long> newSequenceIDs = new HashSet<>();
-
-        for (int i = 0; i < sequenceIDs.length(); i++) {
-          if (matchedSeqsIDs.contains(sequenceIDs.getLong(i))) {
-            newSequenceIDs.add(newSeqID);
-          } else {
-            newSequenceIDs.add(sequenceIDs.getLong(i));
-          }
-        }
-
-        protein.put(SEQUENCES, new JSONArray(newSequenceIDs));
-      }
-
-      reaction.setProteinData(proteins);
-
-      // since reactions are already copied over to the write db while maintaining source ID, we update those reactions
-      getNoSQLAPI().getWriteDB().updateActReaction(reaction, reactionRef.intValue());
-
-    }
-  }
-
 }

@@ -48,6 +48,8 @@ public class SequenceMergerTest {
 
     Set<Long> sequenceSet = new HashSet<>(Arrays.asList(1L, 2L, 3L));
     proteinDataObj.put("sequences", sequenceSet);
+    proteinDataObj.put("organism", 4000003475L);
+    proteinDataObj.put("source_reaction_id", 829334L);
 
     proteinData.add(proteinDataObj);
     reaction.setProteinData(proteinData);
@@ -56,6 +58,8 @@ public class SequenceMergerTest {
 
     proteinDataObj = new JSONObject();
     proteinDataObj.put("sequences", sequenceSet);
+    proteinDataObj.put("organism", 4000003474L);
+    proteinDataObj.put("source_reaction_id", 91923L);
 
     reaction.addProteinData(proteinDataObj);
 
@@ -134,7 +138,7 @@ public class SequenceMergerTest {
     patent.put("patent_year", "2015");
     references.add(patent);
 
-    Seq sequence2 = new Seq(2L, "1.1.1.1", 4000003474L, "Mus musculus sp.", "AJKFLGKJDFS", references,
+    Seq sequence2 = new Seq(2L, "1.1.1.1", 4000003475L, "Mus musculus sp.", "AJKFLGKJDFS", references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
     sequence2.addReactionsCatalyzed(1L);
 
@@ -166,7 +170,7 @@ public class SequenceMergerTest {
     patent.put("patent_year", "2008");
     references.add(patent);
 
-    Seq sequence3 = new Seq(3L, "1.1.1.1", 4000003474L, "Mus musculus sp. 123", "AJKFLGKJDFS", references,
+    Seq sequence3 = new Seq(3L, "1.1.1.1", 4000003476L, "Mus musculus sp. 123", "AJKFLGKJDFS", references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
     sequence3.addReactionsCatalyzed(1L);
 
@@ -250,7 +254,7 @@ public class SequenceMergerTest {
 
     metadata.put("source_sequence_ids", Arrays.asList(1,2,3));
 
-    Seq mergedSeq = new Seq(1L, "1.1.1.1", 0L, "Mus musculus", "AJKFLGKJDFS", references,
+    Seq mergedSeq = new Seq(1L, "1.1.1.1", 1L, "Mus musculus", "AJKFLGKJDFS", references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     Reaction reaction = new Reaction(1L,
@@ -262,12 +266,16 @@ public class SequenceMergerTest {
 
     Set<Long> sequenceSet = new HashSet<>(Collections.singletonList(1L));
     proteinData.put("sequences", sequenceSet);
+    proteinData.put("organism", 1L);
+    proteinData.put("source_reaction_id", 1L);
 
     reaction.addProteinData(proteinData);
 
     proteinData = new JSONObject();
     sequenceSet = new HashSet<>(Arrays.asList(1L, 2L));
     proteinData.put("sequences", sequenceSet);
+    proteinData.put("organism", 1L);
+    proteinData.put("source_reaction_id", 1L);
 
     reaction.addProteinData(proteinData);
 
