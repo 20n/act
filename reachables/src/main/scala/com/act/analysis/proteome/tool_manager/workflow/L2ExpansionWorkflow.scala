@@ -5,12 +5,12 @@ import com.act.analysis.proteome.tool_manager.tool_wrappers.ShellWrapper
 import org.apache.commons.cli.CommandLine
 import org.apache.spark.launcher.SparkLauncher
 
-class L2ExpansionWorkflow {
+object L2ExpansionWorkflow {
 
   def main(args: Array[String]): Unit = {
     println("Hello, world!")
   }
-  
+
   def defineWorkflow(commandLine: CommandLine): Job = {
 
     val command:String = "/usr/local/software/spark-1.5.2-bin-hadoop2.6/bin/spark-submit " +
