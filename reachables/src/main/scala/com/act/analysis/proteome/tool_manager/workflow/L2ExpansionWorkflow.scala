@@ -9,6 +9,17 @@ object L2ExpansionWorkflow {
 
   def main(args: Array[String]): Unit = {
     println("Hello, world!")
+
+    val spark = new SparkLauncher()
+      .setSparkHome("/usr/local/software/spark-1.5.2-bin-hadoop2.6")
+      .setAppResource("/home/vijay/act/reachables/target/scala-2.10/reachables-assembly-0.1.jar")
+      .setMainClass("com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector")
+      .setMaster("spark://10.0.20.19:7077")
+      .setDeployMode("client")
+      .addAppArgs("--substrates-list /home/vijay/act/reachables/output_inchis.txt -s -o /mnt/shared-data/Vijay/l2projection/ -l /mnt/shared-data/3rdPartySoftware/Chemaxon/license_Start-up.cxl")
+      .launch();
+
+    spark.waitFor();
   }
 
   def defineWorkflow(commandLine: CommandLine): Job = {
