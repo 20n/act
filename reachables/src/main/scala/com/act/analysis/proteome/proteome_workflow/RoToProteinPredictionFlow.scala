@@ -104,15 +104,16 @@ class RoToProteinPredictionFlow
 
   def defineWorkflow(cl: CommandLine): Job = {
     val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY_PREFIX, null)
+    val clustalBinaries = new File(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_PREFIX)
 
     // Align sequence so we can build an HMM, needs to know where aligner binaries are
-    if (!verifyInputFile(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_PREFIX))) {
+    if (!verifyInputFile(clustalBinaries)) {
       throw new RuntimeException(s"Clustal binary path was not valid. " +
-        s"Given path was ${cl.getOptionValue(OPTION_CLUSTAL_BINARIES_PREFIX)}")
+        s"Given path was ${clustalBinaries.getAbsolutePath}")
     }
 
-    ClustalOmegaWrapper.setBinariesLocation(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_PREFIX))
-    val proteomeLocation = cl.getOptionValue(OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX)
+    ClustalOmegaWrapper.setBinariesLocation(clustalBinaries)
+    val proteomeLocation = new File(cl.getOptionValue(OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX))
 
     if (!verifyInputFile(proteomeLocation)) {
       throw new RuntimeException(s"Proteome file location was not valid.  Given input was $proteomeLocation.")
@@ -133,7 +134,7 @@ class RoToProteinPredictionFlow
     val roContexts: List[List[String]] = if (setQuery) ro_args.map(List(_)) else List(ro_args)
 
     // For use later by set compare if option is set.
-    val resultFilesBuffer = ListBuffer[String]()
+    val resultFilesBuffer = ListBuffer[File]()
 
     for (roContext <- roContexts) {
       // Setup all the constant paths here
