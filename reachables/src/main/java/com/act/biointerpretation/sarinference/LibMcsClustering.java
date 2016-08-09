@@ -214,10 +214,9 @@ public class LibMcsClustering {
    *
    * @param predictionCorpusInput The prediction corpus.
    * @param sarTreeNodesOutput A SarTreeNodeList of every node in the clustering tree.
-   * @return A job to run the appropriate clustering.
+   * @return A JavaRunnable to run the appropriate clustering.
    */
-  private static JavaRunnable getClusteringJob(File predictionCorpusInput, File sarTreeNodesOutput) {
-
+  private static JavaRunnable getRunnableClusterer(File predictionCorpusInput, File sarTreeNodesOutput) {
 
     return () -> {
       L2PredictionCorpus inputCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(predictionCorpusInput);
@@ -239,14 +238,13 @@ public class LibMcsClustering {
   /**
    * Reads in an already-built SarTree from a SarTreeNodeList, as well as a list of LCMS positives from an
    * LCMS analysis.  Scores the SARs based on the LCMS results.
-   * TODO: fix this up to apply the scoring to the nodes of the tree
-   * 
+   *
    * @param sarTreeInput A SarTreeNodeList containing all Sars from the clustering tree.
    * @param positiveInchiInput A list of positive inchis from LCMS.
    * @param sarTreeNodeOutput The relevant SARs from the corpus, sorted in decreasing order of confidence.
-   * @return A job to run the SAR scoring.
+   * @return A JavaRunnable to run the SAR scoring.
    */
-  private static JavaRunnable getScoringJob(File sarTreeInput, File positiveInchiInput, File sarTreeNodeOutput) {
+  private static JavaRunnable getRunnableSarScorer(File sarTreeInput, File positiveInchiInput, File sarTreeNodeOutput) {
 
     Double confidenceThreshold = 0D;
     Integer subtreeThreshold = 2;
