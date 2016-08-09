@@ -22,7 +22,10 @@ class JavaJob(runnable: JavaRunnable) extends Job {
     // Setup Job's success/failure
     future.onComplete({
       case Success(x) => markAsSuccess()
-      case Failure(x) => markAsFailure(); logger.error(s"Cause of failure was ${x.getMessage}")
+      case Failure(x) =>
+        markAsFailure()
+        logger.error(s"Cause of failure was ${x.getMessage}.")
+        x.printStackTrace()
     })
   }
 }

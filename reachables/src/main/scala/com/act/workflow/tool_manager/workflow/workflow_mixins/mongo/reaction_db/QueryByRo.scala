@@ -4,7 +4,6 @@ import act.server.MongoDB
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
 import com.mongodb.{BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
-import spire.syntax.field
 
 trait QueryByRo extends MongoWorkflowUtilities with ReactionDatabaseKeywords {
   /**
@@ -12,10 +11,11 @@ trait QueryByRo extends MongoWorkflowUtilities with ReactionDatabaseKeywords {
     *
     * @param roValues A list of RO values, containing one or more
     * @param mongoConnection Connection to Mongo database
+    *
     * @return A map of maps containing documents -> fields
     */
   def queryReactionsForReactionIdsByRo(roValues: List[String],
-                                       mongoConnection: MongoDB): Map[String, Map[String, AnyRef]] = {
+                                       mongoConnection: MongoDB): Map[Long, Map[String, AnyRef]] = {
     val methodLogger = LogManager.getLogger("queryReactionsForReactionIdsByRo")
 
     queryReactionsForValuesByRo(roValues, mongoConnection, List(REACTION_DB_KEYWORD_ID))
@@ -27,11 +27,12 @@ trait QueryByRo extends MongoWorkflowUtilities with ReactionDatabaseKeywords {
     * @param roValues A list of RO values, containing one or more
     * @param mongoConnection Connection to Mongo database
     * @param returnFilterFields The fields you are looking for.
+    *
     * @return A map of maps containing documents -> fields
     */
   def queryReactionsForValuesByRo(roValues: List[String],
                                   mongoConnection: MongoDB,
-                                  returnFilterFields: List[String]): Map[String, Map[String, AnyRef]] = {
+                                  returnFilterFields: List[String]): Map[Long, Map[String, AnyRef]] = {
     val methodLogger = LogManager.getLogger("queryReactionsForValuesByRo")
     if (roValues.length <= 0) throw new RuntimeException("Number of RO values supplied was 0.")
 

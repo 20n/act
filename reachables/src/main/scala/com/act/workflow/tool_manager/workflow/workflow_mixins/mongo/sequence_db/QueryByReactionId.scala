@@ -14,9 +14,10 @@ trait QueryByReactionId extends MongoWorkflowUtilities with SequenceDatabaseKeyw
     *
     * @param reactionIds List of reaction IDs.
     * @param mongoConnection Connection to MongoDB
+    *
     * @return List of protein sequences.
     */
-  def querySequencesForSequencesByReactionId(reactionIds: List[AnyRef], mongoConnection: MongoDB): List[ProteinSequence] = {
+  def querySequencesForSequencesByReactionId(reactionIds: List[Long], mongoConnection: MongoDB): List[ProteinSequence] = {
     val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
 
     /*
@@ -26,7 +27,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with SequenceDatabaseKeyw
     */
 
     val reactionList = new BasicDBList
-    reactionIds.map(reactionList.add)
+    reactionIds.map(rId => reactionList.add(rId.asInstanceOf[AnyRef]))
 
     // Elem match on all rxn_to_reactant groups in that array
     val seqKey = new BasicDBObject(SEQUENCE_DB_KEYWORD_RXN_REFS, defineMongoIn(reactionList))
@@ -42,11 +43,9 @@ trait QueryByReactionId extends MongoWorkflowUtilities with SequenceDatabaseKeyw
     methodLogger.info(s"Running query $seqKey against DB.  Return filter is $seqFilter. ")
     val sequenceReturnIterator: Iterator[DBObject] = mongoQuerySequences(mongoConnection, seqKey, seqFilter)
     methodLogger.info("Finished sequence query.")
-
     /*
       Map sequences and name to proteinSequences
     */
-
     val proteinSequences: ListBuffer[ProteinSequence] = new ListBuffer[ProteinSequence]
     for (sequence: DBObject <- sequenceReturnIterator) {
       val seq = sequence.get(SEQUENCE_DB_KEYWORD_SEQ)
@@ -72,11 +71,15 @@ trait QueryByReactionId extends MongoWorkflowUtilities with SequenceDatabaseKeyw
           but the DB_ID should guarantee uniqueness
         */
         newSeq.setOriginalHeader(s"NAME: ${name.toString} | EC: ${num.toString} | DB_ID: ${id.toString}")
+        if (proteinSequences.length % 100 == 0) {
+          methodLogger.info(s"Found ${proteinSequences.length + 1} sequences so far.")
+        }
         proteinSequences.append(newSeq)
       } else {
         methodLogger.error(s"Sequence identified that does not have a sequence.  DB entry is ${id.toString}")
       }
     }
+    methodLogger.info(s"Found ${proteinSequences.length} sequences in total.")
 
     proteinSequences.toList
   }
