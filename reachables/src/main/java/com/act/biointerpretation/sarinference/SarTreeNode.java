@@ -19,15 +19,15 @@ public class SarTreeNode {
   public static final String IN_LCMS_TRUE = "true";
   public static final String IN_LCMS_FALSE = "false";
 
-  @JsonProperty
+  @JsonProperty("hierarchy_id")
   String hierarchyId;
 
   Molecule substructure;
 
-  @JsonProperty
+  @JsonProperty("number_misses")
   Integer numberMisses;
 
-  @JsonProperty
+  @JsonProperty("number_hits")
   Integer numberHits;
 
   private SarTreeNode() {
@@ -82,5 +82,15 @@ public class SarTreeNode {
   @JsonIgnore
   public Double getPercentageHits() {
     return new Double(numberHits) / new Double(numberHits + numberMisses);
+  }
+
+  @JsonProperty("lcms_hit")
+  public Object getLcmsProperty() {
+    return substructure.getPropertyObject(IN_LCMS_PROPERTY);
+  }
+
+  @JsonProperty("lcms_hit")
+  public void setLcmsProperty(Object propertyValue) {
+    substructure.setPropertyObject(IN_LCMS_PROPERTY, propertyValue);
   }
 }
