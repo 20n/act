@@ -94,19 +94,6 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
   }
 
   /**
-    *
-    *
-    * @param roughEcnum
-    * @param mongoConnection
-    * @return
-    */
-  def queryReactionsForKmValuesByEcNumber(roughEcnum: String,
-                                          mongoConnection: MongoDB): Map[String, Map[String, AnyRef]] = {
-    // Returns a list of ID, KM value pairs.
-    aggregateReactionsByEcNumberWithKm(roughEcnum, mongoConnection)
-  }
-
-  /**
     * Aggregates all the KM values for a given document into a list.
     *
     * @param roughEcnum Regex of ecnumbers
@@ -115,6 +102,7 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
     */
   def aggregateReactionsByEcNumberWithKm(roughEcnum: String,
                                          mongoConnection: MongoDB): Map[String, Map[String, AnyRef]] = {
+    val methodLogger = LogManager.getLogger("aggregateReactionsByEcNumberWithKm")
     val ecnumRegex = formatEcNumberAsRegex(roughEcnum)
 
     // Setup the query and filter for just the reaction ID
@@ -138,6 +126,7 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
       defineMongoUnwind(REACTION_DB_KEYWORD_VALUE)
     )
 
+    methodLogger.info(s"Constructed pipeline $pipeline")
     // Convert the iterator to a list and return
     val finalDocumentIterator = mongoApplyPipelineReactions(mongoConnection, pipeline)
     mongoReturnQueryToMap(finalDocumentIterator, List(REACTION_DB_KEYWORD_ID, REACTION_DB_KEYWORD_VALUE))

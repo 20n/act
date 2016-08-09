@@ -6,7 +6,7 @@ import org.apache.commons.cli.CommandLine
 import org.apache.logging.log4j.LogManager
 
 trait WorkingDirectoryUtility {
-  def defineOutputFilePath(cl: CommandLine, optionName: String, identifier: String, defaultValue: String, workingDirectory: String): String = {
+  def defineOutputFilePath(cl: CommandLine, optionName: String, identifier: String, defaultValue: String, workingDirectory: String): File = {
     val methodLogger = LogManager.getLogger("workingDirectoryFilePathDefinition")
 
     // Spaces tend to be bad for file names
@@ -16,14 +16,9 @@ trait WorkingDirectoryUtility {
     val fileNameHead = cl.getOptionValue(optionName, defaultValue)
     val fileName = s"${fileNameHead}_$filteredIdentifier"
 
-    val finalFilePath = new File(workingDirectory, fileName).getAbsolutePath
-    methodLogger.info(s"The final file path for file $optionName was $finalFilePath")
-    finalFilePath
-  }
-
-  def verifyInputFile(inputFile: String, workingDirectory: String = null): Boolean = {
-    val filePath = new File(workingDirectory, inputFile)
-    verifyInputFile(filePath)
+    val finalFile = new File(workingDirectory, fileName)
+    methodLogger.info(s"The final file path for file $optionName was ${finalFile.getAbsoluteFile}")
+    finalFile
   }
 
   def verifyInputFile(inputFile : File): Boolean = {

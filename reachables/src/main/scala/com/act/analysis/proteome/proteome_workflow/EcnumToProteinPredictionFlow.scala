@@ -1,5 +1,7 @@
 package com.act.analysis.proteome.proteome_workflow
 
+import java.io.File
+
 import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.tool_wrappers.{ClustalOmegaWrapper, HmmerWrapper, ScalaJobWrapper}
 import com.act.workflow.tool_manager.workflow.Workflow
@@ -88,14 +90,16 @@ class EcnumToProteinPredictionFlow extends {
   def defineWorkflow(cl: CommandLine): Job = {
     // Align sequence so we can build an HMM
     val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY_PREFIX, null)
+    val clustalBinaries = new File(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_ARG_PREFIX))
 
-    if (!verifyInputFile(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_ARG_PREFIX))) {
+    // Align sequence so we can build an HMM, needs to know where aligner binaries are
+    if (!verifyInputFile(clustalBinaries)) {
       throw new RuntimeException(s"Clustal binary path was not valid. " +
-        s"Given path was ${cl.getOptionValue(OPTION_CLUSTAL_BINARIES_ARG_PREFIX)}")
+        s"Given path was ${clustalBinaries.getAbsolutePath}")
     }
 
-    ClustalOmegaWrapper.setBinariesLocation(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_ARG_PREFIX))
-    val proteomeLocation = cl.getOptionValue(OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX)
+    ClustalOmegaWrapper.setBinariesLocation(clustalBinaries)
+    val proteomeLocation = new File(cl.getOptionValue(OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX))
 
     if (!verifyInputFile(proteomeLocation)) {
       throw new RuntimeException(s"Proteome file location was not valid.  Given input was $proteomeLocation.")

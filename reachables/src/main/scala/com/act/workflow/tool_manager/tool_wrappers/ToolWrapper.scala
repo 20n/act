@@ -11,7 +11,7 @@ import com.act.workflow.tool_manager.jobs.management.JobManager
 abstract class ToolWrapper {
   // Tracks all jobs running as futures within the ToolWrapper
 
-  private var binaries = ""
+  private var binaries: File = new File("","")
   protected def constructJob(toolFunction: String, args: List[String], retryJob: Boolean = false): ShellJob = {
     val usingTool = !toolFunction.equals("") | binaryLocationSet
 
@@ -59,10 +59,10 @@ abstract class ToolWrapper {
   }
 
   private def getBinariesLocation: String = {
-    binaries
+    binaries.getAbsolutePath
   }
 
-  def setBinariesLocation(binaryDirectory: String): Unit = {
+  def setBinariesLocation(binaryDirectory: File): Unit = {
     binaries = binaryDirectory
   }
 }

@@ -1,5 +1,7 @@
 package com.act.workflow.tool_manager.tool_wrappers
 
+import java.io.File
+
 import com.act.workflow.tool_manager.jobs.ShellJob
 
 /**
@@ -15,8 +17,8 @@ object HmmerWrapper extends ToolWrapper {
     * @param seqFile    Sequence Profile
     * @param outputFile Where to write the output to
     */
-  def hmmalign(hmmFile: String, seqFile: String, outputFile: String): ShellJob = {
-    constructJob(HmmCommands.HmmAlign, List("--amino", hmmFile, seqFile))
+  def hmmalign(hmmFile: File, seqFile: File, outputFile: File): ShellJob = {
+    constructJob(HmmCommands.HmmAlign, List("--amino", hmmFile.getAbsolutePath, seqFile.getAbsolutePath))
   }
 
   /**
@@ -25,8 +27,8 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputHmmFile Where to write the output
     * @param msaFile       The multiple sequence alignment file to construct the profile from
     */
-  def hmmbuild(outputHmmFile: String, msaFile: String): ShellJob  = {
-    constructJob(HmmCommands.HmmBuild, List("--amino", outputHmmFile, msaFile))
+  def hmmbuild(outputHmmFile: File, msaFile: File): ShellJob  = {
+    constructJob(HmmCommands.HmmBuild, List("--amino", outputHmmFile.getAbsolutePath, msaFile.getAbsolutePath))
   }
 
   /**
@@ -36,8 +38,9 @@ object HmmerWrapper extends ToolWrapper {
     * @param sequenceFile A single sequence
     * @param outputFile   Where to place output file
     */
-  def hmmscan(hmmDatabase: String, sequenceFile: String, outputFile: String): ShellJob = {
-    val job = constructJob(HmmCommands.HmmScan, List("-o", outputFile, hmmDatabase, sequenceFile))
+  def hmmscan(hmmDatabase: String, sequenceFile: File, outputFile: File): ShellJob = {
+    val job = constructJob(HmmCommands.HmmScan,
+      List("-o", outputFile.getAbsolutePath, hmmDatabase, sequenceFile.getAbsolutePath))
 
     // Set a retry job of press if something goes wrong
     // If you want a laugh, read the documentation for this function with option -f , it will overwrite bad files
@@ -55,8 +58,8 @@ object HmmerWrapper extends ToolWrapper {
     *
     * @param hmmFile  File containing multiple HMM profiles
     */
-  def hmmpress(hmmFile: String): ShellJob  = {
-    constructJob(HmmCommands.HmmPress, List("-f",hmmFile))
+  def hmmpress(hmmFile: File): ShellJob  = {
+    constructJob(HmmCommands.HmmPress, List("-f",hmmFile.getAbsolutePath))
   }
 
 
@@ -67,8 +70,9 @@ object HmmerWrapper extends ToolWrapper {
     * @param sequenceDatabase Sequences to search against
     * @param outputFile       Where to place the results
     */
-  def hmmsearch(hmmFile: String, sequenceDatabase: String, outputFile: String): ShellJob = {
-    constructJob(HmmCommands.HmmSearch, List("-o", outputFile, hmmFile, sequenceDatabase))
+  def hmmsearch(hmmFile: File, sequenceDatabase: File, outputFile: File): ShellJob = {
+    constructJob(HmmCommands.HmmSearch,
+      List("-o", outputFile.getAbsolutePath, hmmFile.getAbsolutePath, sequenceDatabase.getAbsolutePath))
   }
 
   /**
@@ -78,8 +82,8 @@ object HmmerWrapper extends ToolWrapper {
     * @param sequenceDatabase Sequences to search against
     * @param outputFile       Where to place the results
     */
-  def jackhmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): ShellJob  = {
-    constructJob(HmmCommands.JackHammr, List(sequenceFile, sequenceDatabase))
+  def jackhmmer(sequenceFile: File, sequenceDatabase: String, outputFile: File): ShellJob  = {
+    constructJob(HmmCommands.JackHammr, List(sequenceFile.getAbsolutePath, sequenceDatabase))
   }
 
   /**
@@ -89,8 +93,8 @@ object HmmerWrapper extends ToolWrapper {
     * @param sequenceDatabase Sequences queried against
     * @param outputFile       Where to place the results
     */
-  def phmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): ShellJob  = {
-    constructJob(HmmCommands.Phmmer, List(sequenceFile, sequenceDatabase))
+  def phmmer(sequenceFile: File, sequenceDatabase: String, outputFile: File): ShellJob  = {
+    constructJob(HmmCommands.Phmmer, List(sequenceFile.getAbsolutePath, sequenceDatabase))
     }
 
   /*
