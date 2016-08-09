@@ -236,6 +236,7 @@ public class LibMcsClustering {
   /**
    * Reads in an already-built SarTree from a SarTreeNodeList, as well as a list of LCMS positives from an
    * LCMS analysis.  Scores the SARs based on the LCMS results.
+   * TODO: workout propagation of LCMS data
    *
    * @param sarTreeInput A SarTreeNodeList containing all Sars from the clustering tree.
    * @param positiveInchiInput A list of positive inchis from LCMS.
@@ -248,18 +249,22 @@ public class LibMcsClustering {
     Integer subtreeThreshold = 2;
 
     return () -> {
+      // Build SAR tree
       SarTreeNodeList nodeList = new SarTreeNodeList();
-
+      nodeList.loadFromFile(sarTreeInput);
       SarTree sarTree = new SarTree();
       nodeList.getSarTreeNodes().forEach(node -> sarTree.addNode(node));
 
+      // Build inchi corpus
       L2InchiCorpus positiveInchis = new L2InchiCorpus();
       positiveInchis.loadCorpus(positiveInchiInput);
       SarTreeBasedCalculator sarConfidenceCalculator = new SarTreeBasedCalculator(sarTree);
 
+      // Score SARs
       sarTree.applyToNodes(sarConfidenceCalculator, subtreeThreshold);
       SarTreeNodeList treeNodeList = sarTree.getExplanatoryNodes(subtreeThreshold, confidenceThreshold);
 
+      // Write out output.
       treeNodeList.writeToFile(sarTreeNodeOutput);
     };
   }
