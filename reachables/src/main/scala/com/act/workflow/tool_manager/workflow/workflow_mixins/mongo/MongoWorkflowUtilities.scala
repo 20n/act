@@ -68,7 +68,7 @@ trait MongoWorkflowUtilities {
     * @param listName  The name of the DBListObject that was unwound
     * @param valueName The name of a value found within that list
     *
-    * @return
+    * @return String containing the formatted names.
     */
   def formatUnwoundName(listName: String, valueName: String): String = {
     s"$listName.$valueName"
