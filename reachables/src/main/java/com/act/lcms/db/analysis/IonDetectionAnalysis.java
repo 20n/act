@@ -171,18 +171,22 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     Map<Double, Set<Pair<String, String>>> massChargeToChemicalAndIon = new HashMap<>();
 
     for (String inchi : products) {
-      // Assume the ion modes are all positive!
-      Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(inchi), MS1.IonMode.POS);
-      Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
+      try {
+        // Assume the ion modes are all positive!
+        Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(inchi), MS1.IonMode.POS);
+        Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
 
-      for (Map.Entry<String, Double> entry : metlinMasses.entrySet()) {
-        Set<Pair<String, String>> res = massChargeToChemicalAndIon.get(entry.getValue());
-        if (res == null) {
-          res = new HashSet<>();
-          massChargeToChemicalAndIon.put(entry.getValue(), res);
+        for (Map.Entry<String, Double> entry : metlinMasses.entrySet()) {
+          Set<Pair<String, String>> res = massChargeToChemicalAndIon.get(entry.getValue());
+          if (res == null) {
+            res = new HashSet<>();
+            massChargeToChemicalAndIon.put(entry.getValue(), res);
+          }
+
+          res.add(Pair.of(inchi, entry.getKey()));
         }
-
-        res.add(Pair.of(inchi, entry.getKey()));
+      } catch (Exception e) {
+        LOGGER.error("Caught exception when trying to import %s", inchi);
       }
     }
 
