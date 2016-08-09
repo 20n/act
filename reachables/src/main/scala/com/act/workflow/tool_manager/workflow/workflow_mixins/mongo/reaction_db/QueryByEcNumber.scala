@@ -16,16 +16,6 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
     queryResult.head
   }
 
-  def queryReactionsForKmValuesByEcNumber(roughEcnum: String, mongoConnection: MongoDB): List[AnyRef] = {
-    val methodLogger = LogManager.getLogger("queryReactionsForKmValuesByEcNumber")
-
-    val queryResult = queryReactionsForValuesByEcNumber(roughEcnum, mongoConnection,
-      List(REACTION_DB_KEYWORD_ID, REACTION_DB_KEYWORD_PROTEINS))
-
-
-    null
-  }
-
   def queryReactionsForValuesByEcNumber(roughEcnum: String,
                                         mongoConnection: MongoDB,
                                         returnFilterFields: List[String]): List[List[AnyRef]] = {
@@ -103,7 +93,14 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
     "^" + basicRegex.mkString(sep = "\\.") + "$"
   }
 
-  def aggregateReactionsByEcNumberWithKm(roughEcnum: String, mongoConnection: MongoDB) = {
+  def queryReactionsForKmValuesByEcNumber(roughEcnum: String, mongoConnection: MongoDB): List[AnyRef] = {
+    val methodLogger = LogManager.getLogger("queryReactionsForKmValuesByEcNumber")
+
+    // Returns a list of ID, KM value pairs.
+    aggregateReactionsByEcNumberWithKm(roughEcnum, mongoConnection)
+  }
+
+  def aggregateReactionsByEcNumberWithKm(roughEcnum: String, mongoConnection: MongoDB): List[DBObject] = {
     val pipeline = new ListBuffer[DBObject]
 
     val ecnumRegex = formatEcNumberAsRegex(roughEcnum)
@@ -112,12 +109,22 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
     val regex = defineMongoRegex(ecnumRegex)
     val reactionIdQuery = new BasicDBObject(REACTION_DB_KEYWORD_ECNUM, regex)
 
+    // Match all reactions that have this ecnum
     pipeline.append(defineMongoMatch(reactionIdQuery))
+    // Unwind the proteins list to make it keyable
     pipeline.append(defineMongoUnwind(REACTION_DB_KEYWORD_PROTEINS))
-    pipeline.append(defineMongoGroup(formatUnwoundName(REACTION_DB_KEYWORD_PROTEINS, REACTION_DB_KEYWORD_KM)))
+    // Group proteins.km together into a list
+    pipeline.append(defineMongoGroup(
+      formatUnwoundName(REACTION_DB_KEYWORD_PROTEINS, REACTION_DB_KEYWORD_KM), REACTION_DB_KEYWORD_KM))
+    // Unwind the proteins.km we just made
     pipeline.append(defineMongoUnwind(REACTION_DB_KEYWORD_KM))
-    pipeline.append(defineMongoGroup(formatUnwoundName(REACTION_DB_KEYWORD_KM, REACTION_DB_KEYWORD_VALUE)))
+    // Group the km.val that we have now.
+    pipeline.append(defineMongoGroup(
+      formatUnwoundName(REACTION_DB_KEYWORD_KM, REACTION_DB_KEYWORD_VALUE), REACTION_DB_KEYWORD_VALUE))
+    // Unwind that list so we get a bunch of flat arrays.
+    pipeline.append(defineMongoUnwind(REACTION_DB_KEYWORD_VALUE))
 
-    mongoApplyPipelineReactions(mongoConnection, pipeline.toList)
+    // Convert the iterator to a list and return
+    mongoApplyPipelineReactions(mongoConnection, pipeline.toList).toList
   }
 }
