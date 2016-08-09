@@ -7,6 +7,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.IOException;
 
 /**
  * This template provides an example for how a Java function should be wrapped by a JavaRunnable instance
@@ -54,7 +55,13 @@ public class DocumentDuplicatorExample {
     // Since JavaRunnable is a one-method interface, we can use lambdas to write this very succinctly!
     // The returned lambda will call the below code from its run() method.
     return () -> {
-      // Handle input file
+      // Check validity of input and output files
+      if (!inputFile.exists() || inputFile.isDirectory()) {
+        throw new IOException("Input file does not exist, or is a directory!.");
+      }
+      outputFile.createNewFile();
+
+      // Handle input
       BufferedReader reader = new BufferedReader(new FileReader(inputFile));
       String textToEcho = reader.readLine();
 
@@ -64,7 +71,7 @@ public class DocumentDuplicatorExample {
       // Run the duplicator
       String result = textDuplicator.duplicateText(textToEcho);
 
-      // Handle output file
+      // Handle output
       FileWriter writer = new FileWriter(outputFile);
       writer.write(result);
 
