@@ -12,7 +12,6 @@ import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
 import com.act.utils.TSVParser;
-import net.didion.jwnl.data.Exc;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -24,11 +23,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.util.StringBuilders;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.sql.SQLException;
@@ -52,10 +49,12 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
   private static final Double MIN_TIME_THRESHOLD = 15.0;
   private static final String OPTION_LCMS_FILE_DIRECTORY = "d";
   // The OPTION_INPUT_PREDICTION_CORPUS file is a json formatted file that is serialized from the class "L2PredictionCorpus"
+  // or a list of inchis.
   private static final String OPTION_INPUT_PREDICTION_CORPUS = "s";
   private static final String OPTION_OUTPUT_PREFIX = "o";
   private static final String OPTION_PLOTTING_DIR = "p";
   private static final String OPTION_INCLUDE_IONS = "i";
+  private static final String OPTION_LIST_OF_INCHIS_INPUT_FILE = "f";
   // This input file is structured as a tsv file with the following schema:
   //    WELL_TYPE  PLATE_BARCODE  WELL_ROW  WELL_COLUMN
   // eg.   POS        12389        0           1
@@ -118,6 +117,11 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
         .hasArg().required()
         .longOpt("wells-config")
     );
+    add(Option.builder(OPTION_LIST_OF_INCHIS_INPUT_FILE)
+        .argName("file input type")
+        .desc("If this option is specified, the input corpus is a list of inchis")
+        .longOpt("file-input-type")
+    );
   }};
 
   static {
@@ -147,13 +151,26 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     this.progress = 0.0;
   }
 
-  public static Map<Double, Set<Pair<String, String>>> constructMassChargeToChemicalIonsFromInputFile(File inputPredictionCorpus,
-                                                                                                Set<String> includeIons)
+  public static Map<Double, Set<Pair<String, String>>> constructMassChargeToChemicalIonsFromInputFile(
+      File inputPredictionCorpus, Set<String> includeIons, Boolean listOfInchisFormat)
       throws IOException {
-    L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputPredictionCorpus);
+
+    List<String> products = new ArrayList<>();
+    if (listOfInchisFormat) {
+      try (BufferedReader br = new BufferedReader(new FileReader(inputPredictionCorpus))) {
+        // Get the inchis from input file
+        String product;
+        while ((product = br.readLine()) != null) {
+          products.add(product.trim());
+        }
+      }
+    } else {
+      products.addAll(L2PredictionCorpus.readPredictionsFromJsonFile(inputPredictionCorpus).getUniqueProductInchis());
+    }
+
     Map<Double, Set<Pair<String, String>>> massChargeToChemicalAndIon = new HashMap<>();
 
-    for (String inchi : predictionCorpus.getUniqueProductInchis()) {
+    for (String inchi : products) {
       // Assume the ion modes are all positive!
       Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(inchi), MS1.IonMode.POS);
       Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
@@ -551,7 +568,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
       File inputPredictionCorpus = new File(cl.getOptionValue(OPTION_INPUT_PREDICTION_CORPUS));
 
       Map<Double, Set<Pair<String, String>>> massChargeToChemicalAndIon =
-          constructMassChargeToChemicalIonsFromInputFile(inputPredictionCorpus, includeIons);
+          constructMassChargeToChemicalIonsFromInputFile(inputPredictionCorpus, includeIons, cl.hasOption(OPTION_LIST_OF_INCHIS_INPUT_FILE));
 
       Pair<Set<Pair<String, Double>>, Map<String, Double>> values = constructFakeNameToMassCharge(massChargeToChemicalAndIon);
       Set<Pair<String, Double>> searchMZs = values.getLeft();
