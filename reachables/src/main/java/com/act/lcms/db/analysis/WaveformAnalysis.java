@@ -142,9 +142,11 @@ public class WaveformAnalysis {
    * This function compresses a given list of time series data based on a period compression value.
    * @param intensityAndTime A list of intensity/time data
    * @param compressionMagnitude This value is the magnitude by which the data is compressed in the time dimension.
-   * @return A list of intensity/time data is the compressed
+   * @return A pair of a list of intensity/time data that is compressed and a mapping from time to max peak intensity in
+   * that window.
    */
-  public static Pair<List<XZ>, Map<Double, Double>> compressIntensityAndTimeGraphs(List<XZ> intensityAndTime, int compressionMagnitude) {
+  public static Pair<List<XZ>, Map<Double, Double>> compressIntensityAndTimeGraphsAndFindMaxIntensityInEveryTimeWindow(
+      List<XZ> intensityAndTime, int compressionMagnitude) {
     ArrayList<XZ> compressedResult = new ArrayList<>();
     Map<Double, Double> timeToIntensity = new HashMap<>();
 
@@ -182,23 +184,35 @@ public class WaveformAnalysis {
     Map<String, Pair<XZ, Double>> result = new HashMap<>();
 
     for (Pair<String, Double> mz : searchMZs) {
-      Pair<List<XZ>, Map<Double, Double>> positiveXZValuesAndMaxIntensity = compressIntensityAndTimeGraphs(
-          ionToIntensityDataPos.getMetlinIonsOfChemical(
-              AnalysisHelper.constructPlotName(
-                  mz.getLeft(), ScanData.KIND.POS_SAMPLE)).get(mz.getLeft()), COMPRESSION_CONSTANT);
 
-      List<XZ> positiveIntensityTime =
-          detectPeaksInIntensityTimeWaveform(positiveXZValuesAndMaxIntensity.getLeft(), PEAK_DETECTION_THRESHOLD);
+      String chemicalName = mz.getLeft();
 
+      // Compress the input intensity time graph to solve sparse data issues (multiple retention times where intensity
+      // is zero). However, we make sure to preserve what the maximum intensity was in that time window in the function
+      // called below.
+      Pair<List<XZ>, Map<Double, Double>> positiveXZValuesAndMaxIntensity =
+          compressIntensityAndTimeGraphsAndFindMaxIntensityInEveryTimeWindow(
+              ionToIntensityDataPos.getMetlinIonsOfChemical(
+                  AnalysisHelper.constructChemicalAndScanTypeName(chemicalName,
+                      ScanData.KIND.POS_SAMPLE)).get(chemicalName), COMPRESSION_CONSTANT);
+
+      List<XZ> positiveIntensityTimeValues = positiveXZValuesAndMaxIntensity.getLeft();
+      Map<Double, Double> positiveTimeToMaxPeak = positiveXZValuesAndMaxIntensity.getRight();
+
+      // Next, we detect peaks within the compressed data.
+      List<XZ> positiveIntensityTime = detectPeaksInIntensityTimeWaveform(positiveIntensityTimeValues, PEAK_DETECTION_THRESHOLD);
+
+      // Get the compressed results for the negative control data.
       List<List<XZ>> negativeIntensityTimes = new ArrayList<>();
       for (ChemicalToMapOfMetlinIonsToIntensityTimeValues neg : ionToIntensityDataNegList) {
-        negativeIntensityTimes.add(
-            compressIntensityAndTimeGraphs(
-                neg.getMetlinIonsOfChemical(
-                    AnalysisHelper.constructPlotName(
-                        mz.getLeft(), ScanData.KIND.NEG_CONTROL)).get(mz.getLeft()), COMPRESSION_CONSTANT).getLeft());
+        List<XZ> negativeIntensityTimeValues = compressIntensityAndTimeGraphsAndFindMaxIntensityInEveryTimeWindow(
+            neg.getMetlinIonsOfChemical(AnalysisHelper.constructChemicalAndScanTypeName(chemicalName,
+                ScanData.KIND.NEG_CONTROL)).get(chemicalName), COMPRESSION_CONSTANT).getLeft();
+
+        negativeIntensityTimes.add(negativeIntensityTimeValues);
       }
 
+      // Get the RMS of the negative intensity times
       List<XZ> rmsOfNegativeValues = rmsOfIntensityTimeGraphs(negativeIntensityTimes);
 
       Double maxSNR = 0.0;
@@ -226,11 +240,11 @@ public class WaveformAnalysis {
         if (snr > maxSNR) {
           maxSNR = snr;
           maxTime = time;
-          peakIntensity = positiveXZValuesAndMaxIntensity.getRight().get(positivePosition.getTime());
+          peakIntensity = positiveTimeToMaxPeak.get(positivePosition.getTime());
         }
       }
 
-      result.put(mz.getLeft(), Pair.of(new XZ(maxTime, peakIntensity), maxSNR));
+      result.put(chemicalName, Pair.of(new XZ(maxTime, peakIntensity), maxSNR));
     }
 
     return result;
@@ -256,13 +270,16 @@ public class WaveformAnalysis {
 
       // We first compress the ion spectra by 5 seconds (this number was gotten from trial and error on labelled
       // spectra). Then, we do feature detection of peaks in the compressed data.
-      List<XZ> standardIntensityTime = detectPeaksInIntensityTimeWaveform(compressIntensityAndTimeGraphs(
-          ionToIntensityData.getMetlinIonsOfChemical(standardChemical).get(ion), COMPRESSION_CONSTANT).getLeft(), PEAK_DETECTION_THRESHOLD);
+      List<XZ> standardIntensityTime = detectPeaksInIntensityTimeWaveform(
+          compressIntensityAndTimeGraphsAndFindMaxIntensityInEveryTimeWindow(
+              ionToIntensityData.getMetlinIonsOfChemical(standardChemical).get(ion), COMPRESSION_CONSTANT).getLeft(),
+          PEAK_DETECTION_THRESHOLD);
 
       List<List<XZ>> negativeIntensityTimes = new ArrayList<>();
       for (String chemical : ionToIntensityData.getIonList()) {
         if (!chemical.equals(standardChemical)) {
-          negativeIntensityTimes.add(compressIntensityAndTimeGraphs(ionToIntensityData.getMetlinIonsOfChemical(chemical).get(ion), COMPRESSION_CONSTANT).getLeft());
+          negativeIntensityTimes.add(compressIntensityAndTimeGraphsAndFindMaxIntensityInEveryTimeWindow(
+              ionToIntensityData.getMetlinIonsOfChemical(chemical).get(ion), COMPRESSION_CONSTANT).getLeft());
         }
       }
 

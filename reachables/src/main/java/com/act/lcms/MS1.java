@@ -229,12 +229,8 @@ public class MS1 {
 
     for (XZ signal : curve) {
       Double intensity = signal.getIntensity();
-      if (maxIntensity == null) {
+      if (maxIntensity == null || maxIntensity < intensity) {
         maxIntensity = intensity; maxIntensityTime = signal.getTime();
-      } else {
-        if (maxIntensity < intensity) {
-          maxIntensity = intensity; maxIntensityTime = signal.getTime();
-        }
       }
     }
 
@@ -258,8 +254,7 @@ public class MS1 {
     if (maxIntensity > NONTRIVIAL_SIGNAL) {
       // snr = sigma_signal^2 / sigma_ambient^2
       // where sigma = sqrt(E[(X-mean)^2])
-      Double mean = avgIntensityAmbient;
-      snr = sigmaSquared(signalIntensities, mean) / sigmaSquared(ambientIntensities, mean);
+      snr = sigmaSquared(signalIntensities, avgIntensitySignal) / sigmaSquared(ambientIntensities, avgIntensityAmbient);
       logSNR = Math.log(snr);
     }
 
@@ -477,7 +472,7 @@ public class MS1 {
 
   private static boolean areNCFiles(String[] fnames) {
     for (String n : fnames) {
-      LOGGER.debug(".nc file = " + n);
+      LOGGER.debug(".nc file = %s", n);
       if (!n.endsWith(".nc"))
         return false;
     }

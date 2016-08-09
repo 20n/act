@@ -7,24 +7,20 @@ package com.act.lcms.db.io.report;
  * Example:
  * <pre>
   {
-    "results" : [ {
-      "_id" : 0,
-      "mass_charge": 10.0,
-      "hits" : [
-      {
-        "inchi" : "InChI=1S/C5H6O3/c1-3-5(7)4(6)2-8-3/h7H,2H2,1H3",
-        "ion" : "M+H",
-        "snr" : 10.1,
-        "time" : 15.2
-      },
-      {
-        "inchi" : "InChI=1S/C6H6O3/c1-3-5(7)4(6)2-8-3/h7H,2H2,1H3",
-        "ion" : "M+Na",
-       "snr" : 11,
-        "time" : 135.2
+     "results" : [ {
+      "_id" : 1,
+      "mass_charge" : 331.13876999999997,
+      "valid" : false,
+      "molecules" : [ {
+       "inchi" : "InChI=1S/C15H22O8/c1-20-7-11-12(17)13(18)14(19)15(23-11)22-6-8-3-4-9(16)10(5-8)21-2/h3-5,11-19H,6-7H2,1-2H3/t11-,12-,13+,14-,15-/m1/s1",
+       "ion" : "M+H",
+       "plot" : "331.13876999999997_37-1669-1670-_CHEM_6170.pdf",
+       "snr" : 224.9610985335781,
+       "time" : 208.54700088500977,
+       "intensity" : 6954.61328125
       }]
-    }]
-  }
+     }]
+ }
  </pre>
  */
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -34,7 +30,6 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -51,7 +46,7 @@ public class IonAnalysisInterchangeModel {
     results = new ArrayList<>();
   }
 
-  public void loadCorpusFromFile(File inputFile) throws IOException {
+  public void loadResultsFromFile(File inputFile) throws IOException {
     this.results = OBJECT_MAPPER.readValue(inputFile, IonAnalysisInterchangeModel.class).getResults();
   }
 
@@ -70,7 +65,7 @@ public class IonAnalysisInterchangeModel {
     List<IonAnalysisInterchangeModel> deserializedResultsForPositiveReplicates = new ArrayList<>();
     for (String filePath : filepaths) {
       IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
-      model.loadCorpusFromFile(new File(filePath));
+      model.loadResultsFromFile(new File(filePath));
       deserializedResultsForPositiveReplicates.add(model);
     }
 
@@ -145,7 +140,6 @@ public class IonAnalysisInterchangeModel {
     @JsonProperty("mass_charge")
     private Double mz;
 
-    // TODO: Remove this field once backwards compatibility is no longer an issue.
     @JsonProperty("valid")
     private Boolean isValid;
 
