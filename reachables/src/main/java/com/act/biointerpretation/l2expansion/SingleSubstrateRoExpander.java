@@ -56,6 +56,5 @@ public class SingleSubstrateRoExpander extends L2Expander {
     LOGGER.info("Created %d prediction seeds", result.size());
     return result;
   }
-
 }
 

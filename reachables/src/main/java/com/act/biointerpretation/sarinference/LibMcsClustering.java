@@ -214,7 +214,7 @@ public class LibMcsClustering {
    * @param sarTreeNodesOutput A SarTreeNodeList of every node in the clustering tree.
    * @return A JavaRunnable to run the appropriate clustering.
    */
-  private static JavaRunnable getRunnableClusterer(File predictionCorpusInput, File sarTreeNodesOutput) {
+  public static JavaRunnable getRunnableClusterer(File predictionCorpusInput, File sarTreeNodesOutput) {
 
     return () -> {
       L2PredictionCorpus inputCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(predictionCorpusInput);
@@ -236,14 +236,14 @@ public class LibMcsClustering {
   /**
    * Reads in an already-built SarTree from a SarTreeNodeList, as well as a list of LCMS positives from an
    * LCMS analysis.  Scores the SARs based on the LCMS results.
-   * TODO: workout propagation of LCMS data
+   * TODO: workout propagation of LCMS data with Vijay
    *
    * @param sarTreeInput A SarTreeNodeList containing all Sars from the clustering tree.
    * @param positiveInchiInput A list of positive inchis from LCMS.
    * @param sarTreeNodeOutput The relevant SARs from the corpus, sorted in decreasing order of confidence.
    * @return A JavaRunnable to run the SAR scoring.
    */
-  private static JavaRunnable getRunnableSarScorer(File sarTreeInput, File positiveInchiInput, File sarTreeNodeOutput) {
+  public static JavaRunnable getRunnableSarScorer(File sarTreeInput, File positiveInchiInput, File sarTreeNodeOutput) {
 
     Double confidenceThreshold = 0D;
     Integer subtreeThreshold = 2;
@@ -256,6 +256,7 @@ public class LibMcsClustering {
       nodeList.getSarTreeNodes().forEach(node -> sarTree.addNode(node));
 
       // Build inchi corpus
+      // TODO: do something with the positive inchis (need them in a different form)
       L2InchiCorpus positiveInchis = new L2InchiCorpus();
       positiveInchis.loadCorpus(positiveInchiInput);
       SarTreeBasedCalculator sarConfidenceCalculator = new SarTreeBasedCalculator(sarTree);
