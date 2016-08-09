@@ -17,6 +17,8 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,6 +33,9 @@ import com.act.lcms.XZ;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joda.time.LocalDateTime;
+
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.stream.XMLStreamException;
 
 public class AnalysisHelper {
 
@@ -156,7 +161,8 @@ public class AnalysisHelper {
    */
   public static <T extends PlateWell<T>> Map<Pair<String, Double>, ScanData<T>> getIntensityTimeValuesForEachMassChargeInScanFile(
       DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer, Plate> plateCache,
-      ScanFile scanFile, T well, boolean useFineGrainedMZTolerance, boolean useSNRForPeakIdentification) throws Exception {
+      ScanFile scanFile, T well, boolean useFineGrainedMZTolerance, boolean useSNRForPeakIdentification)
+      throws ParserConfigurationException, IOException, XMLStreamException, SQLException {
 
     // The foreign key constraint on wells ensure that plate will be non-null.
     Plate plate = plateCache.get(well.getPlateId());
@@ -196,6 +202,7 @@ public class AnalysisHelper {
 
       result.put(entry.getKey(), new ScanData<T>(kind, plate, well, scanFile, chemicalName, singletonMass, ms1ScanForWellAndMassCharge));
     }
+
     return result;
   }
 
@@ -311,7 +318,7 @@ public class AnalysisHelper {
     return latestScanFiles.get(REPRESENTATIVE_INDEX);
   }
 
-  public static String constructPlotName(String name, ScanData.KIND kind) {
+  public static String constructChemicalAndScanTypeName(String name, ScanData.KIND kind) {
     return kind.equals(ScanData.KIND.POS_SAMPLE) ? name + "_Positive" : name + "_Negative";
   }
 
@@ -357,7 +364,7 @@ public class AnalysisHelper {
       MS1ScanForWellAndMassCharge ms1ScanResults = scan.getMs1ScanResults();
       Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
 
-      String plotName = constructPlotName(chemicalName, kind);
+      String plotName = constructChemicalAndScanTypeName(chemicalName, kind);
 
       // Read intensity and time data for each metlin mass. We only expect one mass charge pair per ms1ScanResults
       // since we are extracting traces from the scan files via getMultipleMS1s.
