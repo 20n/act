@@ -8,17 +8,30 @@ import org.apache.logging.log4j.LogManager
 import scala.collection.mutable.ListBuffer
 
 trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywords {
-  def queryReactionsForReactionIdsByEcNumber(roughEcnum: String, mongoConnection: MongoDB): List[AnyRef] = {
-    val methodLogger = LogManager.getLogger("queryDbForReactionIdsByEcNumber")
 
-    val queryResult = queryReactionsForValuesByEcNumber(roughEcnum, mongoConnection, List(REACTION_DB_KEYWORD_ID))
-    // Head = Keyword location, given that length is only 1.
-    queryResult.head
+  /**
+    * Returns just the reaction Ids of the documents matching the EC number.
+    *
+    * @param roughEcnum EcNumber that can be regex matched
+    * @param mongoConnection Connection to MongoDB
+    * @return Map of documents containing a map of their fields.
+    */
+  def queryReactionsForReactionIdsByEcNumber(roughEcnum: String,
+                                             mongoConnection: MongoDB): Map[String, Map[String, AnyRef]] = {
+    queryReactionsForValuesByEcNumber(roughEcnum, mongoConnection, List(REACTION_DB_KEYWORD_ID))
   }
 
+  /**
+    * For a given ECNumber, returns an arbitrary set of values about the document.
+    *
+    * @param roughEcnum EcNumber that can be regex matched
+    * @param mongoConnection Connection to MongoDB
+    * @param returnFilterFields Which fields of the document should be returned.
+    * @return Map of documents containing a map of their fields.
+    */
   def queryReactionsForValuesByEcNumber(roughEcnum: String,
                                         mongoConnection: MongoDB,
-                                        returnFilterFields: List[String]): List[List[AnyRef]] = {
+                                        returnFilterFields: List[String]): Map[String, Map[String, AnyRef]]= {
     val methodLogger = LogManager.getLogger("queryReactionsForValuesByEcNumber")
 
     /*
@@ -47,20 +60,7 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
       mongoQueryReactions(mongoConnection, reactionIdQuery, reactionIdReturnFilter)
     val dbReactionReturnValues = mongoDbIteratorToSet(dbReactionIdsIterator)
 
-    // For each field name, pull out the values of that document and add it to a list, and make a list of those.
-    val returnValues =
-      returnFilterFields.map(fieldName => dbReactionReturnValues.map(outputDocument => outputDocument.get(fieldName)).toList)
-
-    // Exit if none of the values are nonempty.
-    returnValues match {
-      case n if n.exists(!_.nonEmpty) =>
-        methodLogger.error("No values found matching any of the Ecnum supplied")
-        throw new Exception(s"No values found matching any of the Ecnum supplied.")
-      case default =>
-        methodLogger.info(s"Found $default values matching the Ecnum.")
-    }
-
-    returnValues
+    mongoReturnQueryToMap(dbReactionReturnValues, returnFilterFields)
   }
 
   /**
@@ -93,38 +93,53 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
     "^" + basicRegex.mkString(sep = "\\.") + "$"
   }
 
-  def queryReactionsForKmValuesByEcNumber(roughEcnum: String, mongoConnection: MongoDB): List[AnyRef] = {
-    val methodLogger = LogManager.getLogger("queryReactionsForKmValuesByEcNumber")
-
+  /**
+    *
+    *
+    * @param roughEcnum
+    * @param mongoConnection
+    * @return
+    */
+  def queryReactionsForKmValuesByEcNumber(roughEcnum: String,
+                                          mongoConnection: MongoDB): Map[String, Map[String, AnyRef]] = {
     // Returns a list of ID, KM value pairs.
     aggregateReactionsByEcNumberWithKm(roughEcnum, mongoConnection)
   }
 
-  def aggregateReactionsByEcNumberWithKm(roughEcnum: String, mongoConnection: MongoDB): List[DBObject] = {
-    val pipeline = new ListBuffer[DBObject]
-
+  /**
+    * Aggregates all the KM values for a given document into a list.
+    *
+    * @param roughEcnum Regex of ecnumbers
+    * @param mongoConnection Connection to MongoDB
+    * @return Map of maps containing ID and KM values for that document.
+    */
+  def aggregateReactionsByEcNumberWithKm(roughEcnum: String,
+                                         mongoConnection: MongoDB): Map[String, Map[String, AnyRef]] = {
     val ecnumRegex = formatEcNumberAsRegex(roughEcnum)
 
     // Setup the query and filter for just the reaction ID
     val regex = defineMongoRegex(ecnumRegex)
     val reactionIdQuery = new BasicDBObject(REACTION_DB_KEYWORD_ECNUM, regex)
 
-    // Match all reactions that have this ecnum
-    pipeline.append(defineMongoMatch(reactionIdQuery))
-    // Unwind the proteins list to make it keyable
-    pipeline.append(defineMongoUnwind(REACTION_DB_KEYWORD_PROTEINS))
-    // Group proteins.km together into a list
-    pipeline.append(defineMongoGroup(
-      formatUnwoundName(REACTION_DB_KEYWORD_PROTEINS, REACTION_DB_KEYWORD_KM), REACTION_DB_KEYWORD_KM))
-    // Unwind the proteins.km we just made
-    pipeline.append(defineMongoUnwind(REACTION_DB_KEYWORD_KM))
-    // Group the km.val that we have now.
-    pipeline.append(defineMongoGroup(
-      formatUnwoundName(REACTION_DB_KEYWORD_KM, REACTION_DB_KEYWORD_VALUE), REACTION_DB_KEYWORD_VALUE))
-    // Unwind that list so we get a bunch of flat arrays.
-    pipeline.append(defineMongoUnwind(REACTION_DB_KEYWORD_VALUE))
+    /*
+     1) Match all reactions that have this ecnum
+     2) Unwind the proteins list to make it keyable
+     3) Group proteins.km together into a list
+     4) Unwind the proteins.km we just made
+     5) Group the km.val that we have now.
+     6) Unwind that list so we get a bunch of flat arrays.
+    */
+    val pipeline = List[DBObject](
+      defineMongoMatch(reactionIdQuery),
+      defineMongoUnwind(REACTION_DB_KEYWORD_PROTEINS),
+      defineMongoGroup(formatUnwoundName(REACTION_DB_KEYWORD_PROTEINS, REACTION_DB_KEYWORD_KM), REACTION_DB_KEYWORD_KM),
+      defineMongoUnwind(REACTION_DB_KEYWORD_KM),
+      defineMongoGroup(formatUnwoundName(REACTION_DB_KEYWORD_KM, REACTION_DB_KEYWORD_VALUE), REACTION_DB_KEYWORD_VALUE),
+      defineMongoUnwind(REACTION_DB_KEYWORD_VALUE)
+    )
 
     // Convert the iterator to a list and return
-    mongoApplyPipelineReactions(mongoConnection, pipeline.toList).toList
+    val finalDocumentIterator = mongoApplyPipelineReactions(mongoConnection, pipeline)
+    mongoReturnQueryToMap(finalDocumentIterator, List(REACTION_DB_KEYWORD_ID, REACTION_DB_KEYWORD_VALUE))
   }
 }

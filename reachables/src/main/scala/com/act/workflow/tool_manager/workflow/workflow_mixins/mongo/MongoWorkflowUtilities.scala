@@ -35,12 +35,13 @@ trait MongoWorkflowUtilities {
   /**
     * Instantiates a connection with the MongoDB in act.server
     *
-    * @param db The name of the database to connect to. Default marvin
+    * @param db   The name of the database to connect to. Default marvin
     * @param host The host to connect to. Default localhost
     * @param port The port to listen at. Default 27017 (Mongo default)
+    *
     * @return Created Mongo database connection.
     */
-  def connectToMongoDatabase(db: String = "marvin", host: String ="localhost", port: Int = 27017): MongoDB = {
+  def connectToMongoDatabase(db: String = "marvin", host: String = "localhost", port: Int = 27017): MongoDB = {
     logger.info("Setting up Mongo database connection")
 
     // Instantiate Mongo host.
@@ -60,6 +61,7 @@ trait MongoWorkflowUtilities {
     * Thus, this function changes f("String") -> "$String"
     *
     * @param inputString The string to be converted into dollar format
+    *
     * @return Modified string
     */
   private def dollarString(inputString: String): String = {
@@ -79,8 +81,9 @@ trait MongoWorkflowUtilities {
     *
     * Thus, this naming pattern modification allows to easily access these newly created values.
     *
-    * @param listName The name of the DBListObject that was unwound
+    * @param listName  The name of the DBListObject that was unwound
     * @param valueName The name of a value found within that list
+    *
     * @return
     */
   def formatUnwoundName(listName: String, valueName: String): String = {
@@ -124,6 +127,7 @@ trait MongoWorkflowUtilities {
     * Reference: https://docs.mongodb.com/manual/reference/operator/query/or/
     *
     * @param truthValueList A list of DBObjects to check truth conditions against
+    *
     * @return DBObject containing this query
     */
   def defineMongoOr(truthValueList: BasicDBList): BasicDBObject = {
@@ -136,6 +140,7 @@ trait MongoWorkflowUtilities {
     * Reference: https://docs.mongodb.com/manual/reference/operator/query/and/
     *
     * @param truthValueList A list of DBObjects to check truth conditions against
+    *
     * @return DBObject containing this query
     */
   def defineMongoAnd(truthValueList: BasicDBList): BasicDBObject = {
@@ -148,6 +153,7 @@ trait MongoWorkflowUtilities {
     * Reference: https://docs.mongodb.com/manual/reference/operator/query/in/
     *
     * @param queryList A list of values that the field could equal
+    *
     * @return DBObject containing this query
     */
   def defineMongoIn(queryList: BasicDBList): BasicDBObject = {
@@ -160,6 +166,7 @@ trait MongoWorkflowUtilities {
     * Reference: https://docs.mongodb.com/manual/reference/operator/query/regex/
     *
     * @param regex A regex string that will be matched against
+    *
     * @return DBObject containing this query
     */
   def defineMongoRegex(regex: String): BasicDBObject = {
@@ -171,9 +178,10 @@ trait MongoWorkflowUtilities {
     *
     * Reference: https://docs.mongodb.com/manual/reference/method/db.collection.find/
     *
-    * @param mongo Connection to a MongoDB
-    * @param key The key to match documents against
+    * @param mongo  Connection to a MongoDB
+    * @param key    The key to match documents against
     * @param filter A filter of the returned components of the document
+    *
     * @return An iterator over the returned documents
     */
   def mongoQueryReactions(mongo: MongoDB, key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
@@ -186,9 +194,10 @@ trait MongoWorkflowUtilities {
     *
     * Reference: https://docs.mongodb.com/manual/reference/method/db.collection.find/
     *
-    * @param mongo Connection to a MongoDB
-    * @param key The key to match documents against
+    * @param mongo  Connection to a MongoDB
+    * @param key    The key to match documents against
     * @param filter A filter of the returned components of the document
+    *
     * @return An iterator over the returned documents
     */
   def mongoQuerySequences(mongo: MongoDB, key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
@@ -209,6 +218,7 @@ trait MongoWorkflowUtilities {
     * Reference: https://docs.mongodb.com/manual/reference/operator/aggregation/match/
     *
     * @param thingsToMatch Conditional to evaluate true/false against
+    *
     * @return DBObject constructing this request.
     */
   def defineMongoMatch(thingsToMatch: BasicDBObject): BasicDBObject = {
@@ -218,7 +228,7 @@ trait MongoWorkflowUtilities {
   /**
     * Takes a a list within the Mongo document and unwinds it.  Unwinding a list creates the pattern shown below:
     *
-    *  A document containing a field "lists" that looks like this:
+    * A document containing a field "lists" that looks like this:
     *
     * Operation:
     * "lists" : [{val1 : 1, val2: 2}, {val1: 3, val2: 3}] ->  {lists.val1 : [1, 3], lists.val2 : [2, 4]}
@@ -226,6 +236,7 @@ trait MongoWorkflowUtilities {
     * Reference: https://docs.mongodb.com/manual/reference/operator/aggregation/unwind/
     *
     * @param listName The name of the list
+    *
     * @return A formatted query that will do the above operation
     */
   def defineMongoUnwind(listName: String): BasicDBObject = {
@@ -245,7 +256,8 @@ trait MongoWorkflowUtilities {
     * $group -> https://docs.mongodb.com/manual/reference/operator/aggregation/group/
     *
     * @param nameOfGroupingValue The name of the field which should be pushed into an array
-    * @param outputListName The name of the list that refers to the array created around nameOfGroupingValue
+    * @param outputListName      The name of the list that refers to the array created around nameOfGroupingValue
+    *
     * @return DBObject to perform the group query
     */
   def defineMongoGroup(nameOfGroupingValue: String, outputListName: String): BasicDBObject = {
@@ -267,8 +279,9 @@ trait MongoWorkflowUtilities {
     *
     * Reference: https://docs.mongodb.com/manual/aggregation/
     *
-    * @param mongo Connection to a MongoDB
+    * @param mongo    Connection to a MongoDB
     * @param pipeline A list of objects to apply sequentially to process the data.
+    *
     * @return An iterator over all the returned documents
     */
   def mongoApplyPipelineReactions(mongo: MongoDB, pipeline: List[DBObject]): Iterator[DBObject] = {
@@ -280,8 +293,9 @@ trait MongoWorkflowUtilities {
     *
     * Reference: https://docs.mongodb.com/manual/aggregation/
     *
-    * @param mongo Connection to a MongoDB
+    * @param mongo    Connection to a MongoDB
     * @param pipeline A list of objects to apply sequentially to process the data.
+    *
     * @return An iterator over all the returned documents
     */
   def mongoApplyPipelineSequences(mongo: MongoDB, pipeline: List[DBObject]): Iterator[DBObject] = {
@@ -297,6 +311,7 @@ trait MongoWorkflowUtilities {
     * Takes in a List of DBObjects and converts it to a BasicDBList
     *
     * @param scalaList The initial list
+    *
     * @return A BasicDBList representation of the scalaList
     */
   def convertListToMongoDbList(scalaList: List[BasicDBObject]): BasicDBList = {
@@ -309,6 +324,7 @@ trait MongoWorkflowUtilities {
     * Takes in an iterator over DBObjects and creates a set out of them.
     *
     * @param iterator DBObject iterator
+    *
     * @return Set of DBObjects
     */
   def mongoDbIteratorToSet(iterator: Iterator[DBObject]): Set[DBObject] = {
@@ -317,5 +333,44 @@ trait MongoWorkflowUtilities {
       buffer add value
     }
     buffer.toSet
+  }
+
+  /**
+    * Converts an iterable into a Map of Maps,
+    * where the first Map is keyed on the document ID and the second map on the document fields.
+    *
+    * @param iterator Iterable of DBObjects
+    * @param fields List of fields in the document
+    * @return The map of map of documents.
+    */
+  def mongoReturnQueryToMap(iterator: Iterable[DBObject], fields: List[String]): Map[String, Map[String, AnyRef]] = {
+    // For each field name, pull out the values of that document and add it to a list, and make a list of those.
+    val filteredFields = fields.filter(!_.equals(ID))
+    def defineFields(document: DBObject): Map[String, AnyRef] = {
+      filteredFields map (field => field -> document.get(field)) toMap
+    }
+
+    // Each document mapped by the ID mapped to a map of fields
+    val mapOfMaps = iterator map (document => document.get(ID).toString -> defineFields(document)) toMap
+
+
+    // Exit if all values are empty.
+    mapOfMaps.size match {
+      case n if n > 0 =>
+        throw new Exception(s"No values found matching any of the key supplied.")
+    }
+
+    mapOfMaps
+  }
+
+  /**
+    * Overload of the Iterable version, but converts iterator to a stream for processing
+    *
+    * @param iterator Iterator DBObject
+    * @param fields List of fields in the document
+    * @return The map of map of documents.
+    */
+  def mongoReturnQueryToMap(iterator: Iterator[DBObject], fields: List[String]): Map[String, Map[String, AnyRef]] ={
+    mongoReturnQueryToMap(iterator.toStream, fields)
   }
 }

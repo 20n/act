@@ -4,20 +4,36 @@ import act.server.MongoDB
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
 import com.mongodb.{BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
+import spire.syntax.field
 
 trait QueryByRo extends MongoWorkflowUtilities with ReactionDatabaseKeywords {
-  def queryReactionsForReactionIdsByRo(roValues: List[String], mongoConnection: MongoDB): List[AnyRef] = {
+  /**
+    * Query reactions based on RO Values, return only the ID
+    *
+    * @param roValues A list of RO values, containing one or more
+    * @param mongoConnection Connection to Mongo database
+    * @return A map of maps containing documents -> fields
+    */
+  def queryReactionsForReactionIdsByRo(roValues: List[String],
+                                       mongoConnection: MongoDB): Map[String, Map[String, AnyRef]] = {
     val methodLogger = LogManager.getLogger("queryReactionsForReactionIdsByRo")
 
-    val queryResult = queryReactionsForValuesByRo(roValues, mongoConnection, List(REACTION_DB_KEYWORD_ID))
-    // Head = Keyword location, given that length is only 1.
-    queryResult.head
+    queryReactionsForValuesByRo(roValues, mongoConnection, List(REACTION_DB_KEYWORD_ID))
   }
 
+  /**
+    * Query reactions based on RO Values
+    *
+    * @param roValues A list of RO values, containing one or more
+    * @param mongoConnection Connection to Mongo database
+    * @param returnFilterFields The fields you are looking for.
+    * @return A map of maps containing documents -> fields
+    */
   def queryReactionsForValuesByRo(roValues: List[String],
                                   mongoConnection: MongoDB,
-                                  returnFilterFields: List[String]): List[List[AnyRef]] = {
+                                  returnFilterFields: List[String]): Map[String, Map[String, AnyRef]] = {
     val methodLogger = LogManager.getLogger("queryReactionsForValuesByRo")
+    if (roValues.length <= 0) throw new RuntimeException("Number of RO values supplied was 0.")
 
     /*
       Query Database for Reaction IDs based on a given RO
@@ -25,8 +41,7 @@ trait QueryByRo extends MongoWorkflowUtilities with ReactionDatabaseKeywords {
       Map RO values to a list of mechanistic validator things we will want to see
     */
 
-    val roObjects = roValues.map(x =>
-      new BasicDBObject(s"$REACTION_DB_KEYWORD_MECHANISTIC_VALIDATOR.$x", getMongoExists))
+    val roObjects = roValues.map(r => new BasicDBObject(s"$REACTION_DB_KEYWORD_MECHANISTIC_VALIDATOR.$r", getMongoExists))
     val queryRoValue = convertListToMongoDbList(roObjects)
 
     // Setup the query and filter for just the reaction ID
@@ -34,33 +49,13 @@ trait QueryByRo extends MongoWorkflowUtilities with ReactionDatabaseKeywords {
 
     // Create the return filter by adding all fields onto
     val reactionReturnFilter = new BasicDBObject()
-    for (field <- returnFilterFields) {
-      reactionReturnFilter.append(field, 1)
-    }
+    returnFilterFields.map(field => reactionReturnFilter.append(field, 1))
 
     // Deploy DB query w/ error checking to ensure we got something
     methodLogger.info(s"Running query $reactionIdQuery against DB.  Return filter is $reactionReturnFilter")
     val dbReactionIdsIterator: Iterator[DBObject] =
       mongoQueryReactions(mongoConnection, reactionIdQuery, reactionReturnFilter)
-    val dbReactionReturnValues = mongoDbIteratorToSet(dbReactionIdsIterator)
 
-    // For each field name, pull out the values of that document and add it to a list, and make a list of those.
-    val returnValues =
-      returnFilterFields.map(
-        fieldName => dbReactionReturnValues.map(
-          outputDocument => outputDocument.get(fieldName)
-        ).toList
-      )
-
-    // Exit if none of the values are nonempty.
-    returnValues match {
-      case n if n.exists(_.nonEmpty) =>
-        methodLogger.error("No values found matching any of the Ecnum supplied")
-        throw new Exception(s"No values found matching any of the Ecnum supplied.")
-      case default =>
-        methodLogger.info(s"Found $default values matching the Ecnum.")
-    }
-
-    returnValues
+    mongoReturnQueryToMap(dbReactionIdsIterator, returnFilterFields)
   }
 }

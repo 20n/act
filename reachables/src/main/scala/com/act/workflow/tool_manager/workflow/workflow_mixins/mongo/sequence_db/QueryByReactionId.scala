@@ -9,6 +9,13 @@ import org.biojava.nbio.core.sequence.ProteinSequence
 import scala.collection.mutable.ListBuffer
 
 trait QueryByReactionId extends MongoWorkflowUtilities with SequenceDatabaseKeywords {
+  /**
+    * Takes in a list of reaction IDs and creates outputs a list of ProteinSequences known to do those reactions.
+    *
+    * @param reactionIds List of reaction IDs.
+    * @param mongoConnection Connection to MongoDB
+    * @return List of protein sequences.
+    */
   def querySequencesForSequencesByReactionId(reactionIds: List[AnyRef], mongoConnection: MongoDB): List[ProteinSequence] = {
     val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
 
@@ -33,8 +40,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with SequenceDatabaseKeyw
 
     methodLogger.info("Querying enzymes with the desired reactions for sequences from Mongo")
     methodLogger.info(s"Running query $seqKey against DB.  Return filter is $seqFilter. ")
-    val sequenceReturnIterator: Iterator[DBObject] =
-      mongoQuerySequences(mongoConnection, seqKey, seqFilter)
+    val sequenceReturnIterator: Iterator[DBObject] = mongoQuerySequences(mongoConnection, seqKey, seqFilter)
     methodLogger.info("Finished sequence query.")
 
     /*
