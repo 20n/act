@@ -365,18 +365,14 @@ public class SequenceMerger extends BiointerpretationProcessor {
     // ensures that the new gene name is added to the synonyms list in the case that it doesn't match the old gene name
     boolean geneNameMatches = true;
 
-    if (newMetadata.has(NAME)) {
-      String newName = newMetadata.getString(NAME);
-
-      if (mergedMetadata.has(NAME)) {
-        String oldName = mergedMetadata.getString(NAME);
-
-        if (!oldName.equals(newName)) {
-          geneNameMatches = false;
-        }
-      } else {
-        mergedMetadata.put(NAME, newName);
+    if (newMetadata.has(NAME) && mergedMetadata.has(NAME)) {
+      if (!newMetadata.getString(NAME).equals(mergedMetadata.getString(NAME))) {
+        geneNameMatches = false;
       }
+    }
+
+    if (!mergedMetadata.has(NAME) && newMetadata.has(NAME)) {
+      mergedMetadata.put(NAME, newMetadata.getString(NAME));
     }
 
     if (newMetadata.has(SYNONYMS)) {
