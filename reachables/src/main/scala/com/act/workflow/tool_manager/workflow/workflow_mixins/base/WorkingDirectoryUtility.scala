@@ -19,43 +19,36 @@ trait WorkingDirectoryUtility {
     val finalFile = new File(workingDirectory, fileName)
     methodLogger.info(s"The final file path for file $optionName was ${finalFile.getAbsoluteFile}")
 
-    // File sanity checks
-    if (finalFile.isDirectory) {
-      val message = s"File path should be a file, not a directory. Supplied path is ${finalFile.getAbsolutePath}"
-      methodLogger.error(message)
-      throw new RuntimeException(message)
-    }
-
-    if (finalFile.isDirectory) {
-      val message = s"Unable to write at file location ${finalFile.getAbsolutePath} " +
-        s"because it is a directory that currently exists."
-      methodLogger.error(message)
-      throw new RuntimeException(message)
-    }
-
-    if (finalFile.exists()) {
-      if (!finalFile.canWrite) throw new RuntimeException(s"Can't write to designated location ${finalFile.getAbsolutePath}")
-    } else {
-      finalFile.createNewFile()
-      if (!finalFile.canWrite) throw new RuntimeException(s"Can't write to designated location ${finalFile.getAbsolutePath}")
-      finalFile.delete()
-    }
+    verifyOutputFile(finalFile)
 
     finalFile
   }
 
-  def verifyInputFile(inputFile : File): Boolean = {
-    val methodLogger = LogManager.getLogger("verifyInputFilePath")
+  def verifyOutputFile(outputFile: File): Unit = {
+    // File sanity checks
+    if (outputFile.isDirectory) {
+      val message = s"File path should be a file, not a directory. Supplied path is ${outputFile.getAbsolutePath}"
+      throw new RuntimeException(message)
+    }
+
+    if (outputFile.exists()) {
+      if (!outputFile.canWrite) throw new RuntimeException(s"Can't write to designated location ${outputFile.getAbsolutePath}")
+    } else {
+      outputFile.createNewFile()
+      if (!outputFile.canWrite) throw new RuntimeException(s"Can't write to designated location ${outputFile.getAbsolutePath}")
+      outputFile.delete()
+    }
+  }
+
+  def verifyInputFile(inputFile: File): Unit = {
     if (!inputFile.exists()) {
-      methodLogger.error(s"The input file ${inputFile.getAbsolutePath} does not exist.")
-      return false
+      val message = s"The input file ${inputFile.getAbsolutePath} does not exist."
+      throw new RuntimeException(message)
     }
 
     if (inputFile.isDirectory) {
-      methodLogger.error(s"The input file ${inputFile.getAbsolutePath} is a directory, not a file as required.")
-      return false
+      val message = s"The input file ${inputFile.getAbsolutePath} is a directory, not a file as required."
+      throw new RuntimeException(message)
     }
-
-    true
   }
 }

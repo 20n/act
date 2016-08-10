@@ -113,17 +113,11 @@ class RoToProteinPredictionFlow
     val clustalBinaries = new File(cl.getOptionValue(OPTION_CLUSTAL_BINARIES))
 
     // Align sequence so we can build an HMM, needs to know where aligner binaries are
-    if (!verifyInputFile(clustalBinaries)) {
-      throw new RuntimeException(s"Clustal binary path was not valid. " +
-        s"Given path was ${clustalBinaries.getAbsolutePath}")
-    }
-
+    verifyInputFile(clustalBinaries)
     ClustalOmegaWrapper.setBinariesLocation(clustalBinaries)
-    val proteomeLocation = new File(cl.getOptionValue(OPTION_COMPARE_PROTEOME_LOCATION))
 
-    if (!verifyInputFile(proteomeLocation)) {
-      throw new RuntimeException(s"Proteome file location was not valid.  Given input was $proteomeLocation.")
-    }
+    val proteomeLocation = new File(cl.getOptionValue(OPTION_COMPARE_PROTEOME_LOCATION))
+    verifyInputFile(proteomeLocation)
 
     // Making into a list will make it so that we just send the whole package to one job.
     // Keeping as individual options will cause individual runs.
