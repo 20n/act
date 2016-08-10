@@ -132,6 +132,10 @@ public class SequenceMerger extends BiointerpretationProcessor {
     Iterator<Seq> sequences = getNoSQLAPI().readSeqsFromInKnowledgeGraph();
     Map<UniqueSeq, List<Seq>> sequenceGroups = new HashMap<>();
 
+    int numberOfSequencesMerged = 0;
+    int numberOfSequencesUnmerged = 0; // # of sequences that aren't merged due to lack of Seq entry matches
+    int numberOfSequencesUnmergedInfo = 0; // # of sequences that aren't merged due to lack of information
+
     // stores all sequences with the same ecnum, organism (accounts for prefix), and protein sequence in the same list
     while (sequences.hasNext()) {
       Seq sequence = sequences.next();
@@ -141,6 +145,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
           sequence.get_ec() == null || sequence.get_ec().isEmpty()) {
         // copy sequence directly, no merging will be possible
         writeSequence(sequence);
+        numberOfSequencesUnmergedInfo++;
       }
 
       /* changes the organism name to its minimal prefix; must occur before stored in the sequenceGroup map so that
@@ -163,6 +168,12 @@ public class SequenceMerger extends BiointerpretationProcessor {
     for (Map.Entry<UniqueSeq, List<Seq>> sequenceGroup : sequenceGroups.entrySet()) {
       List<Seq> allMatchedSeqs = sequenceGroup.getValue();
 
+      if (allMatchedSeqs.size() == 1) {
+        numberOfSequencesUnmerged++;
+      } else {
+        numberOfSequencesMerged += allMatchedSeqs.size();
+      }
+
       // stores the IDs of all sequences that are about to be merged
       Set<Long> matchedSeqsIDs = new HashSet<>();
 
@@ -183,6 +194,10 @@ public class SequenceMerger extends BiointerpretationProcessor {
         sequenceMigrationMap.put(matchedSeqId, mergedSeqId);
       }
     }
+
+    LOGGER.info("%d number of sequences merged", numberOfSequencesMerged);
+    LOGGER.info("%d number of sequences unmerged due to lack of information", numberOfSequencesUnmergedInfo);
+    LOGGER.info("%d number of sequences unmerged due to lack of Seq entry matches", numberOfSequencesUnmerged);
   }
 
   private Long writeSequence(Seq sequence) {
