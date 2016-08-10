@@ -27,10 +27,18 @@ trait WorkingDirectoryUtility {
     }
 
     if (finalFile.isDirectory) {
-      val message = s"Unable to write at file location
-        $ {finalFile.getAbsolutePath} because it is a directory that currently exists."
+      val message = s"Unable to write at file location ${finalFile.getAbsolutePath} " +
+        s"because it is a directory that currently exists."
       methodLogger.error(message)
       throw new RuntimeException(message)
+    }
+
+    if (finalFile.exists()) {
+      if (!finalFile.canWrite) throw new RuntimeException(s"Can't write to designated location ${finalFile.getAbsolutePath}")
+    } else {
+      finalFile.createNewFile()
+      if (!finalFile.canWrite) throw new RuntimeException(s"Can't write to designated location ${finalFile.getAbsolutePath}")
+      finalFile.delete()
     }
 
     finalFile
