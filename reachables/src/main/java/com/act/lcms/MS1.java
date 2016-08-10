@@ -302,11 +302,25 @@ public class MS1 {
     /* Note: this operation is O(n * m) where n is the number of (mass, intensity) readings from the scan
      * and m is the number of mass targets specified.  We might be able to get this down to O(m log n), but
      * we'll save that for once we get this working at all. */
+
+
+    Integer counter = 0;
+    Boolean flag = false;
+
     while (ms1Iterator.hasNext()) {
+      counter++;
+
       LCMSSpectrum timepoint = ms1Iterator.next();
 
       // get all (mz, intensity) at this timepoint
       List<Pair<Double, Double>> intensities = timepoint.getIntensities();
+
+//      if (!flag) {
+//        LOGGER.info("Number of intensities are: %s", intensities.size());
+//        flag = true;
+//      }
+
+      LOGGER.info("Number of intensities are: %s", intensities.size());
 
       // for this timepoint, extract each of the ion masses from the METLIN set
       for (Double ionMz : sortedMasses) {
@@ -320,6 +334,8 @@ public class MS1 {
         scanLists.get(ionMz).add(intensityAtThisTime);
       }
     }
+
+    LOGGER.info("Number of time points are: %s", counter.toString());
 
     Map<Pair<String, Double>, MS1ScanForWellAndMassCharge> finalResults =
         new HashMap<>(metlinMasses.size());
