@@ -105,8 +105,8 @@ public class MS1 {
     }
 
     if (numWithinPrecision > maxDetectionsInWindow) {
-      LOGGER.info("Only expected %d, but found %d in the mz range [%f, %f]",
-          maxDetectionsInWindow, numWithinPrecision, mzLowRange, mzHighRange);
+      //LOGGER.info("Only expected %d, but found %d in the mz range [%f, %f]",
+      //    maxDetectionsInWindow, numWithinPrecision, mzLowRange, mzHighRange);
     }
 
     return intensityFound;
@@ -172,11 +172,19 @@ public class MS1 {
       scanResults.getIonsToSpectra().put(ionDesc, ms1);
     }
 
-    while (ms1File.hasNext()) {
-      LCMSSpectrum timepoint = ms1File.next();
+    Integer counter = 0;
+    Boolean flag = false;
 
+    while (ms1File.hasNext()) {
+      counter++;
+      LCMSSpectrum timepoint = ms1File.next();
       // get all (mz, intensity) at this timepoint
       List<Pair<Double, Double>> intensities = timepoint.getIntensities();
+
+      if (!flag) {
+        LOGGER.info("Number of intensities are: %s", intensities.size());
+        flag = true;
+      }
 
       // for this timepoint, extract each of the ion masses from the METLIN set
       for (Map.Entry<String, Double> metlinMass : metlinMasses.entrySet()) {
@@ -193,6 +201,8 @@ public class MS1 {
         scanResults.getIonsToSpectra().get(ionDesc).add(intensityAtThisTime);
       }
     }
+
+    LOGGER.info("Number of time points are: %s", counter.toString());
 
     // populate statistics about the curve for each ion curve
     for (String ionDesc : metlinMasses.keySet()) {

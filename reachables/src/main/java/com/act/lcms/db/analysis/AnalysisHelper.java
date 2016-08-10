@@ -197,8 +197,8 @@ public class AnalysisHelper {
 
       Map<String, Double> singletonMass = Collections.singletonMap(chemicalName, massCharge);
 
-      LOGGER.info("Max intensity for target %s (%f) in %s is %f",
-          chemicalName, massCharge, scanFile.getFilename(), ms1ScanForWellAndMassCharge.getMaxYAxis());
+      //LOGGER.info("Max intensity for target %s (%f) in %s is %f",
+      //    chemicalName, massCharge, scanFile.getFilename(), ms1ScanForWellAndMassCharge.getMaxYAxis());
 
       result.put(entry.getKey(), new ScanData<T>(kind, plate, well, scanFile, chemicalName, singletonMass, ms1ScanForWellAndMassCharge));
     }
