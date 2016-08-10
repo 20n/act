@@ -568,7 +568,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     }
 
     try (DB db = DB.openDBFromCLI(cl)) {
-      //ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
+      ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
       File inputPredictionCorpus = new File(cl.getOptionValue(OPTION_INPUT_PREDICTION_CORPUS));
 
