@@ -141,27 +141,6 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
     sequenceDocuments
   }
 
-  /**
-    * Query sequences based on if they contain a reaction ID
-    *
-    * @param reactionIds        A list of reactionIds, a matching sequence will match one or more.
-    * @param mongoConnection    Connection to Mongo database
-    * @param returnFilterFields The fields you are looking for.
-    *
-    * @return
-    */
-  def querySequencesForValuesByReactionId(reactionIds: List[Long],
-                                          mongoConnection: MongoDB,
-                                          returnFilterFields: List[String]): Map[Long, Map[String, AnyRef]] = {
-    val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
-
-    val sequenceReturnIterator = querySequencesMatchingReactionIdIterator(reactionIds, mongoConnection, returnFilterFields)
-
-    val sequenceDocuments = mongoReturnQueryToMap(sequenceReturnIterator, returnFilterFields)
-    methodLogger.info(s"Found ${sequenceDocuments.size} document${if (sequenceDocuments.size != 1) "s" else ""}.")
-    sequenceDocuments
-  }
-
   private def querySequencesMatchingReactionIdIterator(reactionIds: List[Long],
                                                        mongoConnection: MongoDB,
                                                        returnFilterFields: List[String]): Iterator[DBObject] = {
@@ -191,6 +170,28 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
     methodLogger.info("Finished sequence query.")
 
     sequenceReturnIterator
+  }
+
+  /**
+    * Query sequences based on if they contain a reaction ID
+    *
+    * @param reactionIds        A list of reactionIds, a matching sequence will match one or more.
+    * @param mongoConnection    Connection to Mongo database
+    * @param returnFilterFields The fields you are looking for.
+    *
+    * @return Returns a map of documents with their fields as the secondary keys.
+    *         First map is keyed by the document ID, secondary maps are keyed by the field names retrieved from the DB.
+    */
+  def querySequencesForValuesByReactionId(reactionIds: List[Long],
+                                          mongoConnection: MongoDB,
+                                          returnFilterFields: List[String]): Map[Long, Map[String, AnyRef]] = {
+    val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
+
+    val sequenceReturnIterator = querySequencesMatchingReactionIdIterator(reactionIds, mongoConnection, returnFilterFields)
+
+    val sequenceDocuments = mongoReturnQueryToMap(sequenceReturnIterator, returnFilterFields)
+    methodLogger.info(s"Found ${sequenceDocuments.size} document${if (sequenceDocuments.size != 1) "s" else ""}.")
+    sequenceDocuments
   }
 }
 
