@@ -28,7 +28,7 @@ case class Titer(base: Mass, counter: Volume) extends Ratio[Mass, Volume] {
   def /(that: Titer): Double = (base.value / that.base.value) * (that.counter.value / counter.value)
 }
 
-class costmodel(modelName: String) {
+class CostModel(modelName: String) {
 
   type KiloWattPerMeterCubed = Double
   type KiloJoulePerMMol = Double
@@ -201,7 +201,7 @@ class costmodel(modelName: String) {
 
 }
 
-class investmodel {
+class InvestModel {
   val defaultYield: Yield = Yield(31.9 grams, 100 grams) // 31.9% g/g
   val maxYield: Yield = Yield(60.0 grams, 100.0 grams) // 60% g/g
   val defaultTiter: Titer = Titer(84.0 grams, 1 litres) // 84 g/L
@@ -243,3 +243,5 @@ class investmodel {
     (cost(normYield, normTiter), time(normYield, normTiter))
   }
 }
+
+class ROIModel
