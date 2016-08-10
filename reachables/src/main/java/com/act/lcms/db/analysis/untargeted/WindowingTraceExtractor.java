@@ -287,7 +287,7 @@ public class WindowingTraceExtractor {
     }
 
     LOGGER.info("Writing timepoints to on-disk index (%d points)", times.size());
-    dbAndHandles.put(COLUMN_FAMILIES.RANGE_TO_ID, TIMEPOINTS_KEY, serializeDoubleList(times));
+    dbAndHandles.put(COLUMN_FAMILIES.TIMEPOINTS, TIMEPOINTS_KEY, serializeDoubleList(times));
 
     for (int i = 0; i < allTraces.size(); i++) {
       byte[] keyBytes = serializeObject(i);
@@ -311,8 +311,8 @@ public class WindowingTraceExtractor {
 
     final List<Double> times;
     try {
-      byte[] traceBytes = dbAndHandles.get(COLUMN_FAMILIES.ID_TO_TRACE, TIMEPOINTS_KEY);
-      times = deserializeDoublList(traceBytes);
+      byte[] timeBytes = dbAndHandles.get(COLUMN_FAMILIES.TIMEPOINTS, TIMEPOINTS_KEY);
+      times = deserializeDoubleList(timeBytes);
     } catch (RocksDBException e) {
       LOGGER.error("Caught RocksDBException when trying to fetch times: %s", e.getMessage());
       throw new RuntimeException(e);
@@ -347,7 +347,13 @@ public class WindowingTraceExtractor {
         List<Double> trace;
         try {
           byte[] traceBytes = dbAndHandles.get(COLUMN_FAMILIES.ID_TO_TRACE, valBytes);
-          trace = deserializeDoublList(traceBytes);
+          if (traceBytes == null) {
+            String msg = String.format("Got null byte array back for trace key %d (%.3f - %.3f)",
+                traceIndex, range.getLeft(), range.getRight());
+            LOGGER.error(msg);
+            throw new RuntimeException(msg);
+          }
+          trace = deserializeDoubleList(traceBytes);
         } catch (RocksDBException e) {
           LOGGER.error("Caught RocksDBException when trying to extract range %d (%f - %f): %s",
               traceIndex, range.getLeft(), range.getRight(), e.getMessage());
@@ -404,7 +410,7 @@ public class WindowingTraceExtractor {
     }
   }
 
-  private static List<Double> deserializeDoublList(byte[] byteStream) throws IOException {
+  private static List<Double> deserializeDoubleList(byte[] byteStream) throws IOException {
     List<Double> results = new ArrayList<>(byteStream.length / Double.BYTES);
     try (ByteArrayInputStream is = new ByteArrayInputStream(byteStream)) {
       byte[] bytes = new byte[Double.BYTES];
