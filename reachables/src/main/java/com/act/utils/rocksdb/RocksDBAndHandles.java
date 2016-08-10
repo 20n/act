@@ -3,6 +3,7 @@ package com.act.utils.rocksdb;
 import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksIterator;
 
 import java.util.Map;
 
@@ -38,5 +39,9 @@ public class RocksDBAndHandles<T extends ColumnFamilyEnumeration> {
 
   public byte[] get(T columnFamily, byte[] key) throws RocksDBException {
     return this.db.get(getHandle(columnFamily), key);
+  }
+
+  public RocksIterator newIterator(T columnFamily) throws RocksDBException {
+    return this.db.newIterator(getHandle(columnFamily));
   }
 }

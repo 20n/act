@@ -2,6 +2,7 @@ package com.act.lcms.db.analysis.untargeted;
 
 import com.act.lcms.LCMSNetCDFParser;
 import com.act.lcms.LCMSSpectrum;
+import com.act.lcms.XZ;
 import com.act.utils.rocksdb.ColumnFamilyEnumeration;
 import com.act.utils.rocksdb.DBUtil;
 import com.act.utils.rocksdb.RocksDBAndHandles;
@@ -16,10 +17,10 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.FlushOptions;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksIterator;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -27,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -81,7 +83,7 @@ public class WindowingTraceExtractor {
     HELP_FORMATTER.setWidth(100);
   }
 
-  private enum COLUMN_FAMILIES implements ColumnFamilyEnumeration<COLUMN_FAMILIES> {
+  public enum COLUMN_FAMILIES implements ColumnFamilyEnumeration<COLUMN_FAMILIES> {
     RANGE_TO_ID("range_to_id"),
     ID_TO_TRACE("id_to_trace"),
     TIMEPOINTS("timepoints"),
@@ -278,18 +280,18 @@ public class WindowingTraceExtractor {
     for (Triple<Double, Double, Integer> triple : WINDOWS_W_IDX) {
       Pair<Double, Double> range = Pair.of(triple.getLeft(), triple.getMiddle());
 
-      byte[] keyBytes = serialize(range);
-      byte[] valBytes = serialize(triple.getRight());
+      byte[] keyBytes = serializeObject(range);
+      byte[] valBytes = serializeObject(triple.getRight());
 
       dbAndHandles.put(COLUMN_FAMILIES.RANGE_TO_ID, keyBytes, valBytes);
     }
 
     LOGGER.info("Writing timepoints to on-disk index (%d points)", times.size());
-    dbAndHandles.put(COLUMN_FAMILIES.RANGE_TO_ID, TIMEPOINTS_KEY, serializeDoubleArray(times));
+    dbAndHandles.put(COLUMN_FAMILIES.RANGE_TO_ID, TIMEPOINTS_KEY, serializeDoubleList(times));
 
     for (int i = 0; i < allTraces.size(); i++) {
-      byte[] keyBytes = serialize(i);
-      byte[] valBytes = serializeDoubleArray(allTraces.get(i));
+      byte[] keyBytes = serializeObject(i);
+      byte[] valBytes = serializeDoubleList(allTraces.get(i));
       dbAndHandles.put(COLUMN_FAMILIES.ID_TO_TRACE, keyBytes, valBytes);
       if (i % 1000 == 0) {
         LOGGER.info("Finished writing %d traces", i);
@@ -300,7 +302,83 @@ public class WindowingTraceExtractor {
     LOGGER.info("Done writing trace data to index");
   }
 
-  private static <T> byte[] serialize(T obj) throws IOException {
+  public Iterator<Pair<Pair<Double, Double>, List<XZ>>> getIteratorOverTraces(File index)
+      throws IOException, RocksDBException {
+    RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles = DBUtil.openExistingRocksDB(index, COLUMN_FAMILIES.values());
+    final RocksIterator rangesIterator = dbAndHandles.newIterator(COLUMN_FAMILIES.RANGE_TO_ID);
+
+    rangesIterator.seekToFirst();
+
+    final List<Double> times;
+    try {
+      byte[] traceBytes = dbAndHandles.get(COLUMN_FAMILIES.ID_TO_TRACE, TIMEPOINTS_KEY);
+      times = deserializeDoublList(traceBytes);
+    } catch (RocksDBException e) {
+      LOGGER.error("Caught RocksDBException when trying to fetch times: %s", e.getMessage());
+      throw new RuntimeException(e);
+    } catch (IOException e) {
+      LOGGER.error("Caught IOException when trying to fetch timese %s", e.getMessage());
+      throw new UncheckedIOException(e);
+    }
+
+    return new Iterator<Pair<Pair<Double, Double>, List<XZ>>>() {
+      @Override
+      public boolean hasNext() {
+        return rangesIterator.isValid();
+      }
+
+      @Override
+      public Pair<Pair<Double, Double>, List<XZ>> next() {
+        byte[] keyBytes = rangesIterator.key();
+        byte[] valBytes = rangesIterator.value();
+        Pair<Double, Double> range;
+        Integer traceIndex;
+        try {
+          range = deserializeObject(keyBytes);
+          traceIndex = deserializeObject(valBytes);
+        } catch (IOException e) {
+          LOGGER.error("Caught IOException when iterating over window ranges: %s", e.getMessage());
+          throw new UncheckedIOException(e);
+        } catch (ClassNotFoundException e) {
+          LOGGER.error("Caught ClassNotFoundException when iterating over window ranges: %s", e.getMessage());
+          throw new RuntimeException(e);
+        }
+
+        List<Double> trace;
+        try {
+          byte[] traceBytes = dbAndHandles.get(COLUMN_FAMILIES.ID_TO_TRACE, valBytes);
+          trace = deserializeDoublList(traceBytes);
+        } catch (RocksDBException e) {
+          LOGGER.error("Caught RocksDBException when trying to extract range %d (%f - %f): %s",
+              traceIndex, range.getLeft(), range.getRight(), e.getMessage());
+          throw new RuntimeException(e);
+        } catch (IOException e) {
+          LOGGER.error("Caught IOException when trying to extract range %d (%f - %f): %s",
+              traceIndex, range.getLeft(), range.getRight(), e.getMessage());
+          throw new UncheckedIOException(e);
+        }
+
+        if (trace.size() != times.size()) {
+          LOGGER.error("Found mistmatching trace and times size (%d vs. %d), continuing anyway",
+              trace.size(), times.size());
+        }
+
+        List<XZ> xzs = new ArrayList<>(times.size());
+        for (int i = 0; i < trace.size() && i < times.size(); i++) {
+          xzs.add(new XZ(times.get(i), trace.get(i)));
+        }
+
+        /* The Rocks iterator pattern is a bit backwards from the Java model, as we don't need an initial next() call
+         * to prime the iterator, and `isValid` indicates whether we've gone past the end of the iterator.  We thus
+         * advance only after we've read the current value, which means the next hasNext call after we've walked off the
+         * edge will return false. */
+        rangesIterator.next();
+        return Pair.of(range, xzs);
+      }
+    };
+  }
+
+  private static <T> byte[] serializeObject(T obj) throws IOException {
     try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
          ObjectOutputStream oo = new ObjectOutputStream(bos)) {
       oo.writeObject(obj);
@@ -309,14 +387,14 @@ public class WindowingTraceExtractor {
     }
   }
 
-  private static <T> T deserialize(byte[] bytes) throws IOException, ClassNotFoundException {
+  private static <T> T deserializeObject(byte[] bytes) throws IOException, ClassNotFoundException {
     try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
       // Assumes you know what you're getting into when deserializing.  Don't use this blindly.
       return (T) ois.readObject();
     }
   }
 
-  private static byte[] serializeDoubleArray(List<Double> vals) throws IOException {
+  private static byte[] serializeDoubleList(List<Double> vals) throws IOException {
     try (ByteArrayOutputStream bos = new ByteArrayOutputStream(vals.size() * Double.BYTES)) {
       byte[] bytes = new byte[Double.BYTES];
       for (Double val : vals) {
@@ -326,7 +404,7 @@ public class WindowingTraceExtractor {
     }
   }
 
-  private static List<Double> deserializeDoubleArray(byte[] byteStream) throws IOException {
+  private static List<Double> deserializeDoublList(byte[] byteStream) throws IOException {
     List<Double> results = new ArrayList<>(byteStream.length / Double.BYTES);
     try (ByteArrayInputStream is = new ByteArrayInputStream(byteStream)) {
       byte[] bytes = new byte[Double.BYTES];
