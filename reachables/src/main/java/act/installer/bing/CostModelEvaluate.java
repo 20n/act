@@ -5,5 +5,8 @@ public class CostModelEvaluate {
     costmodel model = new costmodel("testmodel");
     Double cost = model.getPerTonCost(31.9, 84);
     System.out.println("Cost = " + cost);
+
+    investmodel moneymodel = new investmodel();
+    System.out.println("Investment = " + moneymodel.getInvestment());
   }
 }

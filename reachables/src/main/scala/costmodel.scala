@@ -8,6 +8,7 @@ import squants.mass.MassConversions.MassConversions
 import squants.space._
 import squants.space.VolumeConversions.VolumeConversions
 import squants.Dimensionless
+import squants.Dimensionless._
 import squants.DimensionlessConversions._
 
 import squants.market.Money
@@ -19,6 +20,14 @@ import squants.thermal.Temperature
 import squants.thermal.TemperatureConversions._
 import squants.Quantity
 
+import scala.math.sinh
+
+case class Yield(base: Mass, counter: Mass) extends LikeRatio[Mass]
+case class Titer(base: Mass, counter: Volume) extends Ratio[Mass, Volume] {
+  def *(that: Volume): Mass = base * (that.value / counter.value)
+  def /(that: Titer): Double = (base.value / that.base.value) * (that.counter.value / counter.value)
+}
+
 class costmodel(modelName: String) {
 
   type KiloWattPerMeterCubed = Double
@@ -28,11 +37,6 @@ class costmodel(modelName: String) {
   /********************************************************************************************
   *  Unit Conversions 
   ********************************************************************************************/
-
-  case class Yield(base: Mass, counter: Mass) extends LikeRatio[Mass]
-  case class Titer(base: Mass, counter: Volume) extends Ratio[Mass, Volume] {
-    def *(that: Volume): Mass = base * (that.value / counter.value)
-  }
 
   def VolumeToMass(x: Volume): Mass = Kilograms((x in Litres).value)
   def MassToVolume(x: Mass): Volume = Litres((x in Kilograms).value)
@@ -44,10 +48,10 @@ class costmodel(modelName: String) {
   // Default titers and yields are instances for Shikimate from review paper:
   // "Recombinant organisms for production of industrial products" 
   // --- http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3026452
-  val DefaultTiter: Titer = Titer(84.0 grams, 1 litres) // 84 g/L
-  val DefaultYield: Yield = Yield(31.9 grams, 100 grams) // 31.9% g/g
-  val DefaultFermRunTime: Time = 10 days
-  val DefaultBrothMassPerBatch: Mass = VolumeToMass(360 cubicMeters)
+  val defaultYield: Yield = Yield(31.9 grams, 100 grams) // 31.9% g/g
+  val defaultTiter: Titer = Titer(84.0 grams, 1 litres) // 84 g/L
+  val defaultFermRunTime: Time = 10 days
+  val defaultBrothMassPerBatch: Mass = VolumeToMass(360 cubicMeters)
 
   def literDay(v: Volume, t: Time): Double = {
     v.toLitres * t.toDays
@@ -128,10 +132,10 @@ class costmodel(modelName: String) {
   *  Sensible defaults and external caller 
   ********************************************************************************************/
 
-  var strainTiter: Titer = DefaultTiter;
-  var strainYield: Yield = DefaultYield;
-  var fermRunTime: Time = DefaultFermRunTime;
-  var brothMassPerBatch: Mass = DefaultBrothMassPerBatch
+  var strainTiter: Titer = defaultTiter;
+  var strainYield: Yield = defaultYield;
+  var fermRunTime: Time = defaultFermRunTime;
+  var brothMassPerBatch: Mass = defaultBrothMassPerBatch
   var location: Location = GER;
 
   def getPerTonCost(y: Double, t: Double): Double = {
@@ -195,4 +199,47 @@ class costmodel(modelName: String) {
     costPerTon
   }
 
+}
+
+class investmodel {
+  val defaultYield: Yield = Yield(31.9 grams, 100 grams) // 31.9% g/g
+  val maxYield: Yield = Yield(60.0 grams, 100.0 grams) // 60% g/g
+  val defaultTiter: Titer = Titer(84.0 grams, 1 litres) // 84 g/L
+  val maxTiter: Titer = Titer(200.0 grams, 1 liters) // 170g/L is probably the max that has ever been accomplished
+
+  var strainTiter: Titer = defaultTiter;
+  var strainYield: Yield = defaultYield;
+
+  val maxProjectTime: Time = (365 * 10) days
+  val maxProjectInvestment: Money = USD(20 million)
+
+  def getInvestmentRequired(yields: Yield, titers: Titer): (Money, Time) = {
+    strainTiter = titers
+    strainYield = yields
+    getInvestment()
+  }
+
+  def asymptoticCurve(x1: Double, x2: Double): Double = {
+    // a resonable approximation would be 0.02\sinh(8x-3.9)+0.5 (between (0,0) and (1,1)
+    def curve(x: Double) = { 0.02 * sinh(8 * x - 3.9) + 0.5 }
+
+    curve(x2) // for now ignore x1 (yield)
+  }
+
+  def cost(normYield: Double, normTiter: Double): Money = {
+    maxProjectInvestment * asymptoticCurve(normYield, normTiter)
+  }
+
+  def time(normYield: Double, normTiter: Double): Time = {
+    maxProjectTime * asymptoticCurve(normYield, normTiter)
+  }
+
+  def getInvestment(): (Money, Time) = {
+    // want to return the inverse shape of (1+\tanh(4x-2)) / 2 (has a good asymptotic form between (0,0) to (1,1)
+    // a resonable approximation would be 0.02\sinh(8x-3.9)+0.5 (between (0,0) and (1,1)
+    val normYield = strainYield.ratio / maxYield.ratio // gives us a number between [0,1]
+    val normTiter = strainTiter / maxTiter // gives us a number between [0,1]
+
+    (cost(normYield, normTiter), time(normYield, normTiter))
+  }
 }
