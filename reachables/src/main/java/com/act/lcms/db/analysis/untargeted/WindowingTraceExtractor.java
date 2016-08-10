@@ -123,79 +123,6 @@ public class WindowingTraceExtractor {
 
   }
 
-  /**
-   * Initiate a data feast of all traces within some window allocation.  OM NOM NOM.
-   * @param iter An iterator over an LCMS data file.
-   * @return Extracted time points and traces per window (organized by index).
-   */
-  protected Pair<List<Double>, List<List<Double>>> extractTraces(Iterator<LCMSSpectrum> iter) {
-    List<List<Double>> allTraces = new ArrayList<List<Double>>(WINDOWS_W_IDX.size()) {{
-      for (int i = 0; i < WINDOWS_W_IDX.size(); i++) {
-        add(new ArrayList<>());
-      }
-    }};
-    List<Double> times = new ArrayList<>();
-
-    while (iter.hasNext()) {
-      LCMSSpectrum spectrum = iter.next();
-      Double time = spectrum.getTimeVal();
-
-      // Store one list of the time values so we can knit times and intensity sums later to form XZs.
-      times.add(time);
-
-      // Make sure we have a time entry for this timepoint.  The one we're working on is always the last in the list.
-      for (List<Double> trace : allTraces) {
-        trace.add(0.0d);
-      }
-
-      if (allTraces.size() % 100 == 0) {
-        LOGGER.info("Extracted %d timepoints (now at %.3fs)", allTraces.size(), time);
-      }
-
-      LinkedList<Triple<Double, Double, Integer>> workingQueue = new LinkedList<>();
-      // TODO: can we reuse these instead of creating fresh?
-      LinkedList<Triple<Double, Double, Integer>> tbdQueue = new LinkedList<>(WINDOWS_W_IDX);
-
-      for (Pair<Double, Double> mzIntensity : spectrum.getIntensities()) {
-        Double mz = mzIntensity.getLeft();
-        Double intensity = mzIntensity.getRight();
-
-        // First, shift any applicable ranges onto the working queue based on their minimum mz.
-        while (!tbdQueue.isEmpty() && tbdQueue.peekFirst().getLeft() <= mz) {
-          workingQueue.add(tbdQueue.pop());
-        }
-
-        // Next, remove any ranges we've passed.
-        while (!workingQueue.isEmpty() && workingQueue.peekFirst().getMiddle() < mz) {
-          workingQueue.pop();
-        }
-
-        if (workingQueue.isEmpty()) {
-          if (tbdQueue.isEmpty()) {
-            // If both queues are empty, there are no more windows to consider at all.  One to the next timepoint!
-            break;
-          }
-
-          // If there's nothing that happens to fit in this range, skip it!
-          continue;
-        }
-
-        // The working queue should now hold only ranges that include this m/z value.  Sweep line swept!
-
-        // Now add this intensity to the most recent XZ value for each of the items in the working queue (max 2?).
-        for (Triple<Double, Double, Integer> triple : workingQueue) {
-          List<Double> trace = allTraces.get(triple.getRight());
-          Double accumulator = trace.get(trace.size() - 1); // Get the current XZ, i.e. the one at this timepoint.
-          trace.set(trace.size() - 1, accumulator + intensity);
-        }
-      }
-    }
-
-    // Trace data has been devoured.  Might want to loosen the belt at this point...
-    LOGGER.info("Done extracting %d traces", allTraces.size());
-    return Pair.of(times, allTraces);
-  }
-
   public static void main(String[] args) throws Exception {
     org.apache.commons.cli.Options opts = new org.apache.commons.cli.Options();
     for (Option.Builder b : OPTION_BUILDERS) {
@@ -268,6 +195,81 @@ public class WindowingTraceExtractor {
     }
 
     LOGGER.info("Done");
+  }
+
+  /**
+   * Initiate a data feast of all traces within some window allocation.  OM NOM NOM.
+   * @param iter An iterator over an LCMS data file.
+   * @return Extracted time points and traces per window (organized by index).
+   */
+  private Pair<List<Double>, List<List<Double>>> extractTraces(Iterator<LCMSSpectrum> iter) {
+    List<List<Double>> allTraces = new ArrayList<List<Double>>(WINDOWS_W_IDX.size()) {{
+      for (int i = 0; i < WINDOWS_W_IDX.size(); i++) {
+        add(new ArrayList<>());
+      }
+    }};
+    List<Double> times = new ArrayList<>();
+
+    int timepointCounter = 0;
+    while (iter.hasNext()) {
+      LCMSSpectrum spectrum = iter.next();
+      Double time = spectrum.getTimeVal();
+
+      // Store one list of the time values so we can knit times and intensity sums later to form XZs.
+      times.add(time);
+
+      // Make sure we have a time entry for this timepoint.  The one we're working on is always the last in the list.
+      for (List<Double> trace : allTraces) {
+        trace.add(0.0d);
+      }
+      timepointCounter++;
+
+      if (timepointCounter % 100 == 0) {
+        LOGGER.info("Extracted %d timepoints (now at %.3fs)", timepointCounter, time);
+      }
+
+      LinkedList<Triple<Double, Double, Integer>> workingQueue = new LinkedList<>();
+      // TODO: can we reuse these instead of creating fresh?
+      LinkedList<Triple<Double, Double, Integer>> tbdQueue = new LinkedList<>(WINDOWS_W_IDX);
+
+      for (Pair<Double, Double> mzIntensity : spectrum.getIntensities()) {
+        Double mz = mzIntensity.getLeft();
+        Double intensity = mzIntensity.getRight();
+
+        // First, shift any applicable ranges onto the working queue based on their minimum mz.
+        while (!tbdQueue.isEmpty() && tbdQueue.peekFirst().getLeft() <= mz) {
+          workingQueue.add(tbdQueue.pop());
+        }
+
+        // Next, remove any ranges we've passed.
+        while (!workingQueue.isEmpty() && workingQueue.peekFirst().getMiddle() < mz) {
+          workingQueue.pop();
+        }
+
+        if (workingQueue.isEmpty()) {
+          if (tbdQueue.isEmpty()) {
+            // If both queues are empty, there are no more windows to consider at all.  One to the next timepoint!
+            break;
+          }
+
+          // If there's nothing that happens to fit in this range, skip it!
+          continue;
+        }
+
+        // The working queue should now hold only ranges that include this m/z value.  Sweep line swept!
+
+        // Now add this intensity to the most recent XZ value for each of the items in the working queue (max 2?).
+        for (Triple<Double, Double, Integer> triple : workingQueue) {
+          List<Double> trace = allTraces.get(triple.getRight());
+          Double accumulator = trace.get(trace.size() - 1); // Get the current XZ, i.e. the one at this timepoint.
+          trace.set(trace.size() - 1, accumulator + intensity);
+        }
+      }
+    }
+
+    // Trace data has been devoured.  Might want to loosen the belt at this point...
+    LOGGER.info("Done extracting %d traces", allTraces.size());
+    return Pair.of(times, allTraces);
   }
 
   private void writeTracesToDB(RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles,
