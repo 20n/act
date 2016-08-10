@@ -65,7 +65,7 @@ class costmodel(modelName: String) {
   /************************************ Fermentation ****************************************/
   // Productivity and Titer
   val vesselSize: Volume = 200 cubicMeters
-  val pcOfVesselUsed: Dimensionless = 90.0 percent
+  val pcOfVesselUsed: Dimensionless = (90.0 / 100.0) percent
   val operationalTimePerYear: Time = 350 days // all plants have two week downtime, so 365-14 days
   val fermTemp: Temperature = 25 C
   val hoursForCIP: Time = 12 hours // Clean In Place
@@ -79,7 +79,7 @@ class costmodel(modelName: String) {
   val oxygenUptakeRate: MMolPerLiterHour = 120.0 // OUR in mmol O2/L/hr
   val microbialHeatGen: KiloJoulePerMMol = 0.52 // kJ/mmol O2
   // Ammonia Use
-  val ammoniaPerGlucose: Dimensionless = 6 percent
+  val ammoniaPerGlucose: Dimensionless = (6.0 / 100.0) percent
   // Steam Use
   val initialTemp: Temperature = 20 C
   val sterilizedTemp: Temperature = 121 C
@@ -155,7 +155,7 @@ class costmodel(modelName: String) {
   def glcConsumedPerBatch: Mass = strainYield.inverseRatio * productPerBatch
   def glcBatchedPerBatch: Mass = 0 grams // Glc in media = 0kgs: TODO: check if this is correct
   def glcFedPerBatch: Mass = glcConsumedPerBatch - glcBatchedPerBatch
-  def ammoniaUsedPerBatch: Mass = ammoniaPerGlucose.value * glcConsumedPerBatch
+  def ammoniaUsedPerBatch: Mass = glcConsumedPerBatch * ammoniaPerGlucose.value
 
   def mediaPerBatch: Money = unitCostOfMedia * brothMassPerBatch
   def glcPerBatch: Money = Glucose.cost * glcFedPerBatch
