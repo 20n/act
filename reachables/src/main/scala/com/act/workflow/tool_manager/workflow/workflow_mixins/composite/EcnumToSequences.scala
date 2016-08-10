@@ -17,10 +17,8 @@ trait EcnumToSequences extends QueryByEcNumber with QueryByReactionId with Write
     val mongoConnection = connectToMongoDatabase(database)
 
     // Documents are keyed on their IDs
-    val reactionIds = queryReactionsForReactionIdsByEcNumber(roughEcnum, mongoConnection).keySet.toList
-    val proteinSequences = querySequencesForSequencesByReactionId(reactionIds, mongoConnection)
-
-    methodLogger.info("Writing sequences to FASTA file")
-    writeProteinSequencesToFasta(proteinSequences, outputFastaFile)
+    val reactionIds = queryReactionsForReactionIdsByEcNumber(roughEcnum, mongoConnection)
+    methodLogger.info("Discovering and writing sequences to FASTA file")
+    querySequencesForSequencesByReactionId(reactionIds.keySet.toList, outputFastaFile, mongoConnection)
   }
 }
