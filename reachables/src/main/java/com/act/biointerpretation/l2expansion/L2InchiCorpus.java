@@ -3,6 +3,7 @@ package com.act.biointerpretation.l2expansion;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
+import com.act.lcms.MassCalculator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -17,6 +18,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Represents a set of inchis.
@@ -75,6 +77,42 @@ public class L2InchiCorpus {
     try (BufferedWriter writer = new BufferedWriter((new FileWriter(inchisFile)))) {
       for (String inchi : getInchiList()) {
         writer.write(inchi);
+        writer.newLine();
+      }
+    }
+  }
+
+  /**
+   * Write inchi list to file.
+   */
+  public void writeMasses(File inchisFile) throws IOException {
+    try (BufferedWriter writer = new BufferedWriter((new FileWriter(inchisFile)))) {
+      List<Double> massesChemaxon = new ArrayList<>();
+      List<Double> exactMassesChemaxon = new ArrayList<>();
+
+      for (String inchi : getInchiList()) {
+        Molecule mol = MolImporter.importMol(inchi, "inchi");
+        massesChemaxon.add(mol.getMass());
+        exactMassesChemaxon.add(mol.getExactMass());
+      }
+
+      for (String inchi : getInchiList()) {
+        Molecule mol = MolImporter.importMol(inchi, "inchi");
+      }
+
+      List<Double> massCalculatorMasses = getInchiList().stream().map(inchi -> MassCalculator.calculateMass(inchi)).collect(Collectors.toList());
+      massCalculatorMasses.sort((a, b) -> Double.compare(a, b));
+
+      massesChemaxon.sort((a, b) -> Double.compare(a, b));
+      exactMassesChemaxon.sort((a, b) -> Double.compare(a, b));
+
+      writer.write("chemaxon mass, chemaxon exact mass,massCalculator");
+      for (int i = 0; i < massesChemaxon.size(); i++) {
+        writer.write(Double.toString(massesChemaxon.get(i)));
+        writer.write(",");
+        writer.write(exactMassesChemaxon.get(i).toString());
+        writer.write(",");
+        writer.write(Double.toString(massCalculatorMasses.get(i)));
         writer.newLine();
       }
     }
