@@ -11,10 +11,10 @@ trait EcnumToSequences extends QueryByEcNumber with QueryByReactionId with Write
   /**
     * Takes in a ecnum and translates them into FASTA files with all the enzymes that do that Ecnum
     */
-  def writeFastaFileFromEnzymesMatchingEcnums(roughEcnum: String, outputFastaFile: File)(): Unit = {
+  def writeFastaFileFromEnzymesMatchingEcnums(roughEcnum: String, outputFastaFile: File, database: String)(): Unit = {
     val methodLogger = LogManager.getLogger("writeFastaFileFromEnzymesMatchingEcnums")
 
-    val mongoConnection = connectToMongoDatabase()
+    val mongoConnection = connectToMongoDatabase(database)
 
     // Documents are keyed on their IDs
     val reactionIds = queryReactionsForReactionIdsByEcNumber(roughEcnum, mongoConnection).keySet.toList

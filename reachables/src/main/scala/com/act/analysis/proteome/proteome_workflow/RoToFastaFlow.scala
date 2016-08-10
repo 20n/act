@@ -8,17 +8,17 @@ import com.act.workflow.tool_manager.workflow.workflow_mixins.composite.RoToSequ
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.logging.log4j.LogManager
 
-class RoToFastaFlow extends {
-  val OPTION_OUTPUT_FASTA_FILE_PREFIX = "f"
-  val OPTION_WORKING_DIRECTORY_PREFIX = "w"
-  val OPTION_RO_ARG_PREFIX = "r"
-}
-  with Workflow
+class RoToFastaFlow
+  extends Workflow
   with RoToSequences
   with WorkingDirectoryUtility {
 
   override val HELP_MESSAGE = "Workflow to convert RO number into a FASTA file."
+  private val OPTION_DATABASE_PREFIX = "d"
   private val logger = LogManager.getLogger(getClass.getName)
+  private val OPTION_OUTPUT_FASTA_FILE_PREFIX = "f"
+  private val OPTION_WORKING_DIRECTORY_PREFIX = "w"
+  private val OPTION_RO_ARG_PREFIX = "r"
 
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -39,6 +39,11 @@ class RoToFastaFlow extends {
         hasArg.
         longOpt("working-directory").
         desc("Run and create all files from a working directory you designate."),
+
+      CliOption.builder(OPTION_DATABASE_PREFIX).
+        longOpt("database").
+        hasArg.desc("The name of the MongoDB to use for this query.").
+        required(true),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -63,7 +68,7 @@ class RoToFastaFlow extends {
     )
 
     // Create the FASTA file out of all the relevant sequences.
-    val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos(List(ro), outputFastaPath) _)
+    val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos(List(ro), outputFastaPath, cl.getOptionValue(OPTION_DATABASE_PREFIX)) _)
     headerJob.thenRun(ecNumberToFasta)
 
     headerJob

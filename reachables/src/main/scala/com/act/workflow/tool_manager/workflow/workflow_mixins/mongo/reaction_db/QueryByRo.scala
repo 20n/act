@@ -12,7 +12,8 @@ trait QueryByRo extends MongoWorkflowUtilities with ReactionDatabaseKeywords {
     * @param roValues A list of RO values, containing one or more
     * @param mongoConnection Connection to Mongo database
     *
-    * @return A map of maps containing documents -> fields
+    * @return A map of maps containing documents -> fields.
+    *         The field map is empty in this case because reaction ID is available as the primary key.
     */
   def queryReactionsForReactionIdsByRo(roValues: List[String],
                                        mongoConnection: MongoDB): Map[Long, Map[String, AnyRef]] = {
@@ -28,7 +29,8 @@ trait QueryByRo extends MongoWorkflowUtilities with ReactionDatabaseKeywords {
     * @param mongoConnection Connection to Mongo database
     * @param returnFilterFields The fields you are looking for.
     *
-    * @return A map of maps containing documents -> fields
+    * @return A map of maps containing documents -> fields.
+    *         The field map is keyed on the document ID, the second set of maps are keyed by their field names.
     */
   def queryReactionsForValuesByRo(roValues: List[String],
                                   mongoConnection: MongoDB,

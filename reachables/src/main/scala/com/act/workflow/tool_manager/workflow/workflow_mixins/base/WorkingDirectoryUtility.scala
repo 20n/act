@@ -18,6 +18,23 @@ trait WorkingDirectoryUtility {
 
     val finalFile = new File(workingDirectory, fileName)
     methodLogger.info(s"The final file path for file $optionName was ${finalFile.getAbsoluteFile}")
+
+    // File sanity checks
+    if (finalFile.isDirectory) {
+      val message = s"File path should be a file, not a directory. Supplied path is ${finalFile.getAbsolutePath}"
+      methodLogger.error(message)
+      throw new RuntimeException(message)
+    }
+
+    /*
+    if (!finalFile.canWrite) {.
+      val message = s"Unable to write at file location ${finalFile.getAbsolutePath}"
+      methodLogger.error(message)
+      throw new RuntimeException(message)
+    }
+    */
+
+
     finalFile
   }
 
