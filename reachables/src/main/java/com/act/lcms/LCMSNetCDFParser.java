@@ -1,6 +1,8 @@
 package com.act.lcms;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import ucar.ma2.Array;
 import ucar.ma2.DataType;
 import ucar.nc2.Attribute;
@@ -12,7 +14,9 @@ import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Parses NetCDF files produced by an LCMS apparatus, converting the time points contained therein into
@@ -79,6 +83,8 @@ public class LCMSNetCDFParser implements LCMSParser {
         totalIntensityArray.getDataType() == DataType.DOUBLE);
 
     final long size = scanTimeArray.getSize();
+
+    System.err.format("Total size of scantimearray: %d\n", size);
 
     return new Iterator<LCMSSpectrum>() {
       private int i = 0;
@@ -166,4 +172,92 @@ public class LCMSNetCDFParser implements LCMSParser {
     return spectra;
   }
 
+  public static void main(String[] args) throws Exception {
+    NetcdfFile netcdfFile = NetcdfFile.open(args[0]);
+    printNetcdfFileDetails(netcdfFile);
+    netcdfFile.close();
+
+    List<Triple<Double, Double, Integer>> rangesWIdx = new ArrayList<Triple<Double, Double, Integer>>(){{
+      int i = 0;
+      for (double center = 50.0; center <= 950.0; center += 0.01, i++) {
+        add(Triple.of(center - 0.01, center + 0.01, i));
+      }
+    }};
+
+    List<List<Double>> allTraces = new ArrayList<List<Double>>(rangesWIdx.size()) {{
+      for (int i = 0; i < rangesWIdx.size(); i++) {
+        add(new ArrayList<>());
+      }
+    }};
+    List<Double> times = new ArrayList<>();
+
+    LCMSNetCDFParser parser = new LCMSNetCDFParser();
+    Iterator<LCMSSpectrum> iter = parser.getIterator(args[0]);
+    while (iter.hasNext()) {
+      LCMSSpectrum spectrum = iter.next();
+      Double time = spectrum.getTimeVal();
+      // Store one list of the time values so we can knit times and intensity sums later to form XZs.
+      times.add(time);
+
+      // Make sure we have a time entry for this timepoint.  The one we're working on is always the last in the list.
+      for (List<Double> trace : allTraces) {
+        trace.add(0.0d);
+      }
+
+      // TODO: use a logger, but not in this class.
+      System.out.format("Processing timepoint %f\n", time);
+
+      LinkedList<Triple<Double, Double, Integer>> workingQueue = new LinkedList<>();
+      // TODO: can we reuse these instead of creating fresh?
+      LinkedList<Triple<Double, Double, Integer>> tbdQueue = new LinkedList<>(rangesWIdx);
+
+
+      for (Pair<Double, Double> mzIntensity : spectrum.getIntensities()) {
+        Double mz = mzIntensity.getLeft();
+        Double intensity = mzIntensity.getRight();
+
+        //System.out.format("  mz:        %.3f\n", mz);
+        //System.out.format("  pre  working: %s\n", StringUtils.join(workingQueue.stream().map(t -> String.format("%d=%.3f-%.3f", t.getRight(), t.getLeft(), t.getMiddle())).collect(Collectors.toList()), ", "));
+        //System.out.format("  pre  tbd:     %s, ...\n", StringUtils.join(tbdQueue.stream().limit(3).map(t -> String.format("%d=%.3f-%.3f", t.getRight(), t.getLeft(), t.getMiddle())).collect(Collectors.toList()), ", "));
+
+        // First, shift any applicable ranges onto the working queue based on their minimum mz.
+        while (!tbdQueue.isEmpty() && tbdQueue.peekFirst().getLeft() <= mz) {
+          workingQueue.add(tbdQueue.pop());
+        }
+
+        // Next, remove any ranges we've passed.
+        while (!workingQueue.isEmpty() && workingQueue.peekFirst().getMiddle() < mz) {
+          workingQueue.pop();
+        }
+
+        //System.out.format("  post working: %s\n", StringUtils.join(workingQueue.stream().map(t -> String.format("%d=%.3f-%.3f", t.getRight(), t.getLeft(), t.getMiddle())).collect(Collectors.toList()), ", "));
+        //System.out.format("  post tbd:     %s, ...\n", StringUtils.join(tbdQueue.stream().limit(3).map(t -> String.format("%d=%.3f-%.3f", t.getRight(), t.getLeft(), t.getMiddle())).collect(Collectors.toList()), ", "));
+
+        if (workingQueue.isEmpty()) {
+          if (tbdQueue.isEmpty()) {
+            // If both queues are empty, there are no more windows to consider at all.  One to the next timepoint!
+            break;
+          }
+
+          // If there's nothing that happens to fit in this range, skip it!
+          continue;
+        }
+
+        // The working queue should now hold only ranges that include this m/z value.  Sweep line swept!
+
+        // Now add this intensity to the most recent XZ value for each of the items in the working queue (max 2?).
+        for (Triple<Double, Double, Integer> triple : workingQueue) {
+          List<Double> trace = allTraces.get(triple.getRight());
+          Double accumulator = trace.get(trace.size() - 1); // Get the current XZ, i.e. the one at this timepoint.
+          trace.set(trace.size() - 1, accumulator + intensity);
+        }
+      }
+    }
+
+    int i = 0;
+    for (List<Double> trace : allTraces) {
+      System.out.format("Trace %d length: %d\n", i, trace.size());
+      i++;
+    }
+  }
 }
