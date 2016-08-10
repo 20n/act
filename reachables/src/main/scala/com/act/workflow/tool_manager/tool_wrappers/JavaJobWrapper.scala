@@ -9,7 +9,6 @@ object JavaJobWrapper {
     val job = new JavaJob(f)
     if (!retryJob)
       JobManager.addJob(job)
-
     job
   }
 }

@@ -22,74 +22,80 @@ class RoToProteinPredictionFlow
   override val HELP_MESSAGE = "Workflow to convert RO numbers into protein predictions based on HMMs."
   private val logger = LogManager.getLogger(getClass.getName)
 
-  private val OPTION_OUTPUT_FASTA_FILE_PREFIX = "f"
-  private val OPTION_RESULT_FILE_PREFIX = "o"
-  private val OPTION_WORKING_DIRECTORY_PREFIX = "w"
-  private val OPTION_RO_ARG_PREFIX = "r"
-  private val OPTION_ALIGNED_FASTA_FILE_OUTPUT_PREFIX = "a"
-  private val OPTION_OUTPUT_HMM_PREFIX = "m"
-  private val OPTION_SET_UNION_PREFIX = "u"
-  private val OPTION_SET_INTERSECTION_PREFIX = "i"
-  private val OPTION_CLUSTAL_BINARIES_PREFIX = "c"
-  private val OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX = "l"
+  private val OPTION_OUTPUT_FASTA_FILE = "f"
+  private val OPTION_RESULT_FILE = "o"
+  private val OPTION_WORKING_DIRECTORY = "w"
+  private val OPTION_RO_ARG = "r"
+  private val OPTION_ALIGNED_FASTA_FILE_OUTPUT = "a"
+  private val OPTION_OUTPUT_HMM = "m"
+  private val OPTION_SET_UNION = "u"
+  private val OPTION_SET_INTERSECTION = "i"
+  private val OPTION_CLUSTAL_BINARIES = "c"
+  private val OPTION_COMPARE_PROTEOME_LOCATION = "l"
+  private val OPTION_DATABASE = "d"
 
 
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
-      CliOption.builder(OPTION_RO_ARG_PREFIX).
+      CliOption.builder(OPTION_RO_ARG).
         required(true).
         hasArgs.
         valueSeparator(',').
         longOpt("ro-values").
         desc(s"The RO (Reaction Operator) numbers that should be used to construct the workflow.  " +
-          s"Multiple operators will be searched as a group unless $OPTION_SET_INTERSECTION_PREFIX " +
-          s"or $OPTION_SET_UNION_PREFIX are enabled, in which case each RO will " +
+          s"Multiple operators will be searched as a group unless $OPTION_SET_INTERSECTION " +
+          s"or $OPTION_SET_UNION are enabled, in which case each RO will " +
           s"be evaluated individually and the set operations performed on the group."),
 
-      CliOption.builder(OPTION_OUTPUT_FASTA_FILE_PREFIX).
+      CliOption.builder(OPTION_OUTPUT_FASTA_FILE).
         hasArg.
         longOpt("output-fasta-from-ros-location").
         desc("The file path to write the FASTA file " +
           "containing all the enzyme sequences that catalyze a reaction within the ecnum."),
 
-      CliOption.builder(OPTION_ALIGNED_FASTA_FILE_OUTPUT_PREFIX).
+      CliOption.builder(OPTION_ALIGNED_FASTA_FILE_OUTPUT).
         hasArg.
         longOpt("aligned-fasta-file-output-location").
         desc("The file path to write the FASTA file after alignment with CLUSTAL."),
 
-      CliOption.builder(OPTION_OUTPUT_HMM_PREFIX).
+      CliOption.builder(OPTION_OUTPUT_HMM).
         hasArg.
         longOpt("output-hmm-profile-location").
         desc("The file path to write the output HMM profile produced from the aligned FASTA."),
 
-      CliOption.builder(OPTION_RESULT_FILE_PREFIX).
+      CliOption.builder(OPTION_RESULT_FILE).
         hasArg.
         longOpt("results-file-location").
         desc("The file path to write the results of the HMM search with the created HMM on the supplied proteome"),
 
-      CliOption.builder(OPTION_WORKING_DIRECTORY_PREFIX).
+      CliOption.builder(OPTION_WORKING_DIRECTORY).
         hasArg.
         longOpt("working-directory").
         desc("Run and create all files from a working directory you designate."),
 
-      CliOption.builder(OPTION_SET_UNION_PREFIX).
+      CliOption.builder(OPTION_SET_UNION).
         longOpt("obtain-set-union-results").
         desc("Run all ROs as individual runs, and then do a set union on all the output proteins."),
 
-      CliOption.builder(OPTION_SET_INTERSECTION_PREFIX).
+      CliOption.builder(OPTION_SET_INTERSECTION).
         longOpt("obtain-set-intersection-results").
         desc("Run all ROs as individual runs, then do a set intersection on all the output proteins."),
 
-      CliOption.builder(OPTION_CLUSTAL_BINARIES_PREFIX).
+      CliOption.builder(OPTION_CLUSTAL_BINARIES).
         longOpt("clustal-omega-binary-location").
         hasArg.
         desc("The file path of the ClustalOmega binaries used in alignment.").
         required(true),
 
-      CliOption.builder(OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX).
+      CliOption.builder(OPTION_COMPARE_PROTEOME_LOCATION).
         longOpt("proteome-location").
         hasArg.
         desc("The file path of the proteome file that the constructed HMM should be searched against").
+        required(true),
+
+      CliOption.builder(OPTION_DATABASE).
+        longOpt("database").
+        hasArg.desc("The name of the MongoDB to use for this query.").
         required(true),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
@@ -103,25 +109,20 @@ class RoToProteinPredictionFlow
   }
 
   def defineWorkflow(cl: CommandLine): Job = {
-    val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY_PREFIX, null)
+    val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY, null)
+    val clustalBinaries = new File(cl.getOptionValue(OPTION_CLUSTAL_BINARIES))
 
     // Align sequence so we can build an HMM, needs to know where aligner binaries are
-    if (!verifyInputFilePath(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_PREFIX))) {
-      throw new RuntimeException(s"Clustal binary path was not valid. " +
-        s"Given path was ${cl.getOptionValue(OPTION_CLUSTAL_BINARIES_PREFIX)}")
-    }
+    verifyInputFile(clustalBinaries)
+    ClustalOmegaWrapper.setBinariesLocation(clustalBinaries)
 
-    ClustalOmegaWrapper.setBinariesLocation(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_PREFIX))
-    val proteomeLocation = cl.getOptionValue(OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX)
-
-    if (!verifyInputFilePath(proteomeLocation)) {
-      throw new RuntimeException(s"Proteome file location was not valid.  Given input was $proteomeLocation.")
-    }
+    val proteomeLocation = new File(cl.getOptionValue(OPTION_COMPARE_PROTEOME_LOCATION))
+    verifyInputFile(proteomeLocation)
 
     // Making into a list will make it so that we just send the whole package to one job.
     // Keeping as individual options will cause individual runs.
-    val ro_args: List[String] = cl.getOptionValues(OPTION_RO_ARG_PREFIX).toList
-    val setQuery = cl.hasOption(OPTION_SET_UNION_PREFIX) | cl.hasOption(OPTION_SET_INTERSECTION_PREFIX)
+    val ro_args: List[String] = cl.getOptionValues(OPTION_RO_ARG).toList
+    val setQuery = cl.hasOption(OPTION_SET_UNION) | cl.hasOption(OPTION_SET_INTERSECTION)
 
     /*
      This RO context actually takes two types, either a List[String]
@@ -133,13 +134,13 @@ class RoToProteinPredictionFlow
     val roContexts: List[List[String]] = if (setQuery) ro_args.map(List(_)) else List(ro_args)
 
     // For use later by set compare if option is set.
-    val resultFilesBuffer = ListBuffer[String]()
+    val resultFilesBuffer = ListBuffer[File]()
 
     for (roContext <- roContexts) {
       // Setup all the constant paths here
       val outputFastaPath = defineOutputFilePath(
         cl,
-        OPTION_OUTPUT_FASTA_FILE_PREFIX,
+        OPTION_OUTPUT_FASTA_FILE,
         roContext.toString,
         "output.fasta",
         workingDir
@@ -147,7 +148,7 @@ class RoToProteinPredictionFlow
 
       val alignedFastaPath = defineOutputFilePath(
         cl,
-        OPTION_ALIGNED_FASTA_FILE_OUTPUT_PREFIX,
+        OPTION_ALIGNED_FASTA_FILE_OUTPUT,
         roContext.toString,
         "output.aligned.fasta",
         workingDir
@@ -155,7 +156,7 @@ class RoToProteinPredictionFlow
 
       val outputHmmPath = defineOutputFilePath(
         cl,
-        OPTION_OUTPUT_HMM_PREFIX,
+        OPTION_OUTPUT_HMM,
         roContext.toString,
         "output.hmm",
         workingDir
@@ -163,7 +164,7 @@ class RoToProteinPredictionFlow
 
       val resultFilePath = defineOutputFilePath(
         cl,
-        OPTION_RESULT_FILE_PREFIX,
+        OPTION_RESULT_FILE,
         roContext.toString,
         "output.hmm.result",
         workingDir
@@ -172,7 +173,7 @@ class RoToProteinPredictionFlow
       resultFilesBuffer.append(resultFilePath)
 
       // Create the FASTA file out of all the relevant sequences.
-      val roToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos(roContext, outputFastaPath) _)
+      val roToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos(roContext, outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
       headerJob.thenRunAtPosition(roToFasta, 0)
 
       // Align Fasta sequence
@@ -190,17 +191,17 @@ class RoToProteinPredictionFlow
 
 
     val resultFileList = resultFilesBuffer.toList
-    val setResultFileDirectory = new File(OPTION_RESULT_FILE_PREFIX).getParent
+    val setResultFileDirectory = new File(OPTION_RESULT_FILE).getParent
     val roFileNameUniqueId = ro_args.mkString(sep = "_")
 
-    if (cl.hasOption(OPTION_SET_UNION_PREFIX)) {
+    if (cl.hasOption(OPTION_SET_UNION)) {
       val setJob = ScalaJobWrapper.wrapScalaFunction(
         setUnionHmmerSearchResults(resultFileList, setResultFileDirectory, roFileNameUniqueId) _
       )
 
       headerJob.thenRun(setJob)
     }
-    if (cl.hasOption(OPTION_SET_INTERSECTION_PREFIX)) {
+    if (cl.hasOption(OPTION_SET_INTERSECTION)) {
       val setJob = ScalaJobWrapper.wrapScalaFunction(
         setIntersectHmmerSearchResults(resultFileList, setResultFileDirectory, roFileNameUniqueId) _
       )

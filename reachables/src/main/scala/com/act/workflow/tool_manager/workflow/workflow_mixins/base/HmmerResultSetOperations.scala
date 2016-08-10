@@ -11,7 +11,7 @@ trait HmmerResultSetOperations {
   /**
     * On a list of hmmer result files, creates a file containing all the proteins available in those files.
     */
-  def setUnionHmmerSearchResults(resultFile: List[String], setFileDirectory: String, roArg: String)(): Unit = {
+  def setUnionHmmerSearchResults(resultFile: List[File], setFileDirectory: String, roArg: String)(): Unit = {
 
     val setList = createSetFromHmmerResults(resultFile)
 
@@ -28,7 +28,7 @@ trait HmmerResultSetOperations {
     * On a list of HMMer result files,
     * creates a file containing the intersection between all the proteins in those files.
     */
-  def setIntersectHmmerSearchResults(resultFile: List[String], setFileDirectory: String, roArg: String)(): Unit = {
+  def setIntersectHmmerSearchResults(resultFile: List[File], setFileDirectory: String, roArg: String)(): Unit = {
     // Given a set of result files, create a set of all proteins contained within, either disjoint or union
     val setList = createSetFromHmmerResults(resultFile)
 
@@ -44,7 +44,7 @@ trait HmmerResultSetOperations {
   /**
     * Given a set of hmmer files, creates sets from their top-ranked sequences.
     */
-  private def createSetFromHmmerResults(resultFileNames: List[String]): List[Set[String]] = {
+  private def createSetFromHmmerResults(resultFileNames: List[File]): List[Set[String]] = {
     /*
       This is a List[List[HmmResultLines]]
       Given a set of result files, create a set of all proteins contained within, either disjoint or union

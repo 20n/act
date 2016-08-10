@@ -6,7 +6,7 @@ import org.apache.commons.cli.CommandLine
 import org.apache.logging.log4j.LogManager
 
 trait WorkingDirectoryUtility {
-  def defineOutputFilePath(cl: CommandLine, optionName: String, identifier: String, defaultValue: String, workingDirectory: String): String = {
+  def defineOutputFilePath(cl: CommandLine, optionName: String, identifier: String, defaultValue: String, workingDirectory: String): File = {
     val methodLogger = LogManager.getLogger("workingDirectoryFilePathDefinition")
 
     // Spaces tend to be bad for file names
@@ -16,25 +16,39 @@ trait WorkingDirectoryUtility {
     val fileNameHead = cl.getOptionValue(optionName, defaultValue)
     val fileName = s"${fileNameHead}_$filteredIdentifier"
 
-    val finalFilePath = new File(workingDirectory, fileName).getAbsolutePath
-    methodLogger.info(s"The final file path for file $optionName was $finalFilePath")
-    finalFilePath
+    val finalFile = new File(workingDirectory, fileName)
+    methodLogger.info(s"The final file path for file $optionName was ${finalFile.getAbsoluteFile}")
+
+    verifyOutputFile(finalFile)
+
+    finalFile
   }
 
-  def verifyInputFilePath(inputFile: String, workingDirectory: String = null): Boolean = {
-    val methodLogger = LogManager.getLogger("verifyInputFilePath")
-    val filePath = new File(workingDirectory, inputFile)
-
-    if (!filePath.exists()) {
-      methodLogger.error(s"The input file ${filePath.getAbsolutePath} does not exist.")
-      return false
+  def verifyOutputFile(outputFile: File): Unit = {
+    // File sanity checks
+    if (outputFile.isDirectory) {
+      val message = s"File path should be a file, not a directory. Supplied path is ${outputFile.getAbsolutePath}"
+      throw new RuntimeException(message)
     }
 
-    if (filePath.isDirectory) {
-      methodLogger.error(s"The input file ${filePath.getAbsolutePath} is a directory, not a file as required.")
-      return false
+    if (outputFile.exists()) {
+      if (!outputFile.canWrite) throw new RuntimeException(s"Can't write to designated location ${outputFile.getAbsolutePath}")
+    } else {
+      outputFile.createNewFile()
+      if (!outputFile.canWrite) throw new RuntimeException(s"Can't write to designated location ${outputFile.getAbsolutePath}")
+      outputFile.delete()
+    }
+  }
+
+  def verifyInputFile(inputFile: File): Unit = {
+    if (!inputFile.exists()) {
+      val message = s"The input file ${inputFile.getAbsolutePath} does not exist."
+      throw new RuntimeException(message)
     }
 
-    true
+    if (inputFile.isDirectory) {
+      val message = s"The input file ${inputFile.getAbsolutePath} is a directory, not a file as required."
+      throw new RuntimeException(message)
+    }
   }
 }

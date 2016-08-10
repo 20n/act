@@ -22,9 +22,7 @@ object HmmResultParser {
   private val START_PARSING_INDICATOR = "------- ------ -----"
   private val STOP_PARSING_INDICATOR = "------ inclusion threshold ------"
 
-  def parseFile(fileName: String): List[Map[String, String]] = {
-    val openFile = new File(fileName)
-
+  def parseFile(openFile: File): List[Map[String, String]] = {
     /*
       Note: If we are using an iterator here, we can't use .length to determine anything.
      */
@@ -39,7 +37,8 @@ object HmmResultParser {
     // This means that the stop parsing indicator was never hit,
     // which means that there are no results.
     if (result_proteins._2.isEmpty) {
-      logger.error(s"The reader read the whole file, indicating that $fileName likely does not have any sequences.")
+      logger.error(s"The reader read the whole file, " +
+        s"indicating that ${openFile.getAbsolutePath} likely does not have any sequences.")
       return List[Map[String, String]]()
     }
 
@@ -49,7 +48,7 @@ object HmmResultParser {
     if (result_proteins._1.hasNext) {
       result_proteins._1.next
     } else {
-      logger.error(s"No lines found in result location.  Please check output file $fileName")
+      logger.error(s"No lines found in result location.  Please check output file ${openFile.getAbsolutePath}")
       return List[Map[String, String]]()
     }
     // All the good lines, sent to parser, then returned as a map of FieldNames: Values
