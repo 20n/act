@@ -82,7 +82,8 @@ trait QueryByReactionId extends MongoWorkflowUtilities with SequenceDatabaseKeyw
     * @param mongoConnection    Connection to Mongo database
     * @param returnFilterFields The fields you are looking for.
     *
-    * @return
+    * @return Returns a map of documents with their fields as the secondary keys.
+    *         First map is keyed by the document ID, secondary maps are keyed by the field names retrieved from the DB.
     */
   def querySequencesForValuesByReactionId(reactionIds: List[Long],
                                           mongoConnection: MongoDB,

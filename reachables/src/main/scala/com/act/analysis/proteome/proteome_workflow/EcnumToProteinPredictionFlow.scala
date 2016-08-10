@@ -18,19 +18,19 @@ class EcnumToProteinPredictionFlow
   override val HELP_MESSAGE = "Workflow to convert EC numbers into protein predictions based on HMMs."
   private val logger = LogManager.getLogger(getClass.getName)
 
-  private val OPTION_ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX = "a"
-  private val OPTION_OUTPUT_HMM_ARG_PREFIX = "m"
-  private val OPTION_RESULT_FILE_ARG_PREFIX = "o"
-  private val OPTION_CLUSTAL_BINARIES_ARG_PREFIX = "c"
-  private val OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX = "l"
-  private val OPTION_DATABASE_PREFIX = "d"
-  private val OPTION_EC_NUM_ARG_PREFIX = "e"
-  private val OPTION_OUTPUT_FASTA_FILE_PREFIX = "f"
-  private val OPTION_WORKING_DIRECTORY_PREFIX = "w"
+  private val OPTION_ALIGNED_FASTA_FILE_OUTPUT = "a"
+  private val OPTION_OUTPUT_HMM = "m"
+  private val OPTION_RESULT_FILE = "o"
+  private val OPTION_CLUSTAL_BINARIES = "c"
+  private val OPTION_COMPARE_PROTEOME_LOCATION = "l"
+  private val OPTION_DATABASE = "d"
+  private val OPTION_EC_NUM = "e"
+  private val OPTION_OUTPUT_FASTA_FILE = "f"
+  private val OPTION_WORKING_DIRECTORY = "w"
 
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
-      CliOption.builder(OPTION_EC_NUM_ARG_PREFIX).
+      CliOption.builder(OPTION_EC_NUM).
         required(true).
         hasArg.
         longOpt("ec-number")
@@ -39,45 +39,45 @@ class EcnumToProteinPredictionFlow
           "it will assume you want all reactions within a subgroup, " +
           "such as the value 6.1.1 will match 6.1.1.1 as well as 6.1.1.2"),
 
-      CliOption.builder(OPTION_OUTPUT_FASTA_FILE_PREFIX).
+      CliOption.builder(OPTION_OUTPUT_FASTA_FILE).
         hasArg.
         longOpt("output-fasta-from-ecnum-location").
         desc("The file path to write the FASTA file " +
           "containing all the enzyme sequences that catalyze a reaction within the ecnum."),
 
-      CliOption.builder(OPTION_ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX).
+      CliOption.builder(OPTION_ALIGNED_FASTA_FILE_OUTPUT).
         hasArg.
         longOpt("aligned-fasta-file-output-location").
         desc("The file path to write the FASTA file after alignment with CLUSTAL."),
 
-      CliOption.builder(OPTION_OUTPUT_HMM_ARG_PREFIX).
+      CliOption.builder(OPTION_OUTPUT_HMM).
         hasArg.
         longOpt("output-hmm-profile-location").
         desc("The file path to write the output HMM profile produced from the aligned FASTA."),
 
-      CliOption.builder(OPTION_RESULT_FILE_ARG_PREFIX).
+      CliOption.builder(OPTION_RESULT_FILE).
         hasArg.
         longOpt("results-file-location").
         desc("The file path to write the results of the HMM search with the created HMM on the supplied proteome"),
 
-      CliOption.builder(OPTION_WORKING_DIRECTORY_PREFIX).
+      CliOption.builder(OPTION_WORKING_DIRECTORY).
         hasArg.
         longOpt("working-directory").
         desc("Run and create all files from a working directory you designate."),
 
-      CliOption.builder(OPTION_CLUSTAL_BINARIES_ARG_PREFIX).
+      CliOption.builder(OPTION_CLUSTAL_BINARIES).
         longOpt("clustal-omega-binary-location").
         hasArg.
         desc("The file path of the ClustalOmega binaries used in alignment.").
         required(true),
 
-      CliOption.builder(OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX).
+      CliOption.builder(OPTION_COMPARE_PROTEOME_LOCATION).
         longOpt("proteome-location").
         hasArg.
         desc("The file path of the proteome file that the constructed HMM should be searched against").
         required(true),
 
-      CliOption.builder(OPTION_DATABASE_PREFIX).
+      CliOption.builder(OPTION_DATABASE).
         longOpt("database").
         hasArg.desc("The name of the MongoDB to use for this query.").
         required(true),
@@ -94,8 +94,8 @@ class EcnumToProteinPredictionFlow
 
   def defineWorkflow(cl: CommandLine): Job = {
     // Align sequence so we can build an HMM
-    val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY_PREFIX, null)
-    val clustalBinaries = new File(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_ARG_PREFIX))
+    val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY, null)
+    val clustalBinaries = new File(cl.getOptionValue(OPTION_CLUSTAL_BINARIES))
 
     // Align sequence so we can build an HMM, needs to know where aligner binaries are
     if (!verifyInputFile(clustalBinaries)) {
@@ -104,7 +104,7 @@ class EcnumToProteinPredictionFlow
     }
 
     ClustalOmegaWrapper.setBinariesLocation(clustalBinaries)
-    val proteomeLocation = new File(cl.getOptionValue(OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX))
+    val proteomeLocation = new File(cl.getOptionValue(OPTION_COMPARE_PROTEOME_LOCATION))
 
     if (!verifyInputFile(proteomeLocation)) {
       throw new RuntimeException(s"Proteome file location was not valid.  Given input was $proteomeLocation.")
@@ -112,13 +112,13 @@ class EcnumToProteinPredictionFlow
 
 
     // Grab the ec number
-    val ec_num = cl.getOptionValue(OPTION_EC_NUM_ARG_PREFIX)
+    val ec_num = cl.getOptionValue(OPTION_EC_NUM)
 
 
     // Setup all the constant paths here
     val outputFastaPath = defineOutputFilePath(
       cl,
-      OPTION_OUTPUT_FASTA_FILE_PREFIX,
+      OPTION_OUTPUT_FASTA_FILE,
       "EC_" + ec_num,
       "output.fasta",
       workingDir
@@ -126,7 +126,7 @@ class EcnumToProteinPredictionFlow
 
     val alignedFastaPath = defineOutputFilePath(
       cl,
-      OPTION_ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX,
+      OPTION_ALIGNED_FASTA_FILE_OUTPUT,
       "EC_" + ec_num,
       "output.aligned.fasta",
       workingDir
@@ -134,7 +134,7 @@ class EcnumToProteinPredictionFlow
 
     val outputHmmPath = defineOutputFilePath(
       cl,
-      OPTION_OUTPUT_HMM_ARG_PREFIX,
+      OPTION_OUTPUT_HMM,
       "EC_" + ec_num,
       "output.hmm",
       workingDir
@@ -142,14 +142,14 @@ class EcnumToProteinPredictionFlow
 
     val resultFilePath = defineOutputFilePath(
       cl,
-      OPTION_RESULT_FILE_ARG_PREFIX,
+      OPTION_RESULT_FILE,
       "EC_" + ec_num,
       "output.hmm.result",
       workingDir
     )
 
     // Create the FASTA file out of all the relevant sequences.
-    val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingEcnums(ec_num, outputFastaPath, cl.getOptionValue(OPTION_DATABASE_PREFIX)) _)
+    val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingEcnums(ec_num, outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
     headerJob.thenRun(ecNumberToFasta)
 
     // Align Fasta sequence
