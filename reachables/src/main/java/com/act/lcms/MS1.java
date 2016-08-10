@@ -307,6 +307,8 @@ public class MS1 {
     Integer counter = 0;
     Boolean flag = false;
 
+    Integer totalIntensityCounter = 0;
+
     while (ms1Iterator.hasNext()) {
       counter++;
 
@@ -320,7 +322,9 @@ public class MS1 {
 //        flag = true;
 //      }
 
-      LOGGER.info("Number of intensities are: %s", intensities.size());
+      totalIntensityCounter += intensities.size();
+
+      //LOGGER.info("Number of intensities are: %s", intensities.size());
 
       // for this timepoint, extract each of the ion masses from the METLIN set
       for (Double ionMz : sortedMasses) {
@@ -336,6 +340,10 @@ public class MS1 {
     }
 
     LOGGER.info("Number of time points are: %s", counter.toString());
+
+    Double cal = (1.0*totalIntensityCounter)/counter;
+
+    LOGGER.info("Average intensity is: %s", cal.toString());
 
     Map<Pair<String, Double>, MS1ScanForWellAndMassCharge> finalResults =
         new HashMap<>(metlinMasses.size());
