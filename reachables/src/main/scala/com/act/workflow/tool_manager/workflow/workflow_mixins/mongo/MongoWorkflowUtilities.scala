@@ -190,7 +190,7 @@ trait MongoWorkflowUtilities {
   }
 
   /**
-    * Filters all documents that case thingsToMatch to be true.
+    * Filters all documents that cause thingsToMatch to be true.
     *
     * Operation:
     * Checks thingsToMatch against each document and collects documents that evaluate to true
@@ -348,8 +348,8 @@ trait MongoWorkflowUtilities {
   }
 
   /**
-    * Converts an iterable into a Map of Maps,
-    * where the first Map is keyed on the document ID and the second map on the document fields.
+    * Converts an iterable into a Map of Maps.
+    * The first Map is keyed on the document ID and the second map on the document fields.
     *
     * @param iterator Iterable of DBObjects
     * @param fields List of fields in the document
