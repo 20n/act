@@ -56,12 +56,12 @@ abstract class ToolWrapper {
       case binary if binary.isDefined =>
         toolFunction match {
 
-          // Tool doesn't exist
+          // Tool does exist
           case tool if tool.isDefined =>
             val binariesFile = new File(binaries.get.getAbsolutePath, toolFunction.get)
             List[String](binariesFile.getAbsolutePath) ::: args
 
-          // Tool does exist
+          // Tool doesn't exist
           case toolExists =>
             List[String](binaries.get.getAbsolutePath) ::: args
         }
@@ -71,11 +71,11 @@ abstract class ToolWrapper {
       case binaryDoesNotExist =>
         toolFunction match {
 
-          // Tool doesn't exist
+          // Tool does exist
           case tool if tool.isDefined =>
             List[String](toolFunction.get) ::: args
 
-          // Tool does exist
+          // Tool doesn't exist
           case toolDoesNotExist =>
             throw new RuntimeException("Neither binaries nor tools set, but constructing tool command.")
         }
