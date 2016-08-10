@@ -105,8 +105,8 @@ public class MS1 {
     }
 
     if (numWithinPrecision > maxDetectionsInWindow) {
-      //LOGGER.info("Only expected %d, but found %d in the mz range [%f, %f]",
-      //    maxDetectionsInWindow, numWithinPrecision, mzLowRange, mzHighRange);
+      LOGGER.warn("Only expected %d, but found %d in the mz range [%f, %f]",
+          maxDetectionsInWindow, numWithinPrecision, mzLowRange, mzHighRange);
     }
 
     return intensityFound;
@@ -172,19 +172,10 @@ public class MS1 {
       scanResults.getIonsToSpectra().put(ionDesc, ms1);
     }
 
-    Integer counter = 0;
-    Boolean flag = false;
-
     while (ms1File.hasNext()) {
-      counter++;
       LCMSSpectrum timepoint = ms1File.next();
       // get all (mz, intensity) at this timepoint
       List<Pair<Double, Double>> intensities = timepoint.getIntensities();
-
-      if (!flag) {
-        LOGGER.info("Number of intensities are: %s", intensities.size());
-        flag = true;
-      }
 
       // for this timepoint, extract each of the ion masses from the METLIN set
       for (Map.Entry<String, Double> metlinMass : metlinMasses.entrySet()) {
@@ -201,8 +192,6 @@ public class MS1 {
         scanResults.getIonsToSpectra().get(ionDesc).add(intensityAtThisTime);
       }
     }
-
-    LOGGER.info("Number of time points are: %s", counter.toString());
 
     // populate statistics about the curve for each ion curve
     for (String ionDesc : metlinMasses.keySet()) {
@@ -303,28 +292,11 @@ public class MS1 {
      * and m is the number of mass targets specified.  We might be able to get this down to O(m log n), but
      * we'll save that for once we get this working at all. */
 
-
-    Integer counter = 0;
-    Boolean flag = false;
-
-    Integer totalIntensityCounter = 0;
-
     while (ms1Iterator.hasNext()) {
-      counter++;
-
       LCMSSpectrum timepoint = ms1Iterator.next();
 
       // get all (mz, intensity) at this timepoint
       List<Pair<Double, Double>> intensities = timepoint.getIntensities();
-
-//      if (!flag) {
-//        LOGGER.info("Number of intensities are: %s", intensities.size());
-//        flag = true;
-//      }
-
-      totalIntensityCounter += intensities.size();
-
-      //LOGGER.info("Number of intensities are: %s", intensities.size());
 
       // for this timepoint, extract each of the ion masses from the METLIN set
       for (Double ionMz : sortedMasses) {
@@ -338,12 +310,6 @@ public class MS1 {
         scanLists.get(ionMz).add(intensityAtThisTime);
       }
     }
-
-    LOGGER.info("Number of time points are: %s", counter.toString());
-
-    Double cal = (1.0*totalIntensityCounter)/counter;
-
-    LOGGER.info("Average intensity is: %s", cal.toString());
 
     Map<Pair<String, Double>, MS1ScanForWellAndMassCharge> finalResults =
         new HashMap<>(metlinMasses.size());
