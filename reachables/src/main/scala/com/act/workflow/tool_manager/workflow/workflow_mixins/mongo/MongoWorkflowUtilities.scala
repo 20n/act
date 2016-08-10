@@ -342,6 +342,8 @@ trait MongoWorkflowUtilities {
     * @param fields   List of fields in the document
     *
     * @return The map of map of documents.
+    *         The first map is keyed by the ID of the document,
+    *         while maps contained within are keyed by the fields of that document.
     */
   def mongoReturnQueryToMap(iterator: Iterator[DBObject], fields: List[String]): Map[Long, Map[String, AnyRef]] = {
     mongoReturnQueryToMap(iterator.toStream, fields)
@@ -355,6 +357,8 @@ trait MongoWorkflowUtilities {
     * @param fields List of fields in the document
     *
     * @return The map of map of documents.
+    *         The first map is keyed by the ID of the document,
+    *         while maps contained within are keyed by the fields of that document.
     */
   def mongoReturnQueryToMap(iterator: Iterable[DBObject], fields: List[String]): Map[Long, Map[String, AnyRef]] = {
     // For each field name, pull out the values of that document and add it to a list, and make a list of those.
