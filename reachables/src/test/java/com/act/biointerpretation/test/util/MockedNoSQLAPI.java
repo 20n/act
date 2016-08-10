@@ -334,8 +334,7 @@ public class MockedNoSQLAPI {
         Set<Long> rxns = invocation.getArgumentAt(6, Set.class);
         DBObject meta = invocation.getArgumentAt(7, DBObject.class);
 
-        writtenSequences.put(id, Seq.rawInit(id, ec, org_id, org, seq, pmids, meta, src,
-            new HashSet<String>(), new HashSet<String>(), rxns));
+        writtenSequences.put(id, Seq.rawInit(id, ec, org_id, org, seq, pmids, meta, src, rxns));
 
         return id.intValue();
       }

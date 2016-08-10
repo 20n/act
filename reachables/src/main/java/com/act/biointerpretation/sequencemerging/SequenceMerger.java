@@ -83,15 +83,15 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
   @Override
   public void run() throws IOException, ReactionException {
-    LOGGER.info("copying all chemicals");
+    LOGGER.info("Copying all chemicals");
     super.processChemicals();
 
-    LOGGER.info("processing sequences for deduplication");
+    LOGGER.info("Processing sequences for deduplication");
     processSequences();
 
     /* reactions should be written after the sequence merging so that the sequence, organism and source reaction IDs can
     all be updated properly */
-    LOGGER.info("copying all reactions");
+    LOGGER.info("Copying all reactions");
     processReactions();
   }
 
@@ -155,11 +155,10 @@ public class SequenceMerger extends BiointerpretationProcessor {
       migrateOrganism(sequence);
 
       UniqueSeq uniqueSeq = new UniqueSeq(sequence);
-      List<Seq> matchingSeqs = sequenceGroups.get(uniqueSeq);
 
-      if (matchingSeqs != null) {
+      if (sequenceGroups.containsKey(uniqueSeq)) {
         // add UniqueSeq object to already existent list that shares the same ecnum, organism & protein sequence
-        matchingSeqs.add(sequence);
+        sequenceGroups.get(uniqueSeq).add(sequence);
       } else {
         // create a new modifiable list for the UniqueSeq object and add a new mapping
         List<Seq> seqs = new ArrayList<>();
@@ -318,9 +317,9 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
     // merge the rest of the matched sequences
     for (Seq sequence : sequences) {
-      if (mergedSequence.get_ec() != sequence.get_ec() ||
-          mergedSequence.get_sequence() != sequence.get_sequence() ||
-          mergedSequence.get_org_name() != sequence.get_org_name()) {
+      if (!mergedSequence.get_ec().equals(sequence.get_ec()) ||
+          !mergedSequence.get_sequence().equals(sequence.get_sequence()) ||
+          !mergedSequence.get_org_name().equals(sequence.get_org_name())) {
 
         String msg = "matching sequence map constructed improperly; at least one of ec #, protein sequence, & " +
             "organism don't match";
@@ -475,7 +474,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
         }
 
         if (!oldPmids.contains(newPmid)) {
-          mergedRefsIterator.add(newRef);
+          mergedRefs.add(newRef);
         }
       } else if (newRef.getString(SRC).equals(PATENT)) {
         boolean patentExists = false;
@@ -498,7 +497,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
         }
 
         if (!patentExists) {
-          mergedRefsIterator.add(newRef);
+          mergedRefs.add(newRef);
         }
       }
     }

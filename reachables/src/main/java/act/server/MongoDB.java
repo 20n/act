@@ -2476,15 +2476,7 @@ public class MongoDB {
 
     BasicDBList refs = (BasicDBList)o.get("references");
     DBObject meta = (DBObject)o.get("metadata");
-    BasicDBList keywords = (BasicDBList) (o.get("keywords"));
-    BasicDBList cikeywords = (BasicDBList) (o.get("keywords_case_insensitive"));
     BasicDBList rxn_refs = (BasicDBList) (o.get("rxn_refs"));
-    BasicDBList substrates_uniform_refs = (BasicDBList) (o.get("substrates_uniform_refs"));
-    BasicDBList products_uniform_refs = (BasicDBList) (o.get("products_uniform_refs"));
-    BasicDBList substrates_diverse_refs = (BasicDBList) (o.get("substrates_diverse_refs"));
-    BasicDBList products_diverse_refs = (BasicDBList) (o.get("products_diverse_refs"));
-    BasicDBList rxn2reactants = (BasicDBList) (o.get("rxn_to_reactants"));
-    BasicDBList sar_constraints = (BasicDBList) (o.get("sar_constraints"));
 
     if (srcdb == null) srcdb = Seq.AccDB.swissprot.name();
     Seq.AccDB src = Seq.AccDB.valueOf(srcdb); // genbank | uniprot | trembl | embl | swissprot
@@ -2495,14 +2487,12 @@ public class MongoDB {
     String dummyString = ""; // for type differentiation in overloaded method
     Long dummyLong = 0L; // for type differentiation in overloaded method
 
-    Set<String> kywrds = from_dblist(keywords, dummyString);
-    Set<String> cikywrds = from_dblist(cikeywords, dummyString);
     Set<Long> rxns_catalyzed = from_dblist(rxn_refs, dummyLong);
 
     return Seq.rawInit(id, ecnum, org_id, org_name, aa_seq, references, meta, src,
                         // the rest of the params are the ones that are typically
                         // "constructed". But since we are reading from the DB, we manually init
-                        kywrds, cikywrds, rxns_catalyzed
+                        rxns_catalyzed
                        );
   }
 
@@ -2515,6 +2505,18 @@ public class MongoDB {
 
   public DBIterator getDbIteratorOverOrgs() {
     DBCursor cursor = this.dbOrganismNames.find();
+    return new DBIterator(cursor);
+  }
+
+  public DBIterator getDbIteratorOverOrgs(BasicDBObject matchCriterion, boolean notimeout, BasicDBObject keys) {
+    if (keys == null) {
+      keys = new BasicDBObject();
+    }
+
+    DBCursor cursor = this.dbOrganismNames.find(matchCriterion, keys);
+    if (notimeout) {
+      cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
+    }
     return new DBIterator(cursor);
   }
 
@@ -2718,14 +2720,6 @@ public class MongoDB {
     if (dblist != null)
       for (Object o : dblist) set.add((X) o);
     return set;
-  }
-
-  public void updateKeywords(Seq seq) {
-    BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
-    DBObject obj = this.dbSeq.findOne(query);
-    obj.put("keywords", seq.getKeywords());
-    obj.put("keywords_case_insensitive", seq.getCaseInsensitiveKeywords());
-    this.dbSeq.update(query, obj);
   }
 
   public void updateMetadata(Seq seq) {

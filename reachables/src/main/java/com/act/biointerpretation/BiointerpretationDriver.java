@@ -48,7 +48,7 @@ public class BiointerpretationDriver {
     DESALT,
     REMOVE_COFACTORS,
     VALIDATE,
-    MERGE_SEQUENCES,
+    MERGE_DUPLICATE_SEQUENCES,
   }
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
@@ -225,7 +225,7 @@ public class BiointerpretationDriver {
         validator.run();
         LOGGER.info("Mechanistic validator complete (%s -> %s)", step.getReadDBName(), step.getWriteDBName());
         break;
-      case MERGE_SEQUENCES:
+      case MERGE_DUPLICATE_SEQUENCES:
         LOGGER.info("Sequence merger starting (%s -> %s)", step.getReadDBName(), step.getWriteDBName());
         SequenceMerger sequenceMerger = new SequenceMerger(noSQLAPI);
         sequenceMerger.init();

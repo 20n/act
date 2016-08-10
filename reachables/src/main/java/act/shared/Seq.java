@@ -40,9 +40,6 @@ public class Seq implements Serializable {
   private Set<String> product_names;
   private String catalytic_activity;
 
-  private Set<String> keywords;
-  private Set<String> caseInsensitiveKeywords;
-
   public Seq(long id, String e, Long oid, String o, String s, List<JSONObject> r, DBObject m, AccDB d) {
     this.id = (new Long(id)).intValue();
     this.sequence = s;
@@ -93,13 +90,11 @@ public class Seq implements Serializable {
     long id, String e, Long oid, String o, String s, List<JSONObject> r, DBObject m, AccDB d,
     // the next set of arguments are the ones that are typically "constructed"
     // but here, passed as raw input, e.g., when reading directly from db
-    Set<String> keywords, Set<String> ciKeywords, Set<Long> rxns
+    Set<Long> rxns
   ) {
     Seq seq = new Seq(id, e, oid, o, s, r, m, d);
 
     // overwrite from the raw data provided "as-is"
-    seq.keywords = keywords;
-    seq.caseInsensitiveKeywords = ciKeywords;
     seq.reactionsCatalyzed = rxns;
 
     return seq;
@@ -108,8 +103,7 @@ public class Seq implements Serializable {
   static final String not_found = "";
   private String meta(JSONObject o, String[] xpath) {
     Set<String> ret = meta(o, xpath, true);
-    for (String s : ret) return s;
-    return not_found;
+    return ret.iterator().next();
   }
 
   private Set<String> meta(JSONObject o, String[] xpath, boolean returnSet) {
@@ -196,10 +190,6 @@ public class Seq implements Serializable {
   public Set<String> get_brenda_ids() { return this.brenda_ids; }
   public AccDB get_srcdb() { return this.srcdb; }
 
-  public Set<String> getKeywords() { return this.keywords; }
-  public void addKeyword(String k) { this.keywords.add(k); }
-  public Set<String> getCaseInsensitiveKeywords() { return this.caseInsensitiveKeywords; }
-  public void addCaseInsensitiveKeyword(String k) { this.caseInsensitiveKeywords.add(k); }
   public void addReactionsCatalyzed(Long r) { this.reactionsCatalyzed.add(r); }
   public Set<Long> getReactionsCatalyzed() { return this.reactionsCatalyzed; }
 
@@ -209,32 +199,6 @@ public class Seq implements Serializable {
   public void set_organism_name(String orgName) { this.organism = orgName; }
   public void setOrgId(Long orgId) { this.organismIDs = orgId; }
 
-
-  private Set<Long> get_common(Collection<Set<Long>> reactants_across_all_rxns) {
-    Set<Long> common = null;
-    for (Set<Long> reactants : reactants_across_all_rxns) {
-      if (common == null) common = reactants;
-      else common = intersect(common, reactants);
-    }
-    return common;
-  }
-
-  private Set<Long> get_diversity(Collection<Set<Long>> reactants_across_all_rxns, Set<Long> common) {
-    Set<Long> diversity = new HashSet<Long>();
-    for (Set<Long> reactants : reactants_across_all_rxns) {
-      Set<Long> not_common = new HashSet<Long>(reactants);
-      not_common.removeAll(common);
-      diversity.addAll(not_common);
-    }
-    return diversity;
-  }
-
-  public static <X> Set<X> intersect(Set<X> set1, Set<X> set2) {
-    boolean set1IsLarger = set1.size() > set2.size();
-    Set<X> cloneSet = new HashSet<X>(set1IsLarger ? set2 : set1);
-    cloneSet.retainAll(set1IsLarger ? set1 : set2);
-    return cloneSet;
-  }
 
 }
 
