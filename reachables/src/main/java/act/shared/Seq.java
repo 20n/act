@@ -103,7 +103,11 @@ public class Seq implements Serializable {
   static final String not_found = "";
   private String meta(JSONObject o, String[] xpath) {
     Set<String> ret = meta(o, xpath, true);
-    return ret.iterator().next();
+    if (ret.size() > 0) {
+      return ret.iterator().next();
+    } else {
+      return not_found;
+    }
   }
 
   private Set<String> meta(JSONObject o, String[] xpath, boolean returnSet) {
