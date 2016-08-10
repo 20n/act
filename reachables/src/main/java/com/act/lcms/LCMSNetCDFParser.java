@@ -1,8 +1,15 @@
 package com.act.lcms;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.rocksdb.ColumnFamilyDescriptor;
+import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.CompressionType;
+import org.rocksdb.Options;
+import org.rocksdb.RocksDB;
+import org.rocksdb.RocksDBException;
 import ucar.ma2.Array;
 import ucar.ma2.DataType;
 import ucar.nc2.Attribute;
@@ -11,12 +18,20 @@ import ucar.nc2.Variable;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLStreamException;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 /**
  * Parses NetCDF files produced by an LCMS apparatus, converting the time points contained therein into
@@ -211,7 +226,6 @@ public class LCMSNetCDFParser implements LCMSParser {
       // TODO: can we reuse these instead of creating fresh?
       LinkedList<Triple<Double, Double, Integer>> tbdQueue = new LinkedList<>(rangesWIdx);
 
-
       for (Pair<Double, Double> mzIntensity : spectrum.getIntensities()) {
         Double mz = mzIntensity.getLeft();
         Double intensity = mzIntensity.getRight();
@@ -254,10 +268,110 @@ public class LCMSNetCDFParser implements LCMSParser {
       }
     }
 
-    int i = 0;
-    for (List<Double> trace : allTraces) {
-      System.out.format("Trace %d length: %d\n", i, trace.size());
-      i++;
+    RocksDB.loadLibrary();
+    Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles = createNewRocksDB(new File(args[1]));
+
+    for (Triple<Double, Double, Integer> triple : rangesWIdx) {
+      Pair<Double, Double> range = Pair.of(triple.getLeft(), triple.getMiddle());
+
+      byte[] keyBytes = serialize(range);
+      byte[] valBytes = serialize(triple.getRight());
+
+      dbAndHandles.getLeft().put(dbAndHandles.getRight().get(COLUMN_FAMILIES.RANGE_TO_ID), keyBytes, valBytes);
+    }
+
+    dbAndHandles.getLeft().put(dbAndHandles.getRight().get(COLUMN_FAMILIES.RANGE_TO_ID),
+        TIMEPOINTS_KEY, serializeDoubleArray(times));
+
+    for (int i = 0; i < allTraces.size(); i++) {
+      byte[] keyBytes = serialize(i);
+      byte[] valBytes = serializeDoubleArray(allTraces.get(i));
+      dbAndHandles.getLeft().put(dbAndHandles.getRight().get(COLUMN_FAMILIES.ID_TO_TRACE), keyBytes, valBytes);
     }
   }
+
+  private static <T> byte[] serialize(T obj) throws IOException {
+    try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+         ObjectOutputStream oo = new ObjectOutputStream(bos)) {
+      oo.writeObject(obj);
+      oo.flush();
+      return bos.toByteArray();
+    }
+  }
+
+  private static byte[] serializeDoubleArray(List<Double> vals) throws IOException {
+    try (ByteArrayOutputStream bos = new ByteArrayOutputStream(vals.size() * Double.BYTES)) {
+      byte[] bytes = new byte[Double.BYTES];
+      for (Double val : vals) {
+        bos.write(ByteBuffer.wrap(bytes).putDouble(val).array());
+      }
+      return bos.toByteArray();
+    }
+  }
+
+  private static List<Double> deserializeDoubleArray(byte[] byteStream) throws IOException {
+    List<Double> results = new ArrayList<>(byteStream.length / Double.BYTES);
+    try (ByteArrayInputStream is = new ByteArrayInputStream(byteStream)) {
+      byte[] bytes = new byte[Double.BYTES];
+      while (is.available() > 0) {
+        int readBytes = is.read(bytes); // Same as read(bytes, 0, bytes.length)
+        if (readBytes != bytes.length) {
+          throw new RuntimeException(String.format("Couldn't read a whole double at a time: %d", readBytes));
+        }
+        results.add(ByteBuffer.wrap(bytes).getDouble());
+      }
+    }
+    return results;
+  }
+
+  private static final Logger LOGGER = LogManager.getFormatterLogger(LCMSNetCDFParser.class);
+  private static final Charset UTF8 = StandardCharsets.UTF_8;
+  private static final byte[] TIMEPOINTS_KEY = "timepoints".getBytes(UTF8);
+
+  private static final Options ROCKS_DB_CREATE_OPTIONS = new Options()
+      .setCreateIfMissing(true)
+      .setDisableDataSync(true)
+      .setAllowMmapReads(true) // Trying all sorts of performance tweaking knobs, which are not well documented. :(
+      .setAllowMmapWrites(true)
+      .setWriteBufferSize(1 << 27)
+      .setArenaBlockSize(1 << 20)
+      .setCompressionType(CompressionType.SNAPPY_COMPRESSION) // Will hopefully trade CPU for I/O.
+      ;
+
+  private enum COLUMN_FAMILIES {
+    RANGE_TO_ID("range_to_id"),
+    ID_TO_TRACE("id_to_trace"),
+    TIMEPOINTS("timepoints"),
+    ;
+
+    String name;
+
+    COLUMN_FAMILIES(String name) {
+      this.name = name;
+    }
+
+    public String getName() {
+      return name;
+    }
+  }
+
+  protected static Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> createNewRocksDB(File pathToIndex)
+      throws RocksDBException {
+    RocksDB db = null; // Not auto-closable.
+    Map<COLUMN_FAMILIES, ColumnFamilyHandle> columnFamilyHandles = new HashMap<>();
+
+    Options options = ROCKS_DB_CREATE_OPTIONS;
+    System.out.println("Opening index at " + pathToIndex.getAbsolutePath());
+    db = RocksDB.open(options, pathToIndex.getAbsolutePath());
+
+    for (COLUMN_FAMILIES cf : COLUMN_FAMILIES.values()) {
+      LOGGER.info("Creating column family %s", cf.getName());
+      ColumnFamilyHandle cfh =
+          db.createColumnFamily(new ColumnFamilyDescriptor(cf.getName().getBytes(UTF8)));
+      columnFamilyHandles.put(cf, cfh);
+    }
+
+    return Pair.of(db, columnFamilyHandles);
+  }
+
 }
