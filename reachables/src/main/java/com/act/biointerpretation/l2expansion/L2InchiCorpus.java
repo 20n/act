@@ -4,6 +4,7 @@ import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import com.act.lcms.MassCalculator;
+import com.ggasoftware.indigo.IndigoException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -17,7 +18,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -89,20 +92,23 @@ public class L2InchiCorpus {
     try (BufferedWriter writer = new BufferedWriter((new FileWriter(inchisFile)))) {
       List<Double> massesChemaxon = new ArrayList<>();
       List<Double> exactMassesChemaxon = new ArrayList<>();
+      List<Double> jankMasses = new ArrayList<>();
+      Map<Double, String> jankMassToInchi = new HashMap<>();
 
       for (String inchi : getInchiList()) {
         Molecule mol = MolImporter.importMol(inchi, "inchi");
-        massesChemaxon.add(mol.getMass());
-        exactMassesChemaxon.add(mol.getExactMass());
+        try {
+          Double jankMass = MassCalculator.calculateMass(inchi);
+          jankMasses.add(jankMass);
+          jankMassToInchi.put(jankMass, inchi);
+          massesChemaxon.add(mol.getMass());
+          exactMassesChemaxon.add(mol.getExactMass());
+        } catch (Exception e) {
+          LOGGER.warn("Caught exception: %s", e.getMessage());
+        }
       }
 
-      for (String inchi : getInchiList()) {
-        Molecule mol = MolImporter.importMol(inchi, "inchi");
-      }
-
-      List<Double> massCalculatorMasses = getInchiList().stream().map(inchi -> MassCalculator.calculateMass(inchi)).collect(Collectors.toList());
-      massCalculatorMasses.sort((a, b) -> Double.compare(a, b));
-
+      jankMasses.sort((a, b) -> Double.compare(a, b));
       massesChemaxon.sort((a, b) -> Double.compare(a, b));
       exactMassesChemaxon.sort((a, b) -> Double.compare(a, b));
 
@@ -112,7 +118,12 @@ public class L2InchiCorpus {
         writer.write(",");
         writer.write(exactMassesChemaxon.get(i).toString());
         writer.write(",");
-        writer.write(Double.toString(massCalculatorMasses.get(i)));
+        writer.write(Double.toString(jankMasses.get(i)));
+        if (exactMassesChemaxon.get(i) - jankMasses.get(i) > .0001 ||
+            jankMasses.get(i) - exactMassesChemaxon.get(i) > .0001) {
+          LOGGER.error("MASS OFF BY MORE THAN .0001: %f, %s", jankMasses.get(i)-exactMassesChemaxon.get(i)
+          , jankMassToInchi.get(jankMasses.get(i)));
+        }
         writer.newLine();
       }
     }
