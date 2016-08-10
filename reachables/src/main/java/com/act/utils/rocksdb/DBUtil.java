@@ -56,7 +56,6 @@ public class DBUtil {
     RocksDB db = null; // Not auto-closable.
     Map<T, ColumnFamilyHandle> columnFamilyHandles = new HashMap<>();
 
-    System.out.println("Opening index at " + pathToIndex.getAbsolutePath());
     db = RocksDB.open(ROCKS_DB_CREATE_OPTIONS, pathToIndex.getAbsolutePath());
 
     for (T cf : columnFamilies) {
