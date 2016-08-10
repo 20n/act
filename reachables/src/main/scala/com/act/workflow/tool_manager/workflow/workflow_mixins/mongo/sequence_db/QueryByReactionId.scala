@@ -9,7 +9,7 @@ import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
 import org.biojava.nbio.core.sequence.ProteinSequence
 
-trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequenceToFasta with SequenceDatabaseKeywords {
+trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequencesToFasta with SequenceDatabaseKeywords {
 
   /**
     * Takes in a list of reaction IDs and creates outputs a list of ProteinSequences known to do those reactions.
@@ -28,21 +28,24 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
       SEQUENCE_DB_KEYWORD_ECNUM,
       s"$SEQUENCE_DB_KEYWORD_METADATA.$SEQUENCE_DB_KEYWORD_NAME")
 
-    val returnSequenceDocuments: Iterator[DBObject] =
-      querySequencesMatchingReactionIdIterator(reactionIds, mongoConnection, returnFields)
+    val returnSequenceDocuments: Map[Long, Map[String, AnyRef]] =
+      querySequencesForValuesByReactionId(reactionIds, mongoConnection, returnFields)
 
 
     /*
       Map sequences and name to proteinSequences
     */
-    val outputWriter = new BufferedWriter(new FileWriter(outputFile))
-    for (document: DBObject <- returnSequenceDocuments) {
+    val outputStream = new FileOutputStream(outputFile)
+    for (documentId: Long <- returnSequenceDocuments.keysIterator) {
 
-      val id = document.get(SEQUENCE_DB_KEYWORD_ID)
-      val seq = document.get(SEQUENCE_DB_KEYWORD_SEQ)
+      val sequenceDocument = returnSequenceDocuments(documentId)
+      val id = documentId
+      val seq = sequenceDocument.get(SEQUENCE_DB_KEYWORD_SEQ).get
 
       // Enzymes may not have an enzyme number
-      val ecnum = if (document.get(SEQUENCE_DB_KEYWORD_ECNUM) != null) document.get(SEQUENCE_DB_KEYWORD_ECNUM) else "None"
+      val ecnum = if (sequenceDocument.get(SEQUENCE_DB_KEYWORD_ECNUM).get != null)
+        sequenceDocument.get(SEQUENCE_DB_KEYWORD_ECNUM).get
+      else "None"
 
       // Make sure it has a sequence
       if (seq != null) {
@@ -50,11 +53,9 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
         val newSeq = new ProteinSequence(seq.toString)
 
         // Enzymes may not have a name
-        val name = if (document.get(s"$SEQUENCE_DB_KEYWORD_METADATA.$SEQUENCE_DB_KEYWORD_NAME") != null) {
-          document.get(s"$SEQUENCE_DB_KEYWORD_METADATA.$SEQUENCE_DB_KEYWORD_NAME")
-        } else {
-          "None"
-        }
+        val name = if (sequenceDocument.get(s"$SEQUENCE_DB_KEYWORD_METADATA.$SEQUENCE_DB_KEYWORD_NAME").get != null)
+          sequenceDocument.get(s"$SEQUENCE_DB_KEYWORD_METADATA.$SEQUENCE_DB_KEYWORD_NAME").get
+        else "None"
 
         /*
           These headers are required to be unique or else downstream software will likely crash.
@@ -62,7 +63,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
           but the DB_ID should guarantee uniqueness
         */
         newSeq.setOriginalHeader(s"NAME: ${name.toString} | EC: ${ecnum.toString} | DB_ID: ${id.toString}")
-        writeProteinSequenceToFasta(newSeq, outputWriter)
+        writeProteinSequencesToFasta(newSeq, outputStream)
       } else {
         methodLogger.error(s"Sequence identified that does not have a sequence.  DB entry is ${id.toString}")
       }
@@ -129,6 +130,48 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
     val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
 
     val sequenceReturnIterator = querySequencesMatchingReactionIdIterator(reactionIds, mongoConnection, returnFilterFields)
+
+    val sequenceDocuments = mongoReturnQueryToMap(sequenceReturnIterator, returnFilterFields)
+    methodLogger.info(s"Found ${sequenceDocuments.size} document${if (sequenceDocuments.size != 1) "s" else ""}.")
+    sequenceDocuments
+  }
+
+  /**
+    * Query sequences based on if they contain a reaction ID
+    *
+    * @param reactionIds        A list of reactionIds, a matching sequence will match one or more.
+    * @param mongoConnection    Connection to Mongo database
+    * @param returnFilterFields The fields you are looking for.
+    *
+    * @return
+    */
+  def querySequencesForValuesByReactionId(reactionIds: List[Long],
+                                          mongoConnection: MongoDB,
+                                          returnFilterFields: List[String]): Map[Long, Map[String, AnyRef]] = {
+    val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
+
+    /*
+      Query sequence database for enzyme sequences by looking for enzymes that have an rID
+
+      Structure of query = (Rxnrefs -> In [ReactionIdsList])
+    */
+
+
+    val reactionList = new BasicDBList
+    reactionIds.map(rId => reactionList.add(rId.asInstanceOf[AnyRef]))
+
+    // Elem match on all rxn_to_reactant groups in that array
+    val seqKey = new BasicDBObject(SEQUENCE_DB_KEYWORD_RXN_REFS, defineMongoIn(reactionList))
+
+    val reactionIdReturnFilter = new BasicDBObject()
+    for (field <- returnFilterFields) {
+      reactionIdReturnFilter.append(field, 1)
+    }
+
+    methodLogger.info("Querying enzymes with the desired reactions for sequences from Mongo")
+    methodLogger.info(s"Running query $seqKey against DB.  Return filter is $reactionIdReturnFilter. ")
+    val sequenceReturnIterator: Iterator[DBObject] = mongoQuerySequences(mongoConnection, seqKey, reactionIdReturnFilter)
+    methodLogger.info("Finished sequence query.")
 
     val sequenceDocuments = mongoReturnQueryToMap(sequenceReturnIterator, returnFilterFields)
     methodLogger.info(s"Found ${sequenceDocuments.size} document${if (sequenceDocuments.size != 1) "s" else ""}.")
