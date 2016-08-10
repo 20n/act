@@ -133,8 +133,12 @@ public class SequenceMerger extends BiointerpretationProcessor {
     Map<UniqueSeq, List<Seq>> sequenceGroups = new HashMap<>();
 
     int numberOfSequencesMerged = 0;
-    int numberOfSequencesUnmerged = 0; // # of sequences that aren't merged due to lack of Seq entry matches
-    int numberOfSequencesUnmergedInfo = 0; // # of sequences that aren't merged due to lack of information
+
+    // # of sequences that aren't merged due to lack of Seq entry matches
+    int numberOfSequencesUnmerged = 0;
+
+    // # of sequences that aren't merged due to lack of information
+    int numberOfSequencesUnmergedInfo = 0;
 
     // stores all sequences with the same ecnum, organism (accounts for prefix), and protein sequence in the same list
     while (sequences.hasNext()) {
