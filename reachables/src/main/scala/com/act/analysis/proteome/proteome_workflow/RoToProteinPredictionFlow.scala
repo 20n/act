@@ -31,7 +31,8 @@ class RoToProteinPredictionFlow
   private val OPTION_SET_UNION_PREFIX = "u"
   private val OPTION_SET_INTERSECTION_PREFIX = "i"
   private val OPTION_CLUSTAL_BINARIES_PREFIX = "c"
-  private val OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX = "l"
+  private val OPTION_COMPARE_PROTEOME_LOCATION_PREFIX = "l"
+  private val OPTION_DATABASE_PREFIX = "d"
 
 
   override def getCommandLineOptions: Options = {
@@ -86,10 +87,15 @@ class RoToProteinPredictionFlow
         desc("The file path of the ClustalOmega binaries used in alignment.").
         required(true),
 
-      CliOption.builder(OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX).
+      CliOption.builder(OPTION_COMPARE_PROTEOME_LOCATION_PREFIX).
         longOpt("proteome-location").
         hasArg.
         desc("The file path of the proteome file that the constructed HMM should be searched against").
+        required(true),
+
+      CliOption.builder(OPTION_DATABASE_PREFIX).
+        longOpt("database").
+        hasArg.desc("The name of the MongoDB to use for this query.").
         required(true),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
@@ -113,7 +119,7 @@ class RoToProteinPredictionFlow
     }
 
     ClustalOmegaWrapper.setBinariesLocation(clustalBinaries)
-    val proteomeLocation = new File(cl.getOptionValue(OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX))
+    val proteomeLocation = new File(cl.getOptionValue(OPTION_COMPARE_PROTEOME_LOCATION_PREFIX))
 
     if (!verifyInputFile(proteomeLocation)) {
       throw new RuntimeException(s"Proteome file location was not valid.  Given input was $proteomeLocation.")
@@ -173,7 +179,7 @@ class RoToProteinPredictionFlow
       resultFilesBuffer.append(resultFilePath)
 
       // Create the FASTA file out of all the relevant sequences.
-      val roToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos(roContext, outputFastaPath) _)
+      val roToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos(roContext, outputFastaPath, cl.getOptionValue(OPTION_DATABASE_PREFIX)) _)
       headerJob.thenRunAtPosition(roToFasta, 0)
 
       // Align Fasta sequence

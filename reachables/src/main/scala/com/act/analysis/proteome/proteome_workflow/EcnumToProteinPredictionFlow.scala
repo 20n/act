@@ -10,12 +10,8 @@ import com.act.workflow.tool_manager.workflow.workflow_mixins.composite.EcnumToS
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.logging.log4j.LogManager
 
-class EcnumToProteinPredictionFlow extends {
-  val OPTION_EC_NUM_ARG_PREFIX = "e"
-  val OPTION_OUTPUT_FASTA_FILE_PREFIX = "f"
-  val OPTION_WORKING_DIRECTORY_PREFIX = "w"
-}
-  with Workflow
+class EcnumToProteinPredictionFlow
+  extends Workflow
   with EcnumToSequences
   with WorkingDirectoryUtility {
 
@@ -27,6 +23,10 @@ class EcnumToProteinPredictionFlow extends {
   private val OPTION_RESULT_FILE_ARG_PREFIX = "o"
   private val OPTION_CLUSTAL_BINARIES_ARG_PREFIX = "c"
   private val OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX = "l"
+  private val OPTION_DATABASE_PREFIX = "d"
+  private val OPTION_EC_NUM_ARG_PREFIX = "e"
+  private val OPTION_OUTPUT_FASTA_FILE_PREFIX = "f"
+  private val OPTION_WORKING_DIRECTORY_PREFIX = "w"
 
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -75,6 +75,11 @@ class EcnumToProteinPredictionFlow extends {
         longOpt("proteome-location").
         hasArg.
         desc("The file path of the proteome file that the constructed HMM should be searched against").
+        required(true),
+
+      CliOption.builder(OPTION_DATABASE_PREFIX).
+        longOpt("database").
+        hasArg.desc("The name of the MongoDB to use for this query.").
         required(true),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
@@ -144,7 +149,7 @@ class EcnumToProteinPredictionFlow extends {
     )
 
     // Create the FASTA file out of all the relevant sequences.
-    val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingEcnums(ec_num, outputFastaPath) _)
+    val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingEcnums(ec_num, outputFastaPath, cl.getOptionValue(OPTION_DATABASE_PREFIX)) _)
     headerJob.thenRun(ecNumberToFasta)
 
     // Align Fasta sequence

@@ -11,12 +11,17 @@ import com.act.workflow.tool_manager.jobs.management.JobManager
 abstract class ToolWrapper {
   // Tracks all jobs running as futures within the ToolWrapper
 
-  private var binaries: File = new File("")
-  protected def constructJob(toolFunction: String, args: List[String], retryJob: Boolean = false): ShellJob = {
-    val usingTool = !toolFunction.equals("") | binaryLocationSet
+  private var binaries: Option[File] = None
+
+  def setBinariesLocation(binaryDirectory: File): Unit = {
+    binaries = Option(binaryDirectory)
+  }
+
+  protected def constructJob(toolFunction: Option[String], args: List[String], retryJob: Boolean = false): ShellJob = {
+    val usingTool = toolFunction.isDefined | binaries.isDefined
 
     if (usingTool) {
-      val command = constructCommand(toolFunction, args)
+      val command = constructToolCommand(toolFunction, args)
       helperConstructJob(command, retryJob)
     } else {
       helperConstructJob(args, retryJob)
@@ -43,30 +48,37 @@ abstract class ToolWrapper {
     *
     * @return Constructed command ready to run
     */
-  private def constructCommand(toolFunction: String, args: List[String]): List[String] = {
-    val binaryAndToolStringsSet = !toolFunction.equals("") && binaryLocationSet
+  private def constructToolCommand(toolFunction: Option[String], args: List[String]): List[String] = {
+    binaries match {
 
-    if (binaryAndToolStringsSet) {
-      val binariesFile = new File(getBinariesLocation, toolFunction)
-      List[String](binariesFile.getAbsolutePath) ::: args
-    } else {
-      (List[String](getBinariesLocation, toolFunction) ::: args).filter(x => !x.equals(""))
+
+      // Binaries exist
+      case binary if binary.isDefined =>
+        toolFunction match {
+
+          // Tool doesn't exist
+          case tool if tool.isDefined =>
+            val binariesFile = new File(binaries.get.getAbsolutePath, toolFunction.get)
+            List[String](binariesFile.getAbsolutePath) ::: args
+
+          // Tool does exist
+          case toolExists =>
+            List[String](binaries.get.getAbsolutePath) ::: args
+        }
+
+
+      // Binaries don't exist
+      case binaryDoesNotExist =>
+        toolFunction match {
+
+          // Tool doesn't exist
+          case tool if tool.isDefined =>
+            List[String](toolFunction.get) ::: args
+
+          // Tool does exist
+          case toolDoesNotExist =>
+            throw new RuntimeException("Neither binaries nor tools set, but constructing tool command.")
+        }
     }
-  }
-
-  private def getBinariesLocation: String = {
-    if (binaryLocationSet) {
-      binaries.getAbsolutePath
-    } else {
-      ""
-    }
-  }
-
-  def setBinariesLocation(binaryDirectory: File): Unit = {
-    binaries = binaryDirectory
-  }
-
-  private def binaryLocationSet: Boolean = {
-    binaries.exists()
   }
 }

@@ -131,18 +131,18 @@ Other utilities - These do conversions or give added benefits to HMMs/Proteins
   //TODO All commands that I plan to implement
   object HmmCommands extends Enumeration {
     type HmmCommands = Value
-    val HmmBuild = "hmmbuild"
-    val HmmAlign = "hmmalign"
-    val HmmScan = "hmmscan"
-    val HmmPress = "hmmpress"
-    val HmmSearch = "hmmsearch"
-    val JackHammr = "jackhmmr"
-    val Phmmer = "phmmer"
-    val HmmConvert = "hmmconvert"
-    val HmmEmit = "hmmemit"
-    val HmmFetch = "hmmfetch"
-    val HmmLogo = "hmmlogo"
-    val HmmPgmd = "hmmpgmd"
+    val HmmBuild = Option("hmmbuild")
+    val HmmAlign = Option("hmmalign")
+    val HmmScan = Option("hmmscan")
+    val HmmPress = Option("hmmpress")
+    val HmmSearch = Option("hmmsearch")
+    val JackHammr = Option("jackhmmr")
+    val Phmmer = Option("phmmer")
+    val HmmConvert = Option("hmmconvert")
+    val HmmEmit = Option("hmmemit")
+    val HmmFetch = Option("hmmfetch")
+    val HmmLogo = Option("hmmlogo")
+    val HmmPgmd = Option("hmmpgmd")
   }
 
 }

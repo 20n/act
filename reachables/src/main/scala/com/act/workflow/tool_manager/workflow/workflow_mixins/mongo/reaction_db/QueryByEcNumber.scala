@@ -15,7 +15,8 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
     * @param roughEcnum EcNumber that can be regex matched
     * @param mongoConnection Connection to MongoDB
     *
-    * @return Map of documents containing a map of their fields.
+    * @return A map of maps containing documents -> fields.
+    *         The field map is empty in this case because reaction ID is available as the primary key.
     */
   def queryReactionsForReactionIdsByEcNumber(roughEcnum: String,
                                              mongoConnection: MongoDB): Map[Long, Map[String, AnyRef]] = {
@@ -23,13 +24,14 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
   }
 
   /**
-    * For a given ECNumber, returns an arbitrary set of values about the document.
+    * Returns an arbitrary set of values in the reaction documents matching that EC number.
     *
     * @param roughEcnum EcNumber that can be regex matched
     * @param mongoConnection Connection to MongoDB
     * @param returnFilterFields Which fields of the document should be returned.
     *
-    * @return Map of documents containing a map of their fields.
+    * @return A map of maps containing documents -> fields.
+    *         The field map is keyed on the document ID, the second set of maps are keyed by their field names.
     */
   def queryReactionsForValuesByEcNumber(roughEcnum: String,
                                         mongoConnection: MongoDB,

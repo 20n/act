@@ -228,22 +228,6 @@ trait MongoWorkflowUtilities {
   }
 
   /**
-    * Many Mongo queries require a dollar sign in front of the keyword.  Example: $exists
-    *
-    * The dollar sign is also used during aggregation to reference intermediate documents. Example: $_id
-    *
-    * Thus, this function changes f("String") -> "$String"
-    *
-    * @param inputString The string to be converted into dollar format
-    *
-    * @return Modified string
-    */
-  private def dollarString(inputString: String): String = {
-    // Escape one dollar and do the input as well
-    s"$$$inputString"
-  }
-
-  /**
     * Groups documents together by some given value.
     * Requires an ID field and then accumulates any other fields indicating in the accumulator.
     * In our example, we create an array via PUSH and use that to name a new field outputListName.
@@ -275,7 +259,23 @@ trait MongoWorkflowUtilities {
   }
 
   /**
-    * Aggregate and proces documents over the reactions DB with a given pipeline
+    * Many Mongo queries require a dollar sign in front of the keyword.  Example: $exists
+    *
+    * The dollar sign is also used during aggregation to reference intermediate documents. Example: $_id
+    *
+    * Thus, this function changes f("String") -> "$String"
+    *
+    * @param inputString The string to be converted into dollar format
+    *
+    * @return Modified string
+    */
+  private def dollarString(inputString: String): String = {
+    // Escape one dollar and do the input as well
+    s"$$$inputString"
+  }
+
+  /**
+    * Aggregate and process documents over the reactions DB with a given pipeline
     *
     * Reference: https://docs.mongodb.com/manual/aggregation/
     *
@@ -289,7 +289,7 @@ trait MongoWorkflowUtilities {
   }
 
   /**
-    * Aggregate and proces documents over the sequences DB with a given pipeline
+    * Aggregate and process documents over the sequences DB with a given pipeline
     *
     * Reference: https://docs.mongodb.com/manual/aggregation/
     *
