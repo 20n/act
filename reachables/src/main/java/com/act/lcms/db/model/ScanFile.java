@@ -317,6 +317,18 @@ public class ScanFile {
               put(SCAN_NAME_COMPONENT.FILE_TYPE, 6);
             }}
         ));
+        add(Pair.of( // Matches munged Jaffna vial plate format.
+            Pattern.compile("^Plate_(\\w+)_([A-Z]+)(\\d+)_(\\d{8})(?:_(Pos|Neg))?(\\d{2})?.(nc|mzML|raw)"),
+            new HashMap<SCAN_NAME_COMPONENT, Integer>() {{
+              put(SCAN_NAME_COMPONENT.PLATE_BARCODE, 1);
+              put(SCAN_NAME_COMPONENT.ROW, 2);
+              put(SCAN_NAME_COMPONENT.COLUMN, 3);
+              put(SCAN_NAME_COMPONENT.DATE, 4);
+              put(SCAN_NAME_COMPONENT.MODE, 5);
+              put(SCAN_NAME_COMPONENT.SCAN_PART, 6);
+              put(SCAN_NAME_COMPONENT.FILE_TYPE, 7);
+            }}
+        ));
         add(Pair.of(
             Pattern.compile("^(\\w+)_([A-Z]+)(\\d+)_(\\d{8})(?:_(Pos|Neg))?(\\d{2})?.(nc|mzML|raw)"),
             new HashMap<SCAN_NAME_COMPONENT, Integer>() {{
