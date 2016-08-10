@@ -253,7 +253,8 @@ public class MS1 {
     if (maxIntensity > NONTRIVIAL_SIGNAL) {
       // snr = sigma_signal^2 / sigma_ambient^2
       // where sigma = sqrt(E[(X-mean)^2])
-      snr = sigmaSquared(signalIntensities, avgIntensitySignal) / sigmaSquared(ambientIntensities, avgIntensityAmbient);
+      Double mean = avgIntensityAmbient;
+      snr = sigmaSquared(signalIntensities, mean) / sigmaSquared(ambientIntensities, mean);
       logSNR = Math.log(snr);
     }
 
