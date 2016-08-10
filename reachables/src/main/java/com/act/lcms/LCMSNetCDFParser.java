@@ -194,7 +194,7 @@ public class LCMSNetCDFParser implements LCMSParser {
 
     List<Triple<Double, Double, Integer>> rangesWIdx = new ArrayList<Triple<Double, Double, Integer>>(){{
       int i = 0;
-      for (double center = 50.0; center <= 950.0; center += 0.01, i++) {
+      for (double center = 50.0; center <= 950.0; center += 0.005, i++) {
         add(Triple.of(center - 0.01, center + 0.01, i));
       }
     }};
