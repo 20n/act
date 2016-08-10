@@ -81,7 +81,7 @@ abstract class ToolWrapper {
             List[String](binariesFile.getAbsolutePath) ::: args
 
           // Tool doesn't exist
-          case toolExists =>
+          case toolDoesNotExist =>
             List[String](binaries.get.getAbsolutePath) ::: args
         }
 
