@@ -66,16 +66,9 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
   @Override
   public void init() {
-    Map<String, Long> orgMap = new HashMap<>();
-
     Iterator<Organism> orgIterator = getNoSQLAPI().readOrgsFromInKnowledgeGraph();
 
-    while (orgIterator.hasNext()) {
-      Organism org = orgIterator.next();
-      orgMap.put(org.getName(), 1L);
-    }
-
-    OrgMinimalPrefixGenerator prefixGenerator = new OrgMinimalPrefixGenerator(orgMap);
+    OrgMinimalPrefixGenerator prefixGenerator = new OrgMinimalPrefixGenerator(orgIterator);
     minimalPrefixMapping = prefixGenerator.getMinimalPrefixMapping();
 
     markInitialized();

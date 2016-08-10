@@ -37,8 +37,6 @@ public class UniprotSeqEntryTest {
     Map<Long, String> organismNames = new HashMap<>();
     organismNames.put(4000000399L, "Arabidopsis thaliana");
 
-    Map<String, Long> orgMap = new HashMap<>();
-
     // manually assemble an Org Iterator since you can't mock DBCollection in getDbIteratorOverOrgs()
     List<Organism> orgs = new ArrayList<>();
     for (Map.Entry<Long, String> orgName : organismNames.entrySet()) {
@@ -47,12 +45,7 @@ public class UniprotSeqEntryTest {
 
     Iterator<Organism> orgIterator = orgs.iterator();
 
-    while (orgIterator.hasNext()) {
-      Organism org = orgIterator.next();
-      orgMap.put(org.getName(), 1L);
-    }
-
-    OrgMinimalPrefixGenerator prefixGenerator = new OrgMinimalPrefixGenerator(orgMap);
+    OrgMinimalPrefixGenerator prefixGenerator = new OrgMinimalPrefixGenerator(orgIterator);
     Map<String, String> minimalPrefixMapping = prefixGenerator.getMinimalPrefixMapping();
 
     // only information needed for these set of tests is a db with organism id's.

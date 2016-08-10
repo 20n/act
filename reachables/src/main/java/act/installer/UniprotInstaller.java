@@ -299,7 +299,6 @@ public class UniprotInstaller {
     } else {
       MongoDB db = new MongoDB("localhost", 27017, dbName);
 
-      Map<String, Long> orgMap = new HashMap<>();
       DBIterator iter = db.getDbIteratorOverOrgs();
 
       Iterator<Organism> orgIterator = new Iterator<Organism> () {
@@ -319,12 +318,7 @@ public class UniprotInstaller {
 
       };
 
-      while (orgIterator.hasNext()) {
-        Organism org = orgIterator.next();
-        orgMap.put(org.getName(), 1L);
-      }
-
-      OrgMinimalPrefixGenerator prefixGenerator = new OrgMinimalPrefixGenerator(orgMap);
+      OrgMinimalPrefixGenerator prefixGenerator = new OrgMinimalPrefixGenerator(orgIterator);
       Map<String, String> minimalPrefixMapping = prefixGenerator.getMinimalPrefixMapping();
 
       UniprotInstaller installer = new UniprotInstaller(uniprotFile, db, minimalPrefixMapping);

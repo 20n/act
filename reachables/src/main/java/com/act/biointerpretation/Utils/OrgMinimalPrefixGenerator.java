@@ -1,9 +1,11 @@
 package com.act.biointerpretation.Utils;
 
+import act.shared.Organism;
 import org.apache.commons.collections4.trie.PatriciaTrie;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
@@ -22,7 +24,14 @@ public class OrgMinimalPrefixGenerator {
   when we generate prefix maps in lexicographic order, we will be assigning the smallest length prefix for all organism
   names.
    */
-  public OrgMinimalPrefixGenerator(Map<String, Long> orgMap) {
+  public OrgMinimalPrefixGenerator(Iterator<Organism> orgIterator) {
+    Map<String, Long> orgMap = new HashMap<>();
+
+    while (orgIterator.hasNext()) {
+      Organism org = orgIterator.next();
+      orgMap.put(org.getName(), 1L);
+    }
+
     PatriciaTrie orgPrefixTrie = new PatriciaTrie<>(orgMap);
     orgNameToMinimalPrefix = new HashMap<>();
 
