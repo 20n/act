@@ -1,15 +1,6 @@
 package com.act.lcms;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.lang3.tuple.Triple;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.rocksdb.ColumnFamilyDescriptor;
-import org.rocksdb.ColumnFamilyHandle;
-import org.rocksdb.CompressionType;
-import org.rocksdb.Options;
-import org.rocksdb.RocksDB;
-import org.rocksdb.RocksDBException;
 import ucar.ma2.Array;
 import ucar.ma2.DataType;
 import ucar.nc2.Attribute;
@@ -18,20 +9,10 @@ import ucar.nc2.Variable;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLStreamException;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Parses NetCDF files produced by an LCMS apparatus, converting the time points contained therein into
@@ -186,192 +167,4 @@ public class LCMSNetCDFParser implements LCMSParser {
 
     return spectra;
   }
-
-  public static void main(String[] args) throws Exception {
-    NetcdfFile netcdfFile = NetcdfFile.open(args[0]);
-    printNetcdfFileDetails(netcdfFile);
-    netcdfFile.close();
-
-    List<Triple<Double, Double, Integer>> rangesWIdx = new ArrayList<Triple<Double, Double, Integer>>(){{
-      int i = 0;
-      for (double center = 50.0; center <= 950.0; center += 0.005, i++) {
-        add(Triple.of(center - 0.01, center + 0.01, i));
-      }
-    }};
-
-    List<List<Double>> allTraces = new ArrayList<List<Double>>(rangesWIdx.size()) {{
-      for (int i = 0; i < rangesWIdx.size(); i++) {
-        add(new ArrayList<>());
-      }
-    }};
-    List<Double> times = new ArrayList<>();
-
-    LCMSNetCDFParser parser = new LCMSNetCDFParser();
-    Iterator<LCMSSpectrum> iter = parser.getIterator(args[0]);
-    while (iter.hasNext()) {
-      LCMSSpectrum spectrum = iter.next();
-      Double time = spectrum.getTimeVal();
-      // Store one list of the time values so we can knit times and intensity sums later to form XZs.
-      times.add(time);
-
-      // Make sure we have a time entry for this timepoint.  The one we're working on is always the last in the list.
-      for (List<Double> trace : allTraces) {
-        trace.add(0.0d);
-      }
-
-      // TODO: use a logger, but not in this class.
-      System.out.format("Processing timepoint %f\n", time);
-
-      LinkedList<Triple<Double, Double, Integer>> workingQueue = new LinkedList<>();
-      // TODO: can we reuse these instead of creating fresh?
-      LinkedList<Triple<Double, Double, Integer>> tbdQueue = new LinkedList<>(rangesWIdx);
-
-      for (Pair<Double, Double> mzIntensity : spectrum.getIntensities()) {
-        Double mz = mzIntensity.getLeft();
-        Double intensity = mzIntensity.getRight();
-
-        //System.out.format("  mz:        %.3f\n", mz);
-        //System.out.format("  pre  working: %s\n", StringUtils.join(workingQueue.stream().map(t -> String.format("%d=%.3f-%.3f", t.getRight(), t.getLeft(), t.getMiddle())).collect(Collectors.toList()), ", "));
-        //System.out.format("  pre  tbd:     %s, ...\n", StringUtils.join(tbdQueue.stream().limit(3).map(t -> String.format("%d=%.3f-%.3f", t.getRight(), t.getLeft(), t.getMiddle())).collect(Collectors.toList()), ", "));
-
-        // First, shift any applicable ranges onto the working queue based on their minimum mz.
-        while (!tbdQueue.isEmpty() && tbdQueue.peekFirst().getLeft() <= mz) {
-          workingQueue.add(tbdQueue.pop());
-        }
-
-        // Next, remove any ranges we've passed.
-        while (!workingQueue.isEmpty() && workingQueue.peekFirst().getMiddle() < mz) {
-          workingQueue.pop();
-        }
-
-        //System.out.format("  post working: %s\n", StringUtils.join(workingQueue.stream().map(t -> String.format("%d=%.3f-%.3f", t.getRight(), t.getLeft(), t.getMiddle())).collect(Collectors.toList()), ", "));
-        //System.out.format("  post tbd:     %s, ...\n", StringUtils.join(tbdQueue.stream().limit(3).map(t -> String.format("%d=%.3f-%.3f", t.getRight(), t.getLeft(), t.getMiddle())).collect(Collectors.toList()), ", "));
-
-        if (workingQueue.isEmpty()) {
-          if (tbdQueue.isEmpty()) {
-            // If both queues are empty, there are no more windows to consider at all.  One to the next timepoint!
-            break;
-          }
-
-          // If there's nothing that happens to fit in this range, skip it!
-          continue;
-        }
-
-        // The working queue should now hold only ranges that include this m/z value.  Sweep line swept!
-
-        // Now add this intensity to the most recent XZ value for each of the items in the working queue (max 2?).
-        for (Triple<Double, Double, Integer> triple : workingQueue) {
-          List<Double> trace = allTraces.get(triple.getRight());
-          Double accumulator = trace.get(trace.size() - 1); // Get the current XZ, i.e. the one at this timepoint.
-          trace.set(trace.size() - 1, accumulator + intensity);
-        }
-      }
-    }
-
-    RocksDB.loadLibrary();
-    Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles = createNewRocksDB(new File(args[1]));
-
-    for (Triple<Double, Double, Integer> triple : rangesWIdx) {
-      Pair<Double, Double> range = Pair.of(triple.getLeft(), triple.getMiddle());
-
-      byte[] keyBytes = serialize(range);
-      byte[] valBytes = serialize(triple.getRight());
-
-      dbAndHandles.getLeft().put(dbAndHandles.getRight().get(COLUMN_FAMILIES.RANGE_TO_ID), keyBytes, valBytes);
-    }
-
-    dbAndHandles.getLeft().put(dbAndHandles.getRight().get(COLUMN_FAMILIES.RANGE_TO_ID),
-        TIMEPOINTS_KEY, serializeDoubleArray(times));
-
-    for (int i = 0; i < allTraces.size(); i++) {
-      byte[] keyBytes = serialize(i);
-      byte[] valBytes = serializeDoubleArray(allTraces.get(i));
-      dbAndHandles.getLeft().put(dbAndHandles.getRight().get(COLUMN_FAMILIES.ID_TO_TRACE), keyBytes, valBytes);
-    }
-  }
-
-  private static <T> byte[] serialize(T obj) throws IOException {
-    try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
-         ObjectOutputStream oo = new ObjectOutputStream(bos)) {
-      oo.writeObject(obj);
-      oo.flush();
-      return bos.toByteArray();
-    }
-  }
-
-  private static byte[] serializeDoubleArray(List<Double> vals) throws IOException {
-    try (ByteArrayOutputStream bos = new ByteArrayOutputStream(vals.size() * Double.BYTES)) {
-      byte[] bytes = new byte[Double.BYTES];
-      for (Double val : vals) {
-        bos.write(ByteBuffer.wrap(bytes).putDouble(val).array());
-      }
-      return bos.toByteArray();
-    }
-  }
-
-  private static List<Double> deserializeDoubleArray(byte[] byteStream) throws IOException {
-    List<Double> results = new ArrayList<>(byteStream.length / Double.BYTES);
-    try (ByteArrayInputStream is = new ByteArrayInputStream(byteStream)) {
-      byte[] bytes = new byte[Double.BYTES];
-      while (is.available() > 0) {
-        int readBytes = is.read(bytes); // Same as read(bytes, 0, bytes.length)
-        if (readBytes != bytes.length) {
-          throw new RuntimeException(String.format("Couldn't read a whole double at a time: %d", readBytes));
-        }
-        results.add(ByteBuffer.wrap(bytes).getDouble());
-      }
-    }
-    return results;
-  }
-
-  private static final Logger LOGGER = LogManager.getFormatterLogger(LCMSNetCDFParser.class);
-  private static final Charset UTF8 = StandardCharsets.UTF_8;
-  private static final byte[] TIMEPOINTS_KEY = "timepoints".getBytes(UTF8);
-
-  private static final Options ROCKS_DB_CREATE_OPTIONS = new Options()
-      .setCreateIfMissing(true)
-      .setDisableDataSync(true)
-      .setAllowMmapReads(true) // Trying all sorts of performance tweaking knobs, which are not well documented. :(
-      .setAllowMmapWrites(true)
-      .setWriteBufferSize(1 << 27)
-      .setArenaBlockSize(1 << 20)
-      .setCompressionType(CompressionType.SNAPPY_COMPRESSION) // Will hopefully trade CPU for I/O.
-      ;
-
-  private enum COLUMN_FAMILIES {
-    RANGE_TO_ID("range_to_id"),
-    ID_TO_TRACE("id_to_trace"),
-    TIMEPOINTS("timepoints"),
-    ;
-
-    String name;
-
-    COLUMN_FAMILIES(String name) {
-      this.name = name;
-    }
-
-    public String getName() {
-      return name;
-    }
-  }
-
-  protected static Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> createNewRocksDB(File pathToIndex)
-      throws RocksDBException {
-    RocksDB db = null; // Not auto-closable.
-    Map<COLUMN_FAMILIES, ColumnFamilyHandle> columnFamilyHandles = new HashMap<>();
-
-    Options options = ROCKS_DB_CREATE_OPTIONS;
-    System.out.println("Opening index at " + pathToIndex.getAbsolutePath());
-    db = RocksDB.open(options, pathToIndex.getAbsolutePath());
-
-    for (COLUMN_FAMILIES cf : COLUMN_FAMILIES.values()) {
-      LOGGER.info("Creating column family %s", cf.getName());
-      ColumnFamilyHandle cfh =
-          db.createColumnFamily(new ColumnFamilyDescriptor(cf.getName().getBytes(UTF8)));
-      columnFamilyHandles.put(cf, cfh);
-    }
-
-    return Pair.of(db, columnFamilyHandles);
-  }
-
 }
