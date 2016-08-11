@@ -154,6 +154,8 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
       if (inchiToTime.containsKey(inchi)) {
         if (time > inchiToTime.get(inchi) - 1 && time < inchiToTime.get(inchi) + 1) {
           finalSet.add(inchi);
+        } else {
+          finalSet.add(inchi);
         }
       } else {
         otherSet.add(inchi);
