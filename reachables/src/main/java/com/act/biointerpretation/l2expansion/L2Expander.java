@@ -30,7 +30,7 @@ public abstract class L2Expander implements Serializable {
 
   // This SAR accepts every substrate.
   @JsonIgnore
-  protected static final Sar NO_SAR = new NoSar();
+  protected static final List<Sar> NO_SAR = Collections.unmodifiableList(Collections.singletonList(new NoSar()));
 
   private PredictionGenerator generator;
 
