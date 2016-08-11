@@ -3,6 +3,8 @@ package com.act.lcms.db.analysis.untargeted;
 import com.act.lcms.MS1;
 import com.act.lcms.XZ;
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -22,8 +24,10 @@ import java.util.List;
 
 public class WindowingTraceAnalyzer {
   private static final Logger LOGGER = LogManager.getFormatterLogger(WindowingTraceAnalyzer.class);
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-  public static final String OPTION_INDEX_PATH = "x";
+
+  private static final String OPTION_INDEX_PATH = "x";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class consumes windowed traces from an LCMS scan files, searching each window for peaks."
@@ -47,6 +51,75 @@ public class WindowingTraceAnalyzer {
 
   static {
     HELP_FORMATTER.setWidth(100);
+  }
+
+  public static class WindowAnalysisResult {
+    @JsonProperty("min_mz")
+    private Double minMz;
+
+    @JsonProperty("max_mz")
+    private Double maxMz;
+
+    @JsonProperty("log_snr")
+    private Double logSnr;
+
+    @JsonProperty("peak_intensity")
+    private Double peakIntensity;
+
+    @JsonProperty("peak_time")
+    private Double peakTime;
+
+    protected WindowAnalysisResult() {
+
+    }
+
+    public WindowAnalysisResult(Double minMz, Double maxMz, Double logSnr, Double peakIntensity, Double peakTime) {
+      this.minMz = minMz;
+      this.maxMz = maxMz;
+      this.logSnr = logSnr;
+      this.peakIntensity = peakIntensity;
+      this.peakTime = peakTime;
+    }
+
+    public Double getMinMz() {
+      return minMz;
+    }
+
+    protected void setMinMz(Double minMz) {
+      this.minMz = minMz;
+    }
+
+    public Double getMaxMz() {
+      return maxMz;
+    }
+
+    protected void setMaxMz(Double maxMz) {
+      this.maxMz = maxMz;
+    }
+
+    public Double getLogSnr() {
+      return logSnr;
+    }
+
+    protected void setLogSnr(Double logSnr) {
+      this.logSnr = logSnr;
+    }
+
+    public Double getPeakIntensity() {
+      return peakIntensity;
+    }
+
+    protected void setPeakIntensity(Double peakIntensity) {
+      this.peakIntensity = peakIntensity;
+    }
+
+    public Double getPeakTime() {
+      return peakTime;
+    }
+
+    protected void setPeakTime(Double peakTime) {
+      this.peakTime = peakTime;
+    }
   }
 
   public static void main(String[] args) throws Exception {
@@ -89,12 +162,20 @@ public class WindowingTraceAnalyzer {
       String label = String.format("%.3f-%.3f", rangeAndTrace.getLeft().getLeft(), rangeAndTrace.getLeft().getRight());
 
       // Note: here we cheat by knowing how the MS1 class is going to use this incredibly complex container.
-      MS1ScanForWellAndMassCharge result = new MS1ScanForWellAndMassCharge();
-      result.setMetlinIons(Collections.singletonList(label));
-      result.getIonsToSpectra().put(label, rangeAndTrace.getRight());
-      ms1.computeStats(result, label);
+      MS1ScanForWellAndMassCharge scanForWell = new MS1ScanForWellAndMassCharge();
+      scanForWell.setMetlinIons(Collections.singletonList(label));
+      scanForWell.getIonsToSpectra().put(label, rangeAndTrace.getRight());
+      Double maxPeakTime = ms1.computeStats(scanForWell, label);
 
+      WindowAnalysisResult result = new WindowAnalysisResult(
+          rangeAndTrace.getLeft().getLeft(), rangeAndTrace.getLeft().getRight(),
+          scanForWell.getLogSNRForIon(label),
+          scanForWell.getMaxIntensityForIon(label),
+          maxPeakTime
+      );
 
+      String json = OBJECT_MAPPER.writeValueAsString(result);
+      LOGGER.info(json);
 
     }
   }
