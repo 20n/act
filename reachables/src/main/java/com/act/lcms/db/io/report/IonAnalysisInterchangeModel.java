@@ -27,6 +27,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -56,10 +57,10 @@ public class IonAnalysisInterchangeModel {
     }
   }
 
-  public static Set<String> getAllMoleculeHitsFromMultiplePositiveReplicateFiles(List<String> filepaths,
-                                                                                 Double snrThreshold,
-                                                                                 Double intensityThreshold,
-                                                                                 Double timeThreshold) throws IOException {
+  public static Set<Pair<String, Double>> getAllMoleculeHitsFromMultiplePositiveReplicateFiles(List<String> filepaths,
+                                                                                               Double snrThreshold,
+                                                                                               Double intensityThreshold,
+                                                                                               Double timeThreshold) throws IOException {
 
 
     List<IonAnalysisInterchangeModel> deserializedResultsForPositiveReplicates = new ArrayList<>();
@@ -71,7 +72,7 @@ public class IonAnalysisInterchangeModel {
 
     int totalNumberOfMassCharges = deserializedResultsForPositiveReplicates.get(0).getResults().size();
 
-    Set<String> resultSet = new HashSet<>();
+    Set<Pair<String, Double>> resultSet = new HashSet<>();
 
     for (int i = 0; i < totalNumberOfMassCharges; i++) {
       int totalNumberOfMoleculesInMassChargeResult =
@@ -92,7 +93,7 @@ public class IonAnalysisInterchangeModel {
 
         if (moleculePassedThresholdsForAllPositiveReplicates) {
           HitOrMiss molecule = deserializedResultsForPositiveReplicates.get(0).getResults().get(i).getMolecules().get(j);
-          resultSet.add(molecule.getInchi());
+          resultSet.add(Pair.of(molecule.getInchi(), molecule.getTime()));
         }
       }
     }

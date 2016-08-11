@@ -9,6 +9,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -98,12 +99,14 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
     List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
 
-    Set<String> inchis = IonAnalysisInterchangeModel.getAllMoleculeHitsFromMultiplePositiveReplicateFiles(
+    Set<Pair<String, Double>> inchis = IonAnalysisInterchangeModel.getAllMoleculeHitsFromMultiplePositiveReplicateFiles(
         positiveReplicateResults, minSnrThreshold, minIntensityThreshold, minTimeThreshold);
 
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(cl.getOptionValue(OPTION_OUTPUT_FILE)))) {
-      for (String inchi : inchis) {
-        predictionWriter.append(inchi);
+      for (Pair<String, Double> inchiAndTime : inchis) {
+        predictionWriter.append(inchiAndTime.getLeft());
+        predictionWriter.append(",");
+        predictionWriter.append(inchiAndTime.getRight().toString());
         predictionWriter.newLine();
       }
     }
