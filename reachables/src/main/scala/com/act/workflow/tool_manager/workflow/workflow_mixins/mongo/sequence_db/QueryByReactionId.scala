@@ -67,6 +67,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
         methodLogger.error(s"Sequence identified that does not have a sequence.  DB entry is ${id.toString}")
       }
     }
+    outputStream.close()
   }
 
   private def querySequencesMatchingReactionIdIterator(reactionIds: List[Long],
