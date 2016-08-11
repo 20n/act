@@ -25,6 +25,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -346,20 +347,19 @@ public class L2ExpansionDriver {
     return result;
   }
 
-  public static JavaRunnable getRunnableOneSubstrateRoExpander(File roListFile,
+  public static JavaRunnable getRunnableOneSubstrateRoExpander(List<Integer> roIds,
                                                                File substrateListFile,
                                                                File outputFile,
                                                                Integer massThreshold) {
     return () -> {
       // Verify files
-      FileChecker.verifyInputFile(roListFile);
       FileChecker.verifyInputFile(substrateListFile);
       FileChecker.verifyAndCreateOutputFile(outputFile);
 
       // Handle input ros
       ErosCorpus roCorpus = new ErosCorpus();
       roCorpus.loadValidationCorpus();
-      List<Ero> roList = roCorpus.getRos(roCorpus.getRoIdListFromFile(roListFile));
+      List<Ero> roList = roCorpus.getRos(roIds);
 
       // Handle input substrates
       L2InchiCorpus inchis = new L2InchiCorpus();

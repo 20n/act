@@ -1,8 +1,10 @@
 package com.act.biointerpretation
 
 import java.io.File
+import java.util
 
 import com.act.biointerpretation.l2expansion.L2ExpansionDriver
+import com.act.biointerpretation.mechanisminspection.ErosCorpus
 import com.act.biointerpretation.sarinference.LibMcsClustering
 import com.act.jobs.JavaRunnable
 import com.act.workflow.tool_manager.jobs.Job
@@ -10,6 +12,8 @@ import com.act.workflow.tool_manager.tool_wrappers.JavaJobWrapper
 import com.act.workflow.tool_manager.workflow.Workflow
 import com.act.workflow.tool_manager.workflow.workflow_mixins.base.WorkingDirectoryUtility
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
+
+import scala.collection.JavaConverters._
 
 class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtility {
 
@@ -69,15 +73,18 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
 
     val substratesFile = new File(cl.getOptionValue(OPTION_SUBSTRATES))
     val roIdFile = new File(cl.getOptionValue(OPTION_RO_IDS))
+    val erosCorpus = new ErosCorpus()
+    erosCorpus.loadValidationCorpus()
+    val roIds = erosCorpus.getRoIdListFromFile(roIdFile).asScala
 
     val predictionsFilename = "predictions"
-    val predictionsFile = new File(workingDir, predictionsFilename)
+    val predictionsFiles = buildFilesForRos(workingDir, predictionsFilename, roIds.toList)
 
     val sarTreeFilename = "sartree"
-    val sarTreeFile = new File(workingDir, sarTreeFilename)
+    val sarTreeFiles = buildFilesForRos(workingDir, sarTreeFilename, roIds.toList)
 
     val scoredSarsFilename = "scored_sars"
-    val scoredSarsFile = new File(workingDir, scoredSarsFilename)
+    val scoredSarsFiles = buildFilesForRos(workingDir, scoredSarsFilename, roIds.toList)
 
     val lcmsFilename = "lcms_positives"
     val lcmsFile = new File(workingDir, lcmsFilename)
@@ -87,13 +94,26 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       maxMass = Integer.parseInt(cl.getOptionValue(OPTION_MASS_THRESHOLD))
     }
 
-    val singleThreadExpansionJob = JavaJobWrapper.wrapJavaFunction(
-      L2ExpansionDriver.getRunnableOneSubstrateRoExpander(roIdFile, substratesFile, predictionsFile, maxMass))
-    headerJob.thenRunAtPosition(singleThreadExpansionJob, 0)
+    // Build one job per RO for L2 expansion
+    val singleThreadExpansionJobs =
+      roIds.map(roId =>
+        JavaJobWrapper.wrapJavaFunction(
+          L2ExpansionDriver.getRunnableOneSubstrateRoExpander(
+            new util.ArrayList(roId),
+            substratesFile,
+            predictionsFiles.get(roId).get,
+            maxMass)))
+    // Run one job per RO for L2 expansion
+    singleThreadExpansionJobs.foreach(job => headerJob.thenRunAtPosition(job, 0))
 
-    val clusteringJob = JavaJobWrapper.wrapJavaFunction(
-      LibMcsClustering.getRunnableClusterer(predictionsFile, sarTreeFile))
-    headerJob.thenRunAtPosition(clusteringJob, 1)
+    // Build one job per RO for clustering
+    val clusteringJobs =
+      roIds.map(roId =>
+        JavaJobWrapper.wrapJavaFunction(LibMcsClustering.getRunnableClusterer(
+          predictionsFiles.get(roId).get,
+          sarTreeFiles.get(roId).get)))
+    // Run one job per RO for clustering
+    clusteringJobs.foreach(job => headerJob.thenRunAtPosition(job, 1))
 
     // TODO: implement this and put in the real thing
     val lcmsJob = JavaJobWrapper.wrapJavaFunction(
@@ -103,10 +123,22 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     )
     headerJob.thenRunAtPosition(lcmsJob, 1)
 
-    val scorer = JavaJobWrapper.wrapJavaFunction(
-      LibMcsClustering.getRunnableSarScorer(sarTreeFile, lcmsFile, scoredSarsFile))
-    headerJob.thenRunAtPosition(scorer, 1)
+    // Build one job per RO for scoring
+    val scoringJobs = roIds.map(roId =>
+      JavaJobWrapper.wrapJavaFunction(
+        LibMcsClustering.getRunnableSarScorer(
+          sarTreeFiles.get(roId).get,
+          lcmsFile,
+          scoredSarsFiles.get(roId).get)
+      )
+    )
+    // Run one job per RO for scoring
+    scoringJobs.foreach(job => headerJob.thenRunAtPosition(job, 2))
 
     headerJob
+  }
+
+  def buildFilesForRos(workingDir: String, fileName: String, roIds: List[Integer]): Map[Integer, File] = {
+    Map() ++ roIds.map(r => (r, new File(workingDir, fileName + "." + r.toString)))
   }
 }
