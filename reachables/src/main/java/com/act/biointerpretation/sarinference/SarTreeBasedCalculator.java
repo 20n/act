@@ -1,6 +1,9 @@
 package com.act.biointerpretation.sarinference;
 
+import chemaxon.struc.Molecule;
+
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Calculates a SARs hit percentage score by seeing which of the leaves of its subtree are LCMS hits,
@@ -15,9 +18,12 @@ import java.util.function.Consumer;
 public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
 
   SarTree sarTree;
+  Function<Molecule, SarTreeNode.LCMS_RESULT> hitCalculator;
 
-  public SarTreeBasedCalculator(SarTree sarTree) {
+
+  public SarTreeBasedCalculator(SarTree sarTree, Function<Molecule, SarTreeNode.LCMS_RESULT> calculator) {
     this.sarTree = sarTree;
+    this.hitCalculator = calculator;
   }
 
   /**
@@ -34,10 +40,13 @@ public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
     for (SarTreeNode node : sarTree.traverseSubtree(sarTreeNode)) {
       // Only calculate on leaves
       if (sarTree.getChildren(node).isEmpty()) {
-        if (node.getLcmsProperty().equals(SarTreeNode.IN_LCMS_TRUE)) {
-          hits++;
-        } else {
-          misses++;
+        switch (hitCalculator.apply(node.getSubstructure())) {
+          case HIT:
+            hits++;
+            break;
+          case MISS:
+            misses++;
+            break;
         }
       }
     }

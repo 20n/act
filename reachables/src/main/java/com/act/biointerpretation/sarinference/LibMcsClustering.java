@@ -23,8 +23,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 public class LibMcsClustering {
@@ -158,7 +160,8 @@ public class LibMcsClustering {
 
     Consumer<SarTreeNode> sarConfidenceCalculator = null;
     if (cl.hasOption(OPTION_TREE_SCORING)) {
-      sarConfidenceCalculator = new SarTreeBasedCalculator(sarTree);
+      // TODO: put in Vijay's actual LCMS module here
+      sarConfidenceCalculator = new SarTreeBasedCalculator(sarTree, getRandomScorer(.1));
       LOGGER.info("Only scoring SARs based on hits and misses within their subtrees.");
     } else {
       sarConfidenceCalculator = new SarHitPercentageCalculator(positiveCorpus, fullCorpus);
@@ -191,11 +194,6 @@ public class LibMcsClustering {
     for (String inchi : inchis) {
       try {
         Molecule mol = MolImporter.importMol(inchi, INCHI_IMPORT_SETTINGS);
-        if (lcmsTester.test(inchi)) {
-          mol.setProperty(SarTreeNode.IN_LCMS_PROPERTY, SarTreeNode.IN_LCMS_TRUE);
-        } else {
-          mol.setProperty(SarTreeNode.IN_LCMS_PROPERTY, SarTreeNode.IN_LCMS_FALSE);
-        }
         molecules.add(mol);
       } catch (MolFormatException e) {
         LOGGER.warn("Error importing inchi %s:%s", inchi, e.getMessage());
@@ -207,6 +205,23 @@ public class LibMcsClustering {
   private static void exitWithHelp(Options opts) {
     HELP_FORMATTER.printHelp(L2FilteringDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
     System.exit(1);
+  }
+
+  /**
+   * Returns a hit calculator that calculates which molecules are hits at random with the given FP rate
+   *
+   * @param positiveRate The positive rate.
+   * @return The calculator.
+   */
+  public static Function<Molecule, SarTreeNode.LCMS_RESULT> getRandomScorer(Double positiveRate) {
+    return (Molecule mol) -> {
+      Random r = new Random();
+      if (r.nextDouble() < positiveRate) {
+        return SarTreeNode.LCMS_RESULT.HIT;
+      } else {
+        return SarTreeNode.LCMS_RESULT.MISS;
+      }
+    };
   }
 
   /**
@@ -236,7 +251,6 @@ public class LibMcsClustering {
 
         SarTreeNodeList nodeList = new SarTreeNodeList(new ArrayList<>(sarTree.getNodes()));
         nodeList.writeToFile(sarTreeNodesOutput);
-
       }
 
       @Override
@@ -251,11 +265,11 @@ public class LibMcsClustering {
    * LCMS analysis.  Scores the SARs based on the LCMS results.
    *
    * @param sarTreeInput A SarTreeNodeList containing all Sars from the clustering tree.
-   * @param positiveInchiInput A list of positive inchis from LCMS.
    * @param sarTreeNodeOutput The relevant SARs from the corpus, sorted in decreasing order of confidence.
+   * @param positiveRate Percentage of LCMS hits, randomly assigned.
    * @return A JavaRunnable to run the SAR scoring.
    */
-  public static JavaRunnable getRunnableSarScorer(File sarTreeInput, File positiveInchiInput, File sarTreeNodeOutput) {
+  public static JavaRunnable getRunnableRandomSarScorer(File sarTreeInput, File sarTreeNodeOutput, Double positiveRate) {
 
     Double confidenceThreshold = 0D;
     Integer subtreeThreshold = 2;
@@ -269,15 +283,15 @@ public class LibMcsClustering {
         SarTree sarTree = new SarTree();
         nodeList.getSarTreeNodes().forEach(node -> sarTree.addNode(node));
 
-        // Build inchi corpus
+        // Build sar scorer
         // TODO: hook this up with Vijays oracle to load the oracle structure in and use it to calculate
-        L2InchiCorpus positiveInchis = new L2InchiCorpus();
-        positiveInchis.loadCorpus(positiveInchiInput);
-        SarTreeBasedCalculator sarConfidenceCalculator = new SarTreeBasedCalculator(sarTree);
+        Function<Molecule, SarTreeNode.LCMS_RESULT> hitCalculator = getRandomScorer(positiveRate);
+        SarTreeBasedCalculator sarConfidenceCalculator = new SarTreeBasedCalculator(sarTree, hitCalculator);
 
         // Score SARs
         sarTree.applyToNodes(sarConfidenceCalculator, subtreeThreshold);
         SarTreeNodeList treeNodeList = sarTree.getExplanatoryNodes(subtreeThreshold, confidenceThreshold);
+        treeNodeList.sortByDecreasingConfidence();
 
         // Write out output.
         treeNodeList.writeToFile(sarTreeNodeOutput);

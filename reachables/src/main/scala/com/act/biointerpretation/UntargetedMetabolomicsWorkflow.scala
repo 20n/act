@@ -21,6 +21,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
   private val OPTION_SUBSTRATES = "s"
   private val OPTION_RO_IDS = "r"
   private val OPTION_MASS_THRESHOLD = "m"
+  private val OPTION_LCMS_POSITIVE_RATE = "p"
 
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -47,6 +48,13 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
         hasArg.
         longOpt("mass-threshold").
         desc("The maximum mass of a substrate to be processed, in daltons."),
+
+      CliOption.builder(OPTION_LCMS_POSITIVE_RATE).
+        required(false).
+        hasArg.
+        longOpt("positive-rate").
+        desc("The positive rate of the LCMS run, randomly assigned for now.").
+        required(),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -89,6 +97,8 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       maxMass = Integer.parseInt(cl.getOptionValue(OPTION_MASS_THRESHOLD))
     }
 
+    val positiveRate = cl.getOptionValue(OPTION_LCMS_POSITIVE_RATE).toDouble;
+
     // Build one job per RO for L2 expansion
     val singleThreadExpansionJobs =
       roIds.map(roId =>
@@ -101,6 +111,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     // Run one job per RO for L2 expansion
     headerJob.thenRunBatch(singleThreadExpansionJobs.toList)
 
+    // TODO: when Michael adds the capability, change this workflow to run the clustering jobs and LCMS job in parallel
     // Build one job per RO for clustering
     val clusteringJobs =
       roIds.map(roId =>
@@ -108,13 +119,14 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
           predictionsFiles.get(roId).get,
           sarTreeFiles.get(roId).get)))
     // Run one job per RO for clustering
-    clusteringJobs.foreach(job => headerJob.thenRun(job))
+    headerJob.thenRunBatch(clusteringJobs.toList)
 
-    // TODO: implement this and put in the real thing
+    // TODO: when Vijay's LCMS code is ready, replace this with the real thing
+    // Build a dummy LCMS job that doesn't do anything.
     val lcmsJob = JavaJobWrapper.wrapJavaFunction(
       new JavaRunnable {
         override def run(): Unit = {
-          print("ERROR: Didn't implement LCMS yes.")
+          print("Creating empty LCMS results file: Didn't implement LCMS yes.")
         }
 
         override def toString(): String = {
@@ -124,13 +136,13 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     )
     headerJob.thenRun(lcmsJob)
 
-    // Build one job per RO for scoring
+    // Build one job per RO for scoring, using a random LCMS hit selector instead of actual data.
     val scoringJobs = roIds.map(roId =>
       JavaJobWrapper.wrapJavaFunction(
-        LibMcsClustering.getRunnableSarScorer(
+        LibMcsClustering.getRunnableRandomSarScorer(
           sarTreeFiles.get(roId).get,
-          lcmsFile,
-          scoredSarsFiles.get(roId).get)
+          scoredSarsFiles.get(roId).get,
+          positiveRate)
       )
     )
     // Run one job per RO for scoring

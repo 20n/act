@@ -15,9 +15,12 @@ import java.io.IOException;
  */
 public class SarTreeNode {
 
-  public static final String IN_LCMS_PROPERTY = "lcms_positive";
-  public static final String IN_LCMS_TRUE = "true";
-  public static final String IN_LCMS_FALSE = "false";
+  // TODO: this enum should live in the LCMS module once Vijay and Gil merge their pieces
+  public enum LCMS_RESULT {
+    HIT,
+    MISS,
+    NO_DATA
+  }
 
   @JsonProperty("hierarchy_id")
   String hierarchyId;
@@ -82,15 +85,5 @@ public class SarTreeNode {
   @JsonIgnore
   public Double getPercentageHits() {
     return new Double(numberHits) / new Double(numberHits + numberMisses);
-  }
-
-  @JsonProperty("lcms_hit")
-  public Object getLcmsProperty() {
-    return substructure.getPropertyObject(IN_LCMS_PROPERTY);
-  }
-
-  @JsonProperty("lcms_hit")
-  public void setLcmsProperty(Object propertyValue) {
-    substructure.setPropertyObject(IN_LCMS_PROPERTY, propertyValue);
   }
 }

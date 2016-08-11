@@ -47,23 +47,16 @@ public class SarTree {
    */
   public void buildByClustering(LibraryMCS libMcs, List<Molecule> molecules) throws InterruptedException {
     if (molecules.size() == 0) {
-      LOGGER.error("Tried to bulid clustering on no molecules!");
+      LOGGER.error("Tried to build clustering on no molecules!");
       return;
     }
 
     for (Molecule mol : molecules) {
       libMcs.addMolecule(mol);
     }
-
     libMcs.search();
 
     LibraryMCS.ClusterEnumerator enumerator = libMcs.getClusterEnumerator(ALL_NODES);
-
-    if (enumerator == null) {
-      LOGGER.error("Enumerator from clustering was null!");
-      return;
-    }
-
     this.buildFromEnumerator(enumerator);
   }
 
@@ -73,8 +66,18 @@ public class SarTree {
    * @param enumerator An enumerator for the LibMCS clusters.
    */
   private void buildFromEnumerator(LibraryMCS.ClusterEnumerator enumerator) {
+
+    Molecule molecule;
+
+    // Sometimes, even when enumerator.hasNext() returns true, enumerator.next() returns, not a null value, but
+    // a NullPointerException. This might merit further investigation as it is totally bizarre.
     while (enumerator.hasNext()) {
-      Molecule molecule = enumerator.next();
+      try {
+        molecule = enumerator.next();
+      } catch (NullPointerException e) {
+        LOGGER.info("Null pointer exception thrown internally by enumerator.next() : %s", e.getMessage());
+        return;
+      }
       String hierId = molecule.getPropertyObject("HierarchyID").toString();
       SarTreeNode thisNode = new SarTreeNode(molecule, hierId);
       this.addNode(thisNode);
