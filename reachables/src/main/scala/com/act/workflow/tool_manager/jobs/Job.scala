@@ -116,9 +116,9 @@ abstract class Job(name: String) {
     * job1.thenRunBatch(List(job2, job3, job4)).thenRun(job5)
     *
     * -> job2 -
-    * /           \
+    * /               \
     * Should run job1 ---> job3 ---> job 5
-    * \           /
+    * \               /
     * -> job4 -
     *
     * @param nextJobs  A list of jobs that should be run after the current last one
