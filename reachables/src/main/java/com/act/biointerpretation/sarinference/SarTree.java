@@ -50,7 +50,15 @@ public class SarTree {
       libMcs.addMolecule(mol);
     }
 
-    libMcs.search();
+    while (true) {
+      try {
+        libMcs.search();
+        break;
+      } catch (InterruptedException e) {
+        Thread.sleep(100);
+      }
+    }
+
     LibraryMCS.ClusterEnumerator enumerator = libMcs.getClusterEnumerator(ALL_NODES);
 
     this.buildFromEnumerator(enumerator);

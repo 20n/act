@@ -19,6 +19,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -218,20 +219,29 @@ public class LibMcsClustering {
    */
   public static JavaRunnable getRunnableClusterer(File predictionCorpusInput, File sarTreeNodesOutput) {
 
-    return () -> {
-      L2PredictionCorpus inputCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(predictionCorpusInput);
-      L2InchiCorpus substrateInchis = new L2InchiCorpus(inputCorpus.getUniqueProductInchis());
+    return new JavaRunnable() {
+      @Override
+      public void run() throws IOException {
+        L2PredictionCorpus inputCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(predictionCorpusInput);
+        L2InchiCorpus substrateInchis = new L2InchiCorpus(inputCorpus.getUniqueProductInchis());
 
-      SarTree sarTree = new SarTree();
-      try {
-        sarTree.buildByClustering(new LibraryMCS(), substrateInchis.getMolecules());
-      } catch (InterruptedException e) {
-        LOGGER.error("Interrupted exception on LibMCS clustering.");
-        System.exit(1);
+        SarTree sarTree = new SarTree();
+        try {
+          sarTree.buildByClustering(new LibraryMCS(), substrateInchis.getMolecules());
+        } catch (InterruptedException e) {
+          LOGGER.error("Interrupted exception on LibMCS clustering.");
+          System.exit(1);
+        }
+
+        SarTreeNodeList nodeList = new SarTreeNodeList(new ArrayList<>(sarTree.getNodes()));
+        nodeList.writeToFile(sarTreeNodesOutput);
+
       }
 
-      SarTreeNodeList nodeList = new SarTreeNodeList(new ArrayList<>(sarTree.getNodes()));
-      nodeList.writeToFile(sarTreeNodesOutput);
+      @Override
+      public String toString() {
+        return "SarClusterer:" + predictionCorpusInput.getName();
+      }
     };
   }
 
@@ -249,25 +259,33 @@ public class LibMcsClustering {
     Double confidenceThreshold = 0D;
     Integer subtreeThreshold = 2;
 
-    return () -> {
-      // Build SAR tree
-      SarTreeNodeList nodeList = new SarTreeNodeList();
-      nodeList.loadFromFile(sarTreeInput);
-      SarTree sarTree = new SarTree();
-      nodeList.getSarTreeNodes().forEach(node -> sarTree.addNode(node));
+    return new JavaRunnable() {
+      @Override
+      public void run() throws IOException {
+        // Build SAR tree
+        SarTreeNodeList nodeList = new SarTreeNodeList();
+        nodeList.loadFromFile(sarTreeInput);
+        SarTree sarTree = new SarTree();
+        nodeList.getSarTreeNodes().forEach(node -> sarTree.addNode(node));
 
-      // Build inchi corpus
-      // TODO: hook this up with Vijays oracle to load the oracle structure in and use it to calculate
-      L2InchiCorpus positiveInchis = new L2InchiCorpus();
-      positiveInchis.loadCorpus(positiveInchiInput);
-      SarTreeBasedCalculator sarConfidenceCalculator = new SarTreeBasedCalculator(sarTree);
+        // Build inchi corpus
+        // TODO: hook this up with Vijays oracle to load the oracle structure in and use it to calculate
+        L2InchiCorpus positiveInchis = new L2InchiCorpus();
+        positiveInchis.loadCorpus(positiveInchiInput);
+        SarTreeBasedCalculator sarConfidenceCalculator = new SarTreeBasedCalculator(sarTree);
 
-      // Score SARs
-      sarTree.applyToNodes(sarConfidenceCalculator, subtreeThreshold);
-      SarTreeNodeList treeNodeList = sarTree.getExplanatoryNodes(subtreeThreshold, confidenceThreshold);
+        // Score SARs
+        sarTree.applyToNodes(sarConfidenceCalculator, subtreeThreshold);
+        SarTreeNodeList treeNodeList = sarTree.getExplanatoryNodes(subtreeThreshold, confidenceThreshold);
 
-      // Write out output.
-      treeNodeList.writeToFile(sarTreeNodeOutput);
+        // Write out output.
+        treeNodeList.writeToFile(sarTreeNodeOutput);
+      }
+
+      @Override
+      public String toString() {
+        return "SarScorer:" + sarTreeInput.getName();
+      }
     };
   }
 }

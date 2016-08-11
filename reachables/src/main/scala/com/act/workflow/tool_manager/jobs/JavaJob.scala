@@ -28,4 +28,8 @@ class JavaJob(runnable: JavaRunnable) extends Job {
         x.printStackTrace()
     })
   }
+
+  override def toString(): String = {
+    runnable.toString()
+  }
 }

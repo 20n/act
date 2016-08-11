@@ -48,7 +48,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
         longOpt("mass-threshold").
         desc("The maximum mass of a substrate to be processed, in daltons."),
 
-      CliOption.builder()
+      CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
 
     val opts: Options = new Options()
@@ -57,7 +57,6 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     }
     opts
   }
-
 
   // Implement this with the job structure you want to run to define a workflow
   override def defineWorkflow(cl: CommandLine): Job = {
@@ -99,7 +98,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       roIds.map(roId =>
         JavaJobWrapper.wrapJavaFunction(
           L2ExpansionDriver.getRunnableOneSubstrateRoExpander(
-            new util.ArrayList(roId),
+            util.Arrays.asList(roId),
             substratesFile,
             predictionsFiles.get(roId).get,
             maxMass)))
@@ -118,7 +117,13 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     // TODO: implement this and put in the real thing
     val lcmsJob = JavaJobWrapper.wrapJavaFunction(
       new JavaRunnable {
-        override def run(): Unit = ???
+        override def run(): Unit = {
+          print("ERROR: Didn't implement LCMS yes.")
+        }
+
+        override def toString(): String = {
+          "DUMMY_LCMS_JOB"
+        }
       }
     )
     headerJob.thenRunAtPosition(lcmsJob, 1)

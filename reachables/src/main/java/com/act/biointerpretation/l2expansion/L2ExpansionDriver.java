@@ -351,31 +351,39 @@ public class L2ExpansionDriver {
                                                                File substrateListFile,
                                                                File outputFile,
                                                                Integer massThreshold) {
-    return () -> {
-      // Verify files
-      FileChecker.verifyInputFile(substrateListFile);
-      FileChecker.verifyAndCreateOutputFile(outputFile);
+    return new JavaRunnable() {
+      @Override
+      public void run() throws IOException {
+        // Verify files
+        FileChecker.verifyInputFile(substrateListFile);
+        FileChecker.verifyAndCreateOutputFile(outputFile);
 
-      // Handle input ros
-      ErosCorpus roCorpus = new ErosCorpus();
-      roCorpus.loadValidationCorpus();
-      List<Ero> roList = roCorpus.getRos(roIds);
+        // Handle input ros
+        ErosCorpus roCorpus = new ErosCorpus();
+        roCorpus.loadValidationCorpus();
+        List<Ero> roList = roCorpus.getRos(roIds);
 
-      // Handle input substrates
-      L2InchiCorpus inchis = new L2InchiCorpus();
-      inchis.loadCorpus(substrateListFile);
-      inchis.filterByMass(massThreshold);
-      List<Molecule> moleculeList = inchis.getMolecules();
+        // Handle input substrates
+        L2InchiCorpus inchis = new L2InchiCorpus();
+        inchis.loadCorpus(substrateListFile);
+        inchis.filterByMass(massThreshold);
+        List<Molecule> moleculeList = inchis.getMolecules();
 
-      // Bulid expander
-      PredictionGenerator generator = new AllPredictionsGenerator(new ReactionProjector());
-      L2Expander expander = new SingleSubstrateRoExpander(roList, moleculeList, generator);
+        // Build expander
+        PredictionGenerator generator = new AllPredictionsGenerator(new ReactionProjector());
+        L2Expander expander = new SingleSubstrateRoExpander(roList, moleculeList, generator);
 
-      // Run expander
-      L2PredictionCorpus predictions = expander.getPredictions();
+        // Run expander
+        L2PredictionCorpus predictions = expander.getPredictions();
 
-      // Write output
-      predictions.writePredictionsToJsonFile(outputFile);
+        // Write output
+        predictions.writePredictionsToJsonFile(outputFile);
+      }
+
+      @Override
+      public String toString() {
+        return "oneSubstrateRoExpander:" + roIds.toString();
+      }
     };
   }
 }
