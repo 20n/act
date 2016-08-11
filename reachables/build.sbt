@@ -105,6 +105,9 @@ libraryDependencies ++= {
        * USD(1 million) (1000 dollars) / (1 tonnes)
        */
       "com.squants"  %% "squants"  % "0.6.2",
+      "org.apache.jena" % "jena-arq" % "3.1.0",
+      "org.apache.jena" % "jena-core" % "3.1.0",
+      "org.apache.jena" % "jena-querybuilder" % "3.1.0",
   /*
    * the maven repo jar seem to be outdated, or incompatible.
    * we posted to the indigo group bugs. The current resolution
