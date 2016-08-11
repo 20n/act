@@ -6,7 +6,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, blocking}
 import scala.util.{Failure, Success}
 
-class ScalaJob(command: () => Unit) extends Job {
+class ScalaJob(name: String, command: () => Unit) extends Job(name) {
   private val logger = LogManager.getLogger(getClass.getName)
   def asyncJob() {
     // Run the call in the future

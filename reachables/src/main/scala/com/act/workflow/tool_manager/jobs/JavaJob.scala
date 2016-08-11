@@ -7,7 +7,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, blocking}
 import scala.util.{Failure, Success}
 
-class JavaJob(runnable: JavaRunnable) extends Job {
+class JavaJob(name: String, runnable: JavaRunnable) extends Job(name) {
 
   private val logger = LogManager.getLogger(getClass.getName)
 

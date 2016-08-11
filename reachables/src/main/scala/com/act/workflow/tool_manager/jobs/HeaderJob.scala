@@ -7,7 +7,7 @@ package com.act.workflow.tool_manager.jobs
   *
   * You can then define a workflow as <Header> -> <Multiple Jobs> -> <Summary Jobs>
   */
-class HeaderJob extends Job {
+class HeaderJob extends Job("HeaderJob") {
   def asyncJob(): Unit = {
     runNextJob()
   }

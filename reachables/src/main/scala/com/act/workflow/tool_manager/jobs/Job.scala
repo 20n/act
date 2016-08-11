@@ -5,7 +5,7 @@ import org.apache.logging.log4j.LogManager
 
 import scala.collection.mutable.ListBuffer
 
-abstract class Job {
+abstract class Job(name: String) {
   protected val jobBuffer = ListBuffer[List[Job]]()
   /*
    How many jobs need to return to this one prior to it starting
@@ -162,6 +162,10 @@ abstract class Job {
     */
   def asyncJob()
 
+  override def toString: String = {
+    this.name
+  }
+
   /**
     * Usually called from an asyncJob when it has completed.
     *
@@ -216,6 +220,10 @@ abstract class Job {
     }
   }
 
+  /*
+    Local job continuation utilities
+  */
+
   /**
     * Modifies the return code of this element
     *
@@ -226,9 +234,6 @@ abstract class Job {
     jobReturnCode = returnCode
   }
 
-  /*
-    Local job continuation utilities
-  */
   /**
     * Adds all of the retry job's buffer and the retry job itself to the job manager,
     * then sets the current job that failed to run after that.
@@ -296,7 +301,6 @@ abstract class Job {
       })
     }
   }
-
 
   /*
     Update and query job status

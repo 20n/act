@@ -143,7 +143,8 @@ class EcnumToProteinPredictionFlow
     )
 
     // Create the FASTA file out of all the relevant sequences.
-    val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingEcnums(ec_num, outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
+    val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(s"Write Fasta From Ecnumbers, ECNUM=$ec_num",
+      writeFastaFileFromEnzymesMatchingEcnums(ec_num, outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
     headerJob.thenRun(ecNumberToFasta)
 
     // Align Fasta sequence

@@ -9,7 +9,7 @@ import scala.concurrent.{Future, blocking}
 import scala.sys.process.{BasicIO, Process, ProcessIO, ProcessLogger, _}
 import scala.util.{Failure, Success}
 
-class ShellJob(commands: List[String]) extends Job {
+class ShellJob(name: String, commands: List[String]) extends Job(name) {
   private val logger = LogManager.getLogger(getClass.getName)
 
   private var outputMethod: Option[(String) => Unit] = None
@@ -54,6 +54,11 @@ class ShellJob(commands: List[String]) extends Job {
     this
   }
 
+  def writeErrorStreamToFile(file: File): Job = {
+    errorMethod = Option(writeStreamToFile(file))
+    this
+  }
+
   // Internal handling out streams
   // To File
   private def writeStreamToFile(file: File)(output: String): Unit = {
@@ -63,11 +68,6 @@ class ShellJob(commands: List[String]) extends Job {
     val writer = new PrintWriter(file)
     writer.write(output)
     writer.close()
-  }
-
-  def writeErrorStreamToFile(file: File): Job = {
-    errorMethod = Option(writeStreamToFile(file))
-    this
   }
 
   // job1.writeOutputStreamToLogger.thenRun(job2)

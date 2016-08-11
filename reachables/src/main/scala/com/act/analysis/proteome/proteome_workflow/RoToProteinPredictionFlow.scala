@@ -173,7 +173,8 @@ class RoToProteinPredictionFlow
       resultFilesBuffer.append(resultFilePath)
 
       // Create the FASTA file out of all the relevant sequences.
-      val roToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos(roContext, outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
+      val roToFasta = ScalaJobWrapper.wrapScalaFunction(s"Write Fasta From RO, RO=$roContext",
+        writeFastaFileFromEnzymesMatchingRos(roContext, outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
       headerJob.thenRunAtPosition(roToFasta, 0)
 
       // Align Fasta sequence
@@ -195,14 +196,14 @@ class RoToProteinPredictionFlow
     val roFileNameUniqueId = ro_args.mkString(sep = "_")
 
     if (cl.hasOption(OPTION_SET_UNION)) {
-      val setJob = ScalaJobWrapper.wrapScalaFunction(
+      val setJob = ScalaJobWrapper.wrapScalaFunction("Set Union Hmmer",
         setUnionHmmerSearchResults(resultFileList, setResultFileDirectory, roFileNameUniqueId) _
       )
 
       headerJob.thenRun(setJob)
     }
     if (cl.hasOption(OPTION_SET_INTERSECTION)) {
-      val setJob = ScalaJobWrapper.wrapScalaFunction(
+      val setJob = ScalaJobWrapper.wrapScalaFunction("Set Intersection Hmmer",
         setIntersectHmmerSearchResults(resultFileList, setResultFileDirectory, roFileNameUniqueId) _
       )
 

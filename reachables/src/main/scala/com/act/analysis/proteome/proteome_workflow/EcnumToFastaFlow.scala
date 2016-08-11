@@ -74,7 +74,7 @@ class EcnumToFastaFlow extends Workflow
       )
 
       // Create the FASTA file out of all the relevant sequences.
-      ScalaJobWrapper.wrapScalaFunction(
+      ScalaJobWrapper.wrapScalaFunction(s"Write Fasta From Ecnumbers, ECNUM=$ec_num",
         writeFastaFileFromEnzymesMatchingEcnums(ecnum, outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
     }
 

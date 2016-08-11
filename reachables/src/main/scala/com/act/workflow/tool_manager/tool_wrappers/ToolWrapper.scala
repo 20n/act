@@ -27,14 +27,15 @@ abstract class ToolWrapper {
     *
     * @return The newly constructed job
     */
-  protected def constructJob(toolFunction: Option[String], args: List[String], retryJob: Boolean = false): ShellJob = {
+  protected def constructJob(commandName: String, toolFunction: Option[String],
+                             args: List[String], retryJob: Boolean = false): ShellJob = {
     val usingTool = toolFunction.isDefined | binaries.isDefined
 
     if (usingTool) {
       val command = constructToolCommand(toolFunction, args)
-      helperConstructJob(command, retryJob)
+      helperConstructJob(commandName, command, retryJob)
     } else {
-      helperConstructJob(args, retryJob)
+      helperConstructJob(commandName, args, retryJob)
     }
   }
 
@@ -47,9 +48,9 @@ abstract class ToolWrapper {
     *
     * @return A job, we made it!
     */
-  private def helperConstructJob(command: List[String], retryJob: Boolean = false): ShellJob = {
+  private def helperConstructJob(commandName: String, command: List[String], retryJob: Boolean = false): ShellJob = {
     // Retry jobs shouldn't be tracked.  We'll let the initial job handle adding the retry job in
-    val job = new ShellJob(command)
+    val job = new ShellJob(commandName, command)
     if (!retryJob)
       JobManager.addJob(job)
 

@@ -69,7 +69,8 @@ class RoToFastaFlow
     )
 
     // Create the FASTA file out of all the relevant sequences.
-    val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos(List(ro), outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
+    val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(s"Write Fasta From RO, RO=$ro",
+      writeFastaFileFromEnzymesMatchingRos(List(ro), outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
     headerJob.thenRun(ecNumberToFasta)
 
     headerJob
