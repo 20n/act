@@ -126,12 +126,11 @@ abstract class Job(name: String) {
   /** Run chained jobs in parallel
     * job1.thenRunBatch(List(job2, job3, job4)).thenRun(job5)
     *
-    * Should run (Hashtags are important for picture framing)
-    * #          ------> job2 ---
-    * #       /                    \
-    * #     job1 ---> job3 ---> job 5
-    * #       \                   /
-    * #          ------> job4 ---
+    * -> job2 -
+    * /               \
+    * Should run job1 ---> job3 ---> job 5
+    * \               /
+    * -> job4 -
     *
     * @param nextJobs  A list of jobs that should be run after the current last one
     * @param batchSize If too many jobs are added and asked to be run concurrently, concurrency operations are not
