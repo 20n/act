@@ -214,7 +214,7 @@ class InternalState(job: Job) {
   }
 
   override def toString: String = {
-    this.name
+    s"[Job]<${this.name}>"
   }
 
   /**
