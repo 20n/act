@@ -163,7 +163,7 @@ abstract class Job(name: String) {
   def asyncJob()
 
   override def toString: String = {
-    this.name
+    s"[Job]<${this.name}>"
   }
 
   /**
