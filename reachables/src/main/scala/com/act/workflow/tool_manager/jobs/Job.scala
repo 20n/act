@@ -61,7 +61,7 @@ abstract class Job(name: String) {
   def getFlags: List[JobFlag.Value] = flags.toList
 
     // Job manager should know if has been marked as complete
-    if (isCompleted) JobManager.indicateJobCompleteToManager(this.name)
+    if (isCompleted) JobManager.indicateJobCompleteToManager()
   }
 
   def preRetryJob_=(value: Option[Job]): Unit = _preRetryJob = value
@@ -228,8 +228,8 @@ class InternalState(job: Job) {
     // The success is if the future succeeded.
     // We need to also check the return code and redirect to failure here if it completed, but with a bad return code
     setJobStatus(JobStatus.Success)
-    runNextJob()
     handleIfJobTotallyComplete()
+    runNextJob()
   }
 
   /**
@@ -340,7 +340,7 @@ class InternalState(job: Job) {
   }
 
   protected def handleIfJobTotallyComplete(): Unit = {
-    if (returnJob.isDefined && returnCounter.getCount <= 0 && jobBuffer.length <= 0) {
+    if (returnJob.isDefined && returnCounter.getCount <= 0) {
       // Decrease return number
       returnJob.get.decreaseReturnCount()
 
