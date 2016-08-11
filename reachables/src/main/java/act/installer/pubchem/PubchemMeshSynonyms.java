@@ -38,7 +38,6 @@ public class PubchemMeshSynonyms {
   // InChI string (representing APAP) to be used as example in the main method
   private static final String TEST_INCHI = "InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)";
 
-
   private static final SelectBuilder CID_SELECT_STATEMENT = new SelectBuilder()
       // Prefix
       .addPrefix("sio", "http://semanticscience.org/resource/")
@@ -50,7 +49,6 @@ public class PubchemMeshSynonyms {
       // WHERE
       .addWhere( "?inchi_iri", "sio:has-value", "?inchi_string" )
       ;
-
   private static final SelectBuilder PUBCHEM_SYNO_QUERY_TMPL = new SelectBuilder()
       // PREFIX
       .addPrefix("sio", "http://semanticscience.org/resource/")
@@ -67,7 +65,6 @@ public class PubchemMeshSynonyms {
       .addWhere("?syno", RDF.type, "?type")
       .addWhere("?syno", "sio:has-value", "?value")
       ;
-
   private static final SelectBuilder MESH_TERMS_QUERY_TMPL = new SelectBuilder()
       // PREFIX
       .addPrefix("sio", "http://semanticscience.org/resource/")
@@ -89,8 +86,6 @@ public class PubchemMeshSynonyms {
       .addWhere("?mesh_concept", "meshv:preferredTerm", "?mesh_term")
       .addWhere("?mesh_term", "meshv:lexicalTag", "?lexical_tag")
       ;
-
-
   //The PC_SYNONYM_TYPE enum was taken and simplified from the PubchemTTLMerger class
   public enum PC_SYNONYM_TYPE {
     // Names derived from the Semantic Chemistry Ontology: https://github.com/egonw/semanticchemistry
@@ -118,7 +113,6 @@ public class PubchemMeshSynonyms {
         put(type.getCheminfId(), type);
       }
     }};
-
 
     public static PC_SYNONYM_TYPE getByCheminfId(String cheminfId) {
       return CHEMINF_TO_TYPE.getOrDefault(cheminfId, UNKNOWN);
@@ -244,7 +238,6 @@ public class PubchemMeshSynonyms {
         }
         synonyms.add(synonym);
       }
-
     }
     return map;
   }
