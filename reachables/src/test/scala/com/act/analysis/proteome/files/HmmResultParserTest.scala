@@ -5,8 +5,6 @@ import java.io.File
 import org.scalatest._
 
 class HmmResultParserTest extends FlatSpec with Matchers {
-  private val INSTANCE_CLASS_LOADER: Class[_] = getClass
-
   "The HmmParser" should "return no value for the negative output file" in {
     val results =
       HmmResultParser.parseFile(
