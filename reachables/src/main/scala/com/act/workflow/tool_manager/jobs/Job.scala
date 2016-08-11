@@ -6,19 +6,45 @@ import org.apache.logging.log4j.{LogManager, Logger}
 
 import scala.collection.mutable.ListBuffer
 
-/**
-  * Job just defines the API.
-  * It should primarily communicate with the outside world, and
-  * any data handling/state changes should happen in `InternalState`
-  *
-  * To figure out what's up: https://github.com/20n/act/wiki/Scala-Workflows
-  *
-  * @param name - String name of the workflow
-  */
 abstract class Job(name: String) {
-  val internalState = new InternalState(this)
-  private val logger: Logger = LogManager.getLogger(getClass.getName)
-  private val flags: ListBuffer[JobFlag.Value] = ListBuffer[JobFlag.Value]()
+  protected val jobBuffer = ListBuffer[List[Job]]()
+  /*
+   How many jobs need to return to this one prior to it starting
+   This is useful as then we can model sequential jobs in a job buffer with a list of jobs to run at each sequence.
+   */
+  protected val returnCounter = new AtomicLatch
+  private val logger = LogManager.getLogger(getClass.getName)
+  protected var status = JobStatus.Unstarted
+  protected var jobReturnCode = -1
+  protected var retryJob: Option[Job] = None
+  protected var returnJob: Option[Job] = None
+
+  /*
+  A bunch of basic getters that determine the logic of the job
+   */
+  def returnCode(): Int = {
+    jobReturnCode
+  }
+
+  def isCompleted: Boolean = {
+    isSuccessful | isFailed
+  }
+
+  def isSuccessful: Boolean = {
+    this.status == JobStatus.Success
+  }
+
+  def isFailed: Boolean = {
+    this.status == JobStatus.Failure | this.status == JobStatus.ParentProcessFailure
+  }
+
+  def isRunning: Boolean = {
+    this.status == JobStatus.Running
+  }
+
+  def isUnstarted: Boolean = {
+    this.status == JobStatus.Unstarted
+  }
 
   /**
     * Adds a flag to this job, which designates that certain, advanced behavior should occur
@@ -187,6 +213,10 @@ class InternalState(job: Job) {
     dependencyManager.appendJobBuffer(jobs)
   }
 
+  override def toString: String = {
+    this.name
+  }
+
   /**
     * When a job wants to indicate it completed successfully, it calls this method.
     *
@@ -334,6 +364,10 @@ class DependencyManager {
     }
   }
 
+  /*
+    Local job continuation utilities
+  */
+
   /**
     * This method checks if the current job has any more dependencies.
     * Dependencies are evaluated by if the job is still waiting on jobs to return and if it still has jobs in the job buffer.
@@ -342,78 +376,6 @@ class DependencyManager {
     */
   def dependenciesExist(): Boolean = {
     returnCounter.getCount > 0 || jobBuffer.nonEmpty
-  }
-
-  def addDependenciesToJobManager(): Unit = {
-    jobBuffer.foreach(
-      jobTier => jobTier.foreach(
-        jobAtTier => JobManager.addJob(jobAtTier)))
-  }
-
-  /**
-    * Update the jobs that are going to be run in a given job batch.
-    * The updates that will occur is to set the currentJob's returnCounter to the correct number
-    * and also to tell jobs that don't have the `ShouldNotBeWaitedOn` flag which job to return to upon completion
-    *
-    * @param jobBatch   - The list of jobs about to be run
-    * @param currentJob - The current job that these jobs will be run from
-    */
-  private def setFutureJobStates(jobBatch: List[Job], currentJob: Job): Unit = {
-    /*
-      The number of jobs that need to return to this job prior to it being able to keep going
-
-      Jobs that are waited for should return to this job and also modify
-      the returnCounter as a way of indicating their completeness.
-     */
-    val jobsToWaitFor: List[Job] = jobBatch.filter(x => !x.getFlags.contains(JobFlag.ShouldNotBeWaitedOn))
-    returnCounter.setCount(jobsToWaitFor.length)
-
-    // In some cases, all jobs we may not care about waiting on,
-    // thus we should verify that we shouldn't start the next jobs here.
-    if (!waitingOnReturnJobs) {
-      runNextJobIfReady(currentJob)
-    }
-
-    // Tell the job we are about to launch that it should tell the job launching it when it is done.
-    jobsToWaitFor.foreach(_.internalState.runManager.returnJob = currentJob)
-  }
-}
-
-/**
-  * Takes care of handling the transition state between two jobs,
-  * wherein one job launches another or tells it that it has completed.
-  *
-  * @param job - The job to manage
-  */
-class RunManager(job: Job) {
-  private var _retryJob: Option[Job] = None
-  private var _returnJob: Option[Job] = None
-
-  def retryJob_=(value: Job): Unit = _retryJob = Option(value)
-
-  def hasRetryJob: Boolean = _retryJob.isDefined
-
-  def returnJob: Option[Job] = _returnJob
-
-  def returnJob_=(value: Job): Unit = _returnJob = Option(value)
-
-  def returnJob_=(value: Option[Job]): Unit = _returnJob = value
-
-  def hasReturnJob: Boolean = _returnJob.isDefined
-
-  def getReturnJobRunManager: RunManager = _returnJob.get.internalState.runManager
-
-  def getReturnJobDependencyManager: DependencyManager = returnJob.get.internalState.dependencyManager
-
-  /**
-    * Modifies the return job's counter and then asks it to continue running any jobs that it still has.
-    *
-    * The returnJob will sort out if it has any more jobs to wait on.
-    */
-  def notifyReturnJobOfCompletion(): Unit = {
-    // Decrease return number
-    getReturnJobDependencyManager.returnCounter.countDown()
-    getReturnJobRunManager.runNextJob(getReturnJobDependencyManager)
   }
 
   /**
@@ -514,15 +476,16 @@ class StatusManager {
       getJobStatus.equals(StatusCodes.Killed)
   }
 
-  def isNotStarted: Boolean = {
-    getJobStatus == StatusCodes.NotStarted
-  }
-
-  def isRunning: Boolean = {
-    getJobStatus == StatusCodes.Running
-  }
-
-  override def toString: String = {
-    getJobStatus
+  /*
+    Update and query job status
+  */
+  object JobStatus extends Enumeration {
+    type Status = Value
+    val Success = "Success"
+    val Retry = "Retrying"
+    val Failure = "Failure"
+    val Running = "Running"
+    val Unstarted = "Unstarted"
+    val ParentProcessFailure = "Parent Process Failed"
   }
 }
