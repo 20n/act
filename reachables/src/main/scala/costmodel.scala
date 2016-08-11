@@ -247,41 +247,48 @@ class InvestModel {
 class ROIModel {
   val defaultYield: Yield = Yield(31.9 grams, 100 grams) // 31.9% g/g
   val defaultTiter: Titer = Titer(84.0 grams, 1 litres) // 84 g/L
-  val defaultPrice: Price[Mass] = Price(USD(5547), 1 tonnes) // current price of acetaminophen
+  val defaultPricePerTon: Money = USD(5547) // current price of acetaminophen
 
   var strainTiter: Titer = defaultTiter;
   var strainYield: Yield = defaultYield;
-  var productPrice: Price[Mass] = defaultPrice;
+  var productPrice: Money = defaultPricePerTon;
 
-  val yearsToFullScale: Time = 3 years
+  val yearsToFullScale: Int = 3
   val volume: Mass = 1000.0 tonnes
   val startingVolume: Mass = 100.0 tonnes
   val rate = (10.0 / 100.0) percent
 
-  def npv(invested: Money, profits: List[Money]): Money = {
+  def getNPV(invested: Money, profits: List[Money]): Money = {
     def discountfn(yrProfit: (Money, Int)) = yrProfit._1 / math.pow(1 + rate.value, 1.0 * yrProfit._2)
     val discountedProfits = profits.zip(1 until profits.length).map(discountfn)
 
     discountedProfits.reduce(_ + _)
   }
 
-  def getROI(yields: Yield, titers: Titer, marketPrice: Price[Mass]): (Money, Dimensionless) = {
+  def getROI(): (Money, Dimensionless) = getROI(defaultYield, defaultTiter, defaultPricePerTon)
+
+  def getROI(yields: Yield, titers: Titer, marketPricePerTon: Money): (Money, Dimensionless) = {
     strainTiter = titers
     strainYield = yields
-    productPrice = marketPrice
+    productPrice = marketPricePerTon
 
-    val productionPrice: Price[Mass] = CostModel("ROI").getPerTonCost(yields, titers)
-    val investmentNeed: (Money, Time) = InvestModel().getInvestment()
-    val unitProfit = marketPrice - productionPrice
-    val eventualProfit: Money = unitProfit * volume
-    val startingProfit: Money = unitProfit * startingVolume
-    val step: Ratio[Money, Time] = eventualProfit - startingProfit / (yearsToFullScale - 2 years)
-    val ramp: List[Money] = (0 to  
+    val productionPrice: Price[Mass] = new CostModel("ROI").getPerTonCost(yields, titers)
+    val productionPricePerTon: Money = productionPrice * (1 tonnes)
+    val profitPerTon: Money = marketPricePerTon - productionPricePerTon
+    val eventualProfit: Money = profitPerTon * BigDecimal(volume.value)
+    val startingProfit: Money = profitPerTon * BigDecimal(startingVolume.value)
+    val step: Money = (eventualProfit - startingProfit) / (yearsToFullScale - 2)
+    val stepNum = yearsToFullScale
+    val profitRamp: List[Money] = (0 to stepNum - 1).toList.map(BigDecimal(_) * step + startingProfit)
 
-    val invested = investmentNeed._1
-    val gain = ramp.reduce(_ + _)
-    val roi = (gain - invested)/invested
-    return (5.0/100.00) percent
+    val investmentNeed: (Money, Time) = new InvestModel().getInvestment()
+
+    val invested: Money = investmentNeed._1
+    val npv = getNPV(invested, profitRamp)
+    val gain: Money = profitRamp.reduce(_ + _)
+    val roi: Dimensionless = ((gain - invested).value / invested.value) percent
+    
+    (npv, roi)
   }
 
 }

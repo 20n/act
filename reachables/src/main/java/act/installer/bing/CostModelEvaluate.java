@@ -8,5 +8,8 @@ public class CostModelEvaluate {
 
     InvestModel moneymodel = new InvestModel();
     System.out.println("Investment = " + moneymodel.getInvestment());
+
+    ROIModel roimodel = new ROIModel();
+    System.out.println("ROI = " + roimodel.getROI());
   }
 }
