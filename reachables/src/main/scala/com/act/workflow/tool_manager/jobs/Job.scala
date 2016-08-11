@@ -126,7 +126,7 @@ abstract class Job(name: String) {
   /** Run chained jobs in parallel
     * job1.thenRunBatch(List(job2, job3, job4)).thenRun(job5)
     *
-    * Should run
+    * Should run (Hashtags are important for picture framing)
     * #          ------> job2 ---
     * #       /                    \
     * #     job1 ---> job3 ---> job 5
@@ -222,106 +222,12 @@ class InternalState(job: Job) {
     *
     * It changes the state of the status to Success, and tells the runManager to handle running the next job.
     */
-  def markAsSuccess(): Unit = {
-    /*
-      The success is if the future succeeded.
-      We need to also check the return code and redirect to failure here if it completed, but with a bad return code
-     */
-    setJobStatus(StatusCodes.Success)
-    runManager.runNextJob(dependencyManager)
-  }
-
-  /**
-    * First checks if there is a retryJob available, in which case it attempts to run it.
-    * Otherwise, simply marks this and all jobs after it as a failure.
-    */
-  def markAsFailure(): Unit = {
-    // If a retry job exists, we run it otherwise the job has failed and any subsequent jobs fail because of this
-    runManager.hasRetryJob match {
-      case true =>
-        // Retry jobs mean that we should first try to run other jobs prior to running this one.
-        logger.error(s"Running retry job ${runManager.retryJob.get}. ${this} has encountered an error")
-        runManager.runRetryJob()
-      case false =>
-        setJobStatus(StatusCodes.Failure)
-
-        /*
-          The flag should not fail children jobs even if the current job fails. Therefore we don't cascade a failure,
-          but run each job in a way such the only failure that occurs is
-          if a specific job fails after attempting to run.
-         */
-        job.getFlags.contains(JobFlag.ShouldNotFailChildrenJobs) match {
-          case true => runManager.runNextJob(dependencyManager)
-          case false =>
-            if (runManager.hasReturnJob)
-              runManager.getReturnJobDependencyManager.markRemainingDependenciesAsFailure()
-            // Map this job's buffer as a failure
-            dependencyManager.markRemainingDependenciesAsFailure()
-        }
-    }
-  }
-
-  /**
-    * Kills a job if it is not yet complete (Either unstarted or running)
-    */
-  def killIncompleteJobs() {
-    // Only kill jobs if they haven't completed already.
-    if (!statusManager.isCompleted) {
-      setJobStatus(StatusCodes.Killed)
-
-      // Currently running needs to cancel future.
-      if (getCancelCurrentJobFunction.isDefined) {
-        // Get and execute the function
-        val cancelFunction: () => Boolean = getCancelCurrentJobFunction.get
-        cancelFunction()
-      }
-
-      dependencyManager.killDependencies()
-    }
-  }
-
-  /**
-    * A consistent source to change the job status.
-    * Has the added benefit of notifying the JobManager if that status changes to complete.
-    *
-    * @param newStatus What new status should be assigned to the job
-    */
-  def setJobStatus(newStatus: String): Unit = {
-    // Handle Logging of various levels
-    val message = s"Job status for command $job has changed to $newStatus"
-    newStatus match {
-      case s if StatusCodes.ParentProcessFailure.equals(s) => logger.debug(message)
-      case s if StatusCodes.Killed.equals(s) => logger.debug(message)
-      case default => logger.info(message)
-    }
-
-    statusManager.setJobStatus(newStatus)
-
-    // Job manager should know if has been marked as complete
-    if (statusManager.isCompleted) JobManager.indicateJobCompleteToManager(job)
-  }
-
-  def getCancelCurrentJobFunction: Option[() => Boolean] = cancelCurrentJobFunction
-
-  def setCancelCurrentJobFunction(value: () => Boolean): Unit = cancelCurrentJobFunction = Option(value)
-}
-
-/**
-  * Keeps track of any dependencies this job may have,
-  * in regards to jobs that it is tasked with running after itself and handling their completion status.
-  */
-class DependencyManager {
-  val jobBuffer = ListBuffer[List[Job]]()
-  val returnCounter = new AtomicLatch
-
-  def appendJobBuffer(job: Job): Unit = appendJobBuffer(List(job))
-
-  def appendJobBuffer(jobs: List[Job]): Unit = jobBuffer.append(jobs)
-
-  def killDependencies(): Unit = {
-    jobBuffer.foreach(jobTier => jobTier.foreach(jobAtTier => {
-      jobAtTier.internalState.killIncompleteJobs()
-    }))
+  protected def markAsSuccess(): Unit = {
+    // The success is if the future succeeded.
+    // We need to also check the return code and redirect to failure here if it completed, but with a bad return code
+    setJobStatus(JobStatus.Success)
+    handleIfJobTotallyComplete()
+    runNextJob()
   }
 
   /**
@@ -423,35 +329,22 @@ class DependencyManager {
   }
 }
 
-/**
-  * Update and query job statuses
-  */
-object StatusCodes extends Enumeration {
-  type Status = Value
-  val Success = "Success"
-  val Retry = "Retrying"
-  val Failure = "Failure"
-  val Running = "Running"
-  val NotStarted = "NotStarted"
-  val ParentProcessFailure = "Parent Process Failed"
-  val Killed = "Killed"
-}
+  /**
+    * Decreases the lock counter
+    */
+  protected def decreaseReturnCount(): Unit = {
+    returnCounter.countDown()
+    handleIfJobTotallyComplete()
+  }
 
-/**
-  * Flags used to indicate special things to jobs.
-  */
-object JobFlag extends Enumeration {
-  val ShouldNotBeWaitedOn, ShouldNotFailChildrenJobs = Value
-}
+  protected def handleIfJobTotallyComplete(): Unit = {
+    if (returnJob.isDefined && returnCounter.getCount <= 0) {
+      // Decrease return number
+      returnJob.get.decreaseReturnCount()
 
-/**
-  * Keeps track of the status of the job.
-  */
-class StatusManager {
-  private var status = StatusCodes.NotStarted
-
-  def isCompleted: Boolean = {
-    isSuccessful | isFailed | isKilled
+      // Try to start it again and let it handle if it should
+      returnJob.get.runNextJob()
+    }
   }
 
   def isKilled: Boolean = {
