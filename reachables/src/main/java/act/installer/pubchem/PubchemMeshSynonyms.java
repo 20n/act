@@ -1,6 +1,5 @@
 package act.installer.pubchem;
 
-import act.installer.bing.BingSearchRanker;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.query.Query;
@@ -8,7 +7,6 @@ import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.query.QuerySolution;
 import org.apache.jena.query.ResultSet;
-import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.logging.log4j.LogManager;
@@ -24,21 +22,18 @@ import java.util.regex.Pattern;
 
 public class PubchemMeshSynonyms {
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(BingSearchRanker.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(PubchemMeshSynonyms.class);
 
+  // URL for the SPARQL endpoint, living on Chimay on port 8890
   private static final String SERVICE = "http://10.0.20.19:8890/sparql";
+
   private static final String CID_PATTERN = "CID\\d+";
 
-  private static final String TEST_INCHI = "InChI=1S/C6H12N3O/c1-2-3-4-9-5-6(7)10-8-9/h5H,2-4,7H2,1H3/q+1";
-  private static final String TEST_INCHI_2 = "InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)";
-  private static final String TEST_INCHI_3 =
-      "InChI=1S/C13H18O2/c1-9(2)8-11-4-6-12(7-5-11)10(3)13(14)15/h4-7,9-10H,8H2,1-3H3,(H,14,15)";
-  private static final String TEST_INCHI_4 =
-      "InChI=1S/C17H21NO4/c1-18-12-8-9-13(18)15(17(20)21-2)14(10-12)22-16(19)11-6-4-3-5-7-11/h3-7," +
-          "12-15H,8-10H2,1-2H3/t12?,13?,14-,15+/m0/s1";
+  // InChI string (representing APAP) to be used as example in the main method
+  private static final String TEST_INCHI = "InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)";
 
 
-  private static SelectBuilder CID_SELECT_STATEMENT = new SelectBuilder()
+  private static final SelectBuilder CID_SELECT_STATEMENT = new SelectBuilder()
       // Prefix
       .addPrefix("sio", "http://semanticscience.org/resource/")
       // SELECT
@@ -50,7 +45,7 @@ public class PubchemMeshSynonyms {
       .addWhere( "?inchi_iri", "sio:has-value", "?inchi_string" )
       ;
 
-  private static SelectBuilder SYNO_SELECT_STATEMENT = new SelectBuilder()
+  private static final SelectBuilder PUBCHEM_SYNO_QUERY_TMPL = new SelectBuilder()
       // PREFIX
       .addPrefix("sio", "http://semanticscience.org/resource/")
       .addPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
@@ -67,7 +62,7 @@ public class PubchemMeshSynonyms {
       .addWhere("?syno", "sio:has-value", "?value")
       ;
 
-  private static SelectBuilder MESH_SYNO_SELECT_STATEMENT = new SelectBuilder()
+  private static final SelectBuilder MESH_TERMS_QUERY_TMPL = new SelectBuilder()
       // PREFIX
       .addPrefix("sio", "http://semanticscience.org/resource/")
       .addPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
@@ -89,7 +84,8 @@ public class PubchemMeshSynonyms {
       .addWhere("?mesh_term", "meshv:lexicalTag", "?lexical_tag")
       ;
 
-  public enum PC_SYNONYM_TYPES {
+  //This enum was mostly stolen and simplified from the PubchemTTLMerger class
+  public enum PC_SYNONYM_TYPE {
     // Names derived from the Semantic Chemistry Ontology: https://github.com/egonw/semanticchemistry
     TRIVIAL_NAME("CHEMINF_000109"),
     DEPOSITORY_NAME("CHEMINF_000339"),
@@ -110,14 +106,14 @@ public class PubchemMeshSynonyms {
     UNKNOWN("NO_ID")
     ;
 
-    private static final Map<String, PC_SYNONYM_TYPES> CHEMINF_TO_TYPE = new HashMap<String, PC_SYNONYM_TYPES>() {{
-      for (PC_SYNONYM_TYPES type : PC_SYNONYM_TYPES.values()) {
+    private static final Map<String, PC_SYNONYM_TYPE> CHEMINF_TO_TYPE = new HashMap<String, PC_SYNONYM_TYPE>() {{
+      for (PC_SYNONYM_TYPE type : PC_SYNONYM_TYPE.values()) {
         put(type.getCheminfId(), type);
       }
     }};
 
 
-    public static PC_SYNONYM_TYPES getByCheminfId(String cheminfId) {
+    public static PC_SYNONYM_TYPE getByCheminfId(String cheminfId) {
       return CHEMINF_TO_TYPE.getOrDefault(cheminfId, UNKNOWN);
     }
 
@@ -127,8 +123,52 @@ public class PubchemMeshSynonyms {
       return cheminfId;
     }
 
-    PC_SYNONYM_TYPES(String cheminfId) {
+    PC_SYNONYM_TYPE(String cheminfId) {
       this.cheminfId = cheminfId;
+    }
+  }
+
+  public enum MESH_TERMS_TYPE {
+    // Names derived from the MeSH XML data elements page (https://www.nlm.nih.gov/mesh/xml_data_elements.html)
+    // section LexicalTags.
+
+    // Abbreviation, embedded abbreviation and acronym are self explanatory and describe well what they tag
+    // They will be ignored for web queries
+    ABBREVIATION("ABB"),
+    EMBEDDED_ABBREVIATION("ABX"),
+    ACRONYM("ACR"),
+    // Examples of EPO tagged terms: Thomsen-Friedenreich antigen", "Brompton mixture",
+    // "Andrew's Liver Salt", "Evans Blue", "Schiff Bases", "Giemsa Stain"
+    EPONYM("EPO"),
+    // Lab number: ignore for web queries
+    LAB_NUMBER("LAB"),
+    // Examples of NAM tagged terms: "Benin", "India", "Rome", "Taiwan", "United Nations", "Saturn"
+    // Ignore by all means
+    PROPER_NAME("NAM"),
+    // NON tags the non-classified names, including most of the good ones
+    NONE("NON"),
+    // Trade names are tagged with TRD and seem to be of good quality.
+    TRADE_NAME("TRD"),
+    ;
+
+    private static final Map<String, MESH_TERMS_TYPE> LEXICAL_TAG_TO_TYPE = new HashMap<String, MESH_TERMS_TYPE>() {{
+      for (MESH_TERMS_TYPE type : MESH_TERMS_TYPE.values()) {
+        put(type.getLexicalTag(), type);
+      }
+    }};
+
+    public static MESH_TERMS_TYPE getByLexicalTag(String lexicalTag) {
+      return LEXICAL_TAG_TO_TYPE.getOrDefault(lexicalTag, NONE);
+    }
+
+    String lexicalTag;
+
+    public String getLexicalTag() {
+      return lexicalTag;
+    }
+
+    MESH_TERMS_TYPE(String lexicalTag) {
+      this.lexicalTag = lexicalTag;
     }
   }
 
@@ -136,23 +176,11 @@ public class PubchemMeshSynonyms {
     PubchemMeshSynonyms pubchemMeshSynonyms = new PubchemMeshSynonyms();
     String inchi = TEST_INCHI;
     String cid = pubchemMeshSynonyms.fetchCIDFromInchi(inchi);
-    Map<PC_SYNONYM_TYPES, Set<String>> pubchemSynonyms = pubchemMeshSynonyms.fetchPubchemSynonymsFromCID(cid);
+    Map<PC_SYNONYM_TYPE, Set<String>> pubchemSynonyms = pubchemMeshSynonyms.fetchPubchemSynonymsFromCID(cid);
     LOGGER.info("Resulting Pubchem synonyms for %s are: \n%s", inchi, pubchemSynonyms);
-    Map<String, Set<String>> meshTerms = pubchemMeshSynonyms.fetchMeshTermsFromCID(cid);
+    Map<MESH_TERMS_TYPE, Set<String>> meshTerms = pubchemMeshSynonyms.fetchMeshTermsFromCID(cid);
     LOGGER.info("Resulting MeSH term s for %s are: \n%s", inchi, meshTerms);
   }
-
-
-  public Map<PC_SYNONYM_TYPES, Set<String>> fetchPubchemSynonymsFromInchi(String inchi) {
-    String cid = fetchCIDFromInchi(inchi);
-    return fetchPubchemSynonymsFromCID(cid);
-  }
-
-  public Map<String, Set<String>> fetchMeshTermsFromInchi(String inchi) {
-    String cid = fetchCIDFromInchi(inchi);
-    return fetchMeshTermsFromCID(cid);
-  }
-
 
   public String fetchCIDFromInchi(String inchi) {
     Query query = prepareCIDQueryFromInchi(inchi);
@@ -176,57 +204,58 @@ public class PubchemMeshSynonyms {
 
 
 
-  public Map<PC_SYNONYM_TYPES, Set<String>> fetchPubchemSynonymsFromCID(String cid) {
+  public Map<PC_SYNONYM_TYPE, Set<String>> fetchPubchemSynonymsFromCID(String cid) {
 
-    SelectBuilder sb = SYNO_SELECT_STATEMENT.clone();
+    SelectBuilder sb = PUBCHEM_SYNO_QUERY_TMPL.clone();
     sb.setVar(Var.alloc("compound"), String.format("compound:%s", cid));
     Query query = sb.build();
     LOGGER.debug("Executing SPARQL query: \n%s", query.toString());
-    Map<PC_SYNONYM_TYPES, Set<String>> map = new HashMap<>();
+    Map<PC_SYNONYM_TYPE, Set<String>> map = new HashMap<>();
 
-    try (QueryExecution qexec = QueryExecutionFactory.sparqlService(SERVICE, query)) {
-      ResultSet results = qexec.execSelect() ;
+    try (QueryExecution queryExecution = QueryExecutionFactory.sparqlService(SERVICE, query)) {
+      ResultSet results = queryExecution.execSelect();
       for ( ; results.hasNext() ; )
       {
-        QuerySolution soln = results.nextSolution() ;
-        Resource type = soln.getResource("type") ; // Get a result variable - must be a resource
-        String syno = soln.getLiteral("value").getString() ;   // Get a result variable - must be a literal
-        String cheminfId = type.getLocalName();
-        LOGGER.debug("Found synonym %s with type %s", syno, cheminfId);
-        PC_SYNONYM_TYPES synonymType = PC_SYNONYM_TYPES.getByCheminfId(cheminfId);
-        Set synoSet = map.get(synonymType);
-        if (synoSet == null) {
-          synoSet = new HashSet<>();
-          map.put(synonymType, synoSet);
+        QuerySolution solution = results.nextSolution();
+        String cheminfId = solution.getResource("type").getLocalName();
+        String synonym = solution.getLiteral("value").getString();
+        LOGGER.debug("Found synonym %s with type %s", synonym, cheminfId);
+        PC_SYNONYM_TYPE synonymType = PC_SYNONYM_TYPE.getByCheminfId(cheminfId);
+        Set synonyms = map.get(synonymType);
+        if (synonyms == null) {
+          synonyms = new HashSet<>();
+          map.put(synonymType, synonyms);
         }
-        synoSet.add(syno);
+        synonyms.add(synonym);
       }
 
     }
     return map;
   }
 
-  public Map<String, Set<String>> fetchMeshTermsFromCID(String cid) {
+  public Map<MESH_TERMS_TYPE, Set<String>> fetchMeshTermsFromCID(String cid) {
 
-    SelectBuilder sb = MESH_SYNO_SELECT_STATEMENT.clone();
+    SelectBuilder sb = MESH_TERMS_QUERY_TMPL.clone();
     sb.setVar(Var.alloc("compound"), String.format("compound:%s", cid));
     Query query = sb.build();
     LOGGER.debug("Executing SPARQL query: \n%s", query.toString());
-    Map<String, Set<String>> map = new HashMap<>();
+    Map<MESH_TERMS_TYPE, Set<String>> map = new HashMap<>();
 
-    try (QueryExecution qexec = QueryExecutionFactory.sparqlService(SERVICE, query)) {
-      ResultSet results = qexec.execSelect() ;
+    try (QueryExecution queryExecution = QueryExecutionFactory.sparqlService(SERVICE, query)) {
+      ResultSet results = queryExecution.execSelect();
       for ( ; results.hasNext() ; )
       {
-        QuerySolution soln = results.nextSolution() ;
-        String conceptLabel = soln.getLiteral("concept_label").getString() ;
-        String lexicalTag = soln.getLiteral("lexical_tag").getString() ;
-        Set synoSet = map.get(lexicalTag);
-        if (synoSet == null) {
-          synoSet = new HashSet<>();
-          map.put(lexicalTag, synoSet);
+        QuerySolution solution = results.nextSolution();
+        String conceptLabel = solution.getLiteral("concept_label").getString();
+        String lexicalTag = solution.getLiteral("lexical_tag").getString();
+        LOGGER.debug("Found term %s with tag %s", conceptLabel, lexicalTag);
+        MESH_TERMS_TYPE meshTermsType = MESH_TERMS_TYPE.getByLexicalTag(lexicalTag);
+        Set synonyms = map.get(meshTermsType);
+        if (synonyms == null) {
+          synonyms = new HashSet<>();
+          map.put(meshTermsType, synonyms);
         }
-        synoSet.add(conceptLabel);
+        synonyms.add(conceptLabel);
       }
     }
     return map;
