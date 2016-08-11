@@ -16,7 +16,7 @@ class ShellWrapperTest extends FlatSpec with Matchers {
   }
 
   "The ShellWrapper" should "not start jobs prior to start being called" in {
-    val command = ShellWrapper.shellCommand(List("date"))
+    val command = ShellWrapper.shellCommand("date", List("date"))
 
     command.isSuccessful should be(false)
     command.isFailed should be(false)
@@ -29,7 +29,7 @@ class ShellWrapperTest extends FlatSpec with Matchers {
   }
 
   "The ShellWrapper" should "indicate valid commands complete" in {
-    val command = ShellWrapper.shellCommand(List("date"))
+    val command = ShellWrapper.shellCommand("date", List("date"))
     command.start()
 
     JobManager.awaitUntilAllJobsComplete()
@@ -41,7 +41,7 @@ class ShellWrapperTest extends FlatSpec with Matchers {
 
 
   "The ShellWrapper" should "report that commands that fail on shell fail" in {
-    val command = ShellWrapper.shellCommand(List("cp"))
+    val command = ShellWrapper.shellCommand("cp", List("cp"))
     command.start()
     JobManager.awaitUntilAllJobsComplete()
 
@@ -56,7 +56,7 @@ class ShellWrapperTest extends FlatSpec with Matchers {
   }
 
   "The ShellWrapper" should "indicate a job is running when it is running" in {
-    val command = ShellWrapper.shellCommand(List("sleep", "5"))
+    val command = ShellWrapper.shellCommand("sleep", List("sleep", "5"))
     command.start()
 
     command.isSuccessful should be(false)
@@ -70,8 +70,8 @@ class ShellWrapperTest extends FlatSpec with Matchers {
   }
 
   "The ShellWrapper" should "allow for chaining of jobs" in {
-    val command1 = ShellWrapper.shellCommand(List("date"))
-    val command2 = ShellWrapper.shellCommand(List("ls"))
+    val command1 = ShellWrapper.shellCommand("date", List("date"))
+    val command2 = ShellWrapper.shellCommand("ls", List("ls"))
 
     command1.thenRun(command2)
     command1.start()

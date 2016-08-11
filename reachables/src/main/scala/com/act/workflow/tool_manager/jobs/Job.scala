@@ -115,7 +115,7 @@ abstract class Job(name: String) {
   /** Run chained jobs in parallel
     * job1.thenRunBatch(List(job2, job3, job4)).thenRun(job5)
     *
-    * Should run
+    * Should run (Hashtags are important for picture framing)
     * #          ------> job2 ---
     * #       /                    \
     * #     job1 ---> job3 ---> job 5
@@ -181,15 +181,7 @@ abstract class Job(name: String) {
     // The success is if the future succeeded.
     // We need to also check the return code and redirect to failure here if it completed, but with a bad return code
     setJobStatus(JobStatus.Success)
-
-    if (returnJob.isDefined) {
-      // Decrease return number
-      returnJob.get.decreaseReturnCount()
-
-      // Try to start it again and let it handle if it should
-      returnJob.get.runNextJob()
-    }
-
+    handleIfJobTotallyComplete()
     runNextJob()
   }
 
@@ -275,6 +267,17 @@ abstract class Job(name: String) {
     */
   protected def decreaseReturnCount(): Unit = {
     returnCounter.countDown()
+    handleIfJobTotallyComplete()
+  }
+
+  protected def handleIfJobTotallyComplete(): Unit = {
+    if (returnJob.isDefined && returnCounter.getCount <= 0) {
+      // Decrease return number
+      returnJob.get.decreaseReturnCount()
+
+      // Try to start it again and let it handle if it should
+      returnJob.get.runNextJob()
+    }
   }
 
   /**
