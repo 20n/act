@@ -85,8 +85,4 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
   private def writeStreamToLogger(loggerType: (String) => Unit)(output: String): Unit = {
     loggerType(output)
   }
-
-  override def toString: String = {
-    commands.mkString(sep = " ")
-  }
 }

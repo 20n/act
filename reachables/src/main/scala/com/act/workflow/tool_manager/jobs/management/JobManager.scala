@@ -16,6 +16,8 @@ object JobManager {
   // Lock for job manager
   private var numberLock = new AtomicLatch()
 
+  private var jobCompleteOrdering = new ListBuffer[String]
+
 
   /**
     * Removes all elements from the JobManager and resets the lock.
@@ -23,6 +25,7 @@ object JobManager {
   def clearManager(): Unit = {
     jobs = new ListBuffer[Job]()
     numberLock = new AtomicLatch()
+    jobCompleteOrdering = new ListBuffer[String]
   }
 
   /**
@@ -77,15 +80,16 @@ object JobManager {
     jobs.count(x => x.isSuccessful)
   }
 
-  private def completedJobsCount(): Int = {
-    jobs.count(x => x.isCompleted)
-  }
-
-  def indicateJobCompleteToManager() {
+  def indicateJobCompleteToManager(name: String) {
+    jobCompleteOrdering.append(name)
     numberLock.countDown()
     logger.info(s"<Concurrent jobs running = ${runningJobsCount()}>")
     logger.info(s"<Current jobs awaiting to run = ${waitingJobsCount()}>")
     logger.info(s"<Completed jobs = ${completedJobsCount()}>")
+  }
+
+  def completedJobsCount(): Int = {
+    jobs.count(x => x.isCompleted)
   }
 
   private def waitingJobsCount(): Int = {
@@ -94,6 +98,10 @@ object JobManager {
 
   private def runningJobsCount(): Int = {
     jobs.count(x => x.isRunning)
+  }
+
+  def getOrderOfJobCompletion: List[String] = {
+    jobCompleteOrdering.toList
   }
 
   /*
