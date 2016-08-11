@@ -91,10 +91,8 @@ abstract class Job {
       while (position >= jobBuffer.length) {
         jobBuffer.append(List())
       }
-      thenRun(job)
-    } else {
-      jobBuffer(position) = jobBuffer(position) ::: List(job)
     }
+    jobBuffer(position) = jobBuffer(position) ::: List(job)
     this
   }
 
@@ -312,5 +310,4 @@ abstract class Job {
     val Unstarted = "Unstarted"
     val ParentProcessFailure = "Parent Process Failed"
   }
-
 }
