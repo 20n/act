@@ -17,15 +17,8 @@ object JobManager {
   // Lock for job manager
   private var numberLock = new AtomicLatch()
 
-  private var jobCompleteOrdering = new ListBuffer[Job]
+  private var jobCompleteOrdering = new ListBuffer[String]
 
-  private var jobToAwaitFor: Option[Job] = None
-
-  def setVerbosity(verbosity: Int): Unit = {
-    require(verbosity >= 0 && verbosity <= 6, "Verbosity must be set as an integer at or between 0 - 6.")
-    LoggingController.setVerbosity(LoggingController.verbosityMap(verbosity))
-    logger.info(s"Verbosity was changed to level $verbosity")
-  }
 
   /**
     * Removes all elements from the JobManager and resets the lock.
@@ -34,7 +27,7 @@ object JobManager {
     jobToAwaitFor = None
     jobs = new ListBuffer[Job]()
     numberLock = new AtomicLatch()
-    jobCompleteOrdering = new ListBuffer[Job]
+    jobCompleteOrdering = new ListBuffer[String]
   }
 
   /**
@@ -159,25 +152,42 @@ object JobManager {
   }
 
   private def successfulJobsCount(): Int = {
-    jobs.count(_.internalState.statusManager.isSuccessful)
+    jobs.count(x => x.isSuccessful)
   }
 
-  /**
-    * Goes through and ensures all jobs in `jobs` are reachable, and thus will be run in a normal, successful workflow.
-    *
-    * @param job The first job
-    */
-  private def verifyAllJobsAreReachableAndNoCycles(job: Job): Unit = {
-    // It is important to verify cycles first as otherwise reachables search will never end ~
-    val allJobs: Set[Job] = getAllChildren(job)
+  def indicateJobCompleteToManager(name: String) {
+    jobCompleteOrdering.append(name)
+    numberLock.countDown()
+    logger.info(s"<Concurrent jobs running = ${runningJobsCount()}>")
+    logger.info(s"<Current jobs awaiting to run = ${waitingJobsCount()}>")
+    logger.info(s"<Completed jobs = ${completedJobsCount()}>")
+  }
 
-    // Grab all the jobs that can't be reached so we can report back which ones need to be connected
-    val jobsNotReached = jobs.filter(job => !allJobs.contains(job))
-    if (jobsNotReached.nonEmpty) {
-      throw new RuntimeException("Started waiting for jobs, but program is unable to reach all jobs.  " +
-        s"Please ensure your workflow is fully connected.  " +
-        s"The jobs that are not connected are ${jobsNotReached.map(_.getName)}")
-    }
+  def completedJobsCount(): Int = {
+    jobs.count(x => x.isCompleted)
+  }
+
+  private def waitingJobsCount(): Int = {
+    jobs.length - (completedJobsCount() + runningJobsCount())
+  }
+
+  private def runningJobsCount(): Int = {
+    jobs.count(x => x.isRunning)
+  }
+
+  def getOrderOfJobCompletion: List[String] = {
+    jobCompleteOrdering.toList
+  }
+
+  /*
+    General job query questions that may be reused
+  */
+  private def allJobsComplete(): Boolean = {
+    getIncompleteJobs.isEmpty
+  }
+
+  private def getIncompleteJobs: List[Job] = {
+    jobs.filter(x => x.isRunning).toList
   }
 
   /**

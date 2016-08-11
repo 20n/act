@@ -1,77 +1,38 @@
 package com.act.workflow.tool_manager.jobs
 
 import com.act.workflow.tool_manager.jobs.management.JobManager
-import com.act.workflow.tool_manager.tool_wrappers.ScalaJobWrapper
-import org.scalatest.concurrent.{ThreadSignaler, TimeLimitedTests}
-import org.scalatest.time.SpanSugar._
-import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
+import com.act.workflow.tool_manager.tool_wrappers.ShellWrapper
+import org.scalatest.{FlatSpec, Matchers}
 
-class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach with TimeLimitedTests {
-  override val defaultTestSignaler = ThreadSignaler
-  val timeLimit = 200 millis
-
-  override def beforeEach(): Unit = {
-    JobManager.setVerbosity(0)
-  }
-
-  override def afterEach(): Unit = {
-    JobManager.clearManager()
-  }
-
-  /**
-    * Constructs an instantly evaluating job that runs really fast
-    *
-    * @param name Name of the job
-    *
-    * @return newly constructed job.
-    */
-  def immediateReturnJob(name: String): ScalaJob = {
-    val excitingFunction: () => Unit = () => Unit
-    ScalaJobWrapper.wrapScalaFunction(name, excitingFunction)
-  }
-
-
-  /**
-    * Sleeps the thread for a given amount of time to simulate a long-running job
-    *
-    * @param name Name of the job
-    * @param time Time it runs for
-    *
-    * @return A nicely, newly constructed job
-    */
-  def longRunningJob(name: String, time: Long): ScalaJob = {
-    val excitingFunction: () => Unit = () => Thread.sleep(time)
-    ScalaJobWrapper.wrapScalaFunction(name, excitingFunction)
-  }
-
-  "Jobs" should "only be able to be run once." in {
+class JobsTest extends FlatSpec with Matchers {
+  "Jobs" should "run sequentially in order." in {
     /*
       Structure of this test:
       #  A -> B -> C -> D
 
      */
-    val A = immediateReturnJob("A")
-    val B = immediateReturnJob("B")
-    val C = immediateReturnJob("C")
-    val D = immediateReturnJob("D")
+    val A = ShellWrapper.shellCommand("A", List("date"))
+    val B = ShellWrapper.shellCommand("B", List("date"))
+    val C = ShellWrapper.shellCommand("C", List("date"))
+    val D = ShellWrapper.shellCommand("D", List("date"))
 
     A.thenRun(B).thenRun(C).thenRun(D)
-    JobManager.startJobAndAwaitUntilWorkflowComplete(A)
 
-    A.internalState.statusManager.isCompleted should be(true)
-    B.internalState.statusManager.isCompleted should be(true)
-    C.internalState.statusManager.isCompleted should be(true)
-    D.internalState.statusManager.isCompleted should be(true)
+    A.start()
+    JobManager.awaitUntilAllJobsComplete()
 
-    JobManager.getOrderOfJobCompletion should be(List("A", "B", "C", "D"))
+    // B and C can be ordered in either way because of running in paralle.
+    val validOrders = List(List("A", "B", "C", "D"))
+
+    validOrders.contains(JobManager.getOrderOfJobCompletion) should be(true)
+
+    JobManager.clearManager()
   }
 
-  "Jobs" should "should complete parallel paths independently of how long each take." in {
+  "Jobs" should "run in parallel should keep order between children" in {
     /*
 
-      C runs much longer than B + b1 + b2 + b3, so we expect C to complete last even though it was started with B.
-      We don't actually want our tests to wait for C,
-      so we just verify that everything but C completes in the correct order.
+      B takes about as long as C, so they could complete in either order.
 
       Structure of this test:
       #     B -> b1 -> b2 -> b3
@@ -81,23 +42,59 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach with TimeL
       #    -------> C
 
      */
-    val A = immediateReturnJob("A")
-    val B = immediateReturnJob("B")
-    val b1 = immediateReturnJob("b1")
-    // Won't take 50 seconds as should exit after b3 complete.
-    val C = longRunningJob("C", 50000)
+    val A = ShellWrapper.shellCommand("A", List("sleep", "1"))
+    val B = ShellWrapper.shellCommand("B", List("sleep", "1"))
+    val b1 = ShellWrapper.shellCommand("b1", List("sleep", "1"))
+    val b2 = ShellWrapper.shellCommand("b2", List("sleep", "1"))
+    val b3 = ShellWrapper.shellCommand("b3", List("sleep", "1"))
+    val C = ShellWrapper.shellCommand("C", List("sleep", "1"))
 
     A.thenRunBatch(List(B, C))
-    B.thenRun(b1)
+    B.thenRun(b1).thenRun(b2).thenRun(b3)
 
-    JobManager.startJobAndKillWorkflowAfterSpecificJobCompletes(A, b1)
+    A.start()
+    JobManager.awaitUntilAllJobsComplete()
 
-    // C should be killed as it completes after b3 based on time.
-    A.internalState.statusManager.isCompleted should be(true)
-    B.internalState.statusManager.isCompleted should be(true)
-    b1.internalState.statusManager.isCompleted should be(true)
-    C.internalState.statusManager.isKilled should be(true)
-    C.internalState.statusManager.isFailed should be(true)
+    // B and C can be ordered in either way because of running in paralle.
+    val validOrders = List(List("A", "B", "C", "b1", "b2", "b3"), List("A", "C", "B", "b1", "b2", "b3"))
+
+    validOrders.contains(JobManager.getOrderOfJobCompletion) should be(true)
+
+    JobManager.clearManager()
+  }
+
+  "Jobs" should "should complete parallel paths independently of how long each take." in {
+    /*
+
+      C runs much longer than B + b1 + b2 + b3, so we expect C to complete last even though it was started with B
+
+      Structure of this test:
+      #     B -> b1 -> b2 -> b3
+      #   /
+      # A
+      #  \
+      #    -------> C
+
+     */
+    val A = ShellWrapper.shellCommand("A", List("sleep", "1"))
+    val B = ShellWrapper.shellCommand("B", List("sleep", "1"))
+    val b1 = ShellWrapper.shellCommand("b1", List("sleep", "1"))
+    val b2 = ShellWrapper.shellCommand("b2", List("sleep", "1"))
+    val b3 = ShellWrapper.shellCommand("b3", List("sleep", "1"))
+    val C = ShellWrapper.shellCommand("C", List("sleep", "6"))
+
+    A.thenRunBatch(List(B, C))
+    B.thenRun(b1).thenRun(b2).thenRun(b3)
+
+    A.start()
+    JobManager.awaitUntilAllJobsComplete()
+
+    // B and C can be ordered in either way because of running in paralle.
+    val validOrders = List(List("A", "B", "b1", "b2", "b3", "C"))
+
+    validOrders.contains(JobManager.getOrderOfJobCompletion) should be(true)
+
+    JobManager.clearManager()
   }
 
   "Jobs" should "be able to have two divergent branches come together at the end" in {
@@ -110,21 +107,26 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach with TimeL
       #    -------> C --------
 
      */
-    val A = immediateReturnJob("A")
-    val B = immediateReturnJob("B")
-    val b1 = immediateReturnJob("b1")
-    val b2 = immediateReturnJob("b2")
-    val b3 = immediateReturnJob("b3")
-    val C = immediateReturnJob("C")
-    val D = immediateReturnJob("D")
+    val A = ShellWrapper.shellCommand("A", List("sleep", "1"))
+    val B = ShellWrapper.shellCommand("B", List("sleep", "1"))
+    val b1 = ShellWrapper.shellCommand("b1", List("sleep", "1"))
+    val b2 = ShellWrapper.shellCommand("b2", List("sleep", "1"))
+    val b3 = ShellWrapper.shellCommand("b3", List("sleep", "1"))
+    val C = ShellWrapper.shellCommand("C", List("sleep", "1"))
+    val D = ShellWrapper.shellCommand("D", List("sleep", "1"))
 
     A.thenRunBatch(List(B, C)).thenRun(D)
     B.thenRun(b1).thenRun(b2).thenRun(b3)
 
-    JobManager.startJobAndAwaitUntilWorkflowComplete(A)
+    A.start()
+    JobManager.awaitUntilAllJobsComplete()
 
-    // Last job should be D
-    JobManager.getOrderOfJobCompletion.last should be("D")
+    // B and C can be ordered in either way because of running in parallel.
+    val validOrders = List(List("A", "B", "C", "b1", "b2", "b3", "D"), List("A", "C", "B", "b1", "b2", "b3", "D"))
+
+    validOrders.contains(JobManager.getOrderOfJobCompletion) should be(true)
+
+    JobManager.clearManager()
   }
 
   "Jobs" should "be able to have a convergent branch start more divergence" in {
@@ -137,59 +139,28 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach with TimeL
       #     C ->         F
 
      */
-    val A = immediateReturnJob("A")
-    val B = immediateReturnJob("B")
-    val C = immediateReturnJob("C")
-    val D = immediateReturnJob("D")
-    val E = immediateReturnJob("E")
-    val F = immediateReturnJob("F")
+    val A = ShellWrapper.shellCommand("A", List("sleep", "1"))
+    val B = ShellWrapper.shellCommand("B", List("sleep", "1"))
+    val C = ShellWrapper.shellCommand("C", List("sleep", "1"))
+    val D = ShellWrapper.shellCommand("D", List("sleep", "1"))
+    val E = ShellWrapper.shellCommand("E", List("sleep", "1"))
+    val F = ShellWrapper.shellCommand("F", List("sleep", "1"))
 
     A.thenRunBatch(List(B, C)).thenRun(D).thenRunBatch(List(E, F))
 
-    JobManager.startJobAndAwaitUntilWorkflowComplete(A)
+    A.start()
+    JobManager.awaitUntilAllJobsComplete()
 
     // B and C and E and F are in parallel so order can vary
-    JobManager.getOrderOfJobCompletion.head should be("A")
-    JobManager.getOrderOfJobCompletion(2) should (equal("B") or equal("C"))
-    JobManager.getOrderOfJobCompletion(3) should be("D")
-    JobManager.getOrderOfJobCompletion(4) should (equal("E") or equal("F"))
-  }
+    val validOrders = List(
+      List("A", "B", "C", "D", "E", "F"),
+      List("A", "B", "C", "D", "F", "E"),
+      List("A", "C", "B", "D", "E", "F"),
+      List("A", "C", "B", "D", "F", "E")
+    )
 
-  "Jobs" should "be able to create independent jobs by indicating a given job shouldn't be waited for" in {
-    /*
-      Structure of this test:
-      #     B -> F -> G
-      #   /
-      # A - D ->  E
-      #  \       /
-      #     C ->
+    validOrders.contains(JobManager.getOrderOfJobCompletion) should be(true)
 
-     */
-    val A = immediateReturnJob("A")
-    val B = immediateReturnJob("B")
-    B.addFlag(JobFlag.ShouldNotBeWaitedOn)
-
-    val C = immediateReturnJob("C")
-    val D = immediateReturnJob("D")
-    val E = immediateReturnJob("E")
-    val F = immediateReturnJob("F")
-    val G = immediateReturnJob("G")
-
-    A.thenRunBatch(List(B, C, D)).thenRun(E)
-    B.thenRun(G).thenRun(F)
-
-    // If we kill B, E should still be allowed to complete.
-    B.internalState.killIncompleteJobs()
-
-    JobManager.startJobAndAwaitUntilWorkflowComplete(A)
-
-
-    A.internalState.statusManager.isSuccessful should be(true)
-    B.internalState.statusManager.isKilled should be(true)
-    C.internalState.statusManager.isSuccessful should be(true)
-    D.internalState.statusManager.isSuccessful should be(true)
-    E.internalState.statusManager.isSuccessful should be(true)
-    F.internalState.statusManager.isKilled should be(true)
-    G.internalState.statusManager.isKilled should be(true)
+    JobManager.clearManager()
   }
 }
