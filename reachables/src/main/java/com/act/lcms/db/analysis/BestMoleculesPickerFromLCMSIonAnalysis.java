@@ -171,6 +171,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
       predictionWriter.newLine();
 
       for (String inchi : otherSet) {
+        System.out.println(inchi);
         if (inchiToName.containsKey(inchi)) {
           predictionWriter.append(inchiToName.get(inchi));
         } else {
