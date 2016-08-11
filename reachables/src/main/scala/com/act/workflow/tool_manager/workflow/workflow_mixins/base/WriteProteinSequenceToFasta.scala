@@ -1,6 +1,6 @@
 package com.act.workflow.tool_manager.workflow.workflow_mixins.base
 
-import java.io.BufferedWriter
+import java.io.FileOutputStream
 
 import org.biojava.nbio.core.sequence.ProteinSequence
 import org.biojava.nbio.core.sequence.compound.AminoAcidCompound
@@ -20,8 +20,8 @@ trait WriteProteinSequenceToFasta {
     * @param proteinSequence A given protein sequence instance
     * @param outputWriter    The stream to write to.
     */
-  def writeProteinSequenceToFasta(proteinSequence: ProteinSequence, outputWriter: BufferedWriter) {
-    val header: String = headerFormat.getHeader(proteinSequence)
+  def writeProteinSequencesToFasta(proteinSequence: ProteinSequence, outputStream: FileOutputStream) {
+    val header = headerFormat.getHeader(proteinSequence)
 
     writeFastaHeader(header, outputWriter)
     writeFastaSequence(proteinSequence, outputWriter)
