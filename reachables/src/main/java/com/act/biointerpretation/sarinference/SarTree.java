@@ -45,7 +45,7 @@ public class SarTree {
    * @param molecules The molecules.
    * @throws InterruptedException
    */
-  public void buildByClustering(LibraryMCS libMcs, List<Molecule> molecules) throws InterruptedException {
+  public void buildByClustering(LibraryMCS libMcs, List<Molecule> molecules) {
     for (Molecule mol : molecules) {
       libMcs.addMolecule(mol);
     }
@@ -55,7 +55,8 @@ public class SarTree {
         libMcs.search();
         break;
       } catch (InterruptedException e) {
-        Thread.sleep(100);
+        LOGGER.info("Interrupted!");
+        continue;
       }
     }
 

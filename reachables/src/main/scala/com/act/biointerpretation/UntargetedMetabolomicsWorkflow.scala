@@ -103,7 +103,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
             predictionsFiles.get(roId).get,
             maxMass)))
     // Run one job per RO for L2 expansion
-    singleThreadExpansionJobs.foreach(job => headerJob.thenRunAtPosition(job, 0))
+    headerJob.thenRunBatch(singleThreadExpansionJobs.toList)
 
     // Build one job per RO for clustering
     val clusteringJobs =
@@ -112,7 +112,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
           predictionsFiles.get(roId).get,
           sarTreeFiles.get(roId).get)))
     // Run one job per RO for clustering
-    clusteringJobs.foreach(job => headerJob.thenRunAtPosition(job, 1))
+    clusteringJobs.foreach(job => headerJob.thenRun(job))
 
     // TODO: implement this and put in the real thing
     val lcmsJob = JavaJobWrapper.wrapJavaFunction(
@@ -126,7 +126,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
         }
       }
     )
-    headerJob.thenRunAtPosition(lcmsJob, 1)
+    headerJob.thenRun(lcmsJob)
 
     // Build one job per RO for scoring
     val scoringJobs = roIds.map(roId =>
@@ -138,7 +138,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       )
     )
     // Run one job per RO for scoring
-    scoringJobs.foreach(job => headerJob.thenRunAtPosition(job, 2))
+    headerJob.thenRunBatch(scoringJobs.toList)
 
     headerJob
   }

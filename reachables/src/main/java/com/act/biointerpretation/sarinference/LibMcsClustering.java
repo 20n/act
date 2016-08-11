@@ -226,12 +226,9 @@ public class LibMcsClustering {
         L2InchiCorpus substrateInchis = new L2InchiCorpus(inputCorpus.getUniqueProductInchis());
 
         SarTree sarTree = new SarTree();
-        try {
-          sarTree.buildByClustering(new LibraryMCS(), substrateInchis.getMolecules());
-        } catch (InterruptedException e) {
-          LOGGER.error("Interrupted exception on LibMCS clustering.");
-          System.exit(1);
-        }
+
+        sarTree.buildByClustering(new LibraryMCS(), substrateInchis.getMolecules());
+
 
         SarTreeNodeList nodeList = new SarTreeNodeList(new ArrayList<>(sarTree.getNodes()));
         nodeList.writeToFile(sarTreeNodesOutput);
