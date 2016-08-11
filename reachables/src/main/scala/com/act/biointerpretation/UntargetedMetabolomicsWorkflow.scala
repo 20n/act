@@ -63,15 +63,11 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
 
     val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY, null)
 
-    if (!verifyInputFilePath(cl.getOptionValue(OPTION_SUBSTRATES))) {
-      throw new RuntimeException("Substrates input file not valid.")
-    }
-    if (!verifyInputFilePath(cl.getOptionValue(OPTION_RO_IDS))) {
-      throw new RuntimeException("RO list input file not valid.")
-    }
-
     val substratesFile = new File(cl.getOptionValue(OPTION_SUBSTRATES))
     val roIdFile = new File(cl.getOptionValue(OPTION_RO_IDS))
+    verifyInputFile(substratesFile)
+    verifyInputFile(roIdFile)
+
     val erosCorpus = new ErosCorpus()
     erosCorpus.loadValidationCorpus()
     val roIds = erosCorpus.getRoIdListFromFile(roIdFile).asScala
