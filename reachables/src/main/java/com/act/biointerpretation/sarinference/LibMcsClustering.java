@@ -227,8 +227,12 @@ public class LibMcsClustering {
 
         SarTree sarTree = new SarTree();
 
-        sarTree.buildByClustering(new LibraryMCS(), substrateInchis.getMolecules());
-
+        try {
+          sarTree.buildByClustering(new LibraryMCS(), substrateInchis.getMolecules());
+        } catch (InterruptedException e) {
+          LOGGER.error("Threw interrupted exception during buildByClustering: %s", e.getMessage());
+          throw new RuntimeException(e);
+        }
 
         SarTreeNodeList nodeList = new SarTreeNodeList(new ArrayList<>(sarTree.getNodes()));
         nodeList.writeToFile(sarTreeNodesOutput);

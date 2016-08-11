@@ -45,22 +45,24 @@ public class SarTree {
    * @param molecules The molecules.
    * @throws InterruptedException
    */
-  public void buildByClustering(LibraryMCS libMcs, List<Molecule> molecules) {
+  public void buildByClustering(LibraryMCS libMcs, List<Molecule> molecules) throws InterruptedException {
+    if (molecules.size() == 0) {
+      LOGGER.error("Tried to bulid clustering on no molecules!");
+      return;
+    }
+
     for (Molecule mol : molecules) {
       libMcs.addMolecule(mol);
     }
 
-    while (true) {
-      try {
-        libMcs.search();
-        break;
-      } catch (InterruptedException e) {
-        LOGGER.info("Interrupted!");
-        continue;
-      }
-    }
+    libMcs.search();
 
     LibraryMCS.ClusterEnumerator enumerator = libMcs.getClusterEnumerator(ALL_NODES);
+
+    if (enumerator == null) {
+      LOGGER.error("Enumerator from clustering was null!");
+      return;
+    }
 
     this.buildFromEnumerator(enumerator);
   }
