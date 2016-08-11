@@ -113,6 +113,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
   def querySequencesForValuesByReactionId(reactionIds: List[Long],
                                           mongoConnection: MongoDB,
                                           returnFilterFields: List[String]): Map[Long, Map[String, AnyRef]] = {
+
     val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
 
     val sequenceReturnIterator = querySequencesMatchingReactionIdIterator(reactionIds, mongoConnection, returnFilterFields)
