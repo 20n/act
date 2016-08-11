@@ -19,12 +19,18 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/***
+ * The PubchemMeshSynonyms class provides an API to get Pubchem synonyms and MeSH terms given an InChI string.
+ * It assumes that a Virtuoso SPARQL endpoint is running on 10.0.20.19 (Chimay), port 8890 and that the necessary data
+ * has been loaded in.
+ * TODO(thomas): create a Wiki page describing the Virtuoso setup and how to load the data
+ */
 
 public class PubchemMeshSynonyms {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(PubchemMeshSynonyms.class);
 
-  // URL for the SPARQL endpoint, living on Chimay on port 8890
+  // URL for the Virtuoso SPARQL endpoint, living on Chimay on port 8890
   private static final String SERVICE = "http://10.0.20.19:8890/sparql";
 
   private static final String CID_PATTERN = "CID\\d+";
@@ -84,7 +90,8 @@ public class PubchemMeshSynonyms {
       .addWhere("?mesh_term", "meshv:lexicalTag", "?lexical_tag")
       ;
 
-  //This enum was mostly stolen and simplified from the PubchemTTLMerger class
+
+  //The PC_SYNONYM_TYPE enum was taken and simplified from the PubchemTTLMerger class
   public enum PC_SYNONYM_TYPE {
     // Names derived from the Semantic Chemistry Ontology: https://github.com/egonw/semanticchemistry
     TRIVIAL_NAME("CHEMINF_000109"),
@@ -176,23 +183,34 @@ public class PubchemMeshSynonyms {
     PubchemMeshSynonyms pubchemMeshSynonyms = new PubchemMeshSynonyms();
     String inchi = TEST_INCHI;
     String cid = pubchemMeshSynonyms.fetchCIDFromInchi(inchi);
-    Map<PC_SYNONYM_TYPE, Set<String>> pubchemSynonyms = pubchemMeshSynonyms.fetchPubchemSynonymsFromCID(cid);
-    LOGGER.info("Resulting Pubchem synonyms for %s are: \n%s", inchi, pubchemSynonyms);
-    Map<MESH_TERMS_TYPE, Set<String>> meshTerms = pubchemMeshSynonyms.fetchMeshTermsFromCID(cid);
-    LOGGER.info("Resulting MeSH term s for %s are: \n%s", inchi, meshTerms);
+    if (cid != null) {
+      Map<PC_SYNONYM_TYPE, Set<String>> pubchemSynonyms = pubchemMeshSynonyms.fetchPubchemSynonymsFromCID(cid);
+      LOGGER.info("Resulting Pubchem synonyms for %s are: \n%s", inchi, pubchemSynonyms);
+      Map<MESH_TERMS_TYPE, Set<String>> meshTerms = pubchemMeshSynonyms.fetchMeshTermsFromCID(cid);
+      LOGGER.info("Resulting MeSH term s for %s are: \n%s", inchi, meshTerms);
+    }
   }
 
   public String fetchCIDFromInchi(String inchi) {
-    Query query = prepareCIDQueryFromInchi(inchi);
+
+    SelectBuilder sb = CID_SELECT_STATEMENT.clone();
+    sb.setVar(Var.alloc("inchi_string"), NodeFactory.createLiteral(inchi, "en"));
+    Query query = sb.build();
+
+    String result;
     LOGGER.debug("Executing SPARQL query: \n%s", query.toString());
-    String result = getSingleResultFromQueryString(query, "inchi_iri");
+    try (QueryExecution qexec = QueryExecutionFactory.sparqlService(SERVICE, query)) {
+      ResultSet results = qexec.execSelect() ;
+      result = results.nextSolution().getResource("inchi_iri").toString();
+    }
+
     String cid = extractCIDFromResourceName(result);
     LOGGER.info("Found Pubchem Compound Id %s for input InChI %s", cid, inchi);
     return cid;
   }
 
 
-  public String extractCIDFromResourceName(String resourceName) {
+  private String extractCIDFromResourceName(String resourceName) {
     Pattern p = Pattern.compile(CID_PATTERN);
     Matcher m = p.matcher(resourceName);
     String cid = null;
@@ -201,8 +219,6 @@ public class PubchemMeshSynonyms {
     }
     return cid;
   }
-
-
 
   public Map<PC_SYNONYM_TYPE, Set<String>> fetchPubchemSynonymsFromCID(String cid) {
 
@@ -259,24 +275,5 @@ public class PubchemMeshSynonyms {
       }
     }
     return map;
-  }
-
-
-  public String getSingleResultFromQueryString(Query query, String header) {
-
-    String result = null;
-
-    try (QueryExecution qexec = QueryExecutionFactory.sparqlService(SERVICE, query)) {
-      ResultSet results = qexec.execSelect() ;
-      result = results.nextSolution().getResource(header).toString();
-    }
-    return result;
-  }
-
-
-  public Query prepareCIDQueryFromInchi(String inchi) {
-    SelectBuilder sb = CID_SELECT_STATEMENT.clone();
-    sb.setVar( Var.alloc( "inchi_string" ), NodeFactory.createLiteral(inchi, "en"));
-    return sb.build();
   }
 }
