@@ -44,7 +44,7 @@ public class Ero implements Serializable {
   private Integer product_count;
 
   @JsonIgnore
-  private Reactor reactor = null;
+  private transient Reactor reactor = null;
 
   public Ero() {}
 
