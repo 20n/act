@@ -147,6 +147,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
         positiveReplicateResults, minSnrThreshold, minIntensityThreshold, minTimeThreshold);
 
     Set<String> finalSet = new HashSet<>();
+    Set<String> otherSet = new HashSet<>();
     for (Pair<String, Double> inchiAndTime : inchis) {
       String inchi = inchiAndTime.getLeft();
       Double time = inchiAndTime.getRight();
@@ -154,11 +155,22 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
         if (time > inchiToTime.get(inchi) - 1 && time < inchiToTime.get(inchi) + 1) {
           finalSet.add(inchi);
         }
+      } else {
+        otherSet.add(inchi);
       }
     }
 
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(cl.getOptionValue(OPTION_OUTPUT_FILE)))) {
       for (String inchi : finalSet) {
+        predictionWriter.append(inchiToName.get(inchi));
+        predictionWriter.newLine();
+      }
+
+      predictionWriter.newLine();
+      predictionWriter.append("Other:");
+      predictionWriter.newLine();
+
+      for (String inchi : otherSet) {
         predictionWriter.append(inchiToName.get(inchi));
         predictionWriter.newLine();
       }
