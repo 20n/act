@@ -29,9 +29,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param msaFile       The multiple sequence alignment file to construct the profile from
     */
   def hmmbuild(outputHmmFile: File, msaFile: File): ShellJob  = {
-    constructJob(
-      HmmCommands.HmmBuild.get,
-      HmmCommands.HmmBuild,
+    constructJob(HmmCommands.HmmBuild.get, HmmCommands.HmmBuild,
       List("--amino", outputHmmFile.getAbsolutePath, msaFile.getAbsolutePath))
   }
 
@@ -48,7 +46,7 @@ object HmmerWrapper extends ToolWrapper {
 
     // Set a retry job of press if something goes wrong
     // If you want a laugh, read the documentation for this function with option -f , it will overwrite bad files
-    job.setJobToRunPriorToRetrying(constructJob(HmmCommands.HmmPress.get, HmmCommands.HmmPress,
+    job.setJobToRunPriorToRetry(constructJob(HmmCommands.HmmPress.get, HmmCommands.HmmPress,
       List("-f", hmmDatabase), retryJob = true))
     job
   }
