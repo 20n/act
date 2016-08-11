@@ -54,7 +54,8 @@ public class WindowingTraceExtractor {
   public static final String OPTION_SCAN_FILE = "i";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class windowed traces from an LCMS scan files, and writes them to an on-disk index for later processing."
+      "This class extracts windowed traces from an LCMS scan files, ",
+      "and writes them to an on-disk index for later processing."
   }, "");
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
