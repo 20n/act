@@ -36,15 +36,15 @@ trait WriteProteinSequencesToFasta {
   }
 
   private def writeFastaSequence(sequence: ProteinSequence, outputStream: FileOutputStream): Unit = {
-    var compoundCount: Integer = 0
+    var characterCount: Integer = 0
     val seq: String = sequence.getSequenceAsString()
 
     for (i <- Range(0, seq.length)) {
       outputStream.write(seq.charAt(i))
-      compoundCount += 1
-      if (compoundCount == lineLength) {
+      characterCount += 1
+      if (characterCount == lineLength) {
         outputStream.write(lineSep)
-        compoundCount = 0
+        characterCount = 0
       }
     }
 
