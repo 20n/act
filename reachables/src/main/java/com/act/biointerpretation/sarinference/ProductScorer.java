@@ -134,7 +134,7 @@ public class ProductScorer {
               bestSar.getPercentageHits());
     }
 
-    LOGGER.info("Sorting predictions.");
+    LOGGER.info("Sorting predictions by descending order.");
     List<L2Prediction> predictions = new ArrayList<>(predictionToSarMap.keySet());
     predictions.sort((a, b) ->
         (-Double.compare(predictionToSarMap.get(a).getPercentageHits(), predictionToSarMap.get(b).getPercentageHits())));

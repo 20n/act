@@ -145,19 +145,21 @@ public class LibMcsClustering {
     LOGGER.info("Importing molecules from inchi lists.");
     List<Molecule> molecules = null;
     if (cl.hasOption(OPTION_CLUSTER_FIRST)) {
-      molecules = importInchis(allSubstrateInchis, inchi -> positiveSubstrateInchis.contains(inchi));
+      molecules = importInchisWithLcmsResults(allSubstrateInchis, inchi -> positiveSubstrateInchis.contains(inchi));
     } else {
-      molecules = importInchis(positiveSubstrateInchis, inchi -> true);
+      molecules = importInchisWithLcmsResults(positiveSubstrateInchis, inchi -> true);
     }
     LOGGER.info("Building SAR tree with LibraryMCS.");
     LibraryMCS libMcs = new LibraryMCS();
     SarTree sarTree = new SarTree();
     sarTree.buildByClustering(libMcs, molecules);
 
-    Consumer<SarTreeNode> sarConfidenceCalculator = new SarHitPercentageCalculator(positiveCorpus, fullCorpus);
+    Consumer<SarTreeNode> sarConfidenceCalculator = null;
     if (cl.hasOption(OPTION_TREE_SCORING)) {
       sarConfidenceCalculator = new SarTreeBasedCalculator(positiveSubstrateInchis, sarTree);
       LOGGER.info("Only scoring SARs based on hits and misses within their subtrees.");
+    } else {
+      sarConfidenceCalculator = new SarHitPercentageCalculator(positiveCorpus, fullCorpus);
     }
 
     LOGGER.info("Scoring sars.");
@@ -182,7 +184,7 @@ public class LibMcsClustering {
    * @param lcmsTester The function used to classify inchis as LCMS positives or negatives.
    * @return The inchis as molecules.
    */
-  private static List<Molecule> importInchis(Collection<String> inchis, Predicate<String> lcmsTester) {
+  private static List<Molecule> importInchisWithLcmsResults(Collection<String> inchis, Predicate<String> lcmsTester) {
     List<Molecule> molecules = new ArrayList<>();
     for (String inchi : inchis) {
       try {
