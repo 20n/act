@@ -264,6 +264,12 @@ public class PubchemMeshSynonyms {
     LOGGER.debug("Executing SPARQL query: %s", query.toString());
     try (QueryExecution qexec = QueryExecutionFactory.sparqlService(sparqlService, query)) {
       ResultSet results = qexec.execSelect();
+      // TODO: we assume here that there is at most one CID per InChI and return the first CID
+      // Improve that behavior so we can stitch together many CID's synonyms.
+      if (!results.hasNext()) {
+        LOGGER.info("Could not find Pubchem Compound Id for input InChI %s", inchi);
+        return null;
+      }
       result = results.nextSolution().getResource("inchi_iri").getLocalName();
     }
 
