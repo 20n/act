@@ -60,55 +60,15 @@ abstract class Job(name: String) {
   def addFlag(value: JobFlag.Value): Unit = flags.append(value)
 
     // Job manager should know if has been marked as complete
-    if (isCompleted) JobManager.indicateJobCompleteToManager()
+    if (isCompleted) JobManager.indicateJobCompleteToManager(this.name)
   }
 
   /*
     User description of job
 
-  /**
-    * Defined by the given type of job to effectively run asynchronously.
-    */
-  def asyncJob()
-
-  /**
-    * Run the async job and sets status to 'Running'
-    */
-  def start(): Unit = {
-    // Killed jobs should never start
-    status.isKilled match {
-      case true => logger.debug("Attempted to start a killed job.")
-
-      case false =>
-        status.isNotStarted match {
-          case true =>
-            logger.trace(s"Started command ${this}")
-            internalState.setJobStatus(StatusCodes.Running)
-            asyncJob()
-
-          case false =>
-            val message = s"Attempted to start a job that has already been started.  " +
-              s"Job name is $getName with current status ${internalState.statusManager.getJobStatus}"
-            logger.fatal(message)
-            throw new RuntimeException(message)
-        }
-    }
-  }
-
-  private def status: StatusManager = internalState.statusManager
-
-  def getName: String = {
-    this.name
-  }
-
-  def runNextJob(): Unit = {
-    internalState.runManager.runNextJob(internalState.dependencyManager)
-  }
-
-  def addCancelFunction(cancelFunction: () => Boolean): Unit = {
-    internalState.setCancelCurrentJobFunction(cancelFunction)
-  }
-
+    Any method here should return this job to allow for chaining
+    Allows sequential job chaining (Ex: job1.thenRun(job2).thenRun(job3))
+   */
   /**
     * This job will be run if the current job fails, prior to attempt to rerun the current job.
     *
@@ -268,11 +228,13 @@ class InternalState(job: Job) {
     * @param newStatus What new status should be assigned to the job
     */
   protected def markAsSuccess(): Unit = {
-    // The success is if the future succeeded.
-    // We need to also check the return code and redirect to failure here if it completed, but with a bad return code
+    /*
+      The success is if the future succeeded.
+      We need to also check the return code and redirect to failure here if it completed, but with a bad return code
+     */
     setJobStatus(JobStatus.Success)
     handleIfJobTotallyComplete()
-    runNextJob()
+    runNextJobIfReady()
   }
 
   /**
@@ -418,18 +380,23 @@ class InternalState(job: Job) {
   }
 
   protected def handleIfJobTotallyComplete(): Unit = {
-    if (returnJob.isDefined && returnCounter.getCount <= 0) {
+    if (returnJob.isDefined && returnCounter.getCount <= 0 && jobBuffer.length <= 0) {
       // Decrease return number
       returnJob.get.decreaseReturnCount()
 
       // Try to start it again and let it handle if it should
-      returnJob.get.runNextJob()
+      returnJob.get.runNextJobIfReady()
     }
   }
 
-  def isKilled: Boolean = {
-    getJobStatus.equals(StatusCodes.Killed)
-  }
+  /**
+    * Checks to make sure we aren't waiting on anymore jobs.
+    * If we aren't, removes the first element of the jobBuffer and runs all jobs in that list.
+    */
+  protected def runNextJobIfReady(): Unit = {
+    if (returnCounter.getCount > 0) {
+      return
+    }
 
   def isSuccessful: Boolean = {
     getJobStatus == StatusCodes.Success

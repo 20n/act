@@ -1,9 +1,13 @@
 package com.act.workflow.tool_manager.jobs.management
 
 import com.act.workflow.tool_manager.tool_wrappers.ShellWrapper
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
 
-class JobManagerTest extends FlatSpec with Matchers {
+class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
+  override def afterEach(): Unit = {
+    JobManager.clearManager()
+  }
+
   // Job complete size should be the same as number of jobs successful.
   "Job Manager" should "have an equal count of completed jobs and " +
     "number of jobs in list of order in which jobs completed." in {
@@ -22,7 +26,5 @@ class JobManagerTest extends FlatSpec with Matchers {
     JobManager.awaitUntilAllJobsComplete()
 
     JobManager.getOrderOfJobCompletion.length should be(JobManager.completedJobsCount())
-
-    JobManager.clearManager()
   }
 }

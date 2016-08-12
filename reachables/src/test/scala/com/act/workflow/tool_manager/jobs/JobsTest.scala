@@ -2,9 +2,13 @@ package com.act.workflow.tool_manager.jobs
 
 import com.act.workflow.tool_manager.jobs.management.JobManager
 import com.act.workflow.tool_manager.tool_wrappers.ShellWrapper
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
 
-class JobsTest extends FlatSpec with Matchers {
+class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
+  override def afterEach(): Unit = {
+    JobManager.clearManager()
+  }
+
   "Jobs" should "run sequentially in order." in {
     /*
       Structure of this test:
@@ -25,8 +29,6 @@ class JobsTest extends FlatSpec with Matchers {
     val validOrders = List(List("A", "B", "C", "D"))
 
     validOrders.contains(JobManager.getOrderOfJobCompletion) should be(true)
-
-    JobManager.clearManager()
   }
 
   "Jobs" should "run in parallel should keep order between children" in {
@@ -59,8 +61,6 @@ class JobsTest extends FlatSpec with Matchers {
     val validOrders = List(List("A", "B", "C", "b1", "b2", "b3"), List("A", "C", "B", "b1", "b2", "b3"))
 
     validOrders.contains(JobManager.getOrderOfJobCompletion) should be(true)
-
-    JobManager.clearManager()
   }
 
   "Jobs" should "should complete parallel paths independently of how long each take." in {
@@ -93,8 +93,6 @@ class JobsTest extends FlatSpec with Matchers {
     val validOrders = List(List("A", "B", "b1", "b2", "b3", "C"))
 
     validOrders.contains(JobManager.getOrderOfJobCompletion) should be(true)
-
-    JobManager.clearManager()
   }
 
   "Jobs" should "be able to have two divergent branches come together at the end" in {
@@ -123,10 +121,8 @@ class JobsTest extends FlatSpec with Matchers {
 
     // B and C can be ordered in either way because of running in parallel.
     val validOrders = List(List("A", "B", "C", "b1", "b2", "b3", "D"), List("A", "C", "B", "b1", "b2", "b3", "D"))
-
+    println(JobManager.getOrderOfJobCompletion)
     validOrders.contains(JobManager.getOrderOfJobCompletion) should be(true)
-
-    JobManager.clearManager()
   }
 
   "Jobs" should "be able to have a convergent branch start more divergence" in {
@@ -158,9 +154,6 @@ class JobsTest extends FlatSpec with Matchers {
       List("A", "C", "B", "D", "E", "F"),
       List("A", "C", "B", "D", "F", "E")
     )
-
     validOrders.contains(JobManager.getOrderOfJobCompletion) should be(true)
-
-    JobManager.clearManager()
   }
 }

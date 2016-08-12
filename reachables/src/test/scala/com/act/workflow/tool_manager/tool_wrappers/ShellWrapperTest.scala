@@ -7,9 +7,10 @@ import org.scalatest._
 import org.scalatest.concurrent.{ThreadSignaler, TimeLimitedTests}
 import org.scalatest.time.SpanSugar._
 
-class ShellWrapperTest extends FlatSpec with Matchers with TimeLimitedTests with BeforeAndAfterEach {
-  override val defaultTestSignaler = ThreadSignaler
-  val timeLimit = 15 seconds
+class ShellWrapperTest extends FlatSpec with Matchers with BeforeAndAfterEach {
+  override def afterEach(): Unit = {
+    JobManager.clearManager()
+  }
 
   override def beforeEach(): Unit = {
     JobManager.setVerbosity(0)
@@ -18,14 +19,12 @@ class ShellWrapperTest extends FlatSpec with Matchers with TimeLimitedTests with
   "The ShellWrapper" should "not start jobs prior to start being called" in {
     val command = ShellWrapper.shellCommand("date", List("date"))
 
-
-  def successfulJob(command: Job): Unit = {
-    command.internalState.statusManager.isSuccessful should be(true)
-    command.internalState.statusManager.isFailed should be(false)
-    command.internalState.statusManager.isCompleted should be(true)
-    command.internalState.statusManager.isRunning should be(false)
-    command.internalState.statusManager.isNotStarted should be(false)
-    command.internalState.getReturnCode should be(0)
+    command.isSuccessful should be(false)
+    command.isFailed should be(false)
+    command.isCompleted should be(false)
+    command.isRunning should be(false)
+    command.isUnstarted should be(true)
+    command.returnCode should be(-1)
   }
 
   "The ShellWrapper" should "indicate valid commands complete" in {
@@ -38,10 +37,7 @@ class ShellWrapperTest extends FlatSpec with Matchers with TimeLimitedTests with
       command.doNotWriteOutputStream()
       command.doNotWriteErrorStream()
 
-      JobManager.startJobAndAwaitUntilWorkflowComplete(command)
-
-      successfulJob(command)
-    }
+    successfulJob(command)
   }
 
 
@@ -56,8 +52,6 @@ class ShellWrapperTest extends FlatSpec with Matchers with TimeLimitedTests with
     command.isRunning should be(false)
     command.isUnstarted should be(false)
     command.returnCode shouldNot be(0)
-
-    JobManager.clearManager()
   }
 
   "The ShellWrapper" should "indicate a job is running when it is running" in {
@@ -70,8 +64,6 @@ class ShellWrapperTest extends FlatSpec with Matchers with TimeLimitedTests with
     command.isRunning should be(true)
     command.isUnstarted should be(false)
     command.returnCode shouldNot be(0)
-
-    JobManager.clearManager()
   }
 
   "The ShellWrapper" should "allow for chaining of jobs" in {
@@ -86,11 +78,12 @@ class ShellWrapperTest extends FlatSpec with Matchers with TimeLimitedTests with
 
       command1.thenRun(command2)
 
-      JobManager.startJobAndAwaitUntilWorkflowComplete(command1)
-
-      successfulJob(command1)
-      successfulJob(command2)
-    }
+    command2.isSuccessful should be(true)
+    command2.isFailed should be(false)
+    command2.isCompleted should be(true)
+    command2.isRunning should be(false)
+    command2.isUnstarted should be(false)
+    command2.returnCode should be(0)
   }
 }
 
