@@ -38,6 +38,10 @@ public class WindowingTraceAnalyzer {
 
   private static final String PLOT_FORMAT_EXTENSION = "pdf";
 
+  private static final Double MIN_TIME_THRESHOLD_SECONDS = 15.0;
+  private static final Double MIN_INTENSITY_THRESHOLD = 100.0;
+  private static final Double MAX_LOG_SNR_THRESHOLD = 1000.0;
+
   private static final String OPTION_INDEX_PATH = "x";
   private static final String OPTION_PLOT_PREFIX = "p";
   private static final String OPTION_OUTPUT_PATH = "o";
@@ -239,11 +243,20 @@ public class WindowingTraceAnalyzer {
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(dataFile))) {
       // Pull out the features of each window and write them as tables so we can plot them across the M/Z domain.
 
+      /* Filter out some nonsensical or useless results when producing the graphs, which just add noise to already very
+       * busy plots.  Note that these only apply to the plots, not to the results (we can always filter post-analysis).
+       *
+       * Retention times < 15.0s usually indicate junk that has flowed in with the dead volume, and historically we've
+       * been okay ignoring it.  I know we've detected some molecules before this time, but anything that shows up in
+       * the first 10 to 20s of a run is highly suspicious.  Our min-threshold is pretty generous and avoids cases
+       * where a window might be dividing by zero or something terrible like that.  The LogSNR threshold is in place to
+       * avoid allowing `Infinity` values from reaching gnuplot, which confsuse it.  These are also probably due to
+       * dividing by zero.  */
       List<WindowAnalysisResult> filteredResults =
           analysisResults.stream().
-              filter(r -> r.getPeakTime() >= 25.0).
-              filter(r -> r.getPeakIntensity() >= 100.0). // This is well below the noise floor.
-              filter(r -> r.getLogSnr() <= 1000.0). // Probably means div by zero.
+              filter(r -> r.getPeakTime() >= MIN_TIME_THRESHOLD_SECONDS). // Anything before is likely dead volume.
+              filter(r -> r.getPeakIntensity() >= MIN_INTENSITY_THRESHOLD). // This is well below the noise floor.
+              filter(r -> r.getLogSnr() <= MAX_LOG_SNR_THRESHOLD). // Probably means div by zero.
               collect(Collectors.toList());
 
       // First write the log SNRs.
