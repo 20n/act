@@ -18,6 +18,6 @@ trait EcnumToSequences extends QueryByEcNumber with QueryByReactionId {
     // Documents are keyed on their IDs
     val reactionIds = queryReactionsForReactionIdsByEcNumber(roughEcnum, mongoConnection)
     methodLogger.info("Discovering and writing sequences to FASTA file")
-    createFastaReactionId(reactionIds.keySet.toList, outputFastaFile, mongoConnection)
+    createFastaByReactionId(reactionIds.keySet.toList, outputFastaFile, mongoConnection)
   }
 }
