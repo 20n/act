@@ -153,6 +153,8 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
       Double time = inchiAndTime.getRight();
       if (inchiToTime.containsKey(inchi)) {
         if (time > inchiToTime.get(inchi) - 1 && time < inchiToTime.get(inchi) + 1) {
+          System.out.println("time is: " + time);
+          System.out.println("name is: " + inchiToName.get(inchi));
           finalSet.add(inchi);
         } else {
           //finalSet.add(inchi);
