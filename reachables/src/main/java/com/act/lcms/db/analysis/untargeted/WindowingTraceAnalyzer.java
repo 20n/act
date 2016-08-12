@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class WindowingTraceAnalyzer {
   private static final Logger LOGGER = LogManager.getFormatterLogger(WindowingTraceAnalyzer.class);
@@ -238,16 +239,23 @@ public class WindowingTraceAnalyzer {
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(dataFile))) {
       // Pull out the features of each window and write them as tables so we can plot them across the M/Z domain.
 
+      List<WindowAnalysisResult> filteredResults =
+          analysisResults.stream().
+              filter(r -> r.getPeakTime() >= 25.0).
+              filter(r -> r.getPeakIntensity() >= 100.0). // This is well below the noise floor.
+              filter(r -> r.getLogSnr() <= 1000.0). // Probably means div by zero.
+              collect(Collectors.toList());
+
       // First write the log SNRs.
-      analysisResults.stream().filter(r -> r.getPeakTime() > 25.0).
+      filteredResults.stream().
           map(r -> Pair.of(WindowingTraceExtractor.windowCenterFromMin(r.getMinMz()),
-              Double.min(1000.0, Double.max(0.00, r.getLogSnr())))).
+              Double.max(0.00, r.getLogSnr()))). // -100 LogSNR values don't help, so just zero them out.
           forEach(p -> writeRow(writer, p));
-      snrMax = analysisResults.stream().map(WindowAnalysisResult::getLogSnr).max(Double::compare).map(x -> Double.min(x, 1000.0));
+      snrMax = analysisResults.stream().map(WindowAnalysisResult::getLogSnr).max(Double::compare);
       writer.write("\n\n");
 
       // Then write the peak intensities.
-      analysisResults.stream().filter(r -> r.getPeakTime() > 25.0).
+      filteredResults.stream().
           map(r -> Pair.of(WindowingTraceExtractor.windowCenterFromMin(r.getMinMz()), r.getPeakIntensity())).
           forEach(p -> writeRow(writer, p));
       intensityMax =
@@ -255,9 +263,8 @@ public class WindowingTraceAnalyzer {
       writer.write("\n\n");
 
       // Then write the peak retention times, which will make the least sense.
-      analysisResults.stream().filter(r -> r.getPeakTime() > 25.0).
-          map(r -> Pair.of(WindowingTraceExtractor.windowCenterFromMin(r.getMinMz()),
-              Double.max(0.00, r.getPeakTime()))).
+      filteredResults.stream().
+          map(r -> Pair.of(WindowingTraceExtractor.windowCenterFromMin(r.getMinMz()), r.getPeakTime())).
           forEach(p -> writeRow(writer, p));
       timeMax = analysisResults.stream().map(WindowAnalysisResult::getPeakTime).max(Double::compare);
       writer.write("\n\n");
@@ -270,6 +277,8 @@ public class WindowingTraceAnalyzer {
           "LogSNR", 0, snrMax.get()));
       add(new Gnuplotter.PlotConfiguration(Gnuplotter.PlotConfiguration.KIND.GRAPH,
           "Max Intensity", 1, intensityMax.get()));
+      add(new Gnuplotter.PlotConfiguration(Gnuplotter.PlotConfiguration.KIND.GRAPH,
+          "Retention time", 2, timeMax.get()));
     }};
     plotter.plot2D(dataFile.getAbsolutePath(), outputFile.getAbsolutePath(), "M/Z", "LogSNR or Intensity",
         PLOT_FORMAT_EXTENSION, null, null, plotConfigurations, gnuplotFile.getAbsolutePath());
