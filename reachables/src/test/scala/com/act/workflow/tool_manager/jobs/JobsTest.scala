@@ -1,12 +1,17 @@
 package com.act.workflow.tool_manager.jobs
 
 import com.act.workflow.tool_manager.jobs.management.JobManager
-import com.act.workflow.tool_manager.tool_wrappers.ShellWrapper
+import com.act.workflow.tool_manager.tool_wrappers.{ScalaJobWrapper, ShellWrapper}
 import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
 
 class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
   override def afterEach(): Unit = {
     JobManager.clearManager()
+  }
+
+  def immediateReturnJob(name: String): ScalaJob = {
+    val excitingFunction: () => Unit = () => Unit
+    ScalaJobWrapper.wrapScalaFunction(name, excitingFunction)
   }
 
   "Jobs" should "run sequentially in order." in {
@@ -15,10 +20,10 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
       #  A -> B -> C -> D
 
      */
-    val A = ShellWrapper.shellCommand("A", List("date"))
-    val B = ShellWrapper.shellCommand("B", List("date"))
-    val C = ShellWrapper.shellCommand("C", List("date"))
-    val D = ShellWrapper.shellCommand("D", List("date"))
+    val A = immediateReturnJob("A")
+    val B = immediateReturnJob("B")
+    val C = immediateReturnJob("C")
+    val D = immediateReturnJob("D")
 
     A.thenRun(B).thenRun(C).thenRun(D)
 
@@ -26,47 +31,17 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     JobManager.awaitUntilAllJobsComplete()
 
     // B and C can be ordered in either way because of running in paralle.
-    val validOrders = List(List("A", "B", "C", "D"))
+    val validOrder = List("A", "B", "C", "D")
 
-    validOrders.contains(JobManager.getOrderOfJobCompletion) should be(true)
-  }
-
-  "Jobs" should "run in parallel should keep order between children" in {
-    /*
-
-      B takes about as long as C, so they could complete in either order.
-
-      Structure of this test:
-      #     B -> b1 -> b2 -> b3
-      #   /
-      # A
-      #  \
-      #    -------> C
-
-     */
-    val A = ShellWrapper.shellCommand("A", List("sleep", "1"))
-    val B = ShellWrapper.shellCommand("B", List("sleep", "1"))
-    val b1 = ShellWrapper.shellCommand("b1", List("sleep", "1"))
-    val b2 = ShellWrapper.shellCommand("b2", List("sleep", "1"))
-    val b3 = ShellWrapper.shellCommand("b3", List("sleep", "1"))
-    val C = ShellWrapper.shellCommand("C", List("sleep", "1"))
-
-    A.thenRunBatch(List(B, C))
-    B.thenRun(b1).thenRun(b2).thenRun(b3)
-
-    A.start()
-    JobManager.awaitUntilAllJobsComplete()
-
-    // B and C can be ordered in either way because of running in paralle.
-    val validOrders = List(List("A", "B", "C", "b1", "b2", "b3"), List("A", "C", "B", "b1", "b2", "b3"))
-
-    validOrders.contains(JobManager.getOrderOfJobCompletion) should be(true)
+    JobManager.getOrderOfJobCompletion should equal(validOrder)
   }
 
   "Jobs" should "should complete parallel paths independently of how long each take." in {
     /*
 
-      C runs much longer than B + b1 + b2 + b3, so we expect C to complete last even though it was started with B
+      C runs much longer than B + b1 + b2 + b3, so we expect C to complete last even though it was started with B.
+      We don't actually want our tests to wait for C,
+      so we just verify that everything but C completes in the correct order.
 
       Structure of this test:
       #     B -> b1 -> b2 -> b3
@@ -76,23 +51,28 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
       #    -------> C
 
      */
-    val A = ShellWrapper.shellCommand("A", List("sleep", "1"))
-    val B = ShellWrapper.shellCommand("B", List("sleep", "1"))
-    val b1 = ShellWrapper.shellCommand("b1", List("sleep", "1"))
-    val b2 = ShellWrapper.shellCommand("b2", List("sleep", "1"))
-    val b3 = ShellWrapper.shellCommand("b3", List("sleep", "1"))
-    val C = ShellWrapper.shellCommand("C", List("sleep", "6"))
+    val A = immediateReturnJob("A")
+    val B = immediateReturnJob("B")
+    val b1 = immediateReturnJob("b1")
+    val b2 = immediateReturnJob("b2")
+    val b3 = immediateReturnJob("b3")
+    // Won't take 50 seconds as should exit after b3 complete.
+    val C = ShellWrapper.shellCommand("C", List("sleep", "50"))
 
     A.thenRunBatch(List(B, C))
     B.thenRun(b1).thenRun(b2).thenRun(b3)
 
     A.start()
-    JobManager.awaitUntilAllJobsComplete()
+    JobManager.awaitUntilSpecificJobComplete(b3)
 
-    // B and C can be ordered in either way because of running in paralle.
-    val validOrders = List(List("A", "B", "b1", "b2", "b3", "C"))
-
-    validOrders.contains(JobManager.getOrderOfJobCompletion) should be(true)
+    // C should be killed as it completes after b3 based on time.
+    A.isCompleted should be(true)
+    B.isCompleted should be(true)
+    b1.isCompleted should be(true)
+    b2.isCompleted should be(true)
+    b3.isCompleted should be(true)
+    C.isKilled should be(true)
+    C.isFailed should be(true)
   }
 
   "Jobs" should "be able to have two divergent branches come together at the end" in {
@@ -105,13 +85,13 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
       #    -------> C --------
 
      */
-    val A = ShellWrapper.shellCommand("A", List("sleep", "1"))
-    val B = ShellWrapper.shellCommand("B", List("sleep", "1"))
-    val b1 = ShellWrapper.shellCommand("b1", List("sleep", "1"))
-    val b2 = ShellWrapper.shellCommand("b2", List("sleep", "1"))
-    val b3 = ShellWrapper.shellCommand("b3", List("sleep", "1"))
-    val C = ShellWrapper.shellCommand("C", List("sleep", "1"))
-    val D = ShellWrapper.shellCommand("D", List("sleep", "1"))
+    val A = immediateReturnJob("A")
+    val B = immediateReturnJob("B")
+    val b1 = immediateReturnJob("b1")
+    val b2 = immediateReturnJob("b2")
+    val b3 = immediateReturnJob("b3")
+    val C = immediateReturnJob("C")
+    val D = immediateReturnJob("D")
 
     A.thenRunBatch(List(B, C)).thenRun(D)
     B.thenRun(b1).thenRun(b2).thenRun(b3)
@@ -119,10 +99,8 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     A.start()
     JobManager.awaitUntilAllJobsComplete()
 
-    // B and C can be ordered in either way because of running in parallel.
-    val validOrders = List(List("A", "B", "C", "b1", "b2", "b3", "D"), List("A", "C", "B", "b1", "b2", "b3", "D"))
-    println(JobManager.getOrderOfJobCompletion)
-    validOrders.contains(JobManager.getOrderOfJobCompletion) should be(true)
+    // Last job should be D
+    JobManager.getOrderOfJobCompletion.last should be("D")
   }
 
   "Jobs" should "be able to have a convergent branch start more divergence" in {
@@ -135,12 +113,12 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
       #     C ->         F
 
      */
-    val A = ShellWrapper.shellCommand("A", List("sleep", "1"))
-    val B = ShellWrapper.shellCommand("B", List("sleep", "1"))
-    val C = ShellWrapper.shellCommand("C", List("sleep", "1"))
-    val D = ShellWrapper.shellCommand("D", List("sleep", "1"))
-    val E = ShellWrapper.shellCommand("E", List("sleep", "1"))
-    val F = ShellWrapper.shellCommand("F", List("sleep", "1"))
+    val A = immediateReturnJob("A")
+    val B = immediateReturnJob("B")
+    val C = immediateReturnJob("C")
+    val D = immediateReturnJob("D")
+    val E = immediateReturnJob("E")
+    val F = immediateReturnJob("F")
 
     A.thenRunBatch(List(B, C)).thenRun(D).thenRunBatch(List(E, F))
 
@@ -148,12 +126,9 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     JobManager.awaitUntilAllJobsComplete()
 
     // B and C and E and F are in parallel so order can vary
-    val validOrders = List(
-      List("A", "B", "C", "D", "E", "F"),
-      List("A", "B", "C", "D", "F", "E"),
-      List("A", "C", "B", "D", "E", "F"),
-      List("A", "C", "B", "D", "F", "E")
-    )
-    validOrders.contains(JobManager.getOrderOfJobCompletion) should be(true)
+    JobManager.getOrderOfJobCompletion.head should be("A")
+    JobManager.getOrderOfJobCompletion(2) should (equal("B") or equal("C"))
+    JobManager.getOrderOfJobCompletion(3) should be("D")
+    JobManager.getOrderOfJobCompletion(4) should (equal("E") or equal("F"))
   }
 }

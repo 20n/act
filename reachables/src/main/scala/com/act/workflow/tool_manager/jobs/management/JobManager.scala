@@ -17,7 +17,9 @@ object JobManager {
   // Lock for job manager
   private var numberLock = new AtomicLatch()
 
-  private var jobCompleteOrdering = new ListBuffer[String]
+  private var jobCompleteOrdering = new ListBuffer[Job]
+
+  private var jobToAwaitFor: Option[Job] = None
 
 
   /**
@@ -27,7 +29,7 @@ object JobManager {
     jobToAwaitFor = None
     jobs = new ListBuffer[Job]()
     numberLock = new AtomicLatch()
-    jobCompleteOrdering = new ListBuffer[String]
+    jobCompleteOrdering = new ListBuffer[Job]
   }
 
   /**
@@ -60,69 +62,13 @@ object JobManager {
     instantiateCountDownLockAndWait()
   }
 
-  def startJobAndKillWorkflowAfterSpecificJobCompletes(firstJob: Job, jobToWaitFor: Job): Unit = {
+  def awaitUntilSpecificJobComplete(jobToWaitFor: Job): Unit = {
     require(jobs.nonEmpty, message = "Cannot await when no jobs have been started.  " +
       "Make sure to call start() on a job prior to awaiting.")
-    verifyAllJobsAreReachableAndNoCycles(firstJob)
 
     this.jobToAwaitFor = Option(jobToWaitFor)
-    firstJob.start()
+
     instantiateCountDownLockAndWait()
-  }
-
-  def indicateJobCompleteToManager(job: Job) {
-    if (!jobs.contains(job)) {
-      /*
-        This job doesn't currently exist in the known jobs but for some reason is hitting the manager.
-        Likely means an old or incorrectly run job so we log the error and move on, but don't let it change things.
-        Given our kill behavior this should not happen, but just in case we have the check below.
-       */
-      val message = s"A job $job that doesn't exist in job buffer tried to modify Job Manager."
-      logger.error(message)
-      return
-    }
-
-    // If we are waiting for a job and find that job, release the number lock
-    if (jobToAwaitFor.isDefined) {
-      if (job.equals(jobToAwaitFor.get)) {
-        // Cancel all futures still running.  If we kill the jobs here, we don't have to worry about the
-        // time difference between the lock releasing and us handling those
-        // conditions normally and another job starting in the meantime.
-        jobs.foreach(_.internalState.killIncompleteJobs())
-        numberLock.releaseLock()
-      }
-    } else {
-      numberLock.countDown()
-    }
-    jobCompleteOrdering.append(job)
-
-    logger.trace(s"<Concurrent jobs running = ${runningJobsCount()}>")
-    logger.trace(s"<Current jobs awaiting to run = ${waitingJobsCount()}>")
-    logger.trace(s"<Completed jobs = ${completedJobsCount()}>")
-  }
-
-  private def waitingJobsCount(): Int = {
-    jobs.length - (completedJobsCount() + runningJobsCount())
-  }
-
-  def completedJobsCount(): Int = {
-    jobs.count(_.internalState.statusManager.isCompleted)
-  }
-
-  private def runningJobsCount(): Int = {
-    jobs.count(_.internalState.statusManager.isRunning)
-  }
-
-  def getMapOfJobNamesToStatuses: Map[String, String] = {
-    (getOrderOfJobCompletion zip getOrderOfJobStatuses) toMap
-  }
-
-  def getOrderOfJobCompletion: List[String] = {
-    jobCompleteOrdering.toList.map(x => x.getName)
-  }
-
-  def getOrderOfJobStatuses: List[String] = {
-    jobCompleteOrdering.toList.map(_.internalState.statusManager.getJobStatus)
   }
 
   /**
@@ -130,6 +76,8 @@ object JobManager {
     */
   private def instantiateCountDownLockAndWait() = {
     numberLock.await()
+    // Cancel all futures still running
+    jobs.foreach(_.killUncompleteJob)
 
     logger.info("All jobs have completed.")
     logger.info(s"Number of jobs run = ${completedJobsCount()}")
@@ -140,7 +88,7 @@ object JobManager {
   }
 
   private def killedJobsCount(): Int = {
-    jobs.count(_.internalState.statusManager.isKilled)
+    jobs.count(x => x.isKilled)
   }
 
   private def unstartedJobsCount(): Int = {
@@ -155,16 +103,29 @@ object JobManager {
     jobs.count(x => x.isSuccessful)
   }
 
-  def indicateJobCompleteToManager(name: String) {
-    jobCompleteOrdering.append(name)
+  def completedJobsCount(): Int = {
+    jobs.count(x => x.isCompleted)
+  }
+
+  def indicateJobCompleteToManager(job: Job) {
+    // This job doesn't currently exist in the known jobs but for some reason is hitting the manager.
+    // Likely means an old or incorrectly run job so we log the error and move on, but don't let it change things.
+    // Given our kill behavior this should not happen, but just in case we have this here.
+    if (!jobs.contains(job)) {
+      logger.error(s"A job $job that doesn't exist in job buffer tried to modify Job Manager.")
+      return
+    }
+    jobCompleteOrdering.append(job)
+
+    // If we are waiting for a job and find that job, release the number lock
+    if (jobToAwaitFor.isDefined)
+      if (job.equals(jobToAwaitFor.get)) {
+        numberLock.releaseLock()
+      }
     numberLock.countDown()
     logger.info(s"<Concurrent jobs running = ${runningJobsCount()}>")
     logger.info(s"<Current jobs awaiting to run = ${waitingJobsCount()}>")
     logger.info(s"<Completed jobs = ${completedJobsCount()}>")
-  }
-
-  def completedJobsCount(): Int = {
-    jobs.count(x => x.isCompleted)
   }
 
   private def waitingJobsCount(): Int = {
@@ -175,8 +136,16 @@ object JobManager {
     jobs.count(x => x.isRunning)
   }
 
+  def getMapOfJobNamesToStatuses: Map[String, String] = {
+    (getOrderOfJobCompletion zip getOrderOfJobStatuses) toMap
+  }
+
   def getOrderOfJobCompletion: List[String] = {
-    jobCompleteOrdering.toList
+    jobCompleteOrdering.toList.map(x => x.getName)
+  }
+
+  def getOrderOfJobStatuses: List[String] = {
+    jobCompleteOrdering.toList.map(x => x.getJobStatus)
   }
 
   /*
