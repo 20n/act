@@ -40,9 +40,8 @@ public class L2FilteringDriver {
   private static final String LOOKUP_CHEMICALS = "c";
 
   public static final String HELP_MESSAGE =
-      "This class is used to filter an L2PredictionCorpus. It contains two filters, each of which can be applied " +
-          "as is, or negated and then applied, to the corpus.  After all selected filtering steps are performed, the " +
-          "resulting corpus is printed in json format.";
+      "This class is used to filter an L2PredictionCorpus. An initial corpus is read in from file, processed based on" +
+          "the selected options, and then the result is printed in json format.";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_INPUT_CORPUS)
@@ -63,33 +62,38 @@ public class L2FilteringDriver {
         .argName("chemical db filter")
         .desc("Use the chemical filter.  Input the value " + APPLY_FILTER_POSITIVE + " to keep predictions whose " +
             "chemicals were all found in the DB, or " + APPLY_FILTER_NEGATED + " to keep those whose chemicals " +
-            "were not all found.")
+            "were not all found. This step must either be run on a corpus that already has chemical DB info, or " +
+            "supplied in conjunction with the db-lookup option to populate the chemical info fields before filtering.")
         .hasArg()
         .longOpt("chemical-db-filter")
     );
     add(Option.builder(OPTION_REACTION_FILTER)
         .argName("reaction db filter")
         .desc("Use the reaction filter.  Input the value " + APPLY_FILTER_POSITIVE + " to keep predictions which " +
-            "match a reaction in the DB, or " + APPLY_FILTER_NEGATED + " to keep those which don't.")
+            "match a reaction in the DB, or " + APPLY_FILTER_NEGATED + " to keep those which don't. This step must " +
+            "either be run on a corpus that already has reaction DB info, supplied in conjunction with the db-lookup " +
+            "option to populate the reaction info fields before filtering.")
         .hasArg()
         .longOpt("reaction-db-filter")
     );
     add(Option.builder(OPTION_DB_LOOKUP)
         .argName("db name")
-        .desc("Mongo DB to use for lookups.")
+        .desc("Mongo DB to use for lookups; needed only if population of chemical and reaction DB info is desired..")
         .hasArg()
         .longOpt("db-name"));
     add(Option.builder(OPTION_LOOKUP_TYPES)
         .argName("db lookup types")
         .desc("This argument specifies which lookup types to use. Use " + LOOKUP_CHEMICALS + " for chemical lookups, " +
-            LOOKUP_REACTIONS + " for reaction lookups, or both.")
+            LOOKUP_REACTIONS + " for reaction lookups, or both. These lookups compare the predictions against our DB " +
+            "and populate the chemical and reaction fields of the L2Predictions accordingly.")
         .hasArgs()
         .valueSeparator(',')
         .longOpt("db-lookup-types"));
     add(Option.builder(OPTION_SPLIT_BY_RO)
         .argName("split by ro")
-        .desc("If this argument is selected, the input corpus is read in, split up by ro, and written out into a different" +
-            "output file for each ro.  The files have the ro id appended to the end of their names.")
+        .desc("If this argument is selected, the input corpus is read in, split up by ro, and written out into a " +
+            "different output file for each ro found in the corpus. The files have the ro id appended to the end of " +
+            "their names to distinguish them.")
         .longOpt("split-by-ro"));
     add(Option.builder(OPTION_FILTER_SUBSTRATES)
         .argName("filter substrates path")
