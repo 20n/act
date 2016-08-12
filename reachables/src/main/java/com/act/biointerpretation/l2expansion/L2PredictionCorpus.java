@@ -25,6 +25,8 @@ import java.util.function.Predicate;
 public class L2PredictionCorpus implements Serializable {
   private static final long serialVersionUID = 2502953593841339815L;
 
+  /* TODO: add tests of serialization for this class an its neighbors.  We should ensure we can successfully consume
+   * prediction results w/ any class of SAR so we don't get stuck with results that are locked up in unreadable JSON. */
   private static transient final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   static {
