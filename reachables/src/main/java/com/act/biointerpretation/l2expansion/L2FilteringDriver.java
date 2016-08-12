@@ -175,7 +175,7 @@ public class L2FilteringDriver {
       inchiSet.addAll(inchis.getInchiList());
 
       predictionCorpus = predictionCorpus.applyFilter(
-          prediction -> inchiSet.contains(prediction.getSubstrateInchis().get(0)));
+          prediction -> inchiSet.containsAll(prediction.getSubstrateInchis()));
 
       predictionCorpus.writePredictionsToJsonFile(outputFile);
       LOGGER.info("Done writing filtered corpus to file.");

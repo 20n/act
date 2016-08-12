@@ -22,7 +22,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 
 public class ProductScorer {
 
@@ -115,7 +114,7 @@ public class ProductScorer {
 
     LOGGER.info("Number of sars: %d", scoredSars.getSarTreeNodes().size());
 
-    Function<L2Prediction, Optional<SarTreeNode>> bestSarFinder = new BestSarFinder(scoredSars);
+    BestSarFinder bestSarFinder = new BestSarFinder(scoredSars);
 
     Map<L2Prediction, SarTreeNode> predictionToSarMap = new HashMap<>();
 

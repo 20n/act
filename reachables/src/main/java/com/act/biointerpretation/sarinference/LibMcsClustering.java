@@ -66,8 +66,8 @@ public class LibMcsClustering {
       );
       add(Option.builder(OPTION_TREE_SCORING)
           .argName("tree scoring")
-          .desc("Score based on hits and misses found in subtree of SAR; don't apply SAR elsewhere. This should only " +
-              "be run in conjunction with the <cluster first> option.")
+          .desc("Score SARs based on hits and misses found in subtree of SAR; don't apply SAR elsewhere. This should " +
+              "only be run in conjunction with the <cluster first> option.")
           .longOpt("tree-scoring")
       );
       add(Option.builder(OPTION_HELP)

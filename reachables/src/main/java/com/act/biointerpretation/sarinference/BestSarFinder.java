@@ -10,7 +10,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.function.Function;
 
 /**
  * Test a given prediction against all Sars in a corpus, and return the highest-scored matching Sar. This assumes that
@@ -21,7 +20,7 @@ import java.util.function.Function;
  * SARs with 10% hit rates- roughly, we'd expect the first one to be correct with probability .8, and the second to
  * be correct with only probability .1.
  */
-public class BestSarFinder implements Function<L2Prediction, Optional<SarTreeNode>> {
+public class BestSarFinder {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(BestSarFinder.class);
 

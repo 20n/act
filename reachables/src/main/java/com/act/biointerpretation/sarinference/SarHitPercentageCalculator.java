@@ -13,7 +13,9 @@ import java.util.function.Consumer;
 
 /**
  * Calculates a SARs hit percentage score by testing the SAR against all substrates in a prediction corpus, and
- * counting LCMS positives and negatives among the substrates that match the SAR.
+ * counting LCMS positives and negatives among the substrates that match the SAR. This is the most complete scoring
+ * possible, as it does not rely on the clustering that generated the SarTree to be perfect (unlike
+ * SarTreeBasedCalculator). However, it is computationally expensive.
  */
 public class SarHitPercentageCalculator implements Consumer<SarTreeNode> {
 
@@ -27,6 +29,12 @@ public class SarHitPercentageCalculator implements Consumer<SarTreeNode> {
     this.fullPredictionCorpus = fullPredictionCorpus;
   }
 
+  /**
+   * Score the SAR against all substrates in the positive corpus, and against all substrates in the entire
+   * corpus, to get a ratio of LCMS hits to misses for this SAR.
+   *
+   * @param node The SarTreeNode to score.
+   */
   @Override
   public void accept(SarTreeNode node) {
     Sar sar = node.getSar();
