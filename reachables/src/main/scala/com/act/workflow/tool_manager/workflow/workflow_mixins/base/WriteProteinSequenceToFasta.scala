@@ -20,7 +20,7 @@ trait WriteProteinSequenceToFasta {
     * @param proteinSequence A given protein sequence instance
     * @param outputWriter    The stream to write to.
     */
-  def writeProteinSequencesToFasta(proteinSequence: ProteinSequence, outputStream: FileOutputStream) {
+  def writeProteinSequenceToFasta(proteinSequence: ProteinSequence, outputStream: FileOutputStream) {
     val header: String = headerFormat.getHeader(proteinSequence)
 
     writeFastaHeader(header, outputStream)
