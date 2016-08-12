@@ -6,13 +6,9 @@ import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
-import com.mongodb.DBObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -24,13 +20,24 @@ import java.util.stream.Collectors;
 
 public class AbstractReactionCounter {
 
-  private static enum Characterization {
-    INCHI_IMPORTABLE,
-    SMILES_IMPORTABLE,
-    NOT_IMPORTABLE
+  private static final Logger LOGGER = LogManager.getFormatterLogger(AbstractReactionCounter.class);
+
+  private enum Characterization {
+    INCHI_IMPORTABLE(2),
+    SMILES_IMPORTABLE(1),
+    NOT_IMPORTABLE(0);
+
+    private int ranking;
+
+    Characterization(int i) {
+      ranking = i;
+    }
+
+    public int getRanking() {
+      return ranking;
+    }
   }
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(AbstractReactionCounter.class);
   MongoDB mongoDB;
   Map<Long, Characterization> chemicalMap;
   Map<Integer, Characterization> reactionMap;
@@ -42,51 +49,26 @@ public class AbstractReactionCounter {
   }
 
   /**
-   * Finds all reactions characterized by a certain Characterization, and writes their reaciton Ids to files.
+   * Iterates over reactions in the DB, characterizing reactions and chemicals seen as inchi importable,
+   * smiles importable, or not importable. Prints summary counts at the end.
    *
-   * @param outputFile Where to write the output,
-   * @param characterization
+   * @param args
    * @throws IOException
    */
-  public void writeReactionsToFile(File outputFile, Characterization characterization) throws IOException {
-    try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
-      for (Integer reactionId : reactionMap.keySet()) {
-        if (reactionMap.get(reactionId).equals(characterization)) {
-          writer.write(reactionId.toString());
-          writer.newLine();
-        }
-      }
-    }
+  public static void main(String[] args) throws IOException {
+    MongoDB mongoDB = new MongoDB("localhost", 27017, "marvin");
+
+    AbstractReactionCounter counter = new AbstractReactionCounter(mongoDB);
+    counter.buildChemicalAndReactionMaps();
+
+    counter.printSummary();
   }
 
   /**
-   * Print counts of chemicals and reactions that are inchi importable, smiles importable, and not importable.
+   * Iterates over the reactions in the DB, and populates the mapping from chemical and reaction IDs
+   * to Characterizations.
    */
-  public void printSummary() {
-
-    List<Characterization> reactionCharacterizations =
-        reactionMap.keySet().stream().map(id -> reactionMap.get(id)).collect(Collectors.toList());
-    printCounts(reactionCharacterizations, "reactions");
-
-
-    List<Characterization> chemicalCharacterizations =
-        chemicalMap.keySet().stream().map(id -> chemicalMap.get(id)).collect(Collectors.toList());
-    printCounts(chemicalCharacterizations, "chemicals");
-  }
-
-  private void printCounts(List<Characterization> characterizations, String typeOfThing) {
-    LOGGER.info("There are %d inchi importable %s.",
-        Collections.frequency(characterizations, Characterization.INCHI_IMPORTABLE),
-        typeOfThing);
-    LOGGER.info("There are %d smiles importable %s.",
-        Collections.frequency(characterizations, Characterization.SMILES_IMPORTABLE),
-        typeOfThing);
-    LOGGER.info("There are %d not importable %s.",
-        Collections.frequency(characterizations, Characterization.NOT_IMPORTABLE),
-        typeOfThing);
-  }
-
-  public void buildReactionMap() {
+  public void buildChemicalAndReactionMaps() {
 
     Iterator<Reaction> reactionIterator = readReactionsFromDB();
 
@@ -98,15 +80,47 @@ public class AbstractReactionCounter {
         LOGGER.info("On reaction id %d.", reaction.getUUID());
       }
 
-      List<Long> substrates = Arrays.asList(reaction.getSubstrates());
-      List<Long> products = Arrays.asList(reaction.getProducts());
-
-      reactionMap.put(reaction.getUUID(), getType(substrates, products));
+      reactionMap.put(reaction.getUUID(), getType(reaction));
     }
   }
 
+  /**
+   * Get an iterator over all reactions in the DB.
+   *
+   * @return The iterator.
+   */
+  private Iterator<Reaction> readReactionsFromDB() {
+    final DBIterator iter = mongoDB.getIteratorOverReactions(false);
 
-  private Characterization getType(List<Long> substrates, List<Long> products) {
+    return new Iterator<Reaction>() {
+      @Override
+      public boolean hasNext() {
+        boolean hasNext = iter.hasNext();
+        if (!hasNext)
+          iter.close();
+        return hasNext;
+      }
+
+      @Override
+      public Reaction next() {
+        return mongoDB.getNextReaction(iter);
+      }
+    };
+  }
+
+  /**
+   * Gets the type of the reaction. Returns INCHI_IMPORTABLE if all chemicals are also INCHI_IMPORTABLE. Returns
+   * SMILES_IMPORTABLE if at least one chemical is not INCHI_IMPORTABLE, but all are SMILES_IMPORTABLE. Otherwise,
+   * if at least one chemical involved is NOT_IMPORTABLE, so is the reaction.
+   *
+   * @param reaction The reaction.
+   * @return Its characterization.
+   */
+  private Characterization getType(Reaction reaction) {
+
+    List<Long> substrates = Arrays.asList(reaction.getSubstrates());
+    List<Long> products = Arrays.asList(reaction.getProducts());
+
     Characterization tracker = Characterization.INCHI_IMPORTABLE;
 
     for (Long chemicalId : substrates) {
@@ -120,16 +134,24 @@ public class AbstractReactionCounter {
     return tracker;
   }
 
-  private Characterization getWorseCharacterization(Characterization starting, Characterization other) {
-    if (starting.equals(Characterization.NOT_IMPORTABLE) || other.equals(Characterization.NOT_IMPORTABLE)) {
-      return Characterization.NOT_IMPORTABLE;
-    }
-    if (starting.equals(Characterization.SMILES_IMPORTABLE) || other.equals(Characterization.SMILES_IMPORTABLE)) {
-      return Characterization.SMILES_IMPORTABLE;
-    }
-    return Characterization.INCHI_IMPORTABLE;
+  /**
+   * Gets the worse of two characterization values.
+   *
+   * @param first One characterization.
+   * @param second The other characterization.
+   * @return The worse of the two, where the best->worst ordering is INCHI_IMPORTABLE, SMILES_IMPORTABLE, NOT_IMPORTABLE.
+   */
+  private Characterization getWorseCharacterization(Characterization first, Characterization second) {
+    return first.getRanking() < second.getRanking() ? first : second;
   }
 
+  /**
+   * Characterizes a chemical ID by looking in the chemical map if it's already cached, or explicitly calculating the
+   * characterization if not.
+   *
+   * @param chemicalId The id of the chemical.
+   * @return The characterization.
+   */
   private Characterization getType(Long chemicalId) {
     Characterization type = chemicalMap.get(chemicalId);
     if (type != null) {
@@ -142,6 +164,12 @@ public class AbstractReactionCounter {
     return type;
   }
 
+  /**
+   * Characterizes a chemical by trying to import it first by inchi, then by smiles.
+   *
+   * @param chemical The chemical.
+   * @return The characterization.
+   */
   private Characterization getType(Chemical chemical) {
     if (!chemical.getInChI().contains("FAKE") && !chemical.getInChI().contains("R")) {
       try {
@@ -162,35 +190,35 @@ public class AbstractReactionCounter {
     return Characterization.NOT_IMPORTABLE;
   }
 
-  private Iterator<Reaction> readReactionsFromDB() {
-    final DBIterator iter = mongoDB.getIteratorOverReactions(false);
+  /**
+   * Print counts of chemicals and reactions that are inchi importable, smiles importable, and not importable.
+   */
+  public void printSummary() {
 
-    return new Iterator<Reaction>() {
-      @Override
-      public boolean hasNext() {
-        boolean hasNext = iter.hasNext();
-        if (!hasNext)
-          iter.close();
-        return hasNext;
-      }
+    List<Characterization> reactionCharacterizations =
+        reactionMap.keySet().stream().map(id -> reactionMap.get(id)).collect(Collectors.toList());
+    printCounts(reactionCharacterizations, "reactions");
 
-      @Override
-      public Reaction next() {
-        return mongoDB.getNextReaction(iter);
-      }
-    };
+    List<Characterization> chemicalCharacterizations =
+        chemicalMap.keySet().stream().map(id -> chemicalMap.get(id)).collect(Collectors.toList());
+    printCounts(chemicalCharacterizations, "chemicals");
   }
 
-  public static void main(String[] args) throws IOException {
-    MongoDB mongoDB = new MongoDB("localhost", 27017, "marvin");
-
-    AbstractReactionCounter counter = new AbstractReactionCounter(mongoDB);
-
-    counter.buildReactionMap();
-    counter.printSummary();
-
-    counter.writeReactionsToFile(new File("/mnt/shared-data/Gil/inchi_reactions.txt"), Characterization.INCHI_IMPORTABLE);
-    counter.writeReactionsToFile(new File("/mnt/shared-data/Gil/smiles_reactions.txt"), Characterization.SMILES_IMPORTABLE);
-    counter.writeReactionsToFile(new File("/mnt/shared-data/Gil/bad_reactions.txt"), Characterization.NOT_IMPORTABLE);
+  /**
+   * Helper method to print the three characterization counts regarding either chemicals or reactions.
+   *
+   * @param characterizations The list of characterizations.
+   * @param typeOfThing A string to identify the type of thing being characterized.
+   */
+  private void printCounts(List<Characterization> characterizations, String typeOfThing) {
+    LOGGER.info("There are %d inchi importable %s.",
+        Collections.frequency(characterizations, Characterization.INCHI_IMPORTABLE),
+        typeOfThing);
+    LOGGER.info("There are %d smiles importable %s.",
+        Collections.frequency(characterizations, Characterization.SMILES_IMPORTABLE),
+        typeOfThing);
+    LOGGER.info("There are %d not importable %s.",
+        Collections.frequency(characterizations, Characterization.NOT_IMPORTABLE),
+        typeOfThing);
   }
 }
