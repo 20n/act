@@ -175,7 +175,6 @@ class RoToProteinPredictionFlow
       // Create the FASTA file out of all the relevant sequences.
       val roToFasta = ScalaJobWrapper.wrapScalaFunction(s"Write Fasta From RO, RO=$roContext",
         writeFastaFileFromEnzymesMatchingRos(roContext, outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
-      headerJob.thenRunAtPosition(roToFasta, 0)
 
       // Align Fasta sequence
       val alignFastaSequences = ClustalOmegaWrapper.alignProteinFastaFile(outputFastaPath, alignedFastaPath)
