@@ -251,22 +251,21 @@ public class WindowingTraceAnalyzer {
           map(r -> Pair.of(WindowingTraceExtractor.windowCenterFromMin(r.getMinMz()),
               Double.max(0.00, r.getLogSnr()))). // -100 LogSNR values don't help, so just zero them out.
           forEach(p -> writeRow(writer, p));
-      snrMax = analysisResults.stream().map(WindowAnalysisResult::getLogSnr).max(Double::compare);
+      snrMax = filteredResults.stream().map(WindowAnalysisResult::getLogSnr).max(Double::compare);
       writer.write("\n\n");
 
       // Then write the peak intensities.
       filteredResults.stream().
           map(r -> Pair.of(WindowingTraceExtractor.windowCenterFromMin(r.getMinMz()), r.getPeakIntensity())).
           forEach(p -> writeRow(writer, p));
-      intensityMax =
-          analysisResults.stream().map(WindowAnalysisResult::getPeakIntensity).max(Double::compare);
+      intensityMax = filteredResults.stream().map(WindowAnalysisResult::getPeakIntensity).max(Double::compare);
       writer.write("\n\n");
 
       // Then write the peak retention times, which will make the least sense.
       filteredResults.stream().
           map(r -> Pair.of(WindowingTraceExtractor.windowCenterFromMin(r.getMinMz()), r.getPeakTime())).
           forEach(p -> writeRow(writer, p));
-      timeMax = analysisResults.stream().map(WindowAnalysisResult::getPeakTime).max(Double::compare);
+      timeMax = filteredResults.stream().map(WindowAnalysisResult::getPeakTime).max(Double::compare);
       writer.write("\n\n");
     }
 
