@@ -14,10 +14,11 @@ abstract class Job(name: String) {
    */
   protected val returnCounter = new AtomicLatch
   private val logger = LogManager.getLogger(getClass.getName)
-  protected var status = JobStatus.Unstarted
   protected var jobReturnCode = -1
   protected var retryJob: Option[Job] = None
   protected var returnJob: Option[Job] = None
+  protected var cancelFuture: Option[() => Boolean] = None
+  private var status = JobStatus.Unstarted
 
   /*
   A bunch of basic getters that determine the logic of the job
@@ -26,42 +27,55 @@ abstract class Job(name: String) {
     jobReturnCode
   }
 
-  def isCompleted: Boolean = {
-    isSuccessful | isFailed
+  def isCompleted: Boolean = synchronized {
+    isSuccessful | isFailed | isKilled
   }
 
-  def isSuccessful: Boolean = {
-    this.status == JobStatus.Success
+  def isKilled: Boolean = synchronized {
+    getJobStatus == JobStatus.Killed
   }
 
-  def isFailed: Boolean = {
-    this.status == JobStatus.Failure | this.status == JobStatus.ParentProcessFailure
+  def isSuccessful: Boolean = synchronized {
+    getJobStatus == JobStatus.Success
   }
 
-  def isRunning: Boolean = {
-    this.status == JobStatus.Running
+  def isFailed: Boolean = synchronized {
+    val currentJobStatus = getJobStatus
+    currentJobStatus == JobStatus.Failure |
+      currentJobStatus == JobStatus.ParentProcessFailure |
+      currentJobStatus == JobStatus.Killed
   }
 
-  def isUnstarted: Boolean = {
-    this.status == JobStatus.Unstarted
+  def isRunning: Boolean = synchronized {
+    getJobStatus == JobStatus.Running
   }
 
-  /**
-    * Adds a flag to this job, which designates that certain, advanced behavior should occur
-    *
-    * @param value An allowed JobFlag
-    */
-  def addFlag(value: JobFlag.Value): Unit = flags.append(value)
+  def isUnstarted: Boolean = synchronized {
+    getJobStatus == JobStatus.Unstarted
+  }
+
+  def getJobStatus: String = synchronized {
+    this.status
+  }
 
   /**
     * Returns a list of all flags that this job possesses
     *
     * @return List of flags
     */
-  def getFlags: List[JobFlag.Value] = flags.toList
+  protected def setJobStatus(newStatus: String): Unit = {
+    /*
+        We need to synchronize this so that status updates don't start hitting race conditions.
+        We only synchronize over the status update because otherwise
+        we have locking problems because isCompleted is also synchronized.
+      */
+    this.synchronized {
+      logger.info(s"Job status for command ${this} has changed to $newStatus")
+      status = newStatus
+    }
 
     // Job manager should know if has been marked as complete
-    if (isCompleted) JobManager.indicateJobCompleteToManager(this.name)
+    if (isCompleted) JobManager.indicateJobCompleteToManager(this)
   }
 
   def preRetryJob_=(value: Option[Job]): Unit = _preRetryJob = value
@@ -162,8 +176,12 @@ class InternalState(job: Job) {
     *
     * @param job Job to be added
     */
-  def appendJobToBuffer(job: Job): Unit = {
-    dependencyManager.appendJobBuffer(job)
+  def start(): Unit = {
+    if (JobStatus.Killed != getJobStatus) {
+      logger.info(s"Started command ${this}")
+      setJobStatus(JobStatus.Running)
+      asyncJob()
+    }
   }
 
   /**
@@ -180,7 +198,37 @@ class InternalState(job: Job) {
   }
 
   /**
-    * When a job wants to indicate it completed successfully, it calls this method.
+    * Kills a job if it is currently not started.
+    */
+  def killUncompleteJob {
+    // Only kill jobs if they haven't completed already.
+    if (!this.isCompleted) {
+      // Currently running needs to cancel future.
+      if (this.cancelFuture.isDefined) {
+        this.cancelFuture.get()
+      }
+
+      setJobStatus(JobStatus.Killed)
+      jobBuffer.foreach(jobTier => jobTier.foreach(
+        jobAtTier => {
+          jobAtTier.setJobStatus(JobStatus.Killed)
+          jobAtTier.killUncompleteJob
+        }))
+    }
+  }
+
+  def getName: String = {
+    this.name
+  }
+
+  /**
+    * Usually called from an asyncJob when it has completed.
+    *
+    * If it was called from another job:
+    * Updates the number of jobs that still need to complete,
+    * then notifies the job it was called from that it should check if it should run the next jobs.
+    *
+    * Runs the jobs after it, if any.
     *
     * It changes the state of the status to Success, and tells the runManager to handle running the next job.
     */
@@ -198,12 +246,18 @@ class InternalState(job: Job) {
     * Grabs all the remaining job buffer lists, and then also all of their elements,
     * and assigns the value of 'ParentProcessFailure' to them based on the fact that their parent failed.
     */
-  def markRemainingDependenciesAsFailure(): Unit = {
-    jobBuffer.foreach(
-      columnOfJobs => columnOfJobs.foreach(
-        individualJob => individualJob.internalState.setJobStatus(StatusCodes.ParentProcessFailure))
+  protected def markJobsAfterThisAsFailure(): Unit = {
+    jobBuffer.foreach(jobTier => jobTier.foreach(
+      jobAtTier => {
+        jobAtTier.setJobStatus(JobStatus.ParentProcessFailure)
+        jobAtTier.markJobsAfterThisAsFailure()
+      })
     )
   }
+
+  /*
+    Local job continuation utilities
+  */
 
   /**
     * Checks the return counter to see if we are still waiting on jobs to return.
@@ -233,10 +287,6 @@ class InternalState(job: Job) {
       head.foreach(_.start())
     }
   }
-
-  /*
-    Local job continuation utilities
-  */
 
   /**
     * This method checks if the current job has any more dependencies.
@@ -349,5 +399,6 @@ class InternalState(job: Job) {
     val Running = "Running"
     val Unstarted = "Unstarted"
     val ParentProcessFailure = "Parent Process Failed"
+    val Killed = "Killed"
   }
 }
