@@ -212,7 +212,8 @@ public class WindowingTraceAnalyzer {
 
       // First write the log SNRs.
       analysisResults.stream().filter(r -> r.getPeakTime() > 25.0).
-          map(r -> Pair.of(WindowingTraceExtractor.windowCenterFromMin(r.getMinMz()), Double.max(0.00, r.getLogSnr()))).
+          map(r -> Pair.of(WindowingTraceExtractor.windowCenterFromMin(r.getMinMz()),
+              Double.min(1000.0, Double.max(0.00, r.getLogSnr())))).
           forEach(p -> writeRow(writer, p));
       snrMax = analysisResults.stream().map(WindowAnalysisResult::getLogSnr).max(Double::compare);
       writer.write("\n\n");
