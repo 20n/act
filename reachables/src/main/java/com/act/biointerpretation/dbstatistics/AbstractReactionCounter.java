@@ -15,10 +15,12 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class AbstractReactionCounter {
 
@@ -39,6 +41,13 @@ public class AbstractReactionCounter {
     reactionMap = new HashMap<>();
   }
 
+  /**
+   * Finds all reactions characterized by a certain Characterization, and writes their reaciton Ids to files.
+   *
+   * @param outputFile Where to write the output,
+   * @param characterization
+   * @throws IOException
+   */
   public void writeReactionsToFile(File outputFile, Characterization characterization) throws IOException {
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
       for (Integer reactionId : reactionMap.keySet()) {
@@ -50,54 +59,31 @@ public class AbstractReactionCounter {
     }
   }
 
+  /**
+   * Print counts of chemicals and reactions that are inchi importable, smiles importable, and not importable.
+   */
   public void printSummary() {
 
-    int abstractCounter = 0;
-    int concreteCounter = 0;
-    int badCounter = 0;
-
-    for (Integer reactionId : reactionMap.keySet()) {
-      Characterization type = reactionMap.get(reactionId);
-      switch (type) {
-        case INCHI_IMPORTABLE:
-          concreteCounter++;
-          break;
-        case SMILES_IMPORTABLE:
-          abstractCounter++;
-          break;
-        case NOT_IMPORTABLE:
-          badCounter++;
-          break;
-      }
-    }
+    List<Characterization> reactionCharacterizations =
+        reactionMap.keySet().stream().map(id -> reactionMap.get(id)).collect(Collectors.toList());
+    printCounts(reactionCharacterizations, "reactions");
 
 
-    LOGGER.info("There are %d inchi importable reactions.", concreteCounter);
-    LOGGER.info("There are %d smiles importable reactions.", abstractCounter);
-    LOGGER.info("There are %d bad reactions.", badCounter);
+    List<Characterization> chemicalCharacterizations =
+        chemicalMap.keySet().stream().map(id -> chemicalMap.get(id)).collect(Collectors.toList());
+    printCounts(chemicalCharacterizations, "chemicals");
+  }
 
-    abstractCounter = 0;
-    concreteCounter = 0;
-    badCounter = 0;
-
-    for (Long chemicalId : chemicalMap.keySet()) {
-      Characterization type = chemicalMap.get(chemicalId);
-      switch (type) {
-        case INCHI_IMPORTABLE:
-          concreteCounter++;
-          break;
-        case SMILES_IMPORTABLE:
-          abstractCounter++;
-          break;
-        case NOT_IMPORTABLE:
-          badCounter++;
-          break;
-      }
-    }
-
-    LOGGER.info("There are %d inchi importable chemicals which participate in reactions.", concreteCounter);
-    LOGGER.info("There are %d smiles importable chemicals which participate in reactions.", abstractCounter);
-    LOGGER.info("There are %d bad chemicals which participate in reactions.", badCounter);
+  private void printCounts(List<Characterization> characterizations, String typeOfThing) {
+    LOGGER.info("There are %d inchi importable %s.",
+        Collections.frequency(characterizations, Characterization.INCHI_IMPORTABLE),
+        typeOfThing);
+    LOGGER.info("There are %d smiles importable %s.",
+        Collections.frequency(characterizations, Characterization.SMILES_IMPORTABLE),
+        typeOfThing);
+    LOGGER.info("There are %d not importable %s.",
+        Collections.frequency(characterizations, Characterization.NOT_IMPORTABLE),
+        typeOfThing);
   }
 
   public void buildReactionMap() {
@@ -190,8 +176,7 @@ public class AbstractReactionCounter {
 
       @Override
       public Reaction next() {
-        DBObject o = iter.next();
-        return mongoDB.convertDBObjectToReaction(o);
+        return mongoDB.getNextReaction(iter);
       }
     };
   }
