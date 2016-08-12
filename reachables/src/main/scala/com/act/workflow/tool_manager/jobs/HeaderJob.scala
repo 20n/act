@@ -9,6 +9,6 @@ package com.act.workflow.tool_manager.jobs
   */
 class HeaderJob extends Job("HeaderJob") {
   def asyncJob(): Unit = {
-    runNextJob()
+    runNextJobIfReady()
   }
 }

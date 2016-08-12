@@ -60,7 +60,7 @@ abstract class Job(name: String) {
     status = newStatus
 
     // Job manager should know if has been marked as complete
-    if (isCompleted) JobManager.indicateJobCompleteToManager()
+    if (isCompleted) JobManager.indicateJobCompleteToManager(this.name)
   }
 
   /*
@@ -69,33 +69,6 @@ abstract class Job(name: String) {
     Any method here should return this job to allow for chaining
     Allows sequential job chaining (Ex: job1.thenRun(job2).thenRun(job3))
    */
-
-  /**
-    * Allows the user to indicate which spot in the job queue a job should be placed at.
-    * If the job queue is not currently that long,
-    * it will indicate that the job has been placed at the next nearest opportunity.
-    *
-    * The utility of this function is that it allows for iterative procedures to place desired jobs at similar places.
-    * For example, if we are iterating over a list of 10 of the same jobs,
-    * we can either collect them all and then run as a batch,
-    * or just know where we want to put them and just indicate that in the iterative procedure.
-    *
-    * @param job      Job to be added to the list at the position.
-    * @param position Which position in the list of lists to append this job to.
-    *                 If position is >= buffer length, should be appended to the end of the jobs list.
-    *
-    * @return this, for chaining
-    */
-  def thenRunAtPosition(job: Job, position: Int): Job = {
-    if (position >= jobBuffer.length) {
-      while (position >= jobBuffer.length) {
-        jobBuffer.append(List())
-      }
-    }
-    jobBuffer(position) = jobBuffer(position) ::: List(job)
-    this
-  }
-
   /**
     * Add a job to the next location to sequentially execute jobs
     *
@@ -178,11 +151,13 @@ abstract class Job(name: String) {
     *
     */
   protected def markAsSuccess(): Unit = {
-    // The success is if the future succeeded.
-    // We need to also check the return code and redirect to failure here if it completed, but with a bad return code
+    /*
+      The success is if the future succeeded.
+      We need to also check the return code and redirect to failure here if it completed, but with a bad return code
+     */
     setJobStatus(JobStatus.Success)
     handleIfJobTotallyComplete()
-    runNextJob()
+    runNextJobIfReady()
   }
 
   /**
@@ -271,12 +246,12 @@ abstract class Job(name: String) {
   }
 
   protected def handleIfJobTotallyComplete(): Unit = {
-    if (returnJob.isDefined && returnCounter.getCount <= 0) {
+    if (returnJob.isDefined && returnCounter.getCount <= 0 && jobBuffer.length <= 0) {
       // Decrease return number
       returnJob.get.decreaseReturnCount()
 
       // Try to start it again and let it handle if it should
-      returnJob.get.runNextJob()
+      returnJob.get.runNextJobIfReady()
     }
   }
 
@@ -284,7 +259,7 @@ abstract class Job(name: String) {
     * Checks to make sure we aren't waiting on anymore jobs.
     * If we aren't, removes the first element of the jobBuffer and runs all jobs in that list.
     */
-  protected def runNextJob(): Unit = {
+  protected def runNextJobIfReady(): Unit = {
     if (returnCounter.getCount > 0) {
       return
     }

@@ -4,7 +4,10 @@ import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.jobs.management.JobManager
 import org.scalatest._
 
-class ShellWrapperTest extends FlatSpec with Matchers {
+class ShellWrapperTest extends FlatSpec with Matchers with BeforeAndAfterEach {
+  override def afterEach(): Unit = {
+    JobManager.clearManager()
+  }
 
   def successfulJob(command: Job): Unit = {
     command.isSuccessful should be(true)
@@ -24,8 +27,6 @@ class ShellWrapperTest extends FlatSpec with Matchers {
     command.isRunning should be(false)
     command.isUnstarted should be(true)
     command.returnCode should be(-1)
-
-    JobManager.clearManager()
   }
 
   "The ShellWrapper" should "indicate valid commands complete" in {
@@ -35,8 +36,6 @@ class ShellWrapperTest extends FlatSpec with Matchers {
     JobManager.awaitUntilAllJobsComplete()
 
     successfulJob(command)
-
-    JobManager.clearManager()
   }
 
 
@@ -51,8 +50,6 @@ class ShellWrapperTest extends FlatSpec with Matchers {
     command.isRunning should be(false)
     command.isUnstarted should be(false)
     command.returnCode shouldNot be(0)
-
-    JobManager.clearManager()
   }
 
   "The ShellWrapper" should "indicate a job is running when it is running" in {
@@ -65,8 +62,6 @@ class ShellWrapperTest extends FlatSpec with Matchers {
     command.isRunning should be(true)
     command.isUnstarted should be(false)
     command.returnCode shouldNot be(0)
-
-    JobManager.clearManager()
   }
 
   "The ShellWrapper" should "allow for chaining of jobs" in {
@@ -91,8 +86,6 @@ class ShellWrapperTest extends FlatSpec with Matchers {
     command2.isRunning should be(false)
     command2.isUnstarted should be(false)
     command2.returnCode should be(0)
-
-    JobManager.clearManager()
   }
 }
 
