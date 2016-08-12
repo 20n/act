@@ -273,13 +273,6 @@ public class WindowingTraceAnalyzer {
           forEach(p -> writeRow(writer, p));
       intensityMax = filteredResults.stream().map(WindowAnalysisResult::getPeakIntensity).max(Double::compare);
       writer.write("\n\n");
-
-      // Then write the peak retention times, which will make the least sense.
-      filteredResults.stream().
-          map(r -> Pair.of(WindowingTraceExtractor.windowCenterFromMin(r.getMinMz()), r.getPeakTime())).
-          forEach(p -> writeRow(writer, p));
-      timeMax = filteredResults.stream().map(WindowAnalysisResult::getPeakTime).max(Double::compare);
-      writer.write("\n\n");
     }
 
     Gnuplotter plotter = new Gnuplotter();
@@ -289,8 +282,6 @@ public class WindowingTraceAnalyzer {
           "LogSNR", 0, snrMax.get()));
       add(new Gnuplotter.PlotConfiguration(Gnuplotter.PlotConfiguration.KIND.GRAPH,
           "Max Intensity", 1, intensityMax.get()));
-      add(new Gnuplotter.PlotConfiguration(Gnuplotter.PlotConfiguration.KIND.GRAPH,
-          "Retention time", 2, timeMax.get()));
     }};
     plotter.plot2D(dataFile.getAbsolutePath(), outputFile.getAbsolutePath(), "M/Z", "LogSNR or Intensity",
         PLOT_FORMAT_EXTENSION, null, null, plotConfigurations, gnuplotFile.getAbsolutePath());
