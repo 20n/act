@@ -25,7 +25,4 @@ public interface Sar extends Predicate<List<Molecule>> {
    * @return True if this SAR can act on the given substrates.
    */
   boolean test(List<Molecule> substrates);
-
-  /* TODO: add tests of serialization for this class an its neighbors, as we'll want to ensure the @JsonSubTypes list
-   * is kept up to date as our use of SARs expands. */
 }
