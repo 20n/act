@@ -215,7 +215,7 @@ public class WindowingTraceAnalyzer {
           map(r -> Pair.of(WindowingTraceExtractor.windowCenterFromMin(r.getMinMz()),
               Double.min(1000.0, Double.max(0.00, r.getLogSnr())))).
           forEach(p -> writeRow(writer, p));
-      snrMax = analysisResults.stream().map(WindowAnalysisResult::getLogSnr).max(Double::compare);
+      snrMax = analysisResults.stream().map(WindowAnalysisResult::getLogSnr).max(Double::compare).map(x -> Double.min(x, 1000.0));
       writer.write("\n\n");
 
       // Then write the peak intensities.
