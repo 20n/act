@@ -1,4 +1,4 @@
-package com.act.biointerpretation.projectstatistics;
+package com.act.biointerpretation.dbstatistics;
 
 import act.server.DBIterator;
 import act.server.MongoDB;
@@ -70,7 +70,7 @@ public class EnzymeReactionCounter {
 
   public void buildSequenceToReactionMap() {
 
-    Iterator<Seq> seqIterator = readSeqsFromDB();
+    Iterator<Seq> seqIterator = mongoDB.getSeqIterator();
     int counter = 0;
 
     while (seqIterator.hasNext()) {
@@ -94,27 +94,6 @@ public class EnzymeReactionCounter {
       sequenceToReactions.get(sequence).addAll(seq.getReactionsCatalyzed());
       counter++;
     }
-  }
-
-
-  private Iterator<Seq> readSeqsFromDB() {
-    final DBIterator iter = mongoDB.getDbIteratorOverSeq();
-
-    return new Iterator<Seq>() {
-      @Override
-      public boolean hasNext() {
-        boolean hasNext = iter.hasNext();
-        if (!hasNext)
-          iter.close();
-        return hasNext;
-      }
-
-      @Override
-      public Seq next() {
-        DBObject o = iter.next();
-        return mongoDB.convertDBObjectToSeq(o);
-      }
-    };
   }
 
   public static void main(String[] args) throws IOException {

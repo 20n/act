@@ -1,4 +1,4 @@
-package com.act.biointerpretation.projectstatistics;
+package com.act.biointerpretation.dbstatistics;
 
 import act.server.DBIterator;
 import act.server.MongoDB;
@@ -6,7 +6,6 @@ import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
-import chemaxon.struc.Molecule;
 import com.mongodb.DBObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -73,8 +72,8 @@ public class AbstractReactionCounter {
     }
 
 
-    LOGGER.info("There are %d concrete reactions.", concreteCounter);
-    LOGGER.info("There are %d abstract reactions.", abstractCounter);
+    LOGGER.info("There are %d inchi importable reactions.", concreteCounter);
+    LOGGER.info("There are %d smiles importable reactions.", abstractCounter);
     LOGGER.info("There are %d bad reactions.", badCounter);
 
     abstractCounter = 0;
@@ -96,8 +95,8 @@ public class AbstractReactionCounter {
       }
     }
 
-    LOGGER.info("There are %d concrete chemicals which participate in reactions.", concreteCounter);
-    LOGGER.info("There are %d abstract chemicals which participate in reactions.", abstractCounter);
+    LOGGER.info("There are %d inchi importable chemicals which participate in reactions.", concreteCounter);
+    LOGGER.info("There are %d smiles importable chemicals which participate in reactions.", abstractCounter);
     LOGGER.info("There are %d bad chemicals which participate in reactions.", badCounter);
   }
 
@@ -109,7 +108,7 @@ public class AbstractReactionCounter {
 
       Reaction reaction = reactionIterator.next();
 
-      if (reaction.getUUID() % 100 == 0) {
+      if (reaction.getUUID() % 1000 == 0) {
         LOGGER.info("On reaction id %d.", reaction.getUUID());
       }
 
@@ -120,21 +119,22 @@ public class AbstractReactionCounter {
     }
   }
 
+
   private Characterization getType(List<Long> substrates, List<Long> products) {
     Characterization tracker = Characterization.INCHI_IMPORTABLE;
 
     for (Long chemicalId : substrates) {
-      tracker = getWorst(tracker, getType(chemicalId));
+      tracker = getWorseCharacterization(tracker, getType(chemicalId));
     }
 
-    for (Long chemicalId : substrates) {
-      tracker = getWorst(tracker, getType(chemicalId));
+    for (Long chemicalId : products) {
+      tracker = getWorseCharacterization(tracker, getType(chemicalId));
     }
 
     return tracker;
   }
 
-  private Characterization getWorst(Characterization starting, Characterization other) {
+  private Characterization getWorseCharacterization(Characterization starting, Characterization other) {
     if (starting.equals(Characterization.NOT_IMPORTABLE) || other.equals(Characterization.NOT_IMPORTABLE)) {
       return Characterization.NOT_IMPORTABLE;
     }
