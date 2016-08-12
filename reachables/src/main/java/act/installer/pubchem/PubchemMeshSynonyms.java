@@ -38,7 +38,17 @@ public class PubchemMeshSynonyms {
   // InChI string (representing APAP) to be used as example in the main method
   private static final String TEST_INCHI = "InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)";
 
-  private static final SelectBuilder CID_SELECT_STATEMENT = new SelectBuilder()
+  /*
+  The CID_QUERY_TMPL SelectBuilder constructs SPARQL queries like the below one:
+  #########
+  PREFIX  sio:  <http://semanticscience.org/resource/>
+  SELECT DISTINCT  ?inchi_iri
+  FROM <http://rdf.ncbi.nlm.nih.gov/pubchem/descriptor/compound>
+  WHERE
+  { ?inchi_iri  sio:has-value  "InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)"@en }
+  #########
+  */
+  private static final SelectBuilder CID_QUERY_TMPL = new SelectBuilder()
       // Prefix
       .addPrefix("sio", "http://semanticscience.org/resource/")
       // SELECT
@@ -47,8 +57,25 @@ public class PubchemMeshSynonyms {
       // FROM
       .from("http://rdf.ncbi.nlm.nih.gov/pubchem/descriptor/compound")
       // WHERE
-      .addWhere( "?inchi_iri", "sio:has-value", "?inchi_string" )
+      .addWhere("?inchi_iri", "sio:has-value", "?inchi_string" )
       ;
+
+  /*
+  The PUBCHEM_SYNO_QUERY_TMPL SelectBuilder constructs SPARQL queries like the below one:
+  #########
+  PREFIX  sio:  <http://semanticscience.org/resource/>
+  PREFIX  rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+  PREFIX  compound: <http://rdf.ncbi.nlm.nih.gov/pubchem/compound/>
+
+  SELECT DISTINCT  ?value ?type
+  FROM <http://rdf.ncbi.nlm.nih.gov/pubchem/synonym>
+  WHERE
+    { ?syno  sio:is-attribute-of  compound:CID1983 ;
+             rdf:type             ?type ;
+             sio:has-value        ?value
+    }
+  #########
+  */
   private static final SelectBuilder PUBCHEM_SYNO_QUERY_TMPL = new SelectBuilder()
       // PREFIX
       .addPrefix("sio", "http://semanticscience.org/resource/")
@@ -61,10 +88,33 @@ public class PubchemMeshSynonyms {
       // FROM
       .from("http://rdf.ncbi.nlm.nih.gov/pubchem/synonym")
       // WHERE
-      .addWhere( "?syno", "sio:is-attribute-of", "?compound" )
+      .addWhere("?syno", "sio:is-attribute-of", "?compound")
       .addWhere("?syno", RDF.type, "?type")
       .addWhere("?syno", "sio:has-value", "?value")
       ;
+
+  /*
+  The MESH_TERMS_QUERY_TMPL SelectBuilder constructs SPARQL queries like the below one:
+  #########
+  PREFIX  sio:  <http://semanticscience.org/resource/>
+  PREFIX  dcterms: <http://purl.org/dc/terms/>
+  PREFIX  rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+  PREFIX  compound: <http://rdf.ncbi.nlm.nih.gov/pubchem/compound/>
+  PREFIX  meshv: <http://id.nlm.nih.gov/mesh/vocab#>
+
+  SELECT DISTINCT  ?concept_label ?lexical_tag
+  FROM <http://rdf.ncbi.nlm.nih.gov/pubchem/synonym>
+  FROM <http://id.nlm.nih.gov/mesh/>
+  WHERE
+    { ?syno     sio:is-attribute-of  compound:CID1983 ;
+                dcterms:subject      ?mesh_concept .
+      ?mesh_concept
+                rdfs:label           ?concept_label ;
+                meshv:preferredTerm  ?mesh_term .
+      ?mesh_term  meshv:lexicalTag   ?lexical_tag
+    }
+  #########
+  */
   private static final SelectBuilder MESH_TERMS_QUERY_TMPL = new SelectBuilder()
       // PREFIX
       .addPrefix("sio", "http://semanticscience.org/resource/")
@@ -80,7 +130,7 @@ public class PubchemMeshSynonyms {
       .from("http://rdf.ncbi.nlm.nih.gov/pubchem/synonym")
       .from("http://id.nlm.nih.gov/mesh/")
       // WHERE
-      .addWhere( "?syno", "sio:is-attribute-of", "?compound" )
+      .addWhere("?syno", "sio:is-attribute-of", "?compound")
       .addWhere("?syno", "dcterms:subject", "?mesh_concept")
       .addWhere("?mesh_concept", "rdfs:label", "?concept_label")
       .addWhere("?mesh_concept", "meshv:preferredTerm", "?mesh_term")
@@ -187,12 +237,12 @@ public class PubchemMeshSynonyms {
 
   public String fetchCIDFromInchi(String inchi) {
 
-    SelectBuilder sb = CID_SELECT_STATEMENT.clone();
+    SelectBuilder sb = CID_QUERY_TMPL.clone();
     sb.setVar(Var.alloc("inchi_string"), NodeFactory.createLiteral(inchi, "en"));
     Query query = sb.build();
 
     String result;
-    LOGGER.debug("Executing SPARQL query: \n%s", query.toString());
+    LOGGER.info("Executing SPARQL query: \n%s", query.toString());
     try (QueryExecution qexec = QueryExecutionFactory.sparqlService(SERVICE, query)) {
       ResultSet results = qexec.execSelect() ;
       result = results.nextSolution().getResource("inchi_iri").toString();
@@ -219,7 +269,7 @@ public class PubchemMeshSynonyms {
     SelectBuilder sb = PUBCHEM_SYNO_QUERY_TMPL.clone();
     sb.setVar(Var.alloc("compound"), String.format("compound:%s", cid));
     Query query = sb.build();
-    LOGGER.debug("Executing SPARQL query: \n%s", query.toString());
+    LOGGER.info("Executing SPARQL query: \n%s", query.toString());
     Map<PC_SYNONYM_TYPE, Set<String>> map = new HashMap<>();
 
     try (QueryExecution queryExecution = QueryExecutionFactory.sparqlService(SERVICE, query)) {
@@ -247,7 +297,7 @@ public class PubchemMeshSynonyms {
     SelectBuilder sb = MESH_TERMS_QUERY_TMPL.clone();
     sb.setVar(Var.alloc("compound"), String.format("compound:%s", cid));
     Query query = sb.build();
-    LOGGER.debug("Executing SPARQL query: \n%s", query.toString());
+    LOGGER.info("Executing SPARQL query: \n%s", query.toString());
     Map<MESH_TERMS_TYPE, Set<String>> map = new HashMap<>();
 
     try (QueryExecution queryExecution = QueryExecutionFactory.sparqlService(SERVICE, query)) {
