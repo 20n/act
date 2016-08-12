@@ -16,9 +16,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.rocksdb.RocksDBException;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -33,11 +35,15 @@ public class WindowingTraceAnalyzer {
   private static final Logger LOGGER = LogManager.getFormatterLogger(WindowingTraceAnalyzer.class);
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+  private static final String PLOT_FORMAT_EXTENSION = "pdf";
+
   private static final String OPTION_INDEX_PATH = "x";
   private static final String OPTION_PLOT_PREFIX = "p";
+  private static final String OPTION_OUTPUT_PATH = "o";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class consumes windowed traces from an LCMS scan files, searching each window for peaks."
+      "This class consumes windowed traces from an LCMS scan files, searching each window for peaks and writing the ",
+      "results of its analysis in a large JSON document."
   }, "");
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
@@ -50,8 +56,14 @@ public class WindowingTraceAnalyzer {
     add(Option.builder(OPTION_PLOT_PREFIX)
         .argName("plot prefix")
         .desc("A prefix for the plot data files and PDF of the analysis results")
-        .hasArg().required()
+        .hasArg()
         .longOpt("plot-prefix")
+    );
+    add(Option.builder(OPTION_OUTPUT_PATH)
+        .argName("outputpath")
+        .desc("A path where the SNR/time/intensity results per window should be written as JSON")
+        .hasArg().required()
+        .longOpt("output")
     );
     add(Option.builder("h")
         .argName("help")
@@ -164,13 +176,26 @@ public class WindowingTraceAnalyzer {
       System.exit(1);
     }
 
+    LOGGER.info("Starting analysis");
+
+    WindowingTraceAnalyzer analyzer = new WindowingTraceAnalyzer();
+    analyzer.runExtraction(
+        rocksDBFile,
+        new File(cl.getOptionValue(OPTION_OUTPUT_PATH)),
+        cl.hasOption(OPTION_PLOT_PREFIX) ? Optional.of(cl.getOptionValue(OPTION_PLOT_PREFIX)) : Optional.empty()
+    );
+
+    LOGGER.info("Done");
+  }
+
+  private void runExtraction(File rocksDBFile, File outputFile, Optional<String> maybePlotsPrefix)
+      throws RocksDBException, IOException {
     MS1 ms1 = new MS1();
-    WindowingTraceExtractor extractor = new WindowingTraceExtractor();
-
-    Iterator<Pair<Pair<Double, Double>, List<XZ>>> traceIterator = extractor.getIteratorOverTraces(rocksDBFile);
-
     List<WindowAnalysisResult> results = new ArrayList<>();
 
+    // Extract each window's trace, computing and saving stats as we go.  This should fit in memory no problem.
+    Iterator<Pair<Pair<Double, Double>, List<XZ>>> traceIterator =
+        new WindowingTraceExtractor().getIteratorOverTraces(rocksDBFile);
     while (traceIterator.hasNext()) {
       Pair<Pair<Double, Double>, List<XZ>> rangeAndTrace = traceIterator.next();
 
@@ -190,18 +215,21 @@ public class WindowingTraceAnalyzer {
       );
 
       results.add(result);
-
-      //String json = OBJECT_MAPPER.writeValueAsString(result);
-      //LOGGER.info(json);
     }
 
-    new WindowingTraceAnalyzer().plotAnalysisResults(cl.getOptionValue(OPTION_PLOT_PREFIX), results);
+    LOGGER.info("Writing window stats to JSON file");
+    try (FileOutputStream fos = new FileOutputStream(outputFile)) {
+      OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(fos, results);
+    }
 
+    // Don't use Optional.map here because exceptions.  Sigh.
+    if (maybePlotsPrefix.isPresent()) {
+      LOGGER.info("Writing plots of LogSNR/max peak intensity over m/z");
+      new WindowingTraceAnalyzer().plotAnalysisResults(maybePlotsPrefix.get(), results);
+    }
   }
 
-  private static final String PLOT_FORMAT_EXTENSION = "pdf";
-
-  public void plotAnalysisResults(String prefix, List<WindowAnalysisResult> analysisResults) throws IOException {
+  private void plotAnalysisResults(String prefix, List<WindowAnalysisResult> analysisResults) throws IOException {
     File dataFile = new File(prefix + ".data");
     File outputFile = new File(StringUtils.join(Arrays.asList(prefix, PLOT_FORMAT_EXTENSION), '.'));
     File gnuplotFile = new File(StringUtils.join(Arrays.asList(prefix, "gnuplot"), '.'));
