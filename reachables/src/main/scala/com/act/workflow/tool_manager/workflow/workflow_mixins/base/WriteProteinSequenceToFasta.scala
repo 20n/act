@@ -21,20 +21,21 @@ trait WriteProteinSequenceToFasta {
     * @param outputWriter    The stream to write to.
     */
   def writeProteinSequencesToFasta(proteinSequence: ProteinSequence, outputStream: FileOutputStream) {
-    val header = headerFormat.getHeader(proteinSequence)
+    val header: String = headerFormat.getHeader(proteinSequence)
 
     writeFastaHeader(header, outputStream)
     writeFastaSequence(proteinSequence, outputStream)
   }
 
-  private def writeFastaHeader(header: String, outputStream: BufferedWriter): Unit = {
-    outputStream.write(">")
-    outputStream.write(header)
-    outputStream.newLine()
+  private def writeFastaHeader(header: String, outputStream: FileOutputStream): Unit = {
+    // 62 = '>'
+    outputStream.write(62)
+    outputStream.write(header.getBytes())
+    outputStream.write(lineSep)
   }
 
-  private def writeFastaSequence(sequence: ProteinSequence, outputStream: BufferedWriter): Unit = {
-    var characterCount: Integer = 0
+  private def writeFastaSequence(sequence: ProteinSequence, outputStream: FileOutputStream): Unit = {
+    var compoundCount: Integer = 0
     val seq: String = sequence.getSequenceAsString()
 
     for (i <- Range(0, seq.length)) {
@@ -47,7 +48,7 @@ trait WriteProteinSequenceToFasta {
     }
 
     if (sequence.getLength % lineLength != 0) {
-      outputStream.newLine()
+      outputStream.write(lineSep)
     }
   }
 }
