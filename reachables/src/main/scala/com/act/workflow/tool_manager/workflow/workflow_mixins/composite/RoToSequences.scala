@@ -17,6 +17,6 @@ trait RoToSequences extends QueryByRo with QueryByReactionId {
 
     val reactionIds = queryReactionsForReactionIdsByRo(roValues, mongoConnection)
     methodLogger.info("Discovering and writing sequences to FASTA file")
-    createFastaReactionId(reactionIds.keySet.toList, outputFastaFile, mongoConnection)
+    createFastaByReactionId(reactionIds.keySet.toList, outputFastaFile, mongoConnection)
   }
 }
