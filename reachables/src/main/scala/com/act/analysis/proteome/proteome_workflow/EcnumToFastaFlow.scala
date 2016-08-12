@@ -63,6 +63,7 @@ class EcnumToFastaFlow extends Workflow
 
     // Setup all the constant paths here
     def defineEcNumberJob(ecnum: String): ScalaJob = {
+      logger.info(s"Defining job for Ec Number $ecnum")
       val outputFastaPath = defineOutputFilePath(
         cl,
         OPTION_OUTPUT_FASTA_FILE,
