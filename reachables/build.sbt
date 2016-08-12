@@ -21,8 +21,6 @@ resolvers ++= {
 /* To disable tests during assembly, add this directive: `test in assembly := {}` */
 
 libraryDependencies ++= {
-  val akkaV = "2.3.6"
-  val sprayV = "1.3.2"
   Seq(
       "org.mongodb"             %% "casbah" % "2.7.1"
       , "commons-logging"       % "commons-logging" % "1.1.1"
@@ -52,31 +50,14 @@ libraryDependencies ++= {
        * ChEBI is in OWL format, we use OWL API for parsing
        */
       "net.sourceforge.owlapi"  % "owlapi-distribution" % "3.5.1",
-      /*
-       * We have to hack around the fact that spark includes akka v2.2.3
-       * The way to do that is to include the akka dependencies
-       * BEFORE the spark include following this section. Then in assembly
-       * mergeStrategy we use MergeStrategy.last for all akka includes that picks
-       * only the spark included files, and nothing from this section
-       */
-      "io.spray"                %%  "spray-can"     % sprayV,
-      "io.spray"                %%  "spray-routing" % sprayV,
-      "io.spray"                %%  "spray-caching" % sprayV,
-      "io.spray"                %%  "spray-testkit" % sprayV  % "test",
-      "com.typesafe.akka"       %%  "akka-remote"   % akkaV,
-      "com.typesafe.akka"       %%  "akka-actor"    % akkaV,
-      "com.typesafe.akka"       %%  "akka-testkit"  % akkaV   % "test",
-      "org.specs2"              %%  "specs2-core"   % "2.3.11" % "test",
-      /*
-       * spark for distributed processing
-       */
-      "org.apache.spark"        %% "spark-core" % "1.0.2",
-      "org.apache.spark"        %% "spark-mllib" % "1.0.2",
-      /*
-       * breeze is the numerical processing lib used by spark
-       * it is automatically included as a dependency to spark-mllib
-      "org.biojava"             %  "biojava3-core" % "3.1.0"
-       */
+       /* Spark for distributed processing, now works with SBT assembly!
+        * Note: once upon a time we had to explicitly define the versions of Akka and Spray that we wanted
+        * to import thanks to some conflicts between transitive dependencies in early Spark packages.  No more!
+        * Spark seems to be doing The Right Thing(R) now-a-days, so we can import the Spark pckages on their own with
+        * impunity.  If you find/feel the need to revisit our old ways of importing these packages, check out build.sbt
+        * at commit cb6e822.  Good luck--you will probably need it. */
+      "org.apache.spark"        %% "spark-core" % "1.5.2",
+      "org.apache.spark"        %% "spark-mllib" % "1.5.2",
       "org.biojava"             % "core"    % "1.9.1",
       "edu.ucar"                % "netcdf4" % "4.5.5",
       "edu.ucar"                % "cdm"     % "4.5.5",
@@ -100,6 +81,9 @@ libraryDependencies ++= {
       "com.fasterxml.jackson.core" % "jackson-annotations" % "2.6.0",
       "com.fasterxml.jackson.core" % "jackson-core" % "2.6.0",
       "com.fasterxml.jackson.core" % "jackson-databind" % "2.6.0",
+      /* Explicit versioning of jackson-module-scala is required for Spark 1.5.2. to work.
+       * See https://github.com/FasterXML/jackson-module-scala/issues/214#issuecomment-188959382 */
+      "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0",
       "org.jsoup" % "jsoup" % "1.8.2",
       "uk.ac.cam.ch.wwmm" % "chemicalTagger" % "1.4.0",
       "uk.ac.cam.ch.wwmm.oscar" % "oscar4-api" % "4.2.2",
@@ -164,6 +148,9 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case PathList("org", "junit", xs @ _*)                        => MergeStrategy.last
     case PathList("net", "sf", "jniinchi", xs @ _*)               => MergeStrategy.first
     case PathList("nu", "xom", xs @ _*)                           => MergeStrategy.first
+    case PathList("com", "fasterxml", "jackson", "core", xs @_ *) => MergeStrategy.first
+    case PathList("org", "apache", "commons", "compress", xs @_ *) => MergeStrategy.first
+    case PathList("org", "apache", "spark", "unused", xs @_ *)    => MergeStrategy.discard
     /*
      * When we add spark-mllib dependency, we get many additional pulls
      * conflict between spire_2.10/jars/spire_2.10-0.7.1.jar
@@ -204,6 +191,7 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case "log4j2.xml" => MergeStrategy.first
     case PathList(ps @ _*) if ps.last endsWith ".dll" => MergeStrategy.last
     case PathList(ps @ _*) if ps.last endsWith ".so" => MergeStrategy.last
+    case PathList(ps @ _*) if ps.last == "package-info.class" => MergeStrategy.first
     case x => old(x)
   }
 }

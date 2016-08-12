@@ -13,7 +13,9 @@ import java.util.function.Predicate;
     property = "type")
 @JsonSubTypes({
     @JsonSubTypes.Type(value = OneSubstrateSubstructureSar.class, name = "OneSubstrateSubstructure"),
-    @JsonSubTypes.Type(value = OneSubstrateCarbonCountSar.class, name = "CarbonCount")})
+    @JsonSubTypes.Type(value = OneSubstrateCarbonCountSar.class, name = "CarbonCount"),
+    @JsonSubTypes.Type(value = NoSar.class, name = "NoSar"),
+})
 public interface Sar extends Predicate<List<Molecule>> {
 
   /**
