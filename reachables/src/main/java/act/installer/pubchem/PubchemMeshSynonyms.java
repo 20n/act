@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
  * It assumes that a Virtuoso SPARQL endpoint is running on 10.0.20.19 (Chimay), port 8890 and that the necessary data
  * has been loaded in.
  * TODO(thomas): create a Wiki page describing the Virtuoso setup and how to load the data
+ * The HTML serveur can be accessed at http://10.0.20.19:8890/sparql, with a UI to run SPARQL queries. Try it!
  */
 
 public class PubchemMeshSynonyms {
@@ -34,6 +35,7 @@ public class PubchemMeshSynonyms {
   private static final String SERVICE = "http://10.0.20.19:8890/sparql";
 
   private static final String CID_PATTERN = "CID\\d+";
+  private static final String ENGLISH_LANG_TAG = "en";
 
   // InChI string (representing APAP) to be used as example in the main method
   private static final String TEST_INCHI = "InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)";
@@ -236,9 +238,9 @@ public class PubchemMeshSynonyms {
   }
 
   public String fetchCIDFromInchi(String inchi) {
-
+    // The clone method has its own implementation in the SelectBuilder. Thus safe to use!
     SelectBuilder sb = CID_QUERY_TMPL.clone();
-    sb.setVar(Var.alloc("inchi_string"), NodeFactory.createLiteral(inchi, "en"));
+    sb.setVar(Var.alloc("inchi_string"), NodeFactory.createLiteral(inchi, ENGLISH_LANG_TAG));
     Query query = sb.build();
 
     String result;
@@ -265,7 +267,7 @@ public class PubchemMeshSynonyms {
   }
 
   public Map<PC_SYNONYM_TYPE, Set<String>> fetchPubchemSynonymsFromCID(String cid) {
-
+    // The clone method has its own implementation in the SelectBuilder. Thus safe to use!
     SelectBuilder sb = PUBCHEM_SYNO_QUERY_TMPL.clone();
     sb.setVar(Var.alloc("compound"), String.format("compound:%s", cid));
     Query query = sb.build();
@@ -293,7 +295,7 @@ public class PubchemMeshSynonyms {
   }
 
   public Map<MESH_TERMS_TYPE, Set<String>> fetchMeshTermsFromCID(String cid) {
-
+    // The clone method has its own implementation in the SelectBuilder. Thus safe to use!
     SelectBuilder sb = MESH_TERMS_QUERY_TMPL.clone();
     sb.setVar(Var.alloc("compound"), String.format("compound:%s", cid));
     Query query = sb.build();
