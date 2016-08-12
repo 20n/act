@@ -70,6 +70,17 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
     outputStream.close()
   }
 
+  /**
+    * Sometimes queries can be too high memory if we want to map all the fields to values.
+    * Thus, this method allows, for the mapping step to be skipped to conserve memory and
+    * just returns the iterator of DB objects.
+    *
+    * @param reactionIds        List of reaction IDs.
+    * @param mongoConnection    Connection to MongoDB
+    * @param returnFilterFields The fields you are looking for.
+    *
+    * @return An iterator over the documents that matched your query.
+    */
   private def querySequencesMatchingReactionIdIterator(reactionIds: List[Long],
                                                        mongoConnection: MongoDB,
                                                        returnFilterFields: List[String]): Iterator[DBObject] = {
