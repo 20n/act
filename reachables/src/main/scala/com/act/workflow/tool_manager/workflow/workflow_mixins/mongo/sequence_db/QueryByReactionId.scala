@@ -3,13 +3,13 @@ package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.sequence_db
 import java.io.{File, FileOutputStream}
 
 import act.server.MongoDB
-import com.act.workflow.tool_manager.workflow.workflow_mixins.base.WriteProteinSequencesToFasta
+import com.act.workflow.tool_manager.workflow.workflow_mixins.base.WriteProteinSequenceToFasta
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
 import org.biojava.nbio.core.sequence.ProteinSequence
 
-trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequencesToFasta with SequenceDatabaseKeywords {
+trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequenceToFasta with SequenceDatabaseKeywords {
 
   /**
     * Takes in a list of reaction IDs and creates outputs a list of ProteinSequences known to do those reactions.
@@ -19,7 +19,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
     *
     * @return List of protein sequences.
     */
-  def querySequencesForSequencesByReactionId(reactionIds: List[Long], outputFile: File, mongoConnection: MongoDB): Unit = {
+  def createFastaReactionId(reactionIds: List[Long], outputFile: File, mongoConnection: MongoDB): Unit = {
     val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
 
     // We want back the sequence, enzyme number, name, and the ID in our DB.
@@ -62,7 +62,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
           but the DB_ID should guarantee uniqueness
         */
         newSeq.setOriginalHeader(s"NAME: ${name.toString} | EC: ${ecnum.toString} | DB_ID: ${id.toString}")
-        writeProteinSequencesToFasta(newSeq, outputStream)
+        writeProteinSequenceToFasta(newSeq, outputStream)
       } else {
         methodLogger.error(s"Sequence identified that does not have a sequence.  DB entry is ${id.toString}")
       }

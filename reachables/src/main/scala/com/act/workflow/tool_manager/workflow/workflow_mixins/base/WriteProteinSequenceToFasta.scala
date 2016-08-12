@@ -6,7 +6,7 @@ import org.biojava.nbio.core.sequence.ProteinSequence
 import org.biojava.nbio.core.sequence.compound.AminoAcidCompound
 import org.biojava.nbio.core.sequence.io.GenericFastaHeaderFormat
 
-trait WriteProteinSequencesToFasta {
+trait WriteProteinSequenceToFasta {
   private val lineLength: Integer = 60
   private val lineSep: Array[Byte] = System.getProperty("line.separator").getBytes()
   private val headerFormat = new GenericFastaHeaderFormat[ProteinSequence, AminoAcidCompound]()
@@ -21,7 +21,7 @@ trait WriteProteinSequencesToFasta {
     * @param proteinSequence A given protein sequence instance
     * @param outputStream    The stream to write to.
     */
-  def writeProteinSequencesToFasta(proteinSequence: ProteinSequence, outputStream: FileOutputStream) {
+  def writeProteinSequenceToFasta(proteinSequence: ProteinSequence, outputStream: FileOutputStream) {
     val header: String = headerFormat.getHeader(proteinSequence)
 
     writeFastaHeader(header, outputStream)
