@@ -2,7 +2,7 @@ package com.act.workflow.tool_manager.jobs
 
 import java.io.{File, PrintWriter}
 
-import com.act.workflow.tool_manager.jobs.management.utility.CanceleableFuture
+import com.act.workflow.tool_manager.jobs.management.CanceleableFuture
 import org.apache.logging.log4j.LogManager
 
 import scala.concurrent.CancellationException
@@ -19,7 +19,7 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
   def asyncJob() {
     // Run the call in the future
     val (future, cancel) = CanceleableFuture.create[Process](future => commands.run(setupProcessIO()))
-    addCancelFunction(cancel)
+    this.cancelFuture = Option(cancel)
 
     // Setup Job's success/failure
     future.onComplete({
@@ -29,7 +29,8 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
           logger.error("Future was canceled.")
         } else {
           markAsFailure()
-          logger.error(s"Cause of failure was ${x.getMessage}.", x)
+          logger.error(s"Cause of failure was ${x.getMessage}.")
+          x.printStackTrace()
         }
     })
   }
