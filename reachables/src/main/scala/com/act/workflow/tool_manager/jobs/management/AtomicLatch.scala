@@ -33,6 +33,13 @@ class AtomicLatch {
     }
   }
 
+  def releaseLock(): Unit = {
+    this.synchronized {
+      counter.set(0)
+      this.notify()
+    }
+  }
+
   /**
     * Waits until conditions are met to release counter
     */

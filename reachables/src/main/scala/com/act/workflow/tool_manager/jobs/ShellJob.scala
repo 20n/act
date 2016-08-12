@@ -2,10 +2,11 @@ package com.act.workflow.tool_manager.jobs
 
 import java.io.{File, PrintWriter}
 
+import com.act.workflow.tool_manager.jobs.management.CanceleableFuture
 import org.apache.logging.log4j.LogManager
 
+import scala.concurrent.CancellationException
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Future, blocking}
 import scala.sys.process.{BasicIO, Process, ProcessIO, ProcessLogger, _}
 import scala.util.{Failure, Success}
 
@@ -17,20 +18,20 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
 
   def asyncJob() {
     // Run the call in the future
-    val future: Future[Process] = Future {
-      blocking {
-        commands.run(setupProcessIO())
-      }
-    }
+    val (future, cancel) = CanceleableFuture.create[Process](future => commands.run(setupProcessIO()))
+    this.cancelFuture = Option(cancel)
 
     // Setup Job's success/failure
     future.onComplete({
-      // Does not mean that the job succeeded, just that the future did
       case Success(x) => markJobSuccessBasedOnReturnCode(x.exitValue())
-      // This is a failure of the future to complete because of a JVM exception
       case Failure(x) =>
-        markAsFailure()
-        logger.error(s"Cause of failure was ${x.getMessage}")
+        if (x.isInstanceOf[CancellationException]) {
+          logger.error("Future was canceled.")
+        } else {
+          markAsFailure()
+          logger.error(s"Cause of failure was ${x.getMessage}.")
+          x.printStackTrace()
+        }
     })
   }
 

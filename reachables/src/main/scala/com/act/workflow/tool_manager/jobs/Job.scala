@@ -13,10 +13,11 @@ abstract class Job(name: String) {
    */
   protected val returnCounter = new AtomicLatch
   private val logger = LogManager.getLogger(getClass.getName)
-  protected var status = JobStatus.Unstarted
   protected var jobReturnCode = -1
   protected var retryJob: Option[Job] = None
   protected var returnJob: Option[Job] = None
+  protected var cancelFuture: Option[() => Boolean] = None
+  private var status = JobStatus.Unstarted
 
   /*
   A bunch of basic getters that determine the logic of the job
@@ -25,27 +26,34 @@ abstract class Job(name: String) {
     jobReturnCode
   }
 
-  def isCompleted: Boolean = {
-    isSuccessful | isFailed
+  def isCompleted: Boolean = synchronized {
+    isSuccessful | isFailed | isKilled
   }
 
-  def isSuccessful: Boolean = {
-    this.status == JobStatus.Success
+  def isKilled: Boolean = synchronized {
+    getJobStatus == JobStatus.Killed
   }
 
-  def isFailed: Boolean = {
-    this.status == JobStatus.Failure | this.status == JobStatus.ParentProcessFailure
+  def isSuccessful: Boolean = synchronized {
+    getJobStatus == JobStatus.Success
   }
 
-  def isRunning: Boolean = {
-    this.status == JobStatus.Running
+  def isFailed: Boolean = synchronized {
+    val currentJobStatus = getJobStatus
+    currentJobStatus == JobStatus.Failure |
+      currentJobStatus == JobStatus.ParentProcessFailure |
+      currentJobStatus == JobStatus.Killed
   }
 
-  def isUnstarted: Boolean = {
-    this.status == JobStatus.Unstarted
+  def isRunning: Boolean = synchronized {
+    getJobStatus == JobStatus.Running
   }
 
-  def getJobStatus: String = {
+  def isUnstarted: Boolean = synchronized {
+    getJobStatus == JobStatus.Unstarted
+  }
+
+  def getJobStatus: String = synchronized {
     this.status
   }
 
@@ -56,11 +64,18 @@ abstract class Job(name: String) {
     * @param newStatus What new status should be assigned to the job
     */
   protected def setJobStatus(newStatus: String): Unit = {
-    logger.info(s"Job status for command ${this} has changed to $newStatus")
-    status = newStatus
+    /*
+        We need to synchronize this so that status updates don't start hitting race conditions.
+        We only synchronize over the status update because otherwise
+        we have locking problems because isCompleted is also synchronized.
+      */
+    this.synchronized {
+      logger.info(s"Job status for command ${this} has changed to $newStatus")
+      status = newStatus
+    }
 
     // Job manager should know if has been marked as complete
-    if (isCompleted) JobManager.indicateJobCompleteToManager(this.name)
+    if (isCompleted) JobManager.indicateJobCompleteToManager(this)
   }
 
   /*
@@ -126,9 +141,11 @@ abstract class Job(name: String) {
     * Run the async job and sets status to 'Running'
     */
   def start(): Unit = {
-    logger.info(s"Started command ${this}")
-    setJobStatus(JobStatus.Running)
-    asyncJob()
+    if (JobStatus.Killed != getJobStatus) {
+      logger.info(s"Started command ${this}")
+      setJobStatus(JobStatus.Running)
+      asyncJob()
+    }
   }
 
   /**
@@ -138,6 +155,30 @@ abstract class Job(name: String) {
 
   override def toString: String = {
     s"[Job]<${this.name}>"
+  }
+
+  /**
+    * Kills a job if it is currently not started.
+    */
+  def killUncompleteJob {
+    // Only kill jobs if they haven't completed already.
+    if (!this.isCompleted) {
+      // Currently running needs to cancel future.
+      if (this.cancelFuture.isDefined) {
+        this.cancelFuture.get()
+      }
+
+      setJobStatus(JobStatus.Killed)
+      jobBuffer.foreach(jobTier => jobTier.foreach(
+        jobAtTier => {
+          jobAtTier.setJobStatus(JobStatus.Killed)
+          jobAtTier.killUncompleteJob
+        }))
+    }
+  }
+
+  def getName: String = {
+    this.name
   }
 
   /**
@@ -165,8 +206,17 @@ abstract class Job(name: String) {
     * and assigns the value of 'ParentProcessFailure' to them based on the fact that their parent failed.
     */
   protected def markJobsAfterThisAsFailure(): Unit = {
-    jobBuffer.foreach(jobTier => jobTier.foreach(jobAtTier => jobAtTier.setJobStatus(JobStatus.ParentProcessFailure)))
+    jobBuffer.foreach(jobTier => jobTier.foreach(
+      jobAtTier => {
+        jobAtTier.setJobStatus(JobStatus.ParentProcessFailure)
+        jobAtTier.markJobsAfterThisAsFailure()
+      })
+    )
   }
+
+  /*
+    Local job continuation utilities
+  */
 
   /**
     * First checks if there is a retryJob available, in which case it attempts to run it.
@@ -187,10 +237,6 @@ abstract class Job(name: String) {
       this.markJobsAfterThisAsFailure()
     }
   }
-
-  /*
-    Local job continuation utilities
-  */
 
   /**
     * Modifies the return code of this element
@@ -292,5 +338,6 @@ abstract class Job(name: String) {
     val Running = "Running"
     val Unstarted = "Unstarted"
     val ParentProcessFailure = "Parent Process Failed"
+    val Killed = "Killed"
   }
 }

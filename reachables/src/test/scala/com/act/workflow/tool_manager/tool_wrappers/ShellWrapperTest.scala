@@ -88,5 +88,3 @@ class ShellWrapperTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     command2.returnCode should be(0)
   }
 }
-
-
