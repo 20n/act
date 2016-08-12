@@ -57,7 +57,7 @@ public class IonAnalysisInterchangeModel {
     }
   }
 
-  public static Set<Pair<String, Double>> getAllMoleculeHitsFromMultiplePositiveReplicateFiles(List<String> filepaths,
+  public static Set<String> getAllMoleculeHitsFromMultiplePositiveReplicateFiles(List<String> filepaths,
                                                                                                Double snrThreshold,
                                                                                                Double intensityThreshold,
                                                                                                Double timeThreshold) throws IOException {
@@ -72,7 +72,7 @@ public class IonAnalysisInterchangeModel {
 
     int totalNumberOfMassCharges = deserializedResultsForPositiveReplicates.get(0).getResults().size();
 
-    Set<Pair<String, Double>> resultSet = new HashSet<>();
+    Set<String> resultSet = new HashSet<>();
 
     for (int i = 0; i < totalNumberOfMassCharges; i++) {
       int totalNumberOfMoleculesInMassChargeResult =
@@ -93,7 +93,7 @@ public class IonAnalysisInterchangeModel {
 
         if (moleculePassedThresholdsForAllPositiveReplicates) {
           HitOrMiss molecule = deserializedResultsForPositiveReplicates.get(0).getResults().get(i).getMolecules().get(j);
-          resultSet.add(Pair.of(molecule.getInchi(), molecule.getTime()));
+          resultSet.add(molecule.getInchi());
         }
       }
     }
