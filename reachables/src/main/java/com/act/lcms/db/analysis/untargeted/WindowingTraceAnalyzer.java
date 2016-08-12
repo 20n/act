@@ -242,10 +242,8 @@ public class WindowingTraceAnalyzer {
           "LogSNR", 0, snrMax.get()));
       add(new Gnuplotter.PlotConfiguration(Gnuplotter.PlotConfiguration.KIND.GRAPH,
           "Max Intensity", 1, intensityMax.get()));
-      add(new Gnuplotter.PlotConfiguration(Gnuplotter.PlotConfiguration.KIND.GRAPH,
-          "timeMax", 2, timeMax.get()));
     }};
-    plotter.plot2D(dataFile.getAbsolutePath(), outputFile.getAbsolutePath(), "M/Z", "LogSNR, Intensity, or Time",
+    plotter.plot2D(dataFile.getAbsolutePath(), outputFile.getAbsolutePath(), "M/Z", "LogSNR or Intensity",
         PLOT_FORMAT_EXTENSION, null, null, plotConfigurations, gnuplotFile.getAbsolutePath());
   }
 
