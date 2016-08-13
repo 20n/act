@@ -209,7 +209,6 @@ object JobManager {
     * @return True or false if a cycle exists.
     */
   private def cycleInJobs(job: Job, currentJobList: ListBuffer[Job] = new ListBuffer[Job]()): Boolean = {
-    println(currentJobList)
     currentJobList.append(job)
     // Found a cycle, return true
     if (currentJobList.toSet.size != currentJobList.length) {
