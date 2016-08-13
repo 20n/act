@@ -531,7 +531,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
                                                              String inputExperimentalSetupFile,
                                                              Boolean isInputListOfInchis,
                                                              Set<String> includeIons,
-                                                             File lcmsDir,
+                                                             String lcmsDir,
                                                              String plottingDirectory,
                                                              String outputPrefix) {
     // Since JavaRunnable is a one-method interface, we can use lambdas to write this very succinctly!
@@ -556,7 +556,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
         HashMap<Integer, Plate> plateCache = new HashMap<>();
         List<Pair<String, Double>> listOfMassCharges = new ArrayList<>(searchMZs);
 
-        IonDetectionAnalysis<LCMSWell> ionDetectionAnalysis = new IonDetectionAnalysis<LCMSWell>(lcmsDir, positiveWells,
+        IonDetectionAnalysis<LCMSWell> ionDetectionAnalysis = new IonDetectionAnalysis<LCMSWell>(new File(lcmsDir), positiveWells,
             negativeWells, plottingDirectory, plateCache, listOfMassCharges, db);
 
         ionDetectionAnalysis.runLCMSMiningAnalysisAndPlotResults(chemIDToMassCharge, massChargeToChemicalAndIon, outputPrefix);
