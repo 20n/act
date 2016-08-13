@@ -39,6 +39,16 @@ class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
 
   // If we ask the job manager to wait until one job is done, it should kill any jobs still in the queue after that.
   "Job Manager" should "should cancel any incomplete job after the job we are waiting for is complete." in {
+    /*
+      Structure of this test:
+      #
+      # A -> B -> C
+      #       \
+      #        -------> b1 -> b2 -> b3
+
+      But we kill it at Job B so C, b1, b2, and b3 should not complete.
+
+     */
     val A = immediateReturnJob("A")
     val B = immediateReturnJob("B")
     val b1 = immediateReturnJob("b1")
@@ -57,5 +67,19 @@ class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     b2.isKilled should be(true)
     b3.isKilled should be(true)
     C.isKilled should be(true)
+  }
+
+  "Jobs" should "detect if not all jobs have been added to run." in {
+    /*
+      Structure of this test:
+      #
+      # A          B
+      #
+
+     */
+    val A = immediateReturnJob("A")
+    val B = immediateReturnJob("B")
+
+    an[RuntimeException] should be thrownBy JobManager.awaitUntilAllJobsComplete(A)
   }
 }

@@ -206,15 +206,19 @@ class InternalState(job: Job) {
     * @param job Job to be added
     */
   def start(): Unit = {
-    if (this.isUnstarted) {
-      logger.info(s"Started command ${this}")
-      setJobStatus(JobStatus.Running)
-      asyncJob()
-    } else {
-      val message = s"Attempted to start a job that has already been started.  " +
-        s"Job name is $getName with current status $getJobStatus"
-      logger.error(message)
-      throw new RuntimeException(message)
+    // Killed jobs should never start
+    if (!this.isKilled) {
+
+      if (this.isUnstarted) {
+        logger.info(s"Started command ${this}")
+        setJobStatus(JobStatus.Running)
+        asyncJob()
+      } else {
+        val message = s"Attempted to start a job that has already been started.  " +
+          s"Job name is $getName with current status $getJobStatus"
+        logger.error(message)
+        throw new RuntimeException(message)
+      }
     }
   }
 
