@@ -14,26 +14,16 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     ScalaJobWrapper.wrapScalaFunction(name, excitingFunction)
   }
 
-  "Jobs" should "run sequentially in order." in {
+  "Jobs" should "only be able to be run once." in {
     /*
       Structure of this test:
       #  A -> B -> C -> D
 
      */
     val A = immediateReturnJob("A")
-    val B = immediateReturnJob("B")
-    val C = immediateReturnJob("C")
-    val D = immediateReturnJob("D")
-
-    A.thenRun(B).thenRun(C).thenRun(D)
 
     A.start()
-    JobManager.awaitUntilAllJobsComplete()
-
-    // B and C can be ordered in either way because of running in paralle.
-    val validOrder = List("A", "B", "C", "D")
-
-    JobManager.getOrderOfJobCompletion should equal(validOrder)
+    A.start()
   }
 
   "Jobs" should "should complete parallel paths independently of how long each take." in {
@@ -62,8 +52,7 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     A.thenRunBatch(List(B, C))
     B.thenRun(b1).thenRun(b2).thenRun(b3)
 
-    A.start()
-    JobManager.awaitUntilSpecificJobComplete(b3)
+    JobManager.awaitUntilSpecificJobComplete(A, b3)
 
     // C should be killed as it completes after b3 based on time.
     A.isCompleted should be(true)
@@ -96,8 +85,7 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     A.thenRunBatch(List(B, C)).thenRun(D)
     B.thenRun(b1).thenRun(b2).thenRun(b3)
 
-    A.start()
-    JobManager.awaitUntilAllJobsComplete()
+    JobManager.awaitUntilAllJobsComplete(A)
 
     // Last job should be D
     JobManager.getOrderOfJobCompletion.last should be("D")
@@ -122,13 +110,41 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
 
     A.thenRunBatch(List(B, C)).thenRun(D).thenRunBatch(List(E, F))
 
-    A.start()
-    JobManager.awaitUntilAllJobsComplete()
+    JobManager.awaitUntilAllJobsComplete(A)
 
     // B and C and E and F are in parallel so order can vary
     JobManager.getOrderOfJobCompletion.head should be("A")
     JobManager.getOrderOfJobCompletion(2) should (equal("B") or equal("C"))
     JobManager.getOrderOfJobCompletion(3) should be("D")
     JobManager.getOrderOfJobCompletion(4) should (equal("E") or equal("F"))
+  }
+
+  "Jobs" should "be able to create independent jobs by indicating a given job shouldn't be waited for" in {
+    /*
+      Structure of this test:
+      #     B -> G -> H -> I
+      #   /
+      # A - D ->  E -F
+      #  \       /
+      #     C ->
+
+     */
+    val A = immediateReturnJob("A")
+    val B = immediateReturnJob("B")
+    val C = immediateReturnJob("C")
+    val D = immediateReturnJob("D")
+    val E = immediateReturnJob("E")
+    val F = immediateReturnJob("F")
+    val G = immediateReturnJob("G")
+    val H = immediateReturnJob("H")
+    val I = immediateReturnJob("I")
+
+    B.jobShouldNotBeWaitedFor
+    A.thenRunBatch(List(B, C, D)).thenRun(E).thenRunBatch(List(F))
+    B.thenRun(G).thenRun(H).thenRun(I)
+
+    JobManager.awaitUntilAllJobsComplete(A)
+    println("\n\n\n\n\n\n\\n\n\n\\n\n\\n\n\\n\n\n\n\\n")
+    println(JobManager.getOrderOfJobCompletion)
   }
 }

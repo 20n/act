@@ -28,8 +28,7 @@ class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     A.thenRunBatch(List(B, C)).thenRun(D)
     B.thenRun(b1).thenRun(b2).thenRun(b3)
 
-    A.start()
-    JobManager.awaitUntilAllJobsComplete()
+    JobManager.awaitUntilAllJobsComplete(A)
 
     JobManager.getOrderOfJobCompletion.length should be(JobManager.completedJobsCount())
 
@@ -50,8 +49,7 @@ class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     A.thenRun(B).thenRun(C)
     B.thenRun(b1).thenRun(b2).thenRun(b3)
 
-    A.start()
-    JobManager.awaitUntilSpecificJobComplete(B)
+    JobManager.awaitUntilSpecificJobComplete(A, B)
 
     A.isCompleted should be(true)
     B.isCompleted should be(true)

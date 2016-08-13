@@ -26,7 +26,7 @@ trait Workflow {
     val commandLine = parseCommandLineOptions(args.toArray)
     val firstJob = defineWorkflow(commandLine)
 
-    JobManager.startJobAndAwaitUntilWorkflowComplete(firstJob)
+    JobManager.awaitUntilAllJobsComplete(firstJob)
   }
 
   /**
