@@ -57,7 +57,7 @@ object JobManager {
     require(jobs.nonEmpty, message = "Cannot await when no jobs have been started.  " +
       "Make sure to call start() on a job prior to awaiting.")
 
-    verifyAllJobsAreReachable(firstJob)
+    verifyAllJobsAreReachableAndNoCycles(firstJob)
     firstJob.start()
     instantiateCountDownLockAndWait()
   }
@@ -65,10 +65,63 @@ object JobManager {
   def awaitUntilSpecificJobComplete(firstJob: Job, jobToWaitFor: Job): Unit = {
     require(jobs.nonEmpty, message = "Cannot await when no jobs have been started.  " +
       "Make sure to call start() on a job prior to awaiting.")
+    verifyAllJobsAreReachableAndNoCycles(firstJob)
 
     this.jobToAwaitFor = Option(jobToWaitFor)
     firstJob.start()
     instantiateCountDownLockAndWait()
+  }
+
+  def indicateJobCompleteToManager(job: Job) {
+    // This job doesn't currently exist in the known jobs but for some reason is hitting the manager.
+    // Likely means an old or incorrectly run job so we log the error and move on, but don't let it change things.
+    // Given our kill behavior this should not happen, but just in case we have this here.
+    if (!jobs.contains(job)) {
+      logger.error(s"A job $job that doesn't exist in job buffer tried to modify Job Manager.")
+      return
+    }
+
+    // If we are waiting for a job and find that job, release the number lock
+    if (jobToAwaitFor.isDefined) {
+      if (job.equals(jobToAwaitFor.get)) {
+        // Cancel all futures still running.  If we kill the jobs here, we don't have to worry about the
+        // time difference between the lock releasing and us handling those
+        // conditions normally and another job starting in the meantime.
+        jobs.foreach(_.killUncompleteJob)
+        numberLock.releaseLock()
+      }
+    } else {
+      numberLock.countDown()
+    }
+    jobCompleteOrdering.append(job)
+
+    logger.info(s"<Concurrent jobs running = ${runningJobsCount()}>")
+    logger.info(s"<Current jobs awaiting to run = ${waitingJobsCount()}>")
+    logger.info(s"<Completed jobs = ${completedJobsCount()}>")
+  }
+
+  private def waitingJobsCount(): Int = {
+    jobs.length - (completedJobsCount() + runningJobsCount())
+  }
+
+  def completedJobsCount(): Int = {
+    jobs.count(x => x.isCompleted)
+  }
+
+  private def runningJobsCount(): Int = {
+    jobs.count(x => x.isRunning)
+  }
+
+  def getMapOfJobNamesToStatuses: Map[String, String] = {
+    (getOrderOfJobCompletion zip getOrderOfJobStatuses) toMap
+  }
+
+  def getOrderOfJobCompletion: List[String] = {
+    jobCompleteOrdering.toList.map(x => x.getName)
+  }
+
+  def getOrderOfJobStatuses: List[String] = {
+    jobCompleteOrdering.toList.map(x => x.getJobStatus)
   }
 
   /**
@@ -76,8 +129,6 @@ object JobManager {
     */
   private def instantiateCountDownLockAndWait() = {
     numberLock.await()
-    // Cancel all futures still running
-    jobs.foreach(_.killUncompleteJob)
 
     logger.info("All jobs have completed.")
     logger.info(s"Number of jobs run = ${completedJobsCount()}")
@@ -103,61 +154,21 @@ object JobManager {
     jobs.count(x => x.isSuccessful)
   }
 
-  def completedJobsCount(): Int = {
-    jobs.count(x => x.isCompleted)
-  }
-
-  def indicateJobCompleteToManager(job: Job) {
-    // This job doesn't currently exist in the known jobs but for some reason is hitting the manager.
-    // Likely means an old or incorrectly run job so we log the error and move on, but don't let it change things.
-    // Given our kill behavior this should not happen, but just in case we have this here.
-    if (!jobs.contains(job)) {
-      logger.error(s"A job $job that doesn't exist in job buffer tried to modify Job Manager.")
-      return
-    }
-    jobCompleteOrdering.append(job)
-
-    // If we are waiting for a job and find that job, release the number lock
-    if (jobToAwaitFor.isDefined) {
-      if (job.equals(jobToAwaitFor.get)) {
-        numberLock.releaseLock()
-      }
-    }
-
-    numberLock.countDown()
-    logger.info(s"<Concurrent jobs running = ${runningJobsCount()}>")
-    logger.info(s"<Current jobs awaiting to run = ${waitingJobsCount()}>")
-    logger.info(s"<Completed jobs = ${completedJobsCount()}>")
-  }
-
-  private def waitingJobsCount(): Int = {
-    jobs.length - (completedJobsCount() + runningJobsCount())
-  }
-
-  private def runningJobsCount(): Int = {
-    jobs.count(x => x.isRunning)
-  }
-
-  def getMapOfJobNamesToStatuses: Map[String, String] = {
-    (getOrderOfJobCompletion zip getOrderOfJobStatuses) toMap
-  }
-
-  def getOrderOfJobCompletion: List[String] = {
-    jobCompleteOrdering.toList.map(x => x.getName)
-  }
-
-  def getOrderOfJobStatuses: List[String] = {
-    jobCompleteOrdering.toList.map(x => x.getJobStatus)
-  }
-
   /**
     * Goes through and ensures all jobs in `jobs` are reachable, and thus will be run in a normal, successful workflow.
     *
     * @param job The first job
     */
-  private def verifyAllJobsAreReachable(job: Job): Unit = {
-    val allJobs: Set[Job] = getAllChildrenJobs(job).union(Set[Job](job))
+  private def verifyAllJobsAreReachableAndNoCycles(job: Job): Unit = {
+    // It is important to verify cycles first as otherwise reachables search will never end ~
+    if (cycleInJobs(job)) {
+      throw new RuntimeException("Detect an abnormality in your workflow.  Either a cycle exists, or multiple " +
+        "jobs will attempt to run the same job.  In either of these scenarios, " +
+        "your workflow will be unable to run the job a second time and thus will crash.  " +
+        "Please review your workflow.")
+    }
 
+    val allJobs: Set[Job] = getAllChildrenJobs(job).union(Set[Job](job))
     // Grab all the jobs that can't be reached so we can report back which ones need to be connected
     val jobsNotReached = jobs.filter(job => !allJobs.contains(job))
     if (jobsNotReached.nonEmpty) {
@@ -185,6 +196,36 @@ object JobManager {
     }
 
     jobSet.toSet
+  }
+
+  /**
+    * Checks that the number of unique jobs we can reach and
+    * the number of jobs we can reach are the same, thus showing that no cycles exist.
+    *
+    * This also verifies that no job will be run twice, as that would also cause the program to fail.
+    *
+    * @param job Job to start looking from
+    *
+    * @return True or false if a cycle exists.
+    */
+  private def cycleInJobs(job: Job, currentJobList: ListBuffer[Job] = new ListBuffer[Job]()): Boolean = {
+    println(currentJobList)
+    currentJobList.append(job)
+    // Found a cycle, return true
+    if (currentJobList.toSet.size != currentJobList.length) {
+      return true
+    }
+
+    for (jobLevel <- job.getJobBuffer) {
+      for (currentJob <- jobLevel) {
+        // If a cycle found below, return true to propagate.
+        if (cycleInJobs(currentJob, currentJobList)) {
+          return true
+        }
+      }
+    }
+
+    false
   }
 
   /*
