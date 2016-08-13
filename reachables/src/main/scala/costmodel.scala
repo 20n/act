@@ -28,7 +28,7 @@ case class Titer(base: Mass, counter: Volume) extends Ratio[Mass, Volume] {
   def /(that: Titer): Double = (base.value / that.base.value) * (that.counter.value / counter.value)
 }
 
-class CostModel(modelName: String) {
+class CostModel {
 
   type KiloWattPerMeterCubed = Double
   type KiloJoulePerMMol = Double
@@ -45,11 +45,6 @@ class CostModel(modelName: String) {
   *  Constants 
   ********************************************************************************************/
 
-  // Default titers and yields are instances for Shikimate from review paper:
-  // "Recombinant organisms for production of industrial products" 
-  // --- http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3026452
-  val defaultYield: Yield = Yield(31.9 grams, 100 grams) // 31.9% g/g
-  val defaultTiter: Titer = Titer(84.0 grams, 1 litres) // 84 g/L
   val defaultFermRunTime: Time = 10 days
   val defaultBrothMassPerBatch: Mass = VolumeToMass(360 cubicMeters)
 
@@ -132,8 +127,8 @@ class CostModel(modelName: String) {
   *  Sensible defaults and external caller 
   ********************************************************************************************/
 
-  var strainTiter: Titer = defaultTiter;
-  var strainYield: Yield = defaultYield;
+  var strainTiter: Titer = Defaults.defaultTiter;
+  var strainYield: Yield = Defaults.defaultYield;
   var fermRunTime: Time = defaultFermRunTime;
   var brothMassPerBatch: Mass = defaultBrothMassPerBatch
   var location: Location = GER;
@@ -201,14 +196,21 @@ class CostModel(modelName: String) {
 
 }
 
-class InvestModel {
+object Defaults {
+  // Default titers and yields are instances for Shikimate from review paper:
+  // "Recombinant organisms for production of industrial products" 
+  // --- http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3026452
   val defaultYield: Yield = Yield(31.9 grams, 100 grams) // 31.9% g/g
   val maxYield: Yield = Yield(60.0 grams, 100.0 grams) // 60% g/g
   val defaultTiter: Titer = Titer(84.0 grams, 1 litres) // 84 g/L
   val maxTiter: Titer = Titer(200.0 grams, 1 liters) // 170g/L is probably the max that has ever been accomplished
+  val defaultPricePerTon: Money = USD(5547) // current price of acetaminophen
+}
 
-  var strainTiter: Titer = defaultTiter;
-  var strainYield: Yield = defaultYield;
+class InvestModel {
+
+  var strainTiter: Titer = Defaults.defaultTiter;
+  var strainYield: Yield = Defaults.defaultYield;
 
   val maxProjectTime: Time = (365 * 10) days
   val maxProjectInvestment: Money = USD(20 million)
@@ -237,21 +239,18 @@ class InvestModel {
   def getInvestment(): (Money, Time) = {
     // want to return the inverse shape of (1+\tanh(4x-2)) / 2 (has a good asymptotic form between (0,0) to (1,1)
     // a resonable approximation would be 0.02\sinh(8x-3.9)+0.5 (between (0,0) and (1,1)
-    val normYield = strainYield.ratio / maxYield.ratio // gives us a number between [0,1]
-    val normTiter = strainTiter / maxTiter // gives us a number between [0,1]
+    val normYield = strainYield.ratio / Defaults.maxYield.ratio // gives us a number between [0,1]
+    val normTiter = strainTiter / Defaults.maxTiter // gives us a number between [0,1]
 
     (cost(normYield, normTiter), time(normYield, normTiter))
   }
 }
 
 class ROIModel {
-  val defaultYield: Yield = Yield(31.9 grams, 100 grams) // 31.9% g/g
-  val defaultTiter: Titer = Titer(84.0 grams, 1 litres) // 84 g/L
-  val defaultPricePerTon: Money = USD(5547) // current price of acetaminophen
 
-  var strainTiter: Titer = defaultTiter;
-  var strainYield: Yield = defaultYield;
-  var productPrice: Money = defaultPricePerTon;
+  var strainTiter: Titer = Defaults.defaultTiter;
+  var strainYield: Yield = Defaults.defaultYield;
+  var productPrice: Money = Defaults.defaultPricePerTon;
 
   val yearsToFullScale: Int = 3
   val volume: Mass = 1000.0 tonnes
@@ -265,14 +264,14 @@ class ROIModel {
     discountedProfits.reduce(_ + _)
   }
 
-  def getROI(): (Money, Dimensionless) = getROI(defaultYield, defaultTiter, defaultPricePerTon)
+  def getROI(): (Money, Dimensionless) = getROI(Defaults.defaultYield, Defaults.defaultTiter, Defaults.defaultPricePerTon)
 
   def getROI(yields: Yield, titers: Titer, marketPricePerTon: Money): (Money, Dimensionless) = {
     strainTiter = titers
     strainYield = yields
     productPrice = marketPricePerTon
 
-    val productionPrice: Price[Mass] = new CostModel("ROI").getPerTonCost(yields, titers)
+    val productionPrice: Price[Mass] = new CostModel().getPerTonCost(yields, titers)
     val productionPricePerTon: Money = productionPrice * (1 tonnes)
     val profitPerTon: Money = marketPricePerTon - productionPricePerTon
     val eventualProfit: Money = profitPerTon * BigDecimal(volume.value)
@@ -291,4 +290,42 @@ class ROIModel {
     (npv, roi)
   }
 
+}
+
+object ExploreRange {
+  val costmodel = new CostModel()
+  val investmodel = new InvestModel()
+  val roimodel = new ROIModel()
+
+  def main(args: Array[String]) {
+    if (args.length == 0) {
+      printhelp
+    } else {
+      try {
+        val p = USD(args(0).toDouble) // market price USD/ton of product
+
+        val maxTite = 170.0 // Defaults.maxTiter.gPerL
+        for (titerv <- 1.0 to maxTite by 20.0) {
+          for (yieldv <- 1.0 to (100 * Defaults.maxYield.ratio) by 10.0) {
+            val y = Yield(yieldv grams, 100 grams)
+            val t = Titer(titerv grams, 1 litres)
+            val investment: (Money, Time) = investmodel.getInvestmentRequired(y, t)
+            val cogs: Price[Mass] = costmodel.getPerTonCost(y, t)
+            val roi: (Money, Dimensionless) = roimodel.getROI(y, t, p)
+
+            println(y + " " + t + " " + roi)
+          }
+        }
+      } catch {
+        case e: NumberFormatException => printhelp
+      }
+    }
+  }
+
+  def printhelp() {
+    def hr() = println("*" * 80)
+    hr
+    println("Usage: ExploreRange <Current Market USD/ton of product>")
+    hr
+  }
 }
