@@ -2,7 +2,6 @@ package com.act.biointerpretation.l2expansion;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -56,7 +55,6 @@ public class L2Prediction implements Serializable {
 
     this.reactionsRoMatch = new ArrayList<Long>(template.reactionsRoMatch);
     this.reactionsNoRoMatch = new ArrayList<Long>(template.reactionsNoRoMatch);
-
   }
 
   public L2Prediction(Integer id,

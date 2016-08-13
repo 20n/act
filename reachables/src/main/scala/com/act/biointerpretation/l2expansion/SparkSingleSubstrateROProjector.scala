@@ -4,6 +4,7 @@ import java.io.File
 
 import chemaxon.formats.MolImporter
 import chemaxon.license.LicenseManager
+import chemaxon.struc.Molecule
 import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -50,14 +51,14 @@ object compute {
    *
    * TODO: try out other partitioning schemes and/or pre-compile and cache ERO Reactors for improved performance.
    */
-  def run(licenseFileName: String, ero: Ero, inchis: List[String]): (Double, L2PredictionCorpus) = {
+  def run(licenseFileName: String, ero: Ero, molecules: List[Molecule]): (Double, L2PredictionCorpus) = {
     val startTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val localLicenseFile = SparkFiles.get(licenseFileName)
 
     LOGGER.info(s"Using license file at $localLicenseFile (file exists: ${new File(localLicenseFile).exists()})")
     LicenseManager.setLicenseFile(localLicenseFile)
 
-    val expander = new SingleSubstrateRoExpander(List(ero).asJava, inchis.asJava,
+    val expander = new SingleSubstrateRoExpander(List(ero).asJava, molecules.asJava,
       new AllPredictionsGenerator(new ReactionProjector()))
     val results = expander.getPredictions()
 
@@ -184,14 +185,17 @@ object SparkSingleSubstrateROProjector {
     LOGGER.info(s"Reduction in ERO list size: ${fullErosList.size} -> ${erosList.size}")
 
     val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)
+    val inchiCorpus = new L2InchiCorpus()
+    inchiCorpus.loadCorpus(new File(substratesListFile))
+    LOGGER.info(s"Substrate list size before mass filtering: ${inchiCorpus.getInchiList.size}")
+    inchiCorpus.filterByMass(950)
+    LOGGER.info(s"Substrate list size after filtering: ${inchiCorpus.getInchiList.size}")
+    val molecules = inchiCorpus.getMolecules.asScala.toList
+
     val validInchis = Source.fromFile(substratesListFile).getLines().
       filter(_.startsWith("InChI=")).
       filter(x => try { MolImporter.importMol(x); true } catch { case e : Exception => false }).toList
     LOGGER.info(s"Loaded and validated ${validInchis.size} InChIs from source file at $substratesListFile")
-
-    val inchis = validInchis.filter(
-      x => if (cl.hasOption(OPTION_FILTER_FOR_SPECTROMETERY)) MolImporter.importMol(x).getMass <= 950.0d else true)
-    LOGGER.info(s"Reduction in substrate list size after filtering: ${validInchis.size} -> ${inchis.size}")
 
     // Don't set a master here, spark-submit will do that for us.
     val conf = new SparkConf().setAppName("Spark RO Projection")
@@ -212,7 +216,7 @@ object SparkSingleSubstrateROProjector {
     // PROJECT!  Run ERO projection over all InChIs.
     val resultsRDD: RDD[(Ero, Double, L2PredictionCorpus)] =
       eroRDD.map(ero => {
-        val results = compute.run(licenseFileName, ero, inchis)
+        val results = compute.run(licenseFileName, ero, molecules)
         (ero, results._1, results._2)
       })
 

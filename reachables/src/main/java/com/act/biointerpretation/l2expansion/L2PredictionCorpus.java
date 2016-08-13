@@ -1,5 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -137,7 +138,8 @@ public class L2PredictionCorpus implements Serializable {
   /**
    * Get a list of all product inchis from corpus.
    */
-  public Collection<String> getUniqueProductInchis() {
+  @JsonIgnore
+  public Set<String> getUniqueProductInchis() {
     Set<String> inchiSet = new HashSet<>();
     for (L2Prediction prediction : getCorpus()) {
       inchiSet.addAll(prediction.getProductInchis());
@@ -148,7 +150,8 @@ public class L2PredictionCorpus implements Serializable {
   /**
    * Get a list of all substrate inchis from corpus.
    */
-  public Collection<String> getUniqueSubstrateInchis() {
+  @JsonIgnore
+  public Set<String> getUniqueSubstrateInchis() {
     Set<String> inchiSet = new HashSet<>();
     for (L2Prediction prediction : getCorpus()) {
       inchiSet.addAll(prediction.getSubstrateInchis());

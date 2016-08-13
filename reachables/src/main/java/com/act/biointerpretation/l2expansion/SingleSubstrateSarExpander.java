@@ -1,6 +1,5 @@
 package com.act.biointerpretation.l2expansion;
 
-import chemaxon.formats.MolFormatException;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import com.act.biointerpretation.sars.CharacterizedGroup;
@@ -18,16 +17,16 @@ public class SingleSubstrateSarExpander extends L2Expander {
   private static final Logger LOGGER = LogManager.getFormatterLogger(SingleSubstrateSarExpander.class);
 
   final Iterable<CharacterizedGroup> sarGroups;
-  final Iterable<String> inchis;
+  final Iterable<Molecule> substrates;
   final ErosCorpus roCorpus;
 
   public SingleSubstrateSarExpander(Iterable<CharacterizedGroup> sarGroups,
-                                    Iterable<String> inchis,
+                                    Iterable<Molecule> substrates,
                                     ErosCorpus roCorpus,
                                     PredictionGenerator generator) {
     super(generator);
     this.sarGroups = sarGroups;
-    this.inchis = inchis;
+    this.substrates = substrates;
     this.roCorpus = roCorpus;
   }
 
@@ -40,14 +39,8 @@ public class SingleSubstrateSarExpander extends L2Expander {
       List<Sar> sars = sarGroup.getSars();
       SerializableReactor reactor = sarGroup.getReactor();
 
-      for (String inchi : inchis) {
-        List<Molecule> singleSubstrateContainer;
-        try {
-          singleSubstrateContainer = Arrays.asList(importMolecule(inchi));
-        } catch (MolFormatException e) {
-          LOGGER.warn("Cannot convert inchi %s to molecule", inchi);
-          continue;
-        }
+      for (Molecule mol : substrates) {
+        List<Molecule> singleSubstrateContainer = Arrays.asList(mol);
 
         result.add(new PredictionSeed(sarGroup.getGroupName(), singleSubstrateContainer, reactor, sars));
       }

@@ -1,6 +1,5 @@
 package com.act.biointerpretation.l2expansion;
 
-import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
@@ -19,15 +18,14 @@ public class SingleSubstrateRoExpander extends L2Expander {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(SingleSubstrateRoExpander.class);
   private static final Integer ONE_SUBSTRATES = 1;
-
   private List<Ero> roList;
-  private List<String> metaboliteList;
+  private List<Molecule> metaboliteList;
 
   /**
    * @param roList A list of all ros to be tested
    * @param metaboliteList A list of all metabolites on which to test the ROs.
    */
-  public SingleSubstrateRoExpander(List<Ero> roList, List<String> metaboliteList, PredictionGenerator generator) {
+  public SingleSubstrateRoExpander(List<Ero> roList, List<Molecule> metaboliteList, PredictionGenerator generator) {
     super(generator);
     this.roList = roList;
     this.metaboliteList = metaboliteList;
@@ -41,7 +39,6 @@ public class SingleSubstrateRoExpander extends L2Expander {
     List<Ero> singleSubstrateRoList = getNSubstrateRos(roList, ONE_SUBSTRATES);
 
     for (Ero ro : singleSubstrateRoList) {
-
       SerializableReactor reactor;
       try {
         reactor = new SerializableReactor(ro.getReactor(), ro.getId());
@@ -51,21 +48,12 @@ public class SingleSubstrateRoExpander extends L2Expander {
       }
 
       //iterate over every (metabolite, ro) pair
-      for (String inchi : metaboliteList) {
-        // Get Molecule from metabolite
-        // Continue to next metabolite if this fails
-        List<Molecule> singleSubstrateContainer;
-        try {
-          singleSubstrateContainer = Arrays.asList(importMolecule(inchi));
-        } catch (MolFormatException e) {
-          LOGGER.error("MolFormatException on metabolite %s. %s", inchi, e.getMessage());
-          continue;
-        }
-
-        result.add(new PredictionSeed(ro.getId().toString(), singleSubstrateContainer, reactor, NO_SAR));
+      for (Molecule substrate : metaboliteList) {
+        result.add(new PredictionSeed(ro.getId().toString(), Arrays.asList(substrate), reactor, NO_SAR));
       }
     }
 
+    LOGGER.info("Created %d prediction seeds", result.size());
     return result;
   }
 
