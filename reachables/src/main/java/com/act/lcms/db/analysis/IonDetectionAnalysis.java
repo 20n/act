@@ -1,6 +1,7 @@
 package com.act.lcms.db.analysis;
 
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
+import com.act.jobs.JavaRunnable;
 import com.act.lcms.MS1;
 import com.act.lcms.MassCalculator;
 import com.act.lcms.XZ;
@@ -523,6 +524,46 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
   public void updateProgress() {
     progress += 100.0/(positiveWells.size() + negativeWells.size());
     LOGGER.info("Progress: %f", progress);
+  }
+
+  public static JavaRunnable getRunnableIonDetectionAnalysis(DB db,
+                                                             String inputPredictionCorpus,
+                                                             String inputExperimentalSetupFile,
+                                                             Boolean isInputListOfInchis,
+                                                             Set<String> includeIons,
+                                                             File lcmsDir,
+                                                             String plottingDirectory,
+                                                             String outputPrefix) {
+    // Since JavaRunnable is a one-method interface, we can use lambdas to write this very succinctly!
+    // The returned lambda will call the below code from its run() method.
+    return () -> {
+      Map<Double, Set<Pair<String, String>>> massChargeToChemicalAndIon =
+          constructMassChargeToChemicalIonsFromInputFile(new File(inputPredictionCorpus), includeIons, isInputListOfInchis);
+
+      Pair<Set<Pair<String, Double>>, Map<String, Double>> values = constructFakeNameToMassCharge(massChargeToChemicalAndIon);
+      Set<Pair<String, Double>> searchMZs = values.getLeft();
+      Map<String, Double> chemIDToMassCharge = values.getRight();
+
+      try {
+        Map<ScanData.KIND, List<LCMSWell>> wellTypeToLCMSWells = readInputExperimentalSetup(db, inputExperimentalSetupFile);
+        // Get experimental setup ie. positive and negative wells from config file
+        List<LCMSWell> positiveWells = wellTypeToLCMSWells.get(ScanData.KIND.POS_SAMPLE);
+        List<LCMSWell> negativeWells = wellTypeToLCMSWells.get(ScanData.KIND.NEG_CONTROL);
+
+        LOGGER.info("Number of positive wells is: %d", positiveWells.size());
+        LOGGER.info("Number of negative wells is: %d", negativeWells.size());
+
+        HashMap<Integer, Plate> plateCache = new HashMap<>();
+        List<Pair<String, Double>> listOfMassCharges = new ArrayList<>(searchMZs);
+
+        IonDetectionAnalysis<LCMSWell> ionDetectionAnalysis = new IonDetectionAnalysis<LCMSWell>(lcmsDir, positiveWells,
+            negativeWells, plottingDirectory, plateCache, listOfMassCharges, db);
+
+        ionDetectionAnalysis.runLCMSMiningAnalysisAndPlotResults(chemIDToMassCharge, massChargeToChemicalAndIon, outputPrefix);
+      } catch (Exception e) {
+        LOGGER.error("Error thrown while running analysis. The error is: %s", e.getMessage());
+      }
+    };
   }
 
   public static void main(String[] args) throws Exception {
