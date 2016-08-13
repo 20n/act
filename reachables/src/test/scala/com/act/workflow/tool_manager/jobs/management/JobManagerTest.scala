@@ -84,6 +84,13 @@ class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
   }
 
   "The Job Manager" should "detect if cycles exist in a given job structure." in {
+    /*
+      Structure of this test:
+      #
+      # A <------> B
+      #
+
+     */
     val A = immediateReturnJob("A")
     val B = immediateReturnJob("B")
 
