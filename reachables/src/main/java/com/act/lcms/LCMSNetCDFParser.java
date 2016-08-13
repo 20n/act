@@ -165,4 +165,5 @@ public class LCMSNetCDFParser implements LCMSParser {
 
     return spectra;
   }
+
 }
