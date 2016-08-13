@@ -160,9 +160,23 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
       }
 
       String relativePath = massChargeValue.toString() + "_" + plottingPath + "_" + chemicalAndIonName;
-
       File absolutePathFileWithoutExtension = new File(plottingDirectory, relativePath);
       String absolutePathWithoutExtension = absolutePathFileWithoutExtension.getAbsolutePath();
+      String absolutePathWithExtension = absolutePathWithoutExtension + "." + FMT;
+
+      // Check if the plotting file already exists. If it does, we should not overwrite it. Instead, we just change
+      // the path name by appending a counter till the collision no longer exists.
+      // TODO: Implement an elegant solution to this problem.
+      File duplicateFile = new File(absolutePathWithExtension);
+      Integer fileDuplicateCounter = 0;
+      while (duplicateFile.exists() && !duplicateFile.isDirectory()) {
+        fileDuplicateCounter++;
+        relativePath = relativePath + "_" + fileDuplicateCounter.toString();
+        absolutePathFileWithoutExtension = new File(plottingDirectory, relativePath);
+        absolutePathWithoutExtension = absolutePathFileWithoutExtension.getAbsolutePath();
+        absolutePathWithExtension = absolutePathWithoutExtension + "." + FMT;
+        duplicateFile = new File(absolutePathWithExtension);
+      }
 
       plottingUtil.plotSpectra(
           ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePathWithoutExtension, FMT, false, false);
