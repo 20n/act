@@ -78,8 +78,11 @@ abstract class Job(name: String) {
     }
 
     // Job manager should know if has been marked as complete
-    if (isCompleted) JobManager.indicateJobCompleteToManager(this)
+    if (isCompleted) {
+      JobManager.indicateJobCompleteToManager(this)
+    }
   }
+
 
   def isUnstarted: Boolean = synchronized {
     getJobStatus == JobStatus.Unstarted
