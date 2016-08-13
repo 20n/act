@@ -21,9 +21,20 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
 
      */
     val A = immediateReturnJob("A")
+    val B = immediateReturnJob("B")
+    val C = immediateReturnJob("C")
+    val D = immediateReturnJob("D")
 
-    A.start()
-    A.start()
+    A.thenRun(B).thenRun(C).thenRun(D)
+
+    JobManager.awaitUntilAllJobsComplete(A)
+
+    A.isCompleted should be(true)
+    B.isCompleted should be(true)
+    C.isCompleted should be(true)
+    D.isCompleted should be(true)
+
+    JobManager.getOrderOfJobCompletion should be(List("A", "B", "C", "D"))
   }
 
   "Jobs" should "should complete parallel paths independently of how long each take." in {
@@ -122,9 +133,9 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
   "Jobs" should "be able to create independent jobs by indicating a given job shouldn't be waited for" in {
     /*
       Structure of this test:
-      #     B -> G -> H -> I
+      #     B -> F -> G
       #   /
-      # A - D ->  E -F
+      # A - D ->  E
       #  \       /
       #     C ->
 
@@ -136,15 +147,23 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     val E = immediateReturnJob("E")
     val F = immediateReturnJob("F")
     val G = immediateReturnJob("G")
-    val H = immediateReturnJob("H")
-    val I = immediateReturnJob("I")
 
     B.jobShouldNotBeWaitedFor
-    A.thenRunBatch(List(B, C, D)).thenRun(E).thenRunBatch(List(F))
-    B.thenRun(G).thenRun(H).thenRun(I)
+    A.thenRunBatch(List(B, C, D)).thenRun(E)
+    B.thenRun(G).thenRun(F)
+
+    // If we kill B, E should still be allowed to complete.
+    B.killUncompleteJob
 
     JobManager.awaitUntilAllJobsComplete(A)
-    println("\n\n\n\n\n\n\\n\n\n\\n\n\\n\n\\n\n\n\n\\n")
-    println(JobManager.getOrderOfJobCompletion)
+
+
+    A.isSuccessful should be(true)
+    B.isKilled should be(true)
+    C.isSuccessful should be(true)
+    D.isSuccessful should be(true)
+    E.isSuccessful should be(true)
+    F.isKilled should be(true)
+    G.isKilled should be(true)
   }
 }

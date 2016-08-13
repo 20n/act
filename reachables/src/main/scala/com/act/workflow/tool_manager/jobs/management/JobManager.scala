@@ -3,6 +3,7 @@ package com.act.workflow.tool_manager.jobs.management
 import com.act.workflow.tool_manager.jobs.Job
 import org.apache.logging.log4j.LogManager
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /**
@@ -61,23 +62,6 @@ object JobManager {
     instantiateCountDownLockAndWait()
   }
 
-  private def verifyAllJobsAreReachable(job: Job): Unit = {
-    val allJobs: Set[Job] = job.getJobBuffer.flatMap(jobList => jobList.flatMap(job => getAllChildrenJobs(job))).toSet
-
-    // Grab all the jobs that can't be reached so we can report back which ones need to be connected
-    val jobsNotReached = jobs.filter(job => !allJobs.contains(job))
-    if (jobsNotReached.nonEmpty) {
-      throw new RuntimeException("Started waiting for jobs, but program is unable to reach all jobs.  " +
-        s"Please ensure your workflow is fully connected.  " +
-        s"The jobs that are not connected are ${jobsNotReached.map(_.getName)}")
-    }
-  }
-
-  private def getAllChildrenJobs(job: Job): List[Job] = {
-    job.getJobBuffer.flatMap(
-      jobList => jobList.flatMap(job => job.getJobBuffer)).flatten
-  }
-
   def awaitUntilSpecificJobComplete(firstJob: Job, jobToWaitFor: Job): Unit = {
     require(jobs.nonEmpty, message = "Cannot await when no jobs have been started.  " +
       "Make sure to call start() on a job prior to awaiting.")
@@ -134,10 +118,12 @@ object JobManager {
     jobCompleteOrdering.append(job)
 
     // If we are waiting for a job and find that job, release the number lock
-    if (jobToAwaitFor.isDefined)
+    if (jobToAwaitFor.isDefined) {
       if (job.equals(jobToAwaitFor.get)) {
         numberLock.releaseLock()
       }
+    }
+
     numberLock.countDown()
     logger.info(s"<Concurrent jobs running = ${runningJobsCount()}>")
     logger.info(s"<Current jobs awaiting to run = ${waitingJobsCount()}>")
@@ -162,6 +148,43 @@ object JobManager {
 
   def getOrderOfJobStatuses: List[String] = {
     jobCompleteOrdering.toList.map(x => x.getJobStatus)
+  }
+
+  /**
+    * Goes through and ensures all jobs in `jobs` are reachable, and thus will be run in a normal, successful workflow.
+    *
+    * @param job The first job
+    */
+  private def verifyAllJobsAreReachable(job: Job): Unit = {
+    val allJobs: Set[Job] = getAllChildrenJobs(job).union(Set[Job](job))
+
+    // Grab all the jobs that can't be reached so we can report back which ones need to be connected
+    val jobsNotReached = jobs.filter(job => !allJobs.contains(job))
+    if (jobsNotReached.nonEmpty) {
+      throw new RuntimeException("Started waiting for jobs, but program is unable to reach all jobs.  " +
+        s"Please ensure your workflow is fully connected.  " +
+        s"The jobs that are not connected are ${jobsNotReached.map(_.getName)}")
+    }
+  }
+
+  /**
+    * Gets all the children jobs of a given job
+    *
+    * @param job Job to get the children of
+    *
+    * @return A set of the children that were found.
+    */
+  private def getAllChildrenJobs(job: Job): Set[Job] = {
+    var jobSet = mutable.Set[Job]()
+
+    for (jobLevel <- job.getJobBuffer) {
+      for (currentJob <- jobLevel) {
+        jobSet.add(currentJob)
+        jobSet = jobSet.union(getAllChildrenJobs(currentJob))
+      }
+    }
+
+    jobSet.toSet
   }
 
   /*
