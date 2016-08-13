@@ -29,13 +29,8 @@ class ShellWrapperTest extends FlatSpec with Matchers with BeforeAndAfterEach {
 
   "The ShellWrapper" should "indicate valid commands complete" in {
     val command = ShellWrapper.shellCommand("date", List("date"))
-    command.start()
 
-  "The ShellWrapper" should "indicate valid commands complete" in {
-    if (IS_OS_UNIX) {
-      val command = ShellWrapper.shellCommand("date", List("date"))
-      command.doNotWriteOutputStream()
-      command.doNotWriteErrorStream()
+    JobManager.awaitUntilAllJobsComplete(command)
 
     successfulJob(command)
   }
@@ -43,8 +38,7 @@ class ShellWrapperTest extends FlatSpec with Matchers with BeforeAndAfterEach {
 
   "The ShellWrapper" should "report that commands that fail on shell fail" in {
     val command = ShellWrapper.shellCommand("cp", List("cp"))
-    command.start()
-    JobManager.awaitUntilAllJobsComplete()
+    JobManager.awaitUntilAllJobsComplete(command)
 
     command.isSuccessful should be(false)
     command.isFailed should be(true)
@@ -70,11 +64,9 @@ class ShellWrapperTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     val command1 = ShellWrapper.shellCommand("date", List("date"))
     val command2 = ShellWrapper.shellCommand("ls", List("ls"))
 
-      command1.doNotWriteOutputStream()
-      command1.doNotWriteErrorStream()
+    command1.thenRun(command2)
 
-      command2.doNotWriteOutputStream()
-      command2.doNotWriteErrorStream()
+    JobManager.awaitUntilAllJobsComplete(command1)
 
       command1.thenRun(command2)
 

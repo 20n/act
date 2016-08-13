@@ -8,17 +8,24 @@ import scala.collection.mutable.ListBuffer
 
 abstract class Job(name: String) {
   protected val jobBuffer = ListBuffer[List[Job]]()
-  /*
-   How many jobs need to return to this one prior to it starting
-   This is useful as then we can model sequential jobs in a job buffer with a list of jobs to run at each sequence.
-   */
+  // Handle interaction with other jobs
   protected val returnCounter = new AtomicLatch
+  /*
+    How many jobs need to return to this one prior to it starting
+    This is useful as then we can model sequential jobs in a job buffer with a list of jobs to run at each sequence.
+   */
   private val logger = LogManager.getLogger(getClass.getName)
   protected var jobReturnCode = -1
   protected var retryJob: Option[Job] = None
   protected var returnJob: Option[Job] = None
   protected var cancelFuture: Option[() => Boolean] = None
+  // Current status
   private var status = JobStatus.Unstarted
+  /*
+    If true, this job will wait for it to complete prior to launching next round of jobs.
+    Otherwise, it will launch whenever all the other jobs it is waiting on are done.
+   */
+  private var shouldBeWaitedOn = true
 
   /*
   A bunch of basic getters that determine the logic of the job
@@ -50,10 +57,6 @@ abstract class Job(name: String) {
     getJobStatus == JobStatus.Running
   }
 
-  def isUnstarted: Boolean = synchronized {
-    getJobStatus == JobStatus.Unstarted
-  }
-
   def getJobStatus: String = synchronized {
     this.status
   }
@@ -82,12 +85,23 @@ abstract class Job(name: String) {
     if (isCompleted) JobManager.indicateJobCompleteToManager(this)
   }
 
-  /*
-    User description of job
+  def isUnstarted: Boolean = synchronized {
+    getJobStatus == JobStatus.Unstarted
+  }
 
-    Any method here should return this job to allow for chaining
-    Allows sequential job chaining (Ex: job1.thenRun(job2).thenRun(job3))
-   */
+  def getJobBuffer: List[List[Job]] = {
+    jobBuffer.toList
+  }
+
+
+  /**
+    * If this is set, when this job is added to another job it won't report
+    * back to that job that it is complete and the other job will continue even if it isn't complete.
+    */
+  def jobShouldNotBeWaitedFor {
+    shouldBeWaitedOn = false
+  }
+
   /**
     * This job will be run if the current job fails, prior to attempt to rerun the current job.
     *
@@ -98,10 +112,18 @@ abstract class Job(name: String) {
     *
     * @return this, for chaining
     */
-  def setJobToRunPriorToRetrying(job: Job): Job = {
-    internalState.runManager.preRetryJob = job
+  def thenRun(nextJob: Job): Job = {
+    jobBuffer.append(List(nextJob))
+
     this
   }
+
+  /*
+    User description of job
+
+    Any method here should return this job to allow for chaining
+    Allows sequential job chaining (Ex: job1.thenRun(job2).thenRun(job3))
+   */
 
   /** Run chained jobs in parallel
     * job1.thenRunBatch(List(job2, job3, job4)).thenRun(job5)
@@ -122,6 +144,7 @@ abstract class Job(name: String) {
     * @return this, for chaining
     */
   def thenRunBatch(nextJobs: List[Job], batchSize: Int = 20): Job = {
+
     // We use a batch size here to make it so we don't spend all our computation managing job context.
     val jobGroups = nextJobs.grouped(batchSize)
     jobGroups.foreach(internalState.dependencyManager.addDependency)
@@ -183,10 +206,15 @@ class InternalState(job: Job) {
     * @param job Job to be added
     */
   def start(): Unit = {
-    if (JobStatus.Killed != getJobStatus) {
+    if (this.isUnstarted) {
       logger.info(s"Started command ${this}")
       setJobStatus(JobStatus.Running)
       asyncJob()
+    } else {
+      val message = s"Attempted to start a job that has already been started.  " +
+        s"Job name is $getName with current status $getJobStatus"
+      logger.error(message)
+      throw new RuntimeException(message)
     }
   }
 
@@ -225,6 +253,10 @@ class InternalState(job: Job) {
 
   def getName: String = {
     this.name
+  }
+
+  protected def getShouldBeWaitedOn: Boolean = {
+    shouldBeWaitedOn
   }
 
   /**
@@ -455,14 +487,20 @@ class InternalState(job: Job) {
     getJobStatus == StatusCodes.Success
   }
 
-  def isFailed: Boolean = {
-    getJobStatus.equals(StatusCodes.Failure) |
-      getJobStatus.equals(StatusCodes.ParentProcessFailure) |
-      getJobStatus.equals(StatusCodes.Killed)
-  }
 
-  def isNotStarted: Boolean = {
-    getJobStatus == StatusCodes.NotStarted
+      /*
+        The number of jobs that need to return to this job prior to it being able to keep going
+
+        Jobs that are waited for should return to this job and also modify
+        the returnCounter as a way of indicating their completeness.
+       */
+      val jobsToWaitFor = head.filter(_.getShouldBeWaitedOn)
+      returnCounter.setCount(jobsToWaitFor.length)
+      jobsToWaitFor.foreach(_.setReturnJob(this))
+
+      // Start all the jobs
+      head.foreach(_.start())
+    }
   }
 
   /*

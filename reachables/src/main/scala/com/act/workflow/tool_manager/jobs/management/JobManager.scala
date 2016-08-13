@@ -53,21 +53,38 @@ object JobManager {
     * Should be called at the end of a job instantiation set so that any long-running jobs will finish.
     *
     */
-  def startJobAndAwaitUntilWorkflowComplete(firstJob: Job): Unit = {
+  def awaitUntilAllJobsComplete(firstJob: Job): Unit = {
     require(jobs.nonEmpty, message = "Cannot await when no jobs have been started.  " +
       "Make sure to call start() on a job prior to awaiting.")
 
-    verifyAllJobsAreReachableAndNoCycles(firstJob)
+    verifyAllJobsAreReachable(firstJob)
     firstJob.start()
     instantiateCountDownLockAndWait()
   }
 
-  def awaitUntilSpecificJobComplete(jobToWaitFor: Job): Unit = {
+  private def verifyAllJobsAreReachable(job: Job): Unit = {
+    val allJobs: Set[Job] = job.getJobBuffer.flatMap(jobList => jobList.flatMap(job => getAllChildrenJobs(job))).toSet
+
+    // Grab all the jobs that can't be reached so we can report back which ones need to be connected
+    val jobsNotReached = jobs.filter(job => !allJobs.contains(job))
+    if (jobsNotReached.nonEmpty) {
+      throw new RuntimeException("Started waiting for jobs, but program is unable to reach all jobs.  " +
+        s"Please ensure your workflow is fully connected.  " +
+        s"The jobs that are not connected are ${jobsNotReached.map(_.getName)}")
+    }
+  }
+
+  private def getAllChildrenJobs(job: Job): List[Job] = {
+    job.getJobBuffer.flatMap(
+      jobList => jobList.flatMap(job => job.getJobBuffer)).flatten
+  }
+
+  def awaitUntilSpecificJobComplete(firstJob: Job, jobToWaitFor: Job): Unit = {
     require(jobs.nonEmpty, message = "Cannot await when no jobs have been started.  " +
       "Make sure to call start() on a job prior to awaiting.")
 
     this.jobToAwaitFor = Option(jobToWaitFor)
-
+    firstJob.start()
     instantiateCountDownLockAndWait()
   }
 
