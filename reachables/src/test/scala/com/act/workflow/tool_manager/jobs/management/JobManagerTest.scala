@@ -15,7 +15,7 @@ class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
   }
 
   // Job complete size should be the same as number of jobs successful.
-  "Job Manager" should "have an equal count of completed jobs and " +
+  "The Job Manager" should "have an equal count of completed jobs and " +
     "number of jobs in list of order in which jobs completed." in {
     val A = immediateReturnJob("A")
     val B = immediateReturnJob("A")
@@ -38,7 +38,7 @@ class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
   }
 
   // If we ask the job manager to wait until one job is done, it should kill any jobs still in the queue after that.
-  "Job Manager" should "should cancel any incomplete job after the job we are waiting for is complete." in {
+  "The Job Manager" should "cancel any incomplete job after the job we are waiting for is complete." in {
     /*
       Structure of this test:
       #
@@ -69,7 +69,7 @@ class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     C.isKilled should be(true)
   }
 
-  "Jobs" should "detect if not all jobs have been added to run." in {
+  "The Job Manager" should "detect if not all jobs have been added to run." in {
     /*
       Structure of this test:
       #
@@ -79,6 +79,16 @@ class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
      */
     val A = immediateReturnJob("A")
     val B = immediateReturnJob("B")
+
+    an[RuntimeException] should be thrownBy JobManager.awaitUntilAllJobsComplete(A)
+  }
+
+  "The Job Manager" should "detect if cycles exist in a given job structure." in {
+    val A = immediateReturnJob("A")
+    val B = immediateReturnJob("B")
+
+    A.thenRun(B)
+    B.thenRun(A)
 
     an[RuntimeException] should be thrownBy JobManager.awaitUntilAllJobsComplete(A)
   }
