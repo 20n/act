@@ -6,6 +6,7 @@ import squants.time.TimeConversions.TimeConversions
 import squants.mass._
 import squants.mass.MassConversions.MassConversions
 import squants.space._
+import squants.space.Volume._
 import squants.space.VolumeConversions.VolumeConversions
 import squants.Dimensionless
 import squants.Dimensionless._
@@ -14,11 +15,17 @@ import squants.DimensionlessConversions._
 import squants.market.Money
 import squants.market.USD
 import squants.market.Price
+import squants.market.MoneyConversions._
 import squants.Ratio
 import squants.LikeRatio
 import squants.thermal.Temperature
 import squants.thermal.TemperatureConversions._
 import squants.Quantity
+import squants.energy._
+import squants.energy.PowerConversions._
+import squants.mass.Moles
+import squants.mass.ChemicalAmount
+import squants.mass.ChemicalAmountConversions._
 
 import scala.math.sinh
 
@@ -26,6 +33,7 @@ case class Yield(base: Mass, counter: Mass) extends LikeRatio[Mass]
 case class Titer(base: Mass, counter: Volume) extends Ratio[Mass, Volume] {
   def *(that: Volume): Mass = base * (that.value / counter.value)
   def /(that: Titer): Double = (base.value / that.base.value) * (that.counter.value / counter.value)
+  def gPerL = this.convertToBase(1.0 liters).toGrams
 }
 
 class CostModel {
@@ -129,19 +137,30 @@ class CostModel {
 
   var strainTiter: Titer = Defaults.defaultTiter;
   var strainYield: Yield = Defaults.defaultYield;
+  var operationMode: Defaults.OperationMode = Defaults.defaultOperationMode
   var fermRunTime: Time = defaultFermRunTime;
   var brothMassPerBatch: Mass = defaultBrothMassPerBatch
   var location: Location = GER;
 
   def getPerTonCost(y: Double, t: Double): Double = {
-    val cost: Price[Mass] = getPerTonCost(Yield(y grams, 100 grams), Titer(t grams, 1 litres))
-    (cost * (1 tonnes)).value
+    val cost: Price[Mass] = getPerTonCost(Yield(y grams, 100 grams), Titer(t grams, 1 litres), Defaults.defaultOperationMode)
+    cost.convertToBase(1.0 tonnes).value
   }
 
-  def getPerTonCost(yields: Yield, titers: Titer): Price[Mass] = {
+  def getPerTonCost(yields: Yield, titers: Titer, mode: Defaults.OperationMode): Price[Mass] = {
     strainTiter = titers
     strainYield = yields
-    RentalModelCost()
+    val fermCost = mode match {
+      case Defaults.CMOS => costWithCMOs
+      case Defaults.BYOP => costWithBYOPlant
+    }
+    val dspCost = mode match {
+      case Defaults.CMOS => dspCostWithCMOs
+      case Defaults.BYOP => dspCostWithBYOPlant
+    }
+
+    val cost = fermCost + dspCost
+    cost
   }
 
   /********************************************************************************************
@@ -162,9 +181,9 @@ class CostModel {
   def consumablesPerBatch: Money = mediaPerBatch + glcPerBatch + ammoniaPerBatch
 
   /********************************************************************************************
-  *  Rental Model  
+  *  Rental Model: Cost with CMOs
   ********************************************************************************************/
-  def RentalModelCost(): Price[Mass] = {
+  def costWithCMOs(): Price[Mass] = {
     val rentPerBatch = location.rentalRate * literDaysPerBatch
 
     // brothvol = working vol + num_draws * (working vol)/2 => num_draws = 2(brothvol/working - 1)
@@ -179,10 +198,14 @@ class CostModel {
     costPerTon
   }
 
+  // Note: The TODOs that remain below need to be filled out from Tim Revak's models under
+  // NAS/shared-data/Tim Revak/Cost Models/20n COG, v2 25JUL16.xlsx
+
   /********************************************************************************************
-  *  Bottom Up Model 
+  *  Bottom Up Model: Cost with Build Your Own Plant
   ********************************************************************************************/
-  def BottomUpModelCost(): Price[Mass] = {
+  def costWithBYOPlant(): Price[Mass] = {
+    // TODO: fill out the cost model for Build Your Own Plant
     val electrical: Money = USD(0) 
     val cooling: Money = USD(0) 
     val steam: Money = USD(0) 
@@ -192,6 +215,16 @@ class CostModel {
     val costPerBatch: Money = consumablesPerBatch + electrical + cooling + steam + labor + depreciation
     val costPerTon: Price[Mass] = costPerBatch / productPerBatch
     costPerTon
+  }
+
+  def dspCostWithCMOs(): Price[Mass] = {
+    // TODO: fill out the cost model for CMO for dsp
+    (2000.0 dollars) / (1.0 tonnes)
+  }
+
+  def dspCostWithBYOPlant(): Price[Mass] = {
+    // TODO: fill out the cost model for Build Your Own Plant for dsp
+    (2000.0 dollars) / (1.0 tonnes)
   }
 
 }
@@ -205,6 +238,11 @@ object Defaults {
   val defaultTiter: Titer = Titer(84.0 grams, 1 litres) // 84 g/L
   val maxTiter: Titer = Titer(200.0 grams, 1 liters) // 170g/L is probably the max that has ever been accomplished
   val defaultPricePerTon: Money = USD(5547) // current price of acetaminophen
+
+  sealed abstract class OperationMode
+  case object CMOS extends OperationMode
+  case object BYOP extends OperationMode
+  val defaultOperationMode: OperationMode = CMOS // BYOP
 }
 
 class InvestModel {
@@ -225,7 +263,10 @@ class InvestModel {
     // a resonable approximation would be 0.02\sinh(8x-3.9)+0.5 (between (0,0) and (1,1)
     def curve(x: Double) = { 0.02 * sinh(8 * x - 3.9) + 0.5 }
 
-    curve(x2) // for now ignore x1 (yield)
+    // TODO: return a convolved outcome based on titer (x2) AND yield (x1)
+    // From observations, we know titer is the predominant cost, so for now
+    // we compute a return curve on titer (x2)
+    curve(x2)
   }
 
   def cost(normYield: Double, normTiter: Double): Money = {
@@ -258,20 +299,23 @@ class ROIModel {
   val rate = (10.0 / 100.0) percent
 
   def getNPV(invested: Money, profits: List[Money]): Money = {
+    // TODO: Change the NPV calculation to use Danielle's model
+    // NAS/shared-data/Danielle/Final Docs/Other Stuff/Molecule NPV.xlsx
+
     def discountfn(yrProfit: (Money, Int)) = yrProfit._1 / math.pow(1 + rate.value, 1.0 * yrProfit._2)
     val discountedProfits = profits.zip(1 until profits.length).map(discountfn)
 
     discountedProfits.reduce(_ + _)
   }
 
-  def getROI(): (Money, Dimensionless) = getROI(Defaults.defaultYield, Defaults.defaultTiter, Defaults.defaultPricePerTon)
+  def getROI(): (Money, Dimensionless) = getROI(Defaults.defaultYield, Defaults.defaultTiter, Defaults.defaultPricePerTon, Defaults.defaultOperationMode)
 
-  def getROI(yields: Yield, titers: Titer, marketPricePerTon: Money): (Money, Dimensionless) = {
+  def getROI(yields: Yield, titers: Titer, marketPricePerTon: Money, mode: Defaults.OperationMode): (Money, Dimensionless) = {
     strainTiter = titers
     strainYield = yields
     productPrice = marketPricePerTon
 
-    val productionPrice: Price[Mass] = new CostModel().getPerTonCost(yields, titers)
+    val productionPrice: Price[Mass] = new CostModel().getPerTonCost(yields, titers, mode)
     val productionPricePerTon: Money = productionPrice * (1 tonnes)
     val profitPerTon: Money = marketPricePerTon - productionPricePerTon
     val eventualProfit: Money = profitPerTon * BigDecimal(volume.value)
@@ -297,12 +341,24 @@ object ExploreRange {
   val investmodel = new InvestModel()
   val roimodel = new ROIModel()
 
+  sealed abstract class OutFormat
+  case object OutHuman extends OutFormat
+  case object OutTSV extends OutFormat
+
   def main(args: Array[String]) {
-    if (args.length == 0) {
+    if (args.length != 3) {
       printhelp
     } else {
       try {
         val p = USD(args(0).toDouble) // market price USD/ton of product
+        val mode = args(1) match { case "CMOS" => Defaults.CMOS; case _ => Defaults.BYOP }
+        val outformat = args(2) match { case "Readable" => OutHuman; case _ => OutTSV }
+
+        // Print the header
+        outformat match {
+          case OutHuman => println(s"Yield\tTiter\tInvestment\tCOGS\tROI")
+          case OutTSV => println(s"Yield(%)\tTiter(g/L)\tInvest($$M)\tInvest(Yr)\tCOGS($$/T)\tSell Price($$/T)\tNPV($$M)\tROI(%)")
+        }
 
         val maxTite = 170.0 // Defaults.maxTiter.gPerL
         for (titerv <- 1.0 to maxTite by 20.0) {
@@ -310,10 +366,25 @@ object ExploreRange {
             val y = Yield(yieldv grams, 100 grams)
             val t = Titer(titerv grams, 1 litres)
             val investment: (Money, Time) = investmodel.getInvestmentRequired(y, t)
-            val cogs: Price[Mass] = costmodel.getPerTonCost(y, t)
-            val roi: (Money, Dimensionless) = roimodel.getROI(y, t, p)
+            val cogs: Price[Mass] = costmodel.getPerTonCost(y, t, mode)
+            val roi: (Money, Dimensionless) = roimodel.getROI(y, t, p, mode)
 
-            println(y + " " + t + " " + roi)
+            outformat match {
+              case OutHuman => {
+                println(s"$y $t $investment $cogs $roi")
+              }
+              case OutTSV => {
+                val yieldPc = y.ratio * 100
+                val titerGPerL = t.gPerL
+                val investMillions = investment._1.value / 1e6
+                val investYears = investment._2.value / 365
+                val cogsForTon = cogs.convertToBase(1.0 tonnes).value
+                val priceForTon = p.value
+                val npv = roi._1.value / 1e6
+                val roiPc = roi._2.value * 100
+                println(f"$yieldPc%2.2f\t$titerGPerL%2.2f\t$investMillions%2.2f\t${investYears}%.2f\t$cogsForTon%.2f\t$priceForTon%.2f\t$npv%.2f\t$roiPc%.2f")
+              }
+            }
           }
         }
       } catch {
@@ -325,7 +396,7 @@ object ExploreRange {
   def printhelp() {
     def hr() = println("*" * 80)
     hr
-    println("Usage: ExploreRange <Current Market USD/ton of product>")
+    println("Usage: ExploreRange <Current Market USD/ton of product> <CMOS | BYOP> <Readable | TSV>")
     hr
   }
 }
