@@ -90,4 +90,14 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
   private def writeStreamToLogger(loggerType: (String) => Unit)(output: String): Unit = {
     loggerType(output)
   }
+
+  def doNotWriteOutputStream(): Job = {
+    outputMethod = None
+    this
+  }
+
+  def doNotWriteErrorStream(): Job = {
+    errorMethod = None
+    this
+  }
 }

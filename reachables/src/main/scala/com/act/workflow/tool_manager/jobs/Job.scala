@@ -1,7 +1,7 @@
 package com.act.workflow.tool_manager.jobs
 
-import com.act.workflow.tool_manager.jobs.management.{AtomicLatch, JobManager, JobStatus}
-import org.apache.logging.log4j.LogManager
+import com.act.workflow.tool_manager.jobs.management.{AtomicLatch, JobManager, JobStatus, LoggingVerbosity}
+import org.apache.logging.log4j.{LogManager, Logger}
 
 import scala.collection.mutable.ListBuffer
 
@@ -12,17 +12,25 @@ abstract class Job(name: String) {
     This is useful as then we can model sequential jobs in a job buffer with a list of jobs to run at each sequence.
    */
   protected val returnCounter = new AtomicLatch
-  private val logger = LogManager.getLogger(getClass.getName)
+  private val logger: Logger = LogManager.getLogger(getClass.getName)
   private val status = new JobStatus
   protected var jobReturnCode = -1
   protected var retryJob: Option[Job] = None
   protected var returnJob: Option[Job] = None
   protected var cancelFuture: Option[() => Boolean] = None
+
+  private var verbosity = LoggingVerbosity.Medium
   /*
     If true, this job will wait for it to complete prior to launching next round of jobs.
     Otherwise, it will launch whenever all the other jobs it is waiting on are done.
    */
   private var shouldBeWaitedOn = true
+
+  def setVerbosity(verbosity: Int): Unit = {
+    require(verbosity >= LoggingVerbosity.Off && verbosity <= LoggingVerbosity.High,
+      s"Verbosity must be set as an integer at or between ${LoggingVerbosity.Off} - ${LoggingVerbosity.High}")
+    this.verbosity = verbosity
+  }
 
   /**
     * This job will be run if the current job fails, prior to attempt to rerun the current job.
@@ -50,7 +58,7 @@ abstract class Job(name: String) {
     * @param returnCode Value given to the return code
     */
   def setReturnCode(returnCode: Int): Unit = {
-    logger.info(s"Command ${this} has changed return code to $returnCode")
+    if (this.verbosity >= LoggingVerbosity.Medium_Low) logger.info(s"Command ${this} has changed return code to $returnCode")
     jobReturnCode = returnCode
   }
 
@@ -160,7 +168,7 @@ abstract class Job(name: String) {
   protected def markAsFailure(): Unit = {
     // If a retry job exists, we run it otherwise the job has failed and any subsequent jobs fail because of this
     if (retryJob.isDefined) {
-      logger.info(s"Running retry job ${retryJob.get}. ${this} has encountered an error")
+      if (verbosity >= LoggingVerbosity.Low) logger.info(s"Running retry job ${retryJob.get}. ${this} has encountered an error")
       runRetryJob()
     } else {
       setJobStatus(status.StatusCodes.Failure)
@@ -170,21 +178,6 @@ abstract class Job(name: String) {
       // Start all the jobs
       head.foreach(_.start())
     }
-  }
-
-  /**
-    * A consistent source to change the job status.
-    * Has the added benefit of notifying the JobManager if that status changes to complete.
-    *
-    * @param newStatus What new status should be assigned to the job
-    */
-  protected def setJobStatus(newStatus: String): Unit = {
-    logger.info(s"Job status for command ${this} has changed to $newStatus")
-    status.setJobStatus(newStatus)
-
-    // Job manager should know if has been marked as complete
-    if (status.isCompleted) {
-      JobManager.indicateJobCompleteToManager(this)}
   }
 
   /**
@@ -242,10 +235,6 @@ abstract class Job(name: String) {
     this
   }
 
-  /*
-    Local job continuation utilities
-  */
-
   /**
     * Run the async job and sets status to 'Running'
     */
@@ -253,15 +242,46 @@ abstract class Job(name: String) {
     // Killed jobs should never start
     if (!status.isKilled) {
       if (status.isUnstarted) {
-        logger.info(s"Started command ${this}")
+        if (verbosity >= LoggingVerbosity.Low)
+          logger.info(s"Started command ${this}")
         setJobStatus(status.StatusCodes.Running)
         asyncJob()
       } else {
         val message = s"Attempted to start a job that has already been started.  " +
           s"Job name is $getName with current status ${status.getJobStatus}"
-        logger.error(message)
+        if (verbosity >= LoggingVerbosity.Off) {
+          logger.error(message)
+        }
         throw new RuntimeException(message)
       }
+    }
+  }
+
+  /*
+    Local job continuation utilities
+  */
+
+  /**
+    * A consistent source to change the job status.
+    * Has the added benefit of notifying the JobManager if that status changes to complete.
+    *
+    * @param newStatus What new status should be assigned to the job
+    */
+  protected def setJobStatus(newStatus: String): Unit = {
+    val message = s"Job status for command ${this} has changed to $newStatus"
+    newStatus match {
+      case s if status.StatusCodes.ParentProcessFailure.equals(s) =>
+        if (verbosity >= LoggingVerbosity.High) logger.info(message)
+      case s if status.StatusCodes.Killed.equals(s) =>
+        if (verbosity >= LoggingVerbosity.Medium_High) logger.info(message)
+      case default =>
+        if (verbosity >= LoggingVerbosity.Medium) logger.info(message)
+    }
+    status.setJobStatus(newStatus)
+
+    // Job manager should know if has been marked as complete
+    if (status.isCompleted) {
+      JobManager.indicateJobCompleteToManager(this)
     }
   }
 
