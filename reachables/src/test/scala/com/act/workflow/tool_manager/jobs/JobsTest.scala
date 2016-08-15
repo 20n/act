@@ -1,10 +1,14 @@
 package com.act.workflow.tool_manager.jobs
 
-import com.act.workflow.tool_manager.jobs.management.JobManager
+import com.act.workflow.tool_manager.jobs.management.{JobManager, LoggingVerbosity}
 import com.act.workflow.tool_manager.tool_wrappers.{ScalaJobWrapper, ShellWrapper}
 import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
 
 class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
+  override def beforeEach(): Unit = {
+    JobManager.setVerbosity(LoggingVerbosity.Off)
+  }
+
   override def afterEach(): Unit = {
     JobManager.clearManager()
   }
