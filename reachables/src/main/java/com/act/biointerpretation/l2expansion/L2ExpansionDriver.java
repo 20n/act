@@ -4,7 +4,6 @@ import act.server.MongoDB;
 import act.shared.Chemical;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.Utils.ReactionProjector;
-import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import com.act.biointerpretation.sars.SarCorpus;
 import com.act.jobs.FileChecker;
@@ -240,7 +239,7 @@ public class L2ExpansionDriver {
     switch (expansionType) {
       case ONE_SUB:
         LOGGER.info("Running one substrate expansion");
-        return new SingleSubstrateRoExpander(getRoList(cl), inchiCorpus.getMolecules(), generator);
+        return new SingleSubstrateRoExpander(getRoCorpus(cl), inchiCorpus.getMolecules(), generator);
 
       case TWO_SUB:
         LOGGER.info("Running two substrate expansion.");
@@ -255,7 +254,7 @@ public class L2ExpansionDriver {
             L2ExpansionDriver.convertListOfInchisToMolecules(chemicalInchis.getInchiList(), mongoDB);
         List<Chemical> metaboliteChemicals =
             L2ExpansionDriver.convertListOfInchisToMolecules(inchiCorpus.getInchiList(), mongoDB);
-        return new TwoSubstrateRoExpander(chemicalsOfInterest, metaboliteChemicals, getRoList(cl), generator);
+        return new TwoSubstrateRoExpander(chemicalsOfInterest, metaboliteChemicals, getRoCorpus(cl), generator);
 
       case SAR:
         LOGGER.info("Running sar-based expansion.");
@@ -265,34 +264,11 @@ public class L2ExpansionDriver {
           System.exit(1);
         }
         SarCorpus sarCorpus = SarCorpus.readCorpusFromJsonFile(sarCorpusFile);
-        return new SingleSubstrateSarExpander(sarCorpus, inchiCorpus.getMolecules(), getRoCorpus(cl), generator);
+        return new SingleSubstrateSarExpander(sarCorpus, inchiCorpus.getMolecules(), generator);
 
       default:
         throw new IllegalArgumentException("Invalid expansion type.");
     }
-  }
-
-  private static List<Ero> getRoList(CommandLine cl) throws IOException {
-    ErosCorpus eroCorpus = getRoCorpus(cl);
-
-    List<Ero> roList;
-    if (cl.hasOption(OPTION_RO_IDS)) {
-      LOGGER.info("Getting ro list from rosFile.");
-      File roIdsFile = new File(cl.getOptionValue(OPTION_RO_IDS));
-
-      if (!roIdsFile.exists()) {
-        LOGGER.error("Ro ids file does not exist.");
-        System.exit(1);
-      }
-
-      List<Integer> roIdList = eroCorpus.getRoIdListFromFile(roIdsFile);
-      roList = eroCorpus.getRos(roIdList);
-    } else {
-      LOGGER.info("Getting all ROs.");
-      roList = eroCorpus.getRos();
-    }
-    LOGGER.info("Ro list contains %d ros", roList.size());
-    return roList;
   }
 
   private static ErosCorpus getRoCorpus(CommandLine cl) throws IOException {
@@ -309,6 +285,21 @@ public class L2ExpansionDriver {
     } else {
       eroCorpus.loadValidationCorpus();
     }
+
+    if (cl.hasOption(OPTION_RO_IDS)) {
+      LOGGER.info("Filtering corpus by RO list from rosFile.");
+      File roIdsFile = new File(cl.getOptionValue(OPTION_RO_IDS));
+
+      if (!roIdsFile.exists()) {
+        LOGGER.error("Ro ids file does not exist.");
+        System.exit(1);
+      }
+
+      eroCorpus.filterCorpusByIdFile(roIdsFile);
+    } else {
+      LOGGER.info("Leaving all ROs in corpus.");
+    }
+
     return eroCorpus;
   }
 

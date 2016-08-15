@@ -2,6 +2,7 @@ package com.act.biointerpretation.l2expansion;
 
 import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.mechanisminspection.Ero;
+import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -29,8 +30,8 @@ public class SingleSubstrateRoExpanderTest {
   Integer VALID_RO_ID = new Integer(1);
   Integer INVALID_RO_ID = new Integer(2);
 
-  List<Ero> validRoCorpus;
-  List<Ero> invalidRoCorpus;
+  List<Ero> validRoList;
+  List<Ero> invalidRoList;
 
   PredictionGenerator generator;
 
@@ -41,16 +42,16 @@ public class SingleSubstrateRoExpanderTest {
     validTestEro.setRo(RO_STRING);
     validTestEro.setSubstrate_count(1);
     validTestEro.setId(VALID_RO_ID);
-    validRoCorpus = new ArrayList<Ero>();
-    validRoCorpus.add(validTestEro);
+    validRoList = new ArrayList<Ero>();
+    validRoList.add(validTestEro);
 
     //Set up multiple-substrate RO corpus for testing
     Ero invalidTestEro = new Ero();
     invalidTestEro.setRo(RO_STRING);
     invalidTestEro.setSubstrate_count(2);
     invalidTestEro.setId(INVALID_RO_ID);
-    invalidRoCorpus = new ArrayList<Ero>();
-    invalidRoCorpus.add(invalidTestEro);
+    invalidRoList = new ArrayList<Ero>();
+    invalidRoList.add(invalidTestEro);
 
     //Set up metabolite corpus with one metabolite, which should successfully react with RO
     validMetaboliteList.add(VALID_TEST_METABOLITE);
@@ -66,7 +67,8 @@ public class SingleSubstrateRoExpanderTest {
   @Test
   public void testL2ExpanderPositive() throws Exception {
     // Arrange
-    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(validRoCorpus,
+    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(
+        new ErosCorpus(validRoList),
         validMetaboliteCorpus.getMolecules(),
         generator);
 
@@ -87,7 +89,8 @@ public class SingleSubstrateRoExpanderTest {
   @Test
   public void testL2ExpanderNegative_ZeroResults() throws Exception {
     // Arrange
-    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(validRoCorpus,
+    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(
+        new ErosCorpus(validRoList),
         invalidMetaboliteCorpus.getMolecules(),
         generator);
 
@@ -101,7 +104,8 @@ public class SingleSubstrateRoExpanderTest {
   @Test
   public void testL2ExpanderMultipleSubstrates_ZeroResults() throws Exception {
     // Arrange
-    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(invalidRoCorpus,
+    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(
+        new ErosCorpus(invalidRoList),
         validMetaboliteCorpus.getMolecules(),
         generator);
 

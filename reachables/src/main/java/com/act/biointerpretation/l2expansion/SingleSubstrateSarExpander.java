@@ -1,7 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
 import chemaxon.struc.Molecule;
-import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import com.act.biointerpretation.sars.CharacterizedGroup;
 import com.act.biointerpretation.sars.Sar;
 import com.act.biointerpretation.sars.SerializableReactor;
@@ -18,16 +17,13 @@ public class SingleSubstrateSarExpander extends L2Expander {
 
   final Iterable<CharacterizedGroup> sarGroups;
   final Iterable<Molecule> substrates;
-  final ErosCorpus roCorpus;
 
   public SingleSubstrateSarExpander(Iterable<CharacterizedGroup> sarGroups,
                                     Iterable<Molecule> substrates,
-                                    ErosCorpus roCorpus,
                                     PredictionGenerator generator) {
     super(generator);
     this.sarGroups = sarGroups;
     this.substrates = substrates;
-    this.roCorpus = roCorpus;
   }
 
   @Override

@@ -18,6 +18,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ErosCorpus implements Iterable<Ero> {
 
@@ -29,6 +30,15 @@ public class ErosCorpus implements Iterable<Ero> {
 
   private List<Ero> ros;
   private Map<Integer, Ero> roIdToEroMap;
+
+  public ErosCorpus(List<Ero> ros) {
+    this.ros = new ArrayList<>(ros);
+    roIdToEroMap = new HashMap<>();
+  }
+
+  public ErosCorpus() {
+    this(new ArrayList<>());
+  }
 
   public List<Ero> getRos() {
     return ros;
@@ -57,27 +67,35 @@ public class ErosCorpus implements Iterable<Ero> {
   public void loadCorpus(InputStream erosStream) throws IOException {
     ErosCorpus erosCorpus = OBJECT_MAPPER.readValue(erosStream, ErosCorpus.class);
     setRos(erosCorpus.getRos());
-    buildRoIdToReactorMap();
   }
 
   /**
-   * Get ros from corpus that have ids in input list.
+   * Get the list of RO ids in this corpus.
+   *
+   * @return The list of Ids.
+   */
+  public List<Integer> getRoIds() {
+    return ros.stream().map(ro -> ro.getId()).collect(Collectors.toList());
+  }
+
+  /**
+   * Filter corpus to contain only RO ids in the supplied list.
    *
    * @param roIdList The list of relevant ids.
-   * @return The list of relevant ros.
    */
-  public List<Ero> getRos(List<Integer> roIdList) {
+  public void filterCorpusById(List<Integer> roIdList) {
     Set<Integer> roSet = new HashSet<>(roIdList);
+    ros.removeIf(ro -> !roSet.contains(ro.getId()));
+  }
 
-    List<Ero> result = new ArrayList<>();
-
-    for (Ero ro : getRos()) {
-      if (roSet.contains(ro.getId())) {
-        result.add(ro);
-      }
-    }
-
-    return result;
+  /**
+   * Filter corpus to contain only RO with IDs in the supplied file.
+   *
+   * @param roIdFile A file containing RO ids, one per line.
+   */
+  public void filterCorpusByIdFile(File roIdFile) throws IOException {
+    List<Integer> roIds = getRoIdListFromFile(roIdFile);
+    filterCorpusById(roIds);
   }
 
   /**
@@ -86,7 +104,7 @@ public class ErosCorpus implements Iterable<Ero> {
    * @param file A file with one ro id per line.
    * @return List of relevant Eros from the corpus.
    */
-  public List<Integer> getRoIdListFromFile(File file) throws IOException {
+  private List<Integer> getRoIdListFromFile(File file) throws IOException {
     List<Integer> roIdList = new ArrayList<>();
 
     try (BufferedReader eroReader = getErosReader(file)) {
@@ -111,13 +129,46 @@ public class ErosCorpus implements Iterable<Ero> {
   }
 
   /**
+   * Filter corpus to only contain ROs with the given number of substrates.
+   *
+   * @param count The required number of sybstrates.
+   */
+  public void filterCorpusBySubstrateCount(Integer count) {
+    ros.removeIf(ro -> ro.getSubstrate_count() != count);
+  }
+
+  /**
+   * Retain only ROs with a name in this corpus.
+   */
+  public void retainNamedRos() {
+    ros.removeIf(ro -> ro.getName().isEmpty());
+  }
+
+  /**
    * Gets the ERO with the given roId from the corpus.
    *
    * @param roId The ro id.
    * @return The Ero.
    */
   public Ero getEro(Integer roId) {
-    return roIdToEroMap.get(roId);
+    // If map already has entry for this roId, return it
+    Ero result;
+    if ((result =roIdToEroMap.get(roId)) != null) {
+      return result;
+    }
+
+    // Otherwise build map in hopes of finding the correct ID along the way
+    for (Ero ro : ros) {
+      roIdToEroMap.put(ro.getId(), ro);
+    }
+
+    // Again, if the right ID showed up, return it
+    if ((result =roIdToEroMap.get(roId)) != null) {
+      return result;
+    }
+
+    // Now, if the ID is not there, throw an exception!
+    throw new IllegalArgumentException("Supplied RO ID is not in corpus!");
   }
 
   /**
@@ -135,15 +186,5 @@ public class ErosCorpus implements Iterable<Ero> {
   @Override
   public Iterator<Ero> iterator() {
     return getRos().iterator();
-  }
-
-  private void buildRoIdToReactorMap() {
-    roIdToEroMap = new HashMap<>();
-    for (Ero ro : ros) {
-      if (roIdToEroMap.containsKey(ro.getId())) {
-        throw new IllegalArgumentException("RO corpus contains two ROs with same Id: " + ro.getId());
-      }
-      roIdToEroMap.put(ro.getId(), ro);
-    }
   }
 }
