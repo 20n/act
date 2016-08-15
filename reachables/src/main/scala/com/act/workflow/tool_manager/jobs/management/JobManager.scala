@@ -105,11 +105,11 @@ object JobManager {
   }
 
   def completedJobsCount(): Int = {
-    jobs.count(x => x.isCompleted)
+    jobs.count(x => x.getJobStatus.isCompleted)
   }
 
   private def runningJobsCount(): Int = {
-    jobs.count(x => x.isRunning)
+    jobs.count(x => x.getJobStatus.isRunning)
   }
 
   def getMapOfJobNamesToStatuses: Map[String, String] = {
@@ -121,7 +121,7 @@ object JobManager {
   }
 
   def getOrderOfJobStatuses: List[String] = {
-    jobCompleteOrdering.toList.map(x => x.getJobStatus)
+    jobCompleteOrdering.toList.map(x => x.getJobStatus.toString)
   }
 
   /**
@@ -139,19 +139,19 @@ object JobManager {
   }
 
   private def killedJobsCount(): Int = {
-    jobs.count(x => x.isKilled)
+    jobs.count(x => x.getJobStatus.isKilled)
   }
 
   private def unstartedJobsCount(): Int = {
-    jobs.count(x => x.isUnstarted)
+    jobs.count(x => x.getJobStatus.isUnstarted)
   }
 
   private def failedJobsCount(): Int = {
-    jobs.count(x => x.isFailed)
+    jobs.count(x => x.getJobStatus.isFailed)
   }
 
   private def successfulJobsCount(): Int = {
-    jobs.count(x => x.isSuccessful)
+    jobs.count(x => x.getJobStatus.isSuccessful)
   }
 
   /**
@@ -235,12 +235,12 @@ object JobManager {
   }
 
   private def getIncompleteJobs: List[Job] = {
-    jobs.filter(x => x.isRunning).toList
+    jobs.filter(x => x.getJobStatus.isRunning).toList
   }
 
   private def mapStatus: Map[String, Int] = {
     // Take the jobs, identify and count their statuses and return that count
-    val allJobsStatuses: List[String] = jobs.map(jobs => jobs.getJobStatus).toList
+    val allJobsStatuses: List[String] = jobs.map(jobs => jobs.getJobStatus.toString).toList
     val jobsGroupedByIdentity: Map[String, List[String]] = allJobsStatuses.groupBy(identity)
     jobsGroupedByIdentity.mapValues(_.size)
   }
