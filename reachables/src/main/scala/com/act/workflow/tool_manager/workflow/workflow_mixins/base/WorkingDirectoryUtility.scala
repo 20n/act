@@ -9,6 +9,8 @@ trait WorkingDirectoryUtility {
   def defineOutputFilePath(cl: CommandLine, optionName: String, identifier: String, defaultValue: String, workingDirectory: String): File = {
     val methodLogger = LogManager.getLogger("workingDirectoryFilePathDefinition")
 
+    createWorkDirectory(new File(workingDirectory))
+
     // Spaces tend to be bad for file names
     val filteredIdentifier = identifier.replace(" ", "_")
 
@@ -37,6 +39,12 @@ trait WorkingDirectoryUtility {
       outputFile.createNewFile()
       if (!outputFile.canWrite) throw new RuntimeException(s"Can't write to designated location ${outputFile.getAbsolutePath}")
       outputFile.delete()
+    }
+  }
+
+  def createWorkDirectory(workingDirectory: File): Unit = {
+    if (!workingDirectory.exists()) {
+      workingDirectory.mkdirs()
     }
   }
 
