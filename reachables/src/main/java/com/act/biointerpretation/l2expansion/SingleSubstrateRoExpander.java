@@ -20,9 +20,6 @@ public class SingleSubstrateRoExpander extends L2Expander {
   private static final Integer ONE_SUBSTRATES = 1;
   private List<Ero> roList;
   private List<Molecule> substrates;
-  private static final Integer DEFAULT_MASS_CUTOFF = 950; // Don't project on anything > 950 daltons, it takes forever.
-
-  private Integer massCutoff;
 
   /**
    * @param roList A list of all ros to be tested
@@ -32,7 +29,6 @@ public class SingleSubstrateRoExpander extends L2Expander {
     super(generator);
     this.roList = roList;
     this.substrates = substrates;
-    this.massCutoff = DEFAULT_MASS_CUTOFF;
   }
 
   @Override

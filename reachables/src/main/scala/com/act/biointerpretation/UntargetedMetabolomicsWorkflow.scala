@@ -136,7 +136,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     val lcmsJob = JavaJobWrapper.wrapJavaFunction(
       new JavaRunnable {
         override def run(): Unit = {
-          print("Creating empty LCMS results file: Didn't implement LCMS yes.")
+          print("Running dummy LCMS job: didn't implement LCMS workflow job yet.")
         }
 
         override def toString(): String = {

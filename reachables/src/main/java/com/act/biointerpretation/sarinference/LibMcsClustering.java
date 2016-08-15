@@ -7,6 +7,7 @@ import chemaxon.struc.Molecule;
 import com.act.biointerpretation.l2expansion.L2FilteringDriver;
 import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
+import com.act.jobs.FileChecker;
 import com.act.jobs.JavaRunnable;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -97,6 +98,7 @@ public class LibMcsClustering {
   private static final String INCHI_IMPORT_SETTINGS = "inchi";
   private static final Double THRESHOLD_CONFIDENCE = 0D; // no threshold is applied
   private static final Integer THRESHOLD_TREE_SIZE = 2; // any SAR that is not simply one specific substrate is allowed
+  public static final Random RANDOM_GENERATOR = new Random();
 
   public static void main(String[] args) throws Exception {
 
@@ -208,15 +210,14 @@ public class LibMcsClustering {
   }
 
   /**
-   * Returns a hit calculator that calculates which molecules are hits at random with the given FP rate
+   * Returns a hit calculator that calculates which molecules are hits at random with the given positive rate
    *
    * @param positiveRate The positive rate.
    * @return The calculator.
    */
   public static Function<Molecule, SarTreeNode.LCMS_RESULT> getRandomScorer(Double positiveRate) {
     return (Molecule mol) -> {
-      Random r = new Random();
-      if (r.nextDouble() < positiveRate) {
+      if (RANDOM_GENERATOR.nextDouble() < positiveRate) {
         return SarTreeNode.LCMS_RESULT.HIT;
       } else {
         return SarTreeNode.LCMS_RESULT.MISS;
@@ -228,8 +229,8 @@ public class LibMcsClustering {
    * Reads in a prediction corpus, containing only one RO's predictions, and builds a clustering tree of the
    * substrates. Returns every SarTreeNode in the tree.
    *
-   * @param predictionCorpusInput The prediction corpus.
-   * @param sarTreeNodesOutput A SarTreeNodeList of every node in the clustering tree.
+   * @param predictionCorpusInput The prediction corpus input file.
+   * @param sarTreeNodesOutput The file to which to write the SarTreeNodeList of every node in the clustering tree.
    * @return A JavaRunnable to run the appropriate clustering.
    */
   public static JavaRunnable getRunnableClusterer(File predictionCorpusInput, File sarTreeNodesOutput) {
@@ -237,11 +238,16 @@ public class LibMcsClustering {
     return new JavaRunnable() {
       @Override
       public void run() throws IOException {
+        // Verify input and output files
+        FileChecker.verifyInputFile(predictionCorpusInput);
+        FileChecker.verifyAndCreateOutputFile(sarTreeNodesOutput);
+
+        // Build input corpus and substrate list
         L2PredictionCorpus inputCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(predictionCorpusInput);
         L2InchiCorpus substrateInchis = new L2InchiCorpus(inputCorpus.getUniqueProductInchis());
 
+        // Run substrate clustering
         SarTree sarTree = new SarTree();
-
         try {
           sarTree.buildByClustering(new LibraryMCS(), substrateInchis.getMolecules());
         } catch (InterruptedException e) {
@@ -249,6 +255,7 @@ public class LibMcsClustering {
           throw new RuntimeException(e);
         }
 
+        // Write output to file
         SarTreeNodeList nodeList = new SarTreeNodeList(new ArrayList<>(sarTree.getNodes()));
         nodeList.writeToFile(sarTreeNodesOutput);
       }
@@ -261,11 +268,13 @@ public class LibMcsClustering {
   }
 
   /**
-   * Reads in an already-built SarTree from a SarTreeNodeList, as well as a list of LCMS positives from an
-   * LCMS analysis.  Scores the SARs based on the LCMS results.
+   * Reads in an already-built SarTree from a SarTreeNodeList, and scores the SARs based on LCMS results.  Currently
+   * LCMS results are a dummy function that randomly classifies molecules as hits and misses.
+   * TODO: hook this up with Vijays actual LCMS module to load the LCMS data in and use it to calculate hit
    *
-   * @param sarTreeInput A SarTreeNodeList containing all Sars from the clustering tree.
-   * @param sarTreeNodeOutput The relevant SARs from the corpus, sorted in decreasing order of confidence.
+   * @param sarTreeInput An input file containing a SarTreeNodeList with all Sars from the clustering tree.
+   * @param sarTreeNodeOutput The output file to which to write the relevant SARs from the corpus, sorted in decreasing
+   * order of confidence.
    * @param positiveRate Percentage of LCMS hits, randomly assigned.
    * @return A JavaRunnable to run the SAR scoring.
    */
@@ -277,14 +286,17 @@ public class LibMcsClustering {
     return new JavaRunnable() {
       @Override
       public void run() throws IOException {
-        // Build SAR tree
+        // Verify input and output files
+        FileChecker.verifyInputFile(sarTreeInput);
+        FileChecker.verifyAndCreateOutputFile(sarTreeNodeOutput);
+
+        // Build SAR tree from input file
         SarTreeNodeList nodeList = new SarTreeNodeList();
         nodeList.loadFromFile(sarTreeInput);
         SarTree sarTree = new SarTree();
         nodeList.getSarTreeNodes().forEach(node -> sarTree.addNode(node));
 
-        // Build sar scorer
-        // TODO: hook this up with Vijays oracle to load the oracle structure in and use it to calculate
+        // Build sar scorer with appropriate positive rate
         Function<Molecule, SarTreeNode.LCMS_RESULT> hitCalculator = getRandomScorer(positiveRate);
         SarTreeBasedCalculator sarConfidenceCalculator = new SarTreeBasedCalculator(sarTree, hitCalculator);
 
