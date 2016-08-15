@@ -96,8 +96,12 @@ public class LibMcsClustering {
   }
 
   private static final String INCHI_IMPORT_SETTINGS = "inchi";
-  private static final Double THRESHOLD_CONFIDENCE = 0D; // no threshold is applied
+
+  // This value should stay between 0 and 1 as it indicates the minimum hit percentage for a SAR worth keeping around.
+  private static final Double THRESHOLD_CONFIDENCE = 0D;  // no threshold is currently applied
+
   private static final Integer THRESHOLD_TREE_SIZE = 2; // any SAR that is not simply one specific substrate is allowed
+
   public static final Random RANDOM_GENERATOR = new Random();
 
   public static void main(String[] args) throws Exception {
@@ -216,13 +220,9 @@ public class LibMcsClustering {
    * @return The calculator.
    */
   public static Function<Molecule, SarTreeNode.LCMS_RESULT> getRandomScorer(Double positiveRate) {
-    return (Molecule mol) -> {
-      if (RANDOM_GENERATOR.nextDouble() < positiveRate) {
-        return SarTreeNode.LCMS_RESULT.HIT;
-      } else {
-        return SarTreeNode.LCMS_RESULT.MISS;
-      }
-    };
+    return (Molecule mol) -> RANDOM_GENERATOR.nextDouble() < positiveRate ?
+        SarTreeNode.LCMS_RESULT.HIT :
+        SarTreeNode.LCMS_RESULT.MISS;
   }
 
   /**
@@ -278,10 +278,12 @@ public class LibMcsClustering {
    * @param positiveRate Percentage of LCMS hits, randomly assigned.
    * @return A JavaRunnable to run the SAR scoring.
    */
-  public static JavaRunnable getRunnableRandomSarScorer(File sarTreeInput, File sarTreeNodeOutput, Double positiveRate) {
-
-    Double confidenceThreshold = 0D;
-    Integer subtreeThreshold = 2;
+  public static JavaRunnable getRunnableRandomSarScorer(
+      File sarTreeInput,
+      File sarTreeNodeOutput,
+      Double positiveRate,
+      Double confidenceThreshold,
+      Integer subtreeThreshold) {
 
     return new JavaRunnable() {
       @Override
@@ -314,5 +316,15 @@ public class LibMcsClustering {
         return "SarScorer:" + sarTreeInput.getName();
       }
     };
+  }
+
+  /**
+   * Gets a Sar scorer with default confidence and tree size thresholds
+   */
+  public static JavaRunnable getRunnableRandomSarScorer(File sarTreeInput,
+                                                        File sarTreeNodeOutput,
+                                                        Double positiveRate) {
+    return getRunnableRandomSarScorer(sarTreeInput, sarTreeNodeOutput, positiveRate,
+        THRESHOLD_CONFIDENCE, THRESHOLD_TREE_SIZE);
   }
 }

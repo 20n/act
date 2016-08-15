@@ -16,6 +16,8 @@ import java.io.IOException;
 public class SarTreeNode {
 
   // TODO: this enum should live in the LCMS module once Vijay and Gil merge their pieces
+  // The idea of NO_DATA is to indicate if we query on a molecule who's mass no analysis was done on, to distinguish
+  // this case from an actual calculated MISS.
   public enum LCMS_RESULT {
     HIT,
     MISS,

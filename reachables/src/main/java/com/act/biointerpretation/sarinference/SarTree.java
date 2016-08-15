@@ -48,7 +48,7 @@ public class SarTree {
   public void buildByClustering(LibraryMCS libMcs, List<Molecule> molecules) throws InterruptedException {
     if (molecules.size() == 0) {
       LOGGER.error("Tried to build clustering on no molecules!");
-      // Log error but don't throw error. This could be a piece in a workflow where we try to build SARs on a predition
+      // Log error but don't throw error. This could be a piece in a workflow where we try to build SARs on a prediction
       // corpus with no valid predictions. In that case we should not kill the workflow, but let it run and produce no
       // results.
       return;
@@ -79,7 +79,7 @@ public class SarTree {
         molecule = enumerator.next();
       } catch (NullPointerException e) {
         LOGGER.error("Null pointer exception thrown internally by enumerator.next() : %s", e.getMessage());
-        // Log but don't throw error. This doesn't seem to indicate a real problem, but just a quick of LibMCS.
+        // Log but don't throw error. This doesn't seem to indicate a real problem, but just a quirk of LibMCS.
         return;
       }
       String hierId = molecule.getPropertyObject("HierarchyID").toString();

@@ -12,7 +12,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Carries out the main logic of L2 expansion by applying a set of ROs to a set of metabolites.
+ * Carries out the main logic of L2 expansion by applying a set of ROs to a set of substrates.
  */
 public class SingleSubstrateRoExpander extends L2Expander {
 
@@ -23,7 +23,7 @@ public class SingleSubstrateRoExpander extends L2Expander {
 
   /**
    * @param roList A list of all ros to be tested
-   * @param substrates A list of all metabolites on which to test the ROs.
+   * @param substrates A list of all substrates on which to test the ROs.
    */
   public SingleSubstrateRoExpander(List<Ero> roList, List<Molecule> substrates, PredictionGenerator generator) {
     super(generator);
@@ -47,7 +47,7 @@ public class SingleSubstrateRoExpander extends L2Expander {
         continue;
       }
 
-      //iterate over every (metabolite, ro) pair
+      //iterate over every (substrate, ro) pair
       for (Molecule substrate : substrates) {
         result.add(new PredictionSeed(ro.getId().toString(), Arrays.asList(substrate), reactor, NO_SAR));
       }
@@ -57,4 +57,3 @@ public class SingleSubstrateRoExpander extends L2Expander {
     return result;
   }
 }
-

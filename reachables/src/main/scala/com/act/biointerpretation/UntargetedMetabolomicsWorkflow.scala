@@ -1,7 +1,6 @@
 package com.act.biointerpretation
 
 import java.io.File
-import java.util
 
 import com.act.biointerpretation.l2expansion.{L2ExpansionDriver, L2InchiCorpus}
 import com.act.biointerpretation.mechanisminspection.ErosCorpus
@@ -81,18 +80,18 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
 
     val erosCorpus = new ErosCorpus()
     erosCorpus.loadValidationCorpus()
-    val roIds = erosCorpus.getRoIdListFromFile(roIdFile).asScala
+    val roIds = erosCorpus.getRoIdListFromFile(roIdFile).asScala.toList
 
     val filteredSubstratesFile = new File(workingDir, "filtered_substrates")
 
     val predictionsFilename = "predictions"
-    val predictionsFiles = buildFilesForRos(workingDir, predictionsFilename, roIds.toList)
+    val predictionsFiles = buildFilesForRos(workingDir, predictionsFilename, roIds)
 
     val sarTreeFilename = "sartree"
-    val sarTreeFiles = buildFilesForRos(workingDir, sarTreeFilename, roIds.toList)
+    val sarTreeFiles = buildFilesForRos(workingDir, sarTreeFilename, roIds)
 
     val scoredSarsFilename = "scored_sars"
-    val scoredSarsFiles = buildFilesForRos(workingDir, scoredSarsFilename, roIds.toList)
+    val scoredSarsFiles = buildFilesForRos(workingDir, scoredSarsFilename, roIds)
 
     val lcmsFilename = "lcms_positives"
     val lcmsFile = new File(workingDir, lcmsFilename)
@@ -115,21 +114,21 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       roIds.map(roId =>
         JavaJobWrapper.wrapJavaFunction(
           L2ExpansionDriver.getRunnableOneSubstrateRoExpander(
-            util.Arrays.asList(roId),
+            List(roId).asJava,
             filteredSubstratesFile,
-            predictionsFiles.get(roId).get)))
+            predictionsFiles(roId))))
     // Run one job per RO for L2 expansion
-    headerJob.thenRunBatch(singleThreadExpansionJobs.toList)
+    headerJob.thenRunBatch(singleThreadExpansionJobs)
 
     // TODO: when Michael adds the capability, change this workflow to run the clustering jobs and LCMS job in parallel
     // Build one job per RO for clustering
     val clusteringJobs =
       roIds.map(roId =>
         JavaJobWrapper.wrapJavaFunction(LibMcsClustering.getRunnableClusterer(
-          predictionsFiles.get(roId).get,
-          sarTreeFiles.get(roId).get)))
+          predictionsFiles(roId),
+          sarTreeFiles(roId))))
     // Run one job per RO for clustering
-    headerJob.thenRunBatch(clusteringJobs.toList)
+    headerJob.thenRunBatch(clusteringJobs)
 
     // TODO: when Vijay's LCMS code is ready, replace this with the real thing
     // Build a dummy LCMS job that doesn't do anything.
@@ -150,13 +149,13 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     val scoringJobs = roIds.map(roId =>
       JavaJobWrapper.wrapJavaFunction(
         LibMcsClustering.getRunnableRandomSarScorer(
-          sarTreeFiles.get(roId).get,
-          scoredSarsFiles.get(roId).get,
+          sarTreeFiles(roId),
+          scoredSarsFiles(roId),
           positiveRate)
       )
     )
     // Run one job per RO for scoring
-    headerJob.thenRunBatch(scoringJobs.toList)
+    headerJob.thenRunBatch(scoringJobs)
 
     headerJob
   }
