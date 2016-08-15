@@ -3,30 +3,29 @@ package com.act.workflow.tool_manager.jobs.management
 class JobStatus {
   private var status = StatusCodes.Unstarted
 
-  def isCompleted: Boolean = synchronized {
+  def isCompleted: Boolean = {
     isSuccessful | isFailed | isKilled
   }
 
-  def isKilled: Boolean = synchronized {
-    getJobStatus == StatusCodes.Killed
+  def isKilled: Boolean = {
+    getJobStatus.equals(StatusCodes.Killed)
   }
 
-  def isSuccessful: Boolean = synchronized {
+  def isSuccessful: Boolean = {
     getJobStatus == StatusCodes.Success
   }
 
-  def isFailed: Boolean = synchronized {
-    val currentJobStatus = getJobStatus
-    currentJobStatus == StatusCodes.Failure |
-      currentJobStatus == StatusCodes.ParentProcessFailure |
-      currentJobStatus == StatusCodes.Killed
+  def isFailed: Boolean = {
+    getJobStatus.equals(StatusCodes.Failure) |
+      getJobStatus.equals(StatusCodes.ParentProcessFailure) |
+      getJobStatus.equals(StatusCodes.Killed)
   }
 
-  def isUnstarted: Boolean = synchronized {
+  def isUnstarted: Boolean = {
     getJobStatus == StatusCodes.Unstarted
   }
 
-  def isRunning: Boolean = synchronized {
+  def isRunning: Boolean = {
     getJobStatus == StatusCodes.Running
   }
 
@@ -34,19 +33,12 @@ class JobStatus {
     this.status
   }
 
-  def setJobStatus(newStatus: String): Unit = {
-    /*
-        We need to synchronize this so that status updates don't start hitting race conditions.
-        We only synchronize over the status update because otherwise
-        we have locking problems because isCompleted is also synchronized.
-      */
-    this.synchronized {
-      status = newStatus
-    }
+  def setJobStatus(newStatus: String): Unit = synchronized {
+    this.status = newStatus
   }
 
   override def toString: String = {
-    status
+    getJobStatus
   }
 
   /*
@@ -62,5 +54,4 @@ class JobStatus {
     val ParentProcessFailure = "Parent Process Failed"
     val Killed = "Killed"
   }
-
 }

@@ -5,6 +5,10 @@ import com.act.workflow.tool_manager.tool_wrappers.ScalaJobWrapper
 import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
 
 class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
+  override def beforeEach(): Unit = {
+    JobManager.setVerbosity(LoggingVerbosity.Off)
+  }
+
   override def afterEach(): Unit = {
     JobManager.clearManager()
   }

@@ -22,6 +22,13 @@ object JobManager {
 
   private var jobToAwaitFor: Option[Job] = None
 
+  private var verbosity = LoggingVerbosity.Medium
+
+  def setVerbosity(verbosity: Int): Unit = {
+    require(verbosity >= LoggingVerbosity.Off && verbosity <= LoggingVerbosity.High,
+      s"Verbosity must be set as an integer at or between ${LoggingVerbosity.Off} - ${LoggingVerbosity.High}")
+    this.verbosity = verbosity
+  }
 
   /**
     * Removes all elements from the JobManager and resets the lock.
@@ -41,9 +48,10 @@ object JobManager {
     * @return the job added
     */
   def addJob(job: Job): Job = {
+    job.setVerbosity(verbosity)
     jobs.append(job)
     numberLock.countUp()
-    logger.debug(s"Added command $job to JobManager")
+    if (verbosity >= LoggingVerbosity.Medium_Low) logger.info(s"Added command $job to JobManager")
     job
   }
 
@@ -78,7 +86,8 @@ object JobManager {
     // Likely means an old or incorrectly run job so we log the error and move on, but don't let it change things.
     // Given our kill behavior this should not happen, but just in case we have this here.
     if (!jobs.contains(job)) {
-      logger.error(s"A job $job that doesn't exist in job buffer tried to modify Job Manager.")
+      val message = s"A job $job that doesn't exist in job buffer tried to modify Job Manager."
+      if (verbosity >= LoggingVerbosity.Medium_Low) logger.error(message)
       return
     }
 
@@ -88,7 +97,7 @@ object JobManager {
         // Cancel all futures still running.  If we kill the jobs here, we don't have to worry about the
         // time difference between the lock releasing and us handling those
         // conditions normally and another job starting in the meantime.
-        jobs.foreach(_.killUncompleteJob)
+        jobs.foreach(_.killUncompleteJob())
         numberLock.releaseLock()
       }
     } else {
@@ -96,9 +105,11 @@ object JobManager {
     }
     jobCompleteOrdering.append(job)
 
-    logger.info(s"<Concurrent jobs running = ${runningJobsCount()}>")
-    logger.info(s"<Current jobs awaiting to run = ${waitingJobsCount()}>")
-    logger.info(s"<Completed jobs = ${completedJobsCount()}>")
+    if (verbosity >= LoggingVerbosity.Medium) {
+      logger.info(s"<Concurrent jobs running = ${runningJobsCount()}>")
+      logger.info(s"<Current jobs awaiting to run = ${waitingJobsCount()}>")
+      logger.info(s"<Completed jobs = ${completedJobsCount()}>")
+    }
   }
 
   private def waitingJobsCount(): Int = {
@@ -131,12 +142,14 @@ object JobManager {
   private def instantiateCountDownLockAndWait() = {
     numberLock.await()
 
-    logger.info("All jobs have completed.")
-    logger.info(s"Number of jobs run = ${completedJobsCount()}")
-    logger.info(s"Number of jobs added but not run = ${unstartedJobsCount()}")
-    logger.info(s"Number of jobs killed = ${killedJobsCount()}")
-    logger.info(s"Number of jobs failed = ${failedJobsCount()}")
-    logger.info(s"Number of jobs successful = ${successfulJobsCount()}")
+    if (verbosity >= LoggingVerbosity.Low) {
+      logger.info("All jobs have completed.")
+      logger.info(s"Number of jobs run = ${completedJobsCount()}")
+      logger.info(s"Number of jobs added but not run = ${unstartedJobsCount()}")
+      logger.info(s"Number of jobs killed = ${killedJobsCount()}")
+      logger.info(s"Number of jobs failed = ${failedJobsCount()}")
+      logger.info(s"Number of jobs successful = ${successfulJobsCount()}")
+    }
   }
 
   private def killedJobsCount(): Int = {
