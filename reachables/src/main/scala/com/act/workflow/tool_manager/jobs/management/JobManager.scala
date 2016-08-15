@@ -106,11 +106,11 @@ object JobManager {
   }
 
   def completedJobsCount(): Int = {
-    jobs.count(x => x.isCompleted)
+    jobs.count(x => x.getJobStatus.isCompleted)
   }
 
   private def runningJobsCount(): Int = {
-    jobs.count(x => x.isRunning)
+    jobs.count(x => x.getJobStatus.isRunning)
   }
 
   def getMapOfJobNamesToStatuses: Map[String, String] = {
@@ -122,7 +122,7 @@ object JobManager {
   }
 
   def getOrderOfJobStatuses: List[String] = {
-    jobCompleteOrdering.toList.map(x => x.getJobStatus)
+    jobCompleteOrdering.toList.map(x => x.getJobStatus.toString)
   }
 
   /**
@@ -140,19 +140,19 @@ object JobManager {
   }
 
   private def killedJobsCount(): Int = {
-    jobs.count(x => x.isKilled)
+    jobs.count(x => x.getJobStatus.isKilled)
   }
 
   private def unstartedJobsCount(): Int = {
-    jobs.count(x => x.isUnstarted)
+    jobs.count(x => x.getJobStatus.isUnstarted)
   }
 
   private def failedJobsCount(): Int = {
-    jobs.count(x => x.isFailed)
+    jobs.count(x => x.getJobStatus.isFailed)
   }
 
   private def successfulJobsCount(): Int = {
-    jobs.count(x => x.isSuccessful)
+    jobs.count(x => x.getJobStatus.isSuccessful)
   }
 
   /**
@@ -236,37 +236,13 @@ object JobManager {
   }
 
   private def getIncompleteJobs: List[Job] = {
-    jobs.filter(x => x.isRunning).toList
+    jobs.filter(x => x.getJobStatus.isRunning).toList
   }
 
-  /**
-    * Checks that the number of unique jobs we can reach and
-    * the number of jobs we can reach are the same, thus showing that no cycles exist.
-    *
-    * This also verifies that no job will be run twice, as that would also cause the program to fail.
-    *
-    * @param job Job to start looking from
-    *
-    * @return A set of all jobs.  If a cycle is detected raises an error.
-    */
-  private def getAllChildren(job: Job, currentJobList: ListBuffer[Job] = new ListBuffer[Job]()): Set[Job] = {
-    currentJobList.append(job)
-
-    // Found a cycle, raise error
-    if (currentJobList.toSet.size != currentJobList.length) {
-      throw new RuntimeException("Detected an abnormality in your workflow.  " +
-        "A cycle exists or same job occurs multiple times in your workflow, neither of which are allowed.  " +
-        "In either scenario, your workflow will be unable to run the job a second time and thus will crash. " +
-        "Please review your workflow.")
-    }
-
-    for (jobLevel <- job.internalState.dependencyManager.jobBuffer.toList) {
-      for (currentJob <- jobLevel) {
-        // If a cycle found below, return true to propagate.
-        getAllChildren(currentJob, currentJobList)
-      }
-    }
-
-    currentJobList.toSet
+  private def mapStatus: Map[String, Int] = {
+    // Take the jobs, identify and count their statuses and return that count
+    val allJobsStatuses: List[String] = jobs.map(jobs => jobs.getJobStatus.toString).toList
+    val jobsGroupedByIdentity: Map[String, List[String]] = allJobsStatuses.groupBy(identity)
+    jobsGroupedByIdentity.mapValues(_.size)
   }
 }
