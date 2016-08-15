@@ -61,12 +61,12 @@ class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
 
     JobManager.awaitUntilSpecificJobComplete(A, B)
 
-    A.isCompleted should be(true)
-    B.isCompleted should be(true)
-    b1.isKilled should be(true)
-    b2.isKilled should be(true)
-    b3.isKilled should be(true)
-    C.isKilled should be(true)
+    A.getJobStatus.isCompleted should be(true)
+    B.getJobStatus.isCompleted should be(true)
+    b1.getJobStatus.isKilled should be(true)
+    b2.getJobStatus.isKilled should be(true)
+    b3.getJobStatus.isKilled should be(true)
+    C.getJobStatus.isKilled should be(true)
   }
 
   "The Job Manager" should "detect if not all jobs have been added to run." in {

@@ -29,10 +29,10 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
 
     JobManager.awaitUntilAllJobsComplete(A)
 
-    A.isCompleted should be(true)
-    B.isCompleted should be(true)
-    C.isCompleted should be(true)
-    D.isCompleted should be(true)
+    A.getJobStatus.isCompleted should be(true)
+    B.getJobStatus.isCompleted should be(true)
+    C.getJobStatus.isCompleted should be(true)
+    D.getJobStatus.isCompleted should be(true)
 
     JobManager.getOrderOfJobCompletion should be(List("A", "B", "C", "D"))
   }
@@ -66,13 +66,13 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     JobManager.awaitUntilSpecificJobComplete(A, b3)
 
     // C should be killed as it completes after b3 based on time.
-    A.isCompleted should be(true)
-    B.isCompleted should be(true)
-    b1.isCompleted should be(true)
-    b2.isCompleted should be(true)
-    b3.isCompleted should be(true)
-    C.isKilled should be(true)
-    C.isFailed should be(true)
+    A.getJobStatus.isCompleted should be(true)
+    B.getJobStatus.isCompleted should be(true)
+    b1.getJobStatus.isCompleted should be(true)
+    b2.getJobStatus.isCompleted should be(true)
+    b3.getJobStatus.isCompleted should be(true)
+    C.getJobStatus.isKilled should be(true)
+    C.getJobStatus.isFailed should be(true)
   }
 
   "Jobs" should "be able to have two divergent branches come together at the end" in {
@@ -148,22 +148,22 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     val F = immediateReturnJob("F")
     val G = immediateReturnJob("G")
 
-    B.jobShouldNotBeWaitedFor
+    B.jobShouldNotBeWaitedFor()
     A.thenRunBatch(List(B, C, D)).thenRun(E)
     B.thenRun(G).thenRun(F)
 
     // If we kill B, E should still be allowed to complete.
-    B.killUncompleteJob
+    B.killUncompleteJob()
 
     JobManager.awaitUntilAllJobsComplete(A)
 
 
-    A.isSuccessful should be(true)
-    B.isKilled should be(true)
-    C.isSuccessful should be(true)
-    D.isSuccessful should be(true)
-    E.isSuccessful should be(true)
-    F.isKilled should be(true)
-    G.isKilled should be(true)
+    A.getJobStatus.isSuccessful should be(true)
+    B.getJobStatus.isKilled should be(true)
+    C.getJobStatus.isSuccessful should be(true)
+    D.getJobStatus.isSuccessful should be(true)
+    E.getJobStatus.isSuccessful should be(true)
+    F.getJobStatus.isKilled should be(true)
+    G.getJobStatus.isKilled should be(true)
   }
 }
