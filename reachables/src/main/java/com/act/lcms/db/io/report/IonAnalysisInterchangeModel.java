@@ -34,6 +34,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -67,6 +69,13 @@ public class IonAnalysisInterchangeModel {
     for (String filePath : filepaths) {
       IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
       model.loadResultsFromFile(new File(filePath));
+      Collections.sort(model.getResults(), new Comparator<ResultForMZ>() {
+        @Override
+        public int compare(ResultForMZ o1, ResultForMZ o2) {
+          return o1.getMz().compareTo(o2.getMz());
+        }
+      });
+
       deserializedResultsForPositiveReplicates.add(model);
     }
 
