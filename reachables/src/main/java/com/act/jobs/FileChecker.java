@@ -18,6 +18,10 @@ public class FileChecker {
     if (outputFile.isDirectory()) {
       throw new IOException("Input file " + outputFile.getAbsolutePath() + " is a directory.");
     }
-    outputFile.createNewFile();
+    try {
+      outputFile.createNewFile();
+    } catch (IOException e) {
+      throw new IOException("createNewFile() on file " + outputFile.getAbsolutePath() + " failed: " + e.getMessage());
+    }
   }
 }

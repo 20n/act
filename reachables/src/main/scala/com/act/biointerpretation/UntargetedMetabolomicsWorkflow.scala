@@ -70,7 +70,9 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
   override def defineWorkflow(cl: CommandLine): Job = {
 
     val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY, null)
-
+    val directory : File = new File(workingDir)
+    directory.mkdirs()
+    
     val substratesFile = new File(cl.getOptionValue(OPTION_SUBSTRATES))
     val roIdFile = new File(cl.getOptionValue(OPTION_RO_IDS))
     verifyInputFile(substratesFile)
