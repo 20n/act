@@ -149,6 +149,7 @@ public class GenbankInterpreter {
    */
   public void printSequences() {
     checkInit();
+
     for (AbstractSequence sequence : this.sequences) {
       System.out.println("Sequence:");
       System.out.println(sequence.getSequenceAsString());
@@ -162,10 +163,13 @@ public class GenbankInterpreter {
    */
   public ArrayList<String> getSequenceStrings() {
     checkInit();
+
     ArrayList<String> sequences = new ArrayList<>();
+
     for (AbstractSequence sequence : this.sequences) {
       sequences.add(sequence.getSequenceAsString());
     }
+
     return sequences;
   }
 
@@ -174,12 +178,16 @@ public class GenbankInterpreter {
    */
   public void printFeaturesAndQualifiers() {
     checkInit();
+
     for (AbstractSequence sequence : sequences) {
       List<FeatureInterface<AbstractSequence<Compound>, Compound>> features =
           sequence.getFeatures();
+
       for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
         System.out.println("Type: " + feature.getType() + "; Source: " + feature.getSource() + "\n");
+
         Map<String, List<Qualifier>> qualifiers = feature.getQualifiers();
+
         for (List<Qualifier> qual_list : qualifiers.values()) {
           for (Qualifier qual : qual_list) {
             if (qual.getName().equals("dbxref")) {
@@ -190,6 +198,7 @@ public class GenbankInterpreter {
             }
           }
         }
+
         System.out.println("=======================\n");
       }
     }
@@ -201,16 +210,22 @@ public class GenbankInterpreter {
    */
   public ArrayList<ArrayList<String>> getFeatures() {
     checkInit();
+
     ArrayList<ArrayList<String>> all_feature_types = new ArrayList<>();
+
     for (AbstractSequence sequence : sequences) {
       ArrayList<String> feature_types = new ArrayList<String>();
+
       List<FeatureInterface<AbstractSequence<Compound>, Compound>> features =
           sequence.getFeatures();
+
       for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
         feature_types.add(feature.getType());
       }
+
       all_feature_types.add(feature_types);
     }
+
     return all_feature_types;
   }
 
@@ -224,12 +239,15 @@ public class GenbankInterpreter {
    */
   public Map<String, List<Qualifier>> getQualifiers(int sequence_index, String feature_type, String feature_source) {
     checkInit();
+
     List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = sequences.get(sequence_index).getFeatures();
+
     for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
       if (feature.getType().equals(feature_type) && feature.getSource().equals(feature_source)) {
         return feature.getQualifiers();
       }
     }
+
     return null;
   }
 
