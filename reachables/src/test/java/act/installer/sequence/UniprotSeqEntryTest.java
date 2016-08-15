@@ -194,6 +194,4 @@ public class UniprotSeqEntryTest {
     assertEquals("tests whether PMIDs were assigned accurately", pmidRefs.toString(),
         seqEntries.get(0).getRefs().toString());
   }
-
-
 }
