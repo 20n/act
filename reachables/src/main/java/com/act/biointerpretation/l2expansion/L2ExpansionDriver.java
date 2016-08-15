@@ -25,7 +25,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -347,10 +346,18 @@ public class L2ExpansionDriver {
     return result;
   }
 
+  /**
+   * Wraps L2 expansion so that it can be used in a workflow. The inputs are a list of RO IDs to expand on,
+   * a file containing the substrates to apply the ROs to, and a file to which to write the output prediction corpus.
+   *
+   * @param roIds
+   * @param substrateListFile
+   * @param outputFile
+   * @return
+   */
   public static JavaRunnable getRunnableOneSubstrateRoExpander(List<Integer> roIds,
                                                                File substrateListFile,
-                                                               File outputFile,
-                                                               Integer massThreshold) {
+                                                               File outputFile) {
     return new JavaRunnable() {
       @Override
       public void run() throws IOException {
@@ -366,7 +373,6 @@ public class L2ExpansionDriver {
         // Handle input substrates
         L2InchiCorpus inchis = new L2InchiCorpus();
         inchis.loadCorpus(substrateListFile);
-        inchis.filterByMass(massThreshold);
         List<Molecule> moleculeList = inchis.getMolecules();
 
         // Build expander

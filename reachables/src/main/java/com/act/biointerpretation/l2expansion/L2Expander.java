@@ -37,6 +37,7 @@ public abstract class L2Expander implements Serializable {
 
   /**
    * Get predictions for this expander without logging progress.
+   *
    * @return A corpus of L2 predictions using the specified generator.
    */
   public L2PredictionCorpus getPredictions() {
@@ -45,6 +46,7 @@ public abstract class L2Expander implements Serializable {
 
   /**
    * Get predictions for this expander, logging progress to the specified output stream.
+   *
    * @param maybeOutputStream A stream to which to write incremental results.
    * @return A corpus of L2 predicitions using the specified generator.
    */

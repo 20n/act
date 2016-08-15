@@ -195,7 +195,6 @@ public class L2FilteringDriver {
       return;
     }
 
-
     if (cl.hasOption(OPTION_SPLIT_BY_RO)) {
       LOGGER.info("Splitting corpus into distinct corpuses for each ro.");
       Map<String, L2PredictionCorpus> corpusMap = predictionCorpus.splitCorpus(prediction -> prediction.getProjectorName());

@@ -3,7 +3,7 @@ package com.act.biointerpretation
 import java.io.File
 import java.util
 
-import com.act.biointerpretation.l2expansion.L2ExpansionDriver
+import com.act.biointerpretation.l2expansion.{L2ExpansionDriver, L2InchiCorpus}
 import com.act.biointerpretation.mechanisminspection.ErosCorpus
 import com.act.biointerpretation.sarinference.LibMcsClustering
 import com.act.jobs.JavaRunnable
@@ -70,17 +70,20 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
   override def defineWorkflow(cl: CommandLine): Job = {
 
     val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY, null)
-    val directory : File = new File(workingDir)
+    val directory: File = new File(workingDir)
     directory.mkdirs()
-    
-    val substratesFile = new File(cl.getOptionValue(OPTION_SUBSTRATES))
+
+    val rawSubstratesFile = new File(cl.getOptionValue(OPTION_SUBSTRATES))
+    verifyInputFile(rawSubstratesFile)
+
     val roIdFile = new File(cl.getOptionValue(OPTION_RO_IDS))
-    verifyInputFile(substratesFile)
     verifyInputFile(roIdFile)
 
     val erosCorpus = new ErosCorpus()
     erosCorpus.loadValidationCorpus()
     val roIds = erosCorpus.getRoIdListFromFile(roIdFile).asScala
+
+    val filteredSubstratesFile = new File(workingDir, "filtered_substrates")
 
     val predictionsFilename = "predictions"
     val predictionsFiles = buildFilesForRos(workingDir, predictionsFilename, roIds.toList)
@@ -101,15 +104,20 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
 
     val positiveRate = cl.getOptionValue(OPTION_LCMS_POSITIVE_RATE).toDouble;
 
+    val massFilteringJob = JavaJobWrapper.wrapJavaFunction(L2InchiCorpus.getRunnableSubstrateFilterer(
+      rawSubstratesFile,
+      filteredSubstratesFile,
+      maxMass));
+    headerJob.thenRun(massFilteringJob)
+
     // Build one job per RO for L2 expansion
     val singleThreadExpansionJobs =
       roIds.map(roId =>
         JavaJobWrapper.wrapJavaFunction(
           L2ExpansionDriver.getRunnableOneSubstrateRoExpander(
             util.Arrays.asList(roId),
-            substratesFile,
-            predictionsFiles.get(roId).get,
-            maxMass)))
+            filteredSubstratesFile,
+            predictionsFiles.get(roId).get)))
     // Run one job per RO for L2 expansion
     headerJob.thenRunBatch(singleThreadExpansionJobs.toList)
 
