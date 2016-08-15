@@ -69,6 +69,8 @@ public class IonAnalysisInterchangeModel {
     for (String filePath : filepaths) {
       IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
       model.loadResultsFromFile(new File(filePath));
+
+      // Sort by mass charge for consistent comparisons across files
       Collections.sort(model.getResults(), new Comparator<ResultForMZ>() {
         @Override
         public int compare(ResultForMZ o1, ResultForMZ o2) {
