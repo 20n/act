@@ -229,7 +229,6 @@ public class UniprotInstallerTest {
     uniprotInstaller = new UniprotInstaller(
         new File(this.getClass().getResource("uniprot_installer_test_9.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
-
   }
 
   /**
@@ -262,7 +261,6 @@ public class UniprotInstallerTest {
    */
   @Test
   public void testProteinNullFull() {
-
     List<String> oldAccessions = Collections.singletonList("CUB13083");
 
     List<String> uniprotAccessions = Collections.singletonList("A0A0K6JCJ7");
@@ -338,7 +336,6 @@ public class UniprotInstallerTest {
    */
   @Test
   public void testProteinFullFull() {
-
     List<String> uniprotAccessions = Arrays.asList("NUR84963", "O35403");
 
     List<String> genbankNucleotideAccessions = Collections.singletonList("AF026075");
