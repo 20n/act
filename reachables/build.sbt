@@ -97,7 +97,7 @@ libraryDependencies ++= {
        * squants is a DSL for autoconversions between units
        * allows us to write readable code such as:
        * USD(1 million) (1000 dollars) / (1 tonnes)
-      */
+       */
       "com.squants"  %% "squants"  % "0.6.2",
   /*
    * the maven repo jar seem to be outdated, or incompatible.
