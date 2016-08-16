@@ -153,7 +153,7 @@ public class ErosCorpus implements Iterable<Ero> {
   public Ero getEro(Integer roId) {
     // If map already has entry for this roId, return it
     Ero result;
-    if ((result =roIdToEroMap.get(roId)) != null) {
+    if ((result = roIdToEroMap.get(roId)) != null) {
       return result;
     }
 
@@ -162,8 +162,8 @@ public class ErosCorpus implements Iterable<Ero> {
       roIdToEroMap.put(ro.getId(), ro);
     }
 
-    // Again, if the right ID showed up, return it
-    if ((result =roIdToEroMap.get(roId)) != null) {
+    // Now, the ID should be there!
+    if ((result = roIdToEroMap.get(roId)) != null) {
       return result;
     }
 
