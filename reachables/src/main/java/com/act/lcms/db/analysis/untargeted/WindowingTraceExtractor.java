@@ -373,7 +373,7 @@ public class WindowingTraceExtractor {
     LOGGER.info("Done writing trace data to index");
   }
 
-  public Iterator<Pair<Pair<Double, Double>, List<XZ>>> getIteratorOverTraces(File index)
+  public Iterator<Triple<Double, Double, List<XZ>>> getIteratorOverTraces(File index)
       throws IOException, RocksDBException {
     RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles = DBUtil.openExistingRocksDB(index, COLUMN_FAMILIES.values());
     final RocksIterator rangesIterator = dbAndHandles.newIterator(COLUMN_FAMILIES.RANGE_TO_ID);
@@ -392,14 +392,14 @@ public class WindowingTraceExtractor {
       throw new UncheckedIOException(e);
     }
 
-    return new Iterator<Pair<Pair<Double, Double>, List<XZ>>>() {
+    return new Iterator<Triple<Double, Double, List<XZ>>>() {
       @Override
       public boolean hasNext() {
         return rangesIterator.isValid();
       }
 
       @Override
-      public Pair<Pair<Double, Double>, List<XZ>> next() {
+      public Triple<Double, Double, List<XZ>> next() {
         byte[] keyBytes = rangesIterator.key();
         byte[] valBytes = rangesIterator.value();
         Pair<Double, Double> range;
@@ -450,7 +450,7 @@ public class WindowingTraceExtractor {
          * advance only after we've read the current value, which means the next hasNext call after we've walked off the
          * edge will return false. */
         rangesIterator.next();
-        return Pair.of(range, xzs);
+        return Triple.of(range.getLeft(), range.getRight(), xzs);
       }
     };
   }

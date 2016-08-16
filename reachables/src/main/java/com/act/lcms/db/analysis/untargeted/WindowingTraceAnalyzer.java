@@ -14,6 +14,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.rocksdb.RocksDBException;
@@ -199,12 +200,12 @@ public class WindowingTraceAnalyzer {
     List<WindowAnalysisResult> results = new ArrayList<>();
 
     // Extract each window's trace, computing and saving stats as we go.  This should fit in memory no problem.
-    Iterator<Pair<Pair<Double, Double>, List<XZ>>> traceIterator =
+    Iterator<Triple<Double, Double, List<XZ>>> traceIterator =
         new WindowingTraceExtractor().getIteratorOverTraces(rocksDBFile);
     while (traceIterator.hasNext()) {
-      Pair<Pair<Double, Double>, List<XZ>> rangeAndTrace = traceIterator.next();
+      Triple<Double, Double, List<XZ>> rangeAndTrace = traceIterator.next();
 
-      String label = String.format("%.3f-%.3f", rangeAndTrace.getLeft().getLeft(), rangeAndTrace.getLeft().getRight());
+      String label = String.format("%.3f-%.3f", rangeAndTrace.getLeft(), rangeAndTrace.getMiddle());
 
       // Note: here we cheat by knowing how the MS1 class is going to use this incredibly complex container.
       MS1ScanForWellAndMassCharge scanForWell = new MS1ScanForWellAndMassCharge();
@@ -213,7 +214,7 @@ public class WindowingTraceAnalyzer {
       Double maxPeakTime = ms1.computeStats(scanForWell, label);
 
       WindowAnalysisResult result = new WindowAnalysisResult(
-          rangeAndTrace.getLeft().getLeft(), rangeAndTrace.getLeft().getRight(),
+          rangeAndTrace.getLeft(), rangeAndTrace.getMiddle(),
           scanForWell.getLogSNRForIon(label),
           scanForWell.getMaxIntensityForIon(label),
           maxPeakTime
