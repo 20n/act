@@ -4,7 +4,6 @@ import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.jobs.management.utility.{AtomicLatch, LoggingController}
 import org.apache.logging.log4j.LogManager
 
-import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /**
@@ -62,7 +61,7 @@ object JobManager {
     * Should be called at the end of a job instantiation set so that any long-running jobs will finish.
     *
     */
-  def awaitUntilAllJobsComplete(firstJob: Job): Unit = {
+  def startJobAndAwaitUntilWorkflowComplete(firstJob: Job): Unit = {
     require(jobs.nonEmpty, message = "Cannot await when no jobs have been started.  " +
       "Make sure to call start() on a job prior to awaiting.")
 
@@ -71,7 +70,7 @@ object JobManager {
     instantiateCountDownLockAndWait()
   }
 
-  def awaitUntilSpecificJobComplete(firstJob: Job, jobToWaitFor: Job): Unit = {
+  def startJobAndKillWorkflowAfterSpecificJobCompletes(firstJob: Job, jobToWaitFor: Job): Unit = {
     require(jobs.nonEmpty, message = "Cannot await when no jobs have been started.  " +
       "Make sure to call start() on a job prior to awaiting.")
     verifyAllJobsAreReachableAndNoCycles(firstJob)
@@ -175,14 +174,9 @@ object JobManager {
     */
   private def verifyAllJobsAreReachableAndNoCycles(job: Job): Unit = {
     // It is important to verify cycles first as otherwise reachables search will never end ~
-    if (cycleInJobs(job)) {
-      throw new RuntimeException("Detect an abnormality in your workflow.  Either a cycle exists, or multiple " +
-        "jobs will attempt to run the same job.  In either of these scenarios, " +
-        "your workflow will be unable to run the job a second time and thus will crash.  " +
-        "Please review your workflow.")
-    }
+    val allJobs: Set[Job] = getAllChildren(job)
 
-    val allJobs: Set[Job] = getAllChildrenJobs(job).union(Set[Job](job))
+    //val allJobs: Set[Job] = getAllChildrenJobs(job)
     // Grab all the jobs that can't be reached so we can report back which ones need to be connected
     val jobsNotReached = jobs.filter(job => !allJobs.contains(job))
     if (jobsNotReached.nonEmpty) {
@@ -193,26 +187,6 @@ object JobManager {
   }
 
   /**
-    * Gets all the children jobs of a given job
-    *
-    * @param job Job to get the children of
-    *
-    * @return A set of the children that were found.
-    */
-  private def getAllChildrenJobs(job: Job): Set[Job] = {
-    var jobSet = mutable.Set[Job]()
-
-    for (jobLevel <- job.getJobBuffer) {
-      for (currentJob <- jobLevel) {
-        jobSet.add(currentJob)
-        jobSet = jobSet.union(getAllChildrenJobs(currentJob))
-      }
-    }
-
-    jobSet.toSet
-  }
-
-  /**
     * Checks that the number of unique jobs we can reach and
     * the number of jobs we can reach are the same, thus showing that no cycles exist.
     *
@@ -220,25 +194,27 @@ object JobManager {
     *
     * @param job Job to start looking from
     *
-    * @return True or false if a cycle exists.
+    * @return A set of all jobs.  If a cycle is detected raises an error.
     */
-  private def cycleInJobs(job: Job, currentJobList: ListBuffer[Job] = new ListBuffer[Job]()): Boolean = {
+  private def getAllChildren(job: Job, currentJobList: ListBuffer[Job] = new ListBuffer[Job]()): Set[Job] = {
     currentJobList.append(job)
-    // Found a cycle, return true
+
+    // Found a cycle, raise error
     if (currentJobList.toSet.size != currentJobList.length) {
-      return true
+      throw new RuntimeException("Detected an abnormality in your workflow.  Either a cycle exists, or multiple " +
+        "jobs will attempt to run the same job.  In either of these scenarios, " +
+        "your workflow will be unable to run the job a second time and thus will crash.  " +
+        "Please review your workflow.")
     }
 
     for (jobLevel <- job.getJobBuffer) {
       for (currentJob <- jobLevel) {
         // If a cycle found below, return true to propagate.
-        if (cycleInJobs(currentJob, currentJobList)) {
-          return true
-        }
+        getAllChildren(currentJob, currentJobList)
       }
     }
 
-    false
+    currentJobList.toSet
   }
 
   /*

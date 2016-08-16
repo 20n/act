@@ -1,7 +1,7 @@
 package com.act.workflow.tool_manager.jobs.management
 
 object LoggingVerbosity extends Enumeration {
-  type Status = Value
+  type LoggingVerbosity = Value
   // No logging
   val Off = 0
   // Only essential messages to indicate run is complete, etc.
