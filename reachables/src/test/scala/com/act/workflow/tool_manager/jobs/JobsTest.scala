@@ -31,7 +31,7 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
 
     A.thenRun(B).thenRun(C).thenRun(D)
 
-    JobManager.awaitUntilAllJobsComplete(A)
+    JobManager.startJobAndAwaitUntilWorkflowComplete(A)
 
     A.getJobStatus.isCompleted should be(true)
     B.getJobStatus.isCompleted should be(true)
@@ -59,22 +59,18 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     val A = immediateReturnJob("A")
     val B = immediateReturnJob("B")
     val b1 = immediateReturnJob("b1")
-    val b2 = immediateReturnJob("b2")
-    val b3 = immediateReturnJob("b3")
     // Won't take 50 seconds as should exit after b3 complete.
     val C = ShellWrapper.shellCommand("C", List("sleep", "50"))
 
     A.thenRunBatch(List(B, C))
-    B.thenRun(b1).thenRun(b2).thenRun(b3)
+    B.thenRun(b1)
 
-    JobManager.awaitUntilSpecificJobComplete(A, b3)
+    JobManager.startJobAndKillWorkflowAfterSpecificJobCompletes(A, b1)
 
     // C should be killed as it completes after b3 based on time.
     A.getJobStatus.isCompleted should be(true)
     B.getJobStatus.isCompleted should be(true)
     b1.getJobStatus.isCompleted should be(true)
-    b2.getJobStatus.isCompleted should be(true)
-    b3.getJobStatus.isCompleted should be(true)
     C.getJobStatus.isKilled should be(true)
     C.getJobStatus.isFailed should be(true)
   }
@@ -100,7 +96,7 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     A.thenRunBatch(List(B, C)).thenRun(D)
     B.thenRun(b1).thenRun(b2).thenRun(b3)
 
-    JobManager.awaitUntilAllJobsComplete(A)
+    JobManager.startJobAndAwaitUntilWorkflowComplete(A)
 
     // Last job should be D
     JobManager.getOrderOfJobCompletion.last should be("D")
@@ -125,7 +121,7 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
 
     A.thenRunBatch(List(B, C)).thenRun(D).thenRunBatch(List(E, F))
 
-    JobManager.awaitUntilAllJobsComplete(A)
+    JobManager.startJobAndAwaitUntilWorkflowComplete(A)
 
     // B and C and E and F are in parallel so order can vary
     JobManager.getOrderOfJobCompletion.head should be("A")
@@ -159,7 +155,7 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     // If we kill B, E should still be allowed to complete.
     B.killUncompleteJob()
 
-    JobManager.awaitUntilAllJobsComplete(A)
+    JobManager.startJobAndAwaitUntilWorkflowComplete(A)
 
 
     A.getJobStatus.isSuccessful should be(true)

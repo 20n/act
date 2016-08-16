@@ -5,6 +5,11 @@ import org.apache.logging.log4j.{LogManager, Logger}
 
 import scala.collection.mutable.ListBuffer
 
+/**
+  * To figure out what's up: https://github.com/20n/act/wiki/Scala-Workflows
+  *
+  * @param name What to call your job
+  */
 abstract class Job(name: String) {
   protected val jobBuffer = ListBuffer[List[Job]]()
   /*
@@ -21,7 +26,7 @@ abstract class Job(name: String) {
 
   private var verbosity = LoggingVerbosity.Medium
   /*
-    If true, this job will wait for it to complete prior to launching next round of jobs.
+    If true, the job that launched this job will wait for this job to complete prior to launching more jobs.
     Otherwise, it will launch whenever all the other jobs it is waiting on are done.
    */
   private var shouldBeWaitedOn = true
@@ -34,6 +39,9 @@ abstract class Job(name: String) {
 
   /**
     * This job will be run if the current job fails, prior to attempt to rerun the current job.
+    *
+    * The job given to retryJob is usually not run.  However, it will be added to the Job manager
+    * and run if this job fails.  Then, after retryJob completes it will attempt to launch this job again.
     *
     * @param job job to run prior to retrying
     *
@@ -117,7 +125,7 @@ abstract class Job(name: String) {
   }
 
   /**
-    * Kills a job if it is currently not started.
+    * Kills a job if it is not yet complete (Either unstarted or running)
     */
   def killUncompleteJob() {
     // Only kill jobs if they haven't completed already.
@@ -261,6 +269,10 @@ abstract class Job(name: String) {
     Local job continuation utilities
   */
 
+  def getName: String = {
+    this.name
+  }
+
   /**
     * A consistent source to change the job status.
     * Has the added benefit of notifying the JobManager if that status changes to complete.
@@ -283,10 +295,6 @@ abstract class Job(name: String) {
     if (status.isCompleted) {
       JobManager.indicateJobCompleteToManager(this)
     }
-  }
-
-  def getName: String = {
-    this.name
   }
 
   /**
