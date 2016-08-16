@@ -62,8 +62,8 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
   }};
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[] {
-      "This module takes as inputs LCMS analysis results in the form of IonAnalysisInterchangeModel serialized object files " +
-          "for every positive replicate vs negative controls. Based on these, it identifies inchis that are hits on all the " +
+      "This module takes as inputs LCMS analysis results in the form of IonAnalysisInterchangeModel serialized object files ",
+          "for every positive replicate vs negative controls. Based on these, it identifies inchis that are hits on all the ",
           "replicates and writes them to an output file."
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
