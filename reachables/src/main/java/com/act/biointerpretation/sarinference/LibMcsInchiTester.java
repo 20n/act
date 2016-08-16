@@ -21,6 +21,20 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * This class was designed to test how LibMCS handles inchis. Specifically, the process of using LibMCS looks like:
+ * Inchi (A) -> molecule (B) -> LibMCS node (C)
+ * I wanted to see the difference between the initial inchis, A, and the corresponding inchis when exported after step
+ * B, or after step C.  Step A->B indicates what happens when we simply import and export a molecule from chemaxon, while
+ * B->C indicates changes that LibMCS itself makes to the inchis.
+ *
+ * The conclusion was that LibMCS strips away both the charge and stereochemical layers from molecules, and thus that
+ * we should not rely on comparing inchis from before LibMCS analysis to after.
+ *
+ * This investigation also indicated that LibMCS does not change the masses of the molecules, and that chemaxon
+ * Molecule.getExactMass() is almost exactly the same as our MassCalculator.calculatorMass(), and should probably
+ * replace it.
+ */
 public class LibMcsInchiTester {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(LibMcsInchiTester.class);
@@ -28,6 +42,7 @@ public class LibMcsInchiTester {
   private static final String OPTION_SUBSTRATE_INCHIS = "s";
   private static final String OPTION_PRE_CLUSTER_OUTPUT = "B";
   private static final String OPTION_POST_CLUSTER_OUTPUT = "A";
+  private static final String OPTION_WRITE_MASSES = "M";
   private static final String OPTION_HELP = "h";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {
@@ -51,6 +66,12 @@ public class LibMcsInchiTester {
           .desc("The path to which to write the inchis after clustering.")
           .hasArg()
           .longOpt("after-output-path")
+          .required()
+      );
+      add(Option.builder(OPTION_WRITE_MASSES)
+          .argName("write masses")
+          .desc("Write masses, sorted in descending order, instead of inchis.")
+          .longOpt("write-masses")
           .required()
       );
       add(Option.builder(OPTION_HELP)
@@ -99,7 +120,6 @@ public class LibMcsInchiTester {
     L2InchiCorpus substrates = new L2InchiCorpus();
     substrates.loadCorpus(substratesFile);
     substrates.filterByMass(950);
-    substrates.writeMasses(preClusterOutput);
 
     LOGGER.info("Building SAR tree with LibraryMCS.");
     LibraryMCS libMcs = new LibraryMCS();
@@ -119,7 +139,14 @@ public class LibMcsInchiTester {
     }).collect(Collectors.toList());
 
     L2InchiCorpus outputCorpus = new L2InchiCorpus(outputInchis);
-    outputCorpus.writeMasses(postClusterOutput);
+
+    if (cl.hasOption(OPTION_WRITE_MASSES)) {
+      substrates.writeMasses(preClusterOutput);
+      outputCorpus.writeMasses(postClusterOutput);
+    } else {
+      substrates.writeToFile(preClusterOutput);
+      outputCorpus.writeToFile(postClusterOutput);
+    }
 
     LOGGER.info("Complete!.");
   }
