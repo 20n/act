@@ -20,7 +20,7 @@ import squants.mass.Moles
 import squants.mass.Density
 import squants.mass.ChemicalAmount
 
-// these provide implicit converters such as 
+// these provide implicit converters such as
 // (XX dollars) (XX days) (XX kg) (XX liters) etc.
 import squants.time.TimeConversions.TimeConversions
 import squants.mass.MassConversions.MassConversions
@@ -31,7 +31,7 @@ import squants.thermal.TemperatureConversions.TemperatureConversions
 import squants.energy.PowerConversions.PowerConversions
 import squants.mass.ChemicalAmountConversions.ChemicalAmountConversions
 
-// Getting (XX millions) i.e., a dimensionless multiplier has 
+// Getting (XX millions) i.e., a dimensionless multiplier has
 // different exporting consideration than the other conversions above
 // The below _ imports `lazy val millions` from https://github.com/garyKeorkunian/squants/blob/master/shared/src/main/scala/squants/Dimensionless.scala#L111
 // TODO is there a better way to import?
@@ -56,7 +56,7 @@ class CostModel {
   type MMolPerLiterHour = Double
 
   /********************************************************************************************
-  *  Unit Conversions 
+  *  Unit Conversions
   ********************************************************************************************/
 
   def waterDensity: Density = (1 kg) / (1 liters)
@@ -69,7 +69,7 @@ class CostModel {
   }
 
   /********************************************************************************************
-  *  Constants 
+  *  Constants
   ********************************************************************************************/
 
   val defaultFermRunTime: Time = 10 days
@@ -98,7 +98,7 @@ class CostModel {
   val finalDryCellWeight: Ratio[Mass, Mass] = mediaElem(170 g)
   val fermenterAspect: Double = 3.0 // height/diameter
   // Compressor Power
-  val airFlow: Double = 2.0 
+  val airFlow: Double = 2.0
   // Agitator Power
   val agitationRate: KiloWattPerMeterCubed = 0.75
   // Microbial Heat
@@ -151,7 +151,7 @@ class CostModel {
   case object Antifoam    { val n = "Antifoam"; }
 
   /********************************************************************************************
-  *  Sensible defaults and external caller 
+  *  Sensible defaults and external caller
   ********************************************************************************************/
 
   var strainTiter: Titer = Defaults.defaultTiter;
@@ -183,7 +183,7 @@ class CostModel {
   }
 
   /********************************************************************************************
-  *  Consumptions and cost per batch 
+  *  Consumptions and cost per batch
   ********************************************************************************************/
   def workingVolume: Volume = vesselSize * pcOfVesselUsed.value
   def finalByInitialVol: Double = brothMassPerBatch.value / VolumeToMass(workingVolume).value
@@ -196,7 +196,7 @@ class CostModel {
 
   def mediaPerBatch: Money = unitCostOfMedia * brothMassPerBatch
   def glcPerBatch: Money = Glucose.cost * glcFedPerBatch
-  def ammoniaPerBatch: Money = Ammonia.cost * ammoniaUsedPerBatch 
+  def ammoniaPerBatch: Money = Ammonia.cost * ammoniaUsedPerBatch
   def consumablesPerBatch: Money = mediaPerBatch + glcPerBatch + ammoniaPerBatch
 
   /********************************************************************************************
@@ -227,9 +227,9 @@ class CostModel {
     // TODO fill out the cost model for Build Your Own Plant
     throw new UnsupportedOperationException()
 
-    val electrical: Money = USD(0) 
-    val cooling: Money = USD(0) 
-    val steam: Money = USD(0) 
+    val electrical: Money = USD(0)
+    val cooling: Money = USD(0)
+    val steam: Money = USD(0)
     val labor: Money = USD(0)
     val depreciation: Money = USD(0)
 
@@ -252,7 +252,7 @@ class CostModel {
 
 object Defaults {
   // Default titers and yields are instances for Shikimate from review paper:
-  // "Recombinant organisms for production of industrial products" 
+  // "Recombinant organisms for production of industrial products"
   // --- http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3026452
   val defaultYield: Yield = Yield(31.9 grams, 100 grams) // 31.9% g/g
   val maxYield: Yield = Yield(60 grams, 100 grams) // 60% g/g
@@ -285,7 +285,7 @@ class InvestModel {
     def curve(x: Double) = { 0.02 * sinh(8 * x - 3.9) + 0.5 }
 
     // TODO: return a convolved outcome based on titer AND yield
-    // From observations, we know titer is the predominant cost, 
+    // From observations, we know titer is the predominant cost,
     // so for now we compute a return curve on titer
     curve(normTiter)
   }
@@ -343,7 +343,7 @@ class ROIModel {
     val profitPerTon: Money = marketPricePerTon - productionPricePerTon
     val eventualProfit: Money = profitPerTon * BigDecimal(volume.value)
     val startingProfit: Money = profitPerTon * BigDecimal(startingVolume.value)
-    // not counting the start and end year, we calculate what the 
+    // not counting the start and end year, we calculate what the
     // step in Money needs to be at every intermediate year.
     val step: Money = (eventualProfit - startingProfit) / (yearsToFullScale - 2)
     val stepNum = yearsToFullScale
@@ -355,7 +355,7 @@ class ROIModel {
     val npv = getNPV(invested, profitRamp)
     val gain: Money = profitRamp.reduce(_ + _)
     val roi: Dimensionless = ((gain - invested).value / invested.value) percent
-    
+   
     (npv, roi)
   }
 
@@ -379,8 +379,8 @@ object ExploreRange {
     val cl = parseCommandLineOptions(args)
 
     // market price USD/ton of product
-    val p = USD(cl.getOptionValue(OPTION_MARKET_PRICE).toDouble) 
-    val mode = cl.getOptionValue(OPTION_MODE) match { 
+    val p = USD(cl.getOptionValue(OPTION_MARKET_PRICE).toDouble)
+    val mode = cl.getOptionValue(OPTION_MODE) match {
       case "CMOS" => Defaults.CMOS
       case _ => Defaults.BYOP
     }
