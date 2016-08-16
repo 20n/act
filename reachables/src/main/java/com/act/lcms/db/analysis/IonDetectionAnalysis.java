@@ -284,8 +284,8 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
    * @return The intensity-time values for a well
    * @throws Exception
    */
-  public ChemicalToMapOfMetlinIonsToIntensityTimeValues
-  getIntensityTimeProfileForMassChargesInWell(T well, ScanData.KIND kindOfWell) throws Exception {
+  public ChemicalToMapOfMetlinIonsToIntensityTimeValues getIntensityTimeProfileForMassChargesInWell(
+      T well, ScanData.KIND kindOfWell) throws Exception {
 
     Plate plate = plateCache.get(well.getPlateId());
     if (plate == null) {
@@ -293,15 +293,19 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
       plateCache.put(plate.getId(), plate);
     }
 
-    ChemicalToMapOfMetlinIonsToIntensityTimeValues signalProfile = AnalysisHelper.readScanData(
-        db,
-        lcmsDir,
-        setOfMassCharges,
-        kindOfWell,
-        plateCache,
-        well,
-        USE_FINE_GRAINED_TOLERANCE,
-        USE_SNR_FOR_LCMS_ANALYSIS);
+    ScanFile bestScanFile = AnalysisHelper.pickBestScanFileForWell(db, well);
+
+    if (bestScanFile == null) {
+      throw new RuntimeException(String.format("Could not find scan file for well id %d", well.getId()));
+    }
+
+    Map<Pair<String, Double>, ScanData<T>> massChargePairToScanDataResult =
+        AnalysisHelper.getIntensityTimeValuesForEachMassChargeInScanFile(db, lcmsDir, setOfMassCharges, kindOfWell,
+            plateCache, bestScanFile, well, USE_FINE_GRAINED_TOLERANCE, USE_SNR_FOR_LCMS_ANALYSIS);
+
+    ChemicalToMapOfMetlinIonsToIntensityTimeValues signalProfile =
+        AnalysisHelper.constructChemicalToMapOfMetlinIonsToIntensityTimeValuesFromMassChargeData(
+            massChargePairToScanDataResult, kindOfWell);
 
     if (signalProfile == null) {
       throw new RuntimeException("No signal data available.");
