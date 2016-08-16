@@ -248,7 +248,6 @@ public class GenbankInstallerTest {
         new File(this.getClass().getResource("genbank_installer_test_dna.gb").getFile()), "DNA", mockDb,
         minimalPrefixMapping);
     genbankInstaller.init();
-
   }
 
   /**
@@ -272,7 +271,6 @@ public class GenbankInstallerTest {
         seqs.get(91973L));
     compareSeqs("for testProteinNullNull (query by ec, seq, org; database match exists)", emptyTestSeq,
         seqs.get(91974L));
-
   }
 
   /**
@@ -329,7 +327,6 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     compareSeqs("for testProteinNullFull; (query by ec, seq, org; database match exists)", testSeq, seqs.get(29034L));
-
   }
 
   /**
@@ -485,7 +482,6 @@ public class GenbankInstallerTest {
             proteinEcSeqOrgTestQuery, seqentry.getValue());
       }
     }
-
   }
 
   /**
