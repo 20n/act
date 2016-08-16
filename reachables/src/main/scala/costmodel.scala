@@ -39,6 +39,8 @@ import squants.DimensionlessConversions._
 
 import scala.math.sinh
 import java.lang.UnsupportedOperationException
+import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
+import org.apache.logging.log4j.LogManager
 
 case class Yield(base: Mass, counter: Mass) extends LikeRatio[Mass]
 case class Titer(base: Mass, counter: Volume) extends Ratio[Mass, Volume] {
@@ -368,58 +370,123 @@ object ExploreRange {
   case object OutHuman extends OutFormat
   case object OutTSV extends OutFormat
 
+  val HELP_FORMATTER: HelpFormatter = new HelpFormatter
+  val HELP_MESSAGE = ""
+  HELP_FORMATTER.setWidth(100)
+  private val logger = LogManager.getLogger(getClass.getName)
+
   def main(args: Array[String]) {
-    if (args.length != 3) {
-      printhelp
-    } else {
-      try {
-        val p = USD(args(0).toDouble) // market price USD/ton of product
-        val mode = args(1) match { case "CMOS" => Defaults.CMOS; case _ => Defaults.BYOP }
-        val outformat = args(2) match { case "Readable" => OutHuman; case _ => OutTSV }
+    val cl = parseCommandLineOptions(args)
 
-        // Print the header
-        val hdr = outformat match {
-          case OutHuman => List("Yield", "Titer", "Investment", "COGS", "ROI").mkString("\t")
-          case OutTSV => List("Yield(%)", "Titer(g/L)", "Invest($$M)", "Invest(Yr)", "COGS($$/T)", "Sell Price($$/T)", "NPV($$M)", "ROI(%)").mkString("\t")
-        }
-        println(hdr)
+    // market price USD/ton of product
+    val p = USD(cl.getOptionValue(OPTION_MARKET_PRICE).toDouble) 
+    val mode = cl.getOptionValue(OPTION_MODE) match { 
+      case "CMOS" => Defaults.CMOS
+      case _ => Defaults.BYOP
+    }
+    val outformat = cl.getOptionValue(OPTION_OUTFORMAT) match {
+      case "Readable" => OutHuman
+      case _ => OutTSV
+    }
 
-        for (titerv <- 1.0 to Defaults.maxTiter.gPerL by 20.0) {
-          for (yieldv <- 1.0 to (100 * Defaults.maxYield.ratio) by 10.0) {
-            val y = Yield(yieldv grams, 100 grams)
-            val t = Titer(titerv grams, 1 litres)
-            val investment: (Money, Time) = investmodel.getInvestmentRequired(y, t)
-            val cogs: Price[Mass] = costmodel.getPerTonCost(y, t, mode)
-            val roi: (Money, Dimensionless) = roimodel.getROI(y, t, p, mode)
+    // Print the header
+    val hdr = outformat match {
+      case OutHuman => List("Yield", "Titer", "Investment", "COGS", "ROI").mkString("\t")
+      case OutTSV => List("Yield(%)", "Titer(g/L)", "Invest($$M)", "Invest(Yr)", "COGS($$/T)", "Sell Price($$/T)", "NPV($$M)", "ROI(%)").mkString("\t")
+    }
+    println(hdr)
 
-            outformat match {
-              case OutHuman => {
-                println(s"$y $t $investment $cogs $roi")
-              }
-              case OutTSV => {
-                val yieldPc = y.ratio * 100
-                val titerGPerL = t.gPerL
-                val investMillions = investment._1.value / 1e6
-                val investYears = investment._2.value / 365
-                val cogsForTon = cogs.convertToBase(1.0 tonnes).value
-                val priceForTon = p.value
-                val npv = roi._1.value / 1e6
-                val roiPc = roi._2.value * 100
-                println(f"$yieldPc%2.2f\t$titerGPerL%2.2f\t$investMillions%2.2f\t$investYears%.2f\t$cogsForTon%.2f\t$priceForTon%.2f\t$npv%.2f\t$roiPc%.2f")
-              }
-            }
+    for (titerv <- 1.0 to Defaults.maxTiter.gPerL by 20.0) {
+      for (yieldv <- 1.0 to (100 * Defaults.maxYield.ratio) by 10.0) {
+        val y = Yield(yieldv grams, 100 grams)
+        val t = Titer(titerv grams, 1 litres)
+        val investment: (Money, Time) = investmodel.getInvestmentRequired(y, t)
+        val cogs: Price[Mass] = costmodel.getPerTonCost(y, t, mode)
+        val roi: (Money, Dimensionless) = roimodel.getROI(y, t, p, mode)
+
+        outformat match {
+          case OutHuman => {
+            println(s"$y $t $investment $cogs $roi")
+          }
+          case OutTSV => {
+            val yieldPc = y.ratio * 100
+            val titerGPerL = t.gPerL
+            val investMillions = investment._1.value / 1e6
+            val investYears = investment._2.value / 365
+            val cogsForTon = cogs.convertToBase(1.0 tonnes).value
+            val priceForTon = p.value
+            val npv = roi._1.value / 1e6
+            val roiPc = roi._2.value * 100
+            println(f"$yieldPc%2.2f\t$titerGPerL%2.2f\t$investMillions%2.2f\t$investYears%.2f\t$cogsForTon%.2f\t$priceForTon%.2f\t$npv%.2f\t$roiPc%.2f")
           }
         }
-      } catch {
-        case e: NumberFormatException => printhelp
       }
     }
   }
 
-  def printhelp() {
-    def hr() = println("*" * 80)
-    hr
-    println("Usage: ExploreRange <Current Market USD/ton of product> <CMOS | BYOP> <Readable | TSV>")
-    hr
+  private val OPTION_MARKET_PRICE = "p"
+  private val OPTION_MODE = "m"
+  private val OPTION_OUTFORMAT = "f"
+
+  def parseCommandLineOptions(args: Array[String]): CommandLine = {
+    val opts = getCommandLineOptions
+
+    // Parse command line options
+    var cl: Option[CommandLine] = None
+    try {
+      val parser = new DefaultParser()
+      cl = Option(parser.parse(opts, args))
+    } catch {
+      case e: ParseException =>
+        logger.error(s"Argument parsing failed: ${e.getMessage}\n")
+        exitWithHelp(opts)
+    }
+
+    if (cl.isEmpty) {
+      logger.error("Detected that command line parser failed to be constructed.")
+      exitWithHelp(opts)
+    }
+
+    if (cl.get.hasOption("help")) exitWithHelp(opts)
+
+    logger.info("Finished processing command line information")
+    cl.get
+  }
+
+  def getCommandLineOptions: Options = {
+
+    val options = List[CliOption.Builder](
+      CliOption.builder(OPTION_MARKET_PRICE).
+        required(true).
+        hasArg.
+        longOpt("market-price").
+        desc("The EC number to query against in format of X.X.X.X, " +
+          "such as the value 6.1.1 will match 6.1.1.1 as well as 6.1.1.2"),
+
+      CliOption.builder(OPTION_MODE).
+        required(true).
+        hasArg.
+        longOpt("mode").
+        desc("The operation mode, CMO-based or Build Your Own Plant, CMOS or BYOP, respectively to derive the cost model for."),
+
+      CliOption.builder(OPTION_OUTFORMAT).
+        required(true).
+        hasArg.
+        longOpt("output-format").
+        desc("The output format, one of Readable or TSV "),
+
+      CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
+    )
+
+    val opts: Options = new Options()
+    for (opt <- options) {
+      opts.addOption(opt.build)
+    }
+    opts
+  }
+
+  def exitWithHelp(opts: Options): Unit = {
+    HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
+    System.exit(1)
   }
 }
