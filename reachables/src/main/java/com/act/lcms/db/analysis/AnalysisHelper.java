@@ -285,7 +285,7 @@ public class AnalysisHelper {
    * @return The best ScanFile
    * @throws Exception
    */
-  private static <T extends PlateWell<T>> ScanFile pickBestScanFileForWell(DB db, T well) throws Exception {
+  public static <T extends PlateWell<T>> ScanFile pickBestScanFileForWell(DB db, T well) throws Exception {
     List<ScanFile> scanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
         db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
 
@@ -313,37 +313,9 @@ public class AnalysisHelper {
     return kind.equals(ScanData.KIND.POS_SAMPLE) ? name + "_Positive" : name + "_Negative";
   }
 
-  /**
-   * This function picks the best scan file for a single well and then constructs a
-   * ChemicalToMapOfMetlinIonsToIntensityTimeValues object that contains the intensity-time values for the respective
-   * mass charge values.
-   * @param db The db to query scan files from
-   * @param lcmsDir The lcms dir that contains all the lcms files
-   * @param searchMZs The list of chemical name, mass charge pairs
-   * @param kind The kind of scan files we are looking at
-   * @param plateCache The plate cache
-   * @param well The platewell that is undergoing the analysis
-   * @param useFineGrainedMZTolerance boolean for MZ tolerance
-   * @param useSNRForPeakIdentification If true, signal-to-noise ratio will be used for peak identification.  If not, 
-   *                                    peaks will be identified by intensity. 
-   * @param <T> The platewell type abstraction
-   * @return A ChemicalToMapOfMetlinIonsToIntensityTimeValues object
-   * @throws Exception
-   */
-  public static <T extends PlateWell<T>> ChemicalToMapOfMetlinIonsToIntensityTimeValues readScanData(
-      DB db, File lcmsDir, Set<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer,
-      Plate> plateCache, T well, boolean useFineGrainedMZTolerance, boolean useSNRForPeakIdentification) throws Exception {
-
-    ScanFile bestScanFile = pickBestScanFileForWell(db, well);
-
-    Map<Pair<String, Double>, ScanData<T>> massChargePairToScanDataResult =
-        getIntensityTimeValuesForEachMassChargeInScanFile(db, lcmsDir, searchMZs, kind, plateCache, bestScanFile, well,
-            useFineGrainedMZTolerance, useSNRForPeakIdentification);
-
-    if (massChargePairToScanDataResult == null) {
-      LOGGER.error("Scan data results for well does not exist");
-      return null;
-    }
+  public static <T extends PlateWell<T>> ChemicalToMapOfMetlinIonsToIntensityTimeValues
+      constructChemicalToMapOfMetlinIonsToIntensityTimeValuesFromMassChargeData(
+      Map<Pair<String, Double>, ScanData<T>> massChargePairToScanDataResult, ScanData.KIND kind) {
 
     ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = new ChemicalToMapOfMetlinIonsToIntensityTimeValues();
 
