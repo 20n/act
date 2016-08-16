@@ -20,6 +20,9 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
 
   private val logger = LogManager.getLogger(getClass.getName)
 
+  override val HELP_MESSAGE = "Workflow to run untargeted metabolomics pipeline. This runs all steps in the pipeline," +
+    "beginning with L2Expansion, followed by LCMS analysis, and then structure clustering and SAR scoring."
+
   private val OPTION_WORKING_DIRECTORY = "w"
   private val OPTION_SUBSTRATES = "s"
   private val OPTION_RO_IDS = "r"
