@@ -2,7 +2,7 @@ package com.act.workflow.tool_manager.jobs.management
 
 import java.util.concurrent.atomic.AtomicInteger
 
-class AtomicLatch {
+final class AtomicLatch {
   private val counter: AtomicInteger = new AtomicInteger(0)
 
   /*
