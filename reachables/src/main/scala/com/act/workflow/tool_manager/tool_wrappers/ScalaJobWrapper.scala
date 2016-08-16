@@ -8,7 +8,6 @@ object ScalaJobWrapper {
     val job = new ScalaJob(name, f)
     if (!retryJob)
       JobManager.addJob(job)
-
     job
   }
 }

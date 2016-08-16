@@ -40,7 +40,7 @@ class ShellWrapperTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     command.doNotWriteOutputStream()
     command.doNotWriteErrorStream()
 
-    JobManager.awaitUntilAllJobsComplete(command)
+    JobManager.startJobAndAwaitUntilWorkflowComplete(command)
 
     successfulJob(command)
   }
@@ -51,7 +51,7 @@ class ShellWrapperTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     command.doNotWriteOutputStream()
     command.doNotWriteErrorStream()
 
-    JobManager.awaitUntilAllJobsComplete(command)
+    JobManager.startJobAndAwaitUntilWorkflowComplete(command)
 
     command.getJobStatus.isSuccessful should be(false)
     command.getJobStatus.isFailed should be(true)
@@ -88,20 +88,9 @@ class ShellWrapperTest extends FlatSpec with Matchers with BeforeAndAfterEach {
 
     command1.thenRun(command2)
 
-    JobManager.awaitUntilAllJobsComplete(command1)
+    JobManager.startJobAndAwaitUntilWorkflowComplete(command1)
 
-    command1.getJobStatus.isSuccessful should be(true)
-    command1.getJobStatus.isFailed should be(false)
-    command1.getJobStatus.isCompleted should be(true)
-    command1.getJobStatus.isRunning should be(false)
-    command1.getJobStatus.isUnstarted should be(false)
-    command1.getReturnCode should be(0)
-
-    command2.getJobStatus.isSuccessful should be(true)
-    command2.getJobStatus.isFailed should be(false)
-    command2.getJobStatus.isCompleted should be(true)
-    command2.getJobStatus.isRunning should be(false)
-    command2.getJobStatus.isUnstarted should be(false)
-    command2.getReturnCode should be(0)
+    successfulJob(command1)
+    successfulJob(command2)
   }
 }

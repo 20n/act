@@ -32,11 +32,11 @@ class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     A.thenRunBatch(List(B, C)).thenRun(D)
     B.thenRun(b1).thenRun(b2).thenRun(b3)
 
-    JobManager.awaitUntilAllJobsComplete(A)
+    JobManager.startJobAndAwaitUntilWorkflowComplete(A)
 
     JobManager.getOrderOfJobCompletion.length should be(JobManager.completedJobsCount())
 
-    // If the world starts falling.
+    // If the world starts falling and JobManager is really outta whack
     JobManager.getOrderOfJobCompletion.length should be(7)
     JobManager.completedJobsCount() should be(7)
   }
@@ -63,7 +63,7 @@ class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     A.thenRun(B).thenRun(C)
     B.thenRun(b1).thenRun(b2).thenRun(b3)
 
-    JobManager.awaitUntilSpecificJobComplete(A, B)
+    JobManager.startJobAndKillWorkflowAfterSpecificJobCompletes(A, B)
 
     A.getJobStatus.isCompleted should be(true)
     B.getJobStatus.isCompleted should be(true)
@@ -84,7 +84,7 @@ class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     val A = immediateReturnJob("A")
     val B = immediateReturnJob("B")
 
-    an[RuntimeException] should be thrownBy JobManager.awaitUntilAllJobsComplete(A)
+    an[RuntimeException] should be thrownBy JobManager.startJobAndAwaitUntilWorkflowComplete(A)
   }
 
   "The Job Manager" should "detect if cycles exist in a given job structure." in {
@@ -101,6 +101,6 @@ class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     A.thenRun(B)
     B.thenRun(A)
 
-    an[RuntimeException] should be thrownBy JobManager.awaitUntilAllJobsComplete(A)
+    an[RuntimeException] should be thrownBy JobManager.startJobAndAwaitUntilWorkflowComplete(A)
   }
 }
