@@ -93,6 +93,12 @@ libraryDependencies ++= {
       "jaxen" % "jaxen" % "1.1.6",
       "org.eclipse.rdf4j" % "rdf4j-rio-api" % "2.0M3",
       "org.eclipse.rdf4j" % "rdf4j-rio-turtle" % "2.0M3",
+      /*
+       * squants is a DSL for autoconversions between units
+       * allows us to write readable code such as:
+       * USD(1 million) (1000 dollars) / (1 tonnes)
+      */
+      "com.squants"  %% "squants"  % "0.6.2",
   /*
    * the maven repo jar seem to be outdated, or incompatible.
    * we posted to the indigo group bugs. The current resolution
@@ -106,8 +112,7 @@ libraryDependencies ++= {
       "org.mockito" % "mockito-core" % "1.10.19" % "test",
       "org.powermock" % "powermock" % "1.6.4" % "test",
       "org.scalatest" %% "scalatest" % "3.0.0-RC4" % "test",
-      "org.apache.maven.plugins" % "maven-surefire-report-plugin" % "2.17" % "test",
-      "com.squants"  %% "squants"  % "0.6.2"
+      "org.apache.maven.plugins" % "maven-surefire-report-plugin" % "2.17" % "test"
      )
 }
 

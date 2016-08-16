@@ -24,6 +24,7 @@ import squants.Quantity
 import squants.energy._
 import squants.energy.PowerConversions._
 import squants.mass.Moles
+import squants.mass.Density
 import squants.mass.ChemicalAmount
 import squants.mass.ChemicalAmountConversions._
 
@@ -46,8 +47,14 @@ class CostModel {
   *  Unit Conversions 
   ********************************************************************************************/
 
-  def VolumeToMass(x: Volume): Mass = Kilograms((x in Litres).value)
-  def MassToVolume(x: Mass): Volume = Litres((x in Kilograms).value)
+  def waterDensity: Density = (1 kg) / (1 liters)
+  def brothDensity: Density = waterDensity
+  def VolumeToMass(x: Volume): Mass = brothDensity * x
+  def MassToVolume(x: Mass): Volume = {
+    val massInOneLiter: Mass = brothDensity * (1 liters)
+    val litersToHoldInputMass = x / massInOneLiter
+    Litres(litersToHoldInputMass)
+  }
 
   /********************************************************************************************
   *  Constants 
@@ -144,7 +151,7 @@ class CostModel {
 
   def getPerTonCost(y: Double, t: Double): Double = {
     val cost: Price[Mass] = getPerTonCost(Yield(y grams, 100 grams), Titer(t grams, 1 litres), Defaults.defaultOperationMode)
-    cost.convertToBase(1.0 tonnes).value
+    cost.convertToBase(1 tonnes).value
   }
 
   def getPerTonCost(yields: Yield, titers: Titer, mode: Defaults.OperationMode): Price[Mass] = {
@@ -219,12 +226,12 @@ class CostModel {
 
   def dspCostWithCMOs(): Price[Mass] = {
     // TODO: fill out the cost model for CMO for dsp
-    (2000.0 dollars) / (1.0 tonnes)
+    (2000 dollars) / (1 tonnes)
   }
 
   def dspCostWithBYOPlant(): Price[Mass] = {
     // TODO: fill out the cost model for Build Your Own Plant for dsp
-    (2000.0 dollars) / (1.0 tonnes)
+    (2000 dollars) / (1 tonnes)
   }
 
 }
@@ -234,9 +241,9 @@ object Defaults {
   // "Recombinant organisms for production of industrial products" 
   // --- http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3026452
   val defaultYield: Yield = Yield(31.9 grams, 100 grams) // 31.9% g/g
-  val maxYield: Yield = Yield(60.0 grams, 100.0 grams) // 60% g/g
-  val defaultTiter: Titer = Titer(84.0 grams, 1 litres) // 84 g/L
-  val maxTiter: Titer = Titer(200.0 grams, 1 liters) // 170g/L is probably the max that has ever been accomplished
+  val maxYield: Yield = Yield(60 grams, 100 grams) // 60% g/g
+  val defaultTiter: Titer = Titer(84 grams, 1 litres) // 84 g/L
+  val maxTiter: Titer = Titer(200 grams, 1 liters) // 170g/L is probably the max that has ever been accomplished
   val defaultPricePerTon: Money = USD(5547) // current price of acetaminophen
 
   sealed abstract class OperationMode
@@ -294,9 +301,9 @@ class ROIModel {
   var productPrice: Money = Defaults.defaultPricePerTon;
 
   val yearsToFullScale: Int = 3
-  val volume: Mass = 1000.0 tonnes
-  val startingVolume: Mass = 100.0 tonnes
-  val rate = (10.0 / 100.0) percent
+  val volume: Mass = 1000 tonnes
+  val startingVolume: Mass = 100 tonnes
+  val rate = (10 / 100) percent
 
   def getNPV(invested: Money, profits: List[Money]): Money = {
     // TODO: Change the NPV calculation to use Danielle's model
