@@ -1,6 +1,6 @@
 package com.act.workflow.tool_manager.jobs.management
 
-class JobStatus {
+final class JobStatus {
   private var status = StatusCodes.Unstarted
 
   def isCompleted: Boolean = {

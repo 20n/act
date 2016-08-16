@@ -245,7 +245,32 @@ abstract class Job(name: String) {
     * and assigns the value of 'ParentProcessFailure' to them based on the fact that their parent failed.
     */
   protected def markJobsAfterThisAsFailure(): Unit = {
+    jobBuffer.foreach(jobTier => jobTier.foreach(jobAtTier =>
+      jobAtTier.setJobStatus(status.StatusCodes.ParentProcessFailure)))
+  }
 
+  /**
+    * A consistent source to change the job status.
+    * Has the added benefit of notifying the JobManager if that status changes to complete.
+    *
+    * @param newStatus What new status should be assigned to the job
+    */
+  protected def setJobStatus(newStatus: String): Unit = {
+    val message = s"Job status for command ${this} has changed to $newStatus"
+    newStatus match {
+      case s if status.StatusCodes.ParentProcessFailure.equals(s) =>
+        if (verbosity >= LoggingVerbosity.High) logger.info(message)
+      case s if status.StatusCodes.Killed.equals(s) =>
+        if (verbosity >= LoggingVerbosity.Medium_High) logger.info(message)
+      case default =>
+        if (verbosity >= LoggingVerbosity.Medium) logger.info(message)
+    }
+    status.setJobStatus(newStatus)
+
+    // Job manager should know if has been marked as complete
+    if (status.isCompleted) {
+      JobManager.indicateJobCompleteToManager(this)
+    }
   }
 }
 
@@ -296,6 +321,10 @@ abstract class Job(name: String) {
     this
   }
 
+  /*
+    Local job continuation utilities
+  */
+
   /**
     * Run the async job and sets status to 'Running'
     */
@@ -318,36 +347,8 @@ abstract class Job(name: String) {
     }
   }
 
-  /*
-    Local job continuation utilities
-  */
-
   def getName: String = {
     this.name
-  }
-
-  /**
-    * A consistent source to change the job status.
-    * Has the added benefit of notifying the JobManager if that status changes to complete.
-    *
-    * @param newStatus What new status should be assigned to the job
-    */
-  protected def setJobStatus(newStatus: String): Unit = {
-    val message = s"Job status for command ${this} has changed to $newStatus"
-    newStatus match {
-      case s if status.StatusCodes.ParentProcessFailure.equals(s) =>
-        if (verbosity >= LoggingVerbosity.High) logger.info(message)
-      case s if status.StatusCodes.Killed.equals(s) =>
-        if (verbosity >= LoggingVerbosity.Medium_High) logger.info(message)
-      case default =>
-        if (verbosity >= LoggingVerbosity.Medium) logger.info(message)
-    }
-    status.setJobStatus(newStatus)
-
-    // Job manager should know if has been marked as complete
-    if (status.isCompleted) {
-      JobManager.indicateJobCompleteToManager(this)
-    }
   }
 
   /**
