@@ -313,6 +313,14 @@ public class AnalysisHelper {
     return kind.equals(ScanData.KIND.POS_SAMPLE) ? name + "_Positive" : name + "_Negative";
   }
 
+  /**
+   * This function constructs a ChemicalToMapOfMetlinIonsToIntensityTimeValues object from the scan data per mass charge
+   * name and value.
+   * @param massChargePairToScanDataResult A mapping for mass charge to scan data
+   * @param kind The kind of well
+   * @param <T>
+   * @return A ChemicalToMapOfMetlinIonsToIntensityTimeValues object.
+   */
   public static <T extends PlateWell<T>> ChemicalToMapOfMetlinIonsToIntensityTimeValues
       constructChemicalToMapOfMetlinIonsToIntensityTimeValuesFromMassChargeData(
       Map<Pair<String, Double>, ScanData<T>> massChargePairToScanDataResult, ScanData.KIND kind) {
