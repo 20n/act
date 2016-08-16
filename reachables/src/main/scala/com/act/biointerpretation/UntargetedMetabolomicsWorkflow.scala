@@ -133,6 +133,10 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     }
 
     val positiveRate = cl.getOptionValue(OPTION_LCMS_POSITIVE_RATE).toDouble
+    if (positiveRate < 0 || positiveRate > 1) {
+      logger.info(s"Positive rate must be between 0 and 1. Tried to set to ${positiveRate}")
+      System.exit(1)
+    }
 
     var startingPoint = StartingPoints.EXPANSION.id
     if (cl.hasOption(OPTION_STARTING_POINT)) {
