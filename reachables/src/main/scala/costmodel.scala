@@ -1,34 +1,44 @@
 package act.installer.bing
 
-import squants.time._
-import squants.time.TimeConversions.TimeConversions
+import squants.time.Time
+import squants.time.Days
 
-import squants.mass._
-import squants.mass.MassConversions.MassConversions
-import squants.space._
-import squants.space.Volume._
-import squants.space.VolumeConversions.VolumeConversions
+import squants.mass.Mass
+import squants.mass.Kilograms
+import squants.space.Volume
+import squants.space.Litres
 import squants.Dimensionless
-import squants.Dimensionless._
-import squants.DimensionlessConversions._
 
 import squants.market.Money
 import squants.market.USD
 import squants.market.Price
-import squants.market.MoneyConversions._
 import squants.Ratio
 import squants.LikeRatio
 import squants.thermal.Temperature
-import squants.thermal.TemperatureConversions._
 import squants.Quantity
-import squants.energy._
-import squants.energy.PowerConversions._
 import squants.mass.Moles
 import squants.mass.Density
 import squants.mass.ChemicalAmount
-import squants.mass.ChemicalAmountConversions._
+
+// these provide implicit converters such as 
+// (XX dollars) (XX days) (XX kg) (XX liters) etc.
+import squants.time.TimeConversions.TimeConversions
+import squants.mass.MassConversions.MassConversions
+import squants.space.VolumeConversions.VolumeConversions
+import squants.DimensionlessConversions.DimensionlessConversions
+import squants.market.MoneyConversions.MoneyConversions
+import squants.thermal.TemperatureConversions.TemperatureConversions
+import squants.energy.PowerConversions.PowerConversions
+import squants.mass.ChemicalAmountConversions.ChemicalAmountConversions
+
+// Getting (XX millions) i.e., a dimensionless multiplier has 
+// different exporting consideration than the other conversions above
+// The below _ imports `lazy val millions` from https://github.com/garyKeorkunian/squants/blob/master/shared/src/main/scala/squants/Dimensionless.scala#L111
+// TODO is there a better way to import?
+import squants.DimensionlessConversions._
 
 import scala.math.sinh
+import java.lang.UnsupportedOperationException
 
 case class Yield(base: Mass, counter: Mass) extends LikeRatio[Mass]
 case class Titer(base: Mass, counter: Volume) extends Ratio[Mass, Volume] {
@@ -154,9 +164,9 @@ class CostModel {
     cost.convertToBase(1 tonnes).value
   }
 
-  def getPerTonCost(yields: Yield, titers: Titer, mode: Defaults.OperationMode): Price[Mass] = {
-    strainTiter = titers
-    strainYield = yields
+  def getPerTonCost(yield_is: Yield, titer_is: Titer, mode: Defaults.OperationMode): Price[Mass] = {
+    strainTiter = titer_is
+    strainYield = yield_is
     val fermCost = mode match {
       case Defaults.CMOS => costWithCMOs
       case Defaults.BYOP => costWithBYOPlant
@@ -212,7 +222,9 @@ class CostModel {
   *  Bottom Up Model: Cost with Build Your Own Plant
   ********************************************************************************************/
   def costWithBYOPlant(): Price[Mass] = {
-    // TODO: fill out the cost model for Build Your Own Plant
+    // TODO fill out the cost model for Build Your Own Plant
+    throw new UnsupportedOperationException()
+
     val electrical: Money = USD(0) 
     val cooling: Money = USD(0) 
     val steam: Money = USD(0) 
@@ -244,7 +256,7 @@ object Defaults {
   val maxYield: Yield = Yield(60 grams, 100 grams) // 60% g/g
   val defaultTiter: Titer = Titer(84 grams, 1 litres) // 84 g/L
   val maxTiter: Titer = Titer(200 grams, 1 liters) // 170g/L is probably the max that has ever been accomplished
-  val defaultPricePerTon: Money = USD(5547) // current price of acetaminophen
+  val defaultPricePerTon: Money = USD(5547) // current price of acetaminophen, from market report in NAS/shared-data/Reports and Documents/Market Reports/Global Acetaminophen Industry Report 2015 (02_15_2016).pdf
 
   sealed abstract class OperationMode
   case object CMOS extends OperationMode
@@ -260,20 +272,20 @@ class InvestModel {
   val maxProjectTime: Time = (365 * 10) days
   val maxProjectInvestment: Money = USD(20 million)
 
-  def getInvestmentRequired(yields: Yield, titers: Titer): (Money, Time) = {
-    strainTiter = titers
-    strainYield = yields
+  def getInvestmentRequired(yield_is: Yield, titer_is: Titer): (Money, Time) = {
+    strainTiter = titer_is
+    strainYield = yield_is
     getInvestment()
   }
 
-  def asymptoticCurve(x1: Double, x2: Double): Double = {
+  def asymptoticCurve(normYield: Double, normTiter: Double): Double = {
     // a resonable approximation would be 0.02\sinh(8x-3.9)+0.5 (between (0,0) and (1,1)
     def curve(x: Double) = { 0.02 * sinh(8 * x - 3.9) + 0.5 }
 
-    // TODO: return a convolved outcome based on titer (x2) AND yield (x1)
-    // From observations, we know titer is the predominant cost, so for now
-    // we compute a return curve on titer (x2)
-    curve(x2)
+    // TODO: return a convolved outcome based on titer AND yield
+    // From observations, we know titer is the predominant cost, 
+    // so for now we compute a return curve on titer
+    curve(normTiter)
   }
 
   def cost(normYield: Double, normTiter: Double): Money = {
@@ -305,6 +317,8 @@ class ROIModel {
   val startingVolume: Mass = 100 tonnes
   val rate = (10 / 100) percent
 
+  // Calculate the Net Present Value: https://en.wikipedia.org/wiki/Net_present_value
+  // An estimate of how much this money would be worth over a period
   def getNPV(invested: Money, profits: List[Money]): Money = {
     // TODO: Change the NPV calculation to use Danielle's model
     // NAS/shared-data/Danielle/Final Docs/Other Stuff/Molecule NPV.xlsx
@@ -317,16 +331,18 @@ class ROIModel {
 
   def getROI(): (Money, Dimensionless) = getROI(Defaults.defaultYield, Defaults.defaultTiter, Defaults.defaultPricePerTon, Defaults.defaultOperationMode)
 
-  def getROI(yields: Yield, titers: Titer, marketPricePerTon: Money, mode: Defaults.OperationMode): (Money, Dimensionless) = {
-    strainTiter = titers
-    strainYield = yields
+  def getROI(yield_is: Yield, titer_is: Titer, marketPricePerTon: Money, mode: Defaults.OperationMode): (Money, Dimensionless) = {
+    strainTiter = titer_is
+    strainYield = yield_is
     productPrice = marketPricePerTon
 
-    val productionPrice: Price[Mass] = new CostModel().getPerTonCost(yields, titers, mode)
+    val productionPrice: Price[Mass] = new CostModel().getPerTonCost(yield_is, titer_is, mode)
     val productionPricePerTon: Money = productionPrice * (1 tonnes)
     val profitPerTon: Money = marketPricePerTon - productionPricePerTon
     val eventualProfit: Money = profitPerTon * BigDecimal(volume.value)
     val startingProfit: Money = profitPerTon * BigDecimal(startingVolume.value)
+    // not counting the start and end year, we calculate what the 
+    // step in Money needs to be at every intermediate year.
     val step: Money = (eventualProfit - startingProfit) / (yearsToFullScale - 2)
     val stepNum = yearsToFullScale
     val profitRamp: List[Money] = (0 to stepNum - 1).toList.map(BigDecimal(_) * step + startingProfit)
@@ -362,13 +378,13 @@ object ExploreRange {
         val outformat = args(2) match { case "Readable" => OutHuman; case _ => OutTSV }
 
         // Print the header
-        outformat match {
-          case OutHuman => println(s"Yield\tTiter\tInvestment\tCOGS\tROI")
-          case OutTSV => println(s"Yield(%)\tTiter(g/L)\tInvest($$M)\tInvest(Yr)\tCOGS($$/T)\tSell Price($$/T)\tNPV($$M)\tROI(%)")
+        val hdr = outformat match {
+          case OutHuman => List("Yield", "Titer", "Investment", "COGS", "ROI").mkString("\t")
+          case OutTSV => List("Yield(%)", "Titer(g/L)", "Invest($$M)", "Invest(Yr)", "COGS($$/T)", "Sell Price($$/T)", "NPV($$M)", "ROI(%)").mkString("\t")
         }
+        println(hdr)
 
-        val maxTite = 170.0 // Defaults.maxTiter.gPerL
-        for (titerv <- 1.0 to maxTite by 20.0) {
+        for (titerv <- 1.0 to Defaults.maxTiter.gPerL by 20.0) {
           for (yieldv <- 1.0 to (100 * Defaults.maxYield.ratio) by 10.0) {
             val y = Yield(yieldv grams, 100 grams)
             val t = Titer(titerv grams, 1 litres)
@@ -389,7 +405,7 @@ object ExploreRange {
                 val priceForTon = p.value
                 val npv = roi._1.value / 1e6
                 val roiPc = roi._2.value * 100
-                println(f"$yieldPc%2.2f\t$titerGPerL%2.2f\t$investMillions%2.2f\t${investYears}%.2f\t$cogsForTon%.2f\t$priceForTon%.2f\t$npv%.2f\t$roiPc%.2f")
+                println(f"$yieldPc%2.2f\t$titerGPerL%2.2f\t$investMillions%2.2f\t$investYears%.2f\t$cogsForTon%.2f\t$priceForTon%.2f\t$npv%.2f\t$roiPc%.2f")
               }
             }
           }
