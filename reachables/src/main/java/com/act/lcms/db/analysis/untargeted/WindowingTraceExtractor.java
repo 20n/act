@@ -46,8 +46,37 @@ public class WindowingTraceExtractor {
   private static final byte[] TIMEPOINTS_KEY = "timepoints".getBytes(UTF8);
   private static final Double MIN_MZ = 50.0;
   private static final Double MAX_MZ = 950.0;
+  /* STEP_SIZE and WINDOW_WIDTH_FROM_CENTER are chosen carefully and deliberately to eliminate the possibility of false
+   * negatives in the output of the downstream analysis.  Specifically
+   *   WINDOW_WIDTH_FROM_CENTER = DEFAULT_WINDOW_WIDTH_FROM_CENTER + STEP_SIZE / 2.
+   * Where DEFAULT_WINDOW_WIDTH_FROM_CENTER ~ resolution of the instrument = 0.01 daltons.
+   *
+   * The rationale behind this stems from this observation: for a given STEP_SIZE, the maximum distance of any m/z from
+   * the nearest center of a window is STEP_SIZE / 2.  If the maximum distance from any m/z to the nearest center of
+   * a window is STEP_SIZE / 2, then a window with width from center (DEFAULT_WINDOW_WIDTH_FROM_CENTER + STEP_SIZE / 2)
+   * is guaranteed to subsume windows of width DEFAULT_WINDOW_WIDTH_FROM_CENTER for all m/z values within STEP_SIZE / 2
+   * of its center.  For each m/z that is more than STEP_SIZE / 2 away from its center, its nearest center will
+   * necessarily belong to another window, as windows cover the entire range of the instrument in STEP_SIZE increments.
+   *
+   * Here's an illustration of this concept:
+   *
+   * STEP_SIZE = 0.005
+   * WINDOW_WIDTH_FROM_CENTER = 0.0125 = DEFAULT_WINDOW_WIDTH_FROM_CENTER + STEP_SIZE / 2
+   *                               low    mid   high label
+   * |----|----|                0.0075 0.0200 0.0325
+   *   |----|----X              0.0125 0.0250 0.0375
+   *     |----|--X-|            0.0175 0.0300 0.0425
+   *       |----|X---|          0.0225 0.0350 0.0475     A
+   *         [...X...] Ideal window
+   *         |---X|----|        0.0275 0.0400 0.0525     B
+   *           |-X--|----|      0.0325 0.0450 0.0575
+   *             X----|----|    0.0375 0.0500 0.0625
+   * hits?(X) = hits?(A) U hits?(B)
+   *   or
+   * hits?(X) = |X - center(A)| <= |X - center(B)| ? hits?(A) : hits?(B)
+   */
   private static final Double STEP_SIZE = 0.005;
-  private static final Double WINDOW_WIDTH_FROM_CENTER = 0.01;
+  private static final Double WINDOW_WIDTH_FROM_CENTER = 0.0125; // Set explicitly to avoid FP error.
 
   // TODO: make this take a plate barcode and well coordinates instead of a scan file.
   public static final String OPTION_INDEX_PATH = "x";
