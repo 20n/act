@@ -113,9 +113,11 @@ public class WindowingTraceExtractor {
     }
   }
 
+  // This is a list of aggregation windows, stored as <min, max, index> triples.
   public static final List<Triple<Double, Double, Integer>> WINDOWS_W_IDX = Collections.unmodifiableList(
       new ArrayList<Triple<Double, Double, Integer>>(){{
         int i = 0;
+        // TODO: compute this in a way that minimizes FP error, or at least reuse the previous max as the next min.
         for (double center = MIN_MZ; center <= MAX_MZ; center += STEP_SIZE, i++) {
           add(Triple.of(center - WINDOW_WIDTH_FROM_CENTER, center + WINDOW_WIDTH_FROM_CENTER, i));
         }
@@ -206,6 +208,35 @@ public class WindowingTraceExtractor {
    * @return Extracted time points and traces per window (organized by index).
    */
   private Pair<List<Double>, List<List<Double>>> extractTraces(Iterator<LCMSSpectrum> iter) {
+    /* allTraces is a 2D array of aggregated intensity values over the <mz window, time> domains.  The organization of
+     * this matrix works in conjunction with the list of windows and the list of times that we build in parallel.
+     *
+     * The three structures look like:
+     * WINDOWS_W_IDX:
+     *   <min_0, max_0, 0>,
+     *   <min_1, max_1, 1>,
+     *   <min_2, max_2, 2>,
+     *   ...
+     *
+     * times:
+     *   t_0,
+     *   t_1,
+     *   t_2,
+     *   ...
+     *
+     * allTraces (as i_{window_idx}_{time_idx}):
+     *   i_0_0, i_0_1, i_0_2, ...
+     *   i_1_0, i_1_1, i_1_2, ...
+     *   i_2_0, i_2_1, i_2_2, ...
+     *   ...
+     *
+     * So the aggregate intensity for all m/z values in the window <max_1, max_1> at time point 2 is i_1_2.
+     *
+     * We keep the window and time values separate for 1) efficiency and 2) ordering (i.e. no window -> array maps).
+     *
+     * When we want to create an iterator over the <time, intensity> traces (i.e. List<XZ>) for each window, we knit the
+     * single time array together with the appropriate list of intensity values online, reducing the overhead of storing
+     * several hundred million XZ objects (which turns out to be fairly expensive). */
     List<List<Double>> allTraces = new ArrayList<List<Double>>(WINDOWS_W_IDX.size()) {{
       for (int i = 0; i < WINDOWS_W_IDX.size(); i++) {
         add(new ArrayList<>());
@@ -221,7 +252,9 @@ public class WindowingTraceExtractor {
       // Store one list of the time values so we can knit times and intensity sums later to form XZs.
       times.add(time);
 
-      // Make sure we have a time entry for this timepoint.  The one we're working on is always the last in the list.
+      /* Extend allTraces to add a row of intensity values for this time point.  We build this incrementally because the
+       * LCMSSpectrum iterator doesn't tell us how many time points to expect up front. The one we're working on is
+       * always the last in the list. */
       for (List<Double> trace : allTraces) {
         trace.add(0.0d);
       }
@@ -231,10 +264,17 @@ public class WindowingTraceExtractor {
         LOGGER.info("Extracted %d timepoints (now at %.3fs)", timepointCounter, time);
       }
 
+      /* We use a sweep-line approach to scanning through the m/z windows so that we can aggregate all intensities in
+       * one pass over the current LCMSSpectrum (this saves us one inner loop in our extraction process).  The m/z
+       * values in the LCMSSpectrum become our "critical" or "interesting points" over which we sweep our m/z ranges.
+       * The next window in m/z order is guaranteed to be the next one we want to consider since we address the points
+       * in m/z order as well.  As soon as we've passed out of the range of one of our windows, we discard it.  It is
+       * valid for a window to be added to and discarded from the working queue in one application of the work loop. */
       LinkedList<Triple<Double, Double, Integer>> workingQueue = new LinkedList<>();
       // TODO: can we reuse these instead of creating fresh?
       LinkedList<Triple<Double, Double, Integer>> tbdQueue = new LinkedList<>(WINDOWS_W_IDX);
 
+      // Assumption: these arrive in m/z order.
       for (Pair<Double, Double> mzIntensity : spectrum.getIntensities()) {
         Double mz = mzIntensity.getLeft();
         Double intensity = mzIntensity.getRight();
@@ -261,10 +301,11 @@ public class WindowingTraceExtractor {
 
         // The working queue should now hold only ranges that include this m/z value.  Sweep line swept!
 
-        // Now add this intensity to the most recent XZ value for each of the items in the working queue (max 2?).
+        /* Now add this intensity to the most recent XZ value for each of the items in the working queue (max 2?).
+         * By the end of the outer loop, trace(t) = Sum(intensity) | win_min <= m/z <= win_max @ time point # t */
         for (Triple<Double, Double, Integer> triple : workingQueue) {
           List<Double> trace = allTraces.get(triple.getRight());
-          Double accumulator = trace.get(trace.size() - 1); // Get the current XZ, i.e. the one at this timepoint.
+          Double accumulator = trace.get(trace.size() - 1); // Get the current XZ, i.e. the one at this time point.
           trace.set(trace.size() - 1, accumulator + intensity);
         }
       }

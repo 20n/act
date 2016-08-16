@@ -54,7 +54,7 @@ public class WindowingTraceAnalyzer {
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_INDEX_PATH)
         .argName("index path")
-        .desc("A path to the directory where the on-disk index is be stored; must already exist")
+        .desc("A path to the directory where the on-disk index is stored; must already exist")
         .hasArg().required()
         .longOpt("index")
     );
