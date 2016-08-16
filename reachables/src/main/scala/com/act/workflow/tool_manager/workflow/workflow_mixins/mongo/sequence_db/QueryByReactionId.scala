@@ -113,7 +113,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
   }
 
   /**
-    * Query sequences based on if they contain a reaction ID
+    * Query sequences based on if the sequence references one of the reactions in the reactionIds list.
     *
     * @param reactionIds        A list of reactionIds, a matching sequence will match one or more.
     * @param mongoConnection    Connection to Mongo database
