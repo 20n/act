@@ -21,6 +21,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -63,7 +64,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
   private static final String HEADER_WELL_ROW = "WELL_ROW";
   private static final String HEADER_WELL_COLUMN = "WELL_COLUMN";
   private static final String HEADER_PLATE_BARCODE = "PLATE_BARCODE";
-  private static final String FAKE_CHEM_PREFIX = "CHEM_";
+  private static final String FAKE_CHEM_PREFIX = "CHEM_%05d";
 
   private static final Set<String> ALL_HEADERS =
       new HashSet<>(Arrays.asList(HEADER_WELL_TYPE, HEADER_WELL_ROW, HEADER_WELL_COLUMN, HEADER_PLATE_BARCODE));
@@ -87,6 +88,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
         .hasArg().required()
         .longOpt("data-dir")
     );
+    // The OPTION_INPUT_PREDICTION_CORPUS is in the L2PredictionCorpus JSON format.
     add(Option.builder(OPTION_INPUT_PREDICTION_CORPUS)
         .argName("input prediction corpus")
         .desc("The input prediction corpus")
@@ -135,17 +137,17 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
   private List<T> positiveWells;
   private List<T> negativeWells;
   private HashMap<Integer, Plate> plateCache;
-  private List<Pair<String, Double>> listOfMassCharges;
+  private Set<Pair<String, Double>> setOfMassCharges;
   private DB db;
   private Double progress;
 
   public IonDetectionAnalysis(File lcmsDir, List<T> positiveWells, List<T> negativeWells, String plottingDirPath,
-                              HashMap<Integer, Plate> plateCache, List<Pair<String, Double>> listOfMassCharges, DB db) {
+                              HashMap<Integer, Plate> plateCache, Set<Pair<String, Double>> setOfMassCharges, DB db) {
     this.lcmsDir = lcmsDir;
     this.positiveWells = positiveWells;
     this.negativeWells = negativeWells;
     this.plateCache = plateCache;
-    this.listOfMassCharges = listOfMassCharges;
+    this.setOfMassCharges = setOfMassCharges;
     this.db = db;
     this.plottingDirPath = plottingDirPath;
     this.progress = 0.0;
@@ -193,14 +195,24 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     return massChargeToChemicalAndIon;
   }
 
+  /**
+   * This function is used to do two related things: a) create a mapping between a fake chemical id to mass charge
+   * b) create a set of fake chemical id and mass charge pairs. We create these two representations since a) is used
+   * to easily get the mass charge from its fake name (used in plotting) and b) is used to represent a set of mass charge
+   * name and values, which traditionally have been chemical+ion combinations but since we are bucketting multiple
+   * chemical+ion combinations in the same mass charge value, we use the fake chemical id to represent multiple chemical+ion
+   * pairs.
+   * @param massChargeToChemicalAndIon A set of mass charge values
+   * @return A pair of a) A set of all Mass charge name and value pairs b) A mapping of fake chem id to mass charge
+   * mass charge.
+   */
   public static Pair<Set<Pair<String, Double>>, Map<String, Double>>
-  constructFakeNameToMassCharge(Map<Double, Set<Pair<String, String>>> massChargeToChemicalAndIon) {
-
+  constructFakeNameToMassChargeAndSetOfMassChargePairs(Set<Double> massChargeToChemicalAndIon) {
     Set<Pair<String, Double>> searchMZs = new HashSet<>();
     Integer chemicalCounter = 0;
     Map<String, Double> chemIDToMassCharge = new HashMap<>();
-    for (Double massCharge : massChargeToChemicalAndIon.keySet()) {
-      String chemID = String.format(FAKE_CHEM_PREFIX + "%05d", chemicalCounter);
+    for (Double massCharge : massChargeToChemicalAndIon) {
+      String chemID = String.format(FAKE_CHEM_PREFIX, chemicalCounter);
       chemIDToMassCharge.put(chemID, massCharge);
       searchMZs.add(Pair.of(chemID, massCharge));
       chemicalCounter++;
@@ -209,17 +221,16 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     return Pair.of(searchMZs, chemIDToMassCharge);
   }
 
-  public static Map<ScanData.KIND, List<LCMSWell>> readInputExperimentalSetup(DB db, String inputFile)
+  public static Map<ScanData.KIND, List<LCMSWell>> readInputExperimentalSetup(DB db, File inputFile)
       throws IOException, SQLException, ClassNotFoundException {
 
     TSVParser parser = new TSVParser();
-    parser.parse(new File(inputFile));
+    parser.parse(inputFile);
     Set<String> headerSet = new HashSet<>(parser.getHeader());
 
     if (!headerSet.equals(ALL_HEADERS)) {
-      String headers = StringUtils.join(ALL_HEADERS, ",");
-      LOGGER.error("Invalid header types! The allowed header types are: %s", headers);
-      System.exit(1);
+      throw new RuntimeException(String.format("Invalid header types! The allowed header types are: %s",
+          StringUtils.join(ALL_HEADERS, ",")));
     }
 
     Map<ScanData.KIND, List<LCMSWell>> result = new HashMap<>();
@@ -241,8 +252,8 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
       LCMSWell well = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, plate.getId(), rowCoordinate, columnCoordinate);
 
       if (well == null) {
-        LOGGER.error("Well plate id %d, row %d and col %d does not exist", plate.getId(), rowCoordinate, columnCoordinate);
-        System.exit(1);
+        throw new RuntimeException(String.format("Well plate id %d, row %d and col %d does not exist", plate.getId(),
+            rowCoordinate, columnCoordinate));
       }
 
       if (wellType.equals("POS")) {
@@ -285,7 +296,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     ChemicalToMapOfMetlinIonsToIntensityTimeValues signalProfile = AnalysisHelper.readScanData(
         db,
         lcmsDir,
-        listOfMassCharges,
+        setOfMassCharges,
         kindOfWell,
         plateCache,
         well,
@@ -293,8 +304,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
         USE_SNR_FOR_LCMS_ANALYSIS);
 
     if (signalProfile == null) {
-      LOGGER.error("No signal data available.");
-      System.exit(1);
+      throw new RuntimeException("No signal data available.");
     }
 
     return signalProfile;
@@ -311,15 +321,15 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     Map<ScanData.KIND, List<Pair<T, ChemicalToMapOfMetlinIonsToIntensityTimeValues>>>
         designUnitToWellIntensityTimeValuePairs = new HashMap<>();
 
+    Integer wellCounter = 0;
     for (T positiveWell : positiveWells) {
-      LOGGER.info("Reading scan data for positive well");
+      LOGGER.info("Reading scan data for positive well number: %s", wellCounter.toString());
 
       ChemicalToMapOfMetlinIonsToIntensityTimeValues positiveWellSignalProfiles =
           getIntensityTimeProfileForMassChargesInWell(positiveWell, ScanData.KIND.POS_SAMPLE);
 
       if (positiveWellSignalProfiles == null) {
-        LOGGER.error("Peak positive analysis was null");
-        System.exit(1);
+        throw new RuntimeException("Peak positive analysis was null");
       }
 
       List<Pair<T, ChemicalToMapOfMetlinIonsToIntensityTimeValues>> values =
@@ -332,17 +342,20 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
 
       values.add(Pair.of(positiveWell, positiveWellSignalProfiles));
       updateProgress();
+      wellCounter++;
     }
 
+    // Reset well counter for the negative well analysis
+    wellCounter = 0;
+
     for (T negativeWell : negativeWells) {
-      LOGGER.info("Reading scan data for negative well");
+      LOGGER.info("Reading scan data for negative well number: %s", wellCounter.toString());
 
       ChemicalToMapOfMetlinIonsToIntensityTimeValues negativeWellSignalProfiles =
           getIntensityTimeProfileForMassChargesInWell(negativeWell, ScanData.KIND.NEG_CONTROL);
 
       if (negativeWellSignalProfiles == null) {
-        LOGGER.error("Peak negative analysis was null");
-        System.exit(1);
+        throw new RuntimeException("Peak negative analysis was null");
       }
 
       List<Pair<T, ChemicalToMapOfMetlinIonsToIntensityTimeValues>> values =
@@ -355,6 +368,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
 
       values.add(Pair.of(negativeWell, negativeWellSignalProfiles));
       updateProgress();
+      wellCounter++;
     }
 
     return designUnitToWellIntensityTimeValuePairs;
@@ -366,15 +380,15 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
    * @return A map of positive well to map of chem id to plotting file path to pair of max intensity, time and SNR.
    * @throws Exception
    */
-  public Map<T, Map<String, Pair<String, Pair<XZ, Double>>>>
-  getSnrAndPlotResultsForMassChargesForEachPositiveWell() throws Exception {
+  public Map<T, Map<String, Triple<String, XZ, Double>>> getSnrAndPlotResultsForMassChargesForEachPositiveWell()
+      throws Exception {
 
     // Get signal profiles for each positive and negative wells once. This is the rate limiting step of the computation.
     Map<ScanData.KIND, List<Pair<T, ChemicalToMapOfMetlinIonsToIntensityTimeValues>>> designUnitToListOfWellIntensityTimeValues =
         getIntensityTimeValuesForMassChargesInPositiveAndNegativeWells();
 
     // This is the object the final results are stored in.
-    Map<T, Map<String, Pair<String, Pair<XZ, Double>>>> positiveWellToMapOfChemicalToSNRResults = new HashMap<>();
+    Map<T, Map<String, Triple<String, XZ, Double>>> positiveWellToMapOfChemicalToSNRResults = new HashMap<>();
 
     List<Pair<T, ChemicalToMapOfMetlinIonsToIntensityTimeValues>> positiveWellResults =
         designUnitToListOfWellIntensityTimeValues.get(ScanData.KIND.POS_SAMPLE);
@@ -389,7 +403,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
 
       Map<String, Pair<XZ, Double>> snrResults =
           WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForWells(
-              positiveWellSignalProfile, negativeWellsSignalProfiles, listOfMassCharges);
+              positiveWellSignalProfile, negativeWellsSignalProfiles, setOfMassCharges);
 
       List<T> positiveWellAndNegativeWells = new ArrayList<>();
       positiveWellAndNegativeWells.add(positiveWell);
@@ -403,19 +417,18 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
 
       Map<String, String> plottingFileMappings =
           ChemicalToMapOfMetlinIonsToIntensityTimeValues.plotPositiveAndNegativeControlsForEachMZ(
-              listOfMassCharges, indexedPath.toString(), positiveWellSignalProfile, negativeWellsSignalProfiles, plottingDirPath);
+              setOfMassCharges, indexedPath.toString(), positiveWellSignalProfile, negativeWellsSignalProfiles, plottingDirPath);
 
-      Map<String, Pair<String, Pair<XZ, Double>>> mzToPlotDirAndSNR = new HashMap<>();
+      Map<String, Triple<String, XZ, Double>> mzToPlotDirAndSNR = new HashMap<>();
       for (Map.Entry<String, Pair<XZ, Double>> entry : snrResults.entrySet()) {
         String plottingPath = plottingFileMappings.get(entry.getKey());
         XZ snr = entry.getValue().getLeft();
 
         if (plottingDirPath == null || snr == null) {
-          System.err.format("Plotting directory or snr is null");
-          System.exit(1);
+          throw new RuntimeException("Plotting directory or snr is null");
         }
 
-        mzToPlotDirAndSNR.put(entry.getKey(), Pair.of(plottingPath, entry.getValue()));
+        mzToPlotDirAndSNR.put(entry.getKey(), Triple.of(plottingPath, entry.getValue().getLeft(), entry.getValue().getRight()));
       }
 
       positiveWellToMapOfChemicalToSNRResults.put(positiveWell, mzToPlotDirAndSNR);
@@ -438,7 +451,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
                                                   String outputPrefix)
       throws Exception {
 
-    Map<T, Map<String, Pair<String, Pair<XZ, Double>>>> lcmsAnalysisResultForEachPositiveWell =
+    Map<T, Map<String, Triple<String, XZ, Double>>> lcmsAnalysisResultForEachPositiveWell =
         getSnrAndPlotResultsForMassChargesForEachPositiveWell();
 
     List<List<IonAnalysisInterchangeModel.ResultForMZ>> allExperimentalResults = new ArrayList<>();
@@ -447,14 +460,16 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
 
     for (T positiveWell : lcmsAnalysisResultForEachPositiveWell.keySet()) {
       List<IonAnalysisInterchangeModel.ResultForMZ> experimentalResults = new ArrayList<>();
-      Map<String, Pair<String, Pair<XZ, Double>>> result = lcmsAnalysisResultForEachPositiveWell.get(positiveWell);
 
-      for (Map.Entry<String, Pair<String, Pair<XZ, Double>>> mzToPlotAndSnr : result.entrySet()) {
+      for (Map.Entry<String, Triple<String, XZ, Double>> mzToPlotAndSnr :
+          lcmsAnalysisResultForEachPositiveWell.get(positiveWell).entrySet()) {
+
         Double massCharge = chemIDToMassCharge.get(mzToPlotAndSnr.getKey());
         String plot = mzToPlotAndSnr.getValue().getLeft();
-        Double intensity = mzToPlotAndSnr.getValue().getRight().getLeft().getIntensity();
-        Double time = mzToPlotAndSnr.getValue().getRight().getLeft().getTime();
-        Double snr = mzToPlotAndSnr.getValue().getRight().getRight();
+
+        Double intensity = mzToPlotAndSnr.getValue().getMiddle().getIntensity();
+        Double time = mzToPlotAndSnr.getValue().getMiddle().getTime();
+        Double snr = mzToPlotAndSnr.getValue().getRight();
 
         IonAnalysisInterchangeModel.ResultForMZ resultForMZ = new IonAnalysisInterchangeModel.ResultForMZ(massCharge);
 
@@ -521,7 +536,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
    * progress is divided by the total number of wells.
    */
   public void updateProgress() {
-    progress += 100.0/(positiveWells.size() + negativeWells.size());
+    progress += 100.0 / (positiveWells.size() + negativeWells.size());
     LOGGER.info("Progress: %f", progress);
   }
 
@@ -559,8 +574,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     // Get include and excluse ions from command line
     Set<String> includeIons;
     if (cl.hasOption(OPTION_INCLUDE_IONS)) {
-      String[] ionNames = cl.getOptionValues(OPTION_INCLUDE_IONS);
-      includeIons = new HashSet<>(Arrays.asList(ionNames));
+      includeIons = new HashSet<>(Arrays.asList(cl.getOptionValues(OPTION_INCLUDE_IONS)));
       LOGGER.info("Including ions in search: %s", StringUtils.join(includeIons, ", "));
     } else {
       includeIons = new HashSet<>();
@@ -575,14 +589,14 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
       Map<Double, Set<Pair<String, String>>> massChargeToChemicalAndIon =
           constructMassChargeToChemicalIonsFromInputFile(inputPredictionCorpus, includeIons, cl.hasOption(OPTION_LIST_OF_INCHIS_INPUT_FILE));
 
-      Pair<Set<Pair<String, Double>>, Map<String, Double>> values = constructFakeNameToMassCharge(massChargeToChemicalAndIon);
+      Pair<Set<Pair<String, Double>>, Map<String, Double>> values = constructFakeNameToMassChargeAndSetOfMassChargePairs(massChargeToChemicalAndIon.keySet());
       Set<Pair<String, Double>> searchMZs = values.getLeft();
       Map<String, Double> chemIDToMassCharge = values.getRight();
 
       LOGGER.info("The number of mass charges are: %d", searchMZs.size());
 
       Map<ScanData.KIND, List<LCMSWell>> wellTypeToLCMSWells = readInputExperimentalSetup(db,
-          cl.getOptionValue(OPTION_INPUT_POSITIVE_AND_NEGATIVE_CONTROL_WELLS_FILE));
+          new File(cl.getOptionValue(OPTION_INPUT_POSITIVE_AND_NEGATIVE_CONTROL_WELLS_FILE)));
 
       // Get experimental setup ie. positive and negative wells from config file
       List<LCMSWell> positiveWells = wellTypeToLCMSWells.get(ScanData.KIND.POS_SAMPLE);
@@ -594,10 +608,8 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
       HashMap<Integer, Plate> plateCache = new HashMap<>();
       String outputPrefix = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
 
-      List<Pair<String, Double>> listOfMassCharges = new ArrayList<>(searchMZs);
-
       IonDetectionAnalysis<LCMSWell> ionDetectionAnalysis = new IonDetectionAnalysis<LCMSWell>(lcmsDir, positiveWells,
-          negativeWells, plottingDirectory, plateCache, listOfMassCharges, db);
+          negativeWells, plottingDirectory, plateCache, searchMZs, db);
 
       ionDetectionAnalysis.runLCMSMiningAnalysisAndPlotResults(chemIDToMassCharge, massChargeToChemicalAndIon, outputPrefix);
     }

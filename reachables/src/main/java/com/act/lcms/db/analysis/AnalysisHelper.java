@@ -160,7 +160,7 @@ public class AnalysisHelper {
    * @throws Exception
    */
   public static <T extends PlateWell<T>> Map<Pair<String, Double>, ScanData<T>> getIntensityTimeValuesForEachMassChargeInScanFile(
-      DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer, Plate> plateCache,
+      DB db, File lcmsDir, Set<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer, Plate> plateCache,
       ScanFile scanFile, T well, boolean useFineGrainedMZTolerance, boolean useSNRForPeakIdentification)
       throws ParserConfigurationException, IOException, XMLStreamException, SQLException {
 
@@ -185,10 +185,8 @@ public class AnalysisHelper {
     Map<Pair<String, Double>, ScanData<T>> result = new HashMap<>();
     MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdentification);
 
-    Set<Pair<String, Double>> setOfMZs = new HashSet<>(searchMZs);
-
     Map<Pair<String, Double>, MS1ScanForWellAndMassCharge> massChargeToMS1Results =
-        mm.getMultipleMS1s(setOfMZs, localScanFile.getAbsolutePath());
+        mm.getMultipleMS1s(searchMZs, localScanFile.getAbsolutePath());
 
     for (Map.Entry<Pair<String, Double>, MS1ScanForWellAndMassCharge> entry : massChargeToMS1Results.entrySet()) {
       String chemicalName = entry.getKey().getLeft();
@@ -196,10 +194,6 @@ public class AnalysisHelper {
       MS1ScanForWellAndMassCharge ms1ScanForWellAndMassCharge = entry.getValue();
 
       Map<String, Double> singletonMass = Collections.singletonMap(chemicalName, massCharge);
-
-      //LOGGER.info("Max intensity for target %s (%f) in %s is %f",
-      //    chemicalName, massCharge, scanFile.getFilename(), ms1ScanForWellAndMassCharge.getMaxYAxis());
-
       result.put(entry.getKey(), new ScanData<T>(kind, plate, well, scanFile, chemicalName, singletonMass, ms1ScanForWellAndMassCharge));
     }
 
@@ -337,7 +331,7 @@ public class AnalysisHelper {
    * @throws Exception
    */
   public static <T extends PlateWell<T>> ChemicalToMapOfMetlinIonsToIntensityTimeValues readScanData(
-      DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer,
+      DB db, File lcmsDir, Set<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer,
       Plate> plateCache, T well, boolean useFineGrainedMZTolerance, boolean useSNRForPeakIdentification) throws Exception {
 
     ScanFile bestScanFile = pickBestScanFileForWell(db, well);
@@ -358,8 +352,7 @@ public class AnalysisHelper {
       ScanData<T> scan = entry.getValue();
 
       // get all the scan results for each metlin mass combination for a given compound.
-      MS1ScanForWellAndMassCharge ms1ScanResults = scan.getMs1ScanResults();
-      Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
+      Map<String, List<XZ>> ms1s = scan.getMs1ScanResults().getIonsToSpectra();
 
       String plotName = constructChemicalAndScanTypeName(chemicalName, kind);
 

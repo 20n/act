@@ -4,6 +4,8 @@ import com.act.lcms.XZ;
 import com.act.lcms.db.model.StandardWell;
 import com.act.lcms.plotter.WriteAndPlotMS1Results;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,6 +19,7 @@ import java.util.Set;
 public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
 
   private static final String FMT = "pdf";
+  private static final Logger LOGGER = LogManager.getFormatterLogger(ChemicalToMapOfMetlinIonsToIntensityTimeValues.class);
   private Map<String, Map<String, List<XZ>>> peakData;
 
   protected ChemicalToMapOfMetlinIonsToIntensityTimeValues() {
@@ -120,7 +123,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
    * @throws IOException
    */
   public static Map<String, String> plotPositiveAndNegativeControlsForEachMZ(
-      List<Pair<String, Double>> searchMzs, String plottingPath, ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataPos,
+      Set<Pair<String, Double>> searchMzs, String plottingPath, ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataPos,
       List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> peakDataNegs, String plottingDirectory)
       throws IOException {
 
@@ -170,6 +173,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
       File duplicateFile = new File(absolutePathWithExtension);
       Integer fileDuplicateCounter = 0;
       while (duplicateFile.exists() && !duplicateFile.isDirectory()) {
+        LOGGER.warn("Duplicate file exists for %s, writing to another file", duplicateFile.getAbsolutePath());
         fileDuplicateCounter++;
         relativePath = relativePath + "_" + fileDuplicateCounter.toString();
         absolutePathFileWithoutExtension = new File(plottingDirectory, relativePath);
@@ -177,6 +181,8 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
         absolutePathWithExtension = absolutePathWithoutExtension + "." + FMT;
         duplicateFile = new File(absolutePathWithExtension);
       }
+
+      LOGGER.info("Wrote plot to %s", absolutePathWithoutExtension);
 
       plottingUtil.plotSpectra(
           ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePathWithoutExtension, FMT, false, false);

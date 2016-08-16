@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 public class WaveformAnalysis {
@@ -179,7 +180,7 @@ public class WaveformAnalysis {
   public static Map<String, Pair<XZ, Double>> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForWells(
       ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityDataPos,
       List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> ionToIntensityDataNegList,
-      List<Pair<String, Double>> searchMZs) {
+      Set<Pair<String, Double>> searchMZs) {
 
     Map<String, Pair<XZ, Double>> result = new HashMap<>();
 

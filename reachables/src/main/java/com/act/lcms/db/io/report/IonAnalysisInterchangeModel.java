@@ -59,10 +59,22 @@ public class IonAnalysisInterchangeModel {
     }
   }
 
+  /**
+   * This function takes in multiple LCMS mining results  (in the IonAnalysisInterchangeModel format), which happens
+   * when we have multiple positive control replicates and extracts all the molecule hits from each file and makes
+   * sure they pass the input thresholds for SNR, time and intensity. If the molecule hit passes these thresholds for
+   * ALL the positive replicates, then the inchi is added to the result set.
+   * @param filepaths The list of files to be analyzed
+   * @param snrThreshold The snr threshold
+   * @param intensityThreshold The intensity threshold
+   * @param timeThreshold The time threshold
+   * @return A list of inchis that are valid molecule hits in all the input files and pass all the thresholds.
+   * @throws IOException
+   */
   public static Set<String> getAllMoleculeHitsFromMultiplePositiveReplicateFiles(List<String> filepaths,
-                                                                                               Double snrThreshold,
-                                                                                               Double intensityThreshold,
-                                                                                               Double timeThreshold) throws IOException {
+                                                                                 Double snrThreshold,
+                                                                                 Double intensityThreshold,
+                                                                                 Double timeThreshold) throws IOException {
 
 
     List<IonAnalysisInterchangeModel> deserializedResultsForPositiveReplicates = new ArrayList<>();
@@ -85,13 +97,24 @@ public class IonAnalysisInterchangeModel {
 
     Set<String> resultSet = new HashSet<>();
 
+    /**
+     * Each element in deserializedResultsForPositiveReplicates now contains a list of mass charges to a list of
+     * molecule+ion combinations for each mass charge. We consider a molecule "valid", ie a hit, if the mass charge
+     * it is under for every element in deserializedResultsForPositiveReplicates is above the thresholds we have set.
+     */
+
+    // Iterate through every mass charge
     for (int i = 0; i < totalNumberOfMassCharges; i++) {
+
       int totalNumberOfMoleculesInMassChargeResult =
           deserializedResultsForPositiveReplicates.get(0).getResults().get(i).getMolecules().size();
 
+      // For each mass charge, iterate through each molecule under the mass charge
       for (int j = 0; j < totalNumberOfMoleculesInMassChargeResult; j++) {
         Boolean moleculePassedThresholdsForAllPositiveReplicates = true;
 
+        // For each molecule, make sure it passes the threshold we set across every elem in deserializedResultsForPositiveReplicates,
+        // ie across each positive replicate + neg control experiment results
         for (int k = 0; k < deserializedResultsForPositiveReplicates.size(); k++) {
           HitOrMiss molecule = deserializedResultsForPositiveReplicates.get(k).getResults().get(i).getMolecules().get(j);
 
@@ -112,6 +135,13 @@ public class IonAnalysisInterchangeModel {
     return resultSet;
   }
 
+  /**
+   * This function is used for getting all inchis that are hits in the corpus
+   * @param snrThreshold The snr threshold
+   * @param intensityThreshold The intensity threshold
+   * @param timeThreshold The time threshold
+   * @return A set of inchis
+   */
   public Set<String> getAllMoleculeHits(Double snrThreshold, Double intensityThreshold, Double timeThreshold) {
     Set<String> resultSet = new HashSet<>();
     for (ResultForMZ resultForMZ : results) {
