@@ -105,7 +105,8 @@ libraryDependencies ++= {
       "com.novocode" % "junit-interface" % "0.11" % "test",
       "org.mockito" % "mockito-core" % "1.10.19" % "test",
       "org.powermock" % "powermock" % "1.6.4" % "test",
-      "org.scalatest" %% "scalatest" % "3.0.0-RC4" % "test"
+      "org.scalatest" %% "scalatest" % "3.0.0-RC4" % "test",
+      "org.apache.maven.plugins" % "maven-surefire-report-plugin" % "2.17" % "test"
      )
 }
 
