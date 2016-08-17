@@ -138,23 +138,10 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       System.exit(1)
     }
 
-    var startingPoint = StartingPoints.EXPANSION.id
-    if (cl.hasOption(OPTION_STARTING_POINT)) {
-      try {
-        startingPoint = StartingPoints.withName(cl.getOptionValue(OPTION_STARTING_POINT)).id
-      } catch {
-        case e: NoSuchElementException =>
-          logger.info(s"Starting point must be among ${StartingPoints.values.map(value => value.toString()).toList} : " +
-            s"${e.getMessage()}");
-          System.exit(1)
-      }
-    }
-
-
     /**
-      * Build jobs to run
+      * Define all jobs and different places from which workflow can start
       */
-    if (startingPoint == StartingPoints.EXPANSION.id) {
+    def addJobsFromExpansionOn() {
       logger.info("Running RO expansion jobs.")
       val massFilteringJob = JavaJobWrapper.wrapJavaFunction(L2InchiCorpus.getRunnableSubstrateFilterer(
         rawSubstratesFile,
@@ -172,9 +159,11 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
               predictionsFiles(roId))))
       // Run one job per RO for L2 expansion
       headerJob.thenRunBatch(singleThreadExpansionJobs)
+
+      addJobsFromLcmsOn()
     }
 
-    if (startingPoint <= StartingPoints.LCMS.id) {
+    def addJobsFromLcmsOn(): Unit = {
       logger.info("Running LCMS job.")
       // TODO: when Vijay's LCMS code is ready, replace this with the real thing
       // Build a dummy LCMS job that doesn't do anything.
@@ -190,9 +179,11 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
         }
       )
       headerJob.thenRun(lcmsJob)
+
+      addJobsFromClusteringOn()
     }
 
-    if (startingPoint <= StartingPoints.CLUSTERING.id) {
+    def addJobsFromClusteringOn(): Unit = {
       logger.info("Running clustering jobs.")
       // TODO: when Michael adds the capability, change this workflow to run the clustering jobs and LCMS job in parallel
       // Build one job per RO for clustering
@@ -203,24 +194,57 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
             sarTreeFiles(roId))))
       // Run one job per RO for clustering
       headerJob.thenRunBatch(clusteringJobs)
+
+      addScoringJobs()
     }
 
-    logger.info("Running scoring jobs.")
-    // Build one job per RO for scoring, using a random LCMS hit selector instead of actual data.
-    val scoringJobs = roIds.map(roId =>
-      JavaJobWrapper.wrapJavaFunction(
-        LibMcsClustering.getRunnableRandomSarScorer(
-          sarTreeFiles(roId),
-          scoredSarsFiles(roId),
-          positiveRate)
+    def addScoringJobs(): Unit = {
+      logger.info("Running scoring jobs.")
+      // Build one job per RO for scoring, using a random LCMS hit selector instead of actual data.
+      val scoringJobs = roIds.map(roId =>
+        JavaJobWrapper.wrapJavaFunction(
+          LibMcsClustering.getRunnableRandomSarScorer(
+            sarTreeFiles(roId),
+            scoredSarsFiles(roId),
+            positiveRate)
+        )
       )
-    )
-    // Run one job per RO for scoring
-    headerJob.thenRunBatch(scoringJobs)
+      headerJob.thenRunBatch(scoringJobs)
+    }
+
+    /**
+      * Decide which steps to run based on the StartingPoint supplied, or run the entire workflow by default
+      */
+    var startingPoint = StartingPoints.EXPANSION
+    if (cl.hasOption(OPTION_STARTING_POINT)) {
+      try {
+        startingPoint = StartingPoints.withName(cl.getOptionValue(OPTION_STARTING_POINT))
+      } catch {
+        case e: NoSuchElementException =>
+          logger.info(s"Starting point must be among ${StartingPoints.values.map(value => value.toString()).toList} : " +
+            s"${e.getMessage()}");
+          System.exit(1)
+      }
+    }
+
+    startingPoint match {
+      case StartingPoints.EXPANSION => addJobsFromExpansionOn()
+      case StartingPoints.LCMS => addJobsFromLcmsOn()
+      case StartingPoints.CLUSTERING => addJobsFromClusteringOn()
+      case StartingPoints.SCORING => addScoringJobs()
+    }
 
     headerJob
   }
 
+  /**
+    * Build a file for each RO, with the RO id as a suffix
+    *
+    * @param workingDir The directory in which to create the files.
+    * @param fileName   The prefix of the file name.
+    * @param roIds      The ROs to create files for.
+    * @return A map from RO id to the corresponding file.
+    */
   def buildFilesForRos(workingDir: String, fileName: String, roIds: List[Integer]): Map[Integer, File] = {
     Map() ++ roIds.map(r => (r, new File(workingDir, fileName + "." + r.toString)))
   }
