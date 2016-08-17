@@ -72,7 +72,6 @@ public class UniprotSeqEntry extends SequenceEntry {
   private Long orgId;
   private List<JSONObject> references;
   private Set<Long> catalyzedRxns;
-  private Map<String, String> minimalPrefixMapping;
 
   private NodeList proteinNodeList;
   private NodeList sequenceNodeList;
@@ -83,7 +82,6 @@ public class UniprotSeqEntry extends SequenceEntry {
   UniprotSeqEntry(Document doc, Map<String, String> minimalPrefixMapping) {
     this.seqFile = doc;
     checkNodeListLengths();
-    this.minimalPrefixMapping = minimalPrefixMapping;
     this.ec = extractEc();
     this.accessions = extractAccessions();
     this.geneName = extractGeneName();
@@ -92,7 +90,7 @@ public class UniprotSeqEntry extends SequenceEntry {
     this.catalyticActivity = extractCatalyticActivity();
     this.metadata = extractMetadata();
     this.sequence = extractSequence();
-    this.org = extractOrg();
+    this.org = extractOrg(minimalPrefixMapping);
     this.references = extractReferences();
     this.catalyzedRxns = new HashSet<>();
   }
@@ -470,7 +468,7 @@ public class UniprotSeqEntry extends SequenceEntry {
    *</organism>
    * @return the organism as a string
    */
-  private String extractOrg() {
+  private String extractOrg(Map<String, String> minimalPrefixMapping) {
     if (organismNodeList.getLength() == 1) {
       // since there is only one item in the list, retrieve the only node
       Node organismNode = organismNodeList.item(0);
