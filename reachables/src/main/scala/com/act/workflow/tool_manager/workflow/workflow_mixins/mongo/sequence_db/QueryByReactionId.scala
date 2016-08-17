@@ -1,6 +1,6 @@
 package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.sequence_db
 
-import java.io.{File, FileOutputStream}
+import java.io.{BufferedWriter, File, FileWriter}
 
 import act.server.MongoDB
 import com.act.workflow.tool_manager.workflow.workflow_mixins.base.WriteProteinSequenceToFasta
@@ -35,7 +35,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
     /*
       Map sequences and name to proteinSequences
     */
-    val outputStream = new FileOutputStream(outputFile)
+    val outputStream = new BufferedWriter(new FileWriter(outputFile))
     for (document: DBObject <- returnSequenceDocuments) {
 
       val id = document.get(SEQUENCE_DB_KEYWORD_ID)

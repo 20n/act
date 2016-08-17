@@ -1,6 +1,6 @@
 package com.act.workflow.tool_manager.workflow.workflow_mixins.base
 
-import java.io.FileOutputStream
+import java.io.BufferedWriter
 
 import org.biojava.nbio.core.sequence.ProteinSequence
 import org.biojava.nbio.core.sequence.compound.AminoAcidCompound
@@ -8,7 +8,6 @@ import org.biojava.nbio.core.sequence.io.GenericFastaHeaderFormat
 
 trait WriteProteinSequenceToFasta {
   private val lineLength: Integer = 60
-  private val lineSep: Array[Byte] = System.getProperty("line.separator").getBytes()
   private val headerFormat = new GenericFastaHeaderFormat[ProteinSequence, AminoAcidCompound]()
 
   /**
@@ -21,21 +20,20 @@ trait WriteProteinSequenceToFasta {
     * @param proteinSequence A given protein sequence instance
     * @param outputStream    The stream to write to.
     */
-  def writeProteinSequenceToFasta(proteinSequence: ProteinSequence, outputStream: FileOutputStream) {
+  def writeProteinSequenceToFasta(proteinSequence: ProteinSequence, outputStream: BufferedWriter) {
     val header: String = headerFormat.getHeader(proteinSequence)
 
-    writeFastaHeader(header, outputStream)
-    writeFastaSequence(proteinSequence, outputStream)
+    writeFastaHeader(header, BufferedWriter)
+    writeFastaSequence(proteinSequence, BufferedWriter)
   }
 
-  private def writeFastaHeader(header: String, outputStream: FileOutputStream): Unit = {
-    // 62 = '>'
-    outputStream.write(62)
-    outputStream.write(header.getBytes())
-    outputStream.write(lineSep)
+  private def writeFastaHeader(header: String, outputStream: BufferedWriter): Unit = {
+    outputStream.write(">")
+    outputStream.write(header)
+    outputStream.newLine()
   }
 
-  private def writeFastaSequence(sequence: ProteinSequence, outputStream: FileOutputStream): Unit = {
+  private def writeFastaSequence(sequence: ProteinSequence, outputStream: BufferedWriter): Unit = {
     var characterCount: Integer = 0
     val seq: String = sequence.getSequenceAsString()
 
@@ -43,13 +41,13 @@ trait WriteProteinSequenceToFasta {
       outputStream.write(seq.charAt(i))
       characterCount += 1
       if (characterCount == lineLength) {
-        outputStream.write(lineSep)
+        outputStream.newLine()
         characterCount = 0
       }
     }
 
     if (sequence.getLength % lineLength != 0) {
-      outputStream.write(lineSep)
+      outputStream.newLine()
     }
   }
 }
