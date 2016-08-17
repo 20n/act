@@ -93,7 +93,7 @@ object JobManager {
         // Cancel all futures still running.  If we kill the jobs here, we don't have to worry about the
         // time difference between the lock releasing and us handling those
         // conditions normally and another job starting in the meantime.
-        jobs.foreach(_.internalState.killIncompleteJobs())
+        jobs.foreach(_.getInternalState.killIncompleteJobs())
         numberLock.releaseLock()
       }
     } else {
@@ -111,11 +111,11 @@ object JobManager {
   }
 
   def completedJobsCount(): Int = {
-    jobs.count(_.internalState.status.isCompleted)
+    jobs.count(_.getInternalState.status.isCompleted)
   }
 
   private def runningJobsCount(): Int = {
-    jobs.count(_.internalState.status.isRunning)
+    jobs.count(_.getInternalState.status.isRunning)
   }
 
   def getMapOfJobNamesToStatuses: Map[String, String] = {
@@ -127,7 +127,7 @@ object JobManager {
   }
 
   def getOrderOfJobStatuses: List[String] = {
-    jobCompleteOrdering.toList.map(_.internalState.status.getJobStatus)
+    jobCompleteOrdering.toList.map(_.getInternalState.status.getJobStatus)
   }
 
   /**
@@ -145,19 +145,19 @@ object JobManager {
   }
 
   private def killedJobsCount(): Int = {
-    jobs.count(_.internalState.status.isKilled)
+    jobs.count(_.getInternalState.status.isKilled)
   }
 
   private def unstartedJobsCount(): Int = {
-    jobs.count(_.internalState.status.isUnstarted)
+    jobs.count(_.getInternalState.status.isUnstarted)
   }
 
   private def failedJobsCount(): Int = {
-    jobs.count(_.internalState.status.isFailed)
+    jobs.count(_.getInternalState.status.isFailed)
   }
 
   private def successfulJobsCount(): Int = {
-    jobs.count(_.internalState.status.isSuccessful)
+    jobs.count(_.getInternalState.status.isSuccessful)
   }
 
   /**
@@ -200,7 +200,7 @@ object JobManager {
         "Please review your workflow.")
     }
 
-    for (jobLevel <- job.internalState.jobBuffer) {
+    for (jobLevel <- job.getInternalState.runManager.dependencyManager.jobBuffer) {
       for (currentJob <- jobLevel) {
         // If a cycle found below, return true to propagate.
         getAllChildren(currentJob, currentJobList)
@@ -208,23 +208,5 @@ object JobManager {
     }
 
     currentJobList.toSet
-  }
-
-  /*
-    General job query questions that may be reused
-  */
-  private def allJobsComplete(): Boolean = {
-    getIncompleteJobs.isEmpty
-  }
-
-  private def getIncompleteJobs: List[Job] = {
-    jobs.filter(_.internalState.status.isRunning).toList
-  }
-
-  private def mapStatus: Map[String, Int] = {
-    // Take the jobs, identify and count their statuses and return that count
-    val allJobsStatuses: List[String] = jobs.map(_.internalState.status.getJobStatus).toList
-    val jobsGroupedByIdentity: Map[String, List[String]] = allJobsStatuses.groupBy(identity)
-    jobsGroupedByIdentity.mapValues(_.size)
   }
 }
