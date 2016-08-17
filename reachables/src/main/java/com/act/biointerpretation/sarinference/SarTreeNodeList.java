@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -33,6 +34,10 @@ public class SarTreeNodeList {
 
   public void addNode(SarTreeNode node) {
     sarTreeNodes.add(node);
+  }
+
+  public void addAll(Collection<SarTreeNode> nodes) {
+    sarTreeNodes.addAll(nodes);
   }
 
   public void sortByDecreasingScores() {

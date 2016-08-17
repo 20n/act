@@ -51,8 +51,8 @@ public class SarTree {
    * @throws InterruptedException
    */
   public void buildByClustering(LibraryMCS libMcs, Collection<Molecule> molecules) throws InterruptedException {
-    if (molecules.size() == 0) {
-      LOGGER.error("Tried to build clustering on no molecules!");
+    if (molecules.isEmpty()) {
+      LOGGER.error("Tried to build clustering on no molecules! Aborting call");
       // Log error but don't throw error. This could be a piece in a workflow where we try to build SARs on a prediction
       // corpus with no valid predictions. In that case we should not kill the workflow, but let it run and produce no
       // results.

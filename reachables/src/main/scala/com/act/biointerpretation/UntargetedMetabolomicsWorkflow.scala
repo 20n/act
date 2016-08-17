@@ -3,12 +3,12 @@ package com.act.biointerpretation
 import java.io.File
 import java.util.NoSuchElementException
 
-import com.act.biointerpretation.l2expansion.{L2ExpansionDriver, L2InchiCorpus}
+import com.act.biointerpretation.l2expansion.{L2ExpansionDriver, L2InchiCorpus, L2PredictionCorpus}
 import com.act.biointerpretation.mechanisminspection.ErosCorpus
-import com.act.biointerpretation.sarinference.LibMcsClustering
+import com.act.biointerpretation.sarinference.{LibMcsClustering, ProductScorer, SarTreeNodeList}
 import com.act.jobs.JavaRunnable
 import com.act.workflow.tool_manager.jobs.Job
-import com.act.workflow.tool_manager.tool_wrappers.JavaJobWrapper
+import com.act.workflow.tool_manager.tool_wrappers.{JavaJobWrapper, ScalaJobWrapper}
 import com.act.workflow.tool_manager.workflow.Workflow
 import com.act.workflow.tool_manager.workflow.workflow_mixins.base.WorkingDirectoryUtility
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
@@ -72,8 +72,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
         hasArg.
         longOpt("starting-point")
         .desc("What point of the workflow to start at, since some steps may already be complete. Choices are " +
-          "EXPANSION for the beginning, LCMS to skip just the expansion, CLUSTERING to start with LibMCS " +
-          "clustering, and SCORING to only do SAR scoring with already-made sar trees. The workflow assumes any " +
+          "EXPANSION, LCMS, CLUSTERING, SAA_SCORING, and PRODUCT_SCORING. The workflow assumes any " +
           "pre-computed steps have been put into the working directory, where they would have been generated had " +
           "the workflow been ran from the start. For example, precomputed prediction corpuses should be located at " +
           "workingDir/predictions.1, workingDir/predictions.2, etc."),
@@ -86,6 +85,16 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       opts.addOption(opt.build)
     }
     opts
+  }
+
+  object StartingPoints extends Enumeration {
+    type StartingPoints = Value
+
+    val EXPANSION = Value("EXPANSION")
+    val LCMS = Value("LCMS")
+    val CLUSTERING = Value("CLUSTERING")
+    val SAR_SCORING = Value("SAR_SCORING")
+    val PRODUCT_SCORING = Value("PRODUCT_SCORING")
   }
 
   // Implement this with the job structure you want to run to define a workflow
@@ -119,8 +128,14 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     val scoredSarsFilename = "scored_sars"
     val scoredSarsFiles = buildFilesForRos(workingDir, scoredSarsFilename, roIds)
 
+    val scoredProductsFilename = "scored_products"
+    val scoredProductsFiles = buildFilesForRos(workingDir, scoredProductsFilename, roIds)
+
     val lcmsFilename = "lcms_positives"
     val lcmsFile = new File(workingDir, lcmsFilename)
+
+    val allSarsFile = new File(workingDir, "all_scored_sars")
+    val allProductsFile = new File(workingDir, "all_scored_products")
 
     var maxMass = Integer.MAX_VALUE
     if (cl.hasOption(OPTION_MASS_THRESHOLD)) {
@@ -188,13 +203,13 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
             sarTreeFiles(roId))) // Run one job per RO for clustering
       addJavaRunnableBatch("cluster", clusteringRunnables)
 
-      addScoringJobs()
+      addJobsFromSarScoringOn()
     }
 
-    def addScoringJobs(): Unit = {
+    def addJobsFromSarScoringOn(): Unit = {
       logger.info("Running scoring jobs.")
       // Build one job per RO for sar scoring, using a random set of LCMS hits instead of actual data.
-      val scoringRunnables = roIds.map(roId =>
+      val sarScoringRunnables = roIds.map(roId =>
         LibMcsClustering.getRunnableRandomSarScorer(
           sarTreeFiles(roId),
           lcmsFile,
@@ -202,7 +217,29 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
           LCMS_MISS_PENALTY,
           SUBTREE_THRESHOLD)
       )
-      addJavaRunnableBatch("scoring", scoringRunnables)
+
+      addJavaRunnableBatch("sarScoring", sarScoringRunnables)
+
+      addJobsFromProductScoringOn()
+    }
+
+    def addJobsFromProductScoringOn(): Unit = {
+      val productScoringRunnables = roIds.map(roId =>
+        ProductScorer.getRunnableProductScorer(
+          predictionsFiles(roId),
+          scoredSarsFiles(roId),
+          lcmsFile,
+          scoredProductsFiles(roId)
+        ))
+      addJavaRunnableBatch("productScoring", productScoringRunnables);
+
+      val meshResultsJob = ScalaJobWrapper.wrapScalaFunction("mesh results",
+        meshResults(
+          scoredSarsFiles.values.toList,
+          scoredProductsFiles.values.toList,
+          allSarsFile,
+          allProductsFile) _)
+      headerJob.thenRun(meshResultsJob)
     }
 
     /**
@@ -224,10 +261,29 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       case StartingPoints.EXPANSION => addJobsFromExpansionOn()
       case StartingPoints.LCMS => addJobsFromLcmsOn()
       case StartingPoints.CLUSTERING => addJobsFromClusteringOn()
-      case StartingPoints.SCORING => addScoringJobs()
+      case StartingPoints.SAR_SCORING => addJobsFromSarScoringOn()
+      case StartingPoints.PRODUCT_SCORING => addJobsFromProductScoringOn()
     }
 
     headerJob
+  }
+
+
+  def meshResults(scoredSarFiles: List[File], scoredProductFiles: List[File],
+                  sarOut: File, productOut: File)(): Unit = {
+    val sarLists = scoredSarFiles.map(file => {
+      var list = new SarTreeNodeList
+      list.loadFromFile(file)
+      list
+    })
+    val meshedList = new SarTreeNodeList()
+    sarLists.foreach(list => meshedList.addAll(list.getSarTreeNodes))
+    meshedList.writeToFile(sarOut)
+
+    var productCorpuses = scoredProductFiles.map(file => L2PredictionCorpus.readPredictionsFromJsonFile(file))
+    val meshedCorpus = new L2PredictionCorpus
+    productCorpuses.foreach(corpus => meshedCorpus.addAll(corpus.getCorpus))
+    meshedCorpus.writePredictionsToJsonFile(productOut)
   }
 
   /**
