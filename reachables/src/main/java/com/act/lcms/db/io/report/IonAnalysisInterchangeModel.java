@@ -136,6 +136,36 @@ public class IonAnalysisInterchangeModel {
   }
 
   /**
+   * This function is used to get the superset inchis from various files representing the different lcms ion runs for
+   * a given chemical on a single replicate
+   * @param filepaths File paths that represent each ionic variant file
+   * @param snrThreshold The snr threshold
+   * @param intensityThreshold The intensity threshold
+   * @param timeThreshold The time threshold
+   * @return The superset of all inchis in each ionic variant file.
+   * @throws IOException
+   */
+  public static Set<String> getSupersetOfIonicVariants(List<String> filepaths,
+                                       Double snrThreshold,
+                                       Double intensityThreshold,
+                                       Double timeThreshold) throws IOException {
+
+    Set<String> inchis = new HashSet<>();
+    List<IonAnalysisInterchangeModel> deserializedResultsForPositiveReplicates = new ArrayList<>();
+    for (String filePath : filepaths) {
+      IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
+      model.loadResultsFromFile(new File(filePath));
+      deserializedResultsForPositiveReplicates.add(model);
+    }
+
+    for (IonAnalysisInterchangeModel analysisInterchangeModel : deserializedResultsForPositiveReplicates) {
+      inchis.addAll(analysisInterchangeModel.getAllMoleculeHits(snrThreshold, intensityThreshold, timeThreshold));
+    }
+
+    return inchis;
+  }
+
+  /**
    * This function is used for getting all inchis that are hits in the corpus
    * @param snrThreshold The snr threshold
    * @param intensityThreshold The intensity threshold

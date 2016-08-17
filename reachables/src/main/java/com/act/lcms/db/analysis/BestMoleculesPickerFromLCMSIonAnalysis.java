@@ -24,6 +24,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
   public static final String OPTION_MIN_INTENSITY_THRESHOLD = "n";
   public static final String OPTION_MIN_TIME_THRESHOLD = "t";
   public static final String OPTION_MIN_SNR_THRESHOLD = "s";
+  public static final String OPTION_GET_IONS_SUPERSET = "f";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_INPUT_FILES)
@@ -58,6 +59,11 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
         .desc("The min snr threshold")
         .hasArg()
         .longOpt("min-snr-threshold")
+    );
+    add(Option.builder(OPTION_GET_IONS_SUPERSET)
+        .argName("ions superset")
+        .desc("A run option on all the ionic variant files on a single replicate run")
+        .longOpt("ions-superset")
     );
   }};
 
@@ -98,7 +104,10 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
     List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
 
-    Set<String> inchis = IonAnalysisInterchangeModel.getAllMoleculeHitsFromMultiplePositiveReplicateFiles(
+    Set<String> inchis = cl.hasOption(OPTION_GET_IONS_SUPERSET) ?
+        IonAnalysisInterchangeModel.getSupersetOfIonicVariants(positiveReplicateResults, minSnrThreshold,
+            minIntensityThreshold, minTimeThreshold) :
+        IonAnalysisInterchangeModel.getAllMoleculeHitsFromMultiplePositiveReplicateFiles(
         positiveReplicateResults, minSnrThreshold, minIntensityThreshold, minTimeThreshold);
 
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(cl.getOptionValue(OPTION_OUTPUT_FILE)))) {
