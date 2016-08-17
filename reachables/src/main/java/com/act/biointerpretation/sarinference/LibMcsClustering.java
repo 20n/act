@@ -102,7 +102,7 @@ public class LibMcsClustering {
 
   private static final Integer THRESHOLD_TREE_SIZE = 2; // any SAR that is not simply one specific substrate is allowed
 
-  public static final Random RANDOM_GENERATOR = new Random();
+  private static final Random RANDOM_GENERATOR = new Random();
 
   public static void main(String[] args) throws Exception {
 

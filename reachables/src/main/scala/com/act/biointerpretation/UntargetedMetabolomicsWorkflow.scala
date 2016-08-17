@@ -36,7 +36,8 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       CliOption.builder(OPTION_WORKING_DIRECTORY).
         hasArg.
         longOpt("working-directory").
-        desc("The directory in which to run and create all intermediate files."),
+        desc("The directory in which to run and create all intermediate files. This directory will be created if it " +
+          "does not already exist."),
 
       CliOption.builder(OPTION_SUBSTRATES).
         required(true).
@@ -69,7 +70,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
         longOpt("starting-point")
         .desc("What point of the workflow to start at, since some steps may already be complete. Choices are " +
           "EXPANSION for the beginning, LCMS to skip just the expansion, CLUSTERING to start with LibMCS " +
-          "clustering, and SCORING to only do SAR scoring with already-made sartrees. The workflow assumes any " +
+          "clustering, and SCORING to only do SAR scoring with already-made sar trees. The workflow assumes any " +
           "pre-computed steps have been put into the working directory, where they would have been generated had " +
           "the workflow been ran from the start. For example, precomputed prediction corpuses should be located at " +
           "workingDir/predictions.1, workingDir/predictions.2, etc."),
@@ -134,7 +135,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
 
     val positiveRate = cl.getOptionValue(OPTION_LCMS_POSITIVE_RATE).toDouble
     if (positiveRate < 0 || positiveRate > 1) {
-      logger.info(s"Positive rate must be between 0 and 1. Tried to set to ${positiveRate}")
+      logger.info(s"Positive rate must be between 0 and 1. Tried to set to $positiveRate")
       System.exit(1)
     }
 
@@ -143,22 +144,21 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       */
     def addJobsFromExpansionOn() {
       logger.info("Running RO expansion jobs.")
-      val massFilteringJob = JavaJobWrapper.wrapJavaFunction(L2InchiCorpus.getRunnableSubstrateFilterer(
+      val massFilteringRunnable = L2InchiCorpus.getRunnableSubstrateFilterer(
         rawSubstratesFile,
         filteredSubstratesFile,
-        maxMass));
-      headerJob.thenRun(massFilteringJob)
+        maxMass)
+      headerJob.thenRun(JavaJobWrapper.wrapJavaFunction(massFilteringRunnable))
 
       // Build one job per RO for L2 expansion
-      val singleThreadExpansionJobs =
+      val singleThreadExpansionRunnables =
         roIds.map(roId =>
-          JavaJobWrapper.wrapJavaFunction(
-            L2ExpansionDriver.getRunnableOneSubstrateRoExpander(
-              List(roId).asJava,
-              filteredSubstratesFile,
-              predictionsFiles(roId))))
+          L2ExpansionDriver.getRunnableOneSubstrateRoExpander(
+            List(roId).asJava,
+            filteredSubstratesFile,
+            predictionsFiles(roId)))
       // Run one job per RO for L2 expansion
-      headerJob.thenRunBatch(singleThreadExpansionJobs)
+      addJavaRunnableBatch(singleThreadExpansionRunnables)
 
       addJobsFromLcmsOn()
     }
@@ -187,29 +187,26 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       logger.info("Running clustering jobs.")
       // TODO: when Michael adds the capability, change this workflow to run the clustering jobs and LCMS job in parallel
       // Build one job per RO for clustering
-      val clusteringJobs =
+      val clusteringRunnables =
         roIds.map(roId =>
-          JavaJobWrapper.wrapJavaFunction(LibMcsClustering.getRunnableClusterer(
+          LibMcsClustering.getRunnableClusterer(
             predictionsFiles(roId),
-            sarTreeFiles(roId))))
-      // Run one job per RO for clustering
-      headerJob.thenRunBatch(clusteringJobs)
+            sarTreeFiles(roId))) // Run one job per RO for clustering
+      addJavaRunnableBatch(clusteringRunnables)
 
       addScoringJobs()
     }
 
     def addScoringJobs(): Unit = {
       logger.info("Running scoring jobs.")
-      // Build one job per RO for scoring, using a random LCMS hit selector instead of actual data.
-      val scoringJobs = roIds.map(roId =>
-        JavaJobWrapper.wrapJavaFunction(
-          LibMcsClustering.getRunnableRandomSarScorer(
-            sarTreeFiles(roId),
-            scoredSarsFiles(roId),
-            positiveRate)
-        )
+      // Build one job per RO for sar scoring, using a random set of LCMS hits instead of actual data.
+      val scoringRunnables = roIds.map(roId =>
+        LibMcsClustering.getRunnableRandomSarScorer(
+          sarTreeFiles(roId),
+          scoredSarsFiles(roId),
+          positiveRate)
       )
-      headerJob.thenRunBatch(scoringJobs)
+      addJavaRunnableBatch(scoringRunnables)
     }
 
     /**
@@ -221,8 +218,8 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
         startingPoint = StartingPoints.withName(cl.getOptionValue(OPTION_STARTING_POINT))
       } catch {
         case e: NoSuchElementException =>
-          logger.info(s"Starting point must be among ${StartingPoints.values.map(value => value.toString()).toList} : " +
-            s"${e.getMessage()}");
+          logger.error(s"Starting point must be among ${StartingPoints.values.map(value => value.toString()).toList} " +
+            s"; Input: ${cl.getOptionValue(OPTION_STARTING_POINT)}; ${e.getMessage()}")
           System.exit(1)
       }
     }
@@ -247,5 +244,13 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     */
   def buildFilesForRos(workingDir: String, fileName: String, roIds: List[Integer]): Map[Integer, File] = {
     Map() ++ roIds.map(r => (r, new File(workingDir, fileName + "." + r.toString)))
+  }
+
+  /**
+    * Adds a list of JavaRunnables to the job manager as a batch.
+    */
+  def addJavaRunnableBatch(runnables: List[JavaRunnable]): Unit = {
+    val jobs = runnables.map(runnable => JavaJobWrapper.wrapJavaFunction(runnable))
+    headerJob.thenRunBatch(jobs)
   }
 }
