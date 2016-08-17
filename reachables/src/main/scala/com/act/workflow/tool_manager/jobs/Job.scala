@@ -1,6 +1,6 @@
 package com.act.workflow.tool_manager.jobs
 
-import com.act.workflow.tool_manager.jobs.management.utility.{InternalState, JobFlag, Status, StatusCodes}
+import com.act.workflow.tool_manager.jobs.management.utility.{InternalState, JobFlag, StatusCodes, StatusManager}
 import org.apache.logging.log4j.{LogManager, Logger}
 
 import scala.collection.mutable.ListBuffer
@@ -13,12 +13,11 @@ import scala.collection.mutable.ListBuffer
   * @param name - String name of the workflow
   */
 abstract class Job(name: String) {
+  val internalState = new InternalState(this)
   private val logger: Logger = LogManager.getLogger(getClass.getName)
-  private val internalState = new InternalState(this)
   private val flags: ListBuffer[JobFlag.Value] = ListBuffer[JobFlag.Value]()
 
   def addFlag(value: JobFlag.Value): Unit = flags.append(value)
-
   def getFlags: List[JobFlag.Value] = flags.toList
 
   def preRetryJob: Option[Job] = _preRetryJob
@@ -39,29 +38,29 @@ abstract class Job(name: String) {
       case true => logger.debug("Attempted to start a killed job.")
 
       case false =>
-        status.isUnstarted match {
+        status.isNotStarted match {
           case true =>
             logger.trace(s"Started command ${this}")
-            getInternalState.setJobStatus(StatusCodes.Running)
+            internalState.setJobStatus(StatusCodes.Running)
             asyncJob()
 
           case false =>
             val message = s"Attempted to start a job that has already been started.  " +
-              s"Job name is $getName with current status ${getInternalState.status.getJobStatus}"
+              s"Job name is $getName with current status ${internalState.statusManager.getJobStatus}"
             logger.fatal(message)
             throw new RuntimeException(message)
         }
     }
   }
 
-  private def status: Status = getInternalState.status
+  private def status: StatusManager = internalState.statusManager
 
   def runNextJob(): Unit = {
-    getInternalState.runManager.runNextJob()
+    internalState.runManager.runNextJob(internalState.dependencyManager)
   }
 
   def addCancelFunction(cancelFunction: () => Boolean): Unit = {
-    getInternalState.cancelCurrentJobFunction = cancelFunction
+    internalState.setCancelCurrentJobFunction(cancelFunction)
   }
 
   /**
@@ -75,7 +74,7 @@ abstract class Job(name: String) {
     * @return this, for chaining
     */
   def setJobToRunPriorToRetry(job: Job): Job = {
-    getInternalState.runManager.retryJob = job
+    internalState.runManager.retryJob = job
     this
   }
 }
@@ -101,11 +100,9 @@ abstract class Job(name: String) {
   def thenRunBatch(nextJobs: List[Job], batchSize: Int = 20): Job = {
     // We use a batch size here to make it so we don't spend all our computation managing job context.
     val jobGroups = nextJobs.grouped(batchSize)
-    jobGroups.foreach(getInternalState.runManager.dependencyManager.appendJobBuffer(_))
+    jobGroups.foreach(internalState.dependencyManager.appendJobBuffer)
     this
   }
-
-  def getInternalState: InternalState = internalState
 
   /**
     * Add a job to the next location to sequentially execute jobs
@@ -119,7 +116,7 @@ abstract class Job(name: String) {
     * @return this, for chaining
     */
   def thenRun(nextJob: Job): Job = {
-    getInternalState.runManager.dependencyManager.appendJobBuffer(nextJob)
+    internalState.dependencyManager.appendJobBuffer(nextJob)
     this
   }
 
@@ -132,10 +129,10 @@ abstract class Job(name: String) {
   }
 
   protected def markAsSuccess(): Unit = {
-    this.getInternalState.markAsSuccess()
+    internalState.markAsSuccess()
   }
 
   protected def markAsFailure(): Unit = {
-    this.getInternalState.markAsFailure()
+    internalState.markAsFailure()
   }
 }
