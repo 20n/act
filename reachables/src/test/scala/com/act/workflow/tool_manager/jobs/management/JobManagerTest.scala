@@ -70,12 +70,12 @@ class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach with
 
     JobManager.startJobAndKillWorkflowAfterSpecificJobCompletes(A, B)
 
-    A.getInternalState.status.isCompleted should be(true)
-    B.getInternalState.status.isCompleted should be(true)
-    b1.getInternalState.status.isKilled should be(true)
-    b2.getInternalState.status.isKilled should be(true)
-    b3.getInternalState.status.isKilled should be(true)
-    C.getInternalState.status.isKilled should be(true)
+    A.internalState.statusManager.isCompleted should be(true)
+    B.internalState.statusManager.isCompleted should be(true)
+    b1.internalState.statusManager.isKilled should be(true)
+    b2.internalState.statusManager.isKilled should be(true)
+    b3.internalState.statusManager.isKilled should be(true)
+    C.internalState.statusManager.isKilled should be(true)
   }
 
   "The Job Manager" should "detect if not all jobs have been added to run." in {
