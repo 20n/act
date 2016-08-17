@@ -9,7 +9,7 @@ import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
 import org.biojava.nbio.core.sequence.ProteinSequence
 
-trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequenceToFasta with SequenceDatabaseKeywords {
+trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequenceToFasta  {
 
   /**
     * Takes in a list of reaction IDs and creates outputs a list of ProteinSequences known to do those reactions.
@@ -19,7 +19,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
     *
     * @return List of protein sequences.
     */
-  def createFastaByReactionId(reactionIds: List[Long], outputFile: File, mongoConnection: MongoDB): Unit = {
+  def createFastaByReactionId(reactionIds: List[Long], outputFile: File, mongoConnection: MongoDB, organismRegex: Option[String] = None): Unit = {
     val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
 
     // We want back the sequence, enzyme number, name, and the ID in our DB.
@@ -29,8 +29,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
       s"${SequenceKeywords.METADATA.toString}.${SequenceKeywords.NAME.toString}")
 
     val returnSequenceDocuments: Iterator[DBObject] =
-      querySequencesMatchingReactionIdIterator(reactionIds, mongoConnection, returnFields)
-
+      querySequencesMatchingReactionIdIterator(reactionIds, mongoConnection, returnFields, organismRegex)
 
     /*
       Map sequences and name to proteinSequences
@@ -106,7 +105,8 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
     */
   private def querySequencesMatchingReactionIdIterator(reactionIds: List[Long],
                                                        mongoConnection: MongoDB,
-                                                       returnFilterFields: List[String]): Iterator[DBObject] = {
+                                                       returnFilterFields: List[String],
+                                                       organismRegex: Option[String] = None): Iterator[DBObject] = {
     val methodLogger = LogManager.getLogger("querySequencesMatchingReactionIdIterator")
 
     /*
@@ -121,6 +121,9 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
 
     // Elem match on all rxn_to_reactant groups in that array
     val seqKey = new BasicDBObject(SEQUENCE_DB_KEYWORD_RXN_REFS, defineMongoIn(reactionList))
+    if (organismRegex.isDefined) {
+      seqKey.put(SEQUENCE_DB_KEYWORD_ORGANISM_NAME, defineMongoRegex(organismRegex.get))
+    }
 
     val reactionIdReturnFilter = new BasicDBObject()
     for (field <- returnFilterFields) {
