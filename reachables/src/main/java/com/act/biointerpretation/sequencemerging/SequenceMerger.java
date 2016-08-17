@@ -259,29 +259,24 @@ public class SequenceMerger extends BiointerpretationProcessor {
     }
 
     @Override
-    public int hashCode() {
-      return ecnum.hashCode() ^ organism.hashCode() ^ protSeq.hashCode();
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      UniqueSeq uniqueSeq = (UniqueSeq) o;
+
+      if (ecnum != null ? !ecnum.equals(uniqueSeq.ecnum) : uniqueSeq.ecnum != null) return false;
+      if (organism != null ? !organism.equals(uniqueSeq.organism) : uniqueSeq.organism != null) return false;
+      return protSeq != null ? protSeq.equals(uniqueSeq.protSeq) : uniqueSeq.protSeq == null;
+
     }
 
     @Override
-    public boolean equals(Object obj) {
-      if (obj == null) {
-        return false;
-      }
-
-      if (getClass() != obj.getClass()) {
-        return false;
-      }
-
-      final UniqueSeq other = (UniqueSeq) obj;
-
-      if (this.ecnum == null || other.ecnum == null || this.organism == null || other.organism == null ||
-          this.protSeq == null || other.protSeq == null) {
-        throw new RuntimeException("Ecnum, organism and/or protein sequence are null, comparison can't be made");
-      }
-
-      return (this.ecnum.equals(other.ecnum) && this.organism.equals(other.organism) &&
-          this.protSeq.equals(other.protSeq));
+    public int hashCode() {
+      int result = ecnum != null ? ecnum.hashCode() : 0;
+      result = 31 * result + (organism != null ? organism.hashCode() : 0);
+      result = 31 * result + (protSeq != null ? protSeq.hashCode() : 0);
+      return result;
     }
   }
 
