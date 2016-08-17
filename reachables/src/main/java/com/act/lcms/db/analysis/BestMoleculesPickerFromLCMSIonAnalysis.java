@@ -98,7 +98,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
     List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
 
-    Set<String> inchis = IonAnalysisInterchangeModel.getAllMoleculeHitsFromMultiplePositiveReplicateFiles(
+    Set<String> inchis = IonAnalysisInterchangeModel.getAllMols(
         positiveReplicateResults, minSnrThreshold, minIntensityThreshold, minTimeThreshold);
 
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(cl.getOptionValue(OPTION_OUTPUT_FILE)))) {

@@ -135,6 +135,27 @@ public class IonAnalysisInterchangeModel {
     return resultSet;
   }
 
+  public static Set<String> getAllMols(List<String> filepaths,
+                                Double snrThreshold,
+                                Double intensityThreshold,
+                                Double timeThreshold) throws IOException {
+
+    Set<String> inchis = new HashSet<>();
+
+    List<IonAnalysisInterchangeModel> deserializedResultsForPositiveReplicates = new ArrayList<>();
+    for (String filePath : filepaths) {
+      IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
+      model.loadResultsFromFile(new File(filePath));
+      deserializedResultsForPositiveReplicates.add(model);
+    }
+
+    for (IonAnalysisInterchangeModel analysisInterchangeModel : deserializedResultsForPositiveReplicates) {
+      inchis.addAll(analysisInterchangeModel.getAllMoleculeHits(snrThreshold, intensityThreshold, timeThreshold));
+    }
+
+    return inchis;
+  }
+
   /**
    * This function is used for getting all inchis that are hits in the corpus
    * @param snrThreshold The snr threshold
