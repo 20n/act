@@ -2,7 +2,7 @@ package com.act.workflow.tool_manager.jobs
 
 import java.io.{File, PrintWriter}
 
-import com.act.workflow.tool_manager.jobs.management.CanceleableFuture
+import com.act.workflow.tool_manager.jobs.management.utility.CanceleableFuture
 import org.apache.logging.log4j.LogManager
 
 import scala.concurrent.CancellationException
@@ -19,7 +19,7 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
   def asyncJob() {
     // Run the call in the future
     val (future, cancel) = CanceleableFuture.create[Process](future => commands.run(setupProcessIO()))
-    this.cancelFuture = Option(cancel)
+    this.internalState.cancelFuture = Option(cancel)
 
     // Setup Job's success/failure
     future.onComplete({
@@ -28,9 +28,8 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
         if (x.isInstanceOf[CancellationException]) {
           logger.error("Future was canceled.")
         } else {
-          markAsFailure()
-          logger.error(s"Cause of failure was ${x.getMessage}.")
-          x.printStackTrace()
+          this.internalState.markAsFailure()
+          logger.error(s"Cause of failure was ${x.getMessage}.", x)
         }
     })
   }
@@ -46,12 +45,12 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
   }
 
   protected def markJobSuccessBasedOnReturnCode(returnCode: Int): Unit = {
-    internalState.setReturnCode(returnCode)
+    this.internalState.returnCode = returnCode
     logger.trace(s"Command ${this} has changed return code to $returnCode")
     if (returnCode != 0)
-      markAsFailure()
+      this.internalState.markAsFailure()
     else
-      markAsSuccess()
+      this.internalState.markAsSuccess()
   }
 
   def writeOutputStreamToFile(file: File): Job = {

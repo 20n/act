@@ -1,12 +1,13 @@
 package com.act.workflow.tool_manager.jobs
 
-import com.act.workflow.tool_manager.jobs.management.{JobManager, LoggingVerbosity}
+import com.act.workflow.tool_manager.jobs.management.JobManager
+import com.act.workflow.tool_manager.jobs.management.utility.JobFlag
 import com.act.workflow.tool_manager.tool_wrappers.{ScalaJobWrapper, ShellWrapper}
 import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
 
 class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
   override def beforeEach(): Unit = {
-    JobManager.setVerbosity(LoggingVerbosity.Off)
+    JobManager.setVerbosity(0)
   }
 
   override def afterEach(): Unit = {
@@ -30,13 +31,12 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     val D = immediateReturnJob("D")
 
     A.thenRun(B).thenRun(C).thenRun(D)
-
     JobManager.startJobAndAwaitUntilWorkflowComplete(A)
 
-    A.getJobStatus.isCompleted should be(true)
-    B.getJobStatus.isCompleted should be(true)
-    C.getJobStatus.isCompleted should be(true)
-    D.getJobStatus.isCompleted should be(true)
+    A.internalState.status.isCompleted should be(true)
+    B.internalState.status.isCompleted should be(true)
+    C.internalState.status.isCompleted should be(true)
+    D.internalState.status.isCompleted should be(true)
 
     JobManager.getOrderOfJobCompletion should be(List("A", "B", "C", "D"))
   }
@@ -68,11 +68,11 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     JobManager.startJobAndKillWorkflowAfterSpecificJobCompletes(A, b1)
 
     // C should be killed as it completes after b3 based on time.
-    A.getJobStatus.isCompleted should be(true)
-    B.getJobStatus.isCompleted should be(true)
-    b1.getJobStatus.isCompleted should be(true)
-    C.getJobStatus.isKilled should be(true)
-    C.getJobStatus.isFailed should be(true)
+    A.internalState.status.isCompleted should be(true)
+    B.internalState.status.isCompleted should be(true)
+    b1.internalState.status.isCompleted should be(true)
+    C.internalState.status.isKilled should be(true)
+    C.internalState.status.isFailed should be(true)
   }
 
   "Jobs" should "be able to have two divergent branches come together at the end" in {
@@ -148,22 +148,22 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     val F = immediateReturnJob("F")
     val G = immediateReturnJob("G")
 
-    B.jobShouldNotBeWaitedFor()
+    B.internalState.addFlagToJob(JobFlag.ShouldNotBeWaitedOn)
     A.thenRunBatch(List(B, C, D)).thenRun(E)
     B.thenRun(G).thenRun(F)
 
     // If we kill B, E should still be allowed to complete.
-    B.killUncompleteJob()
+    B.internalState.killIncompleteJobs()
 
     JobManager.startJobAndAwaitUntilWorkflowComplete(A)
 
 
-    A.getJobStatus.isSuccessful should be(true)
-    B.getJobStatus.isKilled should be(true)
-    C.getJobStatus.isSuccessful should be(true)
-    D.getJobStatus.isSuccessful should be(true)
-    E.getJobStatus.isSuccessful should be(true)
-    F.getJobStatus.isKilled should be(true)
-    G.getJobStatus.isKilled should be(true)
+    A.internalState.status.isSuccessful should be(true)
+    B.internalState.status.isKilled should be(true)
+    C.internalState.status.isSuccessful should be(true)
+    D.internalState.status.isSuccessful should be(true)
+    E.internalState.status.isSuccessful should be(true)
+    F.internalState.status.isKilled should be(true)
+    G.internalState.status.isKilled should be(true)
   }
 }

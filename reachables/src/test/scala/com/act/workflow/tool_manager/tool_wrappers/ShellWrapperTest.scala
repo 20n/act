@@ -1,14 +1,14 @@
 package com.act.workflow.tool_manager.tool_wrappers
 
 import com.act.workflow.tool_manager.jobs.Job
-import com.act.workflow.tool_manager.jobs.management.{JobManager, LoggingVerbosity}
+import com.act.workflow.tool_manager.jobs.management.JobManager
 import org.scalatest._
 import org.scalatest.concurrent.{ThreadSignaler, TimeLimitedTests}
 import org.scalatest.time.SpanSugar._
 
 class ShellWrapperTest extends FlatSpec with Matchers with BeforeAndAfterEach {
   override def beforeEach(): Unit = {
-    JobManager.setVerbosity(LoggingVerbosity.Off)
+    JobManager.setVerbosity(0)
   }
 
   override def afterEach(): Unit = {
@@ -16,12 +16,12 @@ class ShellWrapperTest extends FlatSpec with Matchers with BeforeAndAfterEach {
   }
 
   def successfulJob(command: Job): Unit = {
-    command.getJobStatus.isSuccessful should be(true)
-    command.getJobStatus.isFailed should be(false)
-    command.getJobStatus.isCompleted should be(true)
-    command.getJobStatus.isRunning should be(false)
-    command.getJobStatus.isUnstarted should be(false)
-    command.getReturnCode should be(0)
+    command.internalState.status.isSuccessful should be(true)
+    command.internalState.status.isFailed should be(false)
+    command.internalState.status.isCompleted should be(true)
+    command.internalState.status.isRunning should be(false)
+    command.internalState.status.isUnstarted should be(false)
+    command.internalState.returnCode should be(0)
   }
 
   "The ShellWrapper" should "not start jobs prior to start being called" in {
@@ -29,12 +29,12 @@ class ShellWrapperTest extends FlatSpec with Matchers with BeforeAndAfterEach {
     command.doNotWriteOutputStream()
     command.doNotWriteErrorStream()
 
-    command.getJobStatus.isSuccessful should be(false)
-    command.getJobStatus.isFailed should be(false)
-    command.getJobStatus.isCompleted should be(false)
-    command.getJobStatus.isRunning should be(false)
-    command.getJobStatus.isUnstarted should be(true)
-    command.getReturnCode should be(-1)
+    command.internalState.status.isSuccessful should be(false)
+    command.internalState.status.isFailed should be(false)
+    command.internalState.status.isCompleted should be(false)
+    command.internalState.status.isRunning should be(false)
+    command.internalState.status.isUnstarted should be(true)
+    command.internalState.returnCode should be(-1)
   }
 
   "The ShellWrapper" should "indicate valid commands complete" in {
@@ -55,12 +55,12 @@ class ShellWrapperTest extends FlatSpec with Matchers with BeforeAndAfterEach {
 
     JobManager.startJobAndAwaitUntilWorkflowComplete(command)
 
-    command.getJobStatus.isSuccessful should be(false)
-    command.getJobStatus.isFailed should be(true)
-    command.getJobStatus.isCompleted should be(true)
-    command.getJobStatus.isRunning should be(false)
-    command.getJobStatus.isUnstarted should be(false)
-    command.getReturnCode shouldNot be(0)
+    command.internalState.status.isSuccessful should be(false)
+    command.internalState.status.isFailed should be(true)
+    command.internalState.status.isCompleted should be(true)
+    command.internalState.status.isRunning should be(false)
+    command.internalState.status.isUnstarted should be(false)
+    command.internalState.returnCode shouldNot be(0)
   }
 
   "The ShellWrapper" should "indicate a job is running when it is running" in {
@@ -70,12 +70,12 @@ class ShellWrapperTest extends FlatSpec with Matchers with BeforeAndAfterEach {
 
     command.start()
 
-    command.getJobStatus.isSuccessful should be(false)
-    command.getJobStatus.isFailed should be(false)
-    command.getJobStatus.isCompleted should be(false)
-    command.getJobStatus.isRunning should be(true)
-    command.getJobStatus.isUnstarted should be(false)
-    command.getReturnCode shouldNot be(0)
+    command.internalState.status.isSuccessful should be(false)
+    command.internalState.status.isFailed should be(false)
+    command.internalState.status.isCompleted should be(false)
+    command.internalState.status.isRunning should be(true)
+    command.internalState.status.isUnstarted should be(false)
+    command.internalState.returnCode shouldNot be(0)
   }
 
   "The ShellWrapper" should "allow for chaining of jobs" in {
