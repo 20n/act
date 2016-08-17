@@ -29,7 +29,9 @@ object HmmerWrapper extends ToolWrapper {
     * @param msaFile       The multiple sequence alignment file to construct the profile from
     */
   def hmmbuild(outputHmmFile: File, msaFile: File): ShellJob  = {
-    constructJob(HmmCommands.HmmBuild.get, HmmCommands.HmmBuild,
+    constructJob(
+      HmmCommands.HmmBuild.get,
+      HmmCommands.HmmBuild,
       List("--amino", outputHmmFile.getAbsolutePath, msaFile.getAbsolutePath))
   }
 

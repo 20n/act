@@ -19,7 +19,7 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
   def asyncJob() {
     // Run the call in the future
     val (future, cancel) = CanceleableFuture.create[Process](future => commands.run(setupProcessIO()))
-    this.internalState.cancelFuture = Option(cancel)
+    addCancelFunction(cancel)
 
     // Setup Job's success/failure
     future.onComplete({
@@ -28,7 +28,7 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
         if (x.isInstanceOf[CancellationException]) {
           logger.error("Future was canceled.")
         } else {
-          this.internalState.markAsFailure()
+          markAsFailure()
           logger.error(s"Cause of failure was ${x.getMessage}.", x)
         }
     })
@@ -45,21 +45,16 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
   }
 
   protected def markJobSuccessBasedOnReturnCode(returnCode: Int): Unit = {
-    this.internalState.returnCode = returnCode
+    this.getInternalState.returnCode = returnCode
     logger.trace(s"Command ${this} has changed return code to $returnCode")
     if (returnCode != 0)
-      this.internalState.markAsFailure()
+      markAsFailure()
     else
-      this.internalState.markAsSuccess()
+      markAsSuccess()
   }
 
   def writeOutputStreamToFile(file: File): Job = {
     outputMethod = Option(writeStreamToFile(file))
-    this
-  }
-
-  def writeErrorStreamToFile(file: File): Job = {
-    errorMethod = Option(writeStreamToFile(file))
     this
   }
 
@@ -72,6 +67,11 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
     val writer = new PrintWriter(file)
     writer.write(output)
     writer.close()
+  }
+
+  def writeErrorStreamToFile(file: File): Job = {
+    errorMethod = Option(writeStreamToFile(file))
+    this
   }
 
   // job1.writeOutputStreamToLogger.thenRun(job2)
