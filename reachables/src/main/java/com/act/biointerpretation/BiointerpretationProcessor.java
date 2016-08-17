@@ -142,11 +142,9 @@ public abstract class BiointerpretationProcessor {
    * Process and migrate sequences. Default implementation merely copies, preserving source id.
    */
   protected void processSequences() {
-
     Iterator<Seq> seqIterator = getNoSQLAPI().readSeqsFromInKnowledgeGraph();
 
     while (seqIterator.hasNext()) {
-
       Seq oldSeq = seqIterator.next();
       Long oldId = (long) oldSeq.getUUID();
       Long newId = (long) getNoSQLAPI().getWriteDB().submitToActSeqDB(
@@ -161,9 +159,7 @@ public abstract class BiointerpretationProcessor {
       );
 
       sequenceMigrationMap.put(oldId, newId);
-
     }
-
   }
 
 
