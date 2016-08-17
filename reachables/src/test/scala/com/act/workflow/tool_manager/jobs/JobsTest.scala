@@ -1,7 +1,6 @@
 package com.act.workflow.tool_manager.jobs
 
 import com.act.workflow.tool_manager.jobs.management.JobManager
-import com.act.workflow.tool_manager.jobs.management.utility.JobFlag
 import com.act.workflow.tool_manager.tool_wrappers.ScalaJobWrapper
 import org.scalatest.concurrent.{ThreadSignaler, TimeLimitedTests}
 import org.scalatest.time.SpanSugar._
@@ -19,12 +18,27 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach with TimeL
     JobManager.clearManager()
   }
 
+  /**
+    * Constructs an instantly evaluating job that runs really fast
+    *
+    * @param name Name of the job
+    *
+    * @return newly constructed job.
+    */
   def immediateReturnJob(name: String): ScalaJob = {
     val excitingFunction: () => Unit = () => Unit
     ScalaJobWrapper.wrapScalaFunction(name, excitingFunction)
   }
 
 
+  /**
+    * Sleeps the thread for a given amount of time to simulate a long-running job
+    *
+    * @param name Name of the job
+    * @param time Time it runs for
+    *
+    * @return A nicely, newly constructed job
+    */
   def longRunningJob(name: String, time: Long): ScalaJob = {
     val excitingFunction: () => Unit = () => Thread.sleep(time)
     ScalaJobWrapper.wrapScalaFunction(name, excitingFunction)
