@@ -275,6 +275,11 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
       final UniqueSeq other = (UniqueSeq) obj;
 
+      if (this.ecnum == null || other.ecnum == null || this.organism == null || other.organism == null ||
+          this.protSeq == null || other.protSeq == null) {
+        throw new RuntimeException("Ecnum, organism and/or protein sequence are null, comparison can't be made");
+      }
+
       return (this.ecnum.equals(other.ecnum) && this.organism.equals(other.organism) &&
           this.protSeq.equals(other.protSeq));
     }
