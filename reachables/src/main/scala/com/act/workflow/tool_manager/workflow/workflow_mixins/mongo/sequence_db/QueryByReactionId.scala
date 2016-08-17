@@ -42,9 +42,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
       val seq = document.get(SEQUENCE_DB_KEYWORD_SEQ)
 
       // Enzymes may not have an enzyme number
-      val ecnum = if (document.get(SEQUENCE_DB_KEYWORD_ECNUM) != null)
-        document.get(SEQUENCE_DB_KEYWORD_ECNUM)
-      else "None"
+      val ecnum = if (document.get(SEQUENCE_DB_KEYWORD_ECNUM) != null) document.get(SEQUENCE_DB_KEYWORD_ECNUM) else "None"
 
       // Make sure it has a sequence
       if (seq != null) {
@@ -52,9 +50,11 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
         val newSeq = new ProteinSequence(seq.toString)
 
         // Enzymes may not have a name
-        val name = if (document.get(s"$SEQUENCE_DB_KEYWORD_METADATA.$SEQUENCE_DB_KEYWORD_NAME") != null)
+        val name = if (document.get(s"$SEQUENCE_DB_KEYWORD_METADATA.$SEQUENCE_DB_KEYWORD_NAME") != null) {
           document.get(s"$SEQUENCE_DB_KEYWORD_METADATA.$SEQUENCE_DB_KEYWORD_NAME")
-        else "None"
+        } else {
+          "None"
+        }
 
         /*
           These headers are required to be unique or else downstream software will likely crash.
@@ -68,6 +68,29 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
       }
     }
     outputStream.close()
+  }
+
+  /**
+    * Query sequences based on if the sequence references one of the reactions in the reactionIds list.
+    *
+    * @param reactionIds        A list of reactionIds, a matching sequence will match one or more.
+    * @param mongoConnection    Connection to Mongo database
+    * @param returnFilterFields The fields you are looking for.
+    *
+    * @return Returns a map of documents with their fields as the secondary keys.
+    *         First map is keyed by the document ID, secondary maps are keyed by the field names retrieved from the DB.
+    */
+  def querySequencesForValuesByReactionId(reactionIds: List[Long],
+                                          mongoConnection: MongoDB,
+                                          returnFilterFields: List[String]): Map[Long, Map[String, AnyRef]] = {
+
+    val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
+
+    val sequenceReturnIterator = querySequencesMatchingReactionIdIterator(reactionIds, mongoConnection, returnFilterFields)
+
+    val sequenceDocuments = mongoReturnQueryToMap(sequenceReturnIterator, returnFilterFields)
+    methodLogger.info(s"Found ${sequenceDocuments.size} document${if (sequenceDocuments.size != 1) "s" else ""}.")
+    sequenceDocuments
   }
 
   /**
@@ -110,29 +133,6 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
     methodLogger.info("Finished sequence query.")
 
     sequenceReturnIterator
-  }
-
-  /**
-    * Query sequences based on if the sequence references one of the reactions in the reactionIds list.
-    *
-    * @param reactionIds        A list of reactionIds, a matching sequence will match one or more.
-    * @param mongoConnection    Connection to Mongo database
-    * @param returnFilterFields The fields you are looking for.
-    *
-    * @return Returns a map of documents with their fields as the secondary keys.
-    *         First map is keyed by the document ID, secondary maps are keyed by the field names retrieved from the DB.
-    */
-  def querySequencesForValuesByReactionId(reactionIds: List[Long],
-                                          mongoConnection: MongoDB,
-                                          returnFilterFields: List[String]): Map[Long, Map[String, AnyRef]] = {
-
-    val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
-
-    val sequenceReturnIterator = querySequencesMatchingReactionIdIterator(reactionIds, mongoConnection, returnFilterFields)
-
-    val sequenceDocuments = mongoReturnQueryToMap(sequenceReturnIterator, returnFilterFields)
-    methodLogger.info(s"Found ${sequenceDocuments.size} document${if (sequenceDocuments.size != 1) "s" else ""}.")
-    sequenceDocuments
   }
 }
 
