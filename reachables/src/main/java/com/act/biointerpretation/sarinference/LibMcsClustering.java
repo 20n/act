@@ -107,6 +107,8 @@ public class LibMcsClustering {
 
   private static final Random RANDOM_GENERATOR = new Random();
 
+  private static final Double LCMS_MISS_PENALTY = 1.0;
+
   public static void main(String[] args) throws Exception {
 
     // Build command line parser.
