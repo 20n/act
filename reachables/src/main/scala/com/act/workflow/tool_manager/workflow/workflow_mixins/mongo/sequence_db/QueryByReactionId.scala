@@ -35,7 +35,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
     /*
       Map sequences and name to proteinSequences
     */
-    val outputStream = new FileOutputStream(outputFile)
+    val outputStream = new BufferedWriter(new FileWriter(outputFile))
     for (document: DBObject <- returnSequenceDocuments) {
 
       val id = document.get(SEQUENCE_DB_KEYWORD_ID)
