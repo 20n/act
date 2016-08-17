@@ -12,23 +12,23 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Carries out the main logic of L2 expansion by applying a set of ROs to a set of metabolites.
+ * Carries out the main logic of L2 expansion by applying a set of ROs to a set of substrates.
  */
 public class SingleSubstrateRoExpander extends L2Expander {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(SingleSubstrateRoExpander.class);
   private static final Integer ONE_SUBSTRATES = 1;
   private List<Ero> roList;
-  private List<Molecule> metaboliteList;
+  private List<Molecule> substrates;
 
   /**
    * @param roList A list of all ros to be tested
-   * @param metaboliteList A list of all metabolites on which to test the ROs.
+   * @param substrates A list of all substrates on which to test the ROs.
    */
-  public SingleSubstrateRoExpander(List<Ero> roList, List<Molecule> metaboliteList, PredictionGenerator generator) {
+  public SingleSubstrateRoExpander(List<Ero> roList, List<Molecule> substrates, PredictionGenerator generator) {
     super(generator);
     this.roList = roList;
-    this.metaboliteList = metaboliteList;
+    this.substrates = substrates;
   }
 
   @Override
@@ -47,8 +47,8 @@ public class SingleSubstrateRoExpander extends L2Expander {
         continue;
       }
 
-      //iterate over every (metabolite, ro) pair
-      for (Molecule substrate : metaboliteList) {
+      //iterate over every (substrate, ro) pair
+      for (Molecule substrate : substrates) {
         result.add(new PredictionSeed(ro.getId().toString(), Arrays.asList(substrate), reactor, NO_SAR));
       }
     }
@@ -56,6 +56,4 @@ public class SingleSubstrateRoExpander extends L2Expander {
     LOGGER.info("Created %d prediction seeds", result.size());
     return result;
   }
-
 }
-

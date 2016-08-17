@@ -46,13 +46,20 @@ public class SarTree {
    * @throws InterruptedException
    */
   public void buildByClustering(LibraryMCS libMcs, List<Molecule> molecules) throws InterruptedException {
+    if (molecules.size() == 0) {
+      LOGGER.error("Tried to build clustering on no molecules!");
+      // Log error but don't throw error. This could be a piece in a workflow where we try to build SARs on a prediction
+      // corpus with no valid predictions. In that case we should not kill the workflow, but let it run and produce no
+      // results.
+      return;
+    }
+
     for (Molecule mol : molecules) {
       libMcs.addMolecule(mol);
     }
-
     libMcs.search();
-    LibraryMCS.ClusterEnumerator enumerator = libMcs.getClusterEnumerator(ALL_NODES);
 
+    LibraryMCS.ClusterEnumerator enumerator = libMcs.getClusterEnumerator(ALL_NODES);
     this.buildFromEnumerator(enumerator);
   }
 
@@ -62,8 +69,19 @@ public class SarTree {
    * @param enumerator An enumerator for the LibMCS clusters.
    */
   private void buildFromEnumerator(LibraryMCS.ClusterEnumerator enumerator) {
+
+    Molecule molecule;
+
+    // Sometimes, even when enumerator.hasNext() returns true, enumerator.next() returns, not a null value, but
+    // a NullPointerException. This might merit further investigation as it is totally bizarre.
     while (enumerator.hasNext()) {
-      Molecule molecule = enumerator.next();
+      try {
+        molecule = enumerator.next();
+      } catch (NullPointerException e) {
+        LOGGER.error("Null pointer exception thrown internally by enumerator.next() : %s", e.getMessage());
+        // Log but don't throw error. This doesn't seem to indicate a real problem, but just a quirk of LibMCS.
+        return;
+      }
       String hierId = molecule.getPropertyObject("HierarchyID").toString();
       SarTreeNode thisNode = new SarTreeNode(molecule, hierId);
       this.addNode(thisNode);

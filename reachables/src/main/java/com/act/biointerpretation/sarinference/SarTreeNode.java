@@ -15,19 +15,24 @@ import java.io.IOException;
  */
 public class SarTreeNode {
 
-  public static final String IN_LCMS_PROPERTY = "lcms_positive";
-  public static final String IN_LCMS_TRUE = "true";
-  public static final String IN_LCMS_FALSE = "false";
+  // TODO: this enum should live in the LCMS module once Vijay and Gil merge their pieces
+  // The idea of NO_DATA is to indicate if we query on a molecule who's mass no analysis was done on, to distinguish
+  // this case from an actual calculated MISS.
+  public enum LCMS_RESULT {
+    HIT,
+    MISS,
+    NO_DATA
+  }
 
-  @JsonProperty
+  @JsonProperty("hierarchy_id")
   String hierarchyId;
 
   Molecule substructure;
 
-  @JsonProperty
+  @JsonProperty("number_misses")
   Integer numberMisses;
 
-  @JsonProperty
+  @JsonProperty("number_hits")
   Integer numberHits;
 
   private SarTreeNode() {
