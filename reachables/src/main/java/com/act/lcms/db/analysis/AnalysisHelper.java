@@ -702,6 +702,7 @@ public class AnalysisHelper {
 
     File localScanFile = new File(lcmsDir, representativeScanFile.getFilename());
     if (!localScanFile.exists() && localScanFile.isFile()) {
+      LOGGER.warn("Could not find regular file at expected path: %s", localScanFile.getAbsolutePath());
       return null;
     }
 
