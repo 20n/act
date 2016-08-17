@@ -231,7 +231,7 @@ public class GenbankInstallerTest {
     // manually assemble an Org Iterator since you can't mock DBCollection in getDbIteratorOverOrgs()
     List<Organism> orgs = new ArrayList<>();
     for (Map.Entry<Long, String> orgName : orgNames.entrySet()) {
-      orgs.add(new Organism(orgName.getKey(), -1, orgName.getValue()));
+      orgs.add(new Organism(orgName.getKey(), orgName.getValue()));
     }
 
     Iterator<Organism> orgIterator = orgs.iterator();

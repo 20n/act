@@ -263,8 +263,8 @@ public class SequenceMergerTest {
         StepDirection.LEFT_TO_RIGHT, "test reaction", Reaction.RxnDetailType.CONCRETE);
 
     JSONObject proteinData = new JSONObject();
+    Set<Long> sequenceSet = new HashSet<>(Arrays.asList(1L, 2L));
 
-    Set<Long> sequenceSet = new HashSet<>(Collections.singletonList(1L));
     proteinData.put("sequences", sequenceSet);
     proteinData.put("organism", 1L);
     proteinData.put("source_reaction_id", 1L);
@@ -272,7 +272,7 @@ public class SequenceMergerTest {
     reaction.addProteinData(proteinData);
 
     proteinData = new JSONObject();
-    sequenceSet = new HashSet<>(Arrays.asList(1L, 2L));
+    sequenceSet = new HashSet<>(Collections.singletonList(1L));
     proteinData.put("sequences", sequenceSet);
     proteinData.put("organism", 1L);
     proteinData.put("source_reaction_id", 1L);
@@ -297,10 +297,10 @@ public class SequenceMergerTest {
 
     List<Organism> organismList = new ArrayList<>();
 
-    Organism musMusculus = new Organism(1L, -1, "Mus musculus");
+    Organism musMusculus = new Organism(1L, "Mus musculus");
     organismList.add(musMusculus);
 
-    Organism homoSapiens = new Organism(2L, -1, "Homo sapiens");
+    Organism homoSapiens = new Organism(2L, "Homo sapiens");
     organismList.add(homoSapiens);
 
     Map<Long, String> writtenOrganisms = mockAPI.getWrittenOrganismNames();

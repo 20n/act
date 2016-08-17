@@ -91,7 +91,7 @@ public class MockedNoSQLAPI {
     this.readOrganismNames.putAll(orgNames);
 
     for (Map.Entry<Long, String> orgName : readOrganismNames.entrySet()) {
-      orgs.add(new Organism(orgName.getKey(), -1, orgName.getValue()));
+      orgs.add(new Organism(orgName.getKey(), orgName.getValue()));
     }
 
     for (Seq seq : sequences) {

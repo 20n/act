@@ -9,9 +9,16 @@ public class Organism implements Serializable {
   private Long uuid, parent, ncbiID;
   private String name, rank;
 
+  @Deprecated
   public Organism(long uuid, long ncbiID, String name) {
     this.uuid = uuid;
     this.ncbiID = ncbiID;
+    this.name = name;
+  }
+
+  public Organism(long uuid, String name) {
+    this.uuid = uuid;
+    this.ncbiID = -1L;
     this.name = name;
   }
 

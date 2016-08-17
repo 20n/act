@@ -2500,7 +2500,7 @@ public class MongoDB {
     Long id = (long) o.get("org_id");
     String name = (String) o.get("name");
 
-    return new Organism(id, -1, name);
+    return new Organism(id, name);
   }
 
   public DBIterator getDbIteratorOverOrgs() {
