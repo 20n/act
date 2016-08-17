@@ -44,10 +44,10 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach with TimeL
     A.thenRun(B).thenRun(C).thenRun(D)
     JobManager.startJobAndAwaitUntilWorkflowComplete(A)
 
-    A.getInternalState.status.isCompleted should be(true)
-    B.getInternalState.status.isCompleted should be(true)
-    C.getInternalState.status.isCompleted should be(true)
-    D.getInternalState.status.isCompleted should be(true)
+    A.internalState.statusManager.isCompleted should be(true)
+    B.internalState.statusManager.isCompleted should be(true)
+    C.internalState.statusManager.isCompleted should be(true)
+    D.internalState.statusManager.isCompleted should be(true)
 
     JobManager.getOrderOfJobCompletion should be(List("A", "B", "C", "D"))
   }
@@ -79,11 +79,11 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach with TimeL
     JobManager.startJobAndKillWorkflowAfterSpecificJobCompletes(A, b1)
 
     // C should be killed as it completes after b3 based on time.
-    A.getInternalState.status.isCompleted should be(true)
-    B.getInternalState.status.isCompleted should be(true)
-    b1.getInternalState.status.isCompleted should be(true)
-    C.getInternalState.status.isKilled should be(true)
-    C.getInternalState.status.isFailed should be(true)
+    A.internalState.statusManager.isCompleted should be(true)
+    B.internalState.statusManager.isCompleted should be(true)
+    b1.internalState.statusManager.isCompleted should be(true)
+    C.internalState.statusManager.isKilled should be(true)
+    C.internalState.statusManager.isFailed should be(true)
   }
 
   "Jobs" should "be able to have two divergent branches come together at the end" in {
@@ -165,17 +165,17 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach with TimeL
     B.thenRun(G).thenRun(F)
 
     // If we kill B, E should still be allowed to complete.
-    B.getInternalState.killIncompleteJobs()
+    B.internalState.killIncompleteJobs()
 
     JobManager.startJobAndAwaitUntilWorkflowComplete(A)
 
 
-    A.getInternalState.status.isSuccessful should be(true)
-    B.getInternalState.status.isKilled should be(true)
-    C.getInternalState.status.isSuccessful should be(true)
-    D.getInternalState.status.isSuccessful should be(true)
-    E.getInternalState.status.isSuccessful should be(true)
-    F.getInternalState.status.isKilled should be(true)
-    G.getInternalState.status.isKilled should be(true)
+    A.internalState.statusManager.isSuccessful should be(true)
+    B.internalState.statusManager.isKilled should be(true)
+    C.internalState.statusManager.isSuccessful should be(true)
+    D.internalState.statusManager.isSuccessful should be(true)
+    E.internalState.statusManager.isSuccessful should be(true)
+    F.internalState.statusManager.isKilled should be(true)
+    G.internalState.statusManager.isKilled should be(true)
   }
 }

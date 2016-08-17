@@ -78,10 +78,12 @@ object JobManager {
   }
 
   def indicateJobCompleteToManager(job: Job) {
-    // This job doesn't currently exist in the known jobs but for some reason is hitting the manager.
-    // Likely means an old or incorrectly run job so we log the error and move on, but don't let it change things.
-    // Given our kill behavior this should not happen, but just in case we have this here.
     if (!jobs.contains(job)) {
+      /*
+        This job doesn't currently exist in the known jobs but for some reason is hitting the manager.
+        Likely means an old or incorrectly run job so we log the error and move on, but don't let it change things.
+        Given our kill behavior this should not happen, but just in case we have the check below.
+       */
       val message = s"A job $job that doesn't exist in job buffer tried to modify Job Manager."
       logger.error(message)
       return
@@ -93,7 +95,7 @@ object JobManager {
         // Cancel all futures still running.  If we kill the jobs here, we don't have to worry about the
         // time difference between the lock releasing and us handling those
         // conditions normally and another job starting in the meantime.
-        jobs.foreach(_.getInternalState.killIncompleteJobs())
+        jobs.foreach(_.internalState.killIncompleteJobs())
         numberLock.releaseLock()
       }
     } else {
@@ -111,11 +113,11 @@ object JobManager {
   }
 
   def completedJobsCount(): Int = {
-    jobs.count(_.getInternalState.status.isCompleted)
+    jobs.count(_.internalState.statusManager.isCompleted)
   }
 
   private def runningJobsCount(): Int = {
-    jobs.count(_.getInternalState.status.isRunning)
+    jobs.count(_.internalState.statusManager.isRunning)
   }
 
   def getMapOfJobNamesToStatuses: Map[String, String] = {
@@ -127,7 +129,7 @@ object JobManager {
   }
 
   def getOrderOfJobStatuses: List[String] = {
-    jobCompleteOrdering.toList.map(_.getInternalState.status.getJobStatus)
+    jobCompleteOrdering.toList.map(_.internalState.statusManager.getJobStatus)
   }
 
   /**
@@ -145,19 +147,19 @@ object JobManager {
   }
 
   private def killedJobsCount(): Int = {
-    jobs.count(_.getInternalState.status.isKilled)
+    jobs.count(_.internalState.statusManager.isKilled)
   }
 
   private def unstartedJobsCount(): Int = {
-    jobs.count(_.getInternalState.status.isUnstarted)
+    jobs.count(_.internalState.statusManager.isNotStarted)
   }
 
   private def failedJobsCount(): Int = {
-    jobs.count(_.getInternalState.status.isFailed)
+    jobs.count(_.internalState.statusManager.isFailed)
   }
 
   private def successfulJobsCount(): Int = {
-    jobs.count(_.getInternalState.status.isSuccessful)
+    jobs.count(_.internalState.statusManager.isSuccessful)
   }
 
   /**
@@ -169,7 +171,6 @@ object JobManager {
     // It is important to verify cycles first as otherwise reachables search will never end ~
     val allJobs: Set[Job] = getAllChildren(job)
 
-    //val allJobs: Set[Job] = getAllChildrenJobs(job)
     // Grab all the jobs that can't be reached so we can report back which ones need to be connected
     val jobsNotReached = jobs.filter(job => !allJobs.contains(job))
     if (jobsNotReached.nonEmpty) {
@@ -194,13 +195,13 @@ object JobManager {
 
     // Found a cycle, raise error
     if (currentJobList.toSet.size != currentJobList.length) {
-      throw new RuntimeException("Detected an abnormality in your workflow.  Either a cycle exists, or multiple " +
-        "jobs will attempt to run the same job.  In either of these scenarios, " +
-        "your workflow will be unable to run the job a second time and thus will crash.  " +
+      throw new RuntimeException("Detected an abnormality in your workflow.  " +
+        "Either a cycle existsthe same job occurs multiple times in your workflow, either of which are not allowed.  " +
+        "In either of these scenario, your workflow will be unable to run the job a second time and thus will crash. " +
         "Please review your workflow.")
     }
 
-    for (jobLevel <- job.getInternalState.runManager.dependencyManager.jobBuffer) {
+    for (jobLevel <- job.internalState.dependencyManager.jobBuffer.toList) {
       for (currentJob <- jobLevel) {
         // If a cycle found below, return true to propagate.
         getAllChildren(currentJob, currentJobList)
