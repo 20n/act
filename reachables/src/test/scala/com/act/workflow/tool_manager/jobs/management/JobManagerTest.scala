@@ -6,7 +6,7 @@ import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
 
 class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
   override def beforeEach(): Unit = {
-    JobManager.setVerbosity(LoggingVerbosity.Off)
+    JobManager.setVerbosity(0)
   }
 
   override def afterEach(): Unit = {
@@ -65,12 +65,12 @@ class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
 
     JobManager.startJobAndKillWorkflowAfterSpecificJobCompletes(A, B)
 
-    A.getJobStatus.isCompleted should be(true)
-    B.getJobStatus.isCompleted should be(true)
-    b1.getJobStatus.isKilled should be(true)
-    b2.getJobStatus.isKilled should be(true)
-    b3.getJobStatus.isKilled should be(true)
-    C.getJobStatus.isKilled should be(true)
+    A.internalState.status.isCompleted should be(true)
+    B.internalState.status.isCompleted should be(true)
+    b1.internalState.status.isKilled should be(true)
+    b2.internalState.status.isKilled should be(true)
+    b3.internalState.status.isKilled should be(true)
+    C.internalState.status.isKilled should be(true)
   }
 
   "The Job Manager" should "detect if not all jobs have been added to run." in {
