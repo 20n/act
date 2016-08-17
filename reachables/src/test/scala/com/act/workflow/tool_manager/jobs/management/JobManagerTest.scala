@@ -2,9 +2,14 @@ package com.act.workflow.tool_manager.jobs.management
 
 import com.act.workflow.tool_manager.jobs.ScalaJob
 import com.act.workflow.tool_manager.tool_wrappers.ScalaJobWrapper
+import org.scalatest.concurrent.{ThreadSignaler, TimeLimitedTests}
+import org.scalatest.time.SpanSugar._
 import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
 
-class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
+class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach with TimeLimitedTests {
+  override val defaultTestSignaler = ThreadSignaler
+  val timeLimit = 200 millis
+
   override def beforeEach(): Unit = {
     JobManager.setVerbosity(0)
   }
@@ -65,12 +70,12 @@ class JobManagerTest extends FlatSpec with Matchers with BeforeAndAfterEach {
 
     JobManager.startJobAndKillWorkflowAfterSpecificJobCompletes(A, B)
 
-    A.internalState.status.isCompleted should be(true)
-    B.internalState.status.isCompleted should be(true)
-    b1.internalState.status.isKilled should be(true)
-    b2.internalState.status.isKilled should be(true)
-    b3.internalState.status.isKilled should be(true)
-    C.internalState.status.isKilled should be(true)
+    A.getInternalState.status.isCompleted should be(true)
+    B.getInternalState.status.isCompleted should be(true)
+    b1.getInternalState.status.isKilled should be(true)
+    b2.getInternalState.status.isKilled should be(true)
+    b3.getInternalState.status.isKilled should be(true)
+    C.getInternalState.status.isKilled should be(true)
   }
 
   "The Job Manager" should "detect if not all jobs have been added to run." in {
