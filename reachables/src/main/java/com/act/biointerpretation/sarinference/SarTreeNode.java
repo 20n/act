@@ -9,11 +9,15 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A single node in a SarTree, which corresponds to a substructure pulled out by LibMCS clustering.
  */
 public class SarTreeNode {
+
+  public static final String PREDICTION_ID_KEY = "prediction_id";
 
   // TODO: this enum should live in the LCMS module once Vijay and Gil merge their pieces
   // The idea of NO_DATA is to indicate if we query on a molecule who's mass no analysis was done on, to distinguish
@@ -23,6 +27,7 @@ public class SarTreeNode {
     MISS,
     NO_DATA
   }
+
 
   @JsonProperty("hierarchy_id")
   String hierarchyId;
@@ -35,12 +40,16 @@ public class SarTreeNode {
   @JsonProperty("number_hits")
   Integer numberHits;
 
+  @JsonProperty("prediction_ids")
+  List<Integer> predictionIds;
+
   private SarTreeNode() {
   }
 
-  public SarTreeNode(Molecule substructure, String hierarchyId) {
+  public SarTreeNode(Molecule substructure, String hierarchyId, List<Integer> predictionIds) {
     this.substructure = substructure;
     this.hierarchyId = hierarchyId;
+    this.predictionIds = predictionIds;
     this.numberMisses = 0;
     this.numberHits = 0;
   }
@@ -72,7 +81,7 @@ public class SarTreeNode {
 
   @JsonProperty
   public String getSubstructureInchi() throws IOException {
-    return MolExporter.exportToFormat(substructure, "inchi:AuxNone");
+    return MolExporter.exportToFormat(substructure, "inchi:AuxNone,Woff");
   }
 
   public void setSubstructureInchi(String substructure) throws IOException {
@@ -87,5 +96,13 @@ public class SarTreeNode {
   @JsonIgnore
   public Double getPercentageHits() {
     return new Double(numberHits) / new Double(numberHits + numberMisses);
+  }
+
+  public List<Integer> getPredictionIds() {
+    return predictionIds;
+  }
+
+  public void setPredictionId(List<Integer> predictionIds) {
+    this.predictionIds = new ArrayList<>(predictionIds);
   }
 }

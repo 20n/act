@@ -6,6 +6,7 @@ import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.l2expansion.L2FilteringDriver;
 import com.act.biointerpretation.l2expansion.L2InchiCorpus;
+import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
 import com.act.jobs.FileChecker;
 import com.act.jobs.JavaRunnable;
@@ -23,7 +24,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -244,12 +247,12 @@ public class LibMcsClustering {
 
         // Build input corpus and substrate list
         L2PredictionCorpus inputCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(predictionCorpusInput);
-        L2InchiCorpus substrateInchis = new L2InchiCorpus(inputCorpus.getUniqueProductInchis());
+        Collection<Molecule> molecules = importMoleculesWithPredictionIds(inputCorpus);
 
         // Run substrate clustering
         SarTree sarTree = new SarTree();
         try {
-          sarTree.buildByClustering(new LibraryMCS(), substrateInchis.getMolecules());
+          sarTree.buildByClustering(new LibraryMCS(), molecules);
         } catch (InterruptedException e) {
           LOGGER.error("Threw interrupted exception during buildByClustering: %s", e.getMessage());
           throw new RuntimeException(e);
@@ -263,6 +266,33 @@ public class LibMcsClustering {
       @Override
       public String toString() {
         return "SarClusterer:" + predictionCorpusInput.getName();
+      }
+
+      public Collection<Molecule> importMoleculesWithPredictionIds(L2PredictionCorpus inputCorpus) throws MolFormatException {
+        Map<String, Molecule> inchiToMoleculeMap = new HashMap<>();
+        for (L2Prediction prediction : inputCorpus.getCorpus()) {
+          for (String substrateInchi : prediction.getSubstrateInchis()) { // For now this should only be one substrate
+            if (!inchiToMoleculeMap.containsKey(substrateInchi)) {
+              Molecule mol = importMoleculeWithPredictionId(substrateInchi, prediction.getId());
+              inchiToMoleculeMap.put(substrateInchi, mol);
+            } else {
+              List<Integer> predictionIds =
+                  (ArrayList<Integer>) inchiToMoleculeMap
+                      .get(substrateInchi)
+                      .getPropertyObject(SarTreeNode.PREDICTION_ID_KEY);
+              predictionIds.add(prediction.getId());
+            }
+          }
+        }
+        return inchiToMoleculeMap.values();
+      }
+
+      public Molecule importMoleculeWithPredictionId(String inchi, Integer id) throws MolFormatException {
+        Molecule mol = MolImporter.importMol(inchi, "inchi");
+        List<Integer> predictionIds = new ArrayList<>();
+        predictionIds.add(id);
+        mol.setPropertyObject(SarTreeNode.PREDICTION_ID_KEY, predictionIds);
+        return mol;
       }
     };
   }

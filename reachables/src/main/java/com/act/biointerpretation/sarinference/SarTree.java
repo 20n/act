@@ -1,12 +1,15 @@
 package com.act.biointerpretation.sarinference;
 
 import chemaxon.clustering.LibraryMCS;
+import chemaxon.formats.MolFormatException;
 import chemaxon.struc.Molecule;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -20,9 +23,11 @@ import java.util.function.Consumer;
 public class SarTree {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(SarTree.class);
+  private static transient final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private static final Integer FIRST_ID = 1;
   private static final Boolean ALL_NODES = false; // Tell LibMCS to return all nodes in the tree in its clustering
+  private static final String HIERARCHY_ID = "HierarchyID";
 
   private Map<String, SarTreeNode> nodeMap;
 
@@ -45,7 +50,7 @@ public class SarTree {
    * @param molecules The molecules.
    * @throws InterruptedException
    */
-  public void buildByClustering(LibraryMCS libMcs, List<Molecule> molecules) throws InterruptedException {
+  public void buildByClustering(LibraryMCS libMcs, Collection<Molecule> molecules) throws InterruptedException {
     if (molecules.size() == 0) {
       LOGGER.error("Tried to build clustering on no molecules!");
       // Log error but don't throw error. This could be a piece in a workflow where we try to build SARs on a prediction
@@ -57,6 +62,7 @@ public class SarTree {
     for (Molecule mol : molecules) {
       libMcs.addMolecule(mol);
     }
+    LOGGER.info("Beginning libMCS clustering.");
     libMcs.search();
 
     LibraryMCS.ClusterEnumerator enumerator = libMcs.getClusterEnumerator(ALL_NODES);
@@ -82,10 +88,45 @@ public class SarTree {
         // Log but don't throw error. This doesn't seem to indicate a real problem, but just a quirk of LibMCS.
         return;
       }
-      String hierId = molecule.getPropertyObject("HierarchyID").toString();
-      SarTreeNode thisNode = new SarTreeNode(molecule, hierId);
-      this.addNode(thisNode);
+
+      try {
+        this.addNode(getSarTreeNodeFromEnumeratorOutput(molecule));
+      } catch (MolFormatException e) {
+        // This error only seems to happen when the enumerator has in fact run out of valid molecules.
+        // For that reason, we return instead of continuing or throwing an exception.
+        LOGGER.info("Exception on getting SarTreeNode, stopping SarTree build: %s", e.getMessage());
+        return;
+      }
     }
+  }
+
+  /**
+   * Builds a SarTreeNode from the corresponding molecule output from the enumerator. Reads the HierarchyID as well as
+   * the prediction ID property from the molecule, if it exists.
+   *
+   * @param molecule A molecule spit out by the ClusterEnumerator.
+   * @return A SarTreeNode.
+   */
+  public SarTreeNode getSarTreeNodeFromEnumeratorOutput(Molecule molecule) throws MolFormatException {
+    if (molecule.getPropertyObject(HIERARCHY_ID) == null) {
+      throw new MolFormatException("Bizarre error: Libmcs returned us a molecule with no hierarchy ID.");
+    }
+    String hierId = molecule.getPropertyObject(HIERARCHY_ID).toString();
+    Object propertyObject = molecule.getPropertyObject(SarTreeNode.PREDICTION_ID_KEY);
+
+    List<Integer> predictionIds = new ArrayList<>();
+    ;
+    if (propertyObject != null) {
+      try {
+        String stringList = propertyObject.toString();
+        predictionIds = Arrays.asList(OBJECT_MAPPER.readValue(stringList, Integer[].class));
+      } catch (IOException e) {
+        LOGGER.info("Couldn't deserialize %s into list : %s", propertyObject, e.getMessage());
+        throw new RuntimeException(e);
+      }
+    }
+
+    return new SarTreeNode(molecule, hierId, predictionIds);
   }
 
   public List<SarTreeNode> getRootNodes() {
