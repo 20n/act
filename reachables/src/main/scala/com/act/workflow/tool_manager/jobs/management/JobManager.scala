@@ -1,6 +1,7 @@
 package com.act.workflow.tool_manager.jobs.management
 
 import com.act.workflow.tool_manager.jobs.Job
+import com.act.workflow.tool_manager.jobs.management.utility.{AtomicLatch, LoggingController}
 import org.apache.logging.log4j.LogManager
 
 import scala.collection.mutable.ListBuffer
@@ -20,12 +21,10 @@ object JobManager {
 
   private var jobToAwaitFor: Option[Job] = None
 
-  private var verbosity = LoggingVerbosity.Medium
-
   def setVerbosity(verbosity: Int): Unit = {
-    require(verbosity >= LoggingVerbosity.Off && verbosity <= LoggingVerbosity.High,
-      s"Verbosity must be set as an integer at or between ${LoggingVerbosity.Off} - ${LoggingVerbosity.High}")
-    this.verbosity = verbosity
+    require(verbosity >= 0 && verbosity <= 6, "Verbosity must be set as an integer at or between 0 - 6.")
+    LoggingController.setVerbosity(LoggingController.verbosityMap(verbosity))
+    logger.info(s"Verbosity was changed to level $verbosity")
   }
 
   /**
@@ -46,10 +45,9 @@ object JobManager {
     * @return the job added
     */
   def addJob(job: Job): Job = {
-    job.setVerbosity(verbosity)
     jobs.append(job)
     numberLock.countUp()
-    if (verbosity >= LoggingVerbosity.Medium_Low) logger.info(s"Added command $job to JobManager")
+    logger.debug(s"Added command $job to JobManager")
     job
   }
 
@@ -85,7 +83,7 @@ object JobManager {
     // Given our kill behavior this should not happen, but just in case we have this here.
     if (!jobs.contains(job)) {
       val message = s"A job $job that doesn't exist in job buffer tried to modify Job Manager."
-      if (verbosity >= LoggingVerbosity.Medium_Low) logger.error(message)
+      logger.error(message)
       return
     }
 
@@ -95,7 +93,7 @@ object JobManager {
         // Cancel all futures still running.  If we kill the jobs here, we don't have to worry about the
         // time difference between the lock releasing and us handling those
         // conditions normally and another job starting in the meantime.
-        jobs.foreach(_.killUncompleteJob())
+        jobs.foreach(_.internalState.killIncompleteJobs())
         numberLock.releaseLock()
       }
     } else {
@@ -103,11 +101,9 @@ object JobManager {
     }
     jobCompleteOrdering.append(job)
 
-    if (verbosity >= LoggingVerbosity.Medium) {
-      logger.info(s"<Concurrent jobs running = ${runningJobsCount()}>")
-      logger.info(s"<Current jobs awaiting to run = ${waitingJobsCount()}>")
-      logger.info(s"<Completed jobs = ${completedJobsCount()}>")
-    }
+    logger.trace(s"<Concurrent jobs running = ${runningJobsCount()}>")
+    logger.trace(s"<Current jobs awaiting to run = ${waitingJobsCount()}>")
+    logger.trace(s"<Completed jobs = ${completedJobsCount()}>")
   }
 
   private def waitingJobsCount(): Int = {
@@ -115,11 +111,11 @@ object JobManager {
   }
 
   def completedJobsCount(): Int = {
-    jobs.count(x => x.getJobStatus.isCompleted)
+    jobs.count(_.internalState.status.isCompleted)
   }
 
   private def runningJobsCount(): Int = {
-    jobs.count(x => x.getJobStatus.isRunning)
+    jobs.count(_.internalState.status.isRunning)
   }
 
   def getMapOfJobNamesToStatuses: Map[String, String] = {
@@ -131,7 +127,7 @@ object JobManager {
   }
 
   def getOrderOfJobStatuses: List[String] = {
-    jobCompleteOrdering.toList.map(x => x.getJobStatus.toString)
+    jobCompleteOrdering.toList.map(_.internalState.status.getJobStatus)
   }
 
   /**
@@ -140,30 +136,28 @@ object JobManager {
   private def instantiateCountDownLockAndWait() = {
     numberLock.await()
 
-    if (verbosity >= LoggingVerbosity.Low) {
-      logger.info("All jobs have completed.")
-      logger.info(s"Number of jobs run = ${completedJobsCount()}")
-      logger.info(s"Number of jobs added but not run = ${unstartedJobsCount()}")
-      logger.info(s"Number of jobs killed = ${killedJobsCount()}")
-      logger.info(s"Number of jobs failed = ${failedJobsCount()}")
-      logger.info(s"Number of jobs successful = ${successfulJobsCount()}")
-    }
+    logger.info("All jobs have completed.")
+    logger.info(s"Number of jobs run = ${completedJobsCount()}")
+    logger.info(s"Number of jobs added but not run = ${unstartedJobsCount()}")
+    logger.info(s"Number of jobs killed = ${killedJobsCount()}")
+    logger.info(s"Number of jobs failed = ${failedJobsCount()}")
+    logger.info(s"Number of jobs successful = ${successfulJobsCount()}")
   }
 
   private def killedJobsCount(): Int = {
-    jobs.count(x => x.getJobStatus.isKilled)
+    jobs.count(_.internalState.status.isKilled)
   }
 
   private def unstartedJobsCount(): Int = {
-    jobs.count(x => x.getJobStatus.isUnstarted)
+    jobs.count(_.internalState.status.isUnstarted)
   }
 
   private def failedJobsCount(): Int = {
-    jobs.count(x => x.getJobStatus.isFailed)
+    jobs.count(_.internalState.status.isFailed)
   }
 
   private def successfulJobsCount(): Int = {
-    jobs.count(x => x.getJobStatus.isSuccessful)
+    jobs.count(_.internalState.status.isSuccessful)
   }
 
   /**
@@ -206,7 +200,7 @@ object JobManager {
         "Please review your workflow.")
     }
 
-    for (jobLevel <- job.getJobBuffer) {
+    for (jobLevel <- job.internalState.jobBuffer) {
       for (currentJob <- jobLevel) {
         // If a cycle found below, return true to propagate.
         getAllChildren(currentJob, currentJobList)
@@ -224,12 +218,12 @@ object JobManager {
   }
 
   private def getIncompleteJobs: List[Job] = {
-    jobs.filter(x => x.getJobStatus.isRunning).toList
+    jobs.filter(_.internalState.status.isRunning).toList
   }
 
   private def mapStatus: Map[String, Int] = {
     // Take the jobs, identify and count their statuses and return that count
-    val allJobsStatuses: List[String] = jobs.map(jobs => jobs.getJobStatus.toString).toList
+    val allJobsStatuses: List[String] = jobs.map(_.internalState.status.getJobStatus).toList
     val jobsGroupedByIdentity: Map[String, List[String]] = allJobsStatuses.groupBy(identity)
     jobsGroupedByIdentity.mapValues(_.size)
   }
