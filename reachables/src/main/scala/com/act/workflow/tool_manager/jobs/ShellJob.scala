@@ -45,7 +45,7 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
   }
 
   protected def markJobSuccessBasedOnReturnCode(returnCode: Int): Unit = {
-    this.getInternalState.returnCode = returnCode
+    internalState.setReturnCode(returnCode)
     logger.trace(s"Command ${this} has changed return code to $returnCode")
     if (returnCode != 0)
       markAsFailure()
@@ -58,6 +58,11 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
     this
   }
 
+  def writeErrorStreamToFile(file: File): Job = {
+    errorMethod = Option(writeStreamToFile(file))
+    this
+  }
+
   // Internal handling out streams
   // To File
   private def writeStreamToFile(file: File)(output: String): Unit = {
@@ -67,11 +72,6 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
     val writer = new PrintWriter(file)
     writer.write(output)
     writer.close()
-  }
-
-  def writeErrorStreamToFile(file: File): Job = {
-    errorMethod = Option(writeStreamToFile(file))
-    this
   }
 
   // job1.writeOutputStreamToLogger.thenRun(job2)

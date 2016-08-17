@@ -14,7 +14,7 @@ class RoToFastaFlow
   with WorkingDirectoryUtility {
 
   override val HELP_MESSAGE = "Workflow to convert RO number into a FASTA file."
-  private val logger = LogManager.getLogger(getClass.getName)
+  override val logger = LogManager.getLogger(getClass.getName)
 
   private val OPTION_DATABASE = "d"
   private val OPTION_OUTPUT_FASTA_FILE = "f"

@@ -20,7 +20,7 @@ class RoToProteinPredictionFlow
   with WorkingDirectoryUtility {
 
   override val HELP_MESSAGE = "Workflow to convert RO numbers into protein predictions based on HMMs."
-  private val logger = LogManager.getLogger(getClass.getName)
+  override val logger = LogManager.getLogger(getClass.getName)
 
   private val OPTION_OUTPUT_FASTA_FILE = "f"
   private val OPTION_RESULT_FILE = "o"
