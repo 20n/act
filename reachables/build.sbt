@@ -93,6 +93,12 @@ libraryDependencies ++= {
       "jaxen" % "jaxen" % "1.1.6",
       "org.eclipse.rdf4j" % "rdf4j-rio-api" % "2.0M3",
       "org.eclipse.rdf4j" % "rdf4j-rio-turtle" % "2.0M3",
+      /*
+       * squants is a DSL for autoconversions between units
+       * allows us to write readable code such as:
+       * USD(1 million) (1000 dollars) / (1 tonnes)
+       */
+      "com.squants"  %% "squants"  % "0.6.2",
   /*
    * the maven repo jar seem to be outdated, or incompatible.
    * we posted to the indigo group bugs. The current resolution
