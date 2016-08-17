@@ -4,6 +4,7 @@ import com.act.biointerpretation.l2expansion.L2FilteringDriver;
 import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
+import com.act.jobs.JavaRunnable;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.commons.cli.CommandLine;
@@ -17,11 +18,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public class ProductScorer {
 
@@ -143,5 +147,80 @@ public class ProductScorer {
     L2PredictionCorpus finalCorpus = new L2PredictionCorpus(predictions);
     finalCorpus.writePredictionsToJsonFile(outputFile);
     LOGGER.info("Complete!.");
+  }
+
+
+  /**
+   * Reads in scored SARs, checks them against a prediction corpus and positive inchi list to get a product ranking.
+   *
+   * @param predictionCorpus The prediction corpus to score.
+   * @param scoredSars The scored SARs to use.
+   * @param positiveInchis The set of positive LCMS inchis, to use in scoring.
+   * @return A JavaRunnable to run the product scoring.
+   */
+  public static JavaRunnable getRunnableProductScorer(File predictionCorpus, File scoredSars, File positiveInchis,
+                                                      File outputFile) {
+
+    return new JavaRunnable() {
+      @Override
+      public void run() throws IOException {
+        // Build SAR tree
+        SarTreeNodeList nodeList = new SarTreeNodeList();
+        nodeList.loadFromFile(scoredSars);
+
+        // Build prediction corpus
+        L2PredictionCorpus predictions = L2PredictionCorpus.readPredictionsFromJsonFile(predictionCorpus);
+
+        // Build positive inchis
+        L2InchiCorpus positiveInchiCorpus = new L2InchiCorpus();
+        positiveInchiCorpus.loadCorpus(positiveInchis);
+        Set<String> inchiPositives = new HashSet<>();
+        inchiPositives.addAll(positiveInchiCorpus.getInchiList());
+
+        L2PredictionCorpus positivePredictions =
+            predictions.applyFilter(prediction -> inchiPositives.containsAll(prediction.getProductInchis()));
+        BestSarFinder sarFinder = new BestSarFinder(nodeList);
+
+        // Score products
+        Map<L2Prediction, SarTreeNode> predictionToSarMap = new HashMap<>();
+        LOGGER.info("Scoring predictions.");
+        for (L2Prediction prediction : positivePredictions.getCorpus()) {
+          Optional<SarTreeNode> maybeBestSar = sarFinder.apply(prediction);
+          if (!maybeBestSar.isPresent()) {
+            continue;
+          }
+          SarTreeNode bestSar = maybeBestSar.get();
+
+          predictionToSarMap.put(prediction, bestSar);
+          prediction.setProjectorName(
+              prediction.getProjectorName() + ":" +
+                  bestSar.getHierarchyId() + ":" +
+                  bestSar.getRankingScore());
+        }
+
+        LOGGER.info("Sorting predictions.");
+        List<L2Prediction> predictionList = new ArrayList<>(predictionToSarMap.keySet());
+        predictionList.sort((a, b) ->
+        {
+          SarTreeNode firstSarTreeNode =  predictionToSarMap.get(a);
+          SarTreeNode secondSarTreeNode =  predictionToSarMap.get(b);
+
+          if (firstSarTreeNode == null || secondSarTreeNode == null) {
+            LOGGER.error("Sar tree is null");
+          }
+
+          return -Double.compare(firstSarTreeNode.getRankingScore(), secondSarTreeNode.getRankingScore());
+        });
+
+        L2PredictionCorpus finalCorpus = new L2PredictionCorpus(predictionList);
+        finalCorpus.writePredictionsToJsonFile(outputFile);
+        LOGGER.info("Complete!.");
+      }
+
+      @Override
+      public String toString() {
+        return "ProductScorer:" + scoredSars.getName();
+      }
+    };
   }
 }
