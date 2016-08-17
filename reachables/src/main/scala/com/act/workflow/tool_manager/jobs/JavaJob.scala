@@ -1,7 +1,7 @@
 package com.act.workflow.tool_manager.jobs
 
 import com.act.jobs.JavaRunnable
-import com.act.workflow.tool_manager.jobs.management.CanceleableFuture
+import com.act.workflow.tool_manager.jobs.management.utility.CanceleableFuture
 import org.apache.logging.log4j.LogManager
 
 import scala.concurrent.CancellationException
@@ -17,18 +17,17 @@ class JavaJob(name: String, runnable: JavaRunnable) extends Job(name) {
     val (future, cancel) = CanceleableFuture.create[Any](future => {
       this.runnable.run()
     })
-    this.cancelFuture = Option(cancel)
+    this.internalState.cancelFuture = Option(cancel)
 
     // Setup Job's success/failure
     future.onComplete({
-      case Success(x) => markAsSuccess()
+      case Success(x) => this.internalState.markAsSuccess()
       case Failure(x) =>
         if (x.isInstanceOf[CancellationException]) {
           logger.error("Future was canceled.")
         } else {
-          markAsFailure()
-          logger.error(s"Cause of failure was ${x.getMessage}.")
-          x.printStackTrace()
+          this.internalState.markAsFailure()
+          logger.error(s"Cause of failure was ${x.getMessage}.", x)
         }
     })
   }
