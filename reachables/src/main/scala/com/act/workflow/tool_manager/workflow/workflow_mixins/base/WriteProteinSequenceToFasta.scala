@@ -23,8 +23,8 @@ trait WriteProteinSequenceToFasta {
   def writeProteinSequenceToFasta(proteinSequence: ProteinSequence, outputStream: BufferedWriter) {
     val header: String = headerFormat.getHeader(proteinSequence)
 
-    writeFastaHeader(header, BufferedWriter)
-    writeFastaSequence(proteinSequence, BufferedWriter)
+    writeFastaHeader(header, outputStream)
+    writeFastaSequence(proteinSequence, outputStream)
   }
 
   private def writeFastaHeader(header: String, outputStream: BufferedWriter): Unit = {

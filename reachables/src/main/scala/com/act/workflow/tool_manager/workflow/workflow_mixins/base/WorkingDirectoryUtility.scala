@@ -11,8 +11,6 @@ trait WorkingDirectoryUtility {
   def defineOutputFilePath(cl: CommandLine, optionName: String, identifier: String, defaultValue: String, workingDirectory: String, fileEnding: String = ""): File = {
     createWorkingDirectory(new File(workingDirectory))
 
-    createWorkDirectory(new File(workingDirectory))
-
     // Spaces tend to be bad for file names
     val filteredIdentifier = identifier.replace(" ", "_")
 
@@ -44,8 +42,9 @@ trait WorkingDirectoryUtility {
     }
   }
 
-  def createWorkDirectory(workingDirectory: File): Unit = {
+  def createWorkingDirectory(workingDirectory: File): Unit = {
     if (!workingDirectory.exists()) {
+      logger.info(s"Creating working directories up to ${workingDirectory.getAbsolutePath}")
       workingDirectory.mkdirs()
     }
   }
