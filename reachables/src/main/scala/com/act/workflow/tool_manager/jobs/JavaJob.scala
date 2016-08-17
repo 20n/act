@@ -17,16 +17,16 @@ class JavaJob(name: String, runnable: JavaRunnable) extends Job(name) {
     val (future, cancel) = CanceleableFuture.create[Any](future => {
       this.runnable.run()
     })
-    this.internalState.cancelFuture = Option(cancel)
+    addCancelFunction(cancel)
 
     // Setup Job's success/failure
     future.onComplete({
-      case Success(x) => this.internalState.markAsSuccess()
+      case Success(x) => markAsSuccess()
       case Failure(x) =>
         if (x.isInstanceOf[CancellationException]) {
           logger.error("Future was canceled.")
         } else {
-          this.internalState.markAsFailure()
+          markAsFailure()
           logger.error(s"Cause of failure was ${x.getMessage}.", x)
         }
     })
