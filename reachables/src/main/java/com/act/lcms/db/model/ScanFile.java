@@ -283,14 +283,14 @@ public class ScanFile {
 
   // Parsing/loading
   protected enum SCAN_NAME_COMPONENT {
-    PLATE_NAME,
-    PLATE_BARCODE,
-    ROW,
-    COLUMN,
-    DATE,
-    MODE,
-    SCAN_PART,
-    FILE_TYPE,
+    PLATE_NAME,    // Optional, must use this or barcode
+    PLATE_BARCODE, // Optional, must use this or name
+    ROW,           // Required
+    COLUMN,        // Required
+    DATE,          // Required
+    MODE,          // Optional, default is POSITIVE
+    SCAN_PART,     // Optional, default is 1 (primary component); mzML files are assumed to contain all components
+    FILE_TYPE,     // Required
   }
   protected static final List<Pair<Pattern, Map<SCAN_NAME_COMPONENT, Integer>>> NAME_EXTRACTION_PATTERNS =
       new ArrayList<Pair<Pattern, Map<SCAN_NAME_COMPONENT, Integer>>> () {{
@@ -562,32 +562,21 @@ public class ScanFile {
    * @return a local date time
    */
   public LocalDateTime getDateFromScanFileTitle() throws Exception {
-    // There are two types of file formats, the nc and mzML formats.
-    String sanitizeStringFromFileFormat = this.fileName.replace(".nc", "").replace(".mzML", "");
-
-    String dateString = "";
-
-    // The data section of the file name for std meoh scan files are different from all other scan file entries.
-    // For example, this is an example meoh name: STD_MEOH_B2_0910201501.nc versus Plate9074_G1_0107201601.nc
-    // The date substring is after the 3rd underscore versus the second in the normal case.
-    if (sanitizeStringFromFileFormat.contains("STD_MEOH") || sanitizeStringFromFileFormat.contains("jaffna")) {
-      dateString = sanitizeStringFromFileFormat.split("_")[3];
-    } else {
-      dateString = sanitizeStringFromFileFormat.split("_")[2];
+    for (Pair<Pattern, Map<SCAN_NAME_COMPONENT, Integer>> scan : NAME_EXTRACTION_PATTERNS) {
+      Pattern p = scan.getLeft();
+      Map<SCAN_NAME_COMPONENT, Integer> groupMap = scan.getRight();
+      Matcher m = p.matcher(this.fileName);
+      if (m.matches() && groupMap.containsKey(SCAN_NAME_COMPONENT.DATE)) {
+        DateTimeFormatter formatter = DateTimeFormat.forPattern(DATE_FORMAT);
+        LocalDateTime dateTime = LocalDateTime.parse(m.group(groupMap.get(SCAN_NAME_COMPONENT.DATE)), formatter);
+        if (dateTime.getYear() < TWENTYN_INCEPTION) {
+          throw new RuntimeException("The date parsed from the file name is malformed.");
+        }
+        return dateTime;
+      }
     }
 
-    // We only need the first 8 characters, corresponding to the date format as following: 02082015 (for 02-08-2015)
-    if (dateString.length() > DATE_FORMAT.length()) {
-      dateString = dateString.substring(0, DATE_FORMAT.length());
-    }
-
-    DateTimeFormatter formatter = DateTimeFormat.forPattern(DATE_FORMAT);
-    LocalDateTime dateTime = LocalDateTime.parse(dateString, formatter);
-
-    if (dateTime.getYear() < TWENTYN_INCEPTION) {
-      throw new RuntimeException("The date parsed from the file name is malformed.");
-    }
-
-    return dateTime;
+    // We assume a date will appear in every file name format.
+    throw new RuntimeException(String.format("Unable to extract date from scan file name: %s", this.fileName));
   }
 }
