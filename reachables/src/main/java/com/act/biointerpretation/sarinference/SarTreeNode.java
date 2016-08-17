@@ -43,6 +43,9 @@ public class SarTreeNode {
   @JsonProperty("prediction_ids")
   List<Integer> predictionIds;
 
+  @JsonProperty
+  Double rankingScore;
+
   private SarTreeNode() {
   }
 
@@ -52,6 +55,7 @@ public class SarTreeNode {
     this.predictionIds = predictionIds;
     this.numberMisses = 0;
     this.numberHits = 0;
+    this.rankingScore = 0D;
   }
 
   public void setNumberMisses(Integer numberMisses) {
@@ -104,5 +108,13 @@ public class SarTreeNode {
 
   public void setPredictionId(List<Integer> predictionIds) {
     this.predictionIds = new ArrayList<>(predictionIds);
+  }
+
+  public Double getRankingScore() {
+    return rankingScore;
+  }
+
+  public void setRankingScore(Double rankingScore) {
+    this.rankingScore = rankingScore;
   }
 }

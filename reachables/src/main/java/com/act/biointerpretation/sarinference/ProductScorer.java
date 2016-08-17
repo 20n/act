@@ -141,7 +141,7 @@ public class ProductScorer {
     LOGGER.info("Sorting predictions by descending order.");
     List<L2Prediction> predictions = new ArrayList<>(predictionToSarMap.keySet());
     predictions.sort((a, b) ->
-        (-Double.compare(predictionToSarMap.get(a).getPercentageHits(), predictionToSarMap.get(b).getPercentageHits())));
+        (-Double.compare(predictionToSarMap.get(a).getRankingScore(), predictionToSarMap.get(b).getRankingScore())));
 
     LOGGER.info("Writing predictions to file.");
     L2PredictionCorpus finalCorpus = new L2PredictionCorpus(predictions);
@@ -200,17 +200,9 @@ public class ProductScorer {
 
         LOGGER.info("Sorting predictions.");
         List<L2Prediction> predictionList = new ArrayList<>(predictionToSarMap.keySet());
-        predictionList.sort((a, b) ->
-        {
-          SarTreeNode firstSarTreeNode =  predictionToSarMap.get(a);
-          SarTreeNode secondSarTreeNode =  predictionToSarMap.get(b);
-
-          if (firstSarTreeNode == null || secondSarTreeNode == null) {
-            LOGGER.error("Sar tree is null");
-          }
-
-          return -Double.compare(firstSarTreeNode.getRankingScore(), secondSarTreeNode.getRankingScore());
-        });
+        predictionList.sort((a, b) -> -Double.compare(
+              predictionToSarMap.get(a).getRankingScore(),
+              predictionToSarMap.get(b).getRankingScore()));
 
         L2PredictionCorpus finalCorpus = new L2PredictionCorpus(predictionList);
         finalCorpus.writePredictionsToJsonFile(outputFile);
