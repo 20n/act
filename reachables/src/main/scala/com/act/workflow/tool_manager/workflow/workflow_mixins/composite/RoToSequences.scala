@@ -10,12 +10,13 @@ trait RoToSequences extends QueryByRo with QueryByReactionId {
   /**
     * Takes in a set of ROs and translates them into FASTA files with all the enzymes that do that RO
     */
-  def writeFastaFileFromEnzymesMatchingRos(roValues: List[String], outputFastaFile: File, database: String)(): Unit = {
+  def writeFastaFileFromEnzymesMatchingRos(roValues: List[String], outputFastaFile: File,
+                                           database: String, organismRegex: Option[String] = None)(): Unit = {
     val methodLogger = LogManager.getLogger("writeFastaFileFromEnzymesMatchingRos")
     val mongoConnection = connectToMongoDatabase(database)
 
     val reactionIds = queryReactionsForReactionIdsByRo(roValues, mongoConnection)
     methodLogger.info("Discovering and writing sequences to FASTA file")
-    createFastaByReactionId(reactionIds.keySet.toList, outputFastaFile, mongoConnection)
+    createFastaByReactionId(reactionIds.keySet.toList, outputFastaFile, mongoConnection, organismRegex)
   }
 }

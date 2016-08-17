@@ -8,4 +8,5 @@ trait SequenceDatabaseKeywords {
   val SEQUENCE_DB_KEYWORD_NAME = "name"
   val SEQUENCE_DB_KEYWORD_ID = "_id"
   val SEQUENCE_DB_KEYWORD_RXN_REFS = "rxn_refs"
+  val SEQUENCE_DB_KEYWORD_ORGANISM_NAME = "org"
 }
