@@ -2,7 +2,7 @@ package com.act.workflow.tool_manager.jobs
 
 import com.act.workflow.tool_manager.jobs.management.JobManager
 import com.act.workflow.tool_manager.jobs.management.utility.JobFlag
-import com.act.workflow.tool_manager.tool_wrappers.{ScalaJobWrapper, ShellWrapper}
+import com.act.workflow.tool_manager.tool_wrappers.ScalaJobWrapper
 import org.scalatest.concurrent.{ThreadSignaler, TimeLimitedTests}
 import org.scalatest.time.SpanSugar._
 import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
@@ -21,6 +21,12 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach with TimeL
 
   def immediateReturnJob(name: String): ScalaJob = {
     val excitingFunction: () => Unit = () => Unit
+    ScalaJobWrapper.wrapScalaFunction(name, excitingFunction)
+  }
+
+
+  def longRunningJob(name: String, time: Long): ScalaJob = {
+    val excitingFunction: () => Unit = () => Thread.sleep(time)
     ScalaJobWrapper.wrapScalaFunction(name, excitingFunction)
   }
 
@@ -65,7 +71,7 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach with TimeL
     val B = immediateReturnJob("B")
     val b1 = immediateReturnJob("b1")
     // Won't take 50 seconds as should exit after b3 complete.
-    val C = ShellWrapper.shellCommand("C", List("sleep", "50"))
+    val C = longRunningJob("C", 50000)
 
     A.thenRunBatch(List(B, C))
     B.thenRun(b1)
