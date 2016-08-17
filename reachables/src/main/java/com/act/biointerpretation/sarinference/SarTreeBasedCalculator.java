@@ -18,10 +18,10 @@ import java.util.function.Function;
 public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
 
   SarTree sarTree;
-  Function<Molecule, SarTreeNode.LCMS_RESULT> hitCalculator;
+  Function<Integer, SarTreeNode.LCMS_RESULT> hitCalculator;
 
 
-  public SarTreeBasedCalculator(SarTree sarTree, Function<Molecule, SarTreeNode.LCMS_RESULT> calculator) {
+  public SarTreeBasedCalculator(SarTree sarTree, Function<Integer, SarTreeNode.LCMS_RESULT> calculator) {
     this.sarTree = sarTree;
     this.hitCalculator = calculator;
   }
@@ -40,7 +40,7 @@ public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
     for (SarTreeNode node : sarTree.traverseSubtree(sarTreeNode)) {
       // Only calculate on leaves
       if (sarTree.getChildren(node).isEmpty()) {
-        switch (hitCalculator.apply(node.getSubstructure())) {
+        switch (getLcmsData(node)) {
           case HIT:
             hits++;
             break;
@@ -53,5 +53,26 @@ public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
 
     sarTreeNode.setNumberHits(hits);
     sarTreeNode.setNumberMisses(misses);
+  }
+
+  /**
+   * Calculates whether a given SarTreeNode is a hit or not. If any of that node's predictions have positive
+   * products, we consider it a hit.
+   *
+   * @param node The SarTreeNode.
+   * @return True if at least one prediction Id of the node is an LCMS hit.
+   */
+  private SarTreeNode.LCMS_RESULT getLcmsData(SarTreeNode node) {
+    for (Integer predictionId : node.getPredictionIds()) {
+      SarTreeNode.LCMS_RESULT lcmsData = hitCalculator.apply(predictionId);
+
+      if (lcmsData == SarTreeNode.LCMS_RESULT.HIT) {
+        return SarTreeNode.LCMS_RESULT.HIT;
+      }
+      if (lcmsData == SarTreeNode.LCMS_RESULT.NO_DATA) {
+        throw new IllegalArgumentException("No LCMS data found for prediction ID " + predictionId);
+      }
+    }
+    return SarTreeNode.LCMS_RESULT.MISS;
   }
 }

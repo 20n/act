@@ -107,8 +107,6 @@ public class LibMcsClustering {
 
   private static final Random RANDOM_GENERATOR = new Random();
 
-  private static final Double LCMS_MISS_PENALTY = 1.0;
-
   public static void main(String[] args) throws Exception {
 
     // Build command line parser.
@@ -187,7 +185,7 @@ public class LibMcsClustering {
         explanatorySars.size(), THRESHOLD_TREE_SIZE, THRESHOLD_CONFIDENCE);
     LOGGER.info("Producing and writing output.");
 
-    explanatorySars.sortByDecreasingConfidence();
+    explanatorySars.sortByDecreasingScores();
     explanatorySars.writeToFile(outputFile);
     LOGGER.info("Complete!.");
   }
@@ -219,13 +217,13 @@ public class LibMcsClustering {
   }
 
   /**
-   * Returns a hit calculator that calculates which molecules are hits at random with the given positive rate
+   * Returns a hit calculator that calculates which prediction IDs are hits at random with the given positive rate
    *
    * @param positiveRate The positive rate.
    * @return The calculator.
    */
-  public static Function<Molecule, SarTreeNode.LCMS_RESULT> getRandomScorer(Double positiveRate) {
-    return (Molecule mol) -> RANDOM_GENERATOR.nextDouble() < positiveRate ?
+  public static Function<Integer, SarTreeNode.LCMS_RESULT> getRandomScorer(Double positiveRate) {
+    return (integer) -> RANDOM_GENERATOR.nextDouble() < positiveRate ?
         SarTreeNode.LCMS_RESULT.HIT :
         SarTreeNode.LCMS_RESULT.MISS;
   }
@@ -305,16 +303,18 @@ public class LibMcsClustering {
    * TODO: hook this up with Vijays actual LCMS module to load the LCMS data in and use it to calculate hit
    *
    * @param sarTreeInput An input file containing a SarTreeNodeList with all Sars from the clustering tree.
+   * @param lcmsInput File with LCMS hits.
    * @param sarTreeNodeOutput The output file to which to write the relevant SARs from the corpus, sorted in decreasing
    * order of confidence.
-   * @param positiveRate Percentage of LCMS hits, randomly assigned.
+   * @param missPenalty The penalty to assign an LCMS miss for a SAR, when scoring SARs.
+   * @param subtreeThreshold The minimum number of leaves a sAR should match to be returned.
    * @return A JavaRunnable to run the SAR scoring.
    */
   public static JavaRunnable getRunnableRandomSarScorer(
       File sarTreeInput,
+      File lcmsInput,
       File sarTreeNodeOutput,
-      Double positiveRate,
-      Double confidenceThreshold,
+      Double missPenalty,
       Integer subtreeThreshold) {
 
     return new JavaRunnable() {
@@ -322,6 +322,7 @@ public class LibMcsClustering {
       public void run() throws IOException {
         // Verify input and output files
         FileChecker.verifyInputFile(sarTreeInput);
+        FileChecker.verifyInputFile(lcmsInput);
         FileChecker.verifyAndCreateOutputFile(sarTreeNodeOutput);
 
         // Build SAR tree from input file
@@ -331,13 +332,18 @@ public class LibMcsClustering {
         nodeList.getSarTreeNodes().forEach(node -> sarTree.addNode(node));
 
         // Build sar scorer with appropriate positive rate
-        Function<Molecule, SarTreeNode.LCMS_RESULT> hitCalculator = getRandomScorer(positiveRate);
+        Function<Integer, SarTreeNode.LCMS_RESULT> hitCalculator = getRandomScorer(0.1);
         SarTreeBasedCalculator sarConfidenceCalculator = new SarTreeBasedCalculator(sarTree, hitCalculator);
 
         // Score SARs
+        // Calculate hits and misses
         sarTree.applyToNodes(sarConfidenceCalculator, subtreeThreshold);
-        SarTreeNodeList treeNodeList = sarTree.getExplanatoryNodes(subtreeThreshold, confidenceThreshold);
-        treeNodeList.sortByDecreasingConfidence();
+        // Calculate ranking scores
+        sarTree.getNodes().forEach(node ->
+            node.setRankingScore(node.getNumberHits() - (missPenalty * node.getNumberMisses())));
+        // Retain nodes that are not repeats or leaves, and have at least one match
+        SarTreeNodeList treeNodeList = sarTree.getExplanatoryNodes(subtreeThreshold, 0.0);
+        treeNodeList.sortByDecreasingScores();
 
         // Write out output.
         treeNodeList.writeToFile(sarTreeNodeOutput);
@@ -348,15 +354,5 @@ public class LibMcsClustering {
         return "SarScorer:" + sarTreeInput.getName();
       }
     };
-  }
-
-  /**
-   * Gets a Sar scorer with default confidence and tree size thresholds
-   */
-  public static JavaRunnable getRunnableRandomSarScorer(File sarTreeInput,
-                                                        File sarTreeNodeOutput,
-                                                        Double positiveRate) {
-    return getRunnableRandomSarScorer(sarTreeInput, sarTreeNodeOutput, positiveRate,
-        THRESHOLD_CONFIDENCE, THRESHOLD_TREE_SIZE);
   }
 }

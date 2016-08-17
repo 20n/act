@@ -30,6 +30,9 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
   private val OPTION_LCMS_POSITIVE_RATE = "p"
   private val OPTION_STARTING_POINT = "S"
 
+  private val LCMS_MISS_PENALTY: Double = 1.0
+  private val SUBTREE_THRESHOLD: Integer = 2
+
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
 
@@ -194,8 +197,10 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       val scoringRunnables = roIds.map(roId =>
         LibMcsClustering.getRunnableRandomSarScorer(
           sarTreeFiles(roId),
+          lcmsFile,
           scoredSarsFiles(roId),
-          positiveRate)
+          LCMS_MISS_PENALTY,
+          SUBTREE_THRESHOLD)
       )
       addJavaRunnableBatch("scoring", scoringRunnables)
     }

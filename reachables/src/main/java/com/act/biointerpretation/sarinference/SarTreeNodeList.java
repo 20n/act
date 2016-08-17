@@ -35,8 +35,8 @@ public class SarTreeNodeList {
     sarTreeNodes.add(node);
   }
 
-  public void sortByDecreasingConfidence() {
-    sarTreeNodes.sort((a, b) -> -Double.compare(a.getPercentageHits(), b.getPercentageHits()));
+  public void sortByDecreasingScores() {
+    sarTreeNodes.sort((a, b) -> -Double.compare(a.getRankingScore(), b.getRankingScore()));
   }
 
   public void loadFromFile(File file) throws IOException {
