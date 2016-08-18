@@ -68,7 +68,6 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
 
   private static final Set<String> ALL_HEADERS =
       new HashSet<>(Arrays.asList(HEADER_WELL_TYPE, HEADER_WELL_ROW, HEADER_WELL_COLUMN, HEADER_PLATE_BARCODE));
-  private static Double OVERALL_PROGRESS_OF_RUN = 0.0;
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class takes as input an experimental setup containing positive wells and negative control well. Along with this ",
@@ -499,7 +498,13 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
 
       IonAnalysisInterchangeModel ionAnalysisInterchangeModel = new IonAnalysisInterchangeModel(experimentalResults);
 
-      String outAnalysis = outputPrefix + "_" + positiveWell.getId().toString() + ".json";
+      // If there is only one positive replicate, the output file path is simply the prefix name. If there are multiple
+      // replicates, we need to do more post processing to combine the results, so generate result files per replicate
+      // and name the combined analysis file with the output prefix. This makes it easier for a workflow program to know
+      // which output file to look at for downstream processing.
+      String outAnalysis = positiveWells.size() == 1 ? outputPrefix :
+          outputPrefix + "_" + positiveWell.getId().toString() + ".json";
+
       ionAnalysisInterchangeModel.writeToJsonFile(new File(outAnalysis));
       allExperimentalResults.add(experimentalResults);
     }
@@ -511,7 +516,6 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
       LOGGER.info("Conducting post processing since we have more than one positive well");
 
       // Post process analysis
-      String outAnalysis = outputPrefix + "_post_process.json";
       List<IonAnalysisInterchangeModel.ResultForMZ> experimentalResults = new ArrayList<>();
       for (int i = 0; i < allExperimentalResults.get(0).size(); i++) {
         IonAnalysisInterchangeModel.ResultForMZ rep = allExperimentalResults.get(0).get(i);
@@ -530,7 +534,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
       }
 
       IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel(experimentalResults);
-      model.writeToJsonFile(new File(outAnalysis));
+      model.writeToJsonFile(new File(outputPrefix));
     }
   }
 
