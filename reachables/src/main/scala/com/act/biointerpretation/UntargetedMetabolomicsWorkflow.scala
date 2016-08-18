@@ -1,6 +1,6 @@
 package com.act.biointerpretation
 
-import java.io.File
+import java.io.{File, IOException}
 import java.util.NoSuchElementException
 
 import com.act.biointerpretation.l2expansion.{L2ExpansionDriver, L2InchiCorpus, L2PredictionCorpus}
@@ -61,9 +61,10 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
 
       CliOption.builder(OPTION_RO_IDS).
         required(true).
-        hasArg.
+        hasArgs.
+        valueSeparator(',').
         longOpt("ro_ids").
-        desc("A filepath to a file containing the RO ids to use, one per line."),
+        desc("A filepath to a file containing the RO ids to use, one per line, or a comma separated list of RO IDs."),
 
       CliOption.builder(OPTION_MASS_THRESHOLD).
         required(false).
@@ -127,12 +128,31 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       rawSubstratesFile = new File(workingDir, "raw_substrates")
     }
 
-    val roIdFile = new File(cl.getOptionValue(OPTION_RO_IDS))
+    /**
+      * Parse command line option for RO IDs as either a list of Ids, or a file.
+      */
+    var roIds: List[Integer] = null
+    var roIdFile: File = null
+    val roOptions: Array[String] = cl.getOptionValues(OPTION_RO_IDS)
+    if (roOptions.length == 1) {
+      // Try to read RO ID argument as file if possible
+      try {
+        roIdFile = new File(cl.getOptionValue(OPTION_RO_IDS))
+        val erosCorpus = new ErosCorpus()
+        erosCorpus.loadValidationCorpus()
+        roIds = erosCorpus.getRoIdListFromFile(roIdFile).asScala.toList
+      } catch {
+        // If not a file, assume a list.
+        case e: IOException => {
+          roIds = roOptions.toList.map(arg => new Integer(arg))
+        }
+      }
+    } else {
+      // If there are multiple arguments, assume it's a list of IDs.
+      roIds = roOptions.toList.map(arg => new Integer(arg))
+    }
+    logger.info(s"ROs to use: $roIds")
 
-
-    val erosCorpus = new ErosCorpus()
-    erosCorpus.loadValidationCorpus()
-    val roIds = erosCorpus.getRoIdListFromFile(roIdFile).asScala.toList
 
     val filteredSubstratesFile = new File(workingDir, "filtered_substrates")
 
@@ -296,7 +316,6 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     // The first element of each entry in the list is the step it corresponds to.
     val startIndex = jobList.indexWhere(a => a._1.equals(firstStep))
     val endIndex = jobList.indexWhere(a => a._1.equals(lastStep))
-    logger.info(s"First index : $startIndex, last index: $endIndex")
     val jobsToRun = jobList.slice(startIndex, endIndex + 1)
 
     // The second element of each entry in the list is the function to call.
