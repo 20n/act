@@ -419,7 +419,7 @@ public abstract class BiointerpretationProcessor {
         int seqId = api.getWriteDB().submitToActSeqDB(
             seq.get_srcdb(),
             seq.getEc(),
-            seq.get_org_name(),
+            seq.getOrgName(),
             newSeqOrganismId, // Use freshly migrated organism id to replace the old one.
             seq.getSequence(),
             seq.get_references(),

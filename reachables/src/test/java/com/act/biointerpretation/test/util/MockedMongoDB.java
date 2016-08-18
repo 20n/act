@@ -90,7 +90,7 @@ public class MockedMongoDB {
       references.add(copy);
     }
 
-    return new Seq(seq.getUUID(), seq.getEc(), seq.getOrgId(), seq.get_org_name(), seq.getSequence(), references,
+    return new Seq(seq.getUUID(), seq.getEc(), seq.getOrgId(), seq.getOrgName(), seq.getSequence(), references,
         MongoDBToJSON.conv(metadata), seq.get_srcdb());
   }
 
@@ -209,7 +209,7 @@ public class MockedMongoDB {
 
           if (sequence.getEc() != null && sequence.getEc().equals(ec)
               && sequence.getSequence().equals(seq)
-              && sequence.get_org_name().equals(organism)) {
+              && sequence.getOrgName().equals(organism)) {
             matchedSeqs.add(copySeq(sequence));
           }
         }

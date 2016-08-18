@@ -177,7 +177,7 @@ public class Seq implements Serializable {
   public int getUUID() { return this.id; }
   public String getSequence() { return this.sequence; }
   public String getEc() { return this.ecnum; }
-  public String get_org_name() { return this.organism; }
+  public String getOrgName() { return this.organism; }
   public Long getOrgId() {
     return this.organismIDs;
   }

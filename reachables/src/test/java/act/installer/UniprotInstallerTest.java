@@ -614,7 +614,7 @@ public class UniprotInstallerTest {
   private void compareSeqs(String message, Seq expectedSeq, Seq testSeq) {
     assertEquals("comparing ec " + message, expectedSeq.getEc(), testSeq.getEc());
     assertEquals("comparing org_id " + message, expectedSeq.getOrgId(), testSeq.getOrgId());
-    assertEquals("comparing organism " + message, expectedSeq.get_org_name(), testSeq.get_org_name());
+    assertEquals("comparing organism " + message, expectedSeq.getOrgName(), testSeq.getOrgName());
     assertEquals("comparing sequence " + message, expectedSeq.getSequence(), testSeq.getSequence());
     assertEquals("comparing references " + message, expectedSeq.get_references().toString(),
         testSeq.get_references().toString());
