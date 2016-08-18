@@ -23,11 +23,11 @@ package com.act.lcms.db.io.report;
  }
  </pre>
  */
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -36,27 +36,64 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class IonAnalysisInterchangeModel {
+  // The idea of NO_DATA is to indicate if we query on a molecule who's mass no analysis was done on, to distinguish
+  // this case from an actual calculated MISS.
+  public enum LCMS_RESULT {
+    HIT,
+    MISS,
+    NO_DATA
+  }
+
   @JsonProperty("results")
   private List<ResultForMZ> results;
+  private Map<String, Boolean> inchiToIsHit;
 
   public IonAnalysisInterchangeModel() {
     results = new ArrayList<>();
+    inchiToIsHit = new HashMap<>();
   }
 
   public void loadResultsFromFile(File inputFile) throws IOException {
     this.results = OBJECT_MAPPER.readValue(inputFile, IonAnalysisInterchangeModel.class).getResults();
+    this.populateInchiToIsHit();
+  }
+
+  private void populateInchiToIsHit() {
+    this.inchiToIsHit = new HashMap<>();
+
+    for (ResultForMZ resultForMZ : results) {
+      Boolean isHit = resultForMZ.isValid;
+      for (HitOrMiss molecule : resultForMZ.getMolecules()) {
+
+        // If the inchi is already a hit, then we do not want to override
+        // it with a possible miss result.
+        if (this.inchiToIsHit.get(molecule.getInchi()) == null ||
+            !this.inchiToIsHit.get(molecule.getInchi())) {
+          this.inchiToIsHit.put(molecule.getInchi(), isHit);
+        }
+      }
+    }
   }
 
   public void writeToJsonFile(File outputFile) throws IOException {
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile))) {
       OBJECT_MAPPER.writeValue(predictionWriter, this);
     }
+  }
+
+  public LCMS_RESULT isMoleculeAHit(String inchi) {
+    if (this.inchiToIsHit.get(inchi) == null) {
+      return LCMS_RESULT.NO_DATA;
+    }
+    return this.inchiToIsHit.get(inchi) ? LCMS_RESULT.HIT : LCMS_RESULT.MISS;
   }
 
   /**
@@ -187,6 +224,7 @@ public class IonAnalysisInterchangeModel {
 
   public IonAnalysisInterchangeModel(List<ResultForMZ> results) {
     this.results = results;
+    this.populateInchiToIsHit();
   }
 
   public List<ResultForMZ> getResults() {

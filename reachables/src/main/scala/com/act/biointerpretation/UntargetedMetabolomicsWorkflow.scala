@@ -27,7 +27,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
   private val OPTION_SUBSTRATES = "s"
   private val OPTION_RO_IDS = "r"
   private val OPTION_MASS_THRESHOLD = "m"
-  private val OPTION_LCMS_POSITIVE_RATE = "p"
+  private val OPTION_LCMS_INPUT = "l"
   private val OPTION_STARTING_POINT = "S"
   private val OPTION_ENDING_POINT = "E"
 
@@ -44,29 +44,33 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
           "does not already exist."),
 
       CliOption.builder(OPTION_SUBSTRATES).
-        required(true).
+        required(false).
         hasArg.
         longOpt("substrates").
-        desc("A filepath to a file containing the substrate inchis on which to project the ROs."),
+        desc("A filepath to a file containing the substrate inchis on which to project the ROs. If no path is " +
+          "supplied, but steps are run which require substrates, the workflow searches for the file of name " +
+          "raw_substrates in the working directory.  "),
+
+      CliOption.builder(OPTION_LCMS_INPUT).
+        required(false).
+        hasArg.
+        longOpt("lcms-input-file").
+        desc("A filepath to a file containing the LCMS results as a json IonAnalysisInterchangeModel object. If no " +
+          "path is supplied, but steps are run which require an LCMS file, the workflow searches for a file of name" +
+          "lcms_results in the working directory."),
 
       CliOption.builder(OPTION_RO_IDS).
-        required(true).
+        required(false).
         hasArg.
         longOpt("ro_ids").
-        desc("A filepath to a file containing the RO ids to use, one per line"),
+        desc("A filepath to a file containing the RO ids to use, one per line. If no path is supplied, but steps " +
+          "are run which requrie RO Ids, the workflow searches for a file of name ro_list in the working directory."),
 
       CliOption.builder(OPTION_MASS_THRESHOLD).
         required(false).
         hasArg.
         longOpt("mass-threshold").
         desc("The maximum mass of a substrate to be processed, in daltons."),
-
-      CliOption.builder(OPTION_LCMS_POSITIVE_RATE).
-        required(false).
-        hasArg.
-        longOpt("positive-rate").
-        desc("The positive rate of the LCMS run, randomly assigned for now.").
-        required(),
 
       CliOption.builder(OPTION_STARTING_POINT).
         required(false).
@@ -116,8 +120,21 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     val directory: File = new File(workingDir)
     directory.mkdirs()
 
-    val rawSubstratesFile = new File(cl.getOptionValue(OPTION_SUBSTRATES))
-    val roIdFile = new File(cl.getOptionValue(OPTION_RO_IDS))
+    var rawSubstratesFile: File = null
+    if (cl.hasOption(OPTION_SUBSTRATES)) {
+      rawSubstratesFile = new File(cl.getOptionValue(OPTION_SUBSTRATES))
+    } else {
+      logger.info("Defaulting to look for substrates at workingDir/raw_substrates if needed.")
+      rawSubstratesFile = new File(workingDir, "raw_substrates")
+    }
+
+    var roIdFile: File = null
+    if (cl.hasOption(OPTION_RO_IDS)) {
+      roIdFile = new File(cl.getOptionValue(OPTION_SUBSTRATES))
+    } else {
+      logger.info("Defaulting to look for ros at workingDir/ro_list if needed.")
+      roIdFile = new File(workingDir, "ro_list")
+    }
 
     val erosCorpus = new ErosCorpus()
     erosCorpus.loadValidationCorpus()
@@ -137,8 +154,13 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     val scoredProductsFilename = "scored_products"
     val scoredProductsFiles = buildFilesForRos(workingDir, scoredProductsFilename, roIds)
 
-    val lcmsFilename = "lcms_positives"
-    val lcmsFile = new File(workingDir, lcmsFilename)
+    var lcmsFile: File = null
+    if (cl.hasOption(OPTION_LCMS_INPUT)) {
+      lcmsFile = new File(cl.getOptionValue(OPTION_LCMS_INPUT))
+    } else {
+      logger.info("Defaulting to look for lcms results at workingDir/lcms_results if needed.")
+      lcmsFile = new File(workingDir, "lcms_results")
+    }
 
     val allSarsFile = new File(workingDir, "all_scored_sars")
     val allProductsFile = new File(workingDir, "all_scored_products")
@@ -146,12 +168,6 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     var maxMass = Integer.MAX_VALUE
     if (cl.hasOption(OPTION_MASS_THRESHOLD)) {
       maxMass = Integer.parseInt(cl.getOptionValue(OPTION_MASS_THRESHOLD))
-    }
-
-    val positiveRate = cl.getOptionValue(OPTION_LCMS_POSITIVE_RATE).toDouble
-    if (positiveRate < 0 || positiveRate > 1) {
-      logger.info(s"Positive rate must be between 0 and 1. Tried to set to $positiveRate")
-      System.exit(1)
     }
 
     /**
@@ -181,16 +197,13 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
 
     def addLcmsJob()(): Unit = {
       logger.info("Running LCMS job.")
-      // TODO: when Vijay's LCMS code is ready, replace this with the real thing
-      // Build a dummy LCMS job that doesn't do anything.
-      val lcmsJob = JavaJobWrapper.wrapJavaFunction("lcms",
+
+      // TODO: eventually link this up with LCMS scoring job, once it is completely automated
+      // Build a dummy LCMS job that crashes if you try to run it.
+      val lcmsJob = JavaJobWrapper.wrapJavaFunction( "DUMMY_LCMS_JOB",
         new JavaRunnable {
           override def run(): Unit = {
-            print("Running dummy LCMS job: didn't implement LCMS workflow job yet.")
-          }
-
-          override def toString(): String = {
-            "DUMMY_LCMS_JOB"
+            throw new NotImplementedError("LCMS JOB NOT YET IMPLEMENTED!")
           }
         }
       )
@@ -212,9 +225,12 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
 
     def addSarScoringJobs()(): Unit = {
       logger.info("Adding sar scoring job.")
+      verifyInputFile(lcmsFile)
+
       // Build one job per RO for sar scoring, using a random set of LCMS hits instead of actual data.
       val sarScoringRunnables = roIds.map(roId =>
         LibMcsClustering.getRunnableRandomSarScorer(
+          predictionsFiles(roId),
           sarTreeFiles(roId),
           lcmsFile,
           scoredSarsFiles(roId),
@@ -226,6 +242,8 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
 
     def addProductScoringJobs()(): Unit = {
       logger.info("Adding  product scoring job.")
+      verifyInputFile(lcmsFile)
+
       val productScoringRunnables = roIds.map(roId =>
         ProductScorer.getRunnableProductScorer(
           predictionsFiles(roId),

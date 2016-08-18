@@ -10,6 +10,7 @@ import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
 import com.act.jobs.FileChecker;
 import com.act.jobs.JavaRunnable;
+import com.act.lcms.db.io.report.IonAnalysisInterchangeModel;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -300,7 +301,6 @@ public class LibMcsClustering {
   /**
    * Reads in an already-built SarTree from a SarTreeNodeList, and scores the SARs based on LCMS results.  Currently
    * LCMS results are a dummy function that randomly classifies molecules as hits and misses.
-   * TODO: hook this up with Vijays actual LCMS module to load the LCMS data in and use it to calculate hit
    *
    * @param sarTreeInput An input file containing a SarTreeNodeList with all Sars from the clustering tree.
    * @param lcmsInput File with LCMS hits.
@@ -311,6 +311,7 @@ public class LibMcsClustering {
    * @return A JavaRunnable to run the SAR scoring.
    */
   public static JavaRunnable getRunnableRandomSarScorer(
+      File predictionCorpus,
       File sarTreeInput,
       File lcmsInput,
       File sarTreeNodeOutput,
@@ -321,9 +322,12 @@ public class LibMcsClustering {
       @Override
       public void run() throws IOException {
         // Verify input and output files
-        // TODO: once we use the actual LCMS file, verify it
+        FileChecker.verifyInputFile(predictionCorpus);
+        FileChecker.verifyInputFile(lcmsInput);
         FileChecker.verifyInputFile(sarTreeInput);
         FileChecker.verifyAndCreateOutputFile(sarTreeNodeOutput);
+
+        L2PredictionCorpus inputCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(predictionCorpus);
 
         // Build SAR tree from input file
         SarTreeNodeList nodeList = new SarTreeNodeList();
@@ -331,13 +335,17 @@ public class LibMcsClustering {
         SarTree sarTree = new SarTree();
         nodeList.getSarTreeNodes().forEach(node -> sarTree.addNode(node));
 
-        // Build sar scorer with appropriate positive rate
-        Function<Integer, SarTreeNode.LCMS_RESULT> hitCalculator = getRandomScorer(0.1);
-        SarTreeBasedCalculator sarConfidenceCalculator = new SarTreeBasedCalculator(sarTree, hitCalculator);
+        // Build LCMS results
+        IonAnalysisInterchangeModel lcmsResults = new IonAnalysisInterchangeModel();
+        lcmsResults.loadResultsFromFile(lcmsInput);
+
+        // Build sar scorer from LCMS and prediction corpus
+        Function<Integer, SarTreeNode.LCMS_RESULT> hitCalculator = new LcmsPredictionVerifier(inputCorpus, lcmsResults);
+        SarTreeBasedCalculator sarScorer = new SarTreeBasedCalculator(sarTree, hitCalculator);
 
         // Score SARs
         // Calculate hits and misses
-        sarTree.applyToNodes(sarConfidenceCalculator, subtreeThreshold);
+        sarTree.applyToNodes(sarScorer, subtreeThreshold);
         // Calculate ranking scores
         sarTree.getNodes().forEach(node ->
             node.setRankingScore(node.getNumberHits() - (missPenalty * node.getNumberMisses())));

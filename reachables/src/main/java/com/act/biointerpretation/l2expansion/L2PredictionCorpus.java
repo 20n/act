@@ -37,8 +37,12 @@ public class L2PredictionCorpus implements Serializable {
   @JsonProperty("corpus")
   private List<L2Prediction> corpus;
 
+  @JsonIgnore
+  private Map<Integer, L2Prediction> idToPredictionMap;
+
   public L2PredictionCorpus() {
     this.corpus = new ArrayList<L2Prediction>();
+    this.idToPredictionMap = new HashMap<>();
   }
 
   public L2PredictionCorpus(List<L2Prediction> corpus) {
@@ -58,6 +62,36 @@ public class L2PredictionCorpus implements Serializable {
    */
   public static L2PredictionCorpus readPredictionsFromJsonFile(File corpusFile) throws IOException {
     return OBJECT_MAPPER.readValue(corpusFile, L2PredictionCorpus.class);
+  }
+
+  /**
+   * Gets the prediction with the given ID from the prediction corpus. If necessary, builds the map from Id ->
+   * prediction.
+   *
+   * @param id The prediction ID to find.
+   * @return The corresponding prediction.
+   * @throws IllegalArgumentException if the id is not present in the corpus.
+   */
+  @JsonIgnore
+  public L2Prediction getPredictionFromId(Integer id) {
+    L2Prediction result = idToPredictionMap.get(id);
+    if (result == null) {
+      // First if it's not there, populate the map
+      populateIdToPredictionMap();
+    }
+    if ((result = idToPredictionMap.get(id)) == null) {
+      // If it's still not there, throw an exception.
+      throw new IllegalArgumentException("Id " + id + " not present in corpus!");
+    }
+    return result;
+  }
+
+  /**
+   * Add all prediction IDs to idToPredictionMap.
+   */
+  private void populateIdToPredictionMap() {
+    this.corpus = new ArrayList<L2Prediction>();
+    corpus.forEach(prediction -> idToPredictionMap.put(prediction.getId(), prediction));
   }
 
   /**
