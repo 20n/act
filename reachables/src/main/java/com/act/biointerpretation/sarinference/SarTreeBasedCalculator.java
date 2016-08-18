@@ -3,6 +3,8 @@ package com.act.biointerpretation.sarinference;
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
 import com.act.lcms.db.io.report.IonAnalysisInterchangeModel;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.function.Consumer;
 
@@ -17,6 +19,8 @@ import java.util.function.Consumer;
  * across the entire corpus.
  */
 public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
+
+  private static final Logger LOGGER = LogManager.getFormatterLogger(SarTreeBasedCalculator.class);
 
   private final SarTree sarTree;
   private final L2PredictionCorpus predictionCorpus;
@@ -74,7 +78,9 @@ public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
         return SarTreeNode.LCMS_RESULT.HIT;
       }
       if (lcmsData == SarTreeNode.LCMS_RESULT.NO_DATA) {
-        throw new IllegalArgumentException("No LCMS data found for prediction ID " + predictionId);
+        // Log this error but don't throw exception- some molecules aren't properly processed by LCMS and have no data
+        LOGGER.error("No LCMS data found for prediction ID " + predictionId +
+            " on inchi " + prediction.getProductInchis().toString());
       }
     }
     return SarTreeNode.LCMS_RESULT.MISS;

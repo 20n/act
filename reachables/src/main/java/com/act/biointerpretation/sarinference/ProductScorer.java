@@ -159,7 +159,7 @@ public class ProductScorer {
 
           Optional<SarTreeNode> maybeBestSar = sarFinder.apply(prediction);
 
-          if (!maybeBestSar.isPresent()) {
+          if (maybeBestSar.isPresent()) {
             // If a SAR was matched, add info about it to the projector name, and put its score into the map
             SarTreeNode bestSar = maybeBestSar.get();
             nameAppendage += ":" +
