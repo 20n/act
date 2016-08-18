@@ -259,6 +259,10 @@ public class MS1 {
     if (maxIntensity > NONTRIVIAL_SIGNAL) {
       // snr = sigma_signal^2 / sigma_ambient^2
       // where sigma = sqrt(E[(X-mean)^2])
+      // The above equation is a simplistic attempt at evaluating the power around the max_peak compared to the rest of
+      // the spectra. So we chop out the window into a signal, calculate its deviation from the full_mean
+      // (hopefully close to 0) and compare that against the deviation of the rest of the spectra from (again) the
+      // full_mean.
       Double mean = avgIntensityAmbient;
       snr = sigmaSquared(signalIntensities, mean) / sigmaSquared(ambientIntensities, mean);
       logSNR = Math.log(snr);

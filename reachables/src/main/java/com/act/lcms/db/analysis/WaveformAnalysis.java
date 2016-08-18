@@ -4,6 +4,8 @@ import com.act.lcms.XZ;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.StandardWell;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.FileWriter;
 import java.util.ArrayList;
@@ -20,6 +22,7 @@ public class WaveformAnalysis {
   private static final int START_INDEX = 0;
   private static final int COMPRESSION_CONSTANT = 5;
   private static final Double DEFAULT_LOWEST_RMS_VALUE = 1.0;
+  private static final Logger LOGGER = LogManager.getFormatterLogger(WaveformAnalysis.class);
 
   // We chose this value as a heuristic on how much time drift we are willing to accept for our analysis in seconds.
   private static final Double RESTRICTED_RETENTION_TIME_WINDOW_IN_SECONDS = 5.0;
@@ -235,8 +238,13 @@ public class WaveformAnalysis {
           }
         }
 
-        Double snr = negativeControlPosition == null ? 0 :
-            Math.pow(positivePosition.getIntensity() / negativeControlPosition.getIntensity(), 2);
+        Double snr;
+        if (negativeControlPosition == null) {
+          LOGGER.error("There is no intensity value at this time range for the negative control, which is not expected");
+          snr = 0.0;
+        } else {
+          snr = Math.pow(positivePosition.getIntensity() / negativeControlPosition.getIntensity(), 2);
+        }
 
         if (snr > maxSNR) {
           maxSNR = snr;
