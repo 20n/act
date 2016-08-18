@@ -24,6 +24,8 @@ package com.act.lcms.db.io.report;
  </pre>
  */
 
+import com.act.biointerpretation.l2expansion.L2Prediction;
+import com.act.biointerpretation.sarinference.SarTreeNode;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -105,6 +107,37 @@ public class IonAnalysisInterchangeModel {
       return LCMS_RESULT.NO_DATA;
     }
     return this.inchiToIsHit.get(inchi) ? LCMS_RESULT.HIT : LCMS_RESULT.MISS;
+  }
+
+  /**
+   * Calculate whether a given prediction is an LCMS hit or not.
+   *
+   * TODO: think through our general approach to multiple substrate reactions when necessary.
+   * We'll need to balance the possibilities of false positives and false negatives- one idea would be to return
+   * a score based on the number of confirmed products of the reaction.
+   *
+   * @param prediction The prediction from the corpus.
+   * @return True if all products are LCMS hits.
+   */
+  public SarTreeNode.LCMS_RESULT getLcmsDataForPrediction(L2Prediction prediction) {
+    List<String> productInchis = prediction.getProductInchis();
+    for (String product : productInchis) {
+      // If any of the results have no data, return NO_DATA. Such results shouldn't happen for now, so the caller will
+      // likely throw an exception if this happens.
+      if (this.isMoleculeAHit(product).equals(IonAnalysisInterchangeModel.LCMS_RESULT.NO_DATA)) {
+        return SarTreeNode.LCMS_RESULT.NO_DATA;
+      }
+      // Otherwise, if a miss is found among the prediction's products, return it as a miss.  This implements an
+      // AND among the products of the prediction- all must be present to register as a hit. This is motivated by the
+      // fact that our only current multiple-product reaction produces one significant product, and one constant
+      // cofactor. We verified that in both urine and saliva, the cofactor is present in our samples, so
+      // an OR approach here would return a HIT for every prediction of that RO.
+      if (this.isMoleculeAHit(product).equals(IonAnalysisInterchangeModel.LCMS_RESULT.MISS)) {
+        return SarTreeNode.LCMS_RESULT.MISS;
+      }
+    }
+    // If every prediction is a HIT, return HIT.
+    return SarTreeNode.LCMS_RESULT.HIT;
   }
 
   /**

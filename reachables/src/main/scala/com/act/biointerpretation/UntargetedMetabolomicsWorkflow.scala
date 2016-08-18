@@ -223,7 +223,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
 
       // Build one job per RO for sar scoring, using a random set of LCMS hits instead of actual data.
       val sarScoringRunnables = roIds.map(roId =>
-        LibMcsClustering.getRunnableRandomSarScorer(
+        LibMcsClustering.getRunnableSarScorer(
           predictionsFiles(roId),
           sarTreeFiles(roId),
           lcmsFile,

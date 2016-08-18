@@ -41,7 +41,7 @@ public class L2PredictionCorpus implements Serializable {
   private Map<Integer, L2Prediction> idToPredictionMap;
 
   public L2PredictionCorpus() {
-    this.corpus = new ArrayList<L2Prediction>();
+    this.corpus = new ArrayList<>();
     this.idToPredictionMap = new HashMap<>();
   }
 
@@ -90,7 +90,7 @@ public class L2PredictionCorpus implements Serializable {
    * Add all prediction IDs to idToPredictionMap.
    */
   private void populateIdToPredictionMap() {
-    this.corpus = new ArrayList<L2Prediction>();
+    this.idToPredictionMap = new HashMap<>();
     corpus.forEach(prediction -> idToPredictionMap.put(prediction.getId(), prediction));
   }
 

@@ -1,7 +1,10 @@
 package com.act.biointerpretation.sarinference;
 
+import com.act.biointerpretation.l2expansion.L2Prediction;
+import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
+import com.act.lcms.db.io.report.IonAnalysisInterchangeModel;
+
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 /**
  * Calculates a SARs hit percentage score by seeing which of the leaves of its subtree are LCMS hits,
@@ -15,13 +18,15 @@ import java.util.function.Function;
  */
 public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
 
-  SarTree sarTree;
-  Function<Integer, SarTreeNode.LCMS_RESULT> hitCalculator;
+  private final SarTree sarTree;
+  private final L2PredictionCorpus predictionCorpus;
+  private final IonAnalysisInterchangeModel lcmsResults;
 
 
-  public SarTreeBasedCalculator(SarTree sarTree, Function<Integer, SarTreeNode.LCMS_RESULT> calculator) {
+  public SarTreeBasedCalculator(SarTree sarTree, L2PredictionCorpus corpus, IonAnalysisInterchangeModel lcmsResults) {
     this.sarTree = sarTree;
-    this.hitCalculator = calculator;
+    this.predictionCorpus = corpus;
+    this.lcmsResults = lcmsResults;
   }
 
   /**
@@ -38,7 +43,7 @@ public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
     for (SarTreeNode node : sarTree.traverseSubtree(sarTreeNode)) {
       // Only calculate on leaves
       if (sarTree.getChildren(node).isEmpty()) {
-        switch (getLcmsData(node)) {
+        switch (getLcmsDataForNode(node)) {
           case HIT:
             hits++;
             break;
@@ -60,9 +65,10 @@ public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
    * @param node The SarTreeNode.
    * @return True if at least one prediction Id of the node is an LCMS hit.
    */
-  private SarTreeNode.LCMS_RESULT getLcmsData(SarTreeNode node) {
+  public SarTreeNode.LCMS_RESULT getLcmsDataForNode(SarTreeNode node) {
     for (Integer predictionId : node.getPredictionIds()) {
-      SarTreeNode.LCMS_RESULT lcmsData = hitCalculator.apply(predictionId);
+      L2Prediction prediction = predictionCorpus.getPredictionFromId(predictionId);
+      SarTreeNode.LCMS_RESULT lcmsData = lcmsResults.getLcmsDataForPrediction(prediction);
 
       if (lcmsData == SarTreeNode.LCMS_RESULT.HIT) {
         return SarTreeNode.LCMS_RESULT.HIT;

@@ -5,7 +5,6 @@ import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.l2expansion.L2FilteringDriver;
-import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
 import com.act.jobs.FileChecker;
@@ -29,10 +28,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
 
 public class LibMcsClustering {
 
@@ -40,9 +35,8 @@ public class LibMcsClustering {
 
   private static final String OPTION_PREDICTION_CORPUS = "c";
   private static final String OPTION_POSITIVE_INCHIS = "p";
-  private static final String OPTION_OUTPUT_PATH = "o";
-  private static final String OPTION_CLUSTER_FIRST = "f";
-  private static final String OPTION_TREE_SCORING = "t";
+  private static final String OPTION_SARTREE_PATH = "o";
+  private static final String OPTION_SCORED_SAR_PATH = "o";
   private static final String OPTION_HELP = "h";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {
@@ -61,23 +55,19 @@ public class LibMcsClustering {
           .longOpt("input-positive-inchis")
           .required()
       );
-      add(Option.builder(OPTION_OUTPUT_PATH)
-          .argName("output path")
-          .desc("The path to which to write the output.")
+      add(Option.builder(OPTION_SARTREE_PATH)
+          .argName("sartree path")
+          .desc("The path to which to write the intermediate file produced by structure clustering.")
           .hasArg()
-          .longOpt("output-path")
+          .longOpt("sartree-path")
           .required()
       );
-      add(Option.builder(OPTION_CLUSTER_FIRST)
-          .argName("cluster first")
-          .desc("Use LibMCS to cluster substrates on full corpus before applying the LCMS results.")
-          .longOpt("cluster-first")
-      );
-      add(Option.builder(OPTION_TREE_SCORING)
-          .argName("tree scoring")
-          .desc("Score SARs based on hits and misses found in subtree of SAR; don't apply SAR elsewhere. This should " +
-              "only be run in conjunction with the <cluster first> option.")
-          .longOpt("tree-scoring")
+      add(Option.builder(OPTION_SCORED_SAR_PATH)
+          .argName("scored sar path")
+          .desc("The path to which to write the final output file of scored sars.")
+          .hasArg()
+          .longOpt("scored-sar-path")
+          .required()
       );
       add(Option.builder(OPTION_HELP)
           .argName("help")
@@ -99,10 +89,8 @@ public class LibMcsClustering {
     HELP_FORMATTER.setWidth(100);
   }
 
-  private static final String INCHI_IMPORT_SETTINGS = "inchi";
-
   // This value should stay between 0 and 1 as it indicates the minimum hit percentage for a SAR worth keeping around.
-  private static final Double THRESHOLD_CONFIDENCE = 0D;  // no threshold is currently applied
+  private static final Double MISS_PENALTY = 1.0;  // no threshold is currently applied
 
   private static final Integer THRESHOLD_TREE_SIZE = 2; // any SAR that is not simply one specific substrate is allowed
 
@@ -132,101 +120,30 @@ public class LibMcsClustering {
 
     File inputCorpusFile = new File(cl.getOptionValue(OPTION_PREDICTION_CORPUS));
     File positiveInchisFile = new File(cl.getOptionValue(OPTION_POSITIVE_INCHIS));
-    File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
+    File sartreeFile = new File(cl.getOptionValue(OPTION_SARTREE_PATH));
+    File scoredSarFile = new File(cl.getOptionValue(OPTION_SCORED_SAR_PATH));
 
-    L2PredictionCorpus fullCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputCorpusFile);
-    LOGGER.info("Number of predictions: %d", fullCorpus.getCorpus().size());
-    LOGGER.info("Number of unique substrates: %d", fullCorpus.getUniqueSubstrateInchis().size());
-    Collection<String> allSubstrateInchis = fullCorpus.getUniqueSubstrateInchis();
+    JavaRunnable clusterRunner = getRunnableClusterer(inputCorpusFile, sartreeFile);
+    JavaRunnable scoringRunner = getRunnableSarScorer(
+        inputCorpusFile,
+        sartreeFile,
+        positiveInchisFile,
+        scoredSarFile,
+        MISS_PENALTY,
+        THRESHOLD_TREE_SIZE);
 
-    L2InchiCorpus positiveProducts = new L2InchiCorpus();
-    positiveProducts.loadCorpus(positiveInchisFile);
-    List<String> positiveProductList = positiveProducts.getInchiList();
+    LOGGER.info("Running clustering.");
+    clusterRunner.run();
 
-    // This only filters based on the first product of the prediction.
-    // TODO: generalize the pipeline to ROs that produce multiple products.
-    L2PredictionCorpus positiveCorpus = fullCorpus.applyFilter(
-        prediction -> positiveProductList.contains(prediction.getProductInchis().get(0)));
-    LOGGER.info("Number of LCMS positive predictions: %d", positiveCorpus.getCorpus().size());
-    Set<String> positiveSubstrateInchis = positiveCorpus.getUniqueSubstrateInchis();
-    LOGGER.info("Number of substrates with positive LCMS products: %d", positiveCorpus.getCorpus().size());
+    LOGGER.info("Running sar scoring.");
+    scoringRunner.run();
 
-    if (cl.hasOption(OPTION_TREE_SCORING) && !cl.hasOption(OPTION_CLUSTER_FIRST)) {
-      LOGGER.error("Cannot use tree scoring if clustering only builds tree on positive substrates.");
-      exitWithHelp(opts);
-    }
-
-    LOGGER.info("Importing molecules from inchi lists.");
-    List<Molecule> molecules = null;
-    if (cl.hasOption(OPTION_CLUSTER_FIRST)) {
-      molecules = importInchisWithLcmsResults(allSubstrateInchis, inchi -> positiveSubstrateInchis.contains(inchi));
-    } else {
-      molecules = importInchisWithLcmsResults(positiveSubstrateInchis, inchi -> true);
-    }
-    LOGGER.info("Building SAR tree with LibraryMCS.");
-    LibraryMCS libMcs = new LibraryMCS();
-    SarTree sarTree = new SarTree();
-    sarTree.buildByClustering(libMcs, molecules);
-
-    Consumer<SarTreeNode> sarConfidenceCalculator = null;
-    if (cl.hasOption(OPTION_TREE_SCORING)) {
-      // TODO: put in Vijay's actual LCMS module here
-      sarConfidenceCalculator = new SarTreeBasedCalculator(sarTree, getRandomScorer(.1));
-      LOGGER.info("Only scoring SARs based on hits and misses within their subtrees.");
-    } else {
-      sarConfidenceCalculator = new SarHitPercentageCalculator(positiveCorpus, fullCorpus);
-    }
-
-    LOGGER.info("Scoring sars.");
-    sarTree.applyToNodes(sarConfidenceCalculator, THRESHOLD_TREE_SIZE);
-
-    LOGGER.info("Getting explanatory sars.");
-    SarTreeNodeList explanatorySars = sarTree.getExplanatoryNodes(THRESHOLD_TREE_SIZE, THRESHOLD_CONFIDENCE);
-    LOGGER.info("%d sars passed thresholds of subtree size %d, percentageHits %f.",
-        explanatorySars.size(), THRESHOLD_TREE_SIZE, THRESHOLD_CONFIDENCE);
-    LOGGER.info("Producing and writing output.");
-
-    explanatorySars.sortByDecreasingScores();
-    explanatorySars.writeToFile(outputFile);
     LOGGER.info("Complete!.");
-  }
-
-  /**
-   * Imports inchis into molecules for use in clustering. Label all returned molecules with a property that says whether
-   * they were an LCMS positive or negative, so this can be read from the clustering tree directly later.
-   *
-   * @param inchis The inchis to import.
-   * @param lcmsTester The function used to classify inchis as LCMS positives or negatives.
-   * @return The inchis as molecules.
-   */
-  private static List<Molecule> importInchisWithLcmsResults(Collection<String> inchis, Predicate<String> lcmsTester) {
-    List<Molecule> molecules = new ArrayList<>();
-    for (String inchi : inchis) {
-      try {
-        Molecule mol = MolImporter.importMol(inchi, INCHI_IMPORT_SETTINGS);
-        molecules.add(mol);
-      } catch (MolFormatException e) {
-        LOGGER.warn("Error importing inchi %s:%s", inchi, e.getMessage());
-      }
-    }
-    return molecules;
   }
 
   private static void exitWithHelp(Options opts) {
     HELP_FORMATTER.printHelp(L2FilteringDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
     System.exit(1);
-  }
-
-  /**
-   * Returns a hit calculator that calculates which prediction IDs are hits at random with the given positive rate
-   *
-   * @param positiveRate The positive rate.
-   * @return The calculator.
-   */
-  public static Function<Integer, SarTreeNode.LCMS_RESULT> getRandomScorer(Double positiveRate) {
-    return (integer) -> RANDOM_GENERATOR.nextDouble() < positiveRate ?
-        SarTreeNode.LCMS_RESULT.HIT :
-        SarTreeNode.LCMS_RESULT.MISS;
   }
 
   /**
@@ -310,8 +227,8 @@ public class LibMcsClustering {
    * @param subtreeThreshold The minimum number of leaves a sAR should match to be returned.
    * @return A JavaRunnable to run the SAR scoring.
    */
-  public static JavaRunnable getRunnableRandomSarScorer(
-      File predictionCorpus,
+  public static JavaRunnable getRunnableSarScorer(
+      File predictionsFile,
       File sarTreeInput,
       File lcmsInput,
       File sarTreeNodeOutput,
@@ -322,12 +239,12 @@ public class LibMcsClustering {
       @Override
       public void run() throws IOException {
         // Verify input and output files
-        FileChecker.verifyInputFile(predictionCorpus);
+        FileChecker.verifyInputFile(predictionsFile);
         FileChecker.verifyInputFile(lcmsInput);
         FileChecker.verifyInputFile(sarTreeInput);
         FileChecker.verifyAndCreateOutputFile(sarTreeNodeOutput);
 
-        L2PredictionCorpus inputCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(predictionCorpus);
+        L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(predictionsFile);
 
         // Build SAR tree from input file
         SarTreeNodeList nodeList = new SarTreeNodeList();
@@ -340,8 +257,7 @@ public class LibMcsClustering {
         lcmsResults.loadResultsFromFile(lcmsInput);
 
         // Build sar scorer from LCMS and prediction corpus
-        Function<Integer, SarTreeNode.LCMS_RESULT> hitCalculator = new LcmsPredictionVerifier(inputCorpus, lcmsResults);
-        SarTreeBasedCalculator sarScorer = new SarTreeBasedCalculator(sarTree, hitCalculator);
+        SarTreeBasedCalculator sarScorer = new SarTreeBasedCalculator(sarTree, predictionCorpus, lcmsResults);
 
         // Score SARs
         // Calculate hits and misses

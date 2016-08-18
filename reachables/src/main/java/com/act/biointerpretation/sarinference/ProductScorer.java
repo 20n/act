@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 
 public class ProductScorer {
 
@@ -172,9 +171,10 @@ public class ProductScorer {
         FileChecker.verifyInputFile(lcmsFile);
         FileChecker.verifyAndCreateOutputFile(outputFile);
 
-        // Build SAR tree
+        // Build SAR node list and best sar finder
         SarTreeNodeList nodeList = new SarTreeNodeList();
         nodeList.loadFromFile(scoredSars);
+        BestSarFinder sarFinder = new BestSarFinder(nodeList);
 
         // Build prediction corpus
         L2PredictionCorpus predictions = L2PredictionCorpus.readPredictionsFromJsonFile(predictionCorpus);
@@ -183,21 +183,15 @@ public class ProductScorer {
         IonAnalysisInterchangeModel lcmsResults = new IonAnalysisInterchangeModel();
         lcmsResults.loadResultsFromFile(lcmsFile);
 
-        // Build SAR finder and LCMS verifier
-        Function<Integer, SarTreeNode.LCMS_RESULT> lcmsVerifier = new LcmsPredictionVerifier(predictions, lcmsResults);
-        BestSarFinder sarFinder = new BestSarFinder(nodeList);
-
         /**
          * Build map from predictions to their scores based on SAR
          * For each prediction, we add on auxiliary info about its SARs and score to its projector name.
          // TODO: build data structure to store a scored prediction, instead of hijacking the projector name.
          */
-
         Map<L2Prediction, Double> predictionToScoreMap = new HashMap<>();
         LOGGER.info("Scoring predictions.");
         for (L2Prediction prediction : predictions.getCorpus()) {
-          // For each prediction
-          String nameAppendage = lcmsVerifier.apply(prediction.getId()).toString(); // Always tack LCMS result onto name
+          String nameAppendage = lcmsResults.getLcmsDataForPrediction(prediction).toString(); // Always tack LCMS result onto name
 
           Optional<SarTreeNode> maybeBestSar = sarFinder.apply(prediction);
 
