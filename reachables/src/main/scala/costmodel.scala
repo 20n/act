@@ -1,46 +1,18 @@
 package act.installer.bing
 
-import squants.time.Time
-import squants.time.Days
-
-import squants.mass.Mass
-import squants.mass.Kilograms
-import squants.space.Volume
-import squants.space.Litres
-import squants.Dimensionless
-
-import squants.market.Money
-import squants.market.USD
-import squants.market.Price
-import squants.Ratio
-import squants.LikeRatio
-import squants.thermal.Temperature
-import squants.Quantity
-import squants.mass.Moles
-import squants.mass.Density
-import squants.mass.ChemicalAmount
+import chemaxon.descriptors.scalars.Mass
 
 // these provide implicit converters such as
 // (XX dollars) (XX days) (XX kg) (XX liters) etc.
-import squants.time.TimeConversions.TimeConversions
-import squants.mass.MassConversions.MassConversions
-import squants.space.VolumeConversions.VolumeConversions
-import squants.DimensionlessConversions.DimensionlessConversions
-import squants.market.MoneyConversions.MoneyConversions
-import squants.thermal.TemperatureConversions.TemperatureConversions
-import squants.energy.PowerConversions.PowerConversions
-import squants.mass.ChemicalAmountConversions.ChemicalAmountConversions
 
 // Getting (XX millions) i.e., a dimensionless multiplier has
 // different exporting consideration than the other conversions above
 // The below _ imports `lazy val millions` from https://github.com/garyKeorkunian/squants/blob/master/shared/src/main/scala/squants/Dimensionless.scala#L111
 // TODO is there a better way to import?
-import squants.DimensionlessConversions._
-
-import scala.math.sinh
-import java.lang.UnsupportedOperationException
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.logging.log4j.LogManager
+
+import scala.math.sinh
 
 case class Yield(base: Mass, counter: Mass) extends LikeRatio[Mass]
 case class Titer(base: Mass, counter: Volume) extends Ratio[Mass, Volume] {
@@ -54,40 +26,12 @@ class CostModel {
   type KiloWattPerMeterCubed = Double
   type KiloJoulePerMMol = Double
   type MMolPerLiterHour = Double
-
-  /********************************************************************************************
-  *  Unit Conversions
-  ********************************************************************************************/
-
-  def waterDensity: Density = (1 kg) / (1 liters)
-  def brothDensity: Density = waterDensity
-  def VolumeToMass(x: Volume): Mass = brothDensity * x
-  def MassToVolume(x: Mass): Volume = {
-    val massInOneLiter: Mass = brothDensity * (1 liters)
-    val litersToHoldInputMass = x / massInOneLiter
-    Litres(litersToHoldInputMass)
-  }
-
   /********************************************************************************************
   *  Constants
   ********************************************************************************************/
 
   val defaultFermRunTime: Time = 10 days
   val defaultBrothMassPerBatch: Mass = VolumeToMass(360 cubicMeters)
-
-  def literDay(v: Volume, t: Time): Double = {
-    v.toLitres * t.toDays
-  }
-  sealed trait Location { def name: String; def rentalRate: Money }
-  def cmoRate(centsPerLiterDay: Double): Money = { USD(centsPerLiterDay / 100.00) }
-  // See email thread "Model" between Saurabh, Jeremiah, Tim Revak for cost quotes from various places
-  case object GER extends Location { val name = "Germany"; val rentalRate = cmoRate(5.0) }
-  case object ITL extends Location { val name = "Italy"; val rentalRate = cmoRate(8.0) }
-  case object IND extends Location { val name = "India"; val rentalRate = cmoRate(10.0) }
-  case object CHN extends Location { val name = "China"; val rentalRate = cmoRate(5.3) }
-  case object MID extends Location { val name = "Midwest"; val rentalRate = cmoRate(8.3) }
-  case object MEX extends Location { val name = "Mexico"; val rentalRate = cmoRate(8.3) }
-
   /************************************ Fermentation ****************************************/
   // Productivity and Titer
   val vesselSize: Volume = 200 cubicMeters
@@ -109,47 +53,12 @@ class CostModel {
   // Steam Use
   val initialTemp: Temperature = 20 C
   val sterilizedTemp: Temperature = 121 C
-
   // Labor
   val numOfEmployees: Integer = 14
   // Capital
   val DepreciationLife: Time = (15 * 365) days
-
-  // Media composition and unit prices
-  sealed trait MediaComp { def n: String; def amount: Ratio[Mass, Mass]; def cost: Price[Mass] }
-  case class mediaElem(traceAmount: Mass) extends Ratio[Mass, Mass] {
-    def base = traceAmount
-    def counter = 1 kg
-
-    def *(that: Price[Mass]): Price[Mass] = Price(that * traceAmount, counter)
-  }
-  def alibaba(price: Double): Price[Mass] = USD(price) / Kilograms(1)
-  case object KH2PO4      extends MediaComp { val n = "KH2PO4";       val amount = mediaElem(08.0 g); val cost = alibaba(1.05) }
-  case object MgSO47H2O   extends MediaComp { val n = "MgSO4.7H2O";   val amount = mediaElem(06.0 g); val cost = alibaba(0.10) }
-  case object NH42SO4     extends MediaComp { val n = "(NH4)2 SO4";   val amount = mediaElem(15.0 g); val cost = alibaba(0.09) }
-
-  case object EDTA        extends MediaComp { val n = "EDTA";         val amount = mediaElem(800 mg); val cost =  alibaba(1.00) }
-  case object FeSO47H2O   extends MediaComp { val n = "FeSO4.7H2O";   val amount = mediaElem(28 mg);  val cost =  alibaba(0.30) }
-  case object ZnSO47H2O   extends MediaComp { val n = "ZnSO4.7H2O";   val amount = mediaElem(57.5 mg);val cost =  alibaba(0.45) }
-  case object CaCl22H2O   extends MediaComp { val n = "CaCl2.2H2O";   val amount = mediaElem(29 mg);  val cost =  alibaba(0.14) }
-  case object CuSO4       extends MediaComp { val n = "CuSO4 ";       val amount = mediaElem(3.2 mg); val cost =  alibaba(2.60) }
-  case object Na2MoO42H2O extends MediaComp { val n = "Na2MoO4.2H2O"; val amount = mediaElem(4.8 mg); val cost = alibaba(12.00) }
-  case object CoCl26H20   extends MediaComp { val n = "CoCl2.6H20";   val amount = mediaElem(4.7 mg); val cost =  alibaba(9.00) }
-  case object MnCl24H2O   extends MediaComp { val n = "MnCl2.4H2O";   val amount = mediaElem(3.2 mg); val cost =  alibaba(1.50) }
-  case object Biotin      extends MediaComp { val n = "Biotin";       val amount = mediaElem(0.6 mg); val cost =  alibaba(0.50) }
-  case object CaPantothe  extends MediaComp { val n ="CaPantothenate";val amount = mediaElem(12 mg);  val cost = alibaba(20.00) }
-  case object NicotinicAc extends MediaComp { val n = "NicotinicAcid";val amount = mediaElem(12 mg);  val cost = alibaba(15.00) }
-  case object Myoinositol extends MediaComp { val n = "Myoinositol";  val amount = mediaElem(30 mg);  val cost =  alibaba(9.00) }
-  case object ThiamineHCl extends MediaComp { val n = "ThiamineHCl";  val amount = mediaElem(12 mg);  val cost = alibaba(35.00) }
-  case object PyroxidolHC extends MediaComp { val n = "PyroxidolHCl"; val amount = mediaElem(12 mg);  val cost = alibaba(20.00) }
-
   val allMediaComponents = List(KH2PO4, MgSO47H2O, NH42SO4, EDTA, FeSO47H2O, ZnSO47H2O, CaCl22H2O, CuSO4, Na2MoO42H2O, CoCl26H20, MnCl24H2O, Biotin, CaPantothe, NicotinicAc, Myoinositol, ThiamineHCl, PyroxidolHC)
   val unitCostOfMedia = allMediaComponents.map(x => x.amount * x.cost).reduce(_ + _)
-
-  case object Ammonia     { val n = "Ammonia"; val cost = alibaba(1.00) }
-  case object Glucose     { val n = "Glucose"; val cost = alibaba(0.32) }
-  case object Antifoam    { val n = "Antifoam"; }
-
   /********************************************************************************************
   *  Sensible defaults and external caller
   ********************************************************************************************/
@@ -160,6 +69,32 @@ class CostModel {
   var fermRunTime: Time = defaultFermRunTime;
   var brothMassPerBatch: Mass = defaultBrothMassPerBatch
   var location: Location = GER;
+
+  /** ******************************************************************************************
+    * Unit Conversions
+    * *******************************************************************************************/
+
+  def waterDensity: Density = (1 kg) / (1 liters)
+
+  def brothDensity: Density = waterDensity
+
+  def VolumeToMass(x: Volume): Mass = brothDensity * x
+
+  def MassToVolume(x: Mass): Volume = {
+    val massInOneLiter: Mass = brothDensity * (1 liters)
+    val litersToHoldInputMass = x / massInOneLiter
+    Litres(litersToHoldInputMass)
+  }
+
+  def literDay(v: Volume, t: Time): Double = {
+    v.toLitres * t.toDays
+  }
+
+  def cmoRate(centsPerLiterDay: Double): Money = {
+    USD(centsPerLiterDay / 100.00)
+  }
+
+  def alibaba(price: Double): Price[Mass] = USD(price) / Kilograms(1)
 
   def getPerTonCost(y: Double, t: Double): Double = {
     val cost: Price[Mass] = getPerTonCost(Yield(y grams, 100 grams), Titer(t grams, 1 litres), Defaults.defaultOperationMode)
@@ -186,17 +121,27 @@ class CostModel {
   *  Consumptions and cost per batch
   ********************************************************************************************/
   def workingVolume: Volume = vesselSize * pcOfVesselUsed.value
+
   def finalByInitialVol: Double = brothMassPerBatch.value / VolumeToMass(workingVolume).value
+
   def literDaysPerBatch = literDay(vesselSize, fermRunTime)
+
   def productPerBatch: Mass = strainTiter * MassToVolume(brothMassPerBatch)
+
   def glcConsumedPerBatch: Mass = strainYield.inverseRatio * productPerBatch
+
   def glcBatchedPerBatch: Mass = 0 grams // Glc in media = 0kgs: TODO: check if this is correct
+
   def glcFedPerBatch: Mass = glcConsumedPerBatch - glcBatchedPerBatch
+
   def ammoniaUsedPerBatch: Mass = glcConsumedPerBatch * ammoniaPerGlucose.value
 
   def mediaPerBatch: Money = unitCostOfMedia * brothMassPerBatch
+
   def glcPerBatch: Money = Glucose.cost * glcFedPerBatch
+
   def ammoniaPerBatch: Money = Ammonia.cost * ammoniaUsedPerBatch
+
   def consumablesPerBatch: Money = mediaPerBatch + glcPerBatch + ammoniaPerBatch
 
   /********************************************************************************************
@@ -216,9 +161,6 @@ class CostModel {
     val costPerTon: Price[Mass] = costPerBatch / productPerBatch
     costPerTon
   }
-
-  // Note: The TODOs that remain below need to be filled out from Tim Revak's models under
-  // NAS/shared-data/Tim Revak/Cost Models/20n COG, v2 25JUL16.xlsx
 
   /********************************************************************************************
   *  Bottom Up Model: Cost with Build Your Own Plant
@@ -248,6 +190,179 @@ class CostModel {
     (2000 dollars) / (1 tonnes)
   }
 
+  sealed trait Location {
+    def name: String;
+
+    def rentalRate: Money
+  }
+
+  // Media composition and unit prices
+  sealed trait MediaComp {
+    def n: String;
+
+    def amount: Ratio[Mass, Mass];
+
+    def cost: Price[Mass]
+  }
+
+  case class mediaElem(traceAmount: Mass) extends Ratio[Mass, Mass] {
+    def base = traceAmount
+
+    def *(that: Price[Mass]): Price[Mass] = Price(that * traceAmount, counter)
+
+    def counter = 1 kg
+  }
+
+  // See email thread "Model" between Saurabh, Jeremiah, Tim Revak for cost quotes from various places
+  case object GER extends Location {
+    val name = "Germany";
+    val rentalRate = cmoRate(5.0)
+  }
+
+  case object ITL extends Location {
+    val name = "Italy";
+    val rentalRate = cmoRate(8.0)
+  }
+
+  case object IND extends Location {
+    val name = "India";
+    val rentalRate = cmoRate(10.0)
+  }
+
+  case object CHN extends Location {
+    val name = "China";
+    val rentalRate = cmoRate(5.3)
+  }
+
+  case object MID extends Location {
+    val name = "Midwest";
+    val rentalRate = cmoRate(8.3)
+  }
+
+  case object MEX extends Location {
+    val name = "Mexico";
+    val rentalRate = cmoRate(8.3)
+  }
+
+  case object KH2PO4 extends MediaComp {
+    val n = "KH2PO4";
+    val amount = mediaElem(08.0 g);
+    val cost = alibaba(1.05)
+  }
+
+  case object MgSO47H2O extends MediaComp {
+    val n = "MgSO4.7H2O";
+    val amount = mediaElem(06.0 g);
+    val cost = alibaba(0.10)
+  }
+
+  case object NH42SO4 extends MediaComp {
+    val n = "(NH4)2 SO4";
+    val amount = mediaElem(15.0 g);
+    val cost = alibaba(0.09)
+  }
+
+  case object EDTA extends MediaComp {
+    val n = "EDTA";
+    val amount = mediaElem(800 mg);
+    val cost = alibaba(1.00)
+  }
+
+  case object FeSO47H2O extends MediaComp {
+    val n = "FeSO4.7H2O";
+    val amount = mediaElem(28 mg);
+    val cost = alibaba(0.30)
+  }
+
+  case object ZnSO47H2O extends MediaComp {
+    val n = "ZnSO4.7H2O";
+    val amount = mediaElem(57.5 mg);
+    val cost = alibaba(0.45)
+  }
+
+  case object CaCl22H2O extends MediaComp {
+    val n = "CaCl2.2H2O";
+    val amount = mediaElem(29 mg);
+    val cost = alibaba(0.14)
+  }
+
+  case object CuSO4 extends MediaComp {
+    val n = "CuSO4 ";
+    val amount = mediaElem(3.2 mg);
+    val cost = alibaba(2.60)
+  }
+
+  case object Na2MoO42H2O extends MediaComp {
+    val n = "Na2MoO4.2H2O";
+    val amount = mediaElem(4.8 mg);
+    val cost = alibaba(12.00)
+  }
+
+  case object CoCl26H20 extends MediaComp {
+    val n = "CoCl2.6H20";
+    val amount = mediaElem(4.7 mg);
+    val cost = alibaba(9.00)
+  }
+
+  case object MnCl24H2O extends MediaComp {
+    val n = "MnCl2.4H2O";
+    val amount = mediaElem(3.2 mg);
+    val cost = alibaba(1.50)
+  }
+
+  case object Biotin extends MediaComp {
+    val n = "Biotin";
+    val amount = mediaElem(0.6 mg);
+    val cost = alibaba(0.50)
+  }
+
+  case object CaPantothe extends MediaComp {
+    val n = "CaPantothenate";
+    val amount = mediaElem(12 mg);
+    val cost = alibaba(20.00)
+  }
+
+  case object NicotinicAc extends MediaComp {
+    val n = "NicotinicAcid";
+    val amount = mediaElem(12 mg);
+    val cost = alibaba(15.00)
+  }
+
+  case object Myoinositol extends MediaComp {
+    val n = "Myoinositol";
+    val amount = mediaElem(30 mg);
+    val cost = alibaba(9.00)
+  }
+
+  case object ThiamineHCl extends MediaComp {
+    val n = "ThiamineHCl";
+    val amount = mediaElem(12 mg);
+    val cost = alibaba(35.00)
+  }
+
+  case object PyroxidolHC extends MediaComp {
+    val n = "PyroxidolHCl";
+    val amount = mediaElem(12 mg);
+    val cost = alibaba(20.00)
+  }
+
+  // Note: The TODOs that remain below need to be filled out from Tim Revak's models under
+  // NAS/shared-data/Tim Revak/Cost Models/20n COG, v2 25JUL16.xlsx
+
+  case object Ammonia {
+    val n = "Ammonia";
+    val cost = alibaba(1.00)
+  }
+
+  case object Glucose {
+    val n = "Glucose";
+    val cost = alibaba(0.32)
+  }
+
+  case object Antifoam {
+    val n = "Antifoam";
+  }
+
 }
 
 object Defaults {
@@ -259,25 +374,39 @@ object Defaults {
   val defaultTiter: Titer = Titer(84 grams, 1 litres) // 84 g/L
   val maxTiter: Titer = Titer(200 grams, 1 liters) // 170g/L is probably the max that has ever been accomplished
   val defaultPricePerTon: Money = USD(5547) // current price of acetaminophen, from market report in NAS/shared-data/Reports and Documents/Market Reports/Global Acetaminophen Industry Report 2015 (02_15_2016).pdf
+  val defaultOperationMode: OperationMode = CMOS
+
+  // BYOP
 
   sealed abstract class OperationMode
   case object CMOS extends OperationMode
   case object BYOP extends OperationMode
-  val defaultOperationMode: OperationMode = CMOS // BYOP
 }
 
 class InvestModel {
 
-  var strainTiter: Titer = Defaults.defaultTiter;
-  var strainYield: Yield = Defaults.defaultYield;
-
   val maxProjectTime: Time = (365 * 10) days
   val maxProjectInvestment: Money = USD(20 million)
+  var strainTiter: Titer = Defaults.defaultTiter;
+  var strainYield: Yield = Defaults.defaultYield;
 
   def getInvestmentRequired(yield_is: Yield, titer_is: Titer): (Money, Time) = {
     strainTiter = titer_is
     strainYield = yield_is
     getInvestment()
+  }
+
+  def getInvestment(): (Money, Time) = {
+    // want to return the inverse shape of (1+\tanh(4x-2)) / 2 (has a good asymptotic form between (0,0) to (1,1)
+    // a resonable approximation would be 0.02\sinh(8x-3.9)+0.5 (between (0,0) and (1,1)
+    val normYield = strainYield.ratio / Defaults.maxYield.ratio // gives us a number between [0,1]
+    val normTiter = strainTiter / Defaults.maxTiter // gives us a number between [0,1]
+
+    (cost(normYield, normTiter), time(normYield, normTiter))
+  }
+
+  def cost(normYield: Double, normTiter: Double): Money = {
+    maxProjectInvestment * asymptoticCurve(normYield, normTiter)
   }
 
   def asymptoticCurve(normYield: Double, normTiter: Double): Double = {
@@ -290,46 +419,20 @@ class InvestModel {
     curve(normTiter)
   }
 
-  def cost(normYield: Double, normTiter: Double): Money = {
-    maxProjectInvestment * asymptoticCurve(normYield, normTiter)
-  }
-
   def time(normYield: Double, normTiter: Double): Time = {
     maxProjectTime * asymptoticCurve(normYield, normTiter)
-  }
-
-  def getInvestment(): (Money, Time) = {
-    // want to return the inverse shape of (1+\tanh(4x-2)) / 2 (has a good asymptotic form between (0,0) to (1,1)
-    // a resonable approximation would be 0.02\sinh(8x-3.9)+0.5 (between (0,0) and (1,1)
-    val normYield = strainYield.ratio / Defaults.maxYield.ratio // gives us a number between [0,1]
-    val normTiter = strainTiter / Defaults.maxTiter // gives us a number between [0,1]
-
-    (cost(normYield, normTiter), time(normYield, normTiter))
   }
 }
 
 class ROIModel {
 
-  var strainTiter: Titer = Defaults.defaultTiter;
-  var strainYield: Yield = Defaults.defaultYield;
-  var productPrice: Money = Defaults.defaultPricePerTon;
-
   val yearsToFullScale: Int = 3
   val volume: Mass = 1000 tonnes
   val startingVolume: Mass = 100 tonnes
   val rate = (10 / 100) percent
-
-  // Calculate the Net Present Value: https://en.wikipedia.org/wiki/Net_present_value
-  // An estimate of how much this money would be worth over a period
-  def getNPV(invested: Money, profits: List[Money]): Money = {
-    // TODO: Change the NPV calculation to use Danielle's model
-    // NAS/shared-data/Danielle/Final Docs/Other Stuff/Molecule NPV.xlsx
-
-    def discountfn(yrProfit: (Money, Int)) = yrProfit._1 / math.pow(1 + rate.value, 1.0 * yrProfit._2)
-    val discountedProfits = profits.zip(1 until profits.length).map(discountfn)
-
-    discountedProfits.reduce(_ + _)
-  }
+  var strainTiter: Titer = Defaults.defaultTiter;
+  var strainYield: Yield = Defaults.defaultYield;
+  var productPrice: Money = Defaults.defaultPricePerTon;
 
   def getROI(): (Money, Dimensionless) = getROI(Defaults.defaultYield, Defaults.defaultTiter, Defaults.defaultPricePerTon, Defaults.defaultOperationMode)
 
@@ -355,8 +458,20 @@ class ROIModel {
     val npv = getNPV(invested, profitRamp)
     val gain: Money = profitRamp.reduce(_ + _)
     val roi: Dimensionless = ((gain - invested).value / invested.value) percent
-   
+
     (npv, roi)
+  }
+
+  // Calculate the Net Present Value: https://en.wikipedia.org/wiki/Net_present_value
+  // An estimate of how much this money would be worth over a period
+  def getNPV(invested: Money, profits: List[Money]): Money = {
+    // TODO: Change the NPV calculation to use Danielle's model
+    // NAS/shared-data/Danielle/Final Docs/Other Stuff/Molecule NPV.xlsx
+
+    def discountfn(yrProfit: (Money, Int)) = yrProfit._1 / math.pow(1 + rate.value, 1.0 * yrProfit._2)
+    val discountedProfits = profits.zip(1 until profits.length).map(discountfn)
+
+    discountedProfits.reduce(_ + _)
   }
 
 }
@@ -365,15 +480,13 @@ object ExploreRange {
   val costmodel = new CostModel()
   val investmodel = new InvestModel()
   val roimodel = new ROIModel()
-
-  sealed abstract class OutFormat
-  case object OutHuman extends OutFormat
-  case object OutTSV extends OutFormat
-
   val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   val HELP_MESSAGE = ""
-  HELP_FORMATTER.setWidth(100)
   private val logger = LogManager.getLogger(getClass.getName)
+  private val OPTION_MARKET_PRICE = "p"
+  private val OPTION_MODE = "m"
+  HELP_FORMATTER.setWidth(100)
+  private val OPTION_OUTFORMAT = "f"
 
   def main(args: Array[String]) {
     val cl = parseCommandLineOptions(args)
@@ -423,10 +536,6 @@ object ExploreRange {
       }
     }
   }
-
-  private val OPTION_MARKET_PRICE = "p"
-  private val OPTION_MODE = "m"
-  private val OPTION_OUTFORMAT = "f"
 
   def parseCommandLineOptions(args: Array[String]): CommandLine = {
     val opts = getCommandLineOptions
@@ -489,4 +598,10 @@ object ExploreRange {
     HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
     System.exit(1)
   }
+
+  sealed abstract class OutFormat
+
+  case object OutHuman extends OutFormat
+
+  case object OutTSV extends OutFormat
 }
