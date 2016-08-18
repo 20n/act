@@ -1,4 +1,3 @@
-
 import sbtassembly.Plugin.AssemblyKeys._
 
 assemblySettings
@@ -25,98 +24,98 @@ resolvers ++= {
 
 libraryDependencies ++= {
   Seq(
-      "org.mongodb"             %% "casbah" % "2.7.1"
-      , "commons-logging"       % "commons-logging" % "1.1.1"
-      , "commons-discovery"     % "commons-discovery" % "0.2"
-      , "commons-configuration" % "commons-configuration" % "1.10"
-      , "commons-lang"          % "commons-lang" % "2.6"
-      , "org.json"              % "json" % "20140107"
-      , "org.jgrapht"           % "jgrapht" % "0.9.0"
-      , "org.jgrapht"           % "jgrapht-core" % "0.9.0"
-      , "org.apache.commons"    % "commons-lang3" % "3.3.2"
-      , "org.apache.axis"       % "axis" % "1.4"
-      , "org.apache.axis"       % "axis-jaxrpc" % "1.4"
-      , "com.thoughtworks.xstream" % "xstream" % "1.4.7"
-      , "org.mortbay.jetty"     % "servlet-api" % "3.0.20100224"
-      , "org.mortbay.jetty"     % "jetty" % "7.0.0.pre4"
-      , "net.sf.opencsv"        % "opencsv" % "2.0"
-      , "mysql"                 % "mysql-connector-java" % "5.1.12"
-      , "stax"                  % "stax-api" % "1.0.1"
-      , "org.rocksdb"           % "rocksdbjni" % "4.1.0"
-      /*
-       * paxtools for metacyc processing
-       * we get paxtools from the biopax resolver
-       */
-      , "org.biopax.paxtools"   % "paxtools" % "4.2.0"
-      , "org.biopax.paxtools"   % "paxtools-core" % "4.2.0",
-      /*
-       * ChEBI is in OWL format, we use OWL API for parsing
-       */
-      "net.sourceforge.owlapi"  % "owlapi-distribution" % "3.5.1",
-       /* Spark for distributed processing, now works with SBT assembly!
-        * Note: once upon a time we had to explicitly define the versions of Akka and Spray that we wanted
-        * to import thanks to some conflicts between transitive dependencies in early Spark packages.  No more!
-        * Spark seems to be doing The Right Thing(R) now-a-days, so we can import the Spark pckages on their own with
-        * impunity.  If you find/feel the need to revisit our old ways of importing these packages, check out build.sbt
-        * at commit cb6e822.  Good luck--you will probably need it. */
-      "org.apache.spark"        %% "spark-core" % "1.5.2",
-      "org.apache.spark"        %% "spark-mllib" % "1.5.2",
-      "org.biojava"             % "core"    % "1.9.1",
-      "edu.ucar"                % "netcdf4" % "4.5.5",
-      "edu.ucar"                % "cdm"     % "4.5.5",
-      "org.postgresql"          % "postgresql"  % "9.4-1204-jdbc42",
-      "org.apache.commons"      % "commons-csv" % "1.2",
-      "commons-cli"             % "commons-cli" % "1.3.1",
-      /* These geometry libraries are used for structural feature
-       * detection and attribute extraction. */
-      "com.dreizak" % "miniball" % "1.0.3",
-      /* These classes are used by the patent extractor package, and were copied over
-       * from the original patent-extractor pom file (for maven).*/
-      "commons-codec" % "commons-codec" % "1.10",
-      "edu.emory.clir" % "clearnlp" % "3.2.0",
-      "edu.emory.clir" % "clearnlp-dictionary" % "3.2",
-      "org.apache.logging.log4j" % "log4j-api" % "2.3",
-      "org.apache.logging.log4j" % "log4j-core" % "2.3",
-      "org.apache.lucene" % "lucene-analyzers-common" % "5.2.1",
-      "org.apache.lucene" % "lucene-core" % "5.2.1",
-      "org.apache.lucene" % "lucene-queries" % "5.2.1",
-      "org.apache.lucene" % "lucene-queryparser" % "5.2.1",
-      "com.fasterxml.jackson.core" % "jackson-annotations" % "2.6.0",
-      "com.fasterxml.jackson.core" % "jackson-core" % "2.6.0",
-      "com.fasterxml.jackson.core" % "jackson-databind" % "2.6.0",
-      /* Explicit versioning of jackson-module-scala is required for Spark 1.5.2. to work.
-       * See https://github.com/FasterXML/jackson-module-scala/issues/214#issuecomment-188959382 */
-      "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0",
-      "org.jsoup" % "jsoup" % "1.8.2",
-      "uk.ac.cam.ch.wwmm" % "chemicalTagger" % "1.4.0",
-      "uk.ac.cam.ch.wwmm.oscar" % "oscar4-api" % "4.2.2",
-      "org.apache.commons" % "commons-collections4" % "4.1",
-      "org.apache.httpcomponents" % "httpclient" % "4.5.2",
-      "org.scalactic" %% "scalactic" % "3.0.0-RC4",
-      "jaxen" % "jaxen" % "1.1.6",
-      "org.eclipse.rdf4j" % "rdf4j-rio-api" % "2.0M3",
-      "org.eclipse.rdf4j" % "rdf4j-rio-turtle" % "2.0M3",
-      /*
-       * squants is a DSL for autoconversions between units
-       * allows us to write readable code such as:
-       * USD(1 million) (1000 dollars) / (1 tonnes)
-       */
-      "com.squants"  %% "squants"  % "0.6.2",
-  /*
-   * the maven repo jar seem to be outdated, or incompatible.
-   * we posted to the indigo group bugs. The current resolution
-   * is to use unmanaged jars we have locally. Soft link
-   * lib/indigo{-inchi.jar, -renderer.jar, .jar} and lib/jna.jar
-   *            , "com.ggasoftware" % "indigo" % "1.1.12"
-   *            , "com.ggasoftware.indigo" % "indigo-renderer" % "1.1.12"
-   *            , "com.ggasoftware.indigo" % "indigo-inchi" % "1.1.12"
-  */
-      "com.novocode" % "junit-interface" % "0.11" % "test",
-      "org.mockito" % "mockito-core" % "1.10.19" % "test",
-      "org.powermock" % "powermock" % "1.6.4" % "test",
-      "org.scalatest" %% "scalatest" % "3.0.0-RC4" % "test",
-      "org.apache.maven.plugins" % "maven-surefire-report-plugin" % "2.17" % "test"
-     )
+    "org.mongodb" %% "casbah" % "2.7.1"
+    , "commons-logging" % "commons-logging" % "1.1.1"
+    , "commons-discovery" % "commons-discovery" % "0.2"
+    , "commons-configuration" % "commons-configuration" % "1.10"
+    , "commons-lang" % "commons-lang" % "2.6"
+    , "org.json" % "json" % "20140107"
+    , "org.jgrapht" % "jgrapht" % "0.9.0"
+    , "org.jgrapht" % "jgrapht-core" % "0.9.0"
+    , "org.apache.commons" % "commons-lang3" % "3.3.2"
+    , "org.apache.axis" % "axis" % "1.4"
+    , "org.apache.axis" % "axis-jaxrpc" % "1.4"
+    , "com.thoughtworks.xstream" % "xstream" % "1.4.7"
+    , "org.mortbay.jetty" % "servlet-api" % "3.0.20100224"
+    , "org.mortbay.jetty" % "jetty" % "7.0.0.pre4"
+    , "net.sf.opencsv" % "opencsv" % "2.0"
+    , "mysql" % "mysql-connector-java" % "5.1.12"
+    , "stax" % "stax-api" % "1.0.1"
+    , "org.rocksdb" % "rocksdbjni" % "4.1.0"
+    /*
+     * paxtools for metacyc processing
+     * we get paxtools from the biopax resolver
+     */
+    , "org.biopax.paxtools" % "paxtools" % "4.2.0"
+    , "org.biopax.paxtools" % "paxtools-core" % "4.2.0",
+    /*
+     * ChEBI is in OWL format, we use OWL API for parsing
+     */
+    "net.sourceforge.owlapi" % "owlapi-distribution" % "3.5.1",
+    /* Spark for distributed processing, now works with SBT assembly!
+     * Note: once upon a time we had to explicitly define the versions of Akka and Spray that we wanted
+     * to import thanks to some conflicts between transitive dependencies in early Spark packages.  No more!
+     * Spark seems to be doing The Right Thing(R) now-a-days, so we can import the Spark pckages on their own with
+     * impunity.  If you find/feel the need to revisit our old ways of importing these packages, check out build.sbt
+     * at commit cb6e822.  Good luck--you will probably need it. */
+    "org.apache.spark" %% "spark-core" % "1.5.2",
+    "org.apache.spark" %% "spark-mllib" % "1.5.2",
+    "org.biojava" % "core" % "1.9.1",
+    "edu.ucar" % "netcdf4" % "4.5.5",
+    "edu.ucar" % "cdm" % "4.5.5",
+    "org.postgresql" % "postgresql" % "9.4-1204-jdbc42",
+    "org.apache.commons" % "commons-csv" % "1.2",
+    "commons-cli" % "commons-cli" % "1.3.1",
+    /* These geometry libraries are used for structural feature
+     * detection and attribute extraction. */
+    "com.dreizak" % "miniball" % "1.0.3",
+    /* These classes are used by the patent extractor package, and were copied over
+     * from the original patent-extractor pom file (for maven).*/
+    "commons-codec" % "commons-codec" % "1.10",
+    "edu.emory.clir" % "clearnlp" % "3.2.0",
+    "edu.emory.clir" % "clearnlp-dictionary" % "3.2",
+    "org.apache.logging.log4j" % "log4j-api" % "2.3",
+    "org.apache.logging.log4j" % "log4j-core" % "2.3",
+    "org.apache.lucene" % "lucene-analyzers-common" % "5.2.1",
+    "org.apache.lucene" % "lucene-core" % "5.2.1",
+    "org.apache.lucene" % "lucene-queries" % "5.2.1",
+    "org.apache.lucene" % "lucene-queryparser" % "5.2.1",
+    "com.fasterxml.jackson.core" % "jackson-annotations" % "2.6.0",
+    "com.fasterxml.jackson.core" % "jackson-core" % "2.6.0",
+    "com.fasterxml.jackson.core" % "jackson-databind" % "2.6.0",
+    /* Explicit versioning of jackson-module-scala is required for Spark 1.5.2. to work.
+     * See https://github.com/FasterXML/jackson-module-scala/issues/214#issuecomment-188959382 */
+    "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0",
+    "org.jsoup" % "jsoup" % "1.8.2",
+    "uk.ac.cam.ch.wwmm" % "chemicalTagger" % "1.4.0",
+    "uk.ac.cam.ch.wwmm.oscar" % "oscar4-api" % "4.2.2",
+    "org.apache.commons" % "commons-collections4" % "4.1",
+    "org.apache.httpcomponents" % "httpclient" % "4.5.2",
+    "org.scalactic" %% "scalactic" % "3.0.0-RC4",
+    "jaxen" % "jaxen" % "1.1.6",
+    "org.eclipse.rdf4j" % "rdf4j-rio-api" % "2.0M3",
+    "org.eclipse.rdf4j" % "rdf4j-rio-turtle" % "2.0M3",
+    /*
+     * squants is a DSL for autoconversions between units
+     * allows us to write readable code such as:
+     * USD(1 million) (1000 dollars) / (1 tonnes)
+     */
+    "com.squants" %% "squants" % "0.6.2",
+    /*
+     * the maven repo jar seem to be outdated, or incompatible.
+     * we posted to the indigo group bugs. The current resolution
+     * is to use unmanaged jars we have locally. Soft link
+     * lib/indigo{-inchi.jar, -renderer.jar, .jar} and lib/jna.jar
+     *            , "com.ggasoftware" % "indigo" % "1.1.12"
+     *            , "com.ggasoftware.indigo" % "indigo-renderer" % "1.1.12"
+     *            , "com.ggasoftware.indigo" % "indigo-inchi" % "1.1.12"
+    */
+    "com.novocode" % "junit-interface" % "0.11" % "test",
+    "org.mockito" % "mockito-core" % "1.10.19" % "test",
+    "org.powermock" % "powermock" % "1.6.4" % "test",
+    "org.scalatest" %% "scalatest" % "3.0.0-RC4" % "test",
+    "org.apache.maven.plugins" % "maven-surefire-report-plugin" % "2.17" % "test"
+  )
 }
 
 Revolver.settings
@@ -161,14 +160,20 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) => {
   case PathList("org", "apache", "commons", "compress", xs@_ *) => MergeStrategy.first
   case PathList("org", "apache", "spark", "unused", xs@_ *) => MergeStrategy.discard
   /*
-     * paxtools for metacyc processing
-     * we get paxtools from the biopax resolver
-     */
-  , "org.biopax.paxtools" % "paxtools" % "4.2.0"
-  , "org.biopax.paxtools" % "paxtools-core" % "4.2.0",
+   * When we add spark-mllib dependency, we get many additional pulls
+   * conflict between spire_2.10/jars/spire_2.10-0.7.1.jar
+   * and              spire-macros_2.10/jars/spire-macros_2.10-0.7.1.jar
+   * resolved by taking the last
+   */
+  case PathList("scala", "reflect", "api", xs@_*) => MergeStrategy.last
   /*
-     * ChEBI is in OWL format, we use OWL API for parsing
-     */
+   * This is a hack to accomodate the fact that the Spark jar includes
+   * AKKA v2.2.6. See comment in libDependencies for the
+   * io.spray/com.typesafe.akka that occur
+   * BEFORE the spark include. That way when we package the spark
+   * assembly and choose "last" as the strategy below, only the
+   * spark jars are picked
+   */
   case PathList("akka", xs@_*) => MergeStrategy.last
   case PathList("chemaxon", "calculator", xs@_*) => MergeStrategy.last
   case PathList("META-INF", "services", xs@_*) => MergeStrategy.last
@@ -185,7 +190,7 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) => {
       case ps@(x :: xs) if ps.last.endsWith("pom.properties") | ps.last.endsWith("pom.xml") =>
         MergeStrategy.discard
       /* With help from
-         * http://stackoverflow.com/questions/999489/invalid-signature-file-when-attempting-to-run-a-jar */
+       * http://stackoverflow.com/questions/999489/invalid-signature-file-when-attempting-to-run-a-jar */
       case ps@(x :: xs) if ps.last.endsWith(".sf") | ps.last.endsWith(".dsa") | ps.last.endsWith(".rsa3") =>
         MergeStrategy.discard
       case _ => MergeStrategy.deduplicate

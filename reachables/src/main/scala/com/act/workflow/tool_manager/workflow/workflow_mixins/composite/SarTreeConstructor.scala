@@ -3,6 +3,7 @@ package com.act.workflow.tool_manager.workflow.workflow_mixins.composite
 import java.io.File
 
 import com.act.analysis.proteome.files.SparkAlignedFastaFileParser
+import com.act.biointerpretation.sarinference.SarTree
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.chemical_db.ChemicalDatabaseKeywords
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.reaction_db.ReactionDatabaseKeywords
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.sequence_db.QueryByReactionId
@@ -92,7 +93,7 @@ else:
       }
 
       // Construct SAR tree
-      new SarTree
+      val clusterSarTree = new SarTree()
     }
   }
 }
