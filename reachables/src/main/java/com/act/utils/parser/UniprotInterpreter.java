@@ -62,7 +62,6 @@ public class UniprotInterpreter {
   private ProteinSequence seq;
 
   public void init() throws IOException, SAXException, ParserConfigurationException, CompoundNotFoundException {
-
     BufferedReader br = new BufferedReader(new FileReader(xmlFile));
     String line;
     StringBuilder sb = new StringBuilder();
@@ -79,7 +78,6 @@ public class UniprotInterpreter {
         new UniprotProxySequenceReader(xmlDocument, aminoAcidCompoundSet);
 
     seq = new ProteinSequence(uniprotProxySequenceReader);
-
   }
 
   private void checkInit() {

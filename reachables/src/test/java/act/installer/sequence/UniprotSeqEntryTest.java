@@ -92,7 +92,7 @@ public class UniprotSeqEntryTest {
     obj.put("xref", new JSONObject());
     obj.put("name", "ADH1");
     obj.put("synonyms", Collections.singletonList("ADH"));
-    obj.put("product_names", Collections.singletonList("Alcohol dehydrogenase class-P"));
+    obj.put("product_names", Arrays.asList("Alcohol dehydrogenase class-P", "Alc Dehyd"));
     obj.put("accession", accessions);
     obj.put("catalytic_activity", "An alcohol + NAD(+) = an aldehyde or ketone + NADH.");
 
@@ -142,7 +142,7 @@ public class UniprotSeqEntryTest {
   @Test
   public void testProductName() {
     assertEquals("tests whether product names are extracted accurately",
-        Collections.singletonList("Alcohol dehydrogenase class-P"), seqEntries.get(0).getProductName());
+        Arrays.asList("Alcohol dehydrogenase class-P", "Alc Dehyd"), seqEntries.get(0).getProductName());
   }
 
   @Test
@@ -194,6 +194,4 @@ public class UniprotSeqEntryTest {
     assertEquals("tests whether PMIDs were assigned accurately", pmidRefs.toString(),
         seqEntries.get(0).getRefs().toString());
   }
-
-
 }

@@ -229,7 +229,6 @@ public class UniprotInstallerTest {
     uniprotInstaller = new UniprotInstaller(
         new File(this.getClass().getResource("uniprot_installer_test_9.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
-
   }
 
   /**
@@ -262,7 +261,6 @@ public class UniprotInstallerTest {
    */
   @Test
   public void testProteinNullFull() {
-
     List<String> oldAccessions = Collections.singletonList("CUB13083");
 
     List<String> uniprotAccessions = Collections.singletonList("A0A0K6JCJ7");
@@ -338,7 +336,6 @@ public class UniprotInstallerTest {
    */
   @Test
   public void testProteinFullFull() {
-
     List<String> uniprotAccessions = Arrays.asList("NUR84963", "O35403");
 
     List<String> genbankNucleotideAccessions = Collections.singletonList("AF026075");
@@ -353,7 +350,8 @@ public class UniprotInstallerTest {
     JSONObject metadata = new JSONObject();
     metadata.put("accession", accessions);
     metadata.put("synonyms", Arrays.asList("STP", "STP1", "ST1A1", "St3a1", "Sult3a1"));
-    metadata.put("product_names", Arrays.asList("Sulfotransferase 1A1", "Amine sulfotransferase"));
+    metadata.put("product_names", Arrays.asList("Sulfotransferase 1A1", "Amine sulfotransferase", "SULT-X2",
+        "Sulfotransferase 3A1"));
     metadata.put("name", "SULT1A1");
     metadata.put("catalytic_activity",
         "3'-phosphoadenylyl sulfate + an amine = adenosine 3',5'-bisphosphate + a sulfamate.");

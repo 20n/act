@@ -121,33 +121,22 @@ public class UniprotSeqEntry extends SequenceEntry {
     organismNodeList = seqFile.getElementsByTagName(ORGANISM);
 
     if (proteinNodeList.getLength() > 1) {
-
       throw new RuntimeException("multiple protein tags parsed");
-
     }
 
     if (geneNodeList.getLength() > 1) {
-
       throw new RuntimeException("multiple gene tags parsed");
-
     }
 
     if (organismNodeList.getLength() > 1) {
-
       throw new RuntimeException("multiple organism tags parsed");
-
     }
 
     if (sequenceNodeList.getLength() > 1) {
-
       throw new RuntimeException("multiple sequence tags parsed");
-
     } else if (sequenceNodeList.getLength() == 0) {
-
       throw new RuntimeException("no sequence tags parsed");
-
     }
-
   }
 
   /**
@@ -179,13 +168,9 @@ public class UniprotSeqEntry extends SequenceEntry {
           Element recommendedNameElement = (Element) proteinChildNode;
 
           if (recommendedNameElement.getElementsByTagName(EC_NUMBER).getLength() > 1) {
-
             throw new RuntimeException("multiple ec numbers per protein");
-
           } else if (recommendedNameElement.getElementsByTagName(EC_NUMBER).getLength() == 1) {
-
             return recommendedNameElement.getElementsByTagName(EC_NUMBER).item(0).getTextContent();
-
           }
         }
       }
@@ -229,7 +214,6 @@ public class UniprotSeqEntry extends SequenceEntry {
         if (dbReferenceElement.hasAttribute(TYPE) && dbReferenceElement.getAttribute(TYPE).equals(EMBL) &&
             dbReferenceElement.hasAttribute(ID)) {
 
-
           NodeList propertyNodeList = dbReferenceElement.getElementsByTagName(PROPERTY);
 
           /* there are some duplicate dbReferenceElements, so we want to make sure we only add those with
@@ -249,7 +233,6 @@ public class UniprotSeqEntry extends SequenceEntry {
 
                 // example: <property type="protein sequence ID" value="BAA19616.1"/>
                 genbankProteinAccessions.add(propertyElement.getAttribute(VALUE).split("\\.")[0]);
-
               }
             }
           }
@@ -354,6 +337,8 @@ public class UniprotSeqEntry extends SequenceEntry {
    * @return the list of product names
    */
   private List<String> extractProductNames() {
+    List<String> productNames = new ArrayList<>();
+
     if (proteinNodeList.getLength() == 1) {
       // since there is only one item in the list, retrieve the only node
       Node proteinNode = proteinNodeList.item(0);
@@ -381,14 +366,14 @@ public class UniprotSeqEntry extends SequenceEntry {
             }
 
             // Collections.singletonList used over Arrays.asList because it takes less memory
-            return Collections.singletonList(productName);
+            productNames.add(productName);
           }
 
         }
       }
     }
 
-    return new ArrayList<>();
+    return productNames;
   }
 
   /**
@@ -412,13 +397,9 @@ public class UniprotSeqEntry extends SequenceEntry {
 
           // there should only be one text element child containing the string of interest
           if (commentChildNodes.getLength() == 1 && commentChildNodes.item(0).getNodeName().equals(TEXT)) {
-
             return commentChildNodes.item(0).getTextContent();
-
           } else if (commentChildNodes.getLength() > 1) {
-
             LOGGER.error("more than one catalytic activity string");
-
           }
         }
 
@@ -538,13 +519,9 @@ public class UniprotSeqEntry extends SequenceEntry {
         Element referenceElement = (Element) referenceNode;
 
         if (referenceElement.getElementsByTagName(CITATION).getLength() > 1) {
-
           LOGGER.error("more than one citation per reference");
-
         } else if (referenceElement.getElementsByTagName(CITATION).getLength() == 0) {
-
           break;
-
         }
 
         Node citationNode = referenceElement.getElementsByTagName(CITATION).item(0);
@@ -563,8 +540,10 @@ public class UniprotSeqEntry extends SequenceEntry {
               if (dbReferenceElement.hasAttribute(TYPE) && dbReferenceElement.getAttribute(TYPE).equals(PUBMED) &&
                   dbReferenceElement.hasAttribute(ID)) {
                 JSONObject obj = new JSONObject();
+
                 obj.put(VAL, dbReferenceElement.getAttribute(ID));
                 obj.put(SRC, PMID);
+
                 references.add(obj);
               }
             }
