@@ -29,6 +29,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
   private val OPTION_MASS_THRESHOLD = "m"
   private val OPTION_LCMS_POSITIVE_RATE = "p"
   private val OPTION_STARTING_POINT = "S"
+  private val OPTION_ENDING_POINT = "E"
 
   private val LCMS_MISS_PENALTY: Double = 1.0
   private val SUBTREE_THRESHOLD: Integer = 2
@@ -72,10 +73,17 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
         hasArg.
         longOpt("starting-point")
         .desc("What point of the workflow to start at, since some steps may already be complete. Choices are " +
-          "EXPANSION, LCMS, CLUSTERING, SAA_SCORING, and PRODUCT_SCORING. The workflow assumes any " +
+          "EXPANSION, LCMS, CLUSTERING, SAA_SCORING, PRODUCT_SCORING, and MESH_RESULTS. The workflow assumes any " +
           "pre-computed steps have been put into the working directory, where they would have been generated had " +
           "the workflow been ran from the start. For example, precomputed prediction corpuses should be located at " +
           "workingDir/predictions.1, workingDir/predictions.2, etc."),
+
+      CliOption.builder(OPTION_ENDING_POINT).
+        required(false).
+        hasArg.
+        longOpt("ending-point")
+        .desc("What point of the workflow to end at. Handled similarly to starting point. Default is to run until " +
+          "the last step, namely meshing the results."),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -87,14 +95,15 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     opts
   }
 
-  object StartingPoints extends Enumeration {
-    type StartingPoints = Value
+  object WorkflowSteps extends Enumeration {
+    type WorkflowSteps = Value
 
     val EXPANSION = Value("EXPANSION")
     val LCMS = Value("LCMS")
     val CLUSTERING = Value("CLUSTERING")
     val SAR_SCORING = Value("SAR_SCORING")
     val PRODUCT_SCORING = Value("PRODUCT_SCORING")
+    val MESH_RESULTS = Value("MESH_RESULTS")
   }
 
   // Implement this with the job structure you want to run to define a workflow
@@ -149,9 +158,9 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     }
 
     /**
-      * Define all jobs and different places from which workflow can start
+      * Define all jobs
       */
-    def addJobsFromExpansionOn() {
+    def addExpansionJobList()(): Unit = {
       logger.info("Running RO expansion jobs.")
       val massFilteringRunnable = L2InchiCorpus.getRunnableSubstrateFilterer(
         rawSubstratesFile,
@@ -168,11 +177,9 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
             predictionsFiles(roId)))
       // Run one job per RO for L2 expansion
       addJavaRunnableBatch("expansion", singleThreadExpansionRunnables)
-
-      addJobsFromLcmsOn()
     }
 
-    def addJobsFromLcmsOn(): Unit = {
+    def addLcmsJob()(): Unit = {
       logger.info("Running LCMS job.")
       // TODO: when Vijay's LCMS code is ready, replace this with the real thing
       // Build a dummy LCMS job that doesn't do anything.
@@ -188,12 +195,10 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
         }
       )
       headerJob.thenRun(lcmsJob)
-
-      addJobsFromClusteringOn()
     }
 
-    def addJobsFromClusteringOn(): Unit = {
-      logger.info("Running clustering jobs.")
+    def addClusteringJobs()(): Unit = {
+      logger.info("Adding clustering jobs.")
       // TODO: when Michael adds the capability, change this workflow to run the clustering jobs and LCMS job in parallel
       // Build one job per RO for clustering
       val clusteringRunnables =
@@ -202,12 +207,10 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
             predictionsFiles(roId),
             sarTreeFiles(roId))) // Run one job per RO for clustering
       addJavaRunnableBatch("cluster", clusteringRunnables)
-
-      addJobsFromSarScoringOn()
     }
 
-    def addJobsFromSarScoringOn(): Unit = {
-      logger.info("Running scoring jobs.")
+    def addSarScoringJobs()(): Unit = {
+      logger.info("Adding sar scoring job.")
       // Build one job per RO for sar scoring, using a random set of LCMS hits instead of actual data.
       val sarScoringRunnables = roIds.map(roId =>
         LibMcsClustering.getRunnableRandomSarScorer(
@@ -217,13 +220,11 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
           LCMS_MISS_PENALTY,
           SUBTREE_THRESHOLD)
       )
-
       addJavaRunnableBatch("sarScoring", sarScoringRunnables)
-
-      addJobsFromProductScoringOn()
     }
 
-    def addJobsFromProductScoringOn(): Unit = {
+    def addProductScoringJobs()(): Unit = {
+      logger.info("Adding  product scoring job.")
       val productScoringRunnables = roIds.map(roId =>
         ProductScorer.getRunnableProductScorer(
           predictionsFiles(roId),
@@ -233,42 +234,75 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
         ))
       addJavaRunnableBatch("productScoring", productScoringRunnables);
 
-      val meshResultsJob = ScalaJobWrapper.wrapScalaFunction("mesh results",
+    }
+
+    def addMeshResultsJob()(): Unit = {
+      logger.info("Adding mesh results job.")
+      val meshJob = ScalaJobWrapper.wrapScalaFunction("mesh_results",
         meshResults(
           scoredSarsFiles.values.toList,
           scoredProductsFiles.values.toList,
           allSarsFile,
           allProductsFile) _)
-      headerJob.thenRun(meshResultsJob)
+      headerJob.thenRun(meshJob)
     }
 
     /**
       * Decide which steps to run based on the StartingPoint supplied, or run the entire workflow by default
       */
-    var startingPoint = StartingPoints.EXPANSION
-    if (cl.hasOption(OPTION_STARTING_POINT)) {
-      try {
-        startingPoint = StartingPoints.withName(cl.getOptionValue(OPTION_STARTING_POINT))
-      } catch {
-        case e: NoSuchElementException =>
-          logger.error(s"Starting point must be among ${StartingPoints.values.map(value => value.toString()).toList} " +
-            s"; Input: ${cl.getOptionValue(OPTION_STARTING_POINT)}; ${e.getMessage()}")
-          System.exit(1)
+    def getStepFromCommandline(optionVal: String, defaultStep: WorkflowSteps.Value): WorkflowSteps.Value = {
+      if (cl.hasOption(optionVal)) {
+        try {
+          return WorkflowSteps.withName(cl.getOptionValue(optionVal))
+        } catch {
+          case e: NoSuchElementException =>
+            logger.error(s"Workflow  point must be among ${WorkflowSteps.values.map(value => value.toString()).toList} " +
+              s"; Input: ${cl.getOptionValue(optionVal)}; ${e.getMessage()}")
+            System.exit(1)
+        }
       }
+      defaultStep
     }
 
-    startingPoint match {
-      case StartingPoints.EXPANSION => addJobsFromExpansionOn()
-      case StartingPoints.LCMS => addJobsFromLcmsOn()
-      case StartingPoints.CLUSTERING => addJobsFromClusteringOn()
-      case StartingPoints.SAR_SCORING => addJobsFromSarScoringOn()
-      case StartingPoints.PRODUCT_SCORING => addJobsFromProductScoringOn()
-    }
+    val firstStep = getStepFromCommandline(OPTION_STARTING_POINT, WorkflowSteps.EXPANSION)
+    val lastStep = getStepFromCommandline(OPTION_ENDING_POINT, WorkflowSteps.MESH_RESULTS)
+    logger.info(s"First step: $firstStep. Last step: $lastStep")
+
+    /**
+      * Pick out the correct steps to run, and add them to the workflow.
+      */
+    val jobList: List[(WorkflowSteps.Value, () => Unit)] = List(
+      (WorkflowSteps.EXPANSION, addExpansionJobList() _),
+      (WorkflowSteps.LCMS, addLcmsJob() _),
+      (WorkflowSteps.CLUSTERING, addClusteringJobs() _),
+      (WorkflowSteps.SAR_SCORING, addSarScoringJobs() _),
+      (WorkflowSteps.PRODUCT_SCORING, addProductScoringJobs() _),
+      (WorkflowSteps.MESH_RESULTS, addMeshResultsJob() _))
+
+    // Get subset of jobs to run.
+    // The first element of each entry in the list is the step it corresponds to.
+    val startIndex = jobList.indexWhere(a => a._1.equals(firstStep))
+    val endIndex = jobList.indexWhere(a => a._1.equals(lastStep))
+    logger.info(s"First index : $startIndex, last index: $endIndex")
+    val jobsToRun = jobList.slice(startIndex, endIndex + 1)
+
+    // The second element of each entry in the list is the function to call.
+    jobsToRun.foreach(jobListEntry => jobListEntry._2())
 
     headerJob
   }
 
 
+  /**
+    * Defines a job that meshes the results from the sar scoring and product scoring into single files,
+    * containing sars/products ranked over all ROs.
+    *
+    * @param scoredSarFiles     Input sars files.
+    * @param scoredProductFiles Input product files.
+    * @param sarOut             Output summary sar file, sorted.
+    * @param productOut         Output summary product file, unsorted.
+    *                           TODO: sort this summary product file
+    */
   def meshResults(scoredSarFiles: List[File], scoredProductFiles: List[File],
                   sarOut: File, productOut: File)(): Unit = {
     val sarLists = scoredSarFiles.map(file => {
@@ -278,6 +312,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     })
     val meshedList = new SarTreeNodeList()
     sarLists.foreach(list => meshedList.addAll(list.getSarTreeNodes))
+    meshedList.sortByDecreasingScores()
     meshedList.writeToFile(sarOut)
 
     var productCorpuses = scoredProductFiles.map(file => L2PredictionCorpus.readPredictionsFromJsonFile(file))
