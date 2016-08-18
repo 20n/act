@@ -293,7 +293,7 @@ public class MockedMongoDB {
         Seq seq = invocation.getArgumentAt(0, Seq.class);
 
         if (seqMap.containsKey((long) seq.getUUID())) {
-          seqMap.get((long) seq.getUUID()).set_metadata(seq.getMetadata());
+          seqMap.get((long) seq.getUUID()).setMetadata(seq.getMetadata());
         }
 
         return null;

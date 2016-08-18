@@ -183,7 +183,7 @@ public class Seq implements Serializable {
   }
   public List<JSONObject> getReferences() { return this.references; }
   public JSONObject getMetadata() { return this.metadata; }
-  public void set_metadata(JSONObject metadata) { this.metadata = metadata; }
+  public void setMetadata(JSONObject metadata) { this.metadata = metadata; }
   public Set<String> get_product_names() { return this.product_names; }
   public Set<String> get_synonyms() { return this.synonyms; }
   public String get_catalytic_activity() {return this.catalytic_activity; }

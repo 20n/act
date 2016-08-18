@@ -263,7 +263,7 @@ public class GenbankInstaller {
         metadata = updateArrayField(PRODUCT_NAMES, se.getProductName().get(0), metadata);
       }
 
-      seq.set_metadata(metadata);
+      seq.setMetadata(metadata);
 
       db.updateMetadata(seq);
 

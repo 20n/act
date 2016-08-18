@@ -234,7 +234,7 @@ public class UniprotInstaller {
         metadata.put(CATALYTIC_ACTIVITY, se.getCatalyticActivity());
       }
 
-      seq.set_metadata(metadata);
+      seq.setMetadata(metadata);
 
       db.updateMetadata(seq);
 
