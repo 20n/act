@@ -53,13 +53,13 @@ import java.util.regex.Pattern;
 public class MongoDB {
 
   private static final long ORG_ID_BASE = 5000000000L;
-
+  private static final BasicDBObject DEFAULT_CURSOR_ORDER_BY_ID =
+          new BasicDBObject("$query", new BasicDBObject()).append("$orderby", new BasicDBObject("_id", 1));
+  static boolean jeff_cleanup_quiet = true;
   private static ObjectMapper mapper = new ObjectMapper();
-
   private String hostname;
   private String database;
   private int port;
-
   private DBCollection dbReactions;
   private DBCollection dbChemicals;
   private DBCollection dbCofactors;
@@ -69,9 +69,15 @@ public class MongoDB {
   private DBCollection dbWaterfalls;
   private DBCollection dbSeq;
   private DBCollection dbPubmed; // the pubmed collection is separate from actv01 db
-
   private DB mongoDB;
   private Mongo mongo;
+  private List<Long> _cofactor_ids_cache = null;
+  private List<Chemical> _cofactor_chemicals_cache = null;
+  /**
+   * Getting KEGG data
+   */
+
+  private Map<String, Long> keggID_ActID;
 
   public MongoDB(String mongoActHost, int port, String dbs) {
     this.hostname = mongoActHost;
@@ -81,6 +87,19 @@ public class MongoDB {
     initDB();
   }
 
+  public MongoDB(String host) {
+    this.hostname = host;
+    this.port = 27017;
+    this.database = "actv01"; // default act database; this constructor is rarely, if ever called.
+    initDB();
+  }
+
+  public MongoDB() {
+    this.hostname = "localhost";
+    this.port = 27017;
+    this.database = "actv01"; // default act database; this constructor is rarely, if ever called.
+    initDB();
+  }
 
   public static void dropDB(String mongoActHost, int port, String dbs) {
     dropDB(mongoActHost, port, dbs, false);
@@ -115,95 +134,6 @@ public class MongoDB {
     } catch (IOException e) {
       throw new RuntimeException("Unable to read from stdin");
     }
-  }
-
-  public MongoDB(String host) {
-    this.hostname = host;
-    this.port = 27017;
-    this.database = "actv01"; // default act database; this constructor is rarely, if ever called.
-    initDB();
-  }
-
-  public MongoDB() {
-    this.hostname = "localhost";
-    this.port = 27017;
-    this.database = "actv01"; // default act database; this constructor is rarely, if ever called.
-    initDB();
-  }
-
-  public String toString(){
-    return this.hostname+" "+this.port;
-  }
-
-  public void close() {
-    this.mongo.close();
-  }
-
-  private void initDB() {
-    try {
-      mongo = new Mongo(this.hostname, this.port);
-      mongoDB = mongo.getDB(this.database);
-
-      // in case the db is protected then we would do the following:
-      // boolean auth = db.authenticate(myUserName, myPassword);
-      // but right now we do not care.
-
-      this.dbReactions = mongoDB.getCollection("reactions");
-      this.dbChemicals = mongoDB.getCollection("chemicals");
-      this.dbCofactors = mongoDB.getCollection("cofactors");
-      this.dbOrganisms = mongoDB.getCollection("organisms");
-      this.dbOrganismNames = mongoDB.getCollection("organismnames");
-      this.dbSeq = mongoDB.getCollection("seq");
-      this.dbCascades = mongoDB.getCollection("cascades");
-      this.dbWaterfalls = mongoDB.getCollection("waterfalls");
-      this.dbPubmed = mongoDB.getCollection("pubmed");
-
-      initIndices();
-    } catch (UnknownHostException e) {
-      throw new IllegalArgumentException("Invalid host for Mongo Act server.");
-    } catch (MongoException e) {
-      throw new IllegalArgumentException(String.format("Could not initialize Mongo driver: %s", e.getMessage()));
-    }
-  }
-
-  private void initIndices() {
-
-    this.createChemicalsIndex("InChI", true);    // create a hashed index
-    this.createChemicalsIndex("InChIKey");       // create a normal index
-    this.createChemicalsIndex("names.brenda");   // create a normal index
-    this.createChemicalsIndex("names.pubchem.values"); // normal index
-    this.createChemicalsIndex("names.synonyms"); // create a normal index
-
-    this.createCofactorsIndex("InChI", true);    // create a hashed index
-
-    this.createOrganismNamesIndex("name");
-    this.createOrganismNamesIndex("org_id");
-
-    this.createSeqIndex("metadata.accession", false);
-    this.createSeqIndex("seq", true);
-  }
-
-  public int port() {
-    return this.port;
-  }
-
-  public String host() {
-    return this.hostname;
-  }
-
-  public String dbs() {
-    return this.database;
-  }
-
-  public String location() {
-    return this.hostname + "." + this.port + "." + this.database;
-  }
-
-  private String getReactantFromMongoDocument(BasicDBObject family, String which, int i) {
-    BasicDBList o = (BasicDBList)((DBObject)family.get("enz_summary")).get(which);
-    if (i >= o.size())
-      return "";
-    return "" + (Long)((DBObject)o.get(i)).get("pubchem");
   }
 
   /*
@@ -410,6 +340,244 @@ public class MongoDB {
     return different ? diff : null;
   }
 
+  public static String chemicalAsString(Chemical c, Long ID) {
+    // called by cytoscape plugin to serialize the entire chemical as a fulltxt string
+    return createChemicalDoc(c, ID).toString();
+  }
+
+  public static BasicDBObject createChemicalDoc(Chemical c, Long ID) {
+    BasicDBObject doc = new BasicDBObject();
+
+    doc.put("_id", ID);
+
+    doc.put("canonical", c.getCanon());
+
+    doc.put("SMILES", c.getSmiles());
+    doc.put("InChI", c.getInChI());
+    doc.put("InChIKey", c.getInChIKey());
+
+    doc.put("isCofactor", c.isCofactor());
+    doc.put("isNative", c.isNative());
+
+    BasicDBObject names = new BasicDBObject();
+    BasicDBList synonyms = new BasicDBList();
+    synonyms.addAll(c.getSynonyms());
+    names.put("synonyms", synonyms);
+
+    BasicDBList pubchemNames = new BasicDBList();
+
+    for (String type : c.getPubchemNameTypes()) {
+      String[] temp = c.getPubchemNames(type);
+      BasicDBList dbNames = new BasicDBList();
+      for (String t : temp) {
+        dbNames.add(t);
+      }
+      BasicDBObject dbNameObj = new BasicDBObject();
+      dbNameObj.put("type", type);
+      dbNameObj.put("values", dbNames);
+      pubchemNames.add(dbNameObj);
+    }
+    names.put("pubchem", pubchemNames);
+    BasicDBList brendaNames = new BasicDBList(); // will really get its fields later if initial install
+    brendaNames.addAll(c.getBrendaNames()); // but for cases where we call it post install, we construct full chem entry
+    names.put("brenda", brendaNames);
+
+    doc.put("names", names);
+
+    BasicDBObject xrefs = new BasicDBObject();
+    xrefs.put("pubchem", c.getPubchemID());
+    int cnt = 0;
+    for (REFS xrefTyp : Chemical.REFS.values()) {
+      if (c.getRef(xrefTyp) != null) {
+        xrefs.put(xrefTyp.name(), MongoDBToJSON.conv(c.getRef(xrefTyp)));
+        cnt++;
+      }
+    }
+    doc.put("xref", xrefs);
+
+    doc.put("estimateEnergy", c.getEstimatedEnergy());
+
+    doc.put("keywords", c.getKeywords());
+    doc.put("keywords_case_insensitive", c.getCaseInsensitiveKeywords());
+
+    doc.put("csid", c.getChemSpiderID());
+    doc.put("num_vendors", c.getChemSpiderNumUniqueVendors());
+    doc.put("vendors", MongoDBToJSON.conv(c.getChemSpiderVendorXrefs()));
+
+    return doc;
+  }
+
+  public static BasicDBObject createReactionDoc(Reaction r, int id) {
+    BasicDBObject doc = new BasicDBObject();
+    doc.put("_id", id);
+    doc.put("ecnum", r.getECNum());
+    doc.put("easy_desc", r.getReactionName());
+
+    BasicDBList substr = new BasicDBList();
+    Long[] ss = r.getSubstrates();
+    for (int i = 0; i < ss.length; i++) {
+      DBObject o = getObject("pubchem", ss[i]);
+      o.put("coefficient", r.getSubstrateCoefficient(ss[i]));
+      substr.put(i, o);
+    }
+
+    BasicDBList prods = new BasicDBList();
+    Long[] pp = r.getProducts();
+    for (int i = 0; i < pp.length; i++) {
+      DBObject o = getObject("pubchem", pp[i]);
+      o.put("coefficient", r.getProductCoefficient(pp[i]));
+      prods.put(i, o);
+    }
+
+    BasicDBList prodCofactors = new BasicDBList();
+    Long[] ppc = r.getProductCofactors();
+    for (int i = 0; i < ppc.length; i++) {
+      DBObject o = getObject("pubchem", ppc[i]);
+      prodCofactors.put(i, o);
+    }
+
+    BasicDBList substrCofactors = new BasicDBList();
+    Long[] ssc = r.getSubstrateCofactors();
+    for (int i = 0; i < ssc.length; i++) {
+      DBObject o = getObject("pubchem", ssc[i]);
+      substrCofactors.put(i, o);
+    }
+
+    BasicDBList coenzymes = new BasicDBList();
+    Long[] coenz = r.getCoenzymes();
+    for (int i = 0; i < coenz.length; i++) {
+      DBObject o = getObject("pubchem", coenz[i]);
+      coenzymes.put(i, o);
+    }
+
+    BasicDBObject enz = new BasicDBObject();
+    enz.put("products", prods);
+    enz.put("substrates", substr);
+    enz.put("product_cofactors", prodCofactors);
+    enz.put("substrate_cofactors", substrCofactors);
+    enz.put("coenzymes", coenzymes);
+    doc.put("enz_summary", enz);
+
+    doc.put("is_abstract", r.getRxnDetailType().name());
+
+    if (r.getDataSource() != null)
+      doc.put("datasource", r.getDataSource().name());
+
+    if (r.getMechanisticValidatorResult() != null) {
+      doc.put("mechanistic_validator_result", MongoDBToJSON.conv(r.getMechanisticValidatorResult()));
+    }
+
+    BasicDBList refs = new BasicDBList();
+    for (P<Reaction.RefDataSource, String> ref : r.getReferences()) {
+      BasicDBObject refEntry = new BasicDBObject();
+      refEntry.put("src", ref.fst().toString());
+      refEntry.put("val", ref.snd());
+      refs.add(refEntry);
+    }
+    doc.put("references", refs);
+
+    BasicDBList proteins = new BasicDBList();
+    for (JSONObject proteinData : r.getProteinData()) {
+      proteins.add(MongoDBToJSON.conv(proteinData));
+    }
+    doc.put("proteins", proteins);
+    ConversionDirectionType cd = r.getConversionDirection();
+    doc.put("conversion_direction", cd == null ? null : cd.toString());
+    StepDirection psd = r.getPathwayStepDirection();
+    doc.put("pathway_step_direction", psd == null ? null : psd.toString());
+
+    return doc;
+  }
+
+  private static BasicDBObject getObject(String field, Long val) {
+    BasicDBObject singularObj = new BasicDBObject();
+    singularObj.put(field, val);
+    return singularObj;
+  }
+
+  private static String[] convertToConsistent(String[] raw, String debug_tag) {
+    String[] consistent = new String[raw.length];
+    for (int i = 0; i < raw.length; i++) {
+      consistent[i] = ConsistentInChI.consistentInChI(raw[i], debug_tag);
+    }
+    return consistent;
+  }
+
+  public String toString() {
+    return this.hostname + " " + this.port;
+  }
+
+  public void close() {
+    this.mongo.close();
+  }
+
+  private void initDB() {
+    try {
+      mongo = new Mongo(this.hostname, this.port);
+      mongoDB = mongo.getDB(this.database);
+
+      // in case the db is protected then we would do the following:
+      // boolean auth = db.authenticate(myUserName, myPassword);
+      // but right now we do not care.
+
+      this.dbReactions = mongoDB.getCollection("reactions");
+      this.dbChemicals = mongoDB.getCollection("chemicals");
+      this.dbCofactors = mongoDB.getCollection("cofactors");
+      this.dbOrganisms = mongoDB.getCollection("organisms");
+      this.dbOrganismNames = mongoDB.getCollection("organismnames");
+      this.dbSeq = mongoDB.getCollection("seq");
+      this.dbCascades = mongoDB.getCollection("cascades");
+      this.dbWaterfalls = mongoDB.getCollection("waterfalls");
+      this.dbPubmed = mongoDB.getCollection("pubmed");
+
+      initIndices();
+    } catch (UnknownHostException e) {
+      throw new IllegalArgumentException("Invalid host for Mongo Act server.");
+    } catch (MongoException e) {
+      throw new IllegalArgumentException(String.format("Could not initialize Mongo driver: %s", e.getMessage()));
+    }
+  }
+
+  private void initIndices() {
+
+    this.createChemicalsIndex("InChI", true);    // create a hashed index
+    this.createChemicalsIndex("InChIKey");       // create a normal index
+    this.createChemicalsIndex("names.brenda");   // create a normal index
+    this.createChemicalsIndex("names.pubchem.values"); // normal index
+    this.createChemicalsIndex("names.synonyms"); // create a normal index
+
+    this.createCofactorsIndex("InChI", true);    // create a hashed index
+
+    this.createOrganismNamesIndex("name");
+    this.createOrganismNamesIndex("org_id");
+
+    this.createSeqIndex("metadata.accession", false);
+    this.createSeqIndex("seq", true);
+  }
+
+  public int port() {
+    return this.port;
+  }
+
+  public String host() {
+    return this.hostname;
+  }
+
+  public String dbs() {
+    return this.database;
+  }
+
+  public String location() {
+    return this.hostname + "." + this.port + "." + this.database;
+  }
+
+  private String getReactantFromMongoDocument(BasicDBObject family, String which, int i) {
+    BasicDBList o = (BasicDBList) ((DBObject) family.get("enz_summary")).get(which);
+    if (i >= o.size())
+      return "";
+    return "" + ((DBObject) o.get(i)).get("pubchem");
+  }
+
   /*
      *
      *
@@ -530,73 +698,6 @@ public class MongoDB {
     }
     // Run exactly one query to update, which should save a lot of time over the course of the installation.
     this.dbChemicals.update(query, update);
-  }
-
-  public static String chemicalAsString(Chemical c, Long ID) {
-    // called by cytoscape plugin to serialize the entire chemical as a fulltxt string
-    return createChemicalDoc(c, ID).toString();
-  }
-
-  public static BasicDBObject createChemicalDoc(Chemical c, Long ID) {
-    BasicDBObject doc = new BasicDBObject();
-
-    doc.put("_id", ID);
-
-    doc.put("canonical", c.getCanon());
-
-    doc.put("SMILES", c.getSmiles());
-    doc.put("InChI", c.getInChI());
-    doc.put("InChIKey", c.getInChIKey());
-
-    doc.put("isCofactor", c.isCofactor());
-    doc.put("isNative", c.isNative());
-
-    BasicDBObject names = new BasicDBObject();
-    BasicDBList synonyms = new BasicDBList();
-    synonyms.addAll(c.getSynonyms());
-    names.put("synonyms", synonyms);
-
-    BasicDBList pubchemNames = new BasicDBList();
-
-    for (String type : c.getPubchemNameTypes()) {
-      String[] temp = c.getPubchemNames(type);
-      BasicDBList dbNames = new BasicDBList();
-      for (String t : temp) {
-        dbNames.add(t);
-      }
-      BasicDBObject dbNameObj = new BasicDBObject();
-      dbNameObj.put("type", type);
-      dbNameObj.put("values", dbNames);
-      pubchemNames.add(dbNameObj);
-    }
-    names.put("pubchem", pubchemNames);
-    BasicDBList brendaNames = new BasicDBList(); // will really get its fields later if initial install
-    brendaNames.addAll(c.getBrendaNames()); // but for cases where we call it post install, we construct full chem entry
-    names.put("brenda", brendaNames);
-
-    doc.put("names", names);
-
-    BasicDBObject xrefs = new BasicDBObject();
-    xrefs.put("pubchem", c.getPubchemID());
-    int cnt = 0;
-    for (REFS xrefTyp : Chemical.REFS.values()) {
-      if (c.getRef(xrefTyp) != null) {
-        xrefs.put(xrefTyp.name(), MongoDBToJSON.conv((JSONObject)c.getRef(xrefTyp)));
-        cnt++;
-      }
-    }
-    doc.put("xref", xrefs);
-
-    doc.put("estimateEnergy", c.getEstimatedEnergy());
-
-    doc.put("keywords", c.getKeywords());
-    doc.put("keywords_case_insensitive", c.getCaseInsensitiveKeywords());
-
-    doc.put("csid", c.getChemSpiderID());
-    doc.put("num_vendors", c.getChemSpiderNumUniqueVendors());
-    doc.put("vendors", MongoDBToJSON.conv(c.getChemSpiderVendorXrefs()));
-
-    return doc;
   }
 
   private void mergeIntoDB(long id, Chemical c) {
@@ -726,8 +827,6 @@ public class MongoDB {
     update.put("$set", set);
     this.dbChemicals.update(query, update);
   }
-
-  static boolean jeff_cleanup_quiet = true;
 
   // retrieve the entry with InChI = @inchi (or create if one does not exist)
   // set one of its synonyms to @synonym
@@ -971,88 +1070,6 @@ public class MongoDB {
     this.dbReactions.update(query, doc);
   }
 
-  public static BasicDBObject createReactionDoc(Reaction r, int id) {
-    BasicDBObject doc = new BasicDBObject();
-    doc.put("_id", id);
-    doc.put("ecnum", r.getECNum());
-    doc.put("easy_desc", r.getReactionName());
-
-    BasicDBList substr = new BasicDBList();
-    Long[] ss = r.getSubstrates();
-    for (int i = 0; i < ss.length; i++) {
-      DBObject o = getObject("pubchem", ss[i]);
-      o.put("coefficient", r.getSubstrateCoefficient(ss[i]));
-      substr.put(i, o);
-    }
-
-    BasicDBList prods = new BasicDBList();
-    Long[] pp = r.getProducts();
-    for (int i = 0; i < pp.length; i++) {
-      DBObject o = getObject("pubchem", pp[i]);
-      o.put("coefficient", r.getProductCoefficient(pp[i]));
-      prods.put(i, o);
-    }
-
-    BasicDBList prodCofactors = new BasicDBList();
-    Long[] ppc = r.getProductCofactors();
-    for (int i = 0; i < ppc.length; i++) {
-      DBObject o = getObject("pubchem", ppc[i]);
-      prodCofactors.put(i, o);
-    }
-
-    BasicDBList substrCofactors = new BasicDBList();
-    Long[] ssc = r.getSubstrateCofactors();
-    for (int i = 0; i < ssc.length; i++) {
-      DBObject o = getObject("pubchem", ssc[i]);
-      substrCofactors.put(i, o);
-    }
-
-    BasicDBList coenzymes = new BasicDBList();
-    Long[] coenz = r.getCoenzymes();
-    for (int i = 0; i < coenz.length; i++) {
-      DBObject o = getObject("pubchem", coenz[i]);
-      coenzymes.put(i, o);
-    }
-
-    BasicDBObject enz = new BasicDBObject();
-    enz.put("products", prods);
-    enz.put("substrates", substr);
-    enz.put("product_cofactors", prodCofactors);
-    enz.put("substrate_cofactors", substrCofactors);
-    enz.put("coenzymes", coenzymes);
-    doc.put("enz_summary", enz);
-
-    doc.put("is_abstract", r.getRxnDetailType().name());
-
-    if (r.getDataSource() != null)
-      doc.put("datasource", r.getDataSource().name());
-
-    if (r.getMechanisticValidatorResult() != null) {
-      doc.put("mechanistic_validator_result", MongoDBToJSON.conv(r.getMechanisticValidatorResult()));
-    }
-
-    BasicDBList refs = new BasicDBList();
-    for (P<Reaction.RefDataSource, String> ref : r.getReferences()) {
-      BasicDBObject refEntry = new BasicDBObject();
-      refEntry.put("src", ref.fst().toString());
-      refEntry.put("val", ref.snd());
-      refs.add(refEntry);
-    }
-    doc.put("references",refs);
-
-    BasicDBList proteins = new BasicDBList();
-    for (JSONObject proteinData : r.getProteinData()) {
-      proteins.add(MongoDBToJSON.conv(proteinData));
-    }
-    doc.put("proteins", proteins);
-    ConversionDirectionType cd = r.getConversionDirection();
-    doc.put("conversion_direction", cd == null ? null : cd.toString());
-    StepDirection psd = r.getPathwayStepDirection();
-    doc.put("pathway_step_direction", psd == null ? null : psd.toString());
-
-    return doc;
-  }
-
   public void submitToActOrganismDB(Organism o) {
     BasicDBObject doc = new BasicDBObject();
     doc.put("_id", o.getUUID());
@@ -1111,12 +1128,6 @@ public class MongoDB {
       Logger.printf(0, "Pubmed Entry [%d]: %s\n", pmid, entry); // human readable...
   }
 
-  private static BasicDBObject getObject(String field, Long val) {
-    BasicDBObject singularObj = new BasicDBObject();
-    singularObj.put(field, val);
-    return singularObj;
-  }
-
   private BasicDBObject getObject(String f1, Long v1, String f2, Float v2) {
     BasicDBObject o = new BasicDBObject();
     o.put(f1, v1); o.put(f2, v2);
@@ -1141,6 +1152,14 @@ public class MongoDB {
     }
     return retId;
   }
+
+    /*
+     *
+     *
+     * End of functions required for populating MongoAct
+     *
+     *
+     */
 
   public boolean alreadyEnteredChemical(String inchi) {
     if (this.dbChemicals == null)
@@ -1196,14 +1215,6 @@ public class MongoDB {
     return o != null;
   }
 
-    /*
-     *
-     *
-     * End of functions required for populating MongoAct
-     *
-     *
-     */
-
   public List<Long> getRxnsWith(Long reactant, Long product) {
 
     BasicDBObject query = new BasicDBObject();
@@ -1220,7 +1231,6 @@ public class MongoDB {
     cur.close();
     return reactions;
   }
-
 
   public List<Reaction> getRxnsWithAll(List<Long> reactants, List<Long> products) {
 
@@ -1325,9 +1335,6 @@ public class MongoDB {
     return constructAllChemicalsFromActData("isNative", true);
   }
 
-  private List<Long> _cofactor_ids_cache = null;
-  private List<Chemical> _cofactor_chemicals_cache = null;
-
   public List<Chemical> getCofactorChemicals() {
     List<Chemical> cof = constructAllChemicalsFromActData("isCofactor", true);
 
@@ -1375,7 +1382,6 @@ public class MongoDB {
     return _cofactor_ids_cache.contains(c);
   }
 
-
   private void addToDefiniteCofactorsMaps(SomeCofactorNames cofactor, Chemical c) {
     Long id = c.getUuid();
     switch (cofactor) {
@@ -1417,106 +1423,6 @@ public class MongoDB {
     default: break;
     }
 
-  }
-  // These should all be by default in the DB, but if not we augment the DB cofactors tags with these chemicals
-  // It is ok for this list to not be exhaustive.... this is just for parent assignment in visualization
-  public enum SomeCofactorNames {
-    Water(0), ATP(1), Acceptor(2), AcceptorH2(3),
-    ReducedAcceptor(4), OxidizedFerredoxin(5), ReducedFerredoxin(6),
-    CO2(7),  BicarbonateHCO3(8), CoA(9), H(10), NH3(11), HCl(12), Cl(13), O2(14),
-    CTP(15), dATP(16), H2S(17), dGTP(18), PhosphoricAcid(19), I(20), MolI(21), AMP(22),
-    Phosphoadenylylsulfate(23), H2SO3(24), adenylylsulfate(25), GTP(26), NADPH(27), dADP(28),
-    NADP(29), UMP(30), dCDP(31), ADP(32), ADPm(33), UDP(34);
-
-    int internalId;
-    Long mongodbId;
-    private SomeCofactorNames(int id) { this.internalId = id; this.mongodbId = null; }
-    public String getInChI() { return this._definiteCofactors[internalId]; }
-    public void setMongoDBId(Long id) { this.mongodbId = id; }
-    public Long getMongoDBId() { return this.mongodbId; }
-
-    private static final String[] raw_definiteCofactors = {
-      // 0 Water:
-      "InChI=1S/H2O/h1H2", // [H2o, H2O, h2O][water, Dihydrogen oxide, Water vapor, Distilled water, oxidane, Deionized water, Purified water, Water, purified, Dihydrogen Monoxide, DHMO, oxygen, OH-, monohydrate, aqua, hydrate, o-]
-      // 1 ATP:
-      "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6+,7?,10-/m1/s1", // [L-ATP, D-ATP, araATP, alphaATP, adenosyl-ribose triphosphate, adenosine 5'-triphosphate, 5'-ATP, ATP, adenosine triphosphate][Adenosine triphosphate, Striadyne, Myotriphos, Triadenyl, Triphosphaden, Atriphos, Glucobasin, Adephos, Adetol, Triphosaden, AC1NSUB1, [[(2S,5S)-5-(6-aminopurin-9-yl)-3,4-dihydroxyoxolan-2-yl]methoxy-hydroxyphosphoryl] phosphono hydrogen phosphate, Adenosine 5'-(tetrahydrogen triphosphate)]
-      // 2 Acceptor:
-      "InChI=1S/R", // [acceptor, oxidized adrenal ferredoxin, oxidized adrenodoxin][]
-      // 3 AcceptorH2:
-      "InChI=1S/RH2/h1H2", // [reduced adrenal ferredoxin, reduced adrenodoxin, acceptor-H2, acceptorH2][]
-      // 4 ReducedAcceptor:
-      "InChI=1S/RH3/h1H3", // [reduced acceptor, AH2, putidaredoxin, donor][]
-      // 5 OxidizedFerredoxin:
-      "InChI=1S/4RS.2Fe.2S/c4*1-2;;;;/q4*-1;2*+5;;", // [oxidized ferredoxin][]
-      // 6 ReducedFerredoxin:
-      "InChI=1S/4RS.2Fe.2S/c4*1-2;;;;/q4*-1;2*+4;;", // [reduced ferredoxin][]
-      // 7 CO2:
-      "InChI=1S/CO2/c2-1-3", // [carbon dioxide, carbon dioxide, carbonic acid gas]
-      // 8 BicarbonateHCO3:
-      "InChI=1S/CH2O3/c2-1(3)4/h(H2,2,3,4)/p-1", // [HCO3-, bicarbonate, bicarbonate]
-      // 9 CoA
-      "InChI=1S/C21H36N7O16P3S/c1-21(2,16(31)19(32)24-4-3-12(29)23-5-6-48)8-41-47(38,39)44-46(36,37)40-7-11-15(43-45(33,34)35)14(30)20(42-11)28-10-27-13-17(22)25-9-26-18(13)28/h9-11,14-16,20,30-31,48H,3-8H2,1-2H3,(H,23,29)(H,24,32)(H,36,37)(H,38,39)(H2,22,25,26)(H2,33,34,35)/t11-,14-,15-,16+,20-/m1/s1", // [coenzyme A, CoA-SH, CoASH]
-      // 10 H
-      "InChI=1S/p+1", // [H+/out, H+/in, H+out]
-      // 11 NH3
-      "InChI=1S/H3N/h1H3", // Ammonia Gas
-      // 12 HCl, Cl-
-      "InChI=1S/ClH/h1H", // hydrochloric acid, hydrogen chloride, Muriatic acid
-      // 13 Cl-
-      "InChI=1S/ClH/h1H/p-1", // [Cl-/out, Cl-/in, chloride]
-      // 14 O2
-      "InChI=1S/O2/c1-2", // oxygen molecule, Molecular oxygen, Dioxygen
-      // 15 CTP
-      "InChI=1S/C9H16N3O14P3/c10-5-1-2-12(9(15)11-5)8-7(14)6(13)4(24-8)3-23-28(19,20)26-29(21,22)25-27(16,17)18/h1-2,4,6-8,13-14H,3H2,(H,19,20)(H,21,22)(H2,10,11,15)(H2,16,17,18)/t4-,6-,7+,8-/m1/s1", // L-CTP, D-CTP, cytosine arabinoside 5'-triphosphate
-      // 16 dATP
-      "InChI=1S/C10H16N5O12P3/c11-9-8-10(13-3-12-9)15(4-14-8)7-1-5(16)6(25-7)2-24-29(20,21)27-30(22,23)26-28(17,18)19/h3-7,16H,1-2H2,(H,20,21)(H,22,23)(H2,11,12,13)(H2,17,18,19)/t5-,6+,7+/m0/s1", // deoxyATP, L-dATP, L-2'-dATP
-      // 17 hydrogen sulfide
-      "InChI=1S/H2S/h1H2", // hydrogensulfide, hydrogen sulfide, hydrogen sulfide
-      // 18 dGTP
-      "InChI=1S/C10H16N5O13P3/c11-10-13-8-7(9(17)14-10)12-3-15(8)6-1-4(16)5(26-6)2-25-30(21,22)28-31(23,24)27-29(18,19)20/h3-6,16H,1-2H2,(H,21,22)(H,23,24)(H2,18,19,20)(H3,11,13,14,17)/t4-,5+,6+/m0/s1", // 2'-dGTP, D-GTP, deoxyGTP
-      // 19 Phosphoric acid
-      "InChI=1S/H3O4P/c1-5(2,3)4/h(H3,1,2,3,4)", // phosphate/out, phosphate/in, Phosphoric acid
-      // 20 Iodide ion
-      "InChI=1S/HI/h1H/p-1", // [iodide, Iodide, Iodide ion]
-      // 21 Molecular iodine
-      "InChI=1S/I2/c1-2", // [Molecular iodine, Iodine solution, Tincture iodine]
-      // 22 AMP
-      "InChI=1S/C10H14N5O7P/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(22-10)1-21-23(18,19)20/h2-4,6-7,10,16-17H,1H2,(H2,11,12,13)(H2,18,19,20)/t4-,6-,7+,10-/m1/s1", // 5'AMP, arabinosyl adenine 5'-phosphate, arabinosyl adenine 5'-monophosphate
-      // 23 3-phosphoadenylylsulfate
-      "InChI=1S/C10H15N5O13P2S/c11-8-5-9(13-2-12-8)15(3-14-5)10-6(16)7(27-29(17,18)19)4(26-10)1-25-30(20,21)28-31(22,23)24/h2-4,6-7,10,16H,1H2,(H,20,21)(H2,11,12,13)(H2,17,18,19)(H,22,23,24)/t4-,6-,7-,10-/m1/s1", // [3'-phosphoadenylylsulfate, 3'-phosphoadenylyl 5'-phosphosulfate, 3-phosphoadenylylsulfate]
-      // 24 Sulfur dioxide solution
-      "InChI=1S/H2O3S/c1-4(2)3/h(H2,1,2,3)", // [Sulfurous acid, Sulphurous acid, Sulfur dioxide solution]
-      // 25 adenylylsulfate
-      "InChI=1S/C10H14N5O10PS/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(24-10)1-23-26(18,19)25-27(20,21)22/h2-4,6-7,10,16-17H,1H2,(H,18,19)(H2,11,12,13)(H,20,21,22)/t4-,6-,7-,10-/m1/s1", // adenosine 5-phosphosulfate, adenylylsulfate, adenosine 5'-phosphate 5'-sulfate
-      // 26 GTP
-      "InChI=1S/C10H16N5O14P3/c11-10-13-7-4(8(18)14-10)12-2-15(7)9-6(17)5(16)3(27-9)1-26-31(22,23)29-32(24,25)28-30(19,20)21/h2-3,5-6,9,16-17H,1H2,(H,22,23)(H,24,25)(H2,19,20,21)(H3,11,13,14,18)/t3-,5-,6-,9-/m1/s1", // guanosine 5'-triphosphate, GUANOSINE TRIPHOSPHATE, 5'-GTP
-      // 27 NADPH
-      "InChI=1S/C21H30N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1,3-4,7-8,10-11,13-16,20-21,29-31H,2,5-6H2,(H2,23,32)(H,36,37)(H,38,39)(H2,22,24,25)(H2,33,34,35)/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1", // NAD(P)H, 2'-NADPH, NADPH
-      // 28 dADP
-      "InChI=1S/C10H15N5O9P2/c11-9-8-10(13-3-12-9)15(4-14-8)7-1-5(16)6(23-7)2-22-26(20,21)24-25(17,18)19/h3-7,16H,1-2H2,(H,20,21)(H2,11,12,13)(H2,17,18,19)/t5-,6+,7+/m0/s1", // 2'-dADP, 2'-deoxy-ADP, deoxyADP
-      // 29 NADP+
-      "InChI=1S/C21H28N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1-4,7-8,10-11,13-16,20-21,29-31H,5-6H2,(H7-,22,23,24,25,32,33,34,35,36,37,38,39)/p+1/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1", // NAD(P)+, beta-NADP+, 2'-NADP+
-      // 30 UMP
-      "InChI=1S/C9H13N2O9P/c12-5-1-2-11(9(15)10-5)8-7(14)6(13)4(20-8)3-19-21(16,17)18/h1-2,4,6-8,13-14H,3H2,(H,10,12,15)(H2,16,17,18)/t4-,6+,7?,8-/m1/s1", // D-UMP, deazauridine 5'-phosphate, ara-UMP
-      // 31 dCDP
-      "InChI=1S/C9H15N3O10P2/c10-7-1-2-12(9(14)11-7)8-3-5(13)6(21-8)4-20-24(18,19)22-23(15,16)17/h1-2,5-6,8,13H,3-4H2,(H,18,19)(H2,10,11,14)(H2,15,16,17)/t5-,6+,8+/m0/s1", // L-dCDP, D-dCDP, 2'-deoxy-CDP
-      // 32 ADP
-      "InChI=1S/C10H15N5O10P2/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(24-10)1-23-27(21,22)25-26(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7+,10-/m1/s1", // L-ADP, D-ADP, araADP
-      // 33 ADP from metacyc
-      "InChI=1S/C10H15N5O10P2/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(24-10)1-23-27(21,22)25-26(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H2,11,12,13)(H2,18,19,20)/p-3", // ADP
-      // 34 UDP from metacyc
-      "InChI=1S/C9H14N2O12P2/c12-5-1-2-11(9(15)10-5)8-7(14)6(13)4(22-8)3-21-25(19,20)23-24(16,17)18/h1-2,4,6-8,13-14H,3H2,(H,19,20)(H,10,12,15)(H2,16,17,18)", // UDP
-    };
-
-    private static String[] _definiteCofactors = convertToConsistent(raw_definiteCofactors, "Installed cofactors");
-  };
-
-  private static String[] convertToConsistent(String[] raw, String debug_tag) {
-    String[] consistent = new String[raw.length];
-    for (int i = 0; i<raw.length; i++) {
-      consistent[i] = ConsistentInChI.consistentInChI(raw[i], debug_tag);
-    }
-    return consistent;
   }
 
   public Set<Long> getNativeIDs() {
@@ -1638,6 +1544,7 @@ public class MongoDB {
     val.put("$exists", "true");
     return constructAllChemicalsFromActData(field, val);
   }
+
   public List<Chemical> getDrugbankChemicals() {
     DBObject val = new BasicDBObject();
     val.put("$ne", null);
@@ -1645,6 +1552,7 @@ public class MongoDB {
 
     return constructAllChemicalsFromActData(field, val);
   }
+
   public List<Chemical> getSigmaChemicals() {
     DBObject val = new BasicDBObject();
     val.put("$ne", null);
@@ -1678,8 +1586,6 @@ public class MongoDB {
     return constructCursorForMatchingChemicals(null, null, null);
   }
 
-  private static final BasicDBObject DEFAULT_CURSOR_ORDER_BY_ID =
-      new BasicDBObject("$query", new BasicDBObject()).append("$orderby", new BasicDBObject("_id", 1));
   private DBCursor constructCursorForMatchingChemicals(String field, Object val, BasicDBObject keys) {
     DBCursor cur;
     if (field != null) {
@@ -1836,7 +1742,7 @@ public class MongoDB {
       c.setAsCofactor();
     if ((Boolean)o.get("isNative"))
       c.setAsNative();
-    if ((Double)o.get("estimateEnergy") != null)
+    if (o.get("estimateEnergy") != null)
       c.setEstimatedEnergy((Double)o.get("estimateEnergy"));
     BasicDBList keywords = (BasicDBList)o.get("keywords");
     if (keywords != null)
@@ -1933,6 +1839,19 @@ public class MongoDB {
   public DBIterator getIteratorOverChemicals() {
     DBCursor cursor = constructCursorForAllChemicals();
     return new DBIterator(cursor);
+  }
+
+  public DBIterator getIteratorOverChemicals(BasicDBObject matchCriterion, boolean notimeout, BasicDBObject keys) {
+
+    if (keys == null) {
+      keys = new BasicDBObject();
+      // keys.put(projection, 1); // 1 means include, rest are excluded
+    }
+
+    DBCursor cursor = this.dbChemicals.find(matchCriterion, keys);
+    if (notimeout)
+      cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
+    return new DBIterator(cursor); // DBIterator is just a wrapper classs
   }
 
   public DBIterator getIteratorOverReactions(boolean notimeout) {
@@ -2045,11 +1964,11 @@ public class MongoDB {
     }
 
     Reaction result = new Reaction(uuid,
-        (Long[]) substr.toArray(new Long[0]),
-        (Long[]) prod.toArray(new Long[0]),
-        (Long[]) substrCofact.toArray(new Long[0]),
-        (Long[]) prodCofact.toArray(new Long[0]),
-        (Long[]) coenz.toArray(new Long[0]),
+            substr.toArray(new Long[0]),
+            prod.toArray(new Long[0]),
+            substrCofact.toArray(new Long[0]),
+            prodCofact.toArray(new Long[0]),
+            coenz.toArray(new Long[0]),
         ecnum, conversionDirection, pathwayStepDirection, name_field, type
     );
 
@@ -2846,12 +2765,6 @@ public class MongoDB {
    * End of organism queries.
    */
 
-
-  /**
-   * Getting KEGG data
-   */
-
-  private Map<String, Long> keggID_ActID;
   public Map<String, Long> getKeggID_ActID(boolean useCached) {
     if (keggID_ActID == null || !useCached)
       keggID_ActID = new HashMap<String, Long>();
@@ -3045,11 +2958,6 @@ public class MongoDB {
     return (c != null);
   }
 
-
-  /**
-   * The following methods are related to ChEBI cross-references installation in the Installer DB.
-   */
-
   /**
    * This function retrieves the ChEBI ID corresponding to an InChI. In the (frequent) case where no ChEBI xref is
    * present, null is returned.
@@ -3069,6 +2977,11 @@ public class MongoDB {
       return (String) chebi.get("dbid");
     }
   }
+
+
+  /**
+   * The following methods are related to ChEBI cross-references installation in the Installer DB.
+   */
 
   /**
    * This function retrieves the chemical corresponding to a ChEBI ID and update its metadata with the ChEBI
@@ -3104,7 +3017,6 @@ public class MongoDB {
     return cursor.results().iterator();
   }
 
-
   /**
    * Setup the ability to use MongoDB's aggregation framework.
    * This greatly greatly simplifies pulling out highly nested and unstructured data from the db.
@@ -3118,5 +3030,110 @@ public class MongoDB {
   public Iterator<DBObject> applyPipelineOverReactions(List<DBObject> pipeline){
     AggregationOutput cursor = this.dbReactions.aggregate(pipeline);
     return cursor.results().iterator();
+  }
+
+
+  // These should all be by default in the DB, but if not we augment the DB cofactors tags with these chemicals
+  // It is ok for this list to not be exhaustive.... this is just for parent assignment in visualization
+  public enum SomeCofactorNames {
+    Water(0), ATP(1), Acceptor(2), AcceptorH2(3),
+    ReducedAcceptor(4), OxidizedFerredoxin(5), ReducedFerredoxin(6),
+    CO2(7), BicarbonateHCO3(8), CoA(9), H(10), NH3(11), HCl(12), Cl(13), O2(14),
+    CTP(15), dATP(16), H2S(17), dGTP(18), PhosphoricAcid(19), I(20), MolI(21), AMP(22),
+    Phosphoadenylylsulfate(23), H2SO3(24), adenylylsulfate(25), GTP(26), NADPH(27), dADP(28),
+    NADP(29), UMP(30), dCDP(31), ADP(32), ADPm(33), UDP(34);
+
+    private static final String[] raw_definiteCofactors = {
+            // 0 Water:
+            "InChI=1S/H2O/h1H2", // [H2o, H2O, h2O][water, Dihydrogen oxide, Water vapor, Distilled water, oxidane, Deionized water, Purified water, Water, purified, Dihydrogen Monoxide, DHMO, oxygen, OH-, monohydrate, aqua, hydrate, o-]
+            // 1 ATP:
+            "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6+,7?,10-/m1/s1", // [L-ATP, D-ATP, araATP, alphaATP, adenosyl-ribose triphosphate, adenosine 5'-triphosphate, 5'-ATP, ATP, adenosine triphosphate][Adenosine triphosphate, Striadyne, Myotriphos, Triadenyl, Triphosphaden, Atriphos, Glucobasin, Adephos, Adetol, Triphosaden, AC1NSUB1, [[(2S,5S)-5-(6-aminopurin-9-yl)-3,4-dihydroxyoxolan-2-yl]methoxy-hydroxyphosphoryl] phosphono hydrogen phosphate, Adenosine 5'-(tetrahydrogen triphosphate)]
+            // 2 Acceptor:
+            "InChI=1S/R", // [acceptor, oxidized adrenal ferredoxin, oxidized adrenodoxin][]
+            // 3 AcceptorH2:
+            "InChI=1S/RH2/h1H2", // [reduced adrenal ferredoxin, reduced adrenodoxin, acceptor-H2, acceptorH2][]
+            // 4 ReducedAcceptor:
+            "InChI=1S/RH3/h1H3", // [reduced acceptor, AH2, putidaredoxin, donor][]
+            // 5 OxidizedFerredoxin:
+            "InChI=1S/4RS.2Fe.2S/c4*1-2;;;;/q4*-1;2*+5;;", // [oxidized ferredoxin][]
+            // 6 ReducedFerredoxin:
+            "InChI=1S/4RS.2Fe.2S/c4*1-2;;;;/q4*-1;2*+4;;", // [reduced ferredoxin][]
+            // 7 CO2:
+            "InChI=1S/CO2/c2-1-3", // [carbon dioxide, carbon dioxide, carbonic acid gas]
+            // 8 BicarbonateHCO3:
+            "InChI=1S/CH2O3/c2-1(3)4/h(H2,2,3,4)/p-1", // [HCO3-, bicarbonate, bicarbonate]
+            // 9 CoA
+            "InChI=1S/C21H36N7O16P3S/c1-21(2,16(31)19(32)24-4-3-12(29)23-5-6-48)8-41-47(38,39)44-46(36,37)40-7-11-15(43-45(33,34)35)14(30)20(42-11)28-10-27-13-17(22)25-9-26-18(13)28/h9-11,14-16,20,30-31,48H,3-8H2,1-2H3,(H,23,29)(H,24,32)(H,36,37)(H,38,39)(H2,22,25,26)(H2,33,34,35)/t11-,14-,15-,16+,20-/m1/s1", // [coenzyme A, CoA-SH, CoASH]
+            // 10 H
+            "InChI=1S/p+1", // [H+/out, H+/in, H+out]
+            // 11 NH3
+            "InChI=1S/H3N/h1H3", // Ammonia Gas
+            // 12 HCl, Cl-
+            "InChI=1S/ClH/h1H", // hydrochloric acid, hydrogen chloride, Muriatic acid
+            // 13 Cl-
+            "InChI=1S/ClH/h1H/p-1", // [Cl-/out, Cl-/in, chloride]
+            // 14 O2
+            "InChI=1S/O2/c1-2", // oxygen molecule, Molecular oxygen, Dioxygen
+            // 15 CTP
+            "InChI=1S/C9H16N3O14P3/c10-5-1-2-12(9(15)11-5)8-7(14)6(13)4(24-8)3-23-28(19,20)26-29(21,22)25-27(16,17)18/h1-2,4,6-8,13-14H,3H2,(H,19,20)(H,21,22)(H2,10,11,15)(H2,16,17,18)/t4-,6-,7+,8-/m1/s1", // L-CTP, D-CTP, cytosine arabinoside 5'-triphosphate
+            // 16 dATP
+            "InChI=1S/C10H16N5O12P3/c11-9-8-10(13-3-12-9)15(4-14-8)7-1-5(16)6(25-7)2-24-29(20,21)27-30(22,23)26-28(17,18)19/h3-7,16H,1-2H2,(H,20,21)(H,22,23)(H2,11,12,13)(H2,17,18,19)/t5-,6+,7+/m0/s1", // deoxyATP, L-dATP, L-2'-dATP
+            // 17 hydrogen sulfide
+            "InChI=1S/H2S/h1H2", // hydrogensulfide, hydrogen sulfide, hydrogen sulfide
+            // 18 dGTP
+            "InChI=1S/C10H16N5O13P3/c11-10-13-8-7(9(17)14-10)12-3-15(8)6-1-4(16)5(26-6)2-25-30(21,22)28-31(23,24)27-29(18,19)20/h3-6,16H,1-2H2,(H,21,22)(H,23,24)(H2,18,19,20)(H3,11,13,14,17)/t4-,5+,6+/m0/s1", // 2'-dGTP, D-GTP, deoxyGTP
+            // 19 Phosphoric acid
+            "InChI=1S/H3O4P/c1-5(2,3)4/h(H3,1,2,3,4)", // phosphate/out, phosphate/in, Phosphoric acid
+            // 20 Iodide ion
+            "InChI=1S/HI/h1H/p-1", // [iodide, Iodide, Iodide ion]
+            // 21 Molecular iodine
+            "InChI=1S/I2/c1-2", // [Molecular iodine, Iodine solution, Tincture iodine]
+            // 22 AMP
+            "InChI=1S/C10H14N5O7P/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(22-10)1-21-23(18,19)20/h2-4,6-7,10,16-17H,1H2,(H2,11,12,13)(H2,18,19,20)/t4-,6-,7+,10-/m1/s1", // 5'AMP, arabinosyl adenine 5'-phosphate, arabinosyl adenine 5'-monophosphate
+            // 23 3-phosphoadenylylsulfate
+            "InChI=1S/C10H15N5O13P2S/c11-8-5-9(13-2-12-8)15(3-14-5)10-6(16)7(27-29(17,18)19)4(26-10)1-25-30(20,21)28-31(22,23)24/h2-4,6-7,10,16H,1H2,(H,20,21)(H2,11,12,13)(H2,17,18,19)(H,22,23,24)/t4-,6-,7-,10-/m1/s1", // [3'-phosphoadenylylsulfate, 3'-phosphoadenylyl 5'-phosphosulfate, 3-phosphoadenylylsulfate]
+            // 24 Sulfur dioxide solution
+            "InChI=1S/H2O3S/c1-4(2)3/h(H2,1,2,3)", // [Sulfurous acid, Sulphurous acid, Sulfur dioxide solution]
+            // 25 adenylylsulfate
+            "InChI=1S/C10H14N5O10PS/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(24-10)1-23-26(18,19)25-27(20,21)22/h2-4,6-7,10,16-17H,1H2,(H,18,19)(H2,11,12,13)(H,20,21,22)/t4-,6-,7-,10-/m1/s1", // adenosine 5-phosphosulfate, adenylylsulfate, adenosine 5'-phosphate 5'-sulfate
+            // 26 GTP
+            "InChI=1S/C10H16N5O14P3/c11-10-13-7-4(8(18)14-10)12-2-15(7)9-6(17)5(16)3(27-9)1-26-31(22,23)29-32(24,25)28-30(19,20)21/h2-3,5-6,9,16-17H,1H2,(H,22,23)(H,24,25)(H2,19,20,21)(H3,11,13,14,18)/t3-,5-,6-,9-/m1/s1", // guanosine 5'-triphosphate, GUANOSINE TRIPHOSPHATE, 5'-GTP
+            // 27 NADPH
+            "InChI=1S/C21H30N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1,3-4,7-8,10-11,13-16,20-21,29-31H,2,5-6H2,(H2,23,32)(H,36,37)(H,38,39)(H2,22,24,25)(H2,33,34,35)/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1", // NAD(P)H, 2'-NADPH, NADPH
+            // 28 dADP
+            "InChI=1S/C10H15N5O9P2/c11-9-8-10(13-3-12-9)15(4-14-8)7-1-5(16)6(23-7)2-22-26(20,21)24-25(17,18)19/h3-7,16H,1-2H2,(H,20,21)(H2,11,12,13)(H2,17,18,19)/t5-,6+,7+/m0/s1", // 2'-dADP, 2'-deoxy-ADP, deoxyADP
+            // 29 NADP+
+            "InChI=1S/C21H28N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1-4,7-8,10-11,13-16,20-21,29-31H,5-6H2,(H7-,22,23,24,25,32,33,34,35,36,37,38,39)/p+1/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1", // NAD(P)+, beta-NADP+, 2'-NADP+
+            // 30 UMP
+            "InChI=1S/C9H13N2O9P/c12-5-1-2-11(9(15)10-5)8-7(14)6(13)4(20-8)3-19-21(16,17)18/h1-2,4,6-8,13-14H,3H2,(H,10,12,15)(H2,16,17,18)/t4-,6+,7?,8-/m1/s1", // D-UMP, deazauridine 5'-phosphate, ara-UMP
+            // 31 dCDP
+            "InChI=1S/C9H15N3O10P2/c10-7-1-2-12(9(14)11-7)8-3-5(13)6(21-8)4-20-24(18,19)22-23(15,16)17/h1-2,5-6,8,13H,3-4H2,(H,18,19)(H2,10,11,14)(H2,15,16,17)/t5-,6+,8+/m0/s1", // L-dCDP, D-dCDP, 2'-deoxy-CDP
+            // 32 ADP
+            "InChI=1S/C10H15N5O10P2/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(24-10)1-23-27(21,22)25-26(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7+,10-/m1/s1", // L-ADP, D-ADP, araADP
+            // 33 ADP from metacyc
+            "InChI=1S/C10H15N5O10P2/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(24-10)1-23-27(21,22)25-26(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H2,11,12,13)(H2,18,19,20)/p-3", // ADP
+            // 34 UDP from metacyc
+            "InChI=1S/C9H14N2O12P2/c12-5-1-2-11(9(15)10-5)8-7(14)6(13)4(22-8)3-21-25(19,20)23-24(16,17)18/h1-2,4,6-8,13-14H,3H2,(H,19,20)(H,10,12,15)(H2,16,17,18)", // UDP
+    };
+    private static String[] _definiteCofactors = convertToConsistent(raw_definiteCofactors, "Installed cofactors");
+    int internalId;
+    Long mongodbId;
+
+    SomeCofactorNames(int id) {
+      this.internalId = id;
+      this.mongodbId = null;
+    }
+
+    public String getInChI() {
+      return _definiteCofactors[internalId];
+    }
+
+    public Long getMongoDBId() {
+      return this.mongodbId;
+    }
+
+    public void setMongoDBId(Long id) {
+      this.mongodbId = id;
+    }
   }
 }

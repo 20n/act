@@ -1,5 +1,6 @@
 package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.chemical_db
 
 trait ChemicalDatabaseKeywords {
-  // Add to these as needed
+  val CHEMICAL_DB_KEYWORD_ID = "_id"
+  val CHEMICAL_DB_KEYWORD_INCHI = "InChI"
 }
