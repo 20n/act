@@ -192,7 +192,7 @@ public class UniprotInstaller {
 
     // update prior data
     for (Seq seq : seqs) {
-      JSONObject metadata = seq.get_metadata();
+      JSONObject metadata = seq.getMetadata();
 
       JSONObject accessions = se.getAccession();
 
@@ -234,11 +234,11 @@ public class UniprotInstaller {
         metadata.put(CATALYTIC_ACTIVITY, se.getCatalyticActivity());
       }
 
-      seq.set_metadata(metadata);
+      seq.setMetadata(metadata);
 
       db.updateMetadata(seq);
 
-      List<JSONObject> oldRefs = seq.get_references();
+      List<JSONObject> oldRefs = seq.getReferences();
       List<JSONObject> newPmidRefs = se.getRefs();
 
       if (!oldRefs.isEmpty()) {
@@ -256,13 +256,13 @@ public class UniprotInstaller {
           }
         }
 
-        seq.set_references(oldRefs);
+        seq.setReferences(oldRefs);
 
       } else {
-        seq.set_references(se.getRefs());
+        seq.setReferences(se.getRefs());
       }
 
-      if (seq.get_references() != null) {
+      if (seq.getReferences() != null) {
         db.updateReferences(seq);
       }
     }

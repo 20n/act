@@ -231,7 +231,7 @@ public class GenbankInstaller {
 
     // update prior data
     for (Seq seq : seqs) {
-      JSONObject metadata = seq.get_metadata();
+      JSONObject metadata = seq.getMetadata();
 
       JSONObject accessions = se.getAccession();
 
@@ -263,11 +263,11 @@ public class GenbankInstaller {
         metadata = updateArrayField(PRODUCT_NAMES, se.getProductName().get(0), metadata);
       }
 
-      seq.set_metadata(metadata);
+      seq.setMetadata(metadata);
 
       db.updateMetadata(seq);
 
-      List<JSONObject> oldRefs = seq.get_references();
+      List<JSONObject> oldRefs = seq.getReferences();
       List<JSONObject> newPmidRefs = se.getPmids();
       List<JSONObject> newPatentRefs = se.getPatents();
 
@@ -305,13 +305,13 @@ public class GenbankInstaller {
           }
         }
 
-        seq.set_references(oldRefs);
+        seq.setReferences(oldRefs);
 
       } else {
-        seq.set_references(se.getRefs());
+        seq.setReferences(se.getRefs());
       }
 
-      if (seq.get_references() != null) {
+      if (seq.getReferences() != null) {
         db.updateReferences(seq);
       }
     }

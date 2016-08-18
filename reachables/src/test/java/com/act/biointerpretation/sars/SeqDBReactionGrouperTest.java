@@ -47,17 +47,17 @@ public class SeqDBReactionGrouperTest {
   public void init() {
     mockSeqA = Mockito.mock(Seq.class);
     Mockito.when(mockSeqA.getUUID()).thenReturn(SEQ_ID_A);
-    Mockito.when(mockSeqA.get_sequence()).thenReturn(SEQUENCE_AB);
+    Mockito.when(mockSeqA.getSequence()).thenReturn(SEQUENCE_AB);
     Mockito.when(mockSeqA.getReactionsCatalyzed()).thenReturn(reactionSetA);
 
     mockSeqB = Mockito.mock(Seq.class);
     Mockito.when(mockSeqB.getUUID()).thenReturn(SEQ_ID_B);
-    Mockito.when(mockSeqB.get_sequence()).thenReturn(SEQUENCE_AB);
+    Mockito.when(mockSeqB.getSequence()).thenReturn(SEQUENCE_AB);
     Mockito.when(mockSeqB.getReactionsCatalyzed()).thenReturn(reactionSetB);
 
     mockSeqC = Mockito.mock(Seq.class);
     Mockito.when(mockSeqC.getUUID()).thenReturn(SEQ_ID_C);
-    Mockito.when(mockSeqC.get_sequence()).thenReturn(SEQUENCE_C);
+    Mockito.when(mockSeqC.getSequence()).thenReturn(SEQUENCE_C);
     Mockito.when(mockSeqC.getReactionsCatalyzed()).thenReturn(reactionSetC);
   }
 

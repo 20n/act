@@ -30,14 +30,14 @@ public class Seq implements Serializable {
 
   private Set<Long> reactionsCatalyzed;
 
-  private String gene_name;
-  private Set<String> uniprot_accs;
-  private Set<String> genbank_prot_accs;
-  private Set<String> genbank_nuc_accs;
-  private Set<String> brenda_ids;
+  private String geneName;
+  private Set<String> uniprotAccs;
+  private Set<String> genbankProtAccs;
+  private Set<String> genbankNucAccs;
+  private Set<String> brendaIDs;
   private Set<String> synonyms;
-  private Set<String> product_names;
-  private String catalytic_activity;
+  private Set<String> productNames;
+  private String catalyticActivity;
 
   public Seq(long id, String e, Long oid, String o, String s, List<JSONObject> r, DBObject m, AccDB d) {
     this.id = (new Long(id)).intValue();
@@ -50,12 +50,12 @@ public class Seq implements Serializable {
     this.metadata = MongoDBToJSON.conv(m); // to JSONObject
 
     // extracted data from metadata:
-    this.gene_name        = meta(this.metadata, new String[] { "name" });
+    this.geneName        = meta(this.metadata, new String[] { "name" });
     if (this.metadata.has("xref")) {
       JSONObject xrefObject = metadata.getJSONObject("xref");
 
       if (xrefObject.has("brenda_id")) {
-        this.brenda_ids = parseJSONArray(xrefObject.getJSONArray("brenda_id"));
+        this.brendaIDs = parseJSONArray(xrefObject.getJSONArray("brenda_id"));
       }
     }
     if (this.metadata.has("accession")) {
@@ -63,23 +63,23 @@ public class Seq implements Serializable {
       JSONObject accessions = metadata.getJSONObject("accession");
 
       if (accessions.has("uniprot")) {
-        this.uniprot_accs = parseJSONArray(accessions.getJSONArray("uniprot"));
+        this.uniprotAccs = parseJSONArray(accessions.getJSONArray("uniprot"));
       }
 
       if (accessions.has("genbank_protein")) {
-        this.genbank_prot_accs = parseJSONArray(accessions.getJSONArray("genbank_protein"));
+        this.genbankProtAccs = parseJSONArray(accessions.getJSONArray("genbank_protein"));
       }
 
       if (accessions.has("genbank_nucleotide")) {
-        this.genbank_nuc_accs = parseJSONArray(accessions.getJSONArray("genbank_nucleotide"));
+        this.genbankNucAccs = parseJSONArray(accessions.getJSONArray("genbank_nucleotide"));
       }
     }
     if (this.metadata.has("product_names"))
-      this.product_names = parseJSONArray((JSONArray) this.metadata.get("product_names"));
+      this.productNames = parseJSONArray((JSONArray) this.metadata.get("product_names"));
     if (this.metadata.has("synonyms"))
       this.synonyms = parseJSONArray((JSONArray) this.metadata.get("synonyms"));
     if (this.metadata.has("catalytic_activity"))
-      this.catalytic_activity = this.metadata.getString("catalytic_activity");
+      this.catalyticActivity = this.metadata.getString("catalytic_activity");
 
     this.reactionsCatalyzed = new HashSet<Long>();
   }
@@ -99,23 +99,23 @@ public class Seq implements Serializable {
     return seq;
   }
 
-  static final String not_found = "";
+  static final String notFound = "";
   private String meta(JSONObject o, String[] xpath) {
     Set<String> ret = meta(o, xpath, true);
     if (ret.size() > 0) {
       return ret.iterator().next();
     } else {
-      return not_found;
+      return notFound;
     }
   }
 
   private Set<String> meta(JSONObject o, String[] xpath, boolean returnSet) {
     int len = xpath.length;
-    Set<String> not_fnd = new HashSet<String>();
-    not_fnd.add(not_found);
+    Set<String> notFnd = new HashSet<String>();
+    notFnd.add(notFound);
     try {
       if (len == 0)
-        return not_fnd;
+        return notFnd;
 
       if (len == 1) {
         Object val = o.get(xpath[0]); // can throw
@@ -132,36 +132,36 @@ public class Seq implements Serializable {
         meta(o.getJSONObject(xpath[0]), rest, returnSet);  // can throw
       }
     } catch (JSONException ex) {
-      return not_fnd;
+      return notFnd;
     }
-    return not_fnd;
+    return notFnd;
   }
 
-  private String meta(JSONObject o, String[] xpath, String field, String should_equal, String extract_field) {
+  private String meta(JSONObject o, String[] xpath, String field, String shouldEqual, String extractField) {
     int len = xpath.length;
     try {
       if (len == 0)
-        return not_found;
+        return notFound;
 
       if (len == 1) {
         JSONArray a = o.getJSONArray(xpath[0]); // can throw
         // iterate over all objects
         for (int i = 0; i < a.length(); i++) {
           JSONObject oo = a.getJSONObject(i); // can throw
-          // if the object has the "field" and its value equals "should_equal"
-          if (should_equal.equals(oo.getString(field))) { // can throw
+          // if the object has the "field" and its value equals "shouldEqual"
+          if (shouldEqual.equals(oo.getString(field))) { // can throw
             // return on first match
-            return oo.getString(extract_field);
+            return oo.getString(extractField);
           }
         }
       } else {
         String[] rest = Arrays.copyOfRange(xpath, 1, xpath.length);
-        meta(o.getJSONObject(xpath[0]), rest, field, should_equal, extract_field);  // can throw
+        meta(o.getJSONObject(xpath[0]), rest, field, shouldEqual, extractField);  // can throw
       }
     } catch (JSONException ex) {
-      return not_found;
+      return notFound;
     }
-    return not_found;
+    return notFound;
   }
 
   private Set<String> parseJSONArray(JSONArray jArray) {
@@ -175,34 +175,30 @@ public class Seq implements Serializable {
   }
 
   public int getUUID() { return this.id; }
-  public String get_sequence() { return this.sequence; }
-  public String get_ec() { return this.ecnum; }
-  public String get_org_name() { return this.organism; }
-  public Long getOrgId() {
-    return this.organismIDs;
-  }
-  public List<JSONObject> get_references() { return this.references; }
-  public JSONObject get_metadata() { return this.metadata; }
-  public Set<String> get_product_names() { return this.product_names; }
-  public Set<String> get_synonyms() { return this.synonyms; }
-  public String get_catalytic_activity() {return this.catalytic_activity; }
-  public String get_gene_name() { return this.gene_name; }
-  public Set<String> get_uniprot_accession() { return this.uniprot_accs; }
-  public Set<String> get_genbank_protein_accession() { return this.genbank_prot_accs; }
-  public Set<String> get_genbank_nucleotide_accession() { return this.genbank_nuc_accs; }
-  public Set<String> get_brenda_ids() { return this.brenda_ids; }
-  public AccDB get_srcdb() { return this.srcdb; }
+  public String getSequence() { return this.sequence; }
+  public String getEc() { return this.ecnum; }
+  public String getOrgName() { return this.organism; }
+  public Long getOrgId() { return this.organismIDs; }
+  public List<JSONObject> getReferences() { return this.references; }
+  public JSONObject getMetadata() { return this.metadata; }
+  public Set<String> getProductNames() { return this.productNames; }
+  public Set<String> getSynonyms() { return this.synonyms; }
+  public String getCatalyticActivity() {return this.catalyticActivity; }
+  public String getGeneName() { return this.geneName; }
+  public Set<String> getUniprotAccession() { return this.uniprotAccs; }
+  public Set<String> getGenbankProteinAccession() { return this.genbankProtAccs; }
+  public Set<String> getGenbankNucleotideAccession() { return this.genbankNucAccs; }
+  public Set<String> getBrendaIDs() { return this.brendaIDs; }
+  public AccDB getSrcdb() { return this.srcdb; }
 
   public void addReactionsCatalyzed(Long r) { this.reactionsCatalyzed.add(r); }
   public Set<Long> getReactionsCatalyzed() { return this.reactionsCatalyzed; }
 
-  public void set_references(List<JSONObject> refs) { this.references = refs; }
+  public void setMetadata(JSONObject metadata) { this.metadata = metadata; }
+  public void setReferences(List<JSONObject> refs) { this.references = refs; }
   public void setReactionsCatalyzed(Set<Long> reactionsCatalyzed) { this.reactionsCatalyzed = reactionsCatalyzed; }
-  public void set_metadata(JSONObject metadata) { this.metadata = metadata; }
-  public void set_organism_name(String orgName) { this.organism = orgName; }
+  public void setOrgName(String orgName) { this.organism = orgName; }
   public void setOrgId(Long orgId) { this.organismIDs = orgId; }
-
-
 }
 
 

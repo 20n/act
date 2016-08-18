@@ -2725,7 +2725,7 @@ public class MongoDB {
   public void updateMetadata(Seq seq) {
     BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
     DBObject obj = this.dbSeq.findOne(query);
-    obj.put("metadata", MongoDBToJSON.conv(seq.get_metadata()));
+    obj.put("metadata", MongoDBToJSON.conv(seq.getMetadata()));
     this.dbSeq.update(query, obj);
   }
 
@@ -2735,7 +2735,7 @@ public class MongoDB {
     BasicDBList refs = new BasicDBList();
 
     List<DBObject> newReferences = new ArrayList<>();
-    for (JSONObject ref : seq.get_references()) {
+    for (JSONObject ref : seq.getReferences()) {
       newReferences.add(MongoDBToJSON.conv(ref));
     }
 

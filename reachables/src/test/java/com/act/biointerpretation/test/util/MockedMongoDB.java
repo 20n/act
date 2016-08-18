@@ -78,10 +78,10 @@ public class MockedMongoDB {
   }
 
   private static Seq copySeq(Seq seq) {
-    JSONObject oldMetadata = seq.get_metadata();
+    JSONObject oldMetadata = seq.getMetadata();
     JSONObject metadata = deepCopy(oldMetadata);
 
-    List<JSONObject> oldRefs = seq.get_references();
+    List<JSONObject> oldRefs = seq.getReferences();
 
     List<JSONObject> references = new ArrayList<>();
 
@@ -90,8 +90,8 @@ public class MockedMongoDB {
       references.add(copy);
     }
 
-    return new Seq(seq.getUUID(), seq.get_ec(), seq.getOrgId(), seq.get_org_name(), seq.get_sequence(), references,
-        MongoDBToJSON.conv(metadata), seq.get_srcdb());
+    return new Seq(seq.getUUID(), seq.getEc(), seq.getOrgId(), seq.getOrgName(), seq.getSequence(), references,
+        MongoDBToJSON.conv(metadata), seq.getSrcdb());
   }
 
   public MockedMongoDB() { }
@@ -207,9 +207,9 @@ public class MockedMongoDB {
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
           Seq sequence = entry.getValue();
 
-          if (sequence.get_ec() != null && sequence.get_ec().equals(ec)
-              && sequence.get_sequence().equals(seq)
-              && sequence.get_org_name().equals(organism)) {
+          if (sequence.getEc() != null && sequence.getEc().equals(ec)
+              && sequence.getSequence().equals(seq)
+              && sequence.getOrgName().equals(organism)) {
             matchedSeqs.add(copySeq(sequence));
           }
         }
@@ -227,7 +227,7 @@ public class MockedMongoDB {
 
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
           Seq sequence = entry.getValue();
-          JSONObject metadata = sequence.get_metadata();
+          JSONObject metadata = sequence.getMetadata();
 
           if (!metadata.has("accession") ||
               !metadata.getJSONObject("accession").has(Seq.AccType.genbank_protein.toString())) {
@@ -260,8 +260,8 @@ public class MockedMongoDB {
 
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
           Seq sequence = entry.getValue();
-          JSONObject metadata = sequence.get_metadata();
-          String databaseSequence = sequence.get_sequence();
+          JSONObject metadata = sequence.getMetadata();
+          String databaseSequence = sequence.getSequence();
 
           if (!seq.equals(databaseSequence)) {
             continue;
@@ -293,7 +293,7 @@ public class MockedMongoDB {
         Seq seq = invocation.getArgumentAt(0, Seq.class);
 
         if (seqMap.containsKey((long) seq.getUUID())) {
-          seqMap.get((long) seq.getUUID()).set_metadata(seq.get_metadata());
+          seqMap.get((long) seq.getUUID()).setMetadata(seq.getMetadata());
         }
 
         return null;
@@ -306,7 +306,7 @@ public class MockedMongoDB {
         Seq seq = invocation.getArgumentAt(0, Seq.class);
 
         if (seqMap.containsKey((long) seq.getUUID())) {
-          seqMap.get((long) seq.getUUID()).set_references(seq.get_references());
+          seqMap.get((long) seq.getUUID()).setReferences(seq.getReferences());
         }
 
         return null;

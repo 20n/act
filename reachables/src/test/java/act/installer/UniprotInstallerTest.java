@@ -444,7 +444,7 @@ public class UniprotInstallerTest {
         references, MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
     for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
-      if (seqentry.getValue().get_sequence().equals(protSeqEcSeqOrgQuery)) {
+      if (seqentry.getValue().getSequence().equals(protSeqEcSeqOrgQuery)) {
         compareSeqs("for testProteinEcSeqOrgQuery (query by ec, org, seq with no database match)",
             proteinEcSeqOrgTestQuery, seqentry.getValue());
       }
@@ -522,7 +522,7 @@ public class UniprotInstallerTest {
         protAccessionQueryTestSeq, seqs.get(23894L));
 
     for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
-      if (seqentry.getValue().get_sequence().equals(protSeqAccessionQuery)) {
+      if (seqentry.getValue().getSequence().equals(protSeqAccessionQuery)) {
         compareSeqs("for testProteinAccessionQuery (query by protein accession with no database match)",
             protAccessionQueryTestSeq2, seqentry.getValue());
       }
@@ -603,7 +603,7 @@ public class UniprotInstallerTest {
         nucAccessionQueryTestSeq, seqs.get(58923L));
 
     for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
-      if (seqentry.getValue().get_sequence().equals(nucSeqAccQuery2)) {
+      if (seqentry.getValue().getSequence().equals(nucSeqAccQuery2)) {
         compareSeqs("for testNucleotideAccessionQuery (query by nucleotide accession and seq with no database match)",
             nucAccessionQueryTestSeq2, seqentry.getValue());
       }
@@ -612,15 +612,15 @@ public class UniprotInstallerTest {
   }
 
   private void compareSeqs(String message, Seq expectedSeq, Seq testSeq) {
-    assertEquals("comparing ec " + message, expectedSeq.get_ec(), testSeq.get_ec());
+    assertEquals("comparing ec " + message, expectedSeq.getEc(), testSeq.getEc());
     assertEquals("comparing org_id " + message, expectedSeq.getOrgId(), testSeq.getOrgId());
-    assertEquals("comparing organism " + message, expectedSeq.get_org_name(), testSeq.get_org_name());
-    assertEquals("comparing sequence " + message, expectedSeq.get_sequence(), testSeq.get_sequence());
-    assertEquals("comparing references " + message, expectedSeq.get_references().toString(),
-        testSeq.get_references().toString());
-    assertEquals("comparing metadata " + message, expectedSeq.get_metadata().toString(),
-        testSeq.get_metadata().toString());
-    assertEquals("comapring src db " + message, expectedSeq.get_srcdb(), testSeq.get_srcdb());
+    assertEquals("comparing organism " + message, expectedSeq.getOrgName(), testSeq.getOrgName());
+    assertEquals("comparing sequence " + message, expectedSeq.getSequence(), testSeq.getSequence());
+    assertEquals("comparing references " + message, expectedSeq.getReferences().toString(),
+        testSeq.getReferences().toString());
+    assertEquals("comparing metadata " + message, expectedSeq.getMetadata().toString(),
+        testSeq.getMetadata().toString());
+    assertEquals("comapring src db " + message, expectedSeq.getSrcdb(), testSeq.getSrcdb());
   }
 
 }

@@ -114,8 +114,8 @@ public class SeqIdentMapper {
     done = 0; total = seqids.size();
     for (Long seqid : seqids) {
       Seq s = db.getSeqFromID(seqid);
-      for (String acc : s.get_uniprot_accession())
-        accession2seqid.put(new AccID(s.get_srcdb(), acc), s.getUUID());
+      for (String acc : s.getUniprotAccession())
+        accession2seqid.put(new AccID(s.getSrcdb(), acc), s.getUUID());
       System.out.format("[MAP_SEQ] Done: %.0f%%\r", (100*done++/total));
     }
     System.out.println();
@@ -147,7 +147,7 @@ public class SeqIdentMapper {
           // insert the newly retrieved data from the web api into db.seq
           int seqid = apiget.writeToDB(this.db, rxnacc.db);
 
-          for (String acc_num : db.getSeqFromID(new Long(seqid)).get_uniprot_accession()) {
+          for (String acc_num : db.getSeqFromID(new Long(seqid)).getUniprotAccession()) {
             AccID ret_acc = new AccID(rxnacc.db, acc_num);
             // update the map of accession2seqid
             accession2seqid.put(ret_acc, seqid);
@@ -705,15 +705,15 @@ class SeqFingerPrint {
   }
 
   public static Set<SeqFingerPrint> createFrom(Seq s) {
-    String ec = s.get_ec();
-    String org = s.get_org_name();
+    String ec = s.getEc();
+    String org = s.getOrgName();
     List<String> orgs = new ArrayList<String>();
     orgs.add(org);
 
     /* The structure of get_references was changed from List<String> to List<JSONObject>. This loop converts PMID
     JSONObjects back into a List<String> of PMIDs. This allows for the expansion call to occur without error */
     List<String> references = new ArrayList<>();
-    for (JSONObject obj : s.get_references()) {
+    for (JSONObject obj : s.getReferences()) {
       if (obj.get("src").equals("PMID")) {
         references.add((String) obj.get("val"));
       }

@@ -329,8 +329,8 @@ public class ReactionMergerTest {
       Seq seq = mockAPI.getWrittenSequences().get(sequences.getLong(0));
       assertNotNull("Referenced seq object should not be null", seq);
       assertEquals("New sequence object's sequence string should match original",
-          utilsObject.SEQ_MAP.get(id * 10L).get_sequence(), seq.get_sequence());
-      r1Sequences.add(seq.get_sequence());
+          utilsObject.SEQ_MAP.get(id * 10L).getSequence(), seq.getSequence());
+      r1Sequences.add(seq.getSequence());
       assertEquals("New Seq object should reference the migrated reaction by id",
           Long.valueOf(r1.getUUID()), seq.getReactionsCatalyzed().iterator().next());
     }
@@ -362,8 +362,8 @@ public class ReactionMergerTest {
       Seq seq = mockAPI.getWrittenSequences().get(sequences.getLong(0));
       assertNotNull("Referenced seq object should not be null", seq);
       assertEquals("New sequence object's sequence string should match original",
-          utilsObject.SEQ_MAP.get(id * 10L).get_sequence(), seq.get_sequence());
-      r2Sequences.add(seq.get_sequence());
+          utilsObject.SEQ_MAP.get(id * 10L).getSequence(), seq.getSequence());
+      r2Sequences.add(seq.getSequence());
       assertEquals("New Seq object should reference the migrated reaction by id",
           Long.valueOf(r2.getUUID()), seq.getReactionsCatalyzed().iterator().next());
     }
@@ -395,8 +395,8 @@ public class ReactionMergerTest {
       Seq seq = mockAPI.getWrittenSequences().get(sequences.getLong(0));
       assertNotNull("Referenced seq object should not be null", seq);
       assertEquals("New sequence object's sequence string should match original",
-          utilsObject.SEQ_MAP.get(id * 10L).get_sequence(), seq.get_sequence());
-      r3Sequences.add(seq.get_sequence());
+          utilsObject.SEQ_MAP.get(id * 10L).getSequence(), seq.getSequence());
+      r3Sequences.add(seq.getSequence());
       assertEquals("New Seq object should reference the migrated reaction by id",
           Long.valueOf(r3.getUUID()), seq.getReactionsCatalyzed().iterator().next());
     }
