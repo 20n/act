@@ -114,7 +114,7 @@ public class SeqIdentMapper {
     done = 0; total = seqids.size();
     for (Long seqid : seqids) {
       Seq s = db.getSeqFromID(seqid);
-      for (String acc : s.get_uniprot_accession())
+      for (String acc : s.getUniprotAccession())
         accession2seqid.put(new AccID(s.get_srcdb(), acc), s.getUUID());
       System.out.format("[MAP_SEQ] Done: %.0f%%\r", (100*done++/total));
     }
@@ -147,7 +147,7 @@ public class SeqIdentMapper {
           // insert the newly retrieved data from the web api into db.seq
           int seqid = apiget.writeToDB(this.db, rxnacc.db);
 
-          for (String acc_num : db.getSeqFromID(new Long(seqid)).get_uniprot_accession()) {
+          for (String acc_num : db.getSeqFromID(new Long(seqid)).getUniprotAccession()) {
             AccID ret_acc = new AccID(rxnacc.db, acc_num);
             // update the map of accession2seqid
             accession2seqid.put(ret_acc, seqid);
