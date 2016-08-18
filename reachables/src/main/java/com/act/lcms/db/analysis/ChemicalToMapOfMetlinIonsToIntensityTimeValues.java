@@ -4,6 +4,8 @@ import com.act.lcms.XZ;
 import com.act.lcms.db.model.StandardWell;
 import com.act.lcms.plotter.WriteAndPlotMS1Results;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,8 +17,9 @@ import java.util.Map;
 import java.util.Set;
 
 public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
-  private static String fmt = "pdf";
 
+  private static final String FMT = "pdf";
+  private static final Logger LOGGER = LogManager.getFormatterLogger(ChemicalToMapOfMetlinIonsToIntensityTimeValues.class);
   private Map<String, Map<String, List<XZ>>> peakData;
 
   protected ChemicalToMapOfMetlinIonsToIntensityTimeValues() {
@@ -40,7 +43,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
     this.peakData.put(chemical, val);
   }
 
-  private Double findMaxIntensity(List<XZ> intensityTimeValues) {
+  private static Double findPeakMaxIntensity(List<XZ> intensityTimeValues) {
     Double maxIntensity = 0.0d;
     for (XZ val : intensityTimeValues) {
       maxIntensity = Math.max(maxIntensity, val.getIntensity());
@@ -90,7 +93,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
       for (String chemical : orderedPlotChemicalTitles) {
         List<XZ> ionValues = this.peakData.get(chemical).get(ion);
         ms1s.put(chemical, ionValues);
-        Double localMaxIntensity = this.findMaxIntensity(ionValues);
+        Double localMaxIntensity = findPeakMaxIntensity(ionValues);
         maxIntensity = Math.max(maxIntensity, localMaxIntensity);
         individualMaxIntensities.put(chemical, localMaxIntensity);
         metlinMasses.put(chemical, searchMz.getValue());
@@ -102,11 +105,91 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
       String absolutePathWithoutExtension = absolutePathFileWithoutExtension.getAbsolutePath();
 
       plottingUtil.plotSpectra(
-          ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePathWithoutExtension, this.fmt, false, false);
-      ionToPlottingFilePath.put(ion, relativePath + "." + this.fmt);
+          ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePathWithoutExtension, this.FMT, false, false);
+      ionToPlottingFilePath.put(ion, relativePath + "." + this.FMT);
     }
 
     return ionToPlottingFilePath;
   }
 
+  /**
+   * This function plots a combination of positive and negative control intensity-time values.
+   * @param searchMzs A list of mass charge values
+   * @param plottingPath The wells used for the analysis. This variable is mainly used for
+   * @param peakDataPos The postive intensity-time value
+   * @param peakDataNegs The negative controls intensity-time values
+   * @param plottingDirectory The directory where the plots are going to be placed in
+   * @return
+   * @throws IOException
+   */
+  public static Map<String, String> plotPositiveAndNegativeControlsForEachMZ(
+      Set<Pair<String, Double>> searchMzs, String plottingPath, ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataPos,
+      List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> peakDataNegs, String plottingDirectory)
+      throws IOException {
+
+    Map<String, String> result = new HashMap<>();
+    Map<String, Double> individualMaxIntensities = new HashMap<>();
+    WriteAndPlotMS1Results plottingUtil = new WriteAndPlotMS1Results();
+
+    for (Pair<String, Double> mz : searchMzs) {
+      LinkedHashMap<String, List<XZ>> ms1s = new LinkedHashMap<>();
+      Map<String, Double> metlinMasses = new HashMap<>();
+      Double maxIntensity = 0.0d;
+
+      String chemicalAndIonName = mz.getLeft();
+      Double massChargeValue = mz.getRight();
+
+      // Get positive ion results
+      String positiveChemicalName = AnalysisHelper.constructChemicalAndScanTypeName(chemicalAndIonName, ScanData.KIND.POS_SAMPLE);
+      List<XZ> ionValuesPos = peakDataPos.peakData.get(positiveChemicalName).get(chemicalAndIonName);
+      ms1s.put(positiveChemicalName, ionValuesPos);
+      Double localMaxIntensityPos = findPeakMaxIntensity(ionValuesPos);
+      maxIntensity = Math.max(maxIntensity, localMaxIntensityPos);
+      individualMaxIntensities.put(positiveChemicalName, localMaxIntensityPos);
+      metlinMasses.put(positiveChemicalName, massChargeValue);
+
+      // Get negative control results
+      Integer negNameCounter = 0;
+      for (ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg : peakDataNegs) {
+        String negativeChemicalName = AnalysisHelper.constructChemicalAndScanTypeName(chemicalAndIonName, ScanData.KIND.NEG_CONTROL);
+        String negativeChemicalNameId = negativeChemicalName + "_" + negNameCounter.toString();
+        List<XZ> ionValuesNeg = peakDataNeg.peakData.get(negativeChemicalName).get(chemicalAndIonName);
+        ms1s.put(negativeChemicalNameId, ionValuesNeg);
+        Double localMaxIntensityNeg = findPeakMaxIntensity(ionValuesNeg);
+        maxIntensity = Math.max(maxIntensity, localMaxIntensityNeg);
+        individualMaxIntensities.put(negativeChemicalNameId, localMaxIntensityNeg);
+        metlinMasses.put(negativeChemicalNameId, massChargeValue);
+        negNameCounter++;
+      }
+
+      String relativePath = massChargeValue.toString() + "_" + plottingPath + "_" + chemicalAndIonName;
+      File absolutePathFileWithoutExtension = new File(plottingDirectory, relativePath);
+      String absolutePathWithoutExtension = absolutePathFileWithoutExtension.getAbsolutePath();
+      String absolutePathWithExtension = absolutePathWithoutExtension + "." + FMT;
+
+      // Check if the plotting file already exists. If it does, we should not overwrite it. Instead, we just change
+      // the path name by appending a counter till the collision no longer exists.
+      // TODO: Implement an elegant solution to this problem.
+      File duplicateFile = new File(absolutePathWithExtension);
+      Integer fileDuplicateCounter = 0;
+      while (duplicateFile.exists() && !duplicateFile.isDirectory()) {
+        LOGGER.warn("Duplicate file exists for %s, writing to another file", duplicateFile.getAbsolutePath());
+        fileDuplicateCounter++;
+        relativePath = relativePath + "_" + fileDuplicateCounter.toString();
+        absolutePathFileWithoutExtension = new File(plottingDirectory, relativePath);
+        absolutePathWithoutExtension = absolutePathFileWithoutExtension.getAbsolutePath();
+        absolutePathWithExtension = absolutePathWithoutExtension + "." + FMT;
+        duplicateFile = new File(absolutePathWithExtension);
+      }
+
+      LOGGER.info("Wrote plot to %s", absolutePathWithoutExtension);
+
+      plottingUtil.plotSpectra(
+          ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePathWithoutExtension, FMT, false, false);
+
+      result.put(mz.getLeft(), relativePath + "." + FMT);
+    }
+
+    return result;
+  }
 }

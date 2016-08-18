@@ -16,6 +16,11 @@ import java.util.Arrays;
 import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.stream.XMLStreamException;
 
 public class MS1 {
 
@@ -42,6 +47,7 @@ public class MS1 {
   public static final Double MS1_MZ_TOLERANCE_FINE = 0.001;
   public static final Double MS1_MZ_TOLERANCE_COARSE = 0.01;
   public static final Double MS1_MZ_TOLERANCE_DEFAULT = MS1_MZ_TOLERANCE_COARSE;
+  private static final Logger LOGGER = LogManager.getFormatterLogger(MS1.class);
 
   // when aggregating the MS1 signal, we do not expect
   // more than these number of measurements within the
@@ -81,7 +87,7 @@ public class MS1 {
     useSNRForThreshold = useSNR;
   }
 
-  private double extractMZ(double mzWanted, List<Pair<Double, Double>> intensities) {
+  public double extractMZ(double mzWanted, List<Pair<Double, Double>> intensities) {
     double intensityFound = 0;
     int numWithinPrecision = 0;
     double mzLowRange = mzWanted - this.mzTolerance;
@@ -99,8 +105,8 @@ public class MS1 {
     }
 
     if (numWithinPrecision > maxDetectionsInWindow) {
-      System.out.format("Only expected %d, but found %d in the mz range [%f, %f]\n", maxDetectionsInWindow, 
-          numWithinPrecision, mzLowRange, mzHighRange);
+      LOGGER.warn("Only expected %d, but found %d in the mz range [%f, %f]",
+          maxDetectionsInWindow, numWithinPrecision, mzLowRange, mzHighRange);
     }
 
     return intensityFound;
@@ -168,7 +174,6 @@ public class MS1 {
 
     while (ms1File.hasNext()) {
       LCMSSpectrum timepoint = ms1File.next();
-
       // get all (mz, intensity) at this timepoint
       List<Pair<Double, Double>> intensities = timepoint.getIntensities();
 
@@ -190,55 +195,7 @@ public class MS1 {
 
     // populate statistics about the curve for each ion curve
     for (String ionDesc : metlinMasses.keySet()) {
-      List<XZ> curve = scanResults.getIonsToSpectra().get(ionDesc);
-
-      Integer sz = curve.size();
-      Double maxIntensity = null;
-      Double maxIntensityTime = null;
-
-      for (XZ signal : curve) {
-        Double intensity = signal.getIntensity();
-        if (maxIntensity == null) {
-          maxIntensity = intensity; maxIntensityTime = signal.getTime();
-        } else {
-          if (maxIntensity < intensity) {
-            maxIntensity = intensity; maxIntensityTime = signal.getTime();
-          }
-        }
-      }
-
-      // split the curve into parts that are the signal (+- from peak), and ambient
-      List<XZ> signalIntensities = new ArrayList<>();
-      List<XZ> ambientIntensities = new ArrayList<>();
-      for (XZ measured : curve) {
-        if (measured.getTime() > maxIntensityTime - PEAK_WIDTH/2.0d && measured.getTime() < maxIntensityTime + PEAK_WIDTH/2.0d) {
-          signalIntensities.add(measured);
-        } else {
-          ambientIntensities.add(measured);
-        }
-      }
-
-      Double avgIntensitySignal = average(signalIntensities);
-      Double avgIntensityAmbient = average(ambientIntensities);
-
-      Double logSNR = -100.0d, snr = null;
-      // only set SNR to real value if the signal is non-trivial
-      if (maxIntensity > NONTRIVIAL_SIGNAL) {
-        // snr = sigma_signal^2 / sigma_ambient^2
-        // where sigma = sqrt(E[(X-mean)^2])
-        Double mean = avgIntensityAmbient;
-        snr = sigmaSquared(signalIntensities, mean) / sigmaSquared(ambientIntensities, mean);
-        logSNR = Math.log(snr);
-      }
-
-      scanResults.setIntegralForIon(ionDesc, getAreaUnder(curve));
-      scanResults.setMaxIntensityForIon(ionDesc, maxIntensity);
-      scanResults.setAvgIntensityForIon(ionDesc, avgIntensitySignal, avgIntensityAmbient);
-      scanResults.setLogSNRForIon(ionDesc, logSNR);
-
-      if (logSNR > -100.0d) {
-        System.out.format("%10s: logSNR: %5.1f Max: %7.0f SignalAvg: %7.0f Ambient Avg: %7.0f %s\n", ionDesc, logSNR, maxIntensity, avgIntensitySignal, avgIntensityAmbient, isGoodPeak(scanResults, ionDesc) ? "INCLUDED" : ""); 
-      }
+      computeAndStorePeakProfile(scanResults, ionDesc);
     }
 
     // set the yaxis max: if intensity used as filtering function then intensity max, else snr max
@@ -247,7 +204,7 @@ public class MS1 {
     for (String ionDesc : metlinMasses.keySet()) {
       if (useSNRForThreshold && !isGoodPeak(scanResults, ionDesc)) {
         // if we are using SNR for thresholding scans (see code in writeMS1Values)
-        // then for scans that have low SNR, their max is irrelevant. So it might 
+        // then for scans that have low SNR, their max is irrelevant. So it might
         // be the case that the max is 100k; but SNR is 1.5, which case it will be
         // a lower value signal compared to a max of 10k, and SNR 20.
         continue;
@@ -261,6 +218,64 @@ public class MS1 {
     scanResults.setIndividualMaxIntensities(individualYMax);
 
     return scanResults;
+  }
+
+  /* DO NOT change this function while `getMS1` depends on it.  This approach has been thorougly manually vetted; any
+   * changes will eliminate our ability to compare optimized results to a consistent baseline. */
+  public void computeAndStorePeakProfile(MS1ScanForWellAndMassCharge scanResults, String ionDesc) {
+    List<XZ> curve = scanResults.getIonsToSpectra().get(ionDesc);
+
+    Integer sz = curve.size();
+    Double maxIntensity = null;
+    Double maxIntensityTime = null;
+
+    for (XZ signal : curve) {
+      Double intensity = signal.getIntensity();
+      if (maxIntensity == null) {
+        maxIntensity = intensity; maxIntensityTime = signal.getTime();
+      } else {
+        if (maxIntensity < intensity) {
+          maxIntensity = intensity; maxIntensityTime = signal.getTime();
+        }
+      }
+    }
+
+    // split the curve into parts that are the signal (+- from peak), and ambient
+    List<XZ> signalIntensities = new ArrayList<>();
+    List<XZ> ambientIntensities = new ArrayList<>();
+    for (XZ measured : curve) {
+      if (measured.getTime() > maxIntensityTime - PEAK_WIDTH/2.0d && measured.getTime() < maxIntensityTime + PEAK_WIDTH/2.0d) {
+        signalIntensities.add(measured);
+      } else {
+        ambientIntensities.add(measured);
+      }
+    }
+
+    Double avgIntensitySignal = average(signalIntensities);
+    Double avgIntensityAmbient = average(ambientIntensities);
+
+    Double logSNR = -100.0d, snr = null;
+    // only set SNR to real value if the signal is non-trivial
+    if (maxIntensity > NONTRIVIAL_SIGNAL) {
+      // snr = sigma_signal^2 / sigma_ambient^2
+      // where sigma = sqrt(E[(X-mean)^2])
+      // The above equation is a simplistic attempt at evaluating the power around the max_peak compared to the rest of
+      // the spectra. So we chop out the window into a signal, calculate its deviation from the full_mean
+      // (hopefully close to 0) and compare that against the deviation of the rest of the spectra from (again) the
+      // full_mean.
+      Double mean = avgIntensityAmbient;
+      snr = sigmaSquared(signalIntensities, mean) / sigmaSquared(ambientIntensities, mean);
+      logSNR = Math.log(snr);
+    }
+
+    scanResults.setIntegralForIon(ionDesc, getAreaUnder(curve));
+    scanResults.setMaxIntensityForIon(ionDesc, maxIntensity);
+    scanResults.setAvgIntensityForIon(ionDesc, avgIntensitySignal, avgIntensityAmbient);
+    scanResults.setLogSNRForIon(ionDesc, logSNR);
+
+    if (logSNR > -100.0d) {
+      LOGGER.info("%10s: logSNR: %5.1f Max: %7.0f SignalAvg: %7.0f Ambient Avg: %7.0f %s\n", ionDesc, logSNR, maxIntensity, avgIntensitySignal, avgIntensityAmbient, isGoodPeak(scanResults, ionDesc) ? "INCLUDED" : "");
+    }
   }
 
   boolean isGoodPeak(MS1ScanForWellAndMassCharge scans, String ion) {
@@ -394,7 +409,7 @@ public class MS1 {
 
   private static boolean areNCFiles(String[] fnames) {
     for (String n : fnames) {
-      System.out.println(".nc file = " + n);
+      LOGGER.debug(".nc file = %s", n);
       if (!n.endsWith(".nc"))
         return false;
     }
@@ -522,7 +537,7 @@ public class MS1 {
           // until we read from the db, artificial values
           Double concentration = concIdx < concVals.length ? concVals[concIdx] : concVals[concVals.length - 1] * 10 * (concIdx - concVals.length + 1); 
           concIdx++;
-          System.out.format("Well %s label concentration: %e\n", ms1File, concentration);
+          LOGGER.info("Well %s label concentration: %e", ms1File, concentration);
           rampUp.add(Pair.of(concentration, ms1ScanResults));
         }
 
