@@ -87,6 +87,8 @@ public abstract class BiointerpretationProcessor {
     processChemicals();
     LOGGER.info("Done processing chemicals");
     afterProcessChemicals();
+    LOGGER.info("Processing sequences");
+    processSequences();
     LOGGER.info("Processing reactions");
     processReactions();
     LOGGER.info("Done processing reactions");
@@ -154,6 +156,12 @@ public abstract class BiointerpretationProcessor {
       newChemIdToInchi.put(newId, chem.getInChI());
     }
   }
+
+  /**
+   * Process and migrate sequences. This is meant to be overridden, as it does nothing by default.
+   */
+  protected void processSequences() {}
+
 
   /**
    * A hook that runs after the reaction's chemicals and proteins have been prepped for writing.  This is meant to
@@ -397,6 +405,8 @@ public abstract class BiointerpretationProcessor {
 
         Long oldSeqOrganismId = seq.getOrgId();
         Long newSeqOrganismId = migrateOrganism(oldSeqOrganismId);
+
+        seq.get_metadata().put("source_sequence_ids", sequenceId);
 
         // Store the seq document to get an id that'll be stored in the protein object.
         int seqId = api.getWriteDB().submitToActSeqDB(

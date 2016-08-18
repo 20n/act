@@ -74,20 +74,6 @@ public class SequenceMerger extends BiointerpretationProcessor {
     markInitialized();
   }
 
-  @Override
-  public void run() throws IOException, ReactionException {
-    LOGGER.info("Copying all chemicals");
-    super.processChemicals();
-
-    LOGGER.info("Processing sequences for deduplication");
-    processSequences();
-
-    /* reactions should be written after the sequence merging so that the sequence, organism and source reaction IDs can
-    all be updated properly */
-    LOGGER.info("Copying all reactions");
-    processReactions();
-  }
-
   /**
    * Copies all reactions over to the WriteDB and stores the mapping from old ID to new ID in reactionMigrationMap
    *
