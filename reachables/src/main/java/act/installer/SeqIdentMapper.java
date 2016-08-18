@@ -705,7 +705,7 @@ class SeqFingerPrint {
   }
 
   public static Set<SeqFingerPrint> createFrom(Seq s) {
-    String ec = s.get_ec();
+    String ec = s.getEc();
     String org = s.get_org_name();
     List<String> orgs = new ArrayList<String>();
     orgs.add(org);

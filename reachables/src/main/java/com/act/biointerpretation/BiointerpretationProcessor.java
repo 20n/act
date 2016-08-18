@@ -418,7 +418,7 @@ public abstract class BiointerpretationProcessor {
         // Store the seq document to get an id that'll be stored in the protein object.
         int seqId = api.getWriteDB().submitToActSeqDB(
             seq.get_srcdb(),
-            seq.get_ec(),
+            seq.getEc(),
             seq.get_org_name(),
             newSeqOrganismId, // Use freshly migrated organism id to replace the old one.
             seq.getSequence(),
