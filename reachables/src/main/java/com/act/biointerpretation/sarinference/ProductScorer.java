@@ -4,6 +4,7 @@ import com.act.biointerpretation.l2expansion.L2FilteringDriver;
 import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
+import com.act.jobs.FileChecker;
 import com.act.jobs.JavaRunnable;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -152,18 +153,25 @@ public class ProductScorer {
 
   /**
    * Reads in scored SARs, checks them against a prediction corpus and positive inchi list to get a product ranking.
+   * TODO: change this to use Vijay's real LCMS file, rather than just a list of positive inchis
+   * TODO: improve the data structure used to store scored products- using an L2PredictionCorpus is pretty ugly
    *
    * @param predictionCorpus The prediction corpus to score.
    * @param scoredSars The scored SARs to use.
-   * @param positiveInchis The set of positive LCMS inchis, to use in scoring.
+   * @param lcmsFile The set of positive LCMS inchis, to use in scoring.
    * @return A JavaRunnable to run the product scoring.
    */
-  public static JavaRunnable getRunnableProductScorer(File predictionCorpus, File scoredSars, File positiveInchis,
+  public static JavaRunnable getRunnableProductScorer(File predictionCorpus, File scoredSars, File lcmsFile,
                                                       File outputFile) {
 
     return new JavaRunnable() {
       @Override
       public void run() throws IOException {
+        // Verify files
+        FileChecker.verifyInputFile(predictionCorpus);
+        FileChecker.verifyInputFile(scoredSars);
+        FileChecker.verifyInputFile(lcmsFile);
+        FileChecker.verifyAndCreateOutputFile(outputFile);
         // Build SAR tree
         SarTreeNodeList nodeList = new SarTreeNodeList();
         nodeList.loadFromFile(scoredSars);
@@ -173,15 +181,16 @@ public class ProductScorer {
 
         // Build positive inchis
         L2InchiCorpus positiveInchiCorpus = new L2InchiCorpus();
-        positiveInchiCorpus.loadCorpus(positiveInchis);
+        positiveInchiCorpus.loadCorpus(lcmsFile);
         Set<String> inchiPositives = new HashSet<>();
         inchiPositives.addAll(positiveInchiCorpus.getInchiList());
 
+        // Filter corpus by LCMS positives
         L2PredictionCorpus positivePredictions =
             predictions.applyFilter(prediction -> inchiPositives.containsAll(prediction.getProductInchis()));
         BestSarFinder sarFinder = new BestSarFinder(nodeList);
 
-        // Score products
+        // Build map from predictions to best explanatory sar
         Map<L2Prediction, SarTreeNode> predictionToSarMap = new HashMap<>();
         LOGGER.info("Scoring predictions.");
         for (L2Prediction prediction : positivePredictions.getCorpus()) {
@@ -198,12 +207,13 @@ public class ProductScorer {
                   bestSar.getRankingScore());
         }
 
-        LOGGER.info("Sorting predictions.");
+        LOGGER.info("Sorting predictions in decreasing order of best associated SAR rank.");
         List<L2Prediction> predictionList = new ArrayList<>(predictionToSarMap.keySet());
         predictionList.sort((a, b) -> -Double.compare(
-              predictionToSarMap.get(a).getRankingScore(),
-              predictionToSarMap.get(b).getRankingScore()));
+            predictionToSarMap.get(a).getRankingScore(),
+            predictionToSarMap.get(b).getRankingScore()));
 
+        // Wrap results in a corpus and write to file.
         L2PredictionCorpus finalCorpus = new L2PredictionCorpus(predictionList);
         finalCorpus.writePredictionsToJsonFile(outputFile);
         LOGGER.info("Complete!.");

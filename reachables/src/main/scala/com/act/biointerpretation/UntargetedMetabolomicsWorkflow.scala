@@ -297,12 +297,12 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
   /**
     * Defines a job that meshes the results from the sar scoring and product scoring into single files,
     * containing sars/products ranked over all ROs.
+    * TODO: sort the summary product file. Annoying because the scores are hidden in the predictions' names.
     *
     * @param scoredSarFiles     Input sars files.
     * @param scoredProductFiles Input product files.
     * @param sarOut             Output summary sar file, sorted.
     * @param productOut         Output summary product file, unsorted.
-    *                           TODO: sort this summary product file
     */
   def meshResults(scoredSarFiles: List[File], scoredProductFiles: List[File],
                   sarOut: File, productOut: File)(): Unit = {

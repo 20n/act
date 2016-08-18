@@ -321,8 +321,8 @@ public class LibMcsClustering {
       @Override
       public void run() throws IOException {
         // Verify input and output files
+        // TODO: once we use the actual LCMS file, verify it
         FileChecker.verifyInputFile(sarTreeInput);
-        FileChecker.verifyInputFile(lcmsInput);
         FileChecker.verifyAndCreateOutputFile(sarTreeNodeOutput);
 
         // Build SAR tree from input file
@@ -341,7 +341,7 @@ public class LibMcsClustering {
         // Calculate ranking scores
         sarTree.getNodes().forEach(node ->
             node.setRankingScore(node.getNumberHits() - (missPenalty * node.getNumberMisses())));
-        // Retain nodes that are not repeats or leaves, and have at least one match
+        // Retain nodes that are not repeats or leaves, and have more than 0 LCMS hits
         SarTreeNodeList treeNodeList = sarTree.getExplanatoryNodes(subtreeThreshold, 0.0);
         treeNodeList.sortByDecreasingScores();
 

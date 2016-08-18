@@ -115,11 +115,10 @@ public class SarTree {
     Object propertyObject = molecule.getPropertyObject(SarTreeNode.PREDICTION_ID_KEY);
 
     List<Integer> predictionIds = new ArrayList<>();
-    ;
+
     if (propertyObject != null) {
       try {
-        String stringList = propertyObject.toString();
-        predictionIds = Arrays.asList(OBJECT_MAPPER.readValue(stringList, Integer[].class));
+        predictionIds = Arrays.asList(OBJECT_MAPPER.readValue(propertyObject.toString(), Integer[].class));
       } catch (IOException e) {
         LOGGER.info("Couldn't deserialize %s into list : %s", propertyObject, e.getMessage());
         throw new RuntimeException(e);
