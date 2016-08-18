@@ -1,7 +1,6 @@
 package com.act.biointerpretation.sarinference;
 
 import com.act.biointerpretation.l2expansion.L2FilteringDriver;
-import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
 import com.act.jobs.FileChecker;
@@ -38,7 +37,7 @@ public class ProductScorer {
   }
 
   private static final String OPTION_PREDICTION_CORPUS = "c";
-  private static final String OPTION_POSITIVE_INCHIS = "p";
+  private static final String OPTION_LCMS_RESULTS = "p";
   private static final String OPTION_SCORED_SARS = "s";
   private static final String OPTION_OUTPUT_PATH = "o";
 
@@ -51,11 +50,11 @@ public class ProductScorer {
           .longOpt("input-corpus-path")
           .required(true)
       );
-      add(Option.builder(OPTION_POSITIVE_INCHIS)
-          .argName("positive inchis file")
-          .desc("The path to a file of positive inchis from LCMS analysis of the prediction corpus.")
+      add(Option.builder(OPTION_LCMS_RESULTS)
+          .argName("lcms results")
+          .desc("The path to a file of lcms results.")
           .hasArg()
-          .longOpt("input-positive-inchis")
+          .longOpt("input-lcms-results")
       );
       add(Option.builder(OPTION_SCORED_SARS)
           .argName("scored sars corpus")
@@ -100,55 +99,20 @@ public class ProductScorer {
     }
 
     File inputCorpusFile = new File(cl.getOptionValue(OPTION_PREDICTION_CORPUS));
-    File positiveInchisFile = new File(cl.getOptionValue(OPTION_POSITIVE_INCHIS));
+    File lcmsFile = new File(cl.getOptionValue(OPTION_LCMS_RESULTS));
     File scoredSarsFile = new File(cl.getOptionValue(OPTION_SCORED_SARS));
     File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
-    L2PredictionCorpus fullCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputCorpusFile);
-    LOGGER.info("Number of predictions: %d", fullCorpus.getCorpus().size());
 
-    L2InchiCorpus positiveInchis = new L2InchiCorpus();
-    positiveInchis.loadCorpus(positiveInchisFile);
-    List<String> inchiList = positiveInchis.getInchiList();
+    JavaRunnable productScoreRunner = getRunnableProductScorer(
+        inputCorpusFile,
+        scoredSarsFile,
+        lcmsFile,
+        outputFile);
 
-    L2PredictionCorpus positiveCorpus = fullCorpus.applyFilter(prediction -> inchiList.containsAll(prediction.getProductInchis()));
-    LOGGER.info("Number of LCMS positives: %d", positiveCorpus.getCorpus().size());
-
-    SarTreeNodeList scoredSars = new SarTreeNodeList();
-    scoredSars.loadFromFile(scoredSarsFile);
-
-    LOGGER.info("Number of sars: %d", scoredSars.getSarTreeNodes().size());
-
-    BestSarFinder bestSarFinder = new BestSarFinder(scoredSars);
-
-    Map<L2Prediction, SarTreeNode> predictionToSarMap = new HashMap<>();
-
-    LOGGER.info("Scoring predictions.");
-    for (L2Prediction prediction : positiveCorpus.getCorpus()) {
-      Optional<SarTreeNode> maybeBestSar = bestSarFinder.apply(prediction);
-      if (!maybeBestSar.isPresent()) {
-        LOGGER.warn("No SAR found for this prediction.");
-        continue;
-      }
-      SarTreeNode bestSar = maybeBestSar.get();
-
-      predictionToSarMap.put(prediction, bestSar);
-      prediction.setProjectorName(
-          prediction.getProjectorName() + ":" +
-              bestSar.getHierarchyId() + ":" +
-              bestSar.getPercentageHits());
-    }
-
-    LOGGER.info("Sorting predictions by descending order.");
-    List<L2Prediction> predictions = new ArrayList<>(predictionToSarMap.keySet());
-    predictions.sort((a, b) ->
-        (-Double.compare(predictionToSarMap.get(a).getRankingScore(), predictionToSarMap.get(b).getRankingScore())));
-
-    LOGGER.info("Writing predictions to file.");
-    L2PredictionCorpus finalCorpus = new L2PredictionCorpus(predictions);
-    finalCorpus.writePredictionsToJsonFile(outputFile);
+    LOGGER.info("Scoring products.");
+    productScoreRunner.run();
     LOGGER.info("Complete!.");
   }
-
 
   /**
    * Reads in scored SARs, checks them against a prediction corpus and positive inchi list to get a product ranking.
