@@ -70,10 +70,6 @@ abstract class Job(name: String) {
 
   private def status: StatusManager = internalState.statusManager
 
-  def getName: String = {
-    this.name
-  }
-
   def runNextJob(): Unit = {
     internalState.runManager.runNextJob(internalState.dependencyManager)
   }
@@ -92,8 +88,8 @@ abstract class Job(name: String) {
     *
     * @return this, for chaining
     */
-  def setJobToRunPriorToRetry(job: Job): Job = {
-    internalState.runManager.retryJob = job
+  def setJobToRunPriorToRetrying(job: Job): Job = {
+    internalState.runManager.preRetryJob = job
     this
   }
 
@@ -142,6 +138,10 @@ abstract class Job(name: String) {
     s"[Job]<$getName>"
   }
 
+  def getName: String = {
+    this.name
+  }
+
   protected def markAsSuccess(): Unit = {
     internalState.markAsSuccess()
   }
@@ -165,7 +165,7 @@ class InternalState(job: Job) {
 
   def setCancelCurrentJobFunction(value: Option[() => Boolean]): Unit = cancelCurrentJobFunction = value
 
-  def setRetryJob(value: Job): Unit = runManager.retryJob = Option(value)
+  def setPreRetryJob(value: Job): Unit = runManager.preRetryJob = Option(value)
 
   /**
     * Adds an individual job as a dependency of this job, meaning it should be run after this job finishes.
@@ -200,6 +200,37 @@ class InternalState(job: Job) {
   }
 
   /**
+    * First checks if there is a retryJob available, in which case it attempts to run it.
+    * Otherwise, simply marks this and all jobs after it as a failure.
+    */
+  def markAsFailure(): Unit = {
+    // If a retry job exists, we run it otherwise the job has failed and any subsequent jobs fail because of this
+    runManager.hasPreRetryJob match {
+      case true =>
+        // Retry jobs mean that we should first try to run other jobs prior to running this one.
+        logger.error(s"Running retry job ${runManager.preRetryJob.get}. $this has encountered an error")
+        this.setStatus(StatusCodes.Retry)
+        runManager.runPreRetryJobPriorToRetrying()
+      case false =>
+        setJobStatus(StatusCodes.Failure)
+
+        /*
+          The flag should not fail children jobs even if the current job fails. Therefore we don't cascade a failure,
+          but run each job in a way such the only failure that occurs is
+          if a specific job fails after attempting to run.
+         */
+        job.getFlags.contains(JobFlag.ShouldNotFailChildrenJobs) match {
+          case true => runManager.runNextJob(dependencyManager)
+          case false =>
+            if (runManager.hasReturnJob)
+              runManager.getReturnJobDependencyManager.markRemainingDependenciesAsFailure()
+            // Map this job's buffer as a failure
+            dependencyManager.markRemainingDependenciesAsFailure()
+        }
+    }
+  }
+
+  /**
     * A consistent source to change the job status.
     * Has the added benefit of notifying the JobManager if that status changes to complete.
     *
@@ -218,37 +249,6 @@ class InternalState(job: Job) {
 
     // Job manager should know if has been marked as complete
     if (statusManager.isCompleted) JobManager.indicateJobCompleteToManager(job)
-  }
-
-  /**
-    * First checks if there is a retryJob available, in which case it attempts to run it.
-    * Otherwise, simply marks this and all jobs after it as a failure.
-    */
-  def markAsFailure(): Unit = {
-    // If a retry job exists, we run it otherwise the job has failed and any subsequent jobs fail because of this
-    runManager.hasRetryJob match {
-      case true =>
-        // Retry jobs mean that we should first try to run other jobs prior to running this one.
-        logger.error(s"Running retry job ${runManager.retryJob.get}. $this has encountered an error")
-        this.setStatus(StatusCodes.Retry)
-        runManager.runRetryJob()
-      case false =>
-        setJobStatus(StatusCodes.Failure)
-
-        /*
-          The flag should not fail children jobs even if the current job fails. Therefore we don't cascade a failure,
-          but run each job in a way such the only failure that occurs is
-          if a specific job fails after attempting to run.
-         */
-        job.getFlags.contains(JobFlag.ShouldNotFailChildrenJobs) match {
-          case true => runManager.runNextJob(dependencyManager)
-          case false =>
-            if (runManager.hasReturnJob)
-              runManager.getReturnJobDependencyManager.markRemainingDependenciesAsFailure()
-            // Map this job's buffer as a failure
-            dependencyManager.markRemainingDependenciesAsFailure()
-        }
-    }
   }
 
   def setStatus(value: String): Unit = statusManager.setJobStatus(value)
@@ -387,18 +387,18 @@ class DependencyManager {
   * @param job - The job to manage
   */
 class RunManager(job: Job) {
-  private var _retryJob: Option[Job] = None
+  private var _preRetryJob: Option[Job] = None
   private var _returnJob: Option[Job] = None
 
-  def retryJob_=(value: Job): Unit = _retryJob = Option(value)
+  def preRetryJob_=(value: Job): Unit = _preRetryJob = Option(value)
 
-  def hasRetryJob: Boolean = _retryJob.isDefined
+  def hasPreRetryJob: Boolean = _preRetryJob.isDefined
 
   def returnJob: Option[Job] = _returnJob
 
-  def returnJob_=(value: Option[Job]): Unit = _returnJob = value
-
   def returnJob_=(value: Job): Unit = _returnJob = Option(value)
+
+  def returnJob_=(value: Option[Job]): Unit = _returnJob = value
 
   def hasReturnJob: Boolean = _returnJob.isDefined
 
@@ -418,15 +418,15 @@ class RunManager(job: Job) {
   }
 
   /**
-    * Adds all of the retry job's buffer and the retry job itself to the job manager,
+    * Adds all of the retry job's buffer and the pre-retry job itself to the job manager,
     * then sets the current job that failed to run after that.
     *
     * Has a dedicated status, where status = 'Retry'
     *
     * Retry should only happen once, so we wipe it clean afterwards.
     */
-  def runRetryJob(): Unit = {
-    val someJob = retryJob.get
+  def runPreRetryJobPriorToRetrying(): Unit = {
+    val someJob = preRetryJob.get
 
     // Add this job to the job manager
     JobManager.addJob(someJob)
@@ -439,14 +439,14 @@ class RunManager(job: Job) {
     someJob.internalState.setJobStatus(StatusCodes.Retry)
 
     // Remove retry job so it only retries once
-    retryJob = None
+    preRetryJob = None
 
     someJob.start()
   }
 
-  def retryJob: Option[Job] = _retryJob
+  def preRetryJob: Option[Job] = _preRetryJob
 
-  def retryJob_=(value: Option[Job]): Unit = _retryJob = value
+  def preRetryJob_=(value: Option[Job]): Unit = _preRetryJob = value
 
   /**
     * If dependencies still exist, launches those dependencies.
@@ -515,15 +515,15 @@ class StatusManager {
     getJobStatus == StatusCodes.Running
   }
 
-  override def toString: String = {
-    getJobStatus
-  }
-
   def getJobStatus: String = synchronized {
     this.status
   }
 
   def setJobStatus(newStatus: String): Unit = synchronized {
     this.status = newStatus
+  }
+
+  override def toString: String = {
+    getJobStatus
   }
 }

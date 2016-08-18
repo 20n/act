@@ -48,7 +48,7 @@ object HmmerWrapper extends ToolWrapper {
 
     // Set a retry job of press if something goes wrong
     // If you want a laugh, read the documentation for this function with option -f , it will overwrite bad files
-    job.setJobToRunPriorToRetry(constructJob(HmmCommands.HmmPress.get, HmmCommands.HmmPress,
+    job.setJobToRunPriorToRetrying(constructJob(HmmCommands.HmmPress.get, HmmCommands.HmmPress,
       List("-f", hmmDatabase), retryJob = true))
     job
   }
