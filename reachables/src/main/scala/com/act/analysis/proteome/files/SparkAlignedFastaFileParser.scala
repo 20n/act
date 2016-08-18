@@ -10,6 +10,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 object SparkAlignedFastaFileParser {
@@ -41,8 +42,9 @@ object SparkAlignedFastaFileParser {
   )
   private val NEW_PROTEIN_INDICATOR = ">"
 
-  def parseFile(openFile: File): Unit = {
+  def parseFile(openFile: File): Map[Int, ListBuffer[Long]] = {
     val alignedProteinSequences = ListBuffer[String]()
+    val alignedProteinHeaders = ListBuffer[String]()
 
     val lines = scala.io.Source.fromFile(openFile).getLines()
 
@@ -52,24 +54,46 @@ object SparkAlignedFastaFileParser {
       val proteinSplits = iterator.span(!_.startsWith(NEW_PROTEIN_INDICATOR))
       val protein: String = proteinSplits._1.mkString
 
+      alignedProteinHeaders.append(header)
       alignedProteinSequences.append(protein)
 
       if (proteinSplits._2.hasNext) parser(proteinSplits._2)
     }
     parser(lines)
 
-    createSparkRdd(alignedProteinSequences.toList)
+    /*
+
+      Cluster sequences
+     */
+    val predictionsByClustering = createSparkRdd(alignedProteinSequences.toList)
+
+    /*
+
+      Get all the substrates for each cluster
+     */
+    // Map all the db ids to which cluster they are in
+    val clusterMap = mutable.HashMap[Int, ListBuffer[Long]]()
+    for (i <- predictionsByClustering.indices) {
+      val cluster = predictionsByClustering(i)
+
+      if (clusterMap.get(cluster).isEmpty) {
+        clusterMap(cluster) = ListBuffer[Long]()
+      }
+
+      // Header format:
+      // >NAME: None | EC: 3.1.3.4 | DB_ID: 101128
+      val sequenceDbId = alignedProteinHeaders(i).split("DB_ID: ")(1)
+      clusterMap(cluster).append(sequenceDbId.toLong)
+    }
+
+    clusterMap.toMap
   }
 
-  def createSparkRdd(proteinAlignments: List[String]): Unit = {
+  def createSparkRdd(proteinAlignments: List[String]): List[Int] = {
     val conf = new SparkConf().setAppName("Spark Proteins").setMaster("local")
-    conf.getAll.foreach(x => logger.info(s"Spark config pair: ${x._1}: ${x._2}"))
     val spark = new SparkContext(conf)
-    println("Hello!")
 
     val a = Array.ofDim[Double](proteinAlignments.head.length * 20, proteinAlignments.length)
-    println(a.length)
-    println(a(0).length)
 
     for (i <- proteinAlignments.indices) {
       for (j <- proteinAlignments(i).indices) {
@@ -82,31 +106,47 @@ object SparkAlignedFastaFileParser {
       }
     }
 
+    /*
+
+    Prepare and Filter RDD
+
+     */
     // If this is 0.1, 10% of the entries must be 1, for example.
     val portionUngappedNeeded = 0.1
-    // Tranpose at end to make vectorization a simple map.
-    val filteredA = a.filter(column => column.sum[Double] > proteinAlignments.length * portionUngappedNeeded).transpose
+
+    val filteredA = a.filter(column => column.sum[Double] > proteinAlignments.length * portionUngappedNeeded)
     val vectorize: Seq[Vector] = filteredA.map(x => Vectors.dense(x)).toSeq
 
     val rows = spark.makeRDD[Vector](vectorize)
     val sm: RowMatrix = new RowMatrix(rows)
 
-    val principleComponents = sm.computePrincipalComponents(filteredA.length)
+    /*
 
+      Pull out principle components
+
+     */
+    val numberOfComponents = 2
+    val principleComponents = sm.computePrincipalComponents(numberOfComponents)
     val pcaRdd = toRDD(principleComponents, spark)
+    /*
 
+       KMeans clustering
+
+     */
     val numClusters = 2
     val numIterations = 20
     val clusters = KMeans.train(pcaRdd, numClusters, numIterations)
 
-    val WSSSE = clusters.computeCost(pcaRdd)
-    println("Within Set Sum of Squared Errors = " + WSSSE)
+    val predictions: RDD[Int] = clusters.predict(pcaRdd)
+    val predictionsReturnList = predictions.toLocalIterator.toList
 
+    spark.stop()
+    predictionsReturnList
   }
 
   private def toRDD(m: Matrix, sparkContext: SparkContext): RDD[Vector] = {
     val columns = m.toArray.grouped(m.numRows)
-    val rows = columns.toSeq.transpose // Skip this if you want a column-major RDD.
+    val rows = columns.toSeq.transpose
     val vectors = rows.map(row => Vectors.dense(row.toArray))
     sparkContext.makeRDD(vectors)
   }
