@@ -6,11 +6,11 @@ import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.tool_wrappers.{ClustalOmegaWrapper, ScalaJobWrapper}
 import com.act.workflow.tool_manager.workflow.Workflow
 import com.act.workflow.tool_manager.workflow.workflow_mixins.base.WorkingDirectoryUtility
-import com.act.workflow.tool_manager.workflow.workflow_mixins.composite.RoToSequences
+import com.act.workflow.tool_manager.workflow.workflow_mixins.composite.{RoToSequences, SarTreeConstructor}
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.logging.log4j.LogManager
 
-class RoToAlignedFastaHumanSpecificFlow extends Workflow with RoToSequences with WorkingDirectoryUtility {
+class HumanRoToLcmsScoring extends Workflow with RoToSequences with SarTreeConstructor with WorkingDirectoryUtility {
 
   override val HELP_MESSAGE = "Workflow to convert RO number into a FASTA file with only human sequences."
   override val logger = LogManager.getLogger(getClass.getName)
@@ -76,7 +76,7 @@ class RoToAlignedFastaHumanSpecificFlow extends Workflow with RoToSequences with
       workingDir
     )
 
-    val alignedFastaPath = defineOutputFilePath(
+    val alignedFastaPath: File = defineOutputFilePath(
       cl,
       OPTION_ALIGNED_FASTA_FILE_OUTPUT,
       "Human_RO_" + ro,
@@ -94,7 +94,11 @@ class RoToAlignedFastaHumanSpecificFlow extends Workflow with RoToSequences with
     headerJob.thenRun(roToFasta)
 
     val alignFastaSequences = ClustalOmegaWrapper.alignProteinFastaFile(outputFastaPath, alignedFastaPath)
-    roToFasta.thenRun(alignFastaSequences)
+    headerJob.thenRun(alignFastaSequences)
+
+    val sarTrees = ScalaJobWrapper.wrapScalaFunction("Construct SAR Trees", constructSarTreesFromAlignedFasta(alignedFastaPath) _)
+    headerJob.thenRun(sarTrees)
+
 
     headerJob
   }
