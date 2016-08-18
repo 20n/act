@@ -113,7 +113,7 @@ public abstract class BiointerpretationProcessor {
    * be overridden, as it does nothing by default.
    */
   protected void afterProcessReactions() throws IOException, ReactionException {
-
+    // TODO: consider mimicking the behavior of updateRxnRefs in SequenceMerger
   }
 
   protected NoSQLAPI getNoSQLAPI() {
@@ -160,7 +160,9 @@ public abstract class BiointerpretationProcessor {
   /**
    * Process and migrate sequences. This is meant to be overridden, as it does nothing by default.
    */
-  protected void processSequences() {}
+  protected void processSequences() {
+
+  }
 
 
   /**
@@ -390,6 +392,9 @@ public abstract class BiointerpretationProcessor {
     for (int i = 0; i < sequences.length(); i++) {
       Long sequenceId = sequences.getLong(i);
 
+      /* TODO: Consider optimizations here. Instead of updating Seq entries repeatedly, we can wait until all the
+      reactions have been migrated and then use the reactionMigrationMap to update all the reaction IDs in Seq entries.
+       Refer to updateRxnRefs in SequenceMerger and consider making that the default behavior in afterProcessReactions */
       if (sequenceMigrationMap.containsKey(sequenceId)) {
         // add migrated sequence ID to list of referenced sequences in the reaction protein object
         Long writtenSeqId = sequenceMigrationMap.get(sequenceId);

@@ -5,8 +5,6 @@ import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
-import chemaxon.license.LicenseProcessingException;
-import chemaxon.reaction.ReactionException;
 import com.act.biointerpretation.test.util.MockedNoSQLAPI;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;
@@ -15,7 +13,6 @@ import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -33,7 +30,7 @@ public class SequenceMergerTest {
   private MockedNoSQLAPI mockAPI;
 
   @Before
-  public void setUp() throws IOException, ReactionException, LicenseProcessingException {
+  public void setUp() throws Exception {
 
     // ==========================================
     // assembling reaction
