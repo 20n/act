@@ -187,22 +187,33 @@ public class ProductScorer {
         Function<Integer, SarTreeNode.LCMS_RESULT> lcmsVerifier = new LcmsPredictionVerifier(predictions, lcmsResults);
         BestSarFinder sarFinder = new BestSarFinder(nodeList);
 
-        // Build map from predictions to best explanatory sar
+        /**
+         * Build map from predictions to their scores based on SAR
+         * For each prediction, we add on auxiliary info about its SARs and score to its projector name.
+         // TODO: build data structure to store a scored prediction, instead of hijacking the projector name.
+         */
+
         Map<L2Prediction, Double> predictionToScoreMap = new HashMap<>();
         LOGGER.info("Scoring predictions.");
         for (L2Prediction prediction : predictions.getCorpus()) {
-          String nameAppendage = lcmsVerifier.apply(prediction.getId()).toString();
+          // For each prediction
+          String nameAppendage = lcmsVerifier.apply(prediction.getId()).toString(); // Always tack LCMS result onto name
+
           Optional<SarTreeNode> maybeBestSar = sarFinder.apply(prediction);
+
           if (!maybeBestSar.isPresent()) {
+            // If a SAR was matched, add info about it to the projector name, and put its score into the map
             SarTreeNode bestSar = maybeBestSar.get();
             nameAppendage += ":" +
                 bestSar.getHierarchyId() + ":" +
                 bestSar.getRankingScore();
             predictionToScoreMap.put(prediction, bestSar.getRankingScore());
           } else {
+            // If no SAR is found, append "NO_SAR" to the prediction, and give it a ranking score of 0
             nameAppendage += "NO_SAR";
             predictionToScoreMap.put(prediction, 0D);
           }
+
           prediction.setProjectorName(prediction.getProjectorName() + nameAppendage);
         }
 

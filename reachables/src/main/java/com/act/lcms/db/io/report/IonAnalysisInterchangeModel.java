@@ -66,6 +66,9 @@ public class IonAnalysisInterchangeModel {
     this.populateInchiToIsHit();
   }
 
+  /**
+   * Populates a map from all the inchis analyzed in the corpus to true if they are and LCMS hit, or false if not.
+   */
   private void populateInchiToIsHit() {
     this.inchiToIsHit = new HashMap<>();
 
@@ -89,6 +92,14 @@ public class IonAnalysisInterchangeModel {
     }
   }
 
+  /**
+   * Returns HIT or MISS if the inchi is in the precalculated inchi->hit map, or NO_DATA if the inchi is not.
+   * This will let us know if there has been any change in the inchi's form since the initial calculation, instead of
+   * just silentlyl returning a miss.
+   *
+   * @param inchi The inchi of the molecule.
+   * @return The LCMS result.
+   */
   public LCMS_RESULT isMoleculeAHit(String inchi) {
     if (this.inchiToIsHit.get(inchi) == null) {
       return LCMS_RESULT.NO_DATA;
