@@ -292,10 +292,8 @@ public class MockedMongoDB {
       public Object answer(InvocationOnMock invocation) throws Throwable {
         Seq seq = invocation.getArgumentAt(0, Seq.class);
 
-        for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
-          if (entry.getKey().equals((long) seq.getUUID())) {
-            entry.getValue().set_metadata(seq.get_metadata());
-          }
+        if (seqMap.containsKey((long) seq.getUUID())) {
+          seqMap.get((long) seq.getUUID()).set_metadata(seq.get_metadata());
         }
 
         return null;
@@ -307,10 +305,8 @@ public class MockedMongoDB {
       public Object answer(InvocationOnMock invocation) throws Throwable {
         Seq seq = invocation.getArgumentAt(0, Seq.class);
 
-        for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
-          if (entry.getKey().equals((long) seq.getUUID())) {
-            entry.getValue().set_references(seq.get_references());
-          }
+        if (seqMap.containsKey((long) seq.getUUID())) {
+          seqMap.get((long) seq.getUUID()).set_references(seq.get_references());
         }
 
         return null;

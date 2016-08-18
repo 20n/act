@@ -337,6 +337,8 @@ public class UniprotSeqEntry extends SequenceEntry {
    * @return the list of product names
    */
   private List<String> extractProductNames() {
+    List<String> productNames = new ArrayList<>();
+
     if (proteinNodeList.getLength() == 1) {
       // since there is only one item in the list, retrieve the only node
       Node proteinNode = proteinNodeList.item(0);
@@ -364,14 +366,14 @@ public class UniprotSeqEntry extends SequenceEntry {
             }
 
             // Collections.singletonList used over Arrays.asList because it takes less memory
-            return Collections.singletonList(productName);
+            productNames.add(productName);
           }
 
         }
       }
     }
 
-    return new ArrayList<>();
+    return productNames;
   }
 
   /**

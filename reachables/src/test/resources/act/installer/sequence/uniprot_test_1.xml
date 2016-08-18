@@ -19,6 +19,9 @@
 <shortName evidence="30">AtADH</shortName>
 <ecNumber evidence="18 22">1.1.1.1</ecNumber>
 </recommendedName>
+<alternativeName>
+<fullName>Alc Dehyd</fullName>
+</alternativeName>
 </protein>
 <gene>
 <name type="primary" evidence="32">ADH1</name>
