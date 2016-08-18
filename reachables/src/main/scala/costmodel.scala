@@ -1,9 +1,20 @@
 package act.installer.bing
 
-import chemaxon.descriptors.scalars.Mass
+import squants.{Dimensionless, LikeRatio, Ratio}
+import squants.market.{Money, Price, USD}
+import squants.mass.{Density, Kilograms, Mass}
+import squants.space.{Litres, Volume}
+import squants.thermal.Temperature
+import squants.time.{Days, Time}
 
 // these provide implicit converters such as
 // (XX dollars) (XX days) (XX kg) (XX liters) etc.
+import squants.DimensionlessConversions.DimensionlessConversions
+import squants.market.MoneyConversions.MoneyConversions
+import squants.mass.MassConversions.MassConversions
+import squants.space.VolumeConversions.VolumeConversions
+import squants.thermal.TemperatureConversions.TemperatureConversions
+import squants.time.TimeConversions.TimeConversions
 
 // Getting (XX millions) i.e., a dimensionless multiplier has
 // different exporting consideration than the other conversions above
@@ -11,6 +22,7 @@ import chemaxon.descriptors.scalars.Mass
 // TODO is there a better way to import?
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.logging.log4j.LogManager
+import squants.DimensionlessConversions._
 
 import scala.math.sinh
 
@@ -409,6 +421,10 @@ class InvestModel {
     maxProjectInvestment * asymptoticCurve(normYield, normTiter)
   }
 
+  def time(normYield: Double, normTiter: Double): Time = {
+    maxProjectTime * asymptoticCurve(normYield, normTiter)
+  }
+
   def asymptoticCurve(normYield: Double, normTiter: Double): Double = {
     // a resonable approximation would be 0.02\sinh(8x-3.9)+0.5 (between (0,0) and (1,1)
     def curve(x: Double) = { 0.02 * sinh(8 * x - 3.9) + 0.5 }
@@ -417,10 +433,6 @@ class InvestModel {
     // From observations, we know titer is the predominant cost,
     // so for now we compute a return curve on titer
     curve(normTiter)
-  }
-
-  def time(normYield: Double, normTiter: Double): Time = {
-    maxProjectTime * asymptoticCurve(normYield, normTiter)
   }
 }
 
