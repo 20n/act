@@ -20,6 +20,19 @@ public class LcmsPredictionVerifier implements Function<Integer, SarTreeNode.LCM
     this.lcmsResults = lcmsResults;
   }
 
+  /**
+   *   TODO: think through our general approach to multiple substrate reactions when necessary.
+   *   We'll need to balance the possibilities of false positives and false negatives- one idea would be to return
+   *   a score based on the number of confirmed products of the reaction.
+   */
+
+  /**
+   * Takes a prediction ID, gets the products from the prediction corpus, and checks them against the LCMS results to
+   * produce the prediction's LCMS result.
+   *
+   * @param predictionId The prediction ID to test.
+   * @return The LCMS result.
+   */
   @Override
   public SarTreeNode.LCMS_RESULT apply(Integer predictionId) {
     List<String> productInchis = predictionCorpus.getPredictionFromId(predictionId).getProductInchis();
@@ -29,13 +42,17 @@ public class LcmsPredictionVerifier implements Function<Integer, SarTreeNode.LCM
       if (lcmsResults.isMoleculeAHit(product).equals(IonAnalysisInterchangeModel.LCMS_RESULT.HIT)) {
         return SarTreeNode.LCMS_RESULT.NO_DATA;
       }
-      // Otherwise, if a hit is found among the prediction's products, return it as a hit
-      if (lcmsResults.isMoleculeAHit(product).equals(IonAnalysisInterchangeModel.LCMS_RESULT.HIT)) {
-        return SarTreeNode.LCMS_RESULT.HIT;
+      // Otherwise, if a miss is found among the prediction's products, return it as a miss.  This implements an
+      // AND among the products of the prediction- all must be present to register as a hit. This is motivated by the
+      // fact that our only current multiple-product reaction produces one significant product, and one constant
+      // cofactor. We verified that in both urine and saliva, the cofactor is present in our samples, so
+      // an OR approach here would return a HIT for every prediction of that RO.
+      if (lcmsResults.isMoleculeAHit(product).equals(IonAnalysisInterchangeModel.LCMS_RESULT.MISS)) {
+        return SarTreeNode.LCMS_RESULT.MISS;
       }
     }
-    // If every prediction is a MISS, return MISS.
-    return SarTreeNode.LCMS_RESULT.MISS;
+    // If every prediction is a HIT, return HIT.
+    return SarTreeNode.LCMS_RESULT.HIT;
   }
 
 }
