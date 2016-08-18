@@ -184,9 +184,9 @@ public class Seq implements Serializable {
   public List<JSONObject> getReferences() { return this.references; }
   public JSONObject getMetadata() { return this.metadata; }
   public void setMetadata(JSONObject metadata) { this.metadata = metadata; }
-  public Set<String> get_product_names() { return this.product_names; }
-  public Set<String> get_synonyms() { return this.synonyms; }
-  public String get_catalytic_activity() {return this.catalytic_activity; }
+  public Set<String> getProductNames() { return this.product_names; }
+  public Set<String> getSynonyms() { return this.synonyms; }
+  public String getCatalyticActivity() {return this.catalytic_activity; }
   public String get_gene_name() { return this.gene_name; }
   public Set<String> get_uniprot_accession() { return this.uniprot_accs; }
   public Set<String> get_genbank_protein_accession() { return this.genbank_prot_accs; }
