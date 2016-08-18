@@ -5,6 +5,7 @@ import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
+import chemaxon.license.LicenseProcessingException;
 import chemaxon.reaction.ReactionException;
 import com.act.biointerpretation.test.util.MockedNoSQLAPI;
 import com.act.biointerpretation.test.util.TestUtils;
@@ -33,7 +34,7 @@ public class SequenceMergerTest {
   private MockedNoSQLAPI mockAPI;
 
   @Before
-  public void setUp() throws IOException, ReactionException {
+  public void setUp() throws IOException, ReactionException, LicenseProcessingException {
 
     // ==========================================
     // assembling reaction

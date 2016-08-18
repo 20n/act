@@ -52,6 +52,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
   private Map<Long, Long> sequenceMigrationMap = new HashMap<>();
   private Map<Long, Long> organismMigrationMap = new HashMap<>();
+  private Map<Long, Long> reactionMigrationMap = new HashMap<>();
 
   private Map<String, String> minimalPrefixMapping;
 
@@ -108,8 +109,12 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
       oldRxn.setProteinData(proteins);
 
-      getNoSQLAPI().writeToOutKnowlegeGraph(oldRxn);
+      Long newId = (long) getNoSQLAPI().writeToOutKnowlegeGraph(oldRxn);
+
+      reactionMigrationMap.put((long) oldRxn.getUUID(), newId);
     }
+
+    updateSeqRxnRefs();
   }
 
 
@@ -130,6 +135,10 @@ public class SequenceMerger extends BiointerpretationProcessor {
     while (sequences.hasNext()) {
       Seq sequence = sequences.next();
 
+      /* changes the organism name to its minimal prefix; must occur before stored in the sequenceGroup map so that
+      all seq entries with the same minimal prefix org name, ecnum, & protein sequence are merged */
+      migrateOrganism(sequence);
+
       if (sequence.get_org_name() == null || sequence.get_org_name().isEmpty() ||
           sequence.get_sequence() == null || sequence.get_sequence().isEmpty() ||
           sequence.get_ec() == null || sequence.get_ec().isEmpty()) {
@@ -137,10 +146,6 @@ public class SequenceMerger extends BiointerpretationProcessor {
         writeSequence(sequence);
         numberOfSequencesUnmergedInfo++;
       }
-
-      /* changes the organism name to its minimal prefix; must occur before stored in the sequenceGroup map so that
-      all seq entries with the same minimal prefix org name, ecnum, & protein sequence are merged */
-      migrateOrganism(sequence);
 
       UniqueSeq uniqueSeq = new UniqueSeq(sequence);
 
@@ -195,7 +200,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
         sequence.get_srcdb(),
         sequence.get_ec(),
         sequence.get_org_name(),
-        sequence.getOrgId(),
+        organismMigrationMap.get(sequence.getOrgId()),
         sequence.get_sequence(),
         sequence.get_references(),
         sequence.getReactionsCatalyzed(),
@@ -208,6 +213,10 @@ public class SequenceMerger extends BiointerpretationProcessor {
    * @param sequence the Seq entry we are updating
    */
   private void migrateOrganism(Seq sequence) {
+    if (sequence.get_org_name() == null || sequence.get_org_name().isEmpty()) {
+      return;
+    }
+
     String organismName = checkForOrgPrefix(sequence.get_org_name());
     sequence.set_organism_name(organismName);
 
@@ -218,7 +227,6 @@ public class SequenceMerger extends BiointerpretationProcessor {
     }
 
     organismMigrationMap.put(sequence.getOrgId(), newOrgId);
-    sequence.setOrgId(newOrgId);
   }
 
   /**
@@ -496,4 +504,22 @@ public class SequenceMerger extends BiointerpretationProcessor {
       }
     }
   }
+
+  private void updateSeqRxnRefs() {
+    Iterator<Seq> writtenSeqIterator = getNoSQLAPI().getWriteDB().getSeqIterator();
+
+    while(writtenSeqIterator.hasNext()) {
+      Seq writtenSeq = writtenSeqIterator.next();
+
+      Set<Long> oldRxnRefs = writtenSeq.getReactionsCatalyzed();
+      Set<Long> newRxnRefs = new HashSet<>();
+      for (Long oldRxnRef : oldRxnRefs) {
+        newRxnRefs.add(reactionMigrationMap.get(oldRxnRef));
+      }
+
+      writtenSeq.setReactionsCatalyzed(newRxnRefs);
+      getNoSQLAPI().getWriteDB().updateRxnRefs(writtenSeq);
+    }
+  }
+
 }

@@ -391,14 +391,16 @@ public abstract class BiointerpretationProcessor {
       Long sequenceId = sequences.getLong(i);
 
       if (sequenceMigrationMap.containsKey(sequenceId)) {
+        // add migrated sequence ID to list of referenced sequences in the reaction protein object
         Long writtenSeqId = sequenceMigrationMap.get(sequenceId);
         newSequenceIds.add(writtenSeqId);
         Seq writtenSeq = api.getWriteDB().getSeqFromID(writtenSeqId);
 
+        // update the list of reactions that the written sequence object should reference
         Set<Long> oldRxnRefs = writtenSeq.getReactionsCatalyzed();
         oldRxnRefs.addAll(rxnIds);
-
         writtenSeq.setReactionsCatalyzed(oldRxnRefs);
+
         api.getWriteDB().updateRxnRefs(writtenSeq);
       } else {
         Seq seq = api.getReadDB().getSeqFromID(sequenceId);

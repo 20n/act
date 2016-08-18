@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -163,6 +164,13 @@ public class MockedMongoDB {
         return seqMap.get(invocation.getArgumentAt(0, Long.class));
       }
     }).when(mockMongoDB).getSeqFromID(any(Long.class));
+
+    doAnswer(new Answer<Iterator<Seq>>() {
+      @Override
+      public Iterator<Seq> answer(InvocationOnMock invocation) throws Throwable {
+          return seqMap.values().iterator();
+        }
+    }).when(mockMongoDB).getSeqIterator();
 
     doAnswer(new Answer<Long>() {
       @Override

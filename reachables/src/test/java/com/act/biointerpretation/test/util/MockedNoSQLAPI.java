@@ -356,6 +356,13 @@ public class MockedNoSQLAPI {
       }
     }).when(mockWriteMongoDB).getSeqFromID(any(Long.class));
 
+    doAnswer(new Answer<Iterator<Seq>>() {
+      @Override
+      public Iterator<Seq> answer(InvocationOnMock invocation) throws Throwable {
+        return writtenSequences.values().iterator();
+      }
+    }).when(mockWriteMongoDB).getSeqIterator();
+
     doAnswer(new Answer<Reaction>() {
       @Override
       public Reaction answer(InvocationOnMock invocation) throws Throwable {
@@ -371,6 +378,20 @@ public class MockedNoSQLAPI {
         return null;
       }
     }).when(mockWriteMongoDB).getReactionFromUUID(any(Long.class));
+
+    doAnswer(new Answer() {
+      @Override
+      public Object answer(InvocationOnMock invocation) throws Throwable {
+        Seq seq = invocation.getArgumentAt(0, Seq.class);
+
+        if (writtenSequences.containsKey((long) seq.getUUID())) {
+          Seq seqToUpdate = writtenSequences.get((long) seq.getUUID());
+          seqToUpdate.setReactionsCatalyzed(seq.getReactionsCatalyzed());
+        }
+
+        return null;
+      }
+    }).when(mockWriteMongoDB).updateRxnRefs(any(Seq.class));
 
   }
 
