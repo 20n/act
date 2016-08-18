@@ -321,6 +321,8 @@ public class SequenceMerger extends BiointerpretationProcessor {
         firstSequence.get_srcdb()
     );
 
+    mergedSequence.setReactionsCatalyzed(firstSequence.getReactionsCatalyzed());
+
     // merge the rest of the matched sequences
     for (Seq sequence : sequences) {
       if (!mergedSequence.get_ec().equals(sequence.get_ec()) ||

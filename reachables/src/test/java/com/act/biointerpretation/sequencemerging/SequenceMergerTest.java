@@ -8,7 +8,6 @@ import act.shared.helpers.MongoDBToJSON;
 import chemaxon.license.LicenseProcessingException;
 import chemaxon.reaction.ReactionException;
 import com.act.biointerpretation.test.util.MockedNoSQLAPI;
-import com.act.biointerpretation.test.util.TestUtils;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;
 import org.json.JSONArray;
@@ -40,14 +39,16 @@ public class SequenceMergerTest {
     // assembling reaction
     // ==========================================
     List<Reaction> testReactions = new ArrayList<>();
-    TestUtils utilsObject = new TestUtils();
 
-    Reaction reaction = utilsObject.makeTestReaction(new Long[]{1L, 2L, 3L}, new Long[]{4L, 5L, 6L}, false);
+    Reaction reaction = new Reaction(789345L,
+        new Long[]{1L, 2L, 3L}, new Long[]{4L, 5L, 6L},
+        new Long[]{}, new Long[]{}, new Long[]{}, "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT,
+        StepDirection.LEFT_TO_RIGHT, "test reaction", Reaction.RxnDetailType.CONCRETE);
 
     Set<JSONObject> proteinData = new HashSet<>();
     JSONObject proteinDataObj = new JSONObject();
 
-    Set<Long> sequenceSet = new HashSet<>(Arrays.asList(1L, 2L, 3L));
+    Set<Long> sequenceSet = new HashSet<>(Arrays.asList(85932L, 7589L, 84321L));
     proteinDataObj.put("sequences", sequenceSet);
     proteinDataObj.put("organism", 4000003475L);
     proteinDataObj.put("source_reaction_id", 829334L);
@@ -55,7 +56,7 @@ public class SequenceMergerTest {
     proteinData.add(proteinDataObj);
     reaction.setProteinData(proteinData);
 
-    sequenceSet = new HashSet<>(Arrays.asList(1L, 2L, 4L));
+    sequenceSet = new HashSet<>(Arrays.asList(85932L, 7589L, 78643L));
 
     proteinDataObj = new JSONObject();
     proteinDataObj.put("sequences", sequenceSet);
@@ -105,9 +106,9 @@ public class SequenceMergerTest {
     patent.put("patent_year", "2008");
     references.add(patent);
 
-    Seq sequence1 = new Seq(1L, "1.1.1.1", 4000003474L, "Mus musculus", "AJKFLGKJDFS", references,
+    Seq sequence1 = new Seq(85932L, "1.1.1.1", 4000003474L, "Mus musculus", "AJKFLGKJDFS", references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
-    sequence1.addReactionsCatalyzed(1L);
+    sequence1.addReactionsCatalyzed(789345L);
 
     testSequences.add(sequence1);
 
@@ -139,9 +140,9 @@ public class SequenceMergerTest {
     patent.put("patent_year", "2015");
     references.add(patent);
 
-    Seq sequence2 = new Seq(2L, "1.1.1.1", 4000003475L, "Mus musculus sp.", "AJKFLGKJDFS", references,
+    Seq sequence2 = new Seq(7589L, "1.1.1.1", 4000003475L, "Mus musculus sp.", "AJKFLGKJDFS", references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
-    sequence2.addReactionsCatalyzed(1L);
+    sequence2.addReactionsCatalyzed(789345L);
 
     testSequences.add(sequence2);
 
@@ -171,15 +172,15 @@ public class SequenceMergerTest {
     patent.put("patent_year", "2008");
     references.add(patent);
 
-    Seq sequence3 = new Seq(3L, "1.1.1.1", 4000003476L, "Mus musculus sp. 123", "AJKFLGKJDFS", references,
+    Seq sequence3 = new Seq(84321L, "1.1.1.1", 4000003476L, "Mus musculus sp. 123", "AJKFLGKJDFS", references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
-    sequence3.addReactionsCatalyzed(1L);
+    sequence3.addReactionsCatalyzed(789345L);
 
     testSequences.add(sequence3);
 
-    Seq sequence4 = new Seq(4L, "1.1.1.2", 4000008594L, "Homo sapiens", "AJKFLGKJDFS", references,
+    Seq sequence4 = new Seq(78643L, "1.1.1.2", 4000008594L, "Homo sapiens", "AJKFLGKJDFS", references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
-    sequence4.addReactionsCatalyzed(1L);
+    sequence4.addReactionsCatalyzed(789345L);
 
     testSequences.add(sequence4);
 
@@ -253,10 +254,12 @@ public class SequenceMergerTest {
     accessions.put(Seq.AccType.uniprot.toString(), uniprotAccs);
     metadata.put("accession", accessions);
 
-    metadata.put("source_sequence_ids", Arrays.asList(1,2,3));
+    metadata.put("source_sequence_ids", Arrays.asList(84321, 7589L, 85932));
 
     Seq mergedSeq = new Seq(1L, "1.1.1.1", 1L, "Mus musculus", "AJKFLGKJDFS", references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+
+    mergedSeq.addReactionsCatalyzed(1L);
 
     Reaction reaction = new Reaction(1L,
         new Long[]{1L, 2L, 3L}, new Long[]{4L, 5L, 6L},
@@ -268,7 +271,7 @@ public class SequenceMergerTest {
 
     proteinData.put("sequences", sequenceSet);
     proteinData.put("organism", 1L);
-    proteinData.put("source_reaction_id", 1L);
+    proteinData.put("source_reaction_id", 789345L);
 
     reaction.addProteinData(proteinData);
 
@@ -276,7 +279,7 @@ public class SequenceMergerTest {
     sequenceSet = new HashSet<>(Collections.singletonList(1L));
     proteinData.put("sequences", sequenceSet);
     proteinData.put("organism", 1L);
-    proteinData.put("source_reaction_id", 1L);
+    proteinData.put("source_reaction_id", 789345L);
 
     reaction.addProteinData(proteinData);
 
@@ -284,11 +287,11 @@ public class SequenceMergerTest {
     Reaction testReaction = mockAPI.getMockWriteMongoDB().getReactionFromUUID(1L);
 
     if (testSeq != null) {
-      compareSeqs("for testMergeEndToEnd", mergedSeq, testSeq);
+      compareSeqs(" for testMergeEndToEnd", mergedSeq, testSeq);
     }
 
     if (testReaction != null) {
-      compareReactions("for testMergeEndToEnd", reaction, mockAPI.getMockWriteMongoDB().getReactionFromUUID(1L));
+      compareReactions(" for testMergeEndToEnd", reaction, mockAPI.getMockWriteMongoDB().getReactionFromUUID(1L));
     }
 
   }
@@ -329,6 +332,7 @@ public class SequenceMergerTest {
     assertEquals("comparing metadata " + message, expectedSeq.get_metadata().toString(),
         testSeq.get_metadata().toString());
     assertEquals("comapring src db " + message, expectedSeq.get_srcdb(), testSeq.get_srcdb());
+    assertEquals("comparing rxn_refs" + message, expectedSeq.getReactionsCatalyzed(), testSeq.getReactionsCatalyzed());
   }
 
   private void compareReactions(String message, Reaction expectedReaction, Reaction testReaction) {
