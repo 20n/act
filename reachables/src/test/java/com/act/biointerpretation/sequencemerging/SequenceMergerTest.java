@@ -298,7 +298,6 @@ public class SequenceMergerTest {
 
   @Test
   public void testOrgPrefixMatching() {
-
     List<Organism> organismList = new ArrayList<>();
 
     Organism musMusculus = new Organism(1L, "Mus musculus");
@@ -313,13 +312,10 @@ public class SequenceMergerTest {
 
     int iteratorIndex = 0;
     while (organismIterator.hasNext()) {
-
       Map.Entry pair = (Map.Entry) organismIterator.next();
       compareOrgs("for testOrgPrefixMatching", organismList.get(iteratorIndex), pair);
       iteratorIndex++;
-
     }
-
   }
 
   private void compareSeqs(String message, Seq expectedSeq, Seq testSeq) {

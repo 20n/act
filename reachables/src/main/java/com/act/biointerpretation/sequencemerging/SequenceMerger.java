@@ -7,7 +7,6 @@ import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
-import chemaxon.reaction.ReactionException;
 import com.act.biointerpretation.BiointerpretationProcessor;
 import com.act.biointerpretation.Utils.OrgMinimalPrefixGenerator;
 import org.apache.logging.log4j.LogManager;
@@ -15,7 +14,6 @@ import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -349,6 +347,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
   private void mergeReactionRefs(Set<Long> mergedReactionRefs, Set<Long> newReactionRefs) {
     if (mergedReactionRefs == null || mergedReactionRefs.size() == 0) {
       mergedReactionRefs = newReactionRefs;
+      return;
     }
 
     for (Long newReactionRef : newReactionRefs) {
@@ -360,6 +359,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
   private void mergeMetadata(JSONObject mergedMetadata, JSONObject newMetadata) {
     if (mergedMetadata == null || mergedMetadata == new JSONObject()) {
       mergedMetadata = newMetadata;
+      return;
     }
 
     // ensures that the new gene name is added to the synonyms list in the case that it doesn't match the old gene name
@@ -459,6 +459,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
   private void mergeReferences(List<JSONObject> mergedRefs, List<JSONObject> newRefs) {
     if (mergedRefs == null || mergedRefs.size() == 0) {
       mergedRefs = newRefs;
+      return;
     }
 
     for (JSONObject newRef : newRefs) {
