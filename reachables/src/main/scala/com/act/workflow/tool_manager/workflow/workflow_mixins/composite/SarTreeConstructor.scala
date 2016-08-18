@@ -68,7 +68,6 @@ else:
           } else {
             for (substrate <- substrateList.listIterator().toIterator) {
               println(substrate)
-              System.exit(1)
               val chemId = substrate.asInstanceOf[BasicDBObject].get(REACTION_DB_KEYWORD_PUBCHEM).asInstanceOf[Long]
               substrateSet.add(chemId)
             }
@@ -79,7 +78,7 @@ else:
       // With all the substrates in hand, we now need to find the inchis!
       val inchiSet = mutable.Set[String]()
       for (substrate <- substrateSet) {
-        val key = new BasicDBObject(CHEMICAL_DB_KEYWORD_ID, 1)
+        val key = new BasicDBObject(CHEMICAL_DB_KEYWORD_ID, substrate)
         val filter = new BasicDBObject(CHEMICAL_DB_KEYWORD_INCHI, 1)
         val iterator: Iterator[DBObject] = mongoQueryChemicals(mongoConnection, key, filter)
 
@@ -92,7 +91,8 @@ else:
         }
       }
 
-      println(inchiSet)
+      // Construct SAR tree
+      new SarTree
     }
   }
 }
