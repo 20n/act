@@ -620,7 +620,7 @@ public class UniprotInstallerTest {
         testSeq.getReferences().toString());
     assertEquals("comparing metadata " + message, expectedSeq.getMetadata().toString(),
         testSeq.getMetadata().toString());
-    assertEquals("comapring src db " + message, expectedSeq.get_srcdb(), testSeq.get_srcdb());
+    assertEquals("comapring src db " + message, expectedSeq.getSrcdb(), testSeq.getSrcdb());
   }
 
 }

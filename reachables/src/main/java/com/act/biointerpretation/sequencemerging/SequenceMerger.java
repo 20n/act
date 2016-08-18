@@ -137,9 +137,9 @@ public class SequenceMerger extends BiointerpretationProcessor {
       all seq entries with the same minimal prefix org name, ecnum, & protein sequence are merged */
       migrateOrganism(sequence);
 
-      if (sequence.get_org_name() == null || sequence.get_org_name().isEmpty() ||
-          sequence.get_sequence() == null || sequence.get_sequence().isEmpty() ||
-          sequence.get_ec() == null || sequence.get_ec().isEmpty()) {
+      if (sequence.getOrgName() == null || sequence.getOrgName().isEmpty() ||
+          sequence.getSequence() == null || sequence.getSequence().isEmpty() ||
+          sequence.getEc() == null || sequence.getEc().isEmpty()) {
         // copy sequence directly, no merging will be possible
         writeSequence(sequence);
         numberOfSequencesUnmergedInfo++;
@@ -178,7 +178,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
       Seq mergedSequence = mergeSequences(allMatchedSeqs);
 
       // for reference, adds all the seq IDs that were merged
-      mergedSequence.get_metadata().put(SOURCE_SEQUENCE_IDS, matchedSeqsIDs);
+      mergedSequence.getMetadata().put(SOURCE_SEQUENCE_IDS, matchedSeqsIDs);
 
       Long mergedSeqId = writeSequence(mergedSequence);
 
@@ -195,14 +195,14 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
   private Long writeSequence(Seq sequence) {
     return (long) getNoSQLAPI().getWriteDB().submitToActSeqDB(
-        sequence.get_srcdb(),
-        sequence.get_ec(),
-        sequence.get_org_name(),
+        sequence.getSrcdb(),
+        sequence.getEc(),
+        sequence.getOrgName(),
         organismMigrationMap.get(sequence.getOrgId()),
-        sequence.get_sequence(),
-        sequence.get_references(),
+        sequence.getSequence(),
+        sequence.getReferences(),
         sequence.getReactionsCatalyzed(),
-        MongoDBToJSON.conv(sequence.get_metadata())
+        MongoDBToJSON.conv(sequence.getMetadata())
     );
   }
 
@@ -211,11 +211,11 @@ public class SequenceMerger extends BiointerpretationProcessor {
    * @param sequence the Seq entry we are updating
    */
   private void migrateOrganism(Seq sequence) {
-    if (sequence.get_org_name() == null || sequence.get_org_name().isEmpty()) {
+    if (sequence.getOrgName() == null || sequence.getOrgName().isEmpty()) {
       return;
     }
 
-    String organismName = checkForOrgPrefix(sequence.get_org_name());
+    String organismName = checkForOrgPrefix(sequence.getOrgName());
     sequence.set_organism_name(organismName);
 
     Long newOrgId = getNoSQLAPI().getWriteDB().getOrganismId(organismName);
@@ -245,9 +245,9 @@ public class SequenceMerger extends BiointerpretationProcessor {
     String protSeq;
 
     private UniqueSeq (Seq sequence) {
-      this.ecnum = sequence.get_ec();
-      this.organism = sequence.get_org_name();
-      this.protSeq = sequence.get_sequence();
+      this.ecnum = sequence.getEc();
+      this.organism = sequence.getOrgName();
+      this.protSeq = sequence.getSequence();
     }
 
     @Override
@@ -280,7 +280,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
     }
 
     Seq firstSequence = sequences.get(0);
-    JSONObject firstSeqMetadata = firstSequence.get_metadata();
+    JSONObject firstSeqMetadata = firstSequence.getMetadata();
 
     // this field is empty for every Seq entry, so we're removing it
     firstSeqMetadata.remove(PROTEIN_EXISTENCE);
@@ -310,22 +310,22 @@ public class SequenceMerger extends BiointerpretationProcessor {
     // initialized mergedSequence with firstSequence
     Seq mergedSequence = new Seq(
         -1, // assume ID will be set when the sequence is written to the DB
-        firstSequence.get_ec(),
+        firstSequence.getEc(),
         firstSequence.getOrgId(),
-        firstSequence.get_org_name(),
-        firstSequence.get_sequence(),
-        firstSequence.get_references(),
-        MongoDBToJSON.conv(firstSequence.get_metadata()),
-        firstSequence.get_srcdb()
+        firstSequence.getOrgName(),
+        firstSequence.getSequence(),
+        firstSequence.getReferences(),
+        MongoDBToJSON.conv(firstSequence.getMetadata()),
+        firstSequence.getSrcdb()
     );
 
     mergedSequence.setReactionsCatalyzed(firstSequence.getReactionsCatalyzed());
 
     // merge the rest of the matched sequences
     for (Seq sequence : sequences) {
-      if (!mergedSequence.get_ec().equals(sequence.get_ec()) ||
-          !mergedSequence.get_sequence().equals(sequence.get_sequence()) ||
-          !mergedSequence.get_org_name().equals(sequence.get_org_name())) {
+      if (!mergedSequence.getEc().equals(sequence.getEc()) ||
+          !mergedSequence.getSequence().equals(sequence.getSequence()) ||
+          !mergedSequence.getOrgName().equals(sequence.getOrgName())) {
 
         String msg = "matching sequence map constructed improperly; at least one of ec #, protein sequence, & " +
             "organism don't match";
@@ -334,9 +334,9 @@ public class SequenceMerger extends BiointerpretationProcessor {
         throw new RuntimeException(msg);
       }
 
-      mergeReferences(mergedSequence.get_references(), sequence.get_references());
+      mergeReferences(mergedSequence.getReferences(), sequence.getReferences());
 
-      mergeMetadata(mergedSequence.get_metadata(), sequence.get_metadata());
+      mergeMetadata(mergedSequence.getMetadata(), sequence.getMetadata());
 
       mergeReactionRefs(mergedSequence.getReactionsCatalyzed(), sequence.getReactionsCatalyzed());
     }

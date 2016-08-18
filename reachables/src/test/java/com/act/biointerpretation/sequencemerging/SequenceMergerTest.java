@@ -316,15 +316,15 @@ public class SequenceMergerTest {
   }
 
   private void compareSeqs(String message, Seq expectedSeq, Seq testSeq) {
-    assertEquals("comparing ec " + message, expectedSeq.get_ec(), testSeq.get_ec());
+    assertEquals("comparing ec " + message, expectedSeq.getEc(), testSeq.getEc());
     assertEquals("comparing org_id " + message, expectedSeq.getOrgId(), testSeq.getOrgId());
-    assertEquals("comparing organism " + message, expectedSeq.get_org_name(), testSeq.get_org_name());
-    assertEquals("comparing sequence " + message, expectedSeq.get_sequence(), testSeq.get_sequence());
-    assertEquals("comparing references " + message, expectedSeq.get_references().toString(),
-        testSeq.get_references().toString());
-    assertEquals("comparing metadata " + message, expectedSeq.get_metadata().toString(),
-        testSeq.get_metadata().toString());
-    assertEquals("comapring src db " + message, expectedSeq.get_srcdb(), testSeq.get_srcdb());
+    assertEquals("comparing organism " + message, expectedSeq.getOrgName(), testSeq.getOrgName());
+    assertEquals("comparing sequence " + message, expectedSeq.getSequence(), testSeq.getSequence());
+    assertEquals("comparing references " + message, expectedSeq.getReferences().toString(),
+        testSeq.getReferences().toString());
+    assertEquals("comparing metadata " + message, expectedSeq.getMetadata().toString(),
+        testSeq.getMetadata().toString());
+    assertEquals("comapring src db " + message, expectedSeq.getSrcdb(), testSeq.getSrcdb());
     assertEquals("comparing rxn_refs" + message, expectedSeq.getReactionsCatalyzed(), testSeq.getReactionsCatalyzed());
   }
 

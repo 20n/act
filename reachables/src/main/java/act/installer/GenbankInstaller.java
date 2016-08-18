@@ -305,10 +305,10 @@ public class GenbankInstaller {
           }
         }
 
-        seq.set_references(oldRefs);
+        seq.setReferences(oldRefs);
 
       } else {
-        seq.set_references(se.getRefs());
+        seq.setReferences(se.getRefs());
       }
 
       if (seq.getReferences() != null) {

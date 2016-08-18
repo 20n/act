@@ -30,14 +30,14 @@ public class Seq implements Serializable {
 
   private Set<Long> reactionsCatalyzed;
 
-  private String gene_name;
-  private Set<String> uniprot_accs;
-  private Set<String> genbank_prot_accs;
-  private Set<String> genbank_nuc_accs;
-  private Set<String> brenda_ids;
+  private String geneName;
+  private Set<String> uniprotAccs;
+  private Set<String> genbankProtAccs;
+  private Set<String> genbankNucAccs;
+  private Set<String> brendaIDs;
   private Set<String> synonyms;
-  private Set<String> product_names;
-  private String catalytic_activity;
+  private Set<String> productNames;
+  private String catalyticActivity;
 
   public Seq(long id, String e, Long oid, String o, String s, List<JSONObject> r, DBObject m, AccDB d) {
     this.id = (new Long(id)).intValue();
@@ -50,12 +50,12 @@ public class Seq implements Serializable {
     this.metadata = MongoDBToJSON.conv(m); // to JSONObject
 
     // extracted data from metadata:
-    this.gene_name        = meta(this.metadata, new String[] { "name" });
+    this.geneName        = meta(this.metadata, new String[] { "name" });
     if (this.metadata.has("xref")) {
       JSONObject xrefObject = metadata.getJSONObject("xref");
 
       if (xrefObject.has("brenda_id")) {
-        this.brenda_ids = parseJSONArray(xrefObject.getJSONArray("brenda_id"));
+        this.brendaIDs = parseJSONArray(xrefObject.getJSONArray("brenda_id"));
       }
     }
     if (this.metadata.has("accession")) {
@@ -63,23 +63,23 @@ public class Seq implements Serializable {
       JSONObject accessions = metadata.getJSONObject("accession");
 
       if (accessions.has("uniprot")) {
-        this.uniprot_accs = parseJSONArray(accessions.getJSONArray("uniprot"));
+        this.uniprotAccs = parseJSONArray(accessions.getJSONArray("uniprot"));
       }
 
       if (accessions.has("genbank_protein")) {
-        this.genbank_prot_accs = parseJSONArray(accessions.getJSONArray("genbank_protein"));
+        this.genbankProtAccs = parseJSONArray(accessions.getJSONArray("genbank_protein"));
       }
 
       if (accessions.has("genbank_nucleotide")) {
-        this.genbank_nuc_accs = parseJSONArray(accessions.getJSONArray("genbank_nucleotide"));
+        this.genbankNucAccs = parseJSONArray(accessions.getJSONArray("genbank_nucleotide"));
       }
     }
     if (this.metadata.has("product_names"))
-      this.product_names = parseJSONArray((JSONArray) this.metadata.get("product_names"));
+      this.productNames = parseJSONArray((JSONArray) this.metadata.get("product_names"));
     if (this.metadata.has("synonyms"))
       this.synonyms = parseJSONArray((JSONArray) this.metadata.get("synonyms"));
     if (this.metadata.has("catalytic_activity"))
-      this.catalytic_activity = this.metadata.getString("catalytic_activity");
+      this.catalyticActivity = this.metadata.getString("catalytic_activity");
 
     this.reactionsCatalyzed = new HashSet<Long>();
   }
@@ -184,25 +184,23 @@ public class Seq implements Serializable {
   public List<JSONObject> getReferences() { return this.references; }
   public JSONObject getMetadata() { return this.metadata; }
   public void setMetadata(JSONObject metadata) { this.metadata = metadata; }
-  public Set<String> getProductNames() { return this.product_names; }
+  public Set<String> getProductNames() { return this.productNames; }
   public Set<String> getSynonyms() { return this.synonyms; }
-  public String getCatalyticActivity() {return this.catalytic_activity; }
-  public String getGeneName() { return this.gene_name; }
-  public Set<String> getUniprotAccession() { return this.uniprot_accs; }
-  public Set<String> get_genbank_protein_accession() { return this.genbank_prot_accs; }
-  public Set<String> get_genbank_nucleotide_accession() { return this.genbank_nuc_accs; }
-  public Set<String> get_brenda_ids() { return this.brenda_ids; }
-  public AccDB get_srcdb() { return this.srcdb; }
+  public String getCatalyticActivity() {return this.catalyticActivity; }
+  public String getGeneName() { return this.geneName; }
+  public Set<String> getUniprotAccession() { return this.uniprotAccs; }
+  public Set<String> getGenbankProteinAccession() { return this.genbankProtAccs; }
+  public Set<String> getGenbankNucleotideAccession() { return this.genbankNucAccs; }
+  public Set<String> getBrendaIDs() { return this.brendaIDs; }
+  public AccDB getSrcdb() { return this.srcdb; }
 
   public void addReactionsCatalyzed(Long r) { this.reactionsCatalyzed.add(r); }
   public Set<Long> getReactionsCatalyzed() { return this.reactionsCatalyzed; }
 
-  public void set_references(List<JSONObject> refs) { this.references = refs; }
+  public void setReferences(List<JSONObject> refs) { this.references = refs; }
   public void setReactionsCatalyzed(Set<Long> reactionsCatalyzed) { this.reactionsCatalyzed = reactionsCatalyzed; }
   public void set_organism_name(String orgName) { this.organism = orgName; }
   public void setOrgId(Long orgId) { this.organismIDs = orgId; }
-
-
 }
 
 

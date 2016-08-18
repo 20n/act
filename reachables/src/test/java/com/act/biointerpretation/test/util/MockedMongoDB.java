@@ -91,7 +91,7 @@ public class MockedMongoDB {
     }
 
     return new Seq(seq.getUUID(), seq.getEc(), seq.getOrgId(), seq.getOrgName(), seq.getSequence(), references,
-        MongoDBToJSON.conv(metadata), seq.get_srcdb());
+        MongoDBToJSON.conv(metadata), seq.getSrcdb());
   }
 
   public MockedMongoDB() { }
@@ -306,7 +306,7 @@ public class MockedMongoDB {
         Seq seq = invocation.getArgumentAt(0, Seq.class);
 
         if (seqMap.containsKey((long) seq.getUUID())) {
-          seqMap.get((long) seq.getUUID()).set_references(seq.getReferences());
+          seqMap.get((long) seq.getUUID()).setReferences(seq.getReferences());
         }
 
         return null;
