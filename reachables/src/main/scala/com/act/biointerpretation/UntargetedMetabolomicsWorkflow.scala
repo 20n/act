@@ -117,10 +117,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     directory.mkdirs()
 
     val rawSubstratesFile = new File(cl.getOptionValue(OPTION_SUBSTRATES))
-    verifyInputFile(rawSubstratesFile)
-
     val roIdFile = new File(cl.getOptionValue(OPTION_RO_IDS))
-    verifyInputFile(roIdFile)
 
     val erosCorpus = new ErosCorpus()
     erosCorpus.loadValidationCorpus()
@@ -161,6 +158,9 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       * Define all jobs
       */
     def addExpansionJobList()(): Unit = {
+      verifyInputFile(rawSubstratesFile)
+      verifyInputFile(roIdFile)
+
       logger.info("Running RO expansion jobs.")
       val massFilteringRunnable = L2InchiCorpus.getRunnableSubstrateFilterer(
         rawSubstratesFile,
@@ -205,8 +205,9 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
         roIds.map(roId =>
           LibMcsClustering.getRunnableClusterer(
             predictionsFiles(roId),
-            sarTreeFiles(roId))) // Run one job per RO for clustering
-      addJavaRunnableBatch("cluster", clusteringRunnables)
+            sarTreeFiles(roId)))
+      val batchSize = 1; // To limit memory usage
+      addJavaRunnableBatch("cluster", clusteringRunnables, batchSize)
     }
 
     def addSarScoringJobs()(): Unit = {
@@ -337,9 +338,9 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
   /**
     * Adds a list of JavaRunnables to the job manager as a batch.
     */
-  def addJavaRunnableBatch(name: String, runnables: List[JavaRunnable]): Unit = {
+  def addJavaRunnableBatch(name: String, runnables: List[JavaRunnable], batchSize: Int = 20): Unit = {
     val jobs = runnables.map(runnable => JavaJobWrapper.wrapJavaFunction(name, runnable))
-    headerJob.thenRunBatch(jobs)
+    headerJob.thenRunBatch(jobs, batchSize)
   }
 
   object StartingPoints extends Enumeration {
