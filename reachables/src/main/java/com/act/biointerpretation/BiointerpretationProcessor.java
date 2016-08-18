@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,7 @@ public abstract class BiointerpretationProcessor {
   private Map<Long, String> newChemIdToInchi = new HashMap<>();
   private HashMap<Long, Long> organismMigrationMap = new HashMap<>();
   private HashMap<Long, Long> sequenceMigrationMap = new HashMap<>();
+  private HashMap<Long, Long> reactionMigrationMap = new HashMap<>();
 
   boolean initCalled = false;
 
@@ -113,7 +115,20 @@ public abstract class BiointerpretationProcessor {
    * be overridden, as it does nothing by default.
    */
   protected void afterProcessReactions() throws IOException, ReactionException {
-    // TODO: consider mimicking the behavior of updateRxnRefs in SequenceMerger
+    Iterator<Seq> writtenSeqIterator = api.getWriteDB().getSeqIterator();
+
+    while (writtenSeqIterator.hasNext()) {
+      Seq writtenSeq = writtenSeqIterator.next();
+
+      Set<Long> oldRxnRefs = writtenSeq.getReactionsCatalyzed();
+      Set<Long> newRxnRefs = new HashSet<>();
+      for (Long oldRxnRef : oldRxnRefs) {
+        newRxnRefs.add(reactionMigrationMap.get(oldRxnRef));
+      }
+
+      writtenSeq.setReactionsCatalyzed(newRxnRefs);
+      api.getWriteDB().updateRxnRefs(writtenSeq);
+    }
   }
 
   protected NoSQLAPI getNoSQLAPI() {
@@ -224,6 +239,8 @@ public abstract class BiointerpretationProcessor {
 
       // Give the subclasses a chance at the reactions.
       newRxn = runSpecializedReactionProcessing(newRxn, newIdL);
+
+      reactionMigrationMap.put(oldId, newIdL);
 
       // Update the reaction in the DB with the newly migrated protein data.
       api.getWriteDB().updateActReaction(newRxn, newId);
@@ -392,21 +409,10 @@ public abstract class BiointerpretationProcessor {
     for (int i = 0; i < sequences.length(); i++) {
       Long sequenceId = sequences.getLong(i);
 
-      /* TODO: Consider optimizations here. Instead of updating Seq entries repeatedly, we can wait until all the
-      reactions have been migrated and then use the reactionMigrationMap to update all the reaction IDs in Seq entries.
-       Refer to updateRxnRefs in SequenceMerger and consider making that the default behavior in afterProcessReactions */
       if (sequenceMigrationMap.containsKey(sequenceId)) {
         // add migrated sequence ID to list of referenced sequences in the reaction protein object
         Long writtenSeqId = sequenceMigrationMap.get(sequenceId);
         newSequenceIds.add(writtenSeqId);
-        Seq writtenSeq = api.getWriteDB().getSeqFromID(writtenSeqId);
-
-        // update the list of reactions that the written sequence object should reference
-        Set<Long> oldRxnRefs = writtenSeq.getReactionsCatalyzed();
-        oldRxnRefs.addAll(rxnIds);
-        writtenSeq.setReactionsCatalyzed(oldRxnRefs);
-
-        api.getWriteDB().updateRxnRefs(writtenSeq);
       } else {
         Seq seq = api.getReadDB().getSeqFromID(sequenceId);
 
@@ -423,7 +429,7 @@ public abstract class BiointerpretationProcessor {
             newSeqOrganismId, // Use freshly migrated organism id to replace the old one.
             seq.getSequence(),
             seq.getReferences(),
-            rxnIds, // Use the reaction's new id (also in substrates/products) instead of the old one.
+            seq.getReactionsCatalyzed(), // Use the reaction's new id (also in substrates/products) instead of the old one.
             MongoDBToJSON.conv(seq.getMetadata())
         );
         // TODO: we should migrate all the seq documents with zero references over to the new DB.

@@ -511,7 +511,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
   private void updateSeqRxnRefs() {
     Iterator<Seq> writtenSeqIterator = getNoSQLAPI().getWriteDB().getSeqIterator();
 
-    while(writtenSeqIterator.hasNext()) {
+    while (writtenSeqIterator.hasNext()) {
       Seq writtenSeq = writtenSeqIterator.next();
 
       Set<Long> oldRxnRefs = writtenSeq.getReactionsCatalyzed();
