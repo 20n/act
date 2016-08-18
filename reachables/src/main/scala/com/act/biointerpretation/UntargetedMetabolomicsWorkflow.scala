@@ -60,11 +60,10 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
           "lcms_results in the working directory."),
 
       CliOption.builder(OPTION_RO_IDS).
-        required(false).
+        required(true).
         hasArg.
         longOpt("ro_ids").
-        desc("A filepath to a file containing the RO ids to use, one per line. If no path is supplied, but steps " +
-          "are run which requrie RO Ids, the workflow searches for a file of name ro_list in the working directory."),
+        desc("A filepath to a file containing the RO ids to use, one per line."),
 
       CliOption.builder(OPTION_MASS_THRESHOLD).
         required(false).
@@ -77,7 +76,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
         hasArg.
         longOpt("starting-point")
         .desc("What point of the workflow to start at, since some steps may already be complete. Choices are " +
-          "EXPANSION, LCMS, CLUSTERING, SAA_SCORING, PRODUCT_SCORING, and MESH_RESULTS. The workflow assumes any " +
+          "EXPANSION, LCMS, CLUSTERING, SAR_SCORING, PRODUCT_SCORING, and MESH_RESULTS. The workflow assumes any " +
           "pre-computed steps have been put into the working directory, where they would have been generated had " +
           "the workflow been ran from the start. For example, precomputed prediction corpuses should be located at " +
           "workingDir/predictions.1, workingDir/predictions.2, etc."),
@@ -128,13 +127,8 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       rawSubstratesFile = new File(workingDir, "raw_substrates")
     }
 
-    var roIdFile: File = null
-    if (cl.hasOption(OPTION_RO_IDS)) {
-      roIdFile = new File(cl.getOptionValue(OPTION_SUBSTRATES))
-    } else {
-      logger.info("Defaulting to look for ros at workingDir/ro_list if needed.")
-      roIdFile = new File(workingDir, "ro_list")
-    }
+    val roIdFile = new File(cl.getOptionValue(OPTION_RO_IDS))
+
 
     val erosCorpus = new ErosCorpus()
     erosCorpus.loadValidationCorpus()
