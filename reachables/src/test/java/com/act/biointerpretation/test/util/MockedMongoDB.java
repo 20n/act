@@ -90,7 +90,7 @@ public class MockedMongoDB {
       references.add(copy);
     }
 
-    return new Seq(seq.getUUID(), seq.get_ec(), seq.getOrgId(), seq.get_org_name(), seq.get_sequence(), references,
+    return new Seq(seq.getUUID(), seq.get_ec(), seq.getOrgId(), seq.get_org_name(), seq.getSequence(), references,
         MongoDBToJSON.conv(metadata), seq.get_srcdb());
   }
 
@@ -208,7 +208,7 @@ public class MockedMongoDB {
           Seq sequence = entry.getValue();
 
           if (sequence.get_ec() != null && sequence.get_ec().equals(ec)
-              && sequence.get_sequence().equals(seq)
+              && sequence.getSequence().equals(seq)
               && sequence.get_org_name().equals(organism)) {
             matchedSeqs.add(copySeq(sequence));
           }
@@ -261,7 +261,7 @@ public class MockedMongoDB {
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
           Seq sequence = entry.getValue();
           JSONObject metadata = sequence.get_metadata();
-          String databaseSequence = sequence.get_sequence();
+          String databaseSequence = sequence.getSequence();
 
           if (!seq.equals(databaseSequence)) {
             continue;

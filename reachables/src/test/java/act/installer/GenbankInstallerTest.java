@@ -477,7 +477,7 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
-      if (seqentry.getValue().get_sequence().equals(protSeqEcSeqOrgQuery)) {
+      if (seqentry.getValue().getSequence().equals(protSeqEcSeqOrgQuery)) {
         compareSeqs("for testProteinEcSeqOrgQuery (query by ec, org, seq with no database match)",
             proteinEcSeqOrgTestQuery, seqentry.getValue());
       }
@@ -533,7 +533,7 @@ public class GenbankInstallerTest {
         seqs.get(89045L));
 
     for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
-      if (seqentry.getValue().get_sequence().equals(protSeqAccQuery2)) {
+      if (seqentry.getValue().getSequence().equals(protSeqAccQuery2)) {
         compareSeqs("for testProteinAccessionQuery (query by accession with no database match)",
             proteinAccessionTestQuery2, seqentry.getValue());
       }
@@ -646,12 +646,12 @@ public class GenbankInstallerTest {
     compareSeqs("for testDnaInstall (query by accession; database match exists)", dnaTestSeq4, seqs.get(23849L));
 
     for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
-      if (seqentry.getValue().get_sequence().equals(dnaSeq5)) {
+      if (seqentry.getValue().getSequence().equals(dnaSeq5)) {
         compareSeqs("for testDnaInstall (query by accession with no database match)", dnaTestSeq5, seqentry.getValue());
         continue;
       }
 
-      if (seqentry.getValue().get_sequence().equals(dnaSeq6)) {
+      if (seqentry.getValue().getSequence().equals(dnaSeq6)) {
         compareSeqs("for testDnaInstall (query by ec, seq, org with no database match)", dnaTestSeq6,
             seqentry.getValue());
       }
@@ -662,7 +662,7 @@ public class GenbankInstallerTest {
     assertEquals("comparing ec " + message, expectedSeq.get_ec(), testSeq.get_ec());
     assertEquals("comparing org_id " + message, expectedSeq.getOrgId(), testSeq.getOrgId());
     assertEquals("comparing organism " + message, expectedSeq.get_org_name(), testSeq.get_org_name());
-    assertEquals("comparing sequence " + message, expectedSeq.get_sequence(), testSeq.get_sequence());
+    assertEquals("comparing sequence " + message, expectedSeq.getSequence(), testSeq.getSequence());
     assertEquals("comparing references " + message, expectedSeq.get_references().toString(),
         testSeq.get_references().toString());
     assertEquals("comparing metadata " + message, expectedSeq.get_metadata().toString(),

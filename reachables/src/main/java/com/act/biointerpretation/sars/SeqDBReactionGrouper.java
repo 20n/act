@@ -187,7 +187,7 @@ public class SeqDBReactionGrouper {
       }
 
       Seq seq = seqIterator.next();
-      String sequence = seq.get_sequence();
+      String sequence = seq.getSequence();
 
       ReactionGroup group = sequenceToReactionGroupMap.get(sequence);
 
