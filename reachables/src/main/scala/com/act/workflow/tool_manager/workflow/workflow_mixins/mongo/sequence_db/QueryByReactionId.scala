@@ -35,7 +35,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
     /*
       Map sequences and name to proteinSequences
     */
-    val outputStream = new BufferedWriter(new FileWriter(outputFile))
+    val outputWriter = new BufferedWriter(new FileWriter(outputFile))
     for (document: DBObject <- returnSequenceDocuments) {
 
       val id = document.get(SEQUENCE_DB_KEYWORD_ID)
@@ -62,35 +62,12 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
           but the DB_ID should guarantee uniqueness
         */
         newSeq.setOriginalHeader(s"NAME: ${name.toString} | EC: ${ecnum.toString} | DB_ID: ${id.toString}")
-        writeProteinSequenceToFasta(newSeq, outputStream)
+        writeProteinSequenceToFasta(newSeq, outputWriter)
       } else {
         methodLogger.error(s"Sequence identified that does not have a sequence.  DB entry is ${id.toString}")
       }
     }
-    outputStream.close()
-  }
-
-  /**
-    * Query sequences based on if the sequence references one of the reactions in the reactionIds list.
-    *
-    * @param reactionIds        A list of reactionIds, a matching sequence will match one or more.
-    * @param mongoConnection    Connection to Mongo database
-    * @param returnFilterFields The fields you are looking for.
-    *
-    * @return Returns a map of documents with their fields as the secondary keys.
-    *         First map is keyed by the document ID, secondary maps are keyed by the field names retrieved from the DB.
-    */
-  def querySequencesForValuesByReactionId(reactionIds: List[Long],
-                                          mongoConnection: MongoDB,
-                                          returnFilterFields: List[String]): Map[Long, Map[String, AnyRef]] = {
-
-    val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
-
-    val sequenceReturnIterator = querySequencesMatchingReactionIdIterator(reactionIds, mongoConnection, returnFilterFields)
-
-    val sequenceDocuments = mongoReturnQueryToMap(sequenceReturnIterator, returnFilterFields)
-    methodLogger.info(s"Found ${sequenceDocuments.size} document${if (sequenceDocuments.size != 1) "s" else ""}.")
-    sequenceDocuments
+    outputWriter.close()
   }
 
   /**
@@ -133,5 +110,28 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
     methodLogger.info("Finished sequence query.")
 
     sequenceReturnIterator
+  }
+
+  /**
+    * Query sequences based on if the sequence references one of the reactions in the reactionIds list.
+    *
+    * @param reactionIds        A list of reactionIds, a matching sequence will match one or more.
+    * @param mongoConnection    Connection to Mongo database
+    * @param returnFilterFields The fields you are looking for.
+    *
+    * @return Returns a map of documents with their fields as the secondary keys.
+    *         First map is keyed by the document ID, secondary maps are keyed by the field names retrieved from the DB.
+    */
+  def querySequencesForValuesByReactionId(reactionIds: List[Long],
+                                          mongoConnection: MongoDB,
+                                          returnFilterFields: List[String]): Map[Long, Map[String, AnyRef]] = {
+
+    val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
+
+    val sequenceReturnIterator = querySequencesMatchingReactionIdIterator(reactionIds, mongoConnection, returnFilterFields)
+
+    val sequenceDocuments = mongoReturnQueryToMap(sequenceReturnIterator, returnFilterFields)
+    methodLogger.info(s"Found ${sequenceDocuments.size} document${if (sequenceDocuments.size != 1) "s" else ""}.")
+    sequenceDocuments
   }
 }

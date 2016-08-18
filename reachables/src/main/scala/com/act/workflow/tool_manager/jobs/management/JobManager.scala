@@ -196,8 +196,8 @@ object JobManager {
     // Found a cycle, raise error
     if (currentJobList.toSet.size != currentJobList.length) {
       throw new RuntimeException("Detected an abnormality in your workflow.  " +
-        "Either a cycle existsthe same job occurs multiple times in your workflow, either of which are not allowed.  " +
-        "In either of these scenario, your workflow will be unable to run the job a second time and thus will crash. " +
+        "A cycle exists or same job occurs multiple times in your workflow, neither of which are allowed.  " +
+        "In either scenario, your workflow will be unable to run the job a second time and thus will crash. " +
         "Please review your workflow.")
     }
 

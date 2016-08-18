@@ -110,4 +110,5 @@ class ShellWrapperTest extends FlatSpec with Matchers with TimeLimitedTests with
       successfulJob(command2)
     }
   }
+
 }
