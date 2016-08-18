@@ -178,12 +178,9 @@ public class Seq implements Serializable {
   public String getSequence() { return this.sequence; }
   public String getEc() { return this.ecnum; }
   public String getOrgName() { return this.organism; }
-  public Long getOrgId() {
-    return this.organismIDs;
-  }
+  public Long getOrgId() { return this.organismIDs; }
   public List<JSONObject> getReferences() { return this.references; }
   public JSONObject getMetadata() { return this.metadata; }
-  public void setMetadata(JSONObject metadata) { this.metadata = metadata; }
   public Set<String> getProductNames() { return this.productNames; }
   public Set<String> getSynonyms() { return this.synonyms; }
   public String getCatalyticActivity() {return this.catalyticActivity; }
@@ -197,9 +194,10 @@ public class Seq implements Serializable {
   public void addReactionsCatalyzed(Long r) { this.reactionsCatalyzed.add(r); }
   public Set<Long> getReactionsCatalyzed() { return this.reactionsCatalyzed; }
 
+  public void setMetadata(JSONObject metadata) { this.metadata = metadata; }
   public void setReferences(List<JSONObject> refs) { this.references = refs; }
   public void setReactionsCatalyzed(Set<Long> reactionsCatalyzed) { this.reactionsCatalyzed = reactionsCatalyzed; }
-  public void set_organism_name(String orgName) { this.organism = orgName; }
+  public void setOrgName(String orgName) { this.organism = orgName; }
   public void setOrgId(Long orgId) { this.organismIDs = orgId; }
 }
 

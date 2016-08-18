@@ -216,7 +216,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
     }
 
     String organismName = checkForOrgPrefix(sequence.getOrgName());
-    sequence.set_organism_name(organismName);
+    sequence.setOrgName(organismName);
 
     Long newOrgId = getNoSQLAPI().getWriteDB().getOrganismId(organismName);
 
