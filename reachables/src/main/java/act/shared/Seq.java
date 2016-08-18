@@ -99,23 +99,23 @@ public class Seq implements Serializable {
     return seq;
   }
 
-  static final String not_found = "";
+  static final String notFound = "";
   private String meta(JSONObject o, String[] xpath) {
     Set<String> ret = meta(o, xpath, true);
     if (ret.size() > 0) {
       return ret.iterator().next();
     } else {
-      return not_found;
+      return notFound;
     }
   }
 
   private Set<String> meta(JSONObject o, String[] xpath, boolean returnSet) {
     int len = xpath.length;
-    Set<String> not_fnd = new HashSet<String>();
-    not_fnd.add(not_found);
+    Set<String> notFnd = new HashSet<String>();
+    notFnd.add(notFound);
     try {
       if (len == 0)
-        return not_fnd;
+        return notFnd;
 
       if (len == 1) {
         Object val = o.get(xpath[0]); // can throw
@@ -132,36 +132,36 @@ public class Seq implements Serializable {
         meta(o.getJSONObject(xpath[0]), rest, returnSet);  // can throw
       }
     } catch (JSONException ex) {
-      return not_fnd;
+      return notFnd;
     }
-    return not_fnd;
+    return notFnd;
   }
 
-  private String meta(JSONObject o, String[] xpath, String field, String should_equal, String extract_field) {
+  private String meta(JSONObject o, String[] xpath, String field, String shouldEqual, String extractField) {
     int len = xpath.length;
     try {
       if (len == 0)
-        return not_found;
+        return notFound;
 
       if (len == 1) {
         JSONArray a = o.getJSONArray(xpath[0]); // can throw
         // iterate over all objects
         for (int i = 0; i < a.length(); i++) {
           JSONObject oo = a.getJSONObject(i); // can throw
-          // if the object has the "field" and its value equals "should_equal"
-          if (should_equal.equals(oo.getString(field))) { // can throw
+          // if the object has the "field" and its value equals "shouldEqual"
+          if (shouldEqual.equals(oo.getString(field))) { // can throw
             // return on first match
-            return oo.getString(extract_field);
+            return oo.getString(extractField);
           }
         }
       } else {
         String[] rest = Arrays.copyOfRange(xpath, 1, xpath.length);
-        meta(o.getJSONObject(xpath[0]), rest, field, should_equal, extract_field);  // can throw
+        meta(o.getJSONObject(xpath[0]), rest, field, shouldEqual, extractField);  // can throw
       }
     } catch (JSONException ex) {
-      return not_found;
+      return notFound;
     }
-    return not_found;
+    return notFound;
   }
 
   private Set<String> parseJSONArray(JSONArray jArray) {
