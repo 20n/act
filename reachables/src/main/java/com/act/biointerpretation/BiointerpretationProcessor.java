@@ -91,9 +91,6 @@ public abstract class BiointerpretationProcessor {
     processReactions();
     LOGGER.info("Done processing reactions");
     afterProcessReactions();
-    LOGGER.info("Processing sequences");
-    processSequences();
-    LOGGER.info("Done processing sequences");
 
     long endTime = new Date().getTime();
     LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
@@ -138,33 +135,9 @@ public abstract class BiointerpretationProcessor {
     return this.newChemIdToInchi.get(newChemId);
   }
 
-  /**
-   * Process and migrate sequences. Default implementation merely copies, preserving source id.
-   */
-  protected void processSequences() {
-    Iterator<Seq> seqIterator = getNoSQLAPI().readSeqsFromInKnowledgeGraph();
-
-    while (seqIterator.hasNext()) {
-      Seq oldSeq = seqIterator.next();
-      Long oldId = (long) oldSeq.getUUID();
-      Long newId = (long) getNoSQLAPI().getWriteDB().submitToActSeqDB(
-          oldSeq.get_srcdb(),
-          oldSeq.get_ec(),
-          oldSeq.get_org_name(),
-          oldSeq.getOrgId(),
-          oldSeq.get_sequence(),
-          oldSeq.get_references(),
-          oldSeq.getReactionsCatalyzed(),
-          MongoDBToJSON.conv(oldSeq.get_metadata())
-      );
-
-      sequenceMigrationMap.put(oldId, newId);
-    }
-  }
-
 
   /**
-   * Process and migrate reactions.  Default implementation merely copies, preserving source id.
+   * Process and migrate chemicals.  Default implementation merely copies, preserving source id.
    * @throws Exception
    */
   protected void processChemicals() throws IOException, ReactionException {
@@ -408,33 +381,41 @@ public abstract class BiointerpretationProcessor {
     List<Long> newSequenceIds = new ArrayList<>(sequences.length());
     for (int i = 0; i < sequences.length(); i++) {
       Long sequenceId = sequences.getLong(i);
-      Seq seq = api.getReadDB().getSeqFromID(sequenceId);
 
-      // Assumption: seq refer to exactly one reaction.
-      if (seq.getReactionsCatalyzed().size() > 1) {
-        throw new RuntimeException(String.format(
-            "Assumption violation: sequence with source id %d refers to %d reactions (>1).  " +
-                "Merging will not handly this case correctly.\n", seq.getUUID(), seq.getReactionsCatalyzed().size()));
+      if (sequenceMigrationMap.containsKey(sequenceId)) {
+        Long writtenSeqId = sequenceMigrationMap.get(sequenceId);
+        newSequenceIds.add(writtenSeqId);
+        Seq writtenSeq = api.getWriteDB().getSeqFromID(writtenSeqId);
+
+        Set<Long> oldRxnRefs = writtenSeq.getReactionsCatalyzed();
+        oldRxnRefs.addAll(rxnIds);
+
+        writtenSeq.setReactionsCatalyzed(oldRxnRefs);
+        api.getWriteDB().updateRxnRefs(writtenSeq);
+      } else {
+        Seq seq = api.getReadDB().getSeqFromID(sequenceId);
+
+        Long oldSeqOrganismId = seq.getOrgId();
+        Long newSeqOrganismId = migrateOrganism(oldSeqOrganismId);
+
+        // Store the seq document to get an id that'll be stored in the protein object.
+        int seqId = api.getWriteDB().submitToActSeqDB(
+            seq.get_srcdb(),
+            seq.get_ec(),
+            seq.get_org_name(),
+            newSeqOrganismId, // Use freshly migrated organism id to replace the old one.
+            seq.get_sequence(),
+            seq.get_references(),
+            rxnIds, // Use the reaction's new id (also in substrates/products) instead of the old one.
+            MongoDBToJSON.conv(seq.get_metadata())
+        );
+        // TODO: we should migrate all the seq documents with zero references over to the new DB.
+
+        sequenceMigrationMap.put(sequenceId, (long) seqId);
+
+        // Convert to Long to match ID type seen in MongoDB.  TODO: clean up all the IDs, make them all Longs.
+        newSequenceIds.add(Long.valueOf(seqId));
       }
-
-      Long oldSeqOrganismId = seq.getOrgId();
-      Long newSeqOrganismId = migrateOrganism(oldSeqOrganismId);
-
-      // Store the seq document to get an id that'll be stored in the protein object.
-      int seqId = api.getWriteDB().submitToActSeqDB(
-          seq.get_srcdb(),
-          seq.get_ec(),
-          seq.get_org_name(),
-          newSeqOrganismId, // Use freshly migrated organism id to replace the old one.
-          seq.get_sequence(),
-          seq.get_references(),
-          rxnIds, // Use the reaction's new id (also in substrates/products) instead of the old one.
-          MongoDBToJSON.conv(seq.get_metadata())
-      );
-      // TODO: we should migrate all the seq documents with zero references over to the new DB.
-
-      // Convert to Long to match ID type seen in MongoDB.  TODO: clean up all the IDs, make them all Longs.
-      newSequenceIds.add(Long.valueOf(seqId));
     }
     // Store the migrated sequence ids for this protein.
     newProtein.put("sequences", new JSONArray(newSequenceIds));

@@ -2744,6 +2744,13 @@ public class MongoDB {
     this.dbSeq.update(query, obj);
   }
 
+  public void updateRxnRefs(Seq seq) {
+    BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
+    DBObject obj = this.dbSeq.findOne(query);
+    obj.put("rxn_refs", seq.getReactionsCatalyzed());
+    this.dbReactions.update(query, obj);
+  }
+
     /*
      *
      *
