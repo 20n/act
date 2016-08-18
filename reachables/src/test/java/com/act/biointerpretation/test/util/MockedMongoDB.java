@@ -78,7 +78,7 @@ public class MockedMongoDB {
   }
 
   private static Seq copySeq(Seq seq) {
-    JSONObject oldMetadata = seq.get_metadata();
+    JSONObject oldMetadata = seq.getMetadata();
     JSONObject metadata = deepCopy(oldMetadata);
 
     List<JSONObject> oldRefs = seq.getReferences();
@@ -227,7 +227,7 @@ public class MockedMongoDB {
 
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
           Seq sequence = entry.getValue();
-          JSONObject metadata = sequence.get_metadata();
+          JSONObject metadata = sequence.getMetadata();
 
           if (!metadata.has("accession") ||
               !metadata.getJSONObject("accession").has(Seq.AccType.genbank_protein.toString())) {
@@ -260,7 +260,7 @@ public class MockedMongoDB {
 
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
           Seq sequence = entry.getValue();
-          JSONObject metadata = sequence.get_metadata();
+          JSONObject metadata = sequence.getMetadata();
           String databaseSequence = sequence.getSequence();
 
           if (!seq.equals(databaseSequence)) {
@@ -293,7 +293,7 @@ public class MockedMongoDB {
         Seq seq = invocation.getArgumentAt(0, Seq.class);
 
         if (seqMap.containsKey((long) seq.getUUID())) {
-          seqMap.get((long) seq.getUUID()).set_metadata(seq.get_metadata());
+          seqMap.get((long) seq.getUUID()).set_metadata(seq.getMetadata());
         }
 
         return null;

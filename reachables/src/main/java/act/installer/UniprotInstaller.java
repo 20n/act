@@ -192,7 +192,7 @@ public class UniprotInstaller {
 
     // update prior data
     for (Seq seq : seqs) {
-      JSONObject metadata = seq.get_metadata();
+      JSONObject metadata = seq.getMetadata();
 
       JSONObject accessions = se.getAccession();
 

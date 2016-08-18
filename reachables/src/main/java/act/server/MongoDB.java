@@ -2725,7 +2725,7 @@ public class MongoDB {
   public void updateMetadata(Seq seq) {
     BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
     DBObject obj = this.dbSeq.findOne(query);
-    obj.put("metadata", MongoDBToJSON.conv(seq.get_metadata()));
+    obj.put("metadata", MongoDBToJSON.conv(seq.getMetadata()));
     this.dbSeq.update(query, obj);
   }
 

@@ -413,7 +413,7 @@ public abstract class BiointerpretationProcessor {
         Long oldSeqOrganismId = seq.getOrgId();
         Long newSeqOrganismId = migrateOrganism(oldSeqOrganismId);
 
-        seq.get_metadata().put("source_sequence_ids", sequenceId);
+        seq.getMetadata().put("source_sequence_ids", sequenceId);
 
         // Store the seq document to get an id that'll be stored in the protein object.
         int seqId = api.getWriteDB().submitToActSeqDB(
@@ -424,7 +424,7 @@ public abstract class BiointerpretationProcessor {
             seq.getSequence(),
             seq.getReferences(),
             rxnIds, // Use the reaction's new id (also in substrates/products) instead of the old one.
-            MongoDBToJSON.conv(seq.get_metadata())
+            MongoDBToJSON.conv(seq.getMetadata())
         );
         // TODO: we should migrate all the seq documents with zero references over to the new DB.
 
