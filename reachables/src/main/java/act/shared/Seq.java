@@ -187,7 +187,7 @@ public class Seq implements Serializable {
   public Set<String> getProductNames() { return this.product_names; }
   public Set<String> getSynonyms() { return this.synonyms; }
   public String getCatalyticActivity() {return this.catalytic_activity; }
-  public String get_gene_name() { return this.gene_name; }
+  public String getGeneName() { return this.gene_name; }
   public Set<String> get_uniprot_accession() { return this.uniprot_accs; }
   public Set<String> get_genbank_protein_accession() { return this.genbank_prot_accs; }
   public Set<String> get_genbank_nucleotide_accession() { return this.genbank_nuc_accs; }
