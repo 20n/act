@@ -69,20 +69,20 @@ public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
    * @param node The SarTreeNode.
    * @return True if at least one prediction Id of the node is an LCMS hit.
    */
-  public SarTreeNode.LCMS_RESULT getLcmsDataForNode(SarTreeNode node) {
+  public IonAnalysisInterchangeModel.LCMS_RESULT getLcmsDataForNode(SarTreeNode node) {
     for (Integer predictionId : node.getPredictionIds()) {
       L2Prediction prediction = predictionCorpus.getPredictionFromId(predictionId);
-      SarTreeNode.LCMS_RESULT lcmsData = lcmsResults.getLcmsDataForPrediction(prediction);
+      IonAnalysisInterchangeModel.LCMS_RESULT lcmsData = lcmsResults.getLcmsDataForPrediction(prediction);
 
-      if (lcmsData == SarTreeNode.LCMS_RESULT.HIT) {
-        return SarTreeNode.LCMS_RESULT.HIT;
+      if (lcmsData == IonAnalysisInterchangeModel.LCMS_RESULT.HIT) {
+        return IonAnalysisInterchangeModel.LCMS_RESULT.HIT;
       }
-      if (lcmsData == SarTreeNode.LCMS_RESULT.NO_DATA) {
+      if (lcmsData == IonAnalysisInterchangeModel.LCMS_RESULT.NO_DATA) {
         // Log this error but don't throw exception- some molecules aren't properly processed by LCMS and have no data
         LOGGER.error("No LCMS data found for prediction ID " + predictionId +
             " on inchi " + prediction.getProductInchis().toString());
       }
     }
-    return SarTreeNode.LCMS_RESULT.MISS;
+    return IonAnalysisInterchangeModel.LCMS_RESULT.MISS;
   }
 }

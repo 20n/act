@@ -46,8 +46,10 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class IonAnalysisInterchangeModel {
-  // The idea of NO_DATA is to indicate if we query on a molecule who's mass no analysis was done on, to distinguish
-  // this case from an actual calculated MISS.
+
+  // An LCMS result.
+  // The idea of NO_DATA is to indicate if we query on a molecule with a mass on which no analysis was done on, to
+  // distinguish this case from an actual calculated MISS.
   public enum LCMS_RESULT {
     HIT,
     MISS,
@@ -119,13 +121,13 @@ public class IonAnalysisInterchangeModel {
    * @param prediction The prediction from the corpus.
    * @return True if all products are LCMS hits.
    */
-  public SarTreeNode.LCMS_RESULT getLcmsDataForPrediction(L2Prediction prediction) {
+  public LCMS_RESULT getLcmsDataForPrediction(L2Prediction prediction) {
     List<String> productInchis = prediction.getProductInchis();
     for (String product : productInchis) {
       // If any of the results have no data, return NO_DATA. Such results shouldn't happen for now, so the caller will
       // likely throw an exception if this happens.
       if (this.isMoleculeAHit(product).equals(IonAnalysisInterchangeModel.LCMS_RESULT.NO_DATA)) {
-        return SarTreeNode.LCMS_RESULT.NO_DATA;
+        return LCMS_RESULT.NO_DATA;
       }
       // Otherwise, if a miss is found among the prediction's products, return it as a miss.  This implements an
       // AND among the products of the prediction- all must be present to register as a hit. This is motivated by the
@@ -133,11 +135,11 @@ public class IonAnalysisInterchangeModel {
       // cofactor. We verified that in both urine and saliva, the cofactor is present in our samples, so
       // an OR approach here would return a HIT for every prediction of that RO.
       if (this.isMoleculeAHit(product).equals(IonAnalysisInterchangeModel.LCMS_RESULT.MISS)) {
-        return SarTreeNode.LCMS_RESULT.MISS;
+        return LCMS_RESULT.MISS;
       }
     }
     // If every prediction is a HIT, return HIT.
-    return SarTreeNode.LCMS_RESULT.HIT;
+    return LCMS_RESULT.HIT;
   }
 
   /**
