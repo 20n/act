@@ -238,7 +238,7 @@ public class UniprotInstaller {
 
       db.updateMetadata(seq);
 
-      List<JSONObject> oldRefs = seq.get_references();
+      List<JSONObject> oldRefs = seq.getReferences();
       List<JSONObject> newPmidRefs = se.getRefs();
 
       if (!oldRefs.isEmpty()) {
@@ -262,7 +262,7 @@ public class UniprotInstaller {
         seq.set_references(se.getRefs());
       }
 
-      if (seq.get_references() != null) {
+      if (seq.getReferences() != null) {
         db.updateReferences(seq);
       }
     }

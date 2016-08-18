@@ -616,8 +616,8 @@ public class UniprotInstallerTest {
     assertEquals("comparing org_id " + message, expectedSeq.getOrgId(), testSeq.getOrgId());
     assertEquals("comparing organism " + message, expectedSeq.getOrgName(), testSeq.getOrgName());
     assertEquals("comparing sequence " + message, expectedSeq.getSequence(), testSeq.getSequence());
-    assertEquals("comparing references " + message, expectedSeq.get_references().toString(),
-        testSeq.get_references().toString());
+    assertEquals("comparing references " + message, expectedSeq.getReferences().toString(),
+        testSeq.getReferences().toString());
     assertEquals("comparing metadata " + message, expectedSeq.get_metadata().toString(),
         testSeq.get_metadata().toString());
     assertEquals("comapring src db " + message, expectedSeq.get_srcdb(), testSeq.get_srcdb());

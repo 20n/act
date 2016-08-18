@@ -422,7 +422,7 @@ public abstract class BiointerpretationProcessor {
             seq.getOrgName(),
             newSeqOrganismId, // Use freshly migrated organism id to replace the old one.
             seq.getSequence(),
-            seq.get_references(),
+            seq.getReferences(),
             rxnIds, // Use the reaction's new id (also in substrates/products) instead of the old one.
             MongoDBToJSON.conv(seq.get_metadata())
         );

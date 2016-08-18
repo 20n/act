@@ -713,7 +713,7 @@ class SeqFingerPrint {
     /* The structure of get_references was changed from List<String> to List<JSONObject>. This loop converts PMID
     JSONObjects back into a List<String> of PMIDs. This allows for the expansion call to occur without error */
     List<String> references = new ArrayList<>();
-    for (JSONObject obj : s.get_references()) {
+    for (JSONObject obj : s.getReferences()) {
       if (obj.get("src").equals("PMID")) {
         references.add((String) obj.get("val"));
       }

@@ -81,7 +81,7 @@ public class MockedMongoDB {
     JSONObject oldMetadata = seq.get_metadata();
     JSONObject metadata = deepCopy(oldMetadata);
 
-    List<JSONObject> oldRefs = seq.get_references();
+    List<JSONObject> oldRefs = seq.getReferences();
 
     List<JSONObject> references = new ArrayList<>();
 
@@ -306,7 +306,7 @@ public class MockedMongoDB {
         Seq seq = invocation.getArgumentAt(0, Seq.class);
 
         if (seqMap.containsKey((long) seq.getUUID())) {
-          seqMap.get((long) seq.getUUID()).set_references(seq.get_references());
+          seqMap.get((long) seq.getUUID()).set_references(seq.getReferences());
         }
 
         return null;

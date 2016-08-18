@@ -181,7 +181,7 @@ public class Seq implements Serializable {
   public Long getOrgId() {
     return this.organismIDs;
   }
-  public List<JSONObject> get_references() { return this.references; }
+  public List<JSONObject> getReferences() { return this.references; }
   public JSONObject get_metadata() { return this.metadata; }
   public Set<String> get_product_names() { return this.product_names; }
   public Set<String> get_synonyms() { return this.synonyms; }

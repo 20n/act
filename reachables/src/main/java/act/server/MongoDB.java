@@ -2735,7 +2735,7 @@ public class MongoDB {
     BasicDBList refs = new BasicDBList();
 
     List<DBObject> newReferences = new ArrayList<>();
-    for (JSONObject ref : seq.get_references()) {
+    for (JSONObject ref : seq.getReferences()) {
       newReferences.add(MongoDBToJSON.conv(ref));
     }
 
