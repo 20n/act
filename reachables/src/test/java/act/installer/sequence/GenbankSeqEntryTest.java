@@ -1,9 +1,11 @@
 package act.installer.sequence;
 
 import act.server.MongoDB;
+import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
+import com.act.biointerpretation.Utils.OrgMinimalPrefixGenerator;
 import com.act.biointerpretation.test.util.MockedMongoDB;
 import com.act.utils.parser.GenbankInterpreter;
 import com.mongodb.DBObject;
@@ -20,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -45,6 +48,17 @@ public class GenbankSeqEntryTest {
 
     MongoDB mockDb = mockAPI.getMockMongoDB();
 
+    // manually assemble an Org Iterator since you can't mock DBCollection in getDbIteratorOverOrgs()
+    List<Organism> orgs = new ArrayList<>();
+    for (Map.Entry<Long, String> orgName : organismNames.entrySet()) {
+      orgs.add(new Organism(orgName.getKey(), orgName.getValue()));
+    }
+
+    Iterator<Organism> orgIterator = orgs.iterator();
+
+    OrgMinimalPrefixGenerator prefixGenerator = new OrgMinimalPrefixGenerator(orgIterator);
+    Map<String, String> minimalPrefixMapping = prefixGenerator.getMinimalPrefixMapping();
+
     dnaSeqEntries = new ArrayList<>();
     proteinSeqEntries = new ArrayList<>();
     sequences = new ArrayList<>();
@@ -54,7 +68,8 @@ public class GenbankSeqEntryTest {
     giProtein.init();
     sequences.add(giProtein.getSequences().get(0).getSequenceAsString());
     GenbankSeqEntry seqEntry =
-        new GenbankSeqEntryFactory().createFromProteinSequenceReference(giProtein.getSequences().get(0), mockDb);
+        new GenbankSeqEntryFactory().createFromProteinSequenceReference(giProtein.getSequences().get(0), mockDb,
+            minimalPrefixMapping);
     proteinSeqEntries.add(seqEntry);
 
     giProtein =
@@ -62,7 +77,8 @@ public class GenbankSeqEntryTest {
     giProtein.init();
     sequences.add(giProtein.getSequences().get(0).getSequenceAsString());
     seqEntry =
-        new GenbankSeqEntryFactory().createFromProteinSequenceReference(giProtein.getSequences().get(0), mockDb);
+        new GenbankSeqEntryFactory().createFromProteinSequenceReference(giProtein.getSequences().get(0), mockDb,
+            minimalPrefixMapping);
     proteinSeqEntries.add(seqEntry);
 
 
@@ -77,7 +93,8 @@ public class GenbankSeqEntryTest {
       if (feature.getType().equals("CDS") && feature.getQualifiers().containsKey("EC_number")) {
         sequences.add(feature.getQualifiers().get("translation").get(0).getValue());
         seqEntry =
-            new GenbankSeqEntryFactory().createFromDNASequenceReference(sequence, feature.getQualifiers(), mockDb);
+            new GenbankSeqEntryFactory().createFromDNASequenceReference(sequence, feature.getQualifiers(), mockDb,
+                minimalPrefixMapping);
         dnaSeqEntries.add(seqEntry);
       }
     }
@@ -95,10 +112,9 @@ public class GenbankSeqEntryTest {
     JSONObject accessionObject = new JSONObject();
     accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("CUB13083")));
 
-    obj.put("proteinExistence", new JSONObject());
+    obj.put("xref", new JSONObject());
     obj.put("synonyms", emptyGeneSynonyms);
     obj.put("product_names", Collections.singletonList("Arylamine N-acetyltransferase"));
-    obj.put("comment", new ArrayList());
     obj.put("accession", accessionObject);
 
     metadatas.add(MongoDBToJSON.conv(obj));
@@ -108,11 +124,10 @@ public class GenbankSeqEntryTest {
     accessionObject = new JSONObject();
     accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("P50225")));
 
-    obj.put("proteinExistence", new JSONObject());
+    obj.put("xref", new JSONObject());
     obj.put("name", "ST1A1_HUMAN");
     obj.put("synonyms", geneSynonyms);
     obj.put("product_names", Collections.singletonList("Sulfotransferase 1A1"));
-    obj.put("comment", new ArrayList());
     obj.put("accession", accessionObject);
 
     metadatas.add(MongoDBToJSON.conv(obj));
@@ -123,11 +138,10 @@ public class GenbankSeqEntryTest {
     accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21065")));
     accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
-    obj.put("proteinExistence", new JSONObject());
+    obj.put("xref", new JSONObject());
     obj.put("name", "ureA");
     obj.put("synonyms", emptyGeneSynonyms);
     obj.put("product_names", Collections.singletonList("gamma subunit of urase"));
-    obj.put("comment", new ArrayList());
     obj.put("accession", accessionObject);
 
     metadatas.add(MongoDBToJSON.conv(obj));
@@ -138,11 +152,10 @@ public class GenbankSeqEntryTest {
     accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21066")));
     accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
-    obj.put("proteinExistence", new JSONObject());
+    obj.put("xref", new JSONObject());
     obj.put("name", "ureB");
     obj.put("synonyms", emptyGeneSynonyms);
     obj.put("product_names", Collections.singletonList("beta subunit of urease"));
-    obj.put("comment", new ArrayList());
     obj.put("accession", accessionObject);
 
     metadatas.add(MongoDBToJSON.conv(obj));
@@ -153,11 +166,10 @@ public class GenbankSeqEntryTest {
     accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21067")));
     accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
-    obj.put("proteinExistence", new JSONObject());
+    obj.put("xref", new JSONObject());
     obj.put("name", "ureC");
     obj.put("synonyms", emptyGeneSynonyms);
     obj.put("product_names", Collections.singletonList("alpha subunit of urease"));
-    obj.put("comment", new ArrayList());
     obj.put("accession", accessionObject);
 
     metadatas.add(MongoDBToJSON.conv(obj));

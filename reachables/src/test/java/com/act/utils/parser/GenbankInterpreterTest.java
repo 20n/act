@@ -87,8 +87,8 @@ public class GenbankInterpreterTest {
 
   @Test
   public void testReadQualifiers() {
-    Map<Pair<String, String>, HashMap<String, String>> proteinFeatureMap = constructProteinFeatureMap();
-    Map<Pair<String, String>, HashMap<String, String>> dnaFeatureMap = constructDNAFeatureMap();
+    Map<Pair<String, String>, Map<String, String>> proteinFeatureMap = constructProteinFeatureMap();
+    Map<Pair<String, String>, Map<String, String>> dnaFeatureMap = constructDNAFeatureMap();
 
     validateFeatureMap(proteinFeatureMap, giProtein);
     validateFeatureMap(dnaFeatureMap, giDna);
@@ -128,12 +128,12 @@ public class GenbankInterpreterTest {
         giDna.getQualifiers(0, "test_type", "test_source").get("test_name").get(0).getValue());
   }
 
-  private Map<Pair<String, String>, HashMap<String, String>> constructProteinFeatureMap() {
-    HashMap<String, String> qualifier_name_to_value_1 = new HashMap();
-    HashMap<String, String> qualifier_name_to_value_2 = new HashMap();
-    HashMap<String, String> qualifier_name_to_value_3 = new HashMap();
-    HashMap<String, String> qualifier_name_to_value_4 = new HashMap();
-    HashMap<String, String> qualifier_name_to_value_5 = new HashMap();
+  private Map<Pair<String, String>, Map<String, String>> constructProteinFeatureMap() {
+    Map<String, String> qualifier_name_to_value_1 = new HashMap<>();
+    Map<String, String> qualifier_name_to_value_2 = new HashMap<>();
+    Map<String, String> qualifier_name_to_value_3 = new HashMap<>();
+    Map<String, String> qualifier_name_to_value_4 = new HashMap<>();
+    Map<String, String> qualifier_name_to_value_5 = new HashMap<>();
 
 
     Pair<String, String> feature_type_and_source_1 = Pair.of("source", "1..279");
@@ -143,7 +143,7 @@ public class GenbankInterpreterTest {
     Pair<String, String> feature_type_and_source_5 = Pair.of("restriction_site", "1..279");
 
 
-    Map<Pair<String, String>, HashMap<String, String>> feature_to_qualifiers = new HashMap();
+    Map<Pair<String, String>, Map<String, String>> feature_to_qualifiers = new HashMap<>();
     qualifier_name_to_value_1.put("organism", "Bacillus cereus");
     qualifier_name_to_value_1.put("isolate", "JRS1");
     qualifier_name_to_value_1.put("dbxref", "taxon:1396");
@@ -173,13 +173,13 @@ public class GenbankInterpreterTest {
     return feature_to_qualifiers;
   }
 
-  private Map<Pair<String, String>, HashMap<String, String>> constructDNAFeatureMap() {
-    HashMap<String, String> qualifier_name_to_value_1 = new HashMap();
-    HashMap<String, String> qualifier_name_to_value_2 = new HashMap();
-    HashMap<String, String> qualifier_name_to_value_3 = new HashMap();
-    HashMap<String, String> qualifier_name_to_value_4 = new HashMap();
-    HashMap<String, String> qualifier_name_to_value_5 = new HashMap();
-    HashMap<String, String> qualifier_name_to_value_6 = new HashMap();
+  private Map<Pair<String, String>, Map<String, String>> constructDNAFeatureMap() {
+    Map<String, String> qualifier_name_to_value_1 = new HashMap<>();
+    Map<String, String> qualifier_name_to_value_2 = new HashMap<>();
+    Map<String, String> qualifier_name_to_value_3 = new HashMap<>();
+    Map<String, String> qualifier_name_to_value_4 = new HashMap<>();
+    Map<String, String> qualifier_name_to_value_5 = new HashMap<>();
+    Map<String, String> qualifier_name_to_value_6 = new HashMap<>();
 
 
     Pair<String, String> feature_type_and_source_1 = Pair.of("source", "1..1252");
@@ -190,7 +190,7 @@ public class GenbankInterpreterTest {
     Pair<String, String> feature_type_and_source_6 = Pair.of("regulatory", "1234..1239");
 
 
-    Map<Pair<String, String>, HashMap<String, String>> feature_to_qualifiers = new HashMap();
+    Map<Pair<String, String>, Map<String, String>> feature_to_qualifiers = new HashMap<>();
     qualifier_name_to_value_1.put("organism", "Glycine max");
     qualifier_name_to_value_1.put("mol_type", "mRNA");
     qualifier_name_to_value_1.put("cultivar", "Bonminori");
@@ -222,13 +222,13 @@ public class GenbankInterpreterTest {
     return feature_to_qualifiers;
   }
 
-  private void validateFeatureMap(Map<Pair<String, String>, HashMap<String, String>> feature_to_qualifiers,
+  private void validateFeatureMap(Map<Pair<String, String>, Map<String, String>> feature_to_qualifiers,
                                  GenbankInterpreter gi) {
     for (Pair<String, String> feature_type_and_source : feature_to_qualifiers.keySet()) {
       for (List<Qualifier> qual_list : gi.getQualifiers(0, feature_type_and_source.getLeft(),
           feature_type_and_source.getRight()).values()) {
         for (Qualifier qual : qual_list) {
-          HashMap qual_map = feature_to_qualifiers.get(feature_type_and_source);
+          Map<String, String> qual_map = feature_to_qualifiers.get(feature_type_and_source);
           assertTrue("testing whether the qualifier name extracted is accurate", qual_map.containsKey(qual.getName()));
           if (qual.getName().equals("dbxref")) {
             assertEquals("testing whether the extracted value of the db_xref qualifier is accurate",

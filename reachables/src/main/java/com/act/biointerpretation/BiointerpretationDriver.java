@@ -3,10 +3,11 @@ package com.act.biointerpretation;
 import act.server.NoSQLAPI;
 import chemaxon.license.LicenseProcessingException;
 import chemaxon.reaction.ReactionException;
-import com.act.biointerpretation.reactionmerging.ReactionMerger;
-import com.act.biointerpretation.desalting.ReactionDesalter;
 import com.act.biointerpretation.cofactorremoval.CofactorRemover;
+import com.act.biointerpretation.desalting.ReactionDesalter;
 import com.act.biointerpretation.mechanisminspection.MechanisticValidator;
+import com.act.biointerpretation.reactionmerging.ReactionMerger;
+import com.act.biointerpretation.sequencemerging.SequenceMerger;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -47,6 +48,7 @@ public class BiointerpretationDriver {
     DESALT,
     REMOVE_COFACTORS,
     VALIDATE,
+    MERGE_DUPLICATE_SEQUENCES,
   }
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
@@ -197,9 +199,9 @@ public class BiointerpretationDriver {
     switch (step.getOperation()) {
       case MERGE_REACTIONS:
         LOGGER.info("Reaction merger starting (%s -> %s)", step.getReadDBName(), step.getWriteDBName());
-        ReactionMerger merger = new ReactionMerger(noSQLAPI);
-        merger.init();
-        merger.run();
+        ReactionMerger reactionMerger = new ReactionMerger(noSQLAPI);
+        reactionMerger.init();
+        reactionMerger.run();
         LOGGER.info("Reaction merger complete (%s -> %s)", step.getReadDBName(), step.getWriteDBName());
         break;
       case DESALT:
@@ -222,6 +224,13 @@ public class BiointerpretationDriver {
         validator.init();
         validator.run();
         LOGGER.info("Mechanistic validator complete (%s -> %s)", step.getReadDBName(), step.getWriteDBName());
+        break;
+      case MERGE_DUPLICATE_SEQUENCES:
+        LOGGER.info("Sequence merger starting (%s -> %s)", step.getReadDBName(), step.getWriteDBName());
+        SequenceMerger sequenceMerger = new SequenceMerger(noSQLAPI);
+        sequenceMerger.init();
+        sequenceMerger.run();
+        LOGGER.info("Sequence merger complete (%s -> %s)", step.getReadDBName(), step.getWriteDBName());
         break;
       // No default is necessary since deserialization will ensure there is a corresponding operation in the enum.
     }

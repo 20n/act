@@ -298,6 +298,7 @@ public class Reaction implements Serializable {
   public Set<JSONObject> getProteinData() {
     return this.proteinData;
   }
+  public void setProteinData(Set<JSONObject> proteinData) { this.proteinData = proteinData; }
 
   public boolean hasProteinSeq() {
     boolean hasSeq = false;

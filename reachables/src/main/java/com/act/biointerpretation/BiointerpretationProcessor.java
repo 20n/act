@@ -20,7 +20,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +33,7 @@ public abstract class BiointerpretationProcessor {
   private Map<Long, Long> oldChemIdToNewChemId = new HashMap<>();
   private Map<Long, String> newChemIdToInchi = new HashMap<>();
   private HashMap<Long, Long> organismMigrationMap = new HashMap<>();
+  private HashMap<Long, Long> sequenceMigrationMap = new HashMap<>();
 
   boolean initCalled = false;
 
@@ -87,6 +87,8 @@ public abstract class BiointerpretationProcessor {
     processChemicals();
     LOGGER.info("Done processing chemicals");
     afterProcessChemicals();
+    LOGGER.info("Processing sequences");
+    processSequences();
     LOGGER.info("Processing reactions");
     processReactions();
     LOGGER.info("Done processing reactions");
@@ -111,7 +113,7 @@ public abstract class BiointerpretationProcessor {
    * be overridden, as it does nothing by default.
    */
   protected void afterProcessReactions() throws IOException, ReactionException {
-
+    // TODO: consider mimicking the behavior of updateRxnRefs in SequenceMerger
   }
 
   protected NoSQLAPI getNoSQLAPI() {
@@ -135,8 +137,9 @@ public abstract class BiointerpretationProcessor {
     return this.newChemIdToInchi.get(newChemId);
   }
 
+
   /**
-   * Process and migrate reactions.  Default implementation merely copies, preserving source id.
+   * Process and migrate chemicals.  Default implementation merely copies, preserving source id.
    * @throws Exception
    */
   protected void processChemicals() throws IOException, ReactionException {
@@ -153,6 +156,14 @@ public abstract class BiointerpretationProcessor {
       newChemIdToInchi.put(newId, chem.getInChI());
     }
   }
+
+  /**
+   * Process and migrate sequences. This is meant to be overridden, as it does nothing by default.
+   */
+  protected void processSequences() {
+
+  }
+
 
   /**
    * A hook that runs after the reaction's chemicals and proteins have been prepped for writing.  This is meant to
@@ -376,52 +387,52 @@ public abstract class BiointerpretationProcessor {
 
     Set<Long> rxnIds = Collections.singleton(newRxnId);
 
-    // Can't use Collections.singletonMap, as MongoDB expects a HashMap explicitly.
-    HashMap<Long, Set<Long>> rxnToSubstrates = new HashMap<>(1);
-    // With help from http://stackoverflow.com/questions/3064423/in-java-how-to-easily-convert-an-array-to-a-set.
-    rxnToSubstrates.put(newRxnId, new HashSet<>(Arrays.asList(rxn.getSubstrates())));
-
-    HashMap<Long, Set<Long>> rxnToProducts = new HashMap<>(1);
-    rxnToProducts.put(newRxnId, new HashSet<>(Arrays.asList(rxn.getProducts())));
-
     JSONArray sequences = oldProtein.getJSONArray("sequences");
     List<Long> newSequenceIds = new ArrayList<>(sequences.length());
     for (int i = 0; i < sequences.length(); i++) {
       Long sequenceId = sequences.getLong(i);
-      Seq seq = api.getReadDB().getSeqFromID(sequenceId);
 
-      // Assumption: seq refer to exactly one reaction.
-      if (seq.getReactionsCatalyzed().size() > 1) {
-        throw new RuntimeException(String.format(
-            "Assumption violation: sequence with source id %d refers to %d reactions (>1).  " +
-                "Merging will not handly this case correctly.\n", seq.getUUID(), seq.getReactionsCatalyzed().size()));
+      /* TODO: Consider optimizations here. Instead of updating Seq entries repeatedly, we can wait until all the
+      reactions have been migrated and then use the reactionMigrationMap to update all the reaction IDs in Seq entries.
+       Refer to updateRxnRefs in SequenceMerger and consider making that the default behavior in afterProcessReactions */
+      if (sequenceMigrationMap.containsKey(sequenceId)) {
+        // add migrated sequence ID to list of referenced sequences in the reaction protein object
+        Long writtenSeqId = sequenceMigrationMap.get(sequenceId);
+        newSequenceIds.add(writtenSeqId);
+        Seq writtenSeq = api.getWriteDB().getSeqFromID(writtenSeqId);
+
+        // update the list of reactions that the written sequence object should reference
+        Set<Long> oldRxnRefs = writtenSeq.getReactionsCatalyzed();
+        oldRxnRefs.addAll(rxnIds);
+        writtenSeq.setReactionsCatalyzed(oldRxnRefs);
+
+        api.getWriteDB().updateRxnRefs(writtenSeq);
+      } else {
+        Seq seq = api.getReadDB().getSeqFromID(sequenceId);
+
+        Long oldSeqOrganismId = seq.getOrgId();
+        Long newSeqOrganismId = migrateOrganism(oldSeqOrganismId);
+
+        seq.get_metadata().put("source_sequence_ids", sequenceId);
+
+        // Store the seq document to get an id that'll be stored in the protein object.
+        int seqId = api.getWriteDB().submitToActSeqDB(
+            seq.get_srcdb(),
+            seq.get_ec(),
+            seq.get_org_name(),
+            newSeqOrganismId, // Use freshly migrated organism id to replace the old one.
+            seq.get_sequence(),
+            seq.get_references(),
+            rxnIds, // Use the reaction's new id (also in substrates/products) instead of the old one.
+            MongoDBToJSON.conv(seq.get_metadata())
+        );
+        // TODO: we should migrate all the seq documents with zero references over to the new DB.
+
+        sequenceMigrationMap.put(sequenceId, (long) seqId);
+
+        // Convert to Long to match ID type seen in MongoDB.  TODO: clean up all the IDs, make them all Longs.
+        newSequenceIds.add(Long.valueOf(seqId));
       }
-
-      Long oldSeqOrganismId = seq.getOrgId();
-      Long newSeqOrganismId = migrateOrganism(oldSeqOrganismId);
-
-      // Store the seq document to get an id that'll be stored in the protein object.
-      int seqId = api.getWriteDB().submitToActSeqDB(
-          seq.get_srcdb(),
-          seq.get_ec(),
-          seq.get_org_name(),
-          newSeqOrganismId, // Use freshly migrated organism id to replace the old one.
-          seq.get_sequence(),
-          seq.get_references(),
-          rxnIds, // Use the reaction's new id (also in substrates/products) instead of the old one.
-          rxnToSubstrates,
-          rxnToProducts,
-          seq.getCatalysisSubstratesUniform(), // These should not have changed due to the migration.
-          seq.getCatalysisSubstratesDiverse(),
-          seq.getCatalysisProductsUniform(),
-          seq.getCatalysisProductsDiverse(),
-          seq.getSAR(),
-          MongoDBToJSON.conv(seq.get_metadata())
-      );
-      // TODO: we should migrate all the seq documents with zero references over to the new DB.
-
-      // Convert to Long to match ID type seen in MongoDB.  TODO: clean up all the IDs, make them all Longs.
-      newSequenceIds.add(Long.valueOf(seqId));
     }
     // Store the migrated sequence ids for this protein.
     newProtein.put("sequences", new JSONArray(newSequenceIds));

@@ -248,7 +248,7 @@ public class ReactionMergerTest {
     assertTrue("Reaction 1's protein has an organism field", reaction1Protein.has("organism"));
     assertFalse("Reaction 1's protein does not have an organisms field", reaction1Protein.has("organisms"));
     assertTrue("Reaction 2's protein's organisms is a Long", reaction1Protein.get("organism") instanceof Long);
-    assertEquals("Reaction 1's protein has the correct single organism id", 0L, reaction1Protein.getLong("organism"));
+    assertEquals("Reaction 1's protein has the correct single organism id", 1L, reaction1Protein.getLong("organism"));
 
     Reaction writtenReaction2 = mockAPI.getWrittenReactions().get(1);
     assertEquals("Reaction 2 has one protein", 1, writtenReaction2.getProteinData().size());

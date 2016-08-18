@@ -1,9 +1,11 @@
 package act.installer.sequence;
 
 import act.server.MongoDB;
+import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
+import com.act.biointerpretation.Utils.OrgMinimalPrefixGenerator;
 import com.act.biointerpretation.test.util.MockedMongoDB;
 import com.act.utils.parser.UniprotInterpreter;
 import com.mongodb.DBObject;
@@ -17,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -34,6 +37,17 @@ public class UniprotSeqEntryTest {
     Map<Long, String> organismNames = new HashMap<>();
     organismNames.put(4000000399L, "Arabidopsis thaliana");
 
+    // manually assemble an Org Iterator since you can't mock DBCollection in getDbIteratorOverOrgs()
+    List<Organism> orgs = new ArrayList<>();
+    for (Map.Entry<Long, String> orgName : organismNames.entrySet()) {
+      orgs.add(new Organism(orgName.getKey(), orgName.getValue()));
+    }
+
+    Iterator<Organism> orgIterator = orgs.iterator();
+
+    OrgMinimalPrefixGenerator prefixGenerator = new OrgMinimalPrefixGenerator(orgIterator);
+    Map<String, String> minimalPrefixMapping = prefixGenerator.getMinimalPrefixMapping();
+
     // only information needed for these set of tests is a db with organism id's.
     mockAPI.installMocks(new ArrayList<Reaction>(), new ArrayList<Seq>(), organismNames, new HashMap<>());
 
@@ -47,7 +61,7 @@ public class UniprotSeqEntryTest {
     upProtein.init();
     sequences.add(upProtein.getSequence());
     UniprotSeqEntry seqEntry = new UniprotSeqEntryFactory().createFromDocumentReference(upProtein.getXmlDocument(),
-        mockDb);
+        mockDb, minimalPrefixMapping);
     seqEntries.add(seqEntry);
   }
 
@@ -75,11 +89,10 @@ public class UniprotSeqEntryTest {
 
     JSONObject obj = new JSONObject();
 
-    obj.put("proteinExistence", new JSONObject());
+    obj.put("xref", new JSONObject());
     obj.put("name", "ADH1");
     obj.put("synonyms", Collections.singletonList("ADH"));
     obj.put("product_names", Collections.singletonList("Alcohol dehydrogenase class-P"));
-    obj.put("comment", new ArrayList());
     obj.put("accession", accessions);
     obj.put("catalytic_activity", "An alcohol + NAD(+) = an aldehyde or ketone + NADH.");
 

@@ -6,7 +6,6 @@ import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
-import act.shared.sar.SAR;
 import com.mongodb.DBObject;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -18,6 +17,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -104,6 +104,7 @@ public class MockedMongoDB {
   public void installMocks(List<Reaction> testReactions, List<Long> testChemIds,
                            List<Seq> sequences, Map<Long, String> orgNames, Map<Long, String> chemIdToInchi) {
     this.organismMap.putAll(orgNames);
+
     for (Seq seq : sequences) {
       seqMap.put(Long.valueOf(seq.getUUID()), seq);
     }
@@ -150,7 +151,6 @@ public class MockedMongoDB {
     /* ****************************************
      * Method mocking */
 
-
     doAnswer(new Answer<String>() {
       @Override
       public String answer(InvocationOnMock invocation) throws Throwable {
@@ -164,6 +164,13 @@ public class MockedMongoDB {
         return seqMap.get(invocation.getArgumentAt(0, Long.class));
       }
     }).when(mockMongoDB).getSeqFromID(any(Long.class));
+
+    doAnswer(new Answer<Iterator<Seq>>() {
+      @Override
+      public Iterator<Seq> answer(InvocationOnMock invocation) throws Throwable {
+          return seqMap.values().iterator();
+        }
+    }).when(mockMongoDB).getSeqIterator();
 
     doAnswer(new Answer<Long>() {
       @Override
@@ -348,18 +355,9 @@ public class MockedMongoDB {
         String seq = invocation.getArgumentAt(4, String.class);
         List<JSONObject> pmids = invocation.getArgumentAt(5, List.class);
         Set<Long> rxns = invocation.getArgumentAt(6, Set.class);
-        HashMap<Long, Set<Long>> rxn2substrates = invocation.getArgumentAt(7, HashMap.class);
-        HashMap<Long, Set<Long>> rxn2products = invocation.getArgumentAt(8, HashMap.class);
-        Set<Long> substrates_uniform = invocation.getArgumentAt(9, Set.class);
-        Set<Long> substrates_diverse = invocation.getArgumentAt(10, Set.class);
-        Set<Long> products_uniform = invocation.getArgumentAt(11, Set.class);
-        Set<Long> products_diverse = invocation.getArgumentAt(12, Set.class);
-        SAR sar = invocation.getArgumentAt(13, SAR.class);
-        DBObject meta = invocation.getArgumentAt(14, DBObject.class);
+        DBObject meta = invocation.getArgumentAt(7, DBObject.class);
 
-        seqMap.put(id, Seq.rawInit(id, ec, org_id, org, seq, pmids, meta, src,
-            new HashSet<String>(), new HashSet<String>(), rxns, substrates_uniform, substrates_diverse,
-            products_uniform, products_diverse, rxn2substrates, rxn2products, sar));
+        seqMap.put(id, Seq.rawInit(id, ec, org_id, org, seq, pmids, meta, src, rxns));
 
         return id.intValue();
       }
@@ -371,13 +369,6 @@ public class MockedMongoDB {
         any(String.class),
         any(List.class),
         any(Set.class),
-        any(HashMap.class),
-        any(HashMap.class),
-        any(Set.class),
-        any(Set.class),
-        any(Set.class),
-        any(Set.class),
-        any(SAR.class),
         any(DBObject.class)
     );
   }

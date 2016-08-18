@@ -1,23 +1,21 @@
 package act.server;
 
-import act.server.DBIterator;
-import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Cofactor;
+import act.shared.Organism;
 import act.shared.Reaction;
+import act.shared.Seq;
+import com.act.reachables.LoadAct;
+import com.act.reachables.Network;
 import com.mongodb.DBObject;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 import java.util.Map;
-import java.util.HashMap;
-
-import com.act.reachables.LoadAct;
-import com.act.reachables.ActData;
-import com.act.reachables.Network;
+import java.util.Set;
 
 public class NoSQLAPI {
 
@@ -96,6 +94,47 @@ public class NoSQLAPI {
         DBObject o = iter.next();
         return readDB.convertDBObjectToChemical(o);
       }
+    };
+  }
+
+  public Iterator<Seq> readSeqsFromInKnowledgeGraph() {
+    final DBIterator iter = this.readDB.getDbIteratorOverSeq();
+
+    return new Iterator<Seq>() {
+      @Override
+      public boolean hasNext() {
+        boolean hasNext = iter.hasNext();
+        if (!hasNext)
+          iter.close();
+        return hasNext;
+      }
+
+      @Override
+      public Seq next() {
+        DBObject o = iter.next();
+        return readDB.convertDBObjectToSeq(o);
+      }
+    };
+  }
+
+  public Iterator<Organism> readOrgsFromInKnowledgeGraph() {
+    final DBIterator iter = this.readDB.getDbIteratorOverOrgs();
+
+    return new Iterator<Organism> () {
+      @Override
+      public boolean hasNext() {
+        boolean hasNext = iter.hasNext();
+        if (!hasNext)
+          iter.close();
+        return hasNext;
+      }
+
+      @Override
+      public Organism next() {
+        DBObject o = iter.next();
+        return readDB.convertDBObjectToOrg(o);
+      }
+
     };
   }
 

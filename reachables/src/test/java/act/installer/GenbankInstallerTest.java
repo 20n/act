@@ -1,20 +1,23 @@
 package act.installer;
 
 import act.server.MongoDB;
+import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
+import com.act.biointerpretation.Utils.OrgMinimalPrefixGenerator;
 import com.act.biointerpretation.test.util.MockedMongoDB;
 import org.json.JSONArray;
+import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -81,7 +84,6 @@ public class GenbankInstallerTest {
 
   @Before
   public void setUp() throws Exception {
-
     JSONObject accessionObject = new JSONObject();
     accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("CUB13083")));
 
@@ -226,14 +228,26 @@ public class GenbankInstallerTest {
 
     MongoDB mockDb = mockAPI.getMockMongoDB();
 
+    // manually assemble an Org Iterator since you can't mock DBCollection in getDbIteratorOverOrgs()
+    List<Organism> orgs = new ArrayList<>();
+    for (Map.Entry<Long, String> orgName : orgNames.entrySet()) {
+      orgs.add(new Organism(orgName.getKey(), orgName.getValue()));
+    }
+
+    Iterator<Organism> orgIterator = orgs.iterator();
+
+    OrgMinimalPrefixGenerator prefixGenerator = new OrgMinimalPrefixGenerator(orgIterator);
+    Map<String, String> minimalPrefixMapping = prefixGenerator.getMinimalPrefixMapping();
+
     GenbankInstaller genbankInstaller = new GenbankInstaller(
-        new File(this.getClass().getResource("genbank_installer_test_protein.gb").getFile()), "Protein", mockDb);
+        new File(this.getClass().getResource("genbank_installer_test_protein.gb").getFile()), "Protein", mockDb,
+        minimalPrefixMapping);
     genbankInstaller.init();
 
     genbankInstaller = new GenbankInstaller(
-        new File(this.getClass().getResource("genbank_installer_test_dna.gb").getFile()), "DNA", mockDb);
+        new File(this.getClass().getResource("genbank_installer_test_dna.gb").getFile()), "DNA", mockDb,
+        minimalPrefixMapping);
     genbankInstaller.init();
-
   }
 
   /**
@@ -257,7 +271,6 @@ public class GenbankInstallerTest {
         seqs.get(91973L));
     compareSeqs("for testProteinNullNull (query by ec, seq, org; database match exists)", emptyTestSeq,
         seqs.get(91974L));
-
   }
 
   /**
@@ -314,7 +327,6 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     compareSeqs("for testProteinNullFull; (query by ec, seq, org; database match exists)", testSeq, seqs.get(29034L));
-
   }
 
   /**
@@ -458,8 +470,7 @@ public class GenbankInstallerTest {
     metadata.put("accession", accessionObject);
     metadata.put("synonyms", new ArrayList());
     metadata.put("product_names", Collections.singletonList("urease subunit gamma"));
-    metadata.put("proteinExistence", new JSONObject());
-    metadata.put("comment", new ArrayList());
+    metadata.put("xref", new JSONObject());
 
     Seq proteinEcSeqOrgTestQuery = new Seq(89342L, "3.5.1.5", 7L,
         "Pandoraea oxalativorans", protSeqEcSeqOrgQuery, new ArrayList<>(),
@@ -471,7 +482,6 @@ public class GenbankInstallerTest {
             proteinEcSeqOrgTestQuery, seqentry.getValue());
       }
     }
-
   }
 
   /**
@@ -514,8 +524,7 @@ public class GenbankInstallerTest {
     metadata.put("accession", accessionObject);
     metadata.put("synonyms", new ArrayList());
     metadata.put("product_names", Collections.singletonList("transcriptional regulator PadR-like family protein"));
-    metadata.put("proteinExistence", new JSONObject());
-    metadata.put("comment", new ArrayList());
+    metadata.put("xref", new JSONObject());
 
     Seq proteinAccessionTestQuery2 = new Seq(79542L, null, 6L, "uncultured microorganism", protSeqAccQuery2,
         references, MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
@@ -611,10 +620,9 @@ public class GenbankInstallerTest {
     metadata = new JSONObject();
     metadata.put("accession", accessionObject);
     metadata.put("name", "ureG");
-    metadata.put("proteinExistence", new JSONObject());
+    metadata.put("xref", new JSONObject());
     metadata.put("synonyms", new ArrayList());
     metadata.put("product_names", new ArrayList());
-    metadata.put("comment", new ArrayList());
 
     Seq dnaTestSeq5 = new Seq(23894L, null, 4000005381L, "Rhodobacter capsulatus", dnaSeq5, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
@@ -625,10 +633,9 @@ public class GenbankInstallerTest {
 
     metadata = new JSONObject();
     metadata.put("accession", accessionObject);
-    metadata.put("proteinExistence", new JSONObject());
+    metadata.put("xref", new JSONObject());
     metadata.put("synonyms", new ArrayList());
     metadata.put("product_names", Collections.singletonList("class III acidic endochitinase"));
-    metadata.put("comment", new ArrayList());
 
     Seq dnaTestSeq6 = new Seq(89345L, "3.2.1.14", 4000005381L, "Rhodobacter capsulatus", dnaSeq6, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);

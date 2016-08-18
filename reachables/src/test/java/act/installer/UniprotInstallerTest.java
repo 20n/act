@@ -1,19 +1,22 @@
 package act.installer;
 
 import act.server.MongoDB;
+import act.shared.Organism;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
+import com.act.biointerpretation.Utils.OrgMinimalPrefixGenerator;
 import com.act.biointerpretation.test.util.MockedMongoDB;
 import com.mongodb.BasicDBObject;
+import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -165,6 +168,17 @@ public class UniprotInstallerTest {
     orgNames.put(4000001398L, "Citrobacter freundii");
     orgNames.put(4000008473L, "Lactobacillus casei 5b");
 
+    // manually assemble an Org Iterator since you can't mock DBCollection in getDbIteratorOverOrgs()
+    List<Organism> orgs = new ArrayList<>();
+    for (Map.Entry<Long, String> orgName : orgNames.entrySet()) {
+      orgs.add(new Organism(orgName.getKey(), orgName.getValue()));
+    }
+
+    Iterator<Organism> orgIterator = orgs.iterator();
+
+    OrgMinimalPrefixGenerator prefixGenerator = new OrgMinimalPrefixGenerator(orgIterator);
+    Map<String, String> minimalPrefixMapping = prefixGenerator.getMinimalPrefixMapping();
+
     mockAPI.installMocks(new ArrayList<>(),
         Arrays.asList(nullNullTestSeq, fullNullTestSeq, fullFullTestSeq, nullFullTestSeq, protAccessionQueryTestSeq,
             nucAccessionQueryTestSeq), orgNames, new HashMap<>());
@@ -173,47 +187,47 @@ public class UniprotInstallerTest {
 
     // loading test file for testProteinEcSeqOrgQuery
     UniprotInstaller uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_1.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_1.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
     // loading test file for testProteinFullFull
     uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_2.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_2.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
     // loading test file for testProteinNullFull
     uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_3.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_3.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
     // loading test file for testProteinAccessionQuery with database match
     uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_4.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_4.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
     // loading test file for testNucleotideAccessionQuery with database match
     uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_5.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_5.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
     // loading test file for testProteinAccessionQuery without database match
     uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_6.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_6.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
     // loading test file for testNucleotideAccessionQuery without database match
     uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_7.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_7.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
     // loading test file for testProteinNullNull
     uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_8.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_8.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
     // loading test file for testProteinFullNull
     uniprotInstaller = new UniprotInstaller(
-        new File(this.getClass().getResource("uniprot_installer_test_9.xml").getFile()), mockDb);
+        new File(this.getClass().getResource("uniprot_installer_test_9.xml").getFile()), mockDb, minimalPrefixMapping);
     uniprotInstaller.init();
 
   }
@@ -405,9 +419,8 @@ public class UniprotInstallerTest {
     accessions.put(Seq.AccType.genbank_protein.toString(), genbankProteinAccessions);
 
     JSONObject metadata = new JSONObject();
-    metadata.put("proteinExistence", new JSONObject());
+    metadata.put("xref", new JSONObject());
     metadata.put("accession", accessions);
-    metadata.put("comment", new ArrayList());
     metadata.put("synonyms", Arrays.asList("ADH"));
     metadata.put("product_names", Arrays.asList("Alcohol dehydrogenase class-P"));
     metadata.put("name", "ADH1");
@@ -500,8 +513,7 @@ public class UniprotInstallerTest {
     metadata.put("accession", accessions);
     metadata.put("synonyms", new ArrayList());
     metadata.put("product_names", new ArrayList());
-    metadata.put("proteinExistence", new JSONObject());
-    metadata.put("comment", new ArrayList());
+    metadata.put("xref", new JSONObject());
     metadata.put("name", "Nrg1");
 
     Seq protAccessionQueryTestSeq2 = new Seq(48922, null, 4000003474L, "Mus musculus", protSeqAccessionQuery,
@@ -576,8 +588,7 @@ public class UniprotInstallerTest {
     metadata.put("accession", accessions);
     metadata.put("synonyms", new ArrayList());
     metadata.put("product_names", new ArrayList());
-    metadata.put("proteinExistence", new JSONObject());
-    metadata.put("comment", new ArrayList());
+    metadata.put("xref", new JSONObject());
     metadata.put("name", "CTNNB1");
 
     references = new ArrayList<>();
