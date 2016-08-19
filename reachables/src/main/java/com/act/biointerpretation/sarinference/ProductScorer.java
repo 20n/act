@@ -1,9 +1,11 @@
 package com.act.biointerpretation.sarinference;
 
 import com.act.biointerpretation.l2expansion.L2FilteringDriver;
-import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
+import com.act.jobs.FileChecker;
+import com.act.jobs.JavaRunnable;
+import com.act.lcms.db.io.report.IonAnalysisInterchangeModel;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.commons.cli.CommandLine;
@@ -17,6 +19,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,7 +37,7 @@ public class ProductScorer {
   }
 
   private static final String OPTION_PREDICTION_CORPUS = "c";
-  private static final String OPTION_POSITIVE_INCHIS = "p";
+  private static final String OPTION_LCMS_RESULTS = "p";
   private static final String OPTION_SCORED_SARS = "s";
   private static final String OPTION_OUTPUT_PATH = "o";
 
@@ -47,11 +50,11 @@ public class ProductScorer {
           .longOpt("input-corpus-path")
           .required(true)
       );
-      add(Option.builder(OPTION_POSITIVE_INCHIS)
-          .argName("positive inchis file")
-          .desc("The path to a file of positive inchis from LCMS analysis of the prediction corpus.")
+      add(Option.builder(OPTION_LCMS_RESULTS)
+          .argName("lcms results")
+          .desc("The path to a file of lcms results.")
           .hasArg()
-          .longOpt("input-positive-inchis")
+          .longOpt("input-lcms-results")
       );
       add(Option.builder(OPTION_SCORED_SARS)
           .argName("scored sars corpus")
@@ -96,52 +99,99 @@ public class ProductScorer {
     }
 
     File inputCorpusFile = new File(cl.getOptionValue(OPTION_PREDICTION_CORPUS));
-    File positiveInchisFile = new File(cl.getOptionValue(OPTION_POSITIVE_INCHIS));
+    File lcmsFile = new File(cl.getOptionValue(OPTION_LCMS_RESULTS));
     File scoredSarsFile = new File(cl.getOptionValue(OPTION_SCORED_SARS));
     File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
-    L2PredictionCorpus fullCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputCorpusFile);
-    LOGGER.info("Number of predictions: %d", fullCorpus.getCorpus().size());
 
-    L2InchiCorpus positiveInchis = new L2InchiCorpus();
-    positiveInchis.loadCorpus(positiveInchisFile);
-    List<String> inchiList = positiveInchis.getInchiList();
+    JavaRunnable productScoreRunner = getProductScorer(
+        inputCorpusFile,
+        scoredSarsFile,
+        lcmsFile,
+        outputFile);
 
-    L2PredictionCorpus positiveCorpus = fullCorpus.applyFilter(prediction -> inchiList.containsAll(prediction.getProductInchis()));
-    LOGGER.info("Number of LCMS positives: %d", positiveCorpus.getCorpus().size());
-
-    SarTreeNodeList scoredSars = new SarTreeNodeList();
-    scoredSars.loadFromFile(scoredSarsFile);
-
-    LOGGER.info("Number of sars: %d", scoredSars.getSarTreeNodes().size());
-
-    BestSarFinder bestSarFinder = new BestSarFinder(scoredSars);
-
-    Map<L2Prediction, SarTreeNode> predictionToSarMap = new HashMap<>();
-
-    LOGGER.info("Scoring predictions.");
-    for (L2Prediction prediction : positiveCorpus.getCorpus()) {
-      Optional<SarTreeNode> maybeBestSar = bestSarFinder.apply(prediction);
-      if (!maybeBestSar.isPresent()) {
-        LOGGER.warn("No SAR found for this prediction.");
-        continue;
-      }
-      SarTreeNode bestSar = maybeBestSar.get();
-
-      predictionToSarMap.put(prediction, bestSar);
-      prediction.setProjectorName(
-          prediction.getProjectorName() + ":" +
-              bestSar.getHierarchyId() + ":" +
-              bestSar.getPercentageHits());
-    }
-
-    LOGGER.info("Sorting predictions by descending order.");
-    List<L2Prediction> predictions = new ArrayList<>(predictionToSarMap.keySet());
-    predictions.sort((a, b) ->
-        (-Double.compare(predictionToSarMap.get(a).getPercentageHits(), predictionToSarMap.get(b).getPercentageHits())));
-
-    LOGGER.info("Writing predictions to file.");
-    L2PredictionCorpus finalCorpus = new L2PredictionCorpus(predictions);
-    finalCorpus.writePredictionsToJsonFile(outputFile);
+    LOGGER.info("Scoring products.");
+    productScoreRunner.run();
     LOGGER.info("Complete!.");
+  }
+
+  /**
+   * Reads in scored SARs, checks them against a prediction corpus and positive inchi list to get a product ranking.
+   * This method is static because it does not rely on any properties of the enclosing class to construct the job.
+   * TODO: It would probably make more sense to make this its own class, i.e. <ProductScorer implements JavaRunnable>
+   * TODO: improve the data structure used to store scored products- using an L2PredictionCorpus is pretty ugly
+   *
+   * @param predictionCorpus The prediction corpus to score.
+   * @param scoredSars The scored SARs to use.
+   * @param lcmsFile The set of positive LCMS inchis, to use in scoring.
+   * @return A JavaRunnable to run the product scoring.
+   */
+  public static JavaRunnable getProductScorer(File predictionCorpus, File scoredSars, File lcmsFile, File outputFile) {
+
+    return new JavaRunnable() {
+      @Override
+      public void run() throws IOException {
+        // Verify files
+        FileChecker.verifyInputFile(predictionCorpus);
+        FileChecker.verifyInputFile(scoredSars);
+        FileChecker.verifyInputFile(lcmsFile);
+        FileChecker.verifyAndCreateOutputFile(outputFile);
+
+        // Build SAR node list and best sar finder
+        SarTreeNodeList nodeList = new SarTreeNodeList();
+        nodeList.loadFromFile(scoredSars);
+        BestSarFinder sarFinder = new BestSarFinder(nodeList);
+
+        // Build prediction corpus
+        L2PredictionCorpus predictions = L2PredictionCorpus.readPredictionsFromJsonFile(predictionCorpus);
+
+        // Build LCMS results
+        IonAnalysisInterchangeModel lcmsResults = new IonAnalysisInterchangeModel();
+        lcmsResults.loadResultsFromFile(lcmsFile);
+
+        /**
+         * Build map from predictions to their scores based on SAR
+         * For each prediction, we add on auxiliary info about its SARs and score to its projector name.
+         * TODO: build data structure to store a scored prediction, instead of hijacking the projector name.
+         */
+        Map<L2Prediction, Double> predictionToScoreMap = new HashMap<>();
+        LOGGER.info("Scoring predictions.");
+        for (L2Prediction prediction : predictions.getCorpus()) {
+          String nameAppendage = lcmsResults.getLcmsDataForPrediction(prediction).toString(); // Always tack LCMS result onto name
+
+          Optional<SarTreeNode> maybeBestSar = sarFinder.apply(prediction);
+
+          if (maybeBestSar.isPresent()) {
+            // If a SAR was matched, add info about it to the projector name, and put its score into the map
+            SarTreeNode bestSar = maybeBestSar.get();
+            nameAppendage += ":" +
+                bestSar.getHierarchyId() + ":" +
+                bestSar.getRankingScore();
+            prediction.setProjectorName(prediction.getProjectorName() + nameAppendage);
+            predictionToScoreMap.put(prediction, bestSar.getRankingScore());
+          } else {
+            // If no SAR is found, append "NO_SAR" to the prediction, and give it a ranking score of 0
+            nameAppendage += "NO_SAR";
+            prediction.setProjectorName(prediction.getProjectorName() + nameAppendage);
+            predictionToScoreMap.put(prediction, 0D);
+          }
+        }
+
+        LOGGER.info("Sorting predictions in decreasing order of best associated SAR rank.");
+        List<L2Prediction> predictionList = new ArrayList<>(predictionToScoreMap.keySet());
+        predictionList.sort((a, b) -> -Double.compare(
+            predictionToScoreMap.get(a),
+            predictionToScoreMap.get(b)));
+
+        // Wrap results in a corpus and write to file.
+        L2PredictionCorpus finalCorpus = new L2PredictionCorpus(predictionList);
+        finalCorpus.writePredictionsToJsonFile(outputFile);
+        LOGGER.info("Complete!.");
+      }
+
+      @Override
+      public String toString() {
+        return "ProductScorer:" + scoredSars.getName();
+      }
+    };
   }
 }

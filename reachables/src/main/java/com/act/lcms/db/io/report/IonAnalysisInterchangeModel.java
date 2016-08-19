@@ -23,11 +23,12 @@ package com.act.lcms.db.io.report;
  }
  </pre>
  */
+
+import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -36,27 +37,115 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class IonAnalysisInterchangeModel {
+
+  // An LCMS result.
+  // The idea of NO_DATA is to indicate if we query on a molecule with a mass on which no analysis was done on, to
+  // distinguish this case from an actual calculated MISS.
+  public enum LCMS_RESULT {
+    HIT,
+    MISS,
+    NO_DATA
+  }
+
   @JsonProperty("results")
   private List<ResultForMZ> results;
+  private Map<String, Boolean> inchiToIsHit;
 
   public IonAnalysisInterchangeModel() {
     results = new ArrayList<>();
+    inchiToIsHit = new HashMap<>();
   }
 
   public void loadResultsFromFile(File inputFile) throws IOException {
     this.results = OBJECT_MAPPER.readValue(inputFile, IonAnalysisInterchangeModel.class).getResults();
+    this.populateInchiToIsHit();
+  }
+
+  /**
+   * Populates a map from all the inchis analyzed in the corpus to true if they are and LCMS hit, or false if not.
+   * An inchi is considered a hit if any considered ion of that inchi has a MZ value that is a hit.
+   */
+  private void populateInchiToIsHit() {
+    this.inchiToIsHit = new HashMap<>();
+
+    for (ResultForMZ resultForMZ : results) {
+      Boolean isHit = resultForMZ.isValid;
+      for (HitOrMiss molecule : resultForMZ.getMolecules()) {
+        // If the inchi is already a hit, then we do not want to override
+        // its hit entry with a possible miss on a different adduct ion for
+        // the same molecule. We check multiple metlin ions for each
+        // molecules and some may show and others not. In an ideal world
+        // with high concentrations "most" adduct ions would show and we
+        // could take an AND (see https://github.com/20n/act/issues/383 and
+        // https://github.com/20n/act/issues/370#issuecomment-240289674)
+        // but when low concentrations exist we would rather take an OR and
+        // be conservative, avoiding false negatives.
+        if (this.inchiToIsHit.get(molecule.getInchi()) == null ||
+            !this.inchiToIsHit.get(molecule.getInchi())) {
+          this.inchiToIsHit.put(molecule.getInchi(), isHit);
+        }
+      }
+    }
   }
 
   public void writeToJsonFile(File outputFile) throws IOException {
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile))) {
       OBJECT_MAPPER.writeValue(predictionWriter, this);
     }
+  }
+
+  /**
+   * Returns HIT or MISS if the inchi is in the precalculated inchi->hit map, or NO_DATA if the inchi is not.
+   * This will let us know if there has been any change in the inchi's form since the initial calculation, instead of
+   * just silently returning a miss.
+   *
+   * @param inchi The inchi of the molecule.
+   * @return The LCMS result.
+   */
+  public LCMS_RESULT isMoleculeAHit(String inchi) {
+    if (this.inchiToIsHit.get(inchi) == null) {
+      return LCMS_RESULT.NO_DATA;
+    }
+    return this.inchiToIsHit.get(inchi) ? LCMS_RESULT.HIT : LCMS_RESULT.MISS;
+  }
+
+  /**
+   * Calculate whether a given prediction is an LCMS hit or not.
+   *
+   * TODO: think through our general approach to multiple substrate reactions when necessary.
+   * We'll need to balance the possibilities of false positives and false negatives- one idea would be to return
+   * a score based on the number of confirmed products of the reaction.
+   *
+   * @param prediction The prediction from the corpus.
+   * @return True if all products are LCMS hits.
+   */
+  public LCMS_RESULT getLcmsDataForPrediction(L2Prediction prediction) {
+    List<String> productInchis = prediction.getProductInchis();
+    for (String product : productInchis) {
+      // If any of the results have no data, return NO_DATA. Such results shouldn't happen for now, so the caller will
+      // likely throw an exception if this happens.
+      if (this.isMoleculeAHit(product).equals(IonAnalysisInterchangeModel.LCMS_RESULT.NO_DATA)) {
+        return LCMS_RESULT.NO_DATA;
+      }
+      // Otherwise, if a miss is found among the prediction's products, return it as a miss.  This implements an
+      // AND among the products of the prediction- all must be present to register as a hit. This is motivated by the
+      // fact that our only current multiple-product reaction produces one significant product, and one constant
+      // cofactor. We verified that in both urine and saliva, the cofactor is present in our samples, so
+      // an OR approach here would return a HIT for every prediction of that RO.
+      if (this.isMoleculeAHit(product).equals(IonAnalysisInterchangeModel.LCMS_RESULT.MISS)) {
+        return LCMS_RESULT.MISS;
+      }
+    }
+    // If every prediction is a HIT, return HIT.
+    return LCMS_RESULT.HIT;
   }
 
   /**
@@ -187,6 +276,7 @@ public class IonAnalysisInterchangeModel {
 
   public IonAnalysisInterchangeModel(List<ResultForMZ> results) {
     this.results = results;
+    this.populateInchiToIsHit();
   }
 
   public List<ResultForMZ> getResults() {

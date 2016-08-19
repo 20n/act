@@ -1,9 +1,12 @@
 package com.act.biointerpretation.sarinference;
 
-import chemaxon.struc.Molecule;
+import com.act.biointerpretation.l2expansion.L2Prediction;
+import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
+import com.act.lcms.db.io.report.IonAnalysisInterchangeModel;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 /**
  * Calculates a SARs hit percentage score by seeing which of the leaves of its subtree are LCMS hits,
@@ -17,13 +20,17 @@ import java.util.function.Function;
  */
 public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
 
-  SarTree sarTree;
-  Function<Molecule, SarTreeNode.LCMS_RESULT> hitCalculator;
+  private static final Logger LOGGER = LogManager.getFormatterLogger(SarTreeBasedCalculator.class);
+
+  private final SarTree sarTree;
+  private final L2PredictionCorpus predictionCorpus;
+  private final IonAnalysisInterchangeModel lcmsResults;
 
 
-  public SarTreeBasedCalculator(SarTree sarTree, Function<Molecule, SarTreeNode.LCMS_RESULT> calculator) {
+  public SarTreeBasedCalculator(SarTree sarTree, L2PredictionCorpus corpus, IonAnalysisInterchangeModel lcmsResults) {
     this.sarTree = sarTree;
-    this.hitCalculator = calculator;
+    this.predictionCorpus = corpus;
+    this.lcmsResults = lcmsResults;
   }
 
   /**
@@ -40,7 +47,7 @@ public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
     for (SarTreeNode node : sarTree.traverseSubtree(sarTreeNode)) {
       // Only calculate on leaves
       if (sarTree.getChildren(node).isEmpty()) {
-        switch (hitCalculator.apply(node.getSubstructure())) {
+        switch (getLcmsDataForNode(node)) {
           case HIT:
             hits++;
             break;
@@ -53,5 +60,36 @@ public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
 
     sarTreeNode.setNumberHits(hits);
     sarTreeNode.setNumberMisses(misses);
+  }
+
+  /**
+   * Calculates whether a given SarTreeNode is a hit or not. If any of that node's predictions have positive
+   * products, we consider it a hit.
+   *
+   * @param node The SarTreeNode.
+   * @return True if at least one prediction Id of the node is an LCMS hit.
+   */
+  public IonAnalysisInterchangeModel.LCMS_RESULT getLcmsDataForNode(SarTreeNode node) {
+    if (node.getPredictionIds().isEmpty()) {
+      throw new IllegalArgumentException("Cannot get LCMS results for a node with no predictions:" +
+          node.getHierarchyId());
+    }
+    /**
+     * The results of the predictions should be the same for one substrate and one RO, as all of the results will
+     * have the same MZ value. Thus, we pick out the first one, check that the others are all the same for sanity,
+     * and then return the LCMS result of the first one.
+     */
+    L2Prediction prediction = predictionCorpus.getPredictionFromId(node.getPredictionIds().get(0));
+    IonAnalysisInterchangeModel.LCMS_RESULT firstResult = lcmsResults.getLcmsDataForPrediction(prediction);
+
+    for (Integer id : node.getPredictionIds()) {
+      IonAnalysisInterchangeModel.LCMS_RESULT otherResult =
+          lcmsResults.getLcmsDataForPrediction(predictionCorpus.getPredictionFromId(id));
+      if (otherResult != firstResult) {
+        LOGGER.error("Different LCMS results for same substrate! %s and %s", firstResult, otherResult);
+      }
+    }
+
+    return firstResult;
   }
 }

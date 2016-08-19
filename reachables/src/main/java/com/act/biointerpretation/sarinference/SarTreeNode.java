@@ -9,20 +9,15 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A single node in a SarTree, which corresponds to a substructure pulled out by LibMCS clustering.
  */
 public class SarTreeNode {
 
-  // TODO: this enum should live in the LCMS module once Vijay and Gil merge their pieces
-  // The idea of NO_DATA is to indicate if we query on a molecule who's mass no analysis was done on, to distinguish
-  // this case from an actual calculated MISS.
-  public enum LCMS_RESULT {
-    HIT,
-    MISS,
-    NO_DATA
-  }
+  public static final String PREDICTION_ID_KEY = "prediction_id";
 
   @JsonProperty("hierarchy_id")
   String hierarchyId;
@@ -35,14 +30,22 @@ public class SarTreeNode {
   @JsonProperty("number_hits")
   Integer numberHits;
 
+  @JsonProperty("prediction_ids")
+  List<Integer> predictionIds;
+
+  @JsonProperty
+  Double rankingScore;
+
   private SarTreeNode() {
   }
 
-  public SarTreeNode(Molecule substructure, String hierarchyId) {
+  public SarTreeNode(Molecule substructure, String hierarchyId, List<Integer> predictionIds) {
     this.substructure = substructure;
     this.hierarchyId = hierarchyId;
+    this.predictionIds = predictionIds;
     this.numberMisses = 0;
     this.numberHits = 0;
+    this.rankingScore = 0D;
   }
 
   public void setNumberMisses(Integer numberMisses) {
@@ -72,7 +75,8 @@ public class SarTreeNode {
 
   @JsonProperty
   public String getSubstructureInchi() throws IOException {
-    return MolExporter.exportToFormat(substructure, "inchi:AuxNone");
+    // Don't include Aux info and don't log warnings
+    return MolExporter.exportToFormat(substructure, "inchi:AuxNone,Woff");
   }
 
   public void setSubstructureInchi(String substructure) throws IOException {
@@ -88,4 +92,52 @@ public class SarTreeNode {
   public Double getPercentageHits() {
     return new Double(numberHits) / new Double(numberHits + numberMisses);
   }
+
+  public List<Integer> getPredictionIds() {
+    return predictionIds;
+  }
+
+  public void setPredictionIds(List<Integer> predictionIds) {
+    this.predictionIds = new ArrayList<>(predictionIds);
+  }
+
+  public Double getRankingScore() {
+    return rankingScore;
+  }
+
+  @JsonIgnore
+  public void setRankingScore(ScoringFunctions function) {
+    this.setRankingScore(function.calculateScore(this));
+  }
+
+  public void setRankingScore(Double rankingScore) {
+    this.rankingScore = rankingScore;
+  }
+
+  public enum ScoringFunctions {
+    HIT_MINUS_MISS {
+      @Override
+      public Double calculateScore(SarTreeNode node) {
+        return new Double(node.getNumberHits() - node.getNumberMisses());
+      }
+    },
+
+    HIT_PERCENTAGE {
+      @Override
+      public Double calculateScore(SarTreeNode node) {
+        return new Double(node.getNumberHits()) / (node.getNumberHits() + node.getNumberMisses());
+      }
+    },
+
+    NORM_HITS {
+      @Override
+      public Double calculateScore(SarTreeNode node) {
+        Double hitPercentage = new Double(node.getNumberHits()) / node.getNumberMisses();
+        return node.getNumberHits() * hitPercentage;
+      }
+    };
+
+    public abstract Double calculateScore(SarTreeNode node);
+  }
+
 }

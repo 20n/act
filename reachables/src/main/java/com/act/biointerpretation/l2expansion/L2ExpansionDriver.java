@@ -116,7 +116,6 @@ public class L2ExpansionDriver {
         .desc("The name of the mongo DB to use.")
         .hasArg()
         .longOpt("db-name")
-        .required(true)
     );
     add(Option.builder(OPTION_EXPANSION_TYPE)
         .argName("type of expansion")

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -35,13 +36,23 @@ public class SarTreeNodeList {
     sarTreeNodes.add(node);
   }
 
-  public void sortByDecreasingConfidence() {
-    sarTreeNodes.sort((a, b) -> -Double.compare(a.getPercentageHits(), b.getPercentageHits()));
+  public void addAll(Collection<SarTreeNode> nodes) {
+    sarTreeNodes.addAll(nodes);
   }
 
-  public void loadFromFile(File file) throws IOException {
+  public void sortBy(SarTreeNode.ScoringFunctions function) {
+    sarTreeNodes.forEach(node -> node.setRankingScore(function));
+    sortByRankingScores();
+  }
+
+  public void sortByRankingScores() {
+    sarTreeNodes.sort((a, b) -> -Double.compare(a.getRankingScore(), b.getRankingScore()));
+  }
+
+  public SarTreeNodeList loadFromFile(File file) throws IOException {
     SarTreeNodeList fromFile = OBJECT_MAPPER.readValue(file, SarTreeNodeList.class);
     this.setSarTreeNodes(fromFile.getSarTreeNodes());
+    return this;
   }
 
   public void writeToFile(File file) throws IOException {
