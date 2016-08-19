@@ -103,6 +103,17 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     opts
   }
 
+  object WorkflowSteps extends Enumeration {
+    type WorkflowSteps = Value
+
+    val EXPANSION = Value("EXPANSION")
+    val LCMS = Value("LCMS")
+    val CLUSTERING = Value("CLUSTERING")
+    val SAR_SCORING = Value("SAR_SCORING")
+    val PRODUCT_SCORING = Value("PRODUCT_SCORING")
+    val MESH_RESULTS = Value("MESH_RESULTS")
+  }
+
   // Implement this with the job structure you want to run to define a workflow
   override def defineWorkflow(cl: CommandLine): Job = {
 
@@ -131,10 +142,9 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       // Try to read RO ID argument as file if possible
       try {
         roIdFile = new File(cl.getOptionValue(OPTION_RO_IDS))
-        val erosCorpus = new ErosCorpus
-        erosCorpus.loadValidationCorpus
-        erosCorpus.filterCorpusByIdFile(roIdFile)
-        roIds = erosCorpus.getRoIds.asScala.toList
+        val erosCorpus = new ErosCorpus()
+        erosCorpus.loadValidationCorpus()
+        roIds = erosCorpus.getRoIdListFromFile(roIdFile).asScala.toList
       } catch {
         // If not a file, assume a list.
         case e: IOException => {
@@ -199,15 +209,14 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
             predictionsFiles(roId)))
       // Run one job per RO for L2 expansion
       addJavaRunnableBatch("expansion", singleThreadExpansionRunnables)
-
-      addJobsFromLcmsOn()
     }
 
     def addLcmsJob()(): Unit = {
       logger.info("Running LCMS job.")
-      // TODO: when Vijay's LCMS code is ready, replace this with the real thing
-      // Build a dummy LCMS job that doesn't do anything.
-      val lcmsJob = JavaJobWrapper.wrapJavaFunction("lcmsJob",
+
+      // TODO: eventually link this up with LCMS scoring job, once it is completely automated
+      // Build a dummy LCMS job that crashes if you try to run it.
+      val lcmsJob = JavaJobWrapper.wrapJavaFunction("DUMMY_LCMS_JOB",
         new JavaRunnable {
           override def run(): Unit = {
             throw new NotImplementedError("LCMS JOB NOT YET IMPLEMENTED!")
@@ -225,10 +234,9 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
         roIds.map(roId =>
           LibMcsClustering.getClusterer(
             predictionsFiles(roId),
-            sarTreeFiles(roId))) // Run one job per RO for clustering
-      addJavaRunnableBatch("clustering", clusteringRunnables)
-
-      addScoringJobs()
+            sarTreeFiles(roId)))
+      val batchSize = 1 // To limit memory usage
+      addJavaRunnableBatch("cluster", clusteringRunnables, batchSize)
     }
 
     def addSarScoringJobs()(): Unit = {
@@ -245,7 +253,32 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
           SAR_SCORING_FUNCTION,
           SUBTREE_THRESHOLD)
       )
-      addJavaRunnableBatch("scoring", scoringRunnables)
+      addJavaRunnableBatch("sarScoring", sarScoringRunnables)
+    }
+
+    def addProductScoringJobs()(): Unit = {
+      logger.info("Adding  product scoring job.")
+      verifyInputFile(lcmsFile)
+
+      val productScoringRunnables = roIds.map(roId =>
+        ProductScorer.getProductScorer(
+          predictionsFiles(roId),
+          scoredSarsFiles(roId),
+          lcmsFile,
+          scoredProductsFiles(roId)
+        ))
+      addJavaRunnableBatch("productScoring", productScoringRunnables)
+    }
+
+    def addMeshResultsJob()(): Unit = {
+      logger.info("Adding mesh results job.")
+      val meshJob = ScalaJobWrapper.wrapScalaFunction("mesh_results",
+        meshResults(
+          scoredSarsFiles.values.toList,
+          scoredProductsFiles.values.toList,
+          allSarsFile,
+          allProductsFile) _)
+      headerJob.thenRun(meshJob)
     }
 
     /**
@@ -325,7 +358,6 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     * @param workingDir The directory in which to create the files.
     * @param fileName   The prefix of the file name.
     * @param roIds      The ROs to create files for.
-    *
     * @return A map from RO id to the corresponding file.
     */
   def buildFilesForRos(workingDir: String, fileName: String, roIds: List[Integer]): Map[Integer, File] = {
@@ -335,9 +367,9 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
   /**
     * Adds a list of JavaRunnables to the job manager as a batch.
     */
-  def addJavaRunnableBatch(name: String, runnables: List[JavaRunnable]): Unit = {
+  def addJavaRunnableBatch(name: String, runnables: List[JavaRunnable], batchSize: Int = 20): Unit = {
     val jobs = runnables.map(runnable => JavaJobWrapper.wrapJavaFunction(name, runnable))
-    headerJob.thenRunBatch(jobs)
+    headerJob.thenRunBatch(jobs, batchSize)
   }
 
   object StartingPoints extends Enumeration {
@@ -348,4 +380,5 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     val CLUSTERING = Value("CLUSTERING")
     val SCORING = Value("SCORING")
   }
+
 }

@@ -49,92 +49,92 @@ public class L2ExpansionDriver {
   private static final String OPTION_HELP = "h";
 
   public static final String HELP_MESSAGE =
-      "This class is used to carry out L2 expansion. It first applies every RO from the input RO list to " +
-          "every metabolite in the input metabolite list.  Example input lists can be found on the NAS at " +
-          "shared-data/Gil/resources. This creates a list of predicted reactions, which are augmented " +
-          "with chemical ids and names, as well as reaction ids from the database. At the end of the run, " +
-          "the predictions are printed to a json file.";
+          "This class is used to carry out L2 expansion. It first applies every RO from the input RO list to " +
+                  "every metabolite in the input metabolite list.  Example input lists can be found on the NAS at " +
+                  "shared-data/Gil/resources. This creates a list of predicted reactions, which are augmented " +
+                  "with chemical ids and names, as well as reaction ids from the database. At the end of the run, " +
+                  "the predictions are printed to a json file.";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_METABOLITES)
-        .argName("metabolites path name")
-        .desc("The absolute path to the metabolites file.")
-        .hasArg()
-        .longOpt("metabolite-file")
-        .required(true)
+            .argName("metabolites path name")
+            .desc("The absolute path to the metabolites file.")
+            .hasArg()
+            .longOpt("metabolite-file")
+            .required(true)
     );
     add(Option.builder(OPTION_MASS_THRESHOLD)
-        .argName("mass threshold")
-        .desc("The maximum mass of a substrate, in daltons. Substrates with higher mass will be discarded.")
-        .hasArg()
-        .longOpt("mass-threshold")
-        .type(Integer.class)
+            .argName("mass threshold")
+            .desc("The maximum mass of a substrate, in daltons. Substrates with higher mass will be discarded.")
+            .hasArg()
+            .longOpt("mass-threshold")
+            .type(Integer.class)
     );
     add(Option.builder(OPTION_RO_CORPUS)
-        .argName("ro corpus")
-        .desc("The path to the file containing the eros corpus, if not the validation corpus. Ignored if " +
-            "running a SAR expansion.")
-        .hasArg()
-        .longOpt("ro-corpus")
+            .argName("ro corpus")
+            .desc("The path to the file containing the eros corpus, if not the validation corpus. Ignored if " +
+                    "running a SAR expansion.")
+            .hasArg()
+            .longOpt("ro-corpus")
     );
     add(Option.builder(OPTION_RO_IDS)
-        .argName("ro ids path name")
-        .desc("The path to a file containing the RO ids to use. If this option is omitted, " +
-            "all ROs in the corpus are used. Ignored if running a SAR expansion.")
-        .hasArg()
-        .longOpt("ro-file")
+            .argName("ro ids path name")
+            .desc("The path to a file containing the RO ids to use. If this option is omitted, " +
+                    "all ROs in the corpus are used. Ignored if running a SAR expansion.")
+            .hasArg()
+            .longOpt("ro-file")
     );
     add(Option.builder(OPTION_SAR_CORPUS)
-        .argName("sar corpus")
-        .desc("The path to a file containing the sar corpus to use. Ignored if running an RO-only expansion.")
-        .hasArg()
-        .longOpt("sar-corpus")
+            .argName("sar corpus")
+            .desc("The path to a file containing the sar corpus to use. Ignored if running an RO-only expansion.")
+            .hasArg()
+            .longOpt("sar-corpus")
     );
     add(Option.builder(OPTION_RO_IDS)
-        .argName("ro ids")
-        .desc("The absolute path to the file containing the RO ids to use. If this option is omitted, " +
-            "all ROs in the corpus are used.")
-        .hasArg()
-        .longOpt("ro-ids")
+            .argName("ro ids")
+            .desc("The absolute path to the file containing the RO ids to use. If this option is omitted, " +
+                    "all ROs in the corpus are used.")
+            .hasArg()
+            .longOpt("ro-ids")
     );
     add(Option.builder(OPTION_OUTPUT_PATH)
-        .argName("output file path")
-        .desc("The path to the file to which to write the json file of predicted reactions.")
-        .hasArg()
-        .longOpt("output-file-path")
-        .required(true)
+            .argName("output file path")
+            .desc("The path to the file to which to write the json file of predicted reactions.")
+            .hasArg()
+            .longOpt("output-file-path")
+            .required(true)
     );
     add(Option.builder(OPTION_PROGRESS_PATH)
-        .argName("progress file path")
-        .desc("The path to the file to which to write the json file of predicted reactions as each projection runs.")
-        .hasArg()
-        .longOpt("progress-file-path")
+            .argName("progress file path")
+            .desc("The path to the file to which to write the json file of predicted reactions as each projection runs.")
+            .hasArg()
+            .longOpt("progress-file-path")
     );
     add(Option.builder(OPTION_DB)
-        .argName("db name")
-        .desc("The name of the mongo DB to use.")
-        .hasArg()
-        .longOpt("db-name")
+            .argName("db name")
+            .desc("The name of the mongo DB to use.")
+            .hasArg()
+            .longOpt("db-name")
     );
     add(Option.builder(OPTION_EXPANSION_TYPE)
-        .argName("type of expansion")
-        .desc("Type can take values: {ONE_SUB, TWO_SUB, SAR}.  ONE_SUB and TWO_SUB operate with only ROs, on one " +
-            "and two substrates, respectively, using only ROs. SAR runs an expansion from a SarCorpus, which " +
-            "still applies ROs but additionally constrains the substrates of each RO based on the supplied SARs.")
-        .hasArg()
-        .longOpt("expansion-type")
-        .required(true)
+            .argName("type of expansion")
+            .desc("Type can take values: {ONE_SUB, TWO_SUB, SAR}.  ONE_SUB and TWO_SUB operate with only ROs, on one " +
+                    "and two substrates, respectively, using only ROs. SAR runs an expansion from a SarCorpus, which " +
+                    "still applies ROs but additionally constrains the substrates of each RO based on the supplied SARs.")
+            .hasArg()
+            .longOpt("expansion-type")
+            .required(true)
     );
     add(Option.builder(OPTION_ADDITIONAL_CHEMICALS)
-        .argName("additional chemicals path name")
-        .desc("The absolute path to the additional chemicals file.")
-        .hasArg()
-        .longOpt("additional-chemicals-file")
+            .argName("additional chemicals path name")
+            .desc("The absolute path to the additional chemicals file.")
+            .hasArg()
+            .longOpt("additional-chemicals-file")
     );
     add(Option.builder(OPTION_HELP)
-        .argName("help")
-        .desc("Prints this help message.")
-        .longOpt("help")
+            .argName("help")
+            .desc("Prints this help message.")
+            .longOpt("help")
     );
   }};
 
@@ -251,10 +251,10 @@ public class L2ExpansionDriver {
         MongoDB mongoDB = new MongoDB(LOCAL_HOST, PORT_NUMBER, cl.getOptionValue(OPTION_DB)); // Start mongo instance.
         L2InchiCorpus chemicalInchis = getInchiCorpus(cl, OPTION_ADDITIONAL_CHEMICALS);
         List<Chemical> chemicalsOfInterest =
-            L2ExpansionDriver.convertListOfInchisToMolecules(chemicalInchis.getInchiList(), mongoDB);
+                L2ExpansionDriver.convertListOfInchisToMolecules(chemicalInchis.getInchiList(), mongoDB);
         List<Chemical> metaboliteChemicals =
-            L2ExpansionDriver.convertListOfInchisToMolecules(inchiCorpus.getInchiList(), mongoDB);
-        return new TwoSubstrateRoExpander(chemicalsOfInterest, metaboliteChemicals, getRoCorpus(cl), generator);
+                L2ExpansionDriver.convertListOfInchisToMolecules(inchiCorpus.getInchiList(), mongoDB);
+        return new TwoSubstrateRoExpander(chemicalsOfInterest, metaboliteChemicals, getRoList(cl), generator);
 
       case SAR:
         LOGGER.info("Running sar-based expansion.");

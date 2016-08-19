@@ -49,10 +49,6 @@ public class L2PredictionCorpus implements Serializable {
     populateIdToPredictionMap();
   }
 
-  public List<L2Prediction> getCorpus() {
-    return corpus;
-  }
-
   /**
    * Read a prediction corpus from file, and populate its prediction map.
    *
@@ -62,6 +58,10 @@ public class L2PredictionCorpus implements Serializable {
    */
   public static L2PredictionCorpus readPredictionsFromJsonFile(File corpusFile) throws IOException {
     return L2PredictionCorpus.OBJECT_MAPPER.readValue(corpusFile, L2PredictionCorpus.class).populateIdToPredictionMap();
+  }
+
+  public List<L2Prediction> getCorpus() {
+    return corpus;
   }
 
   /**
@@ -78,7 +78,7 @@ public class L2PredictionCorpus implements Serializable {
       return result;
     }
     throw new IllegalArgumentException("Id " + id + " is not present in corpus, or the id->prediction map has not " +
-        "been repopulated since it was added.");
+            "been repopulated since it was added.");
   }
 
   /**

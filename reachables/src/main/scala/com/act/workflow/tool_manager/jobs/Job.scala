@@ -518,6 +518,14 @@ class StatusManager {
     getJobStatus == StatusCodes.NotStarted
   }
 
+  def getJobStatus: String = synchronized {
+    this.status
+  }
+
+  def setJobStatus(newStatus: String): Unit = synchronized {
+    this.status = newStatus
+  }
+
   def isRunning: Boolean = {
     getJobStatus == StatusCodes.Running
   }

@@ -30,6 +30,7 @@ trait SparkRdd {
     spark.stop()
   }
 
+  // If this is 10, 10% of the entries must be 1, for example.
   /**
     * Takes in a list of aligned protein strings and outputs a row
     * matrix containing those clusters after the've been encoded using a characterMap.
@@ -42,8 +43,8 @@ trait SparkRdd {
     *
     * @return A row matrix constructed under the above circumstances
     */
-  def sparkOneHotEncodeProteinAlignments(spark: SparkContext)
-                                        (proteinAlignments: List[String],
+  def sparkCreateRowMatrix(spark: SparkContext)
+                          (proteinAlignments: List[String],
                            characterMap: Map[Char, Int],
                            percentOfRowsThatAreNotZeroToKeep: Double): RowMatrix = {
     require(percentOfRowsThatAreNotZeroToKeep >= 0 && percentOfRowsThatAreNotZeroToKeep <= 100,
@@ -54,44 +55,16 @@ trait SparkRdd {
     val oneHotCount = characterMap.values.max + 1
 
     // Precreate the array we will fill in
-    val oneHotEncodingArray = Array.ofDim[Double](proteinAlignments.head.length * oneHotCount, proteinAlignments.length)
+    val a = Array.ofDim[Double](proteinAlignments.head.length * oneHotCount, proteinAlignments.length)
+    for (i <- proteinAlignments.indices) {
+      for (j <- proteinAlignments(i).indices) {
 
-    // For each protein
-    for (proteinIndex <- proteinAlignments.indices) {
-      // For each character within that protein
-      for (proteinCharacterIndex <- proteinAlignments(proteinIndex).indices) {
+        val shiftValue: Int = characterMap(proteinAlignments(i)(j))
 
-        /*
-          A one hot encoded vector is just an array of size alphabet, so if our alphabet is A,B,C we'd have an array
-          that is [0, 0, 0] initially.  Then, we assign one value to each of those members (A = 0, B = 1, C = 2).
-          Then, if we see that character we encode the index of the array of previously all 0 array as 1.
-          A = [1, 0, 0]
-          B = [0, 1, 0]
-          C = [0, 0, 1]
-
-          Thus, shift value is just the index of the one-hot encoding.
-          Each member of the alphabet shifts where we place the 1 by a number, from 0 to len(alphabet) - 1.
-         */
-        val shiftValue: Int = characterMap(proteinAlignments(proteinIndex)(proteinCharacterIndex))
-
-        // Shift value of -1 designates a gap, and thus the entire array should be 0.
+        // Shift value of 0 designates a gap, and thus all should be 0.
         if (shiftValue >= 0) {
-          /*
-            Initial array: [0,0,0, 0,0,0]
-            AB means that the first character (Protein Character Index = 0) is 0 and the second character
-            (Protein Character Index = 2) is 1
-            If our alphabet size is 3, we've designated a 3 wide array for each character.
-
-            Thus, our first math would be:
-              0*3 + 0 = 0, so our array looks like
-              Array Update: [1,0,0, 0,0,0]
-            Our second round would be:
-              1*3 + 1 = 4, so our array looks like
-              Array Update: [1,0,0, 0,1,0]
-              Which matches our expectation of the one-hot encoding.
-          */
-          val aIndex: Int = proteinCharacterIndex * oneHotCount + shiftValue
-          oneHotEncodingArray(aIndex)(proteinIndex) = 1.0
+          val aIndex: Int = j * oneHotCount + shiftValue
+          a(aIndex)(i) = 1.0
         }
       }
     }
@@ -100,13 +73,8 @@ trait SparkRdd {
       Prepare and Filter RDD
      */
     val gapThreshold = proteinAlignments.length * (percentOfRowsThatAreNotZeroToKeep / 100.0)
-
-    // Because we one hot encode with the value 1, the sum of a column divided
-    // by its length is also the percent of rows that have a value.
-    val filteredA = oneHotEncodingArray filter (column => column.sum[Double] > gapThreshold)
-
-    // Convert array to a sequence of Spark's vectors
-    val vectorize: Seq[SparkVector] = filteredA map Vectors.dense toSeq
+    val filteredA = a.filter(column => column.sum[Double] > gapThreshold)
+    val vectorize: Seq[SparkVector] = filteredA.map(x => Vectors.dense(x)).toSeq
 
     // Turn into a RowMatrix so we can use it downstream
     val rows = spark.makeRDD[SparkVector](vectorize)
@@ -158,6 +126,9 @@ trait SparkRdd {
     * @return A list of cluster assignments for each row.
     */
   def sparkKmeansCluster(inputRdd: RDD[SparkVector], numberOfClusters: Int, numberOfIterations: Int = 200): List[Int] = {
+    /*
+       KMeans clustering
+     */
     val clusters = KMeans.train(inputRdd, numberOfClusters, numberOfIterations)
 
     val predictions: RDD[Int] = clusters.predict(inputRdd)

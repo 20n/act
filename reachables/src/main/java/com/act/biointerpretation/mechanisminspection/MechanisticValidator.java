@@ -40,9 +40,15 @@ import java.util.TreeMap;
  * to the write DB. Else, the matched ROs will be packaged and written into the reaction in the write DB.
  */
 public class MechanisticValidator extends BiointerpretationProcessor {
+  // See https://docs.chemaxon.com/display/FF/InChi+and+InChiKey+export+options for MolExporter options.
+  public static final String MOL_EXPORTER_INCHI_OPTIONS_FOR_INCHI_COMPARISON = new StringBuilder("inchi:").
+          append("SNon").append(','). // Exclude stereo information.
+          append("AuxNone").append(','). // Don't write the AuxInfo block--it just gets in the way.
+          append("Woff").append(','). // Disable warnings.  We'll catch any exceptions this produces, but don't care about warnings.
+          append("DoNotAddH"). // Don't add H according to usual valences: all H are explicit
+          toString();
   private static final Logger LOGGER = LogManager.getFormatterLogger(MechanisticValidator.class);
   private static final String PROCESSOR_NAME = "Mechanistic Validator";
-
   private static final String DB_PERFECT_CLASSIFICATION = "perfect";
   private static final int TWO_DIMENSION = 2;
   private ErosCorpus erosCorpus;
@@ -51,44 +57,16 @@ public class MechanisticValidator extends BiointerpretationProcessor {
   private ReactionProjector projector;
   private int eroHitCounter = 0;
   private int cacheHitCounter = 0;
-
   private Map<Pair<Map<Long, Integer>, Map<Long, Integer>>, Pair<Long, TreeMap<Integer, List<Ero>>>> cachedEroResults =
       new HashMap<>();
 
-  private enum ROScore {
-    PERFECT_SCORE(4),
-    MANUALLY_VALIDATED_SCORE(3),
-    MANUALLY_NOT_VERIFIED_SCORE(2),
-    MANUALLY_INVALIDATED_SCORE(0),
-    DEFAULT_MATCH_SCORE(1),
-    DEFAULT_UNMATCH_SCORE(-1);
-
-    private int score;
-
-    ROScore(int score) {
-      this.score = score;
-    }
-
-    public int getScore() {
-      return score;
-    }
+  public MechanisticValidator(NoSQLAPI api) {
+    super(api);
   }
-
-  // See https://docs.chemaxon.com/display/FF/InChi+and+InChiKey+export+options for MolExporter options.
-  public static final String MOL_EXPORTER_INCHI_OPTIONS_FOR_INCHI_COMPARISON = new StringBuilder("inchi:").
-      append("SNon").append(','). // Exclude stereo information.
-      append("AuxNone").append(','). // Don't write the AuxInfo block--it just gets in the way.
-      append("Woff").append(','). // Disable warnings.  We'll catch any exceptions this produces, but don't care about warnings.
-      append("DoNotAddH"). // Don't add H according to usual valences: all H are explicit
-      toString();
 
   @Override
   public String getName() {
     return PROCESSOR_NAME;
-  }
-
-  public MechanisticValidator(NoSQLAPI api) {
-    super(api);
   }
 
   public void init() throws IOException, ReactionException, LicenseProcessingException {
@@ -425,5 +403,24 @@ public class MechanisticValidator extends BiointerpretationProcessor {
     }
 
     return findBestRosThatCorrectlyComputeTheReaction(rxn, rxnId);
+  }
+
+  private enum ROScore {
+    PERFECT_SCORE(4),
+    MANUALLY_VALIDATED_SCORE(3),
+    MANUALLY_NOT_VERIFIED_SCORE(2),
+    MANUALLY_INVALIDATED_SCORE(0),
+    DEFAULT_MATCH_SCORE(1),
+    DEFAULT_UNMATCH_SCORE(-1);
+
+    private int score;
+
+    ROScore(int score) {
+      this.score = score;
+    }
+
+    public int getScore() {
+      return score;
+    }
   }
 }
