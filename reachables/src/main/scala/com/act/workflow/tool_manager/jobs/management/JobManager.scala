@@ -90,6 +90,8 @@ object JobManager {
         return
       }
 
+      jobCompleteOrdering.append(job)
+
       // If we are waiting for a job and find that job, release the number lock
       if (jobToAwaitFor.isDefined) {
         if (job.equals(jobToAwaitFor.get)) {
@@ -102,7 +104,6 @@ object JobManager {
       } else {
         numberLock.countDown()
       }
-      jobCompleteOrdering.append(job)
     }
 
     logger.trace(s"<Concurrent jobs running = ${runningJobsCount()}>")
