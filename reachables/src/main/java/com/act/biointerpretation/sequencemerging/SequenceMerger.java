@@ -108,7 +108,7 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
       Long newId = (long) getNoSQLAPI().writeToOutKnowlegeGraph(oldRxn);
 
-      super.reactionMigrationMap.put((long) oldRxn.getUUID(), newId);
+      writeMigratedReactionMap((long) oldRxn.getUUID(), newId);
     }
   }
 

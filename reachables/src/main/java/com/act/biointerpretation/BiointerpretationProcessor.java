@@ -35,7 +35,7 @@ public abstract class BiointerpretationProcessor {
   private Map<Long, String> newChemIdToInchi = new HashMap<>();
   private HashMap<Long, Long> organismMigrationMap = new HashMap<>();
   private HashMap<Long, Long> sequenceMigrationMap = new HashMap<>();
-  protected HashMap<Long, Long> reactionMigrationMap = new HashMap<>();
+  private HashMap<Long, Long> reactionMigrationMap = new HashMap<>();
 
   boolean initCalled = false;
 
@@ -133,6 +133,14 @@ public abstract class BiointerpretationProcessor {
 
   protected NoSQLAPI getNoSQLAPI() {
     return this.api;
+  }
+
+  protected void writeMigratedReactionMap(Long oldId, Long newId) {
+    reactionMigrationMap.put(oldId, newId);
+  }
+
+  protected Long readMigrationReactionMap(Long oldId) {
+    return reactionMigrationMap.get(oldId);
   }
 
   protected Map<Long, Long> getOldChemIdToNewChemId() {
