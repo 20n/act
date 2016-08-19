@@ -341,14 +341,36 @@ public class SequenceMergerTest {
     Comparator proteinDataComparator = new Comparator<JSONObject>() {
       @Override
       public int compare(JSONObject o1, JSONObject o2) {
-        int size1 = o1.getJSONArray("sequences").length();
-        int size2 = o1.getJSONArray("sequences").length();
-        return (size1 > size2 ? -1 : (size1 == size2 ? 0 : 1));
+        JSONArray o1SeqArray = o1.getJSONArray("sequences");
+        List<Long> o1Seqs = new ArrayList<>();
+        for (int i = 0; i < o1SeqArray.length(); i++) {
+          o1Seqs.add(o1SeqArray.getLong(i));
+        }
+        Collections.sort(o1Seqs);
+
+        JSONArray o2SeqArray = o2.getJSONArray("sequences");
+        List<Long> o2Seqs = new ArrayList<>();
+        for (int i = 0; i < o2SeqArray.length(); i++) {
+          o2Seqs.add(o2SeqArray.getLong(i));
+        }
+        Collections.sort(o2Seqs);
+
+
+        int size1 = o1Seqs.size();
+        int size2 = o2Seqs.size();
+        return (size1 > size2 ? -1 : (size1 == size2 ? compareSeqLists(o1Seqs, o2Seqs) : 1));
       }
     };
 
     Collections.sort(sortedExpectedData, proteinDataComparator);
     Collections.sort(sortedActualData, proteinDataComparator);
+
+    assertEquals("testing comparison function", -1, compareSeqLists(Arrays.asList(1L, 2L, 5L),
+        Arrays.asList(1L, 2L, 4L)));
+    assertEquals("testing comparison function", 0, compareSeqLists(Arrays.asList(1L, 2L, 4L),
+        Arrays.asList(1L, 2L, 4L)));
+    assertEquals("testing comparison function", 1, compareSeqLists(Arrays.asList(1L, 2L, 4L),
+        Arrays.asList(1L, 3L, 4L)));
 
     assertEquals("comparing protein data " + message, sortedExpectedData.toString(),
         sortedActualData.toString());
@@ -357,6 +379,28 @@ public class SequenceMergerTest {
   private void compareOrgs(String message, Organism expectedOrg, Map.Entry writtenOrg) {
     assertEquals("comparing org_id " + message, expectedOrg.getUUID(), writtenOrg.getKey());
     assertEquals("comparing organism name " + message, expectedOrg.getName(), writtenOrg.getValue());
+  }
+
+  /**
+   * Compares each element of two sorted, equivalent sized lists of Seq IDs to see which one should be ordered first.
+   * @param o1Seqs
+   * @param o2Seqs
+   * @return
+   */
+  private int compareSeqLists(List<Long> o1Seqs, List<Long> o2Seqs) {
+    if (o1Seqs.size() != o2Seqs.size()) {
+      throw new RuntimeException("seq lists of not same length, violates assumption for this comparison");
+    }
+
+    for (int i = 0; i < o1Seqs.size(); i++) {
+      if (o1Seqs.get(i) > o2Seqs.get(i)) {
+        return -1;
+      } else if (o1Seqs.get(i) < o2Seqs.get(i)) {
+        return 1;
+      }
+    }
+
+    return 0;
   }
 
 }
