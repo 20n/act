@@ -12,8 +12,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.gwt.thirdparty.javascript.rhino.head.TopLevel.Builtins.Function;
-
 /**
  * A single node in a SarTree, which corresponds to a substructure pulled out by LibMCS clustering.
  */
@@ -77,6 +75,7 @@ public class SarTreeNode {
 
   @JsonProperty
   public String getSubstructureInchi() throws IOException {
+    // Don't include Aux info and don't log warnings
     return MolExporter.exportToFormat(substructure, "inchi:AuxNone,Woff");
   }
 
@@ -98,7 +97,7 @@ public class SarTreeNode {
     return predictionIds;
   }
 
-  public void setPredictionId(List<Integer> predictionIds) {
+  public void setPredictionIds(List<Integer> predictionIds) {
     this.predictionIds = new ArrayList<>(predictionIds);
   }
 
@@ -106,6 +105,7 @@ public class SarTreeNode {
     return rankingScore;
   }
 
+  @JsonIgnore
   public void setRankingScore(ScoringFunctions function) {
     this.setRankingScore(function.calculateScore(this));
   }

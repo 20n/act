@@ -65,8 +65,7 @@ public class L2PredictionCorpus implements Serializable {
   }
 
   /**
-   * Gets the prediction with the given ID from the prediction corpus. If necessary, builds the map from Id ->
-   * prediction.
+   * Gets the prediction with the given ID from the prediction corpus.
    *
    * @param id The prediction ID to find.
    * @return The corresponding prediction.
@@ -74,16 +73,25 @@ public class L2PredictionCorpus implements Serializable {
    */
   @JsonIgnore
   public L2Prediction getPredictionFromId(Integer id) {
-    L2Prediction result = idToPredictionMap.get(id);
-    if (result == null) {
-      // First if it's not there, populate the map
+    try {
+      return getPredictionOrThrowException(id);
+    } catch (IllegalArgumentException e) {
+      // If the ID isn't found the first time, repopulate the map to ensure it has been instantiated and is
+      // updated with all the current predictions. This map is not populated by default because it is often not
+      // required at all. This structure ensures that it is only populated if needed, but also only populated once
+      // under normal circumstances.
       populateIdToPredictionMap();
     }
-    if ((result = idToPredictionMap.get(id)) == null) {
-      // If it's still not there, throw an exception.
-      throw new IllegalArgumentException("Id " + id + " not present in corpus!");
+    // This time, if the ID isn't found, it isn't here- just throw the exception!
+    return getPredictionOrThrowException(id);
+  }
+
+  private L2Prediction getPredictionOrThrowException(Integer id) {
+    L2Prediction result = idToPredictionMap.get(id);
+    if (result != null) {
+      return result;
     }
-    return result;
+    throw new IllegalArgumentException("Id " + id + " not present in corpus!");
   }
 
   /**

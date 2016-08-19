@@ -5,6 +5,7 @@ import java.util.NoSuchElementException
 
 import com.act.biointerpretation.l2expansion.{L2ExpansionDriver, L2InchiCorpus, L2PredictionCorpus}
 import com.act.biointerpretation.mechanisminspection.ErosCorpus
+import com.act.biointerpretation.sarinference.SarTreeNode.ScoringFunctions
 import com.act.biointerpretation.sarinference.{LibMcsClustering, ProductScorer, SarTreeNodeList}
 import com.act.jobs.JavaRunnable
 import com.act.workflow.tool_manager.jobs.Job
@@ -188,7 +189,6 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       */
     def addExpansionJobList()(): Unit = {
       verifyInputFile(rawSubstratesFile)
-      verifyInputFile(roIdFile)
 
       logger.info("Running RO expansion jobs.")
       val massFilteringRunnable = L2InchiCorpus.getRunnableSubstrateFilterer(
@@ -343,7 +343,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     })
     val meshedList = new SarTreeNodeList()
     sarLists.foreach(list => meshedList.addAll(list.getSarTreeNodes))
-    meshedList.sortByDecreasingScores()
+    meshedList.sortBy(ScoringFunctions.HIT_MINUS_MISS);
     meshedList.writeToFile(sarOut)
 
     var productCorpuses = scoredProductFiles.map(file => L2PredictionCorpus.readPredictionsFromJsonFile(file))

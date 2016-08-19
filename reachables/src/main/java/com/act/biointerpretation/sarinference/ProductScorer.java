@@ -149,7 +149,7 @@ public class ProductScorer {
         /**
          * Build map from predictions to their scores based on SAR
          * For each prediction, we add on auxiliary info about its SARs and score to its projector name.
-         // TODO: build data structure to store a scored prediction, instead of hijacking the projector name.
+         * TODO: build data structure to store a scored prediction, instead of hijacking the projector name.
          */
         Map<L2Prediction, Double> predictionToScoreMap = new HashMap<>();
         LOGGER.info("Scoring predictions.");
@@ -164,14 +164,14 @@ public class ProductScorer {
             nameAppendage += ":" +
                 bestSar.getHierarchyId() + ":" +
                 bestSar.getRankingScore();
+            prediction.setProjectorName(prediction.getProjectorName() + nameAppendage);
             predictionToScoreMap.put(prediction, bestSar.getRankingScore());
           } else {
             // If no SAR is found, append "NO_SAR" to the prediction, and give it a ranking score of 0
             nameAppendage += "NO_SAR";
+            prediction.setProjectorName(prediction.getProjectorName() + nameAppendage);
             predictionToScoreMap.put(prediction, 0D);
           }
-
-          prediction.setProjectorName(prediction.getProjectorName() + nameAppendage);
         }
 
         LOGGER.info("Sorting predictions in decreasing order of best associated SAR rank.");

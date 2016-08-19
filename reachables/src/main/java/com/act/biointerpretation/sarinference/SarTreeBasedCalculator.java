@@ -70,19 +70,26 @@ public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
    * @return True if at least one prediction Id of the node is an LCMS hit.
    */
   public IonAnalysisInterchangeModel.LCMS_RESULT getLcmsDataForNode(SarTreeNode node) {
-    for (Integer predictionId : node.getPredictionIds()) {
-      L2Prediction prediction = predictionCorpus.getPredictionFromId(predictionId);
-      IonAnalysisInterchangeModel.LCMS_RESULT lcmsData = lcmsResults.getLcmsDataForPrediction(prediction);
+    if (node.getPredictionIds().isEmpty()) {
+      throw new IllegalArgumentException("Cannot get LCMS results for a node with no predictions:" +
+          node.getHierarchyId());
+    }
+    /**
+     * The results of the predictions should be the same for one substrate and one RO, as all of the results will
+     * have the same MZ value. Thus, we pick out the first one, check that the others are all the same for sanity,
+     * and then return the LCMS result of the first one.
+     */
+    L2Prediction prediction = predictionCorpus.getPredictionFromId(node.getPredictionIds().get(0));
+    IonAnalysisInterchangeModel.LCMS_RESULT firstResult = lcmsResults.getLcmsDataForPrediction(prediction);
 
-      if (lcmsData == IonAnalysisInterchangeModel.LCMS_RESULT.HIT) {
-        return IonAnalysisInterchangeModel.LCMS_RESULT.HIT;
-      }
-      if (lcmsData == IonAnalysisInterchangeModel.LCMS_RESULT.NO_DATA) {
-        // Log this error but don't throw exception- some molecules aren't properly processed by LCMS and have no data
-        LOGGER.error("No LCMS data found for prediction ID " + predictionId +
-            " on inchi " + prediction.getProductInchis().toString());
+    for (Integer id : node.getPredictionIds()) {
+      IonAnalysisInterchangeModel.LCMS_RESULT otherResult =
+          lcmsResults.getLcmsDataForPrediction(predictionCorpus.getPredictionFromId(id));
+      if (otherResult != firstResult) {
+        LOGGER.error("Different LCMS results for same substrate! %s and %s", firstResult, otherResult);
       }
     }
-    return IonAnalysisInterchangeModel.LCMS_RESULT.MISS;
+
+    return firstResult;
   }
 }
