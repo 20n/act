@@ -18,7 +18,7 @@ import scala.collection.JavaConverters._
 
 class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtility {
 
-  private val logger = LogManager.getLogger(getClass.getName)
+  override val logger = LogManager.getLogger(getClass.getName)
 
   override val HELP_MESSAGE = "Workflow to run untargeted metabolomics pipeline. This runs all steps in the pipeline," +
     "beginning with L2Expansion, followed by LCMS analysis, and then structure clustering and SAR scoring."
@@ -85,15 +85,6 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     opts
   }
 
-  object StartingPoints extends Enumeration {
-    type StartingPoints = Value
-
-    val EXPANSION = Value("EXPANSION")
-    val LCMS = Value("LCMS")
-    val CLUSTERING = Value("CLUSTERING")
-    val SCORING = Value("SCORING")
-  }
-
   // Implement this with the job structure you want to run to define a workflow
   override def defineWorkflow(cl: CommandLine): Job = {
 
@@ -148,7 +139,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
         rawSubstratesFile,
         filteredSubstratesFile,
         maxMass)
-      headerJob.thenRun(JavaJobWrapper.wrapJavaFunction(massFilteringRunnable))
+      headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("mass filter", massFilteringRunnable))
 
       // Build one job per RO for L2 expansion
       val singleThreadExpansionRunnables =
@@ -158,7 +149,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
             filteredSubstratesFile,
             predictionsFiles(roId)))
       // Run one job per RO for L2 expansion
-      addJavaRunnableBatch(singleThreadExpansionRunnables)
+      addJavaRunnableBatch("expansion", singleThreadExpansionRunnables)
 
       addJobsFromLcmsOn()
     }
@@ -167,7 +158,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       logger.info("Running LCMS job.")
       // TODO: when Vijay's LCMS code is ready, replace this with the real thing
       // Build a dummy LCMS job that doesn't do anything.
-      val lcmsJob = JavaJobWrapper.wrapJavaFunction(
+      val lcmsJob = JavaJobWrapper.wrapJavaFunction("lcms",
         new JavaRunnable {
           override def run(): Unit = {
             print("Running dummy LCMS job: didn't implement LCMS workflow job yet.")
@@ -192,7 +183,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
           LibMcsClustering.getRunnableClusterer(
             predictionsFiles(roId),
             sarTreeFiles(roId))) // Run one job per RO for clustering
-      addJavaRunnableBatch(clusteringRunnables)
+      addJavaRunnableBatch("cluster", clusteringRunnables)
 
       addScoringJobs()
     }
@@ -206,7 +197,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
           scoredSarsFiles(roId),
           positiveRate)
       )
-      addJavaRunnableBatch(scoringRunnables)
+      addJavaRunnableBatch("scoring", scoringRunnables)
     }
 
     /**
@@ -240,6 +231,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     * @param workingDir The directory in which to create the files.
     * @param fileName   The prefix of the file name.
     * @param roIds      The ROs to create files for.
+    *
     * @return A map from RO id to the corresponding file.
     */
   def buildFilesForRos(workingDir: String, fileName: String, roIds: List[Integer]): Map[Integer, File] = {
@@ -249,8 +241,17 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
   /**
     * Adds a list of JavaRunnables to the job manager as a batch.
     */
-  def addJavaRunnableBatch(runnables: List[JavaRunnable]): Unit = {
-    val jobs = runnables.map(runnable => JavaJobWrapper.wrapJavaFunction(runnable))
+  def addJavaRunnableBatch(name: String, runnables: List[JavaRunnable]): Unit = {
+    val jobs = runnables.map(runnable => JavaJobWrapper.wrapJavaFunction(name, runnable))
     headerJob.thenRunBatch(jobs)
+  }
+
+  object StartingPoints extends Enumeration {
+    type StartingPoints = Value
+
+    val EXPANSION = Value("EXPANSION")
+    val LCMS = Value("LCMS")
+    val CLUSTERING = Value("CLUSTERING")
+    val SCORING = Value("SCORING")
   }
 }
