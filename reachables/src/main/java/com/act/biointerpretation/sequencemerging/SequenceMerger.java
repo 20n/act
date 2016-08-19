@@ -50,7 +50,6 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
   private Map<Long, Long> sequenceMigrationMap = new HashMap<>();
   private Map<Long, Long> organismMigrationMap = new HashMap<>();
-  private Map<Long, Long> reactionMigrationMap = new HashMap<>();
 
   private Map<String, String> minimalPrefixMapping;
 
@@ -109,10 +108,8 @@ public class SequenceMerger extends BiointerpretationProcessor {
 
       Long newId = (long) getNoSQLAPI().writeToOutKnowlegeGraph(oldRxn);
 
-      reactionMigrationMap.put((long) oldRxn.getUUID(), newId);
+      super.reactionMigrationMap.put((long) oldRxn.getUUID(), newId);
     }
-
-    updateSeqRxnRefs();
   }
 
 
@@ -505,23 +502,6 @@ public class SequenceMerger extends BiointerpretationProcessor {
           mergedRefs.add(newRef);
         }
       }
-    }
-  }
-
-  private void updateSeqRxnRefs() {
-    Iterator<Seq> writtenSeqIterator = getNoSQLAPI().getWriteDB().getSeqIterator();
-
-    while (writtenSeqIterator.hasNext()) {
-      Seq writtenSeq = writtenSeqIterator.next();
-
-      Set<Long> oldRxnRefs = writtenSeq.getReactionsCatalyzed();
-      Set<Long> newRxnRefs = new HashSet<>();
-      for (Long oldRxnRef : oldRxnRefs) {
-        newRxnRefs.add(reactionMigrationMap.get(oldRxnRef));
-      }
-
-      writtenSeq.setReactionsCatalyzed(newRxnRefs);
-      getNoSQLAPI().getWriteDB().updateRxnRefs(writtenSeq);
     }
   }
 
