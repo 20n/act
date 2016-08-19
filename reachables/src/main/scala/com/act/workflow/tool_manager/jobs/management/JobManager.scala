@@ -78,30 +78,32 @@ object JobManager {
   }
 
   def indicateJobCompleteToManager(job: Job) {
-    if (!jobs.contains(job)) {
-      /*
+    this.synchronized {
+      if (!jobs.contains(job)) {
+        /*
         This job doesn't currently exist in the known jobs but for some reason is hitting the manager.
         Likely means an old or incorrectly run job so we log the error and move on, but don't let it change things.
         Given our kill behavior this should not happen, but just in case we have the check below.
        */
-      val message = s"A job $job that doesn't exist in job buffer tried to modify Job Manager."
-      logger.error(message)
-      return
-    }
-
-    // If we are waiting for a job and find that job, release the number lock
-    if (jobToAwaitFor.isDefined) {
-      if (job.equals(jobToAwaitFor.get)) {
-        // Cancel all futures still running.  If we kill the jobs here, we don't have to worry about the
-        // time difference between the lock releasing and us handling those
-        // conditions normally and another job starting in the meantime.
-        jobs.foreach(_.internalState.killIncompleteJobs())
-        numberLock.releaseLock()
+        val message = s"A job $job that doesn't exist in job buffer tried to modify Job Manager."
+        logger.error(message)
+        return
       }
-    } else {
-      numberLock.countDown()
+
+      // If we are waiting for a job and find that job, release the number lock
+      if (jobToAwaitFor.isDefined) {
+        if (job.equals(jobToAwaitFor.get)) {
+          // Cancel all futures still running.  If we kill the jobs here, we don't have to worry about the
+          // time difference between the lock releasing and us handling those
+          // conditions normally and another job starting in the meantime.
+          jobs.foreach(_.internalState.killIncompleteJobs())
+          numberLock.releaseLock()
+        }
+      } else {
+        numberLock.countDown()
+      }
+      jobCompleteOrdering.append(job)
     }
-    jobCompleteOrdering.append(job)
 
     logger.trace(s"<Concurrent jobs running = ${runningJobsCount()}>")
     logger.trace(s"<Current jobs awaiting to run = ${waitingJobsCount()}>")
