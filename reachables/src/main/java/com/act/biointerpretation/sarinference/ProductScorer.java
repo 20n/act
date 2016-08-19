@@ -116,6 +116,8 @@ public class ProductScorer {
 
   /**
    * Reads in scored SARs, checks them against a prediction corpus and positive inchi list to get a product ranking.
+   * This method is static because it does not rely on any properties of the enclosing class to construct the job.
+   * TODO: It would probably make more sense to make this its own class, i.e. <ProductScorer implements JavaRunnable>
    * TODO: improve the data structure used to store scored products- using an L2PredictionCorpus is pretty ugly
    *
    * @param predictionCorpus The prediction corpus to score.

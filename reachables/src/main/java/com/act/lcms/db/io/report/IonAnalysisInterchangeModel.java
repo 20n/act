@@ -79,9 +79,15 @@ public class IonAnalysisInterchangeModel {
     for (ResultForMZ resultForMZ : results) {
       Boolean isHit = resultForMZ.isValid;
       for (HitOrMiss molecule : resultForMZ.getMolecules()) {
-
         // If the inchi is already a hit, then we do not want to override
-        // it with a possible miss result, as a hit on any single ion is enough to consider the molecule a hit.
+        // its hit entry with a possible miss on a different adduct ion for
+        // the same molecule. We check multiple metlin ions for each
+        // molecules and some may show and others not. In an ideal world
+        // with high concentrations "most" adduct ions would show and we
+        // could take an AND (see https://github.com/20n/act/issues/383 and
+        // https://github.com/20n/act/issues/370#issuecomment-240289674)
+        // but when low concentrations exist we would rather take an OR and
+        // be conservative, avoiding false negatives.
         if (this.inchiToIsHit.get(molecule.getInchi()) == null ||
             !this.inchiToIsHit.get(molecule.getInchi())) {
           this.inchiToIsHit.put(molecule.getInchi(), isHit);

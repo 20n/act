@@ -32,7 +32,10 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
   private val OPTION_STARTING_POINT = "S"
   private val OPTION_ENDING_POINT = "E"
 
-  private val LCMS_MISS_PENALTY: Double = 1.0
+  // This heuristically balances the consideration of wanting high percentage to rank
+  // highly, but not wanting those with only a couple of total matches to rank highly,
+  private val SAR_SCORING_FUNCTION = ScoringFunctions.HIT_MINUS_MISS
+
   private val SUBTREE_THRESHOLD: Integer = 2
 
   override def getCommandLineOptions: Options = {
@@ -213,7 +216,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
 
       // TODO: eventually link this up with LCMS scoring job, once it is completely automated
       // Build a dummy LCMS job that crashes if you try to run it.
-      val lcmsJob = JavaJobWrapper.wrapJavaFunction( "DUMMY_LCMS_JOB",
+      val lcmsJob = JavaJobWrapper.wrapJavaFunction("DUMMY_LCMS_JOB",
         new JavaRunnable {
           override def run(): Unit = {
             throw new NotImplementedError("LCMS JOB NOT YET IMPLEMENTED!")
@@ -247,7 +250,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
           sarTreeFiles(roId),
           lcmsFile,
           scoredSarsFiles(roId),
-          LCMS_MISS_PENALTY,
+          SAR_SCORING_FUNCTION,
           SUBTREE_THRESHOLD)
       )
       addJavaRunnableBatch("sarScoring", sarScoringRunnables)
@@ -377,4 +380,5 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     val CLUSTERING = Value("CLUSTERING")
     val SCORING = Value("SCORING")
   }
+
 }

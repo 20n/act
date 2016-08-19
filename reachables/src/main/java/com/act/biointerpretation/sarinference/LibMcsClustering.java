@@ -89,12 +89,11 @@ public class LibMcsClustering {
     HELP_FORMATTER.setWidth(100);
   }
 
-  // This value should stay between 0 and 1 as it indicates the minimum hit percentage for a SAR worth keeping around.
-  private static final Double MISS_PENALTY = 1.0;  // no threshold is currently applied
+  // This heuristically balances the consideration of wanting high percentage to rank
+  // highly, but not wanting those with only a couple of total matches to rank highly,
+  private static final SarTreeNode.ScoringFunctions SAR_SCORING_FUNCTION = SarTreeNode.ScoringFunctions.HIT_MINUS_MISS;
 
   private static final Integer THRESHOLD_TREE_SIZE = 2; // any SAR that is not simply one specific substrate is allowed
-
-  private static final Random RANDOM_GENERATOR = new Random();
 
   public static void main(String[] args) throws Exception {
 
@@ -129,7 +128,7 @@ public class LibMcsClustering {
         sartreeFile,
         positiveInchisFile,
         scoredSarFile,
-        MISS_PENALTY,
+        SAR_SCORING_FUNCTION,
         THRESHOLD_TREE_SIZE);
 
     LOGGER.info("Running clustering.");
@@ -149,6 +148,8 @@ public class LibMcsClustering {
   /**
    * Reads in a prediction corpus, containing only one RO's predictions, and builds a clustering tree of the
    * substrates. Returns every SarTreeNode in the tree.
+   * This method is static because it does not rely on any properties of the enclosing class to construct the job.
+   * TODO: It would probably make more sense to make this its own class, i.e. <Clusterer implements JavaRunnable>
    *
    * @param predictionCorpusInput The prediction corpus input file.
    * @param sarTreeNodesOutput The file to which to write the SarTreeNodeList of every node in the clustering tree.
@@ -233,12 +234,14 @@ public class LibMcsClustering {
   /**
    * Reads in an already-built SarTree from a SarTreeNodeList, and scores the SARs based on LCMS results.  Currently
    * LCMS results are a dummy function that randomly classifies molecules as hits and misses.
+   * This method is static because it does not rely on any properties of the enclosing class to construct the job.
+   * TODO: It would probably make more sense to make this its own class, i.e. <SarScorer implements JavaRunnable>
    *
    * @param sarTreeInput An input file containing a SarTreeNodeList with all Sars from the clustering tree.
    * @param lcmsInput File with LCMS hits.
    * @param sarTreeNodeOutput The output file to which to write the relevant SARs from the corpus, sorted in decreasing
    * order of confidence.
-   * @param missPenalty The penalty to assign an LCMS miss for a SAR, when scoring SARs.
+   * @param scoringFunction The function used to score and rank the SARs.
    * @param subtreeThreshold The minimum number of leaves a sAR should match to be returned.
    * @return A JavaRunnable to run the SAR scoring.
    */
@@ -247,7 +250,7 @@ public class LibMcsClustering {
       File sarTreeInput,
       File lcmsInput,
       File sarTreeNodeOutput,
-      Double missPenalty,
+      SarTreeNode.ScoringFunctions scoringFunction,
       Integer subtreeThreshold) {
 
     return new JavaRunnable() {
@@ -279,9 +282,8 @@ public class LibMcsClustering {
         sarTree.applyToNodes(sarScorer, subtreeThreshold);
         // Retain nodes that are not repeats or leaves, and have more than 0 LCMS hits
         SarTreeNodeList treeNodeList = sarTree.getExplanatoryNodes(subtreeThreshold, 0.0);
-        // Sort by number hits - number misses. This heuristically balances the consideration of wanting high percentage
-        // SARs ranking highly, but not wanting those with only a couple total matches,
-        treeNodeList.sortBy(SarTreeNode.ScoringFunctions.HIT_MINUS_MISS);
+        // Sort by the supplied scoring function.
+        treeNodeList.sortBy(scoringFunction);
 
         // Write out output.
         treeNodeList.writeToFile(sarTreeNodeOutput);
