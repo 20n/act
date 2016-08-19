@@ -6,8 +6,10 @@ import org.apache.commons.cli.CommandLine
 import org.apache.logging.log4j.LogManager
 
 trait WorkingDirectoryUtility {
+  val logger = LogManager.getLogger(getClass)
+
   def defineOutputFilePath(cl: CommandLine, optionName: String, identifier: String, defaultValue: String, workingDirectory: String): File = {
-    val methodLogger = LogManager.getLogger("workingDirectoryFilePathDefinition")
+    createWorkingDirectory(new File(workingDirectory))
 
     // Spaces tend to be bad for file names
     val filteredIdentifier = identifier.replace(" ", "_")
@@ -17,7 +19,7 @@ trait WorkingDirectoryUtility {
     val fileName = s"${fileNameHead}_$filteredIdentifier"
 
     val finalFile = new File(workingDirectory, fileName)
-    methodLogger.info(s"The final file path for file $optionName was ${finalFile.getAbsoluteFile}")
+    logger.info(s"The final file path for file $optionName was ${finalFile.getAbsoluteFile}")
 
     verifyOutputFile(finalFile)
 
@@ -37,6 +39,13 @@ trait WorkingDirectoryUtility {
       outputFile.createNewFile()
       if (!outputFile.canWrite) throw new RuntimeException(s"Can't write to designated location ${outputFile.getAbsolutePath}")
       outputFile.delete()
+    }
+  }
+
+  def createWorkingDirectory(workingDirectory: File): Unit = {
+    if (!workingDirectory.exists()) {
+      logger.info(s"Creating working directories up to ${workingDirectory.getAbsolutePath}")
+      workingDirectory.mkdirs()
     }
   }
 

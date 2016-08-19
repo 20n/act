@@ -5,8 +5,9 @@ import com.act.workflow.tool_manager.jobs.JavaJob
 import com.act.workflow.tool_manager.jobs.management.JobManager
 
 object JavaJobWrapper {
-  def wrapJavaFunction(f: JavaRunnable, retryJob: Boolean = false): JavaJob = {
-    val job = new JavaJob(f)
+  def wrapJavaFunction(name: String, f: JavaRunnable,
+                       retryJob: Boolean = false): JavaJob = {
+    val job = new JavaJob(name, f)
     if (!retryJob)
       JobManager.addJob(job)
     job

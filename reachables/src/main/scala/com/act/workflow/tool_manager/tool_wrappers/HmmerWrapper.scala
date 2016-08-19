@@ -18,7 +18,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile Where to write the output to
     */
   def hmmalign(hmmFile: File, seqFile: File, outputFile: File): ShellJob = {
-    constructJob(HmmCommands.HmmAlign,
+    constructJob(HmmCommands.HmmAlign.get, HmmCommands.HmmAlign,
       List("--amino", hmmFile.getAbsolutePath, seqFile.getAbsolutePath, "-o", outputFile.getAbsolutePath))
   }
 
@@ -29,7 +29,10 @@ object HmmerWrapper extends ToolWrapper {
     * @param msaFile       The multiple sequence alignment file to construct the profile from
     */
   def hmmbuild(outputHmmFile: File, msaFile: File): ShellJob  = {
-    constructJob(HmmCommands.HmmBuild, List("--amino", outputHmmFile.getAbsolutePath, msaFile.getAbsolutePath))
+    constructJob(
+      HmmCommands.HmmBuild.get,
+      HmmCommands.HmmBuild,
+      List("--amino", outputHmmFile.getAbsolutePath, msaFile.getAbsolutePath))
   }
 
   /**
@@ -40,12 +43,13 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile   Where to place output file
     */
   def hmmscan(hmmDatabase: String, sequenceFile: File, outputFile: File): ShellJob = {
-    val job = constructJob(HmmCommands.HmmScan,
+    val job = constructJob(HmmCommands.HmmScan.get, HmmCommands.HmmScan,
       List("-o", outputFile.getAbsolutePath, hmmDatabase, sequenceFile.getAbsolutePath))
 
     // Set a retry job of press if something goes wrong
     // If you want a laugh, read the documentation for this function with option -f , it will overwrite bad files
-    job.setJobToRunPriorToRetry(constructJob(HmmCommands.HmmPress, List("-f", hmmDatabase), retryJob=true))
+    job.setJobToRunPriorToRetrying(constructJob(HmmCommands.HmmPress.get, HmmCommands.HmmPress,
+      List("-f", hmmDatabase), retryJob = true))
     job
   }
 
@@ -60,7 +64,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param hmmFile  File containing multiple HMM profiles
     */
   def hmmpress(hmmFile: File): ShellJob  = {
-    constructJob(HmmCommands.HmmPress, List("-f",hmmFile.getAbsolutePath))
+    constructJob(HmmCommands.HmmPress.get, HmmCommands.HmmPress, List("-f", hmmFile.getAbsolutePath))
   }
 
 
@@ -72,7 +76,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile       Where to place the results
     */
   def hmmsearch(hmmFile: File, sequenceDatabase: File, outputFile: File): ShellJob = {
-    constructJob(HmmCommands.HmmSearch,
+    constructJob(HmmCommands.HmmSearch.get, HmmCommands.HmmSearch,
       List("-o", outputFile.getAbsolutePath, hmmFile.getAbsolutePath, sequenceDatabase.getAbsolutePath))
   }
 
@@ -84,7 +88,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile       Where to place the results
     */
   def jackhmmer(sequenceFile: File, sequenceDatabase: String, outputFile: File): ShellJob  = {
-    constructJob(HmmCommands.JackHammr,
+    constructJob(HmmCommands.JackHammr.get, HmmCommands.JackHammr,
       List(sequenceFile.getAbsolutePath, sequenceDatabase, "-o", outputFile.getAbsolutePath))
   }
 
@@ -96,7 +100,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile       Where to place the results
     */
   def phmmer(sequenceFile: File, sequenceDatabase: String, outputFile: File): ShellJob  = {
-    constructJob(HmmCommands.Phmmer,
+    constructJob(HmmCommands.Phmmer.get, HmmCommands.Phmmer,
       List(sequenceFile.getAbsolutePath, sequenceDatabase, "-o", outputFile.getAbsolutePath))
     }
 

@@ -1,6 +1,6 @@
 package com.act.analysis.proteome.proteome_workflow
 
-import com.act.workflow.tool_manager.jobs.Job
+import com.act.workflow.tool_manager.jobs.{Job, ScalaJob}
 import com.act.workflow.tool_manager.tool_wrappers.ScalaJobWrapper
 import com.act.workflow.tool_manager.workflow.Workflow
 import com.act.workflow.tool_manager.workflow.workflow_mixins.base.WorkingDirectoryUtility
@@ -13,18 +13,18 @@ class EcnumToFastaFlow extends Workflow
   with WorkingDirectoryUtility {
 
   override val HELP_MESSAGE = "Workflow to convert EC Numbers into an unaligned FASTA file."
+  override val logger = LogManager.getLogger(getClass.getName)
   private val OPTION_EC_NUM = "e"
   private val OPTION_OUTPUT_FASTA_FILE = "f"
   private val OPTION_WORKING_DIRECTORY = "w"
   private val OPTION_DATABASE = "d"
 
-  private val logger = LogManager.getLogger(getClass.getName)
-
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
       CliOption.builder(OPTION_EC_NUM).
         required(true).
-        hasArg.
+        hasArgs.
+        valueSeparator(',').
         longOpt("ec-number").
         desc("The EC number to query against in format of X.X.X.X, " +
           "if you do not enter a fully defined sequence of four, " +
@@ -63,17 +63,24 @@ class EcnumToFastaFlow extends Workflow
     val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY, null)
 
     // Setup all the constant paths here
-    val outputFastaPath = defineOutputFilePath(
-      cl,
-      OPTION_OUTPUT_FASTA_FILE,
-      "EC_" + ec_num,
-      "output.fasta",
-      workingDir
-    )
+    def defineEcNumberJob(ecnum: String): ScalaJob = {
+      logger.info(s"Defining job for Ec Number $ecnum")
+      val outputFastaPath = defineOutputFilePath(
+        cl,
+        OPTION_OUTPUT_FASTA_FILE,
+        "EC_" + ecnum,
+        "output.fasta",
+        workingDir
+      )
+
+      // Create the FASTA file out of all the relevant sequences.
+      ScalaJobWrapper.wrapScalaFunction(s"Write Fasta From Ecnumbers, ECNUM=$ec_num",
+        writeFastaFileFromEnzymesMatchingEcnums(ecnum, outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
+    }
+
 
     // Create the FASTA file out of all the relevant sequences.
-    val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingEcnums(ec_num, outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
-    headerJob.thenRun(ecNumberToFasta)
+    headerJob.thenRunBatch(cl.getOptionValues(OPTION_EC_NUM).toList.map(defineEcNumberJob))
 
     headerJob
   }

@@ -1,4 +1,4 @@
-package com.act.workflow.tool_manager.jobs.management
+package com.act.workflow.tool_manager.jobs.management.utility
 
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -29,6 +29,13 @@ class AtomicLatch {
   def countDown(): Unit = {
     this.synchronized {
       counter.decrementAndGet()
+      this.notify()
+    }
+  }
+
+  def releaseLock(): Unit = {
+    this.synchronized {
+      counter.set(0)
       this.notify()
     }
   }

@@ -20,7 +20,7 @@ class RoToProteinPredictionFlow
   with WorkingDirectoryUtility {
 
   override val HELP_MESSAGE = "Workflow to convert RO numbers into protein predictions based on HMMs."
-  private val logger = LogManager.getLogger(getClass.getName)
+  override val logger = LogManager.getLogger(getClass.getName)
 
   private val OPTION_OUTPUT_FASTA_FILE = "f"
   private val OPTION_RESULT_FILE = "o"
@@ -136,7 +136,7 @@ class RoToProteinPredictionFlow
     // For use later by set compare if option is set.
     val resultFilesBuffer = ListBuffer[File]()
 
-    for (roContext <- roContexts) {
+    def defineRoJob(roContext: List[String]): Job = {
       // Setup all the constant paths here
       val outputFastaPath = defineOutputFilePath(
         cl,
@@ -173,36 +173,37 @@ class RoToProteinPredictionFlow
       resultFilesBuffer.append(resultFilePath)
 
       // Create the FASTA file out of all the relevant sequences.
-      val roToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos(roContext, outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
-      headerJob.thenRunAtPosition(roToFasta, 0)
+      val roToFasta = ScalaJobWrapper.wrapScalaFunction(s"Write Fasta From RO, RO=$roContext",
+        writeFastaFileFromEnzymesMatchingRos(roContext, outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
 
       // Align Fasta sequence
       val alignFastaSequences = ClustalOmegaWrapper.alignProteinFastaFile(outputFastaPath, alignedFastaPath)
-      headerJob.thenRunAtPosition(alignFastaSequences, 1)
+      roToFasta.thenRun(alignFastaSequences)
 
       // Build a new HMM
       val buildHmmFromFasta = HmmerWrapper.hmmbuild(outputHmmPath, alignedFastaPath)
-      headerJob.thenRunAtPosition(buildHmmFromFasta, 2)
+      roToFasta.thenRun(buildHmmFromFasta)
 
       // Use the built HMM to find novel proteins
       val searchNewHmmAgainstPanProteome = HmmerWrapper.hmmsearch(outputHmmPath, proteomeLocation, resultFilePath)
-      headerJob.thenRunAtPosition(searchNewHmmAgainstPanProteome, 3)
+      roToFasta.thenRun(searchNewHmmAgainstPanProteome)
     }
 
+    headerJob.thenRunBatch(roContexts.map(defineRoJob))
 
     val resultFileList = resultFilesBuffer.toList
     val setResultFileDirectory = new File(OPTION_RESULT_FILE).getParent
     val roFileNameUniqueId = ro_args.mkString(sep = "_")
 
     if (cl.hasOption(OPTION_SET_UNION)) {
-      val setJob = ScalaJobWrapper.wrapScalaFunction(
+      val setJob = ScalaJobWrapper.wrapScalaFunction("Set Union Hmmer",
         setUnionHmmerSearchResults(resultFileList, setResultFileDirectory, roFileNameUniqueId) _
       )
 
       headerJob.thenRun(setJob)
     }
     if (cl.hasOption(OPTION_SET_INTERSECTION)) {
-      val setJob = ScalaJobWrapper.wrapScalaFunction(
+      val setJob = ScalaJobWrapper.wrapScalaFunction("Set Intersection Hmmer",
         setIntersectHmmerSearchResults(resultFileList, setResultFileDirectory, roFileNameUniqueId) _
       )
 

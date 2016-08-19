@@ -14,7 +14,7 @@ class RoToFastaFlow
   with WorkingDirectoryUtility {
 
   override val HELP_MESSAGE = "Workflow to convert RO number into a FASTA file."
-  private val logger = LogManager.getLogger(getClass.getName)
+  override val logger = LogManager.getLogger(getClass.getName)
 
   private val OPTION_DATABASE = "d"
   private val OPTION_OUTPUT_FASTA_FILE = "f"
@@ -69,7 +69,8 @@ class RoToFastaFlow
     )
 
     // Create the FASTA file out of all the relevant sequences.
-    val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos(List(ro), outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
+    val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(s"Write Fasta From RO, RO=$ro",
+      writeFastaFileFromEnzymesMatchingRos(List(ro), outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
     headerJob.thenRun(ecNumberToFasta)
 
     headerJob

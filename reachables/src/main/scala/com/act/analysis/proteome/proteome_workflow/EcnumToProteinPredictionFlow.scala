@@ -16,7 +16,7 @@ class EcnumToProteinPredictionFlow
   with WorkingDirectoryUtility {
 
   override val HELP_MESSAGE = "Workflow to convert EC numbers into protein predictions based on HMMs."
-  private val logger = LogManager.getLogger(getClass.getName)
+  override val logger = LogManager.getLogger(getClass.getName)
 
   private val OPTION_ALIGNED_FASTA_FILE_OUTPUT = "a"
   private val OPTION_OUTPUT_HMM = "m"
@@ -143,7 +143,8 @@ class EcnumToProteinPredictionFlow
     )
 
     // Create the FASTA file out of all the relevant sequences.
-    val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingEcnums(ec_num, outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
+    val ecNumberToFasta = ScalaJobWrapper.wrapScalaFunction(s"Write Fasta From Ecnumbers, ECNUM=$ec_num",
+      writeFastaFileFromEnzymesMatchingEcnums(ec_num, outputFastaPath, cl.getOptionValue(OPTION_DATABASE)) _)
     headerJob.thenRun(ecNumberToFasta)
 
     // Align Fasta sequence

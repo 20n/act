@@ -2,14 +2,15 @@ package com.act.workflow.tool_manager.jobs
 
 import java.io.{File, PrintWriter}
 
+import com.act.workflow.tool_manager.jobs.management.utility.CanceleableFuture
 import org.apache.logging.log4j.LogManager
 
+import scala.concurrent.CancellationException
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Future, blocking}
 import scala.sys.process.{BasicIO, Process, ProcessIO, ProcessLogger, _}
 import scala.util.{Failure, Success}
 
-class ShellJob(commands: List[String]) extends Job {
+class ShellJob(name: String, commands: List[String]) extends Job(name) {
   private val logger = LogManager.getLogger(getClass.getName)
 
   private var outputMethod: Option[(String) => Unit] = None
@@ -17,20 +18,19 @@ class ShellJob(commands: List[String]) extends Job {
 
   def asyncJob() {
     // Run the call in the future
-    val future: Future[Process] = Future {
-      blocking {
-        commands.run(setupProcessIO())
-      }
-    }
+    val (future, cancel) = CanceleableFuture.create[Process](future => commands.run(setupProcessIO()))
+    addCancelFunction(cancel)
 
     // Setup Job's success/failure
     future.onComplete({
-      // Does not mean that the job succeeded, just that the future did
       case Success(x) => markJobSuccessBasedOnReturnCode(x.exitValue())
-      // This is a failure of the future to complete because of a JVM exception
       case Failure(x) =>
-        markAsFailure()
-        logger.error(s"Cause of failure was ${x.getMessage}")
+        if (x.isInstanceOf[CancellationException]) {
+          logger.error("Future was canceled.")
+        } else {
+          markAsFailure()
+          logger.error(s"Cause of failure was ${x.getMessage}.", x)
+        }
     })
   }
 
@@ -45,12 +45,21 @@ class ShellJob(commands: List[String]) extends Job {
   }
 
   protected def markJobSuccessBasedOnReturnCode(returnCode: Int): Unit = {
-    setReturnCode(returnCode)
-    if (returnCode != 0) markAsFailure() else markAsSuccess()
+    internalState.setReturnCode(returnCode)
+    logger.trace(s"Command ${this} has changed return code to $returnCode")
+    if (returnCode != 0)
+      markAsFailure()
+    else
+      markAsSuccess()
   }
 
   def writeOutputStreamToFile(file: File): Job = {
     outputMethod = Option(writeStreamToFile(file))
+    this
+  }
+
+  def writeErrorStreamToFile(file: File): Job = {
+    errorMethod = Option(writeStreamToFile(file))
     this
   }
 
@@ -63,11 +72,6 @@ class ShellJob(commands: List[String]) extends Job {
     val writer = new PrintWriter(file)
     writer.write(output)
     writer.close()
-  }
-
-  def writeErrorStreamToFile(file: File): Job = {
-    errorMethod = Option(writeStreamToFile(file))
-    this
   }
 
   // job1.writeOutputStreamToLogger.thenRun(job2)
@@ -86,7 +90,13 @@ class ShellJob(commands: List[String]) extends Job {
     loggerType(output)
   }
 
-  override def toString: String = {
-    commands.mkString(sep = " ")
+  def doNotWriteOutputStream(): Job = {
+    outputMethod = None
+    this
+  }
+
+  def doNotWriteErrorStream(): Job = {
+    errorMethod = None
+    this
   }
 }
