@@ -48,20 +48,20 @@ public class SarTreeNode {
     this.rankingScore = 0D;
   }
 
-  public void setNumberMisses(Integer numberMisses) {
-    this.numberMisses = numberMisses;
+  public Integer getNumberHits() {
+    return numberHits;
   }
 
   public void setNumberHits(Integer numberHits) {
     this.numberHits = numberHits;
   }
 
-  public Integer getNumberHits() {
-    return numberHits;
-  }
-
   public Integer getNumberMisses() {
     return numberMisses;
+  }
+
+  public void setNumberMisses(Integer numberMisses) {
+    this.numberMisses = numberMisses;
   }
 
   public String getHierarchyId() {
@@ -75,7 +75,6 @@ public class SarTreeNode {
 
   @JsonProperty
   public String getSubstructureInchi() throws IOException {
-    // Don't include Aux info and don't log warnings
     return MolExporter.exportToFormat(substructure, "inchi:AuxNone,Woff");
   }
 
@@ -97,7 +96,7 @@ public class SarTreeNode {
     return predictionIds;
   }
 
-  public void setPredictionIds(List<Integer> predictionIds) {
+  public void setPredictionId(List<Integer> predictionIds) {
     this.predictionIds = new ArrayList<>(predictionIds);
   }
 
@@ -105,39 +104,7 @@ public class SarTreeNode {
     return rankingScore;
   }
 
-  @JsonIgnore
-  public void setRankingScore(ScoringFunctions function) {
-    this.setRankingScore(function.calculateScore(this));
-  }
-
   public void setRankingScore(Double rankingScore) {
     this.rankingScore = rankingScore;
   }
-
-  public enum ScoringFunctions {
-    HIT_MINUS_MISS {
-      @Override
-      public Double calculateScore(SarTreeNode node) {
-        return new Double(node.getNumberHits() - node.getNumberMisses());
-      }
-    },
-
-    HIT_PERCENTAGE {
-      @Override
-      public Double calculateScore(SarTreeNode node) {
-        return new Double(node.getNumberHits()) / (node.getNumberHits() + node.getNumberMisses());
-      }
-    },
-
-    NORM_HITS {
-      @Override
-      public Double calculateScore(SarTreeNode node) {
-        Double hitPercentage = new Double(node.getNumberHits()) / node.getNumberMisses();
-        return node.getNumberHits() * hitPercentage;
-      }
-    };
-
-    public abstract Double calculateScore(SarTreeNode node);
-  }
-
 }

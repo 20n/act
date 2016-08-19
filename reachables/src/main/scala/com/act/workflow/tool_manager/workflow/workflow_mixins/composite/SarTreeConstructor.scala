@@ -2,7 +2,9 @@ package com.act.workflow.tool_manager.workflow.workflow_mixins.composite
 
 import java.io.File
 
+import chemaxon.clustering.LibraryMCS
 import com.act.analysis.proteome.files.SparkAlignedFastaFileParser
+import com.act.biointerpretation.l2expansion.L2InchiCorpus
 import com.act.biointerpretation.sarinference.SarTree
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.chemical_db.ChemicalDatabaseKeywords
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.reaction_db.ReactionDatabaseKeywords
@@ -20,26 +22,7 @@ trait SarTreeConstructor extends QueryByReactionId with ReactionDatabaseKeywords
   def constructSarTreesFromAlignedFasta(alignedFastaFile: File)(): Unit = {
     val clusterToSequenceId = SparkAlignedFastaFileParser.parseFile(alignedFastaFile)
 
-    /*
-db_id = line["proteins"].split("DB_ID: ")[1].strip()
-result = seq.find_one({"_id": int(db_id)}, {"rxn_refs": 1})
-x = result["rxn_refs"]
-reaction_list.append(x[0])
-
-substrates = rxn.find_one({"_id": int(x[0])}, {"enz_summary.substrates": 1})
-chem_id = substrates["enz_summary"]["substrates"][0]["pubchem"]
-
-inchi = chem.find_one({"_id": chem_id}, {"InChI": 1})
-if "FAKE" in inchi["InChI"]:
-    inchi_list.append("")
-else:
-    inchi_list.append(inchi["InChI"])
-    cluster_list[cluster].add(inchi["InChI"])
-
-    inchi_set.add(inchi["InChI"])
- */
     val mongoConnection = connectToMongoDatabase()
-
     // For each cluster
     for (key <- clusterToSequenceId.keys) {
       // Get all the sequences and their reactions
@@ -94,6 +77,12 @@ else:
 
       // Construct SAR tree
       val clusterSarTree = new SarTree()
+      println(clusterSarTree.getNodes.size())
+      clusterSarTree.buildByClustering(new LibraryMCS(), new L2InchiCorpus(inchiSet).getMolecules)
+
+      println(clusterSarTree.getRootNodes.map(x => x.getSubstructureInchi))
+
+      println(clusterSarTree.getNodes.size())
     }
   }
 }

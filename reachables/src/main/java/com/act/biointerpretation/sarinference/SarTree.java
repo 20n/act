@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Stack;
 import java.util.function.Consumer;
 
+import static chemaxon.clustering.MGraph.HIERARCHY_ID;
 /**
  * Provides a nice interface over the results of a LibMCS clustering run.
  */
@@ -27,7 +28,7 @@ public class SarTree {
 
   private static final Integer FIRST_ID = 1;
   private static final Boolean ALL_NODES = false; // Tell LibMCS to return all nodes in the tree in its clustering
-  private static final String HIERARCHY_ID = "HierarchyID";
+  private static transient final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private Map<String, SarTreeNode> nodeMap;
 
@@ -111,19 +112,11 @@ public class SarTree {
     if (molecule.getPropertyObject(HIERARCHY_ID) == null) {
       throw new MolFormatException("Bizarre error: Libmcs returned us a molecule with no hierarchy ID.");
     }
-
     String hierId = molecule.getPropertyObject(HIERARCHY_ID).toString();
+    Object propertyObject = molecule.getPropertyObject(SarTreeNode.PREDICTION_ID_KEY);
+
     List<Integer> predictionIds = new ArrayList<>();
 
-    // A molecule has a RecoveryID iff it's a leaf node, by LibraryMCS's API. Return with no prediction IDs,
-    // as a higher level SAR node does not correspond to any particular predictions.
-    if (molecule.getPropertyObject("RecoveryID") == null) {
-      return new SarTreeNode(molecule, hierId, predictionIds);
-    }
-
-    // If it is a leaf node, it should always have the PREDICTION_ID_KEY property object- we added it earlier!
-    // Thus we should add those prediction IDs to the SarTreeNode.
-    Object propertyObject = molecule.getPropertyObject(SarTreeNode.PREDICTION_ID_KEY);
     if (propertyObject != null) {
       try {
         predictionIds = Arrays.asList(OBJECT_MAPPER.readValue(propertyObject.toString(), Integer[].class));
