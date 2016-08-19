@@ -41,12 +41,12 @@ public class L2PredictionCorpus implements Serializable {
   private Map<Integer, L2Prediction> idToPredictionMap;
 
   public L2PredictionCorpus() {
-    this.corpus = new ArrayList<>();
-    this.idToPredictionMap = new HashMap<>();
+    this(new ArrayList<>());
   }
 
   public L2PredictionCorpus(List<L2Prediction> corpus) {
     this.corpus = corpus;
+    populateIdToPredictionMap();
   }
 
   public List<L2Prediction> getCorpus() {
@@ -54,14 +54,14 @@ public class L2PredictionCorpus implements Serializable {
   }
 
   /**
-   * Read a prediction corpus from file.
+   * Read a prediction corpus from file, and populate its prediction map.
    *
    * @param corpusFile The file to read.
    * @return The L2PredictionCorpus.
    * @throws IOException
    */
   public static L2PredictionCorpus readPredictionsFromJsonFile(File corpusFile) throws IOException {
-    return OBJECT_MAPPER.readValue(corpusFile, L2PredictionCorpus.class);
+    return L2PredictionCorpus.OBJECT_MAPPER.readValue(corpusFile, L2PredictionCorpus.class).populateIdToPredictionMap();
   }
 
   /**
@@ -69,37 +69,26 @@ public class L2PredictionCorpus implements Serializable {
    *
    * @param id The prediction ID to find.
    * @return The corresponding prediction.
-   * @throws IllegalArgumentException if the id is not present in the corpus.
+   * @throws IllegalArgumentException if the id is not present in the prediction map.
    */
   @JsonIgnore
   public L2Prediction getPredictionFromId(Integer id) {
-    try {
-      return getPredictionOrThrowException(id);
-    } catch (IllegalArgumentException e) {
-      // If the ID isn't found the first time, repopulate the map to ensure it has been instantiated and is
-      // updated with all the current predictions. This map is not populated by default because it is often not
-      // required at all. This structure ensures that it is only populated if needed, but also only populated once
-      // under normal circumstances.
-      populateIdToPredictionMap();
-    }
-    // This time, if the ID isn't found, it isn't here- just throw the exception!
-    return getPredictionOrThrowException(id);
-  }
-
-  private L2Prediction getPredictionOrThrowException(Integer id) {
     L2Prediction result = idToPredictionMap.get(id);
     if (result != null) {
       return result;
     }
-    throw new IllegalArgumentException("Id " + id + " not present in corpus!");
+    throw new IllegalArgumentException("Id " + id + " is not present in corpus, or the id->prediction map has not " +
+        "been repopulated since it was added.");
   }
 
   /**
-   * Add all prediction IDs to idToPredictionMap.
+   * Add all prediction IDs to idToPredictionMap. This is called on construction and load from file, but should be
+   * re-called after predictions are added to the corpus, if getPredictionFromId is to be used.
    */
-  private void populateIdToPredictionMap() {
+  public L2PredictionCorpus populateIdToPredictionMap() {
     this.idToPredictionMap = new HashMap<>();
     corpus.forEach(prediction -> idToPredictionMap.put(prediction.getId(), prediction));
+    return this;
   }
 
   /**
