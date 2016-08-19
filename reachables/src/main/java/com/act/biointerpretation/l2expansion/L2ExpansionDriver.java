@@ -358,7 +358,7 @@ public class L2ExpansionDriver {
         // Handle input ros
         ErosCorpus roCorpus = new ErosCorpus();
         roCorpus.loadValidationCorpus();
-        List<Ero> roList = roCorpus.getRos(roIds);
+        roCorpus.filterCorpusById(roIds);
 
         // Handle input substrates
         L2InchiCorpus inchis = new L2InchiCorpus();
@@ -367,7 +367,7 @@ public class L2ExpansionDriver {
 
         // Build expander
         PredictionGenerator generator = new AllPredictionsGenerator(new ReactionProjector());
-        L2Expander expander = new SingleSubstrateRoExpander(roList, moleculeList, generator);
+        L2Expander expander = new SingleSubstrateRoExpander(roCorpus, moleculeList, generator);
 
         // Run expander
         L2PredictionCorpus predictions = expander.getPredictions();
