@@ -35,8 +35,8 @@ public class LibMcsClustering {
 
   private static final String OPTION_PREDICTION_CORPUS = "c";
   private static final String OPTION_POSITIVE_INCHIS = "p";
-  private static final String OPTION_SARTREE_PATH = "o";
-  private static final String OPTION_SCORED_SAR_PATH = "o";
+  private static final String OPTION_SARTREE_PATH = "t";
+  private static final String OPTION_SCORED_SAR_PATH = "s";
   private static final String OPTION_HELP = "h";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {
@@ -123,8 +123,8 @@ public class LibMcsClustering {
     File sartreeFile = new File(cl.getOptionValue(OPTION_SARTREE_PATH));
     File scoredSarFile = new File(cl.getOptionValue(OPTION_SCORED_SAR_PATH));
 
-    JavaRunnable clusterRunner = getRunnableClusterer(inputCorpusFile, sartreeFile);
-    JavaRunnable scoringRunner = getRunnableSarScorer(
+    JavaRunnable clusterer = getClusterer(inputCorpusFile, sartreeFile);
+    JavaRunnable scorer = getSarScorer(
         inputCorpusFile,
         sartreeFile,
         positiveInchisFile,
@@ -133,10 +133,10 @@ public class LibMcsClustering {
         THRESHOLD_TREE_SIZE);
 
     LOGGER.info("Running clustering.");
-    clusterRunner.run();
+    clusterer.run();
 
     LOGGER.info("Running sar scoring.");
-    scoringRunner.run();
+    scorer.run();
 
     LOGGER.info("Complete!.");
   }
@@ -154,7 +154,7 @@ public class LibMcsClustering {
    * @param sarTreeNodesOutput The file to which to write the SarTreeNodeList of every node in the clustering tree.
    * @return A JavaRunnable to run the appropriate clustering.
    */
-  public static JavaRunnable getRunnableClusterer(File predictionCorpusInput, File sarTreeNodesOutput) {
+  public static JavaRunnable getClusterer(File predictionCorpusInput, File sarTreeNodesOutput) {
 
     return new JavaRunnable() {
       @Override
@@ -165,6 +165,7 @@ public class LibMcsClustering {
 
         // Build input corpus and substrate list
         L2PredictionCorpus inputCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(predictionCorpusInput);
+        // Get list of molecules, tagged by PredictionId so we can track back to the corresponding predictions later on.
         Collection<Molecule> molecules = importMoleculesWithPredictionIds(inputCorpus);
 
         // Run substrate clustering
@@ -186,7 +187,21 @@ public class LibMcsClustering {
         return "SarClusterer:" + predictionCorpusInput.getName();
       }
 
-      public Collection<Molecule> importMoleculesWithPredictionIds(L2PredictionCorpus inputCorpus) throws MolFormatException {
+      /**
+       * Imports the substrate molecules from the prediction corpus, and tags them with their prediction IDs from
+       * the corpus, using Chemaxon's setPropertyObject. These prediction Ids can then be recovered from the molecules
+       * later, and mapped back to the original inchis, even if the molecule has been changed so that its inchi is no
+       * longer the same. In particular, LibraryMCS strips stereo and other layers from the inchis, which would make
+       * it hard to track LCMS hit sand misses between the output molecules of LibraryMCS and the initial inchis fed
+       * into LibraryMCS.
+       *
+       * @param inputCorpus The prediction corpus.
+       * @return A list of molecules, tagged with a property objects which contains the corresponding list of
+       * prediction ids..
+       * @throws MolFormatException If a molecule cannot be imported from an inchi.
+       */
+      private Collection<Molecule> importMoleculesWithPredictionIds(L2PredictionCorpus inputCorpus)
+          throws MolFormatException {
         Map<String, Molecule> inchiToMoleculeMap = new HashMap<>();
         for (L2Prediction prediction : inputCorpus.getCorpus()) {
           for (String substrateInchi : prediction.getSubstrateInchis()) { // For now this should only be one substrate
@@ -205,7 +220,7 @@ public class LibMcsClustering {
         return inchiToMoleculeMap.values();
       }
 
-      public Molecule importMoleculeWithPredictionId(String inchi, Integer id) throws MolFormatException {
+      private Molecule importMoleculeWithPredictionId(String inchi, Integer id) throws MolFormatException {
         Molecule mol = MolImporter.importMol(inchi, "inchi");
         List<Integer> predictionIds = new ArrayList<>();
         predictionIds.add(id);
@@ -227,7 +242,7 @@ public class LibMcsClustering {
    * @param subtreeThreshold The minimum number of leaves a sAR should match to be returned.
    * @return A JavaRunnable to run the SAR scoring.
    */
-  public static JavaRunnable getRunnableSarScorer(
+  public static JavaRunnable getSarScorer(
       File predictionsFile,
       File sarTreeInput,
       File lcmsInput,
@@ -262,12 +277,11 @@ public class LibMcsClustering {
         // Score SARs
         // Calculate hits and misses
         sarTree.applyToNodes(sarScorer, subtreeThreshold);
-        // Calculate ranking scores
-        sarTree.getNodes().forEach(node ->
-            node.setRankingScore(node.getNumberHits() - (missPenalty * node.getNumberMisses())));
         // Retain nodes that are not repeats or leaves, and have more than 0 LCMS hits
         SarTreeNodeList treeNodeList = sarTree.getExplanatoryNodes(subtreeThreshold, 0.0);
-        treeNodeList.sortByDecreasingScores();
+        // Sort by number hits - number misses. This heuristically balances the consideration of wanting high percentage
+        // SARs ranking highly, but not wanting those with only a couple total matches,
+        treeNodeList.sortBy(SarTreeNode.ScoringFunctions.HIT_MINUS_MISS);
 
         // Write out output.
         treeNodeList.writeToFile(sarTreeNodeOutput);

@@ -153,7 +153,6 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     }
     logger.info(s"ROs to use: $roIds")
 
-
     val filteredSubstratesFile = new File(workingDir, "filtered_substrates")
 
     val predictionsFilename = "predictions"
@@ -230,7 +229,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       // Build one job per RO for clustering
       val clusteringRunnables =
         roIds.map(roId =>
-          LibMcsClustering.getRunnableClusterer(
+          LibMcsClustering.getClusterer(
             predictionsFiles(roId),
             sarTreeFiles(roId)))
       val batchSize = 1; // To limit memory usage
@@ -243,7 +242,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
 
       // Build one job per RO for sar scoring, using a random set of LCMS hits instead of actual data.
       val sarScoringRunnables = roIds.map(roId =>
-        LibMcsClustering.getRunnableSarScorer(
+        LibMcsClustering.getSarScorer(
           predictionsFiles(roId),
           sarTreeFiles(roId),
           lcmsFile,
@@ -259,7 +258,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       verifyInputFile(lcmsFile)
 
       val productScoringRunnables = roIds.map(roId =>
-        ProductScorer.getRunnableProductScorer(
+        ProductScorer.getProductScorer(
           predictionsFiles(roId),
           scoredSarsFiles(roId),
           lcmsFile,

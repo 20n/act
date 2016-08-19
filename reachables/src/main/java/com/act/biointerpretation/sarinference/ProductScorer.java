@@ -103,7 +103,7 @@ public class ProductScorer {
     File scoredSarsFile = new File(cl.getOptionValue(OPTION_SCORED_SARS));
     File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
 
-    JavaRunnable productScoreRunner = getRunnableProductScorer(
+    JavaRunnable productScoreRunner = getProductScorer(
         inputCorpusFile,
         scoredSarsFile,
         lcmsFile,
@@ -123,8 +123,7 @@ public class ProductScorer {
    * @param lcmsFile The set of positive LCMS inchis, to use in scoring.
    * @return A JavaRunnable to run the product scoring.
    */
-  public static JavaRunnable getRunnableProductScorer(File predictionCorpus, File scoredSars, File lcmsFile,
-                                                      File outputFile) {
+  public static JavaRunnable getProductScorer(File predictionCorpus, File scoredSars, File lcmsFile, File outputFile) {
 
     return new JavaRunnable() {
       @Override

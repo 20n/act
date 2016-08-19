@@ -40,7 +40,12 @@ public class SarTreeNodeList {
     sarTreeNodes.addAll(nodes);
   }
 
-  public void sortByDecreasingScores() {
+  public void sortBy(SarTreeNode.ScoringFunctions function) {
+    sarTreeNodes.forEach(node -> node.setRankingScore(function));
+    sortByRankingScores();
+  }
+
+  public void sortByRankingScores() {
     sarTreeNodes.sort((a, b) -> -Double.compare(a.getRankingScore(), b.getRankingScore()));
   }
 

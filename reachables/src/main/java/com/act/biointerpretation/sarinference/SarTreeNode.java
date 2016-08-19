@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.google.gwt.thirdparty.javascript.rhino.head.TopLevel.Builtins.Function;
+
 /**
  * A single node in a SarTree, which corresponds to a substructure pulled out by LibMCS clustering.
  */
@@ -104,7 +106,38 @@ public class SarTreeNode {
     return rankingScore;
   }
 
+  public void setRankingScore(ScoringFunctions function) {
+    this.setRankingScore(function.calculateScore(this));
+  }
+
   public void setRankingScore(Double rankingScore) {
     this.rankingScore = rankingScore;
   }
+
+  public enum ScoringFunctions {
+    HIT_MINUS_MISS {
+      @Override
+      public Double calculateScore(SarTreeNode node) {
+        return new Double(node.getNumberHits() - node.getNumberMisses());
+      }
+    },
+
+    HIT_PERCENTAGE {
+      @Override
+      public Double calculateScore(SarTreeNode node) {
+        return new Double(node.getNumberHits()) / (node.getNumberHits() + node.getNumberMisses());
+      }
+    },
+
+    NORM_HITS {
+      @Override
+      public Double calculateScore(SarTreeNode node) {
+        Double hitPercentage = new Double(node.getNumberHits()) / node.getNumberMisses();
+        return node.getNumberHits() * hitPercentage;
+      }
+    };
+
+    public abstract Double calculateScore(SarTreeNode node);
+  }
+
 }
