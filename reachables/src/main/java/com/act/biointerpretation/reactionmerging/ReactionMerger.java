@@ -177,7 +177,8 @@ public class ReactionMerger extends BiointerpretationProcessor {
       for (JSONObject protein : r.getProteinData()) {
         // Save the source reaction ID for debugging/verification purposes.  TODO: is adding a field like this okay?
         protein.put("source_reaction_id", r.getUUID());
-        JSONObject newProteinData = migrateProteinData(protein, Long.valueOf(newId), r);
+        super.reactionMigrationMap.put((long) r.getUUID(), (long) newId);
+        JSONObject newProteinData = migrateProteinData(protein);
         mergedReaction.addProteinData(newProteinData);
       }
 

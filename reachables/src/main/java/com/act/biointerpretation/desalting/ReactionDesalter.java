@@ -120,7 +120,7 @@ public class ReactionDesalter extends BiointerpretationProcessor {
 
       int newId = getNoSQLAPI().writeToOutKnowlegeGraph(desaltedReaction);
 
-      migrateAllProteins(desaltedReaction, Long.valueOf(newId), oldRxn, Long.valueOf(oldRxn.getUUID()));
+      migrateAllProteins(desaltedReaction, oldRxn, Long.valueOf(oldRxn.getUUID()));
 
       // Update the reaction in the DB with the newly migrated protein data.
       getNoSQLAPI().getWriteDB().updateActReaction(desaltedReaction, newId);
