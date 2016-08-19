@@ -25,7 +25,6 @@ package com.act.lcms.db.io.report;
  */
 
 import com.act.biointerpretation.l2expansion.L2Prediction;
-import com.act.biointerpretation.sarinference.SarTreeNode;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -72,6 +71,7 @@ public class IonAnalysisInterchangeModel {
 
   /**
    * Populates a map from all the inchis analyzed in the corpus to true if they are and LCMS hit, or false if not.
+   * An inchi is considered a hit if any considered ion of that inchi has a MZ value that is a hit.
    */
   private void populateInchiToIsHit() {
     this.inchiToIsHit = new HashMap<>();
@@ -81,7 +81,7 @@ public class IonAnalysisInterchangeModel {
       for (HitOrMiss molecule : resultForMZ.getMolecules()) {
 
         // If the inchi is already a hit, then we do not want to override
-        // it with a possible miss result.
+        // it with a possible miss result, as a hit on any single ion is enough to consider the molecule a hit.
         if (this.inchiToIsHit.get(molecule.getInchi()) == null ||
             !this.inchiToIsHit.get(molecule.getInchi())) {
           this.inchiToIsHit.put(molecule.getInchi(), isHit);
@@ -99,7 +99,7 @@ public class IonAnalysisInterchangeModel {
   /**
    * Returns HIT or MISS if the inchi is in the precalculated inchi->hit map, or NO_DATA if the inchi is not.
    * This will let us know if there has been any change in the inchi's form since the initial calculation, instead of
-   * just silentlyl returning a miss.
+   * just silently returning a miss.
    *
    * @param inchi The inchi of the molecule.
    * @return The LCMS result.

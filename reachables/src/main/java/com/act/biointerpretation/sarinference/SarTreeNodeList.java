@@ -49,9 +49,10 @@ public class SarTreeNodeList {
     sarTreeNodes.sort((a, b) -> -Double.compare(a.getRankingScore(), b.getRankingScore()));
   }
 
-  public void loadFromFile(File file) throws IOException {
+  public SarTreeNodeList loadFromFile(File file) throws IOException {
     SarTreeNodeList fromFile = OBJECT_MAPPER.readValue(file, SarTreeNodeList.class);
     this.setSarTreeNodes(fromFile.getSarTreeNodes());
+    return this;
   }
 
   public void writeToFile(File file) throws IOException {

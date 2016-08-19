@@ -78,8 +78,8 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
         hasArg.
         longOpt("starting-point")
         .desc("What point of the workflow to start at, since some steps may already be complete. Choices are " +
-          "EXPANSION, LCMS, CLUSTERING, SAR_SCORING, PRODUCT_SCORING, and MESH_RESULTS. The workflow assumes any " +
-          "pre-computed steps have been put into the working directory, where they would have been generated had " +
+          "EXPANSION -> LCMS -> CLUSTERING -> SAR_SCORING -> PRODUCT_SCORING -> MESH_RESULTS. The workflow assumes " +
+          "any pre-computed steps have been put into the working directory, where they would have been generated had " +
           "the workflow been ran from the start. For example, precomputed prediction corpuses should be located at " +
           "workingDir/predictions.1, workingDir/predictions.2, etc."),
 
@@ -232,7 +232,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
           LibMcsClustering.getClusterer(
             predictionsFiles(roId),
             sarTreeFiles(roId)))
-      val batchSize = 1; // To limit memory usage
+      val batchSize = 1 // To limit memory usage
       addJavaRunnableBatch("cluster", clusteringRunnables, batchSize)
     }
 
@@ -264,8 +264,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
           lcmsFile,
           scoredProductsFiles(roId)
         ))
-      addJavaRunnableBatch("productScoring", productScoringRunnables);
-
+      addJavaRunnableBatch("productScoring", productScoringRunnables)
     }
 
     def addMeshResultsJob()(): Unit = {
@@ -313,12 +312,12 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
 
     // Get subset of jobs to run.
     // The first element of each entry in the list is the step it corresponds to.
-    val startIndex = jobList.indexWhere(a => a._1.equals(firstStep))
-    val endIndex = jobList.indexWhere(a => a._1.equals(lastStep))
+    val startIndex = jobList.indexWhere(_._1.equals(firstStep))
+    val endIndex = jobList.indexWhere(_._1.equals(lastStep))
     val jobsToRun = jobList.slice(startIndex, endIndex + 1)
 
-    // The second element of each entry in the list is the function to call.
-    jobsToRun.foreach(jobListEntry => jobListEntry._2())
+    // The second element of each entry in the list is the function to call- call it!
+    jobsToRun.foreach(_._2())
 
     headerJob
   }
@@ -336,14 +335,12 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     */
   def meshResults(scoredSarFiles: List[File], scoredProductFiles: List[File],
                   sarOut: File, productOut: File)(): Unit = {
-    val sarLists = scoredSarFiles.map(file => {
-      var list = new SarTreeNodeList
-      list.loadFromFile(file)
-      list
-    })
-    val meshedList = new SarTreeNodeList()
+    val sarLists = scoredSarFiles.map(new SarTreeNodeList().loadFromFile(_))
+    val meshedList = new SarTreeNodeList
+
     sarLists.foreach(list => meshedList.addAll(list.getSarTreeNodes))
-    meshedList.sortBy(ScoringFunctions.HIT_MINUS_MISS);
+
+    meshedList.sortBy(ScoringFunctions.HIT_MINUS_MISS)
     meshedList.writeToFile(sarOut)
 
     var productCorpuses = scoredProductFiles.map(file => L2PredictionCorpus.readPredictionsFromJsonFile(file))
@@ -358,7 +355,6 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     * @param workingDir The directory in which to create the files.
     * @param fileName   The prefix of the file name.
     * @param roIds      The ROs to create files for.
-    *
     * @return A map from RO id to the corresponding file.
     */
   def buildFilesForRos(workingDir: String, fileName: String, roIds: List[Integer]): Map[Integer, File] = {
