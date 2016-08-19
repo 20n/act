@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,7 @@ public abstract class BiointerpretationProcessor {
   private Map<Long, String> newChemIdToInchi = new HashMap<>();
   private HashMap<Long, Long> organismMigrationMap = new HashMap<>();
   private HashMap<Long, Long> sequenceMigrationMap = new HashMap<>();
+  private HashMap<Long, Long> reactionMigrationMap = new HashMap<>();
 
   boolean initCalled = false;
 
@@ -109,15 +111,36 @@ public abstract class BiointerpretationProcessor {
   }
 
   /**
-   * A hook that runs after all reactions have been processed/migrated.  This is meant to
-   * be overridden, as it does nothing by default.
+   * A hook that runs after all reactions have been processed/migrated. This is meant to update all the reaction IDs in
+   * the Seq entries
    */
   protected void afterProcessReactions() throws IOException, ReactionException {
-    // TODO: consider mimicking the behavior of updateRxnRefs in SequenceMerger
+    Iterator<Seq> writtenSeqIterator = api.getWriteDB().getSeqIterator();
+
+    while (writtenSeqIterator.hasNext()) {
+      Seq writtenSeq = writtenSeqIterator.next();
+
+      Set<Long> oldRxnRefs = writtenSeq.getReactionsCatalyzed();
+      Set<Long> newRxnRefs = new HashSet<>();
+      for (Long oldRxnRef : oldRxnRefs) {
+        newRxnRefs.add(reactionMigrationMap.get(oldRxnRef));
+      }
+
+      writtenSeq.setReactionsCatalyzed(newRxnRefs);
+      api.getWriteDB().updateRxnRefs(writtenSeq);
+    }
   }
 
   protected NoSQLAPI getNoSQLAPI() {
     return this.api;
+  }
+
+  protected void writeMigratedReactionMap(Long oldId, Long newId) {
+    reactionMigrationMap.put(oldId, newId);
+  }
+
+  protected Long readMigrationReactionMap(Long oldId) {
+    return reactionMigrationMap.get(oldId);
   }
 
   protected Map<Long, Long> getOldChemIdToNewChemId() {
@@ -220,10 +243,12 @@ public abstract class BiointerpretationProcessor {
       Long newIdL = Long.valueOf(newId);
 
       migrateReactionChemicals(newRxn, oldRxn);
-      migrateAllProteins(newRxn, newIdL, oldRxn, oldId);
+      migrateAllProteins(newRxn, oldRxn, oldId);
 
       // Give the subclasses a chance at the reactions.
       newRxn = runSpecializedReactionProcessing(newRxn, newIdL);
+
+      reactionMigrationMap.put(oldId, newIdL);
 
       // Update the reaction in the DB with the newly migrated protein data.
       api.getWriteDB().updateActReaction(newRxn, newId);
@@ -256,13 +281,12 @@ public abstract class BiointerpretationProcessor {
   /**
    * Migrates all protein data from oldRxn to newRxn, preserving the source reaction id on the protein objects.
    * @param newRxn The reaction to which to write protein data.
-   * @param newId The new reaction's ID (taken as a parameter due to MongoDB.java limitations).
    * @param oldRxn The reaction from which to read protein data.
    * @param oldId The old reaction's ID (taken as a parameter for symmetry with newId).
    */
-  protected void migrateAllProteins(Reaction newRxn, Long newId, Reaction oldRxn, Long oldId) {
+  protected void migrateAllProteins(Reaction newRxn, Reaction oldRxn, Long oldId) {
     for (JSONObject protein : oldRxn.getProteinData()) {
-      JSONObject newProteinData = migrateProteinData(protein, newId, oldRxn);
+      JSONObject newProteinData = migrateProteinData(protein);
       // Save the source reaction ID for debugging/verification purposes.  TODO: is adding a field like this okay?
       newProteinData.put("source_reaction_id", oldId);
       newRxn.addProteinData(newProteinData);
@@ -370,7 +394,7 @@ public abstract class BiointerpretationProcessor {
     return newOrganismId;
   }
 
-  protected JSONObject migrateProteinData(JSONObject oldProtein, Long newRxnId, Reaction rxn) {
+  protected JSONObject migrateProteinData(JSONObject oldProtein) {
     // Copy the protein object for modification.
     // With help from http://stackoverflow.com/questions/12809779/how-do-i-clone-an-org-json-jsonobject-in-java.
     JSONObject newProtein = new JSONObject(oldProtein, JSONObject.getNames(oldProtein));
@@ -385,28 +409,16 @@ public abstract class BiointerpretationProcessor {
     }
     // TODO: unify the Protein object schema so this sort of handling isn't necessary.
 
-    Set<Long> rxnIds = Collections.singleton(newRxnId);
-
     JSONArray sequences = oldProtein.getJSONArray("sequences");
     List<Long> newSequenceIds = new ArrayList<>(sequences.length());
     for (int i = 0; i < sequences.length(); i++) {
       Long sequenceId = sequences.getLong(i);
 
-      /* TODO: Consider optimizations here. Instead of updating Seq entries repeatedly, we can wait until all the
-      reactions have been migrated and then use the reactionMigrationMap to update all the reaction IDs in Seq entries.
-       Refer to updateRxnRefs in SequenceMerger and consider making that the default behavior in afterProcessReactions */
+      // checks if sequence has already been written/migrated
       if (sequenceMigrationMap.containsKey(sequenceId)) {
         // add migrated sequence ID to list of referenced sequences in the reaction protein object
         Long writtenSeqId = sequenceMigrationMap.get(sequenceId);
         newSequenceIds.add(writtenSeqId);
-        Seq writtenSeq = api.getWriteDB().getSeqFromID(writtenSeqId);
-
-        // update the list of reactions that the written sequence object should reference
-        Set<Long> oldRxnRefs = writtenSeq.getReactionsCatalyzed();
-        oldRxnRefs.addAll(rxnIds);
-        writtenSeq.setReactionsCatalyzed(oldRxnRefs);
-
-        api.getWriteDB().updateRxnRefs(writtenSeq);
       } else {
         Seq seq = api.getReadDB().getSeqFromID(sequenceId);
 
@@ -423,7 +435,7 @@ public abstract class BiointerpretationProcessor {
             newSeqOrganismId, // Use freshly migrated organism id to replace the old one.
             seq.getSequence(),
             seq.getReferences(),
-            rxnIds, // Use the reaction's new id (also in substrates/products) instead of the old one.
+            seq.getReactionsCatalyzed(), // these will be updated in afterProcessReactions()
             MongoDBToJSON.conv(seq.getMetadata())
         );
         // TODO: we should migrate all the seq documents with zero references over to the new DB.

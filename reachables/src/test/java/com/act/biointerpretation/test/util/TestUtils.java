@@ -24,20 +24,35 @@ public class TestUtils {
   }};
 
   // Use distinct id spaces for input proteins to ensure ids are re-mapped during the merging/writing.
-  public static final List<Seq> SEQUENCES = new ArrayList<Seq>() {{
-    add(new Seq(10L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQA",
-        Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
-    add(new Seq(20L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQB",
-        Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
-    add(new Seq(30L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQC",
-        Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
-    add(new Seq(40L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQD",
-        Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
-    add(new Seq(50L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQE",
-        Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
-    add(new Seq(60L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQF",
-        Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
-  }};
+  public static final List<Seq> SEQUENCES = assembleSequences();
+
+
+  private static List<Seq> assembleSequences() {
+    List<Seq> sequences = new ArrayList<Seq>() {{
+      add(new Seq(10L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQA",
+          Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
+      add(new Seq(20L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQB",
+          Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
+      add(new Seq(30L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQC",
+          Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
+      add(new Seq(40L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQD",
+          Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
+      add(new Seq(50L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQE",
+          Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
+      add(new Seq(60L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQF",
+          Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
+    }};
+
+    for (Seq sequence : sequences) {
+      int id = sequence.getUUID();
+      int rxnID = id/10;
+      sequence.addReactionsCatalyzed((long) rxnID);
+    }
+
+    return sequences;
+  }
+
+  // need to add seq Id/10 as rxn ref id for all of these.
 
   public static final Map<Long, Seq> SEQ_MAP = new HashMap<Long, Seq>() {{
     for (Seq seq : SEQUENCES) {
