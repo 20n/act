@@ -18,7 +18,7 @@ trait WriteProteinSequenceToFasta {
     * (At about ~300k of sequences things start to get slow/stop, this method that doesn't happen).
     *
     * @param proteinSequence A given protein sequence instance
-    * @param outputWriter    The stream to write to.
+    * @param outputStream    The stream to write to.
     */
   def writeProteinSequenceToFasta(proteinSequence: ProteinSequence, outputStream: BufferedWriter) {
     val header: String = headerFormat.getHeader(proteinSequence)

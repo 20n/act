@@ -39,8 +39,8 @@ class CostModel {
   type KiloJoulePerMMol = Double
   type MMolPerLiterHour = Double
   /********************************************************************************************
-  *  Constants
-  ********************************************************************************************/
+    *  Constants
+    ********************************************************************************************/
 
   val defaultFermRunTime: Time = 10 days
   val defaultBrothMassPerBatch: Mass = VolumeToMass(360 cubicMeters)
@@ -72,8 +72,8 @@ class CostModel {
   val allMediaComponents = List(KH2PO4, MgSO47H2O, NH42SO4, EDTA, FeSO47H2O, ZnSO47H2O, CaCl22H2O, CuSO4, Na2MoO42H2O, CoCl26H20, MnCl24H2O, Biotin, CaPantothe, NicotinicAc, Myoinositol, ThiamineHCl, PyroxidolHC)
   val unitCostOfMedia = allMediaComponents.map(x => x.amount * x.cost).reduce(_ + _)
   /********************************************************************************************
-  *  Sensible defaults and external caller
-  ********************************************************************************************/
+    *  Sensible defaults and external caller
+    ********************************************************************************************/
 
   var strainTiter: Titer = Defaults.defaultTiter;
   var strainYield: Yield = Defaults.defaultYield;
@@ -130,8 +130,8 @@ class CostModel {
   }
 
   /********************************************************************************************
-  *  Consumptions and cost per batch
-  ********************************************************************************************/
+    *  Consumptions and cost per batch
+    ********************************************************************************************/
   def workingVolume: Volume = vesselSize * pcOfVesselUsed.value
 
   def finalByInitialVol: Double = brothMassPerBatch.value / VolumeToMass(workingVolume).value
@@ -157,8 +157,8 @@ class CostModel {
   def consumablesPerBatch: Money = mediaPerBatch + glcPerBatch + ammoniaPerBatch
 
   /********************************************************************************************
-  *  Rental Model: Cost with CMOs
-  ********************************************************************************************/
+    *  Rental Model: Cost with CMOs
+    ********************************************************************************************/
   def costWithCMOs(): Price[Mass] = {
     val rentPerBatch = location.rentalRate * literDaysPerBatch
 
@@ -175,8 +175,8 @@ class CostModel {
   }
 
   /********************************************************************************************
-  *  Bottom Up Model: Cost with Build Your Own Plant
-  ********************************************************************************************/
+    *  Bottom Up Model: Cost with Build Your Own Plant
+    ********************************************************************************************/
   def costWithBYOPlant(): Price[Mass] = {
     // TODO fill out the cost model for Build Your Own Plant
     throw new UnsupportedOperationException()

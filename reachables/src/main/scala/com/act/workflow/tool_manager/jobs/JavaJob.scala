@@ -31,8 +31,4 @@ class JavaJob(name: String, runnable: JavaRunnable) extends Job(name) {
         }
     })
   }
-
-  override def toString(): String = {
-    runnable.toString()
-  }
 }

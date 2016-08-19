@@ -72,7 +72,7 @@ public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
   public IonAnalysisInterchangeModel.LCMS_RESULT getLcmsDataForNode(SarTreeNode node) {
     if (node.getPredictionIds().isEmpty()) {
       throw new IllegalArgumentException("Cannot get LCMS results for a node with no predictions:" +
-          node.getHierarchyId());
+              node.getHierarchyId());
     }
     /**
      * The results of the predictions should be the same for one substrate and one RO, as all of the results will
@@ -84,7 +84,7 @@ public class SarTreeBasedCalculator implements Consumer<SarTreeNode> {
 
     for (Integer id : node.getPredictionIds()) {
       IonAnalysisInterchangeModel.LCMS_RESULT otherResult =
-          lcmsResults.getLcmsDataForPrediction(predictionCorpus.getPredictionFromId(id));
+              lcmsResults.getLcmsDataForPrediction(predictionCorpus.getPredictionFromId(id));
       if (otherResult != firstResult) {
         LOGGER.error("Different LCMS results for same substrate! %s and %s", firstResult, otherResult);
       }

@@ -9,6 +9,7 @@ trait ReactionDatabaseKeywords {
   val REACTION_DB_KEYWORD_KM = "km"
   val REACTION_DB_KEYWORD_VALUE = "val"
   val REACTION_DB_KEYWORD_SUBSTRATES = "substrates"
+  val REACTION_DB_KEYWORD_PRODUCTS = "products"
   val REACTION_DB_KEYWORD_ENZ_SUMMARY = "enz_summary"
   val REACTION_DB_KEYWORD_PUBCHEM = "pubchem"
 }
