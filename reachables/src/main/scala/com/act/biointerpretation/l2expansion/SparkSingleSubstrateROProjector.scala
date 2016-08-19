@@ -58,7 +58,7 @@ object compute {
     LOGGER.info(s"Using license file at $localLicenseFile (file exists: ${new File(localLicenseFile).exists()})")
     LicenseManager.setLicenseFile(localLicenseFile)
 
-    val expander = new SingleSubstrateRoExpander(List(ero).asJava, molecules.asJava,
+    val expander = new SingleSubstrateRoExpander(new ErosCorpus(List(ero).asJava), molecules.asJava,
       new AllPredictionsGenerator(new ReactionProjector()))
     val results = expander.getPredictions()
 
@@ -175,13 +175,13 @@ object SparkSingleSubstrateROProjector {
 
     val eros = new ErosCorpus()
     eros.loadValidationCorpus()
-    val fullErosList = eros.getRos.asScala
-    LOGGER.info("Filtering eros to only those having names and single substrates")
-    val erosList = (if (cl.hasOption(OPTION_FILTER_REQUIRE_RO_NAMES)) {
-      fullErosList.filter(x => x.getName != null && !x.getName.isEmpty)
-    } else {
-      fullErosList
-    }).filter(_.getSubstrate_count == 1)
+    val fullErosList = eros.getRos
+    LOGGER.info("Filtering down to only one substrate ROs.");
+    if (cl.hasOption(OPTION_FILTER_REQUIRE_RO_NAMES)) {
+      LOGGER.info("Filtering down to only ROs with names.");
+      eros.retainNamedRos()
+    }
+    val erosList = eros.getRos.asScala
     LOGGER.info(s"Reduction in ERO list size: ${fullErosList.size} -> ${erosList.size}")
 
     val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)

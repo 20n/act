@@ -1,7 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
 import chemaxon.reaction.ReactionException;
-import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.sars.NoSar;
 import com.act.biointerpretation.sars.Sar;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -13,7 +12,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -91,25 +89,5 @@ public abstract class L2Expander implements Serializable {
     }
 
     return result;
-  }
-
-  /**
-   * Filters the RO list to keep only those ROs with n substrates.
-   *
-   * @param roList The initial list of Ros.
-   * @param n The number of substrates to screen for.
-   * @return The subset of the ros which have exactly n substrates.
-   */
-  protected List<Ero> getNSubstrateRos(List<Ero> roList, int n) {
-    List<Ero> nSubstrateReactions = new ArrayList<>();
-
-    for (Ero ro : roList) {
-      if (ro.getSubstrate_count() == n) {
-        nSubstrateReactions.add(ro);
-      }
-    }
-
-    LOGGER.info("Proceeding with %d %d substrate ROs.", nSubstrateReactions.size(), n);
-    return nSubstrateReactions;
   }
 }

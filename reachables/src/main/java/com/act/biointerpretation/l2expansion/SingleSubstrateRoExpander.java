@@ -3,6 +3,7 @@ package com.act.biointerpretation.l2expansion;
 import chemaxon.reaction.ReactionException;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
+import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import com.act.biointerpretation.sars.SerializableReactor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,16 +19,17 @@ public class SingleSubstrateRoExpander extends L2Expander {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(SingleSubstrateRoExpander.class);
   private static final Integer ONE_SUBSTRATES = 1;
-  private List<Ero> roList;
+
+  private ErosCorpus roCorpus;
   private List<Molecule> substrates;
 
   /**
-   * @param roList A list of all ros to be tested
+   * @param roCorpus A corpus of all ros to be tested
    * @param substrates A list of all substrates on which to test the ROs.
    */
-  public SingleSubstrateRoExpander(List<Ero> roList, List<Molecule> substrates, PredictionGenerator generator) {
+  public SingleSubstrateRoExpander(ErosCorpus roCorpus, List<Molecule> substrates, PredictionGenerator generator) {
     super(generator);
-    this.roList = roList;
+    this.roCorpus = roCorpus;
     this.substrates = substrates;
   }
 
@@ -36,9 +38,9 @@ public class SingleSubstrateRoExpander extends L2Expander {
     List<PredictionSeed> result = new ArrayList<>();
 
     // Use only single substrate reactions
-    List<Ero> singleSubstrateRoList = getNSubstrateRos(roList, ONE_SUBSTRATES);
+    roCorpus.filterCorpusBySubstrateCount(ONE_SUBSTRATES);
 
-    for (Ero ro : singleSubstrateRoList) {
+    for (Ero ro : roCorpus.getRos()) {
       SerializableReactor reactor;
       try {
         reactor = new SerializableReactor(ro.getReactor(), ro.getId());

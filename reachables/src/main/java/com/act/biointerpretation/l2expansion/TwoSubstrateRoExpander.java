@@ -5,6 +5,7 @@ import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
+import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import com.act.biointerpretation.sars.SerializableReactor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -26,16 +27,16 @@ public class TwoSubstrateRoExpander extends L2Expander {
 
   private final List<Chemical> chemicalsA;
   private final List<Chemical> chemicalsB;
-  private final List<Ero> roList;
+  private final ErosCorpus roCorpus;
 
   public TwoSubstrateRoExpander(List<Chemical> chemicalsA,
                                 List<Chemical> chemicalsB,
-                                List<Ero> roList,
+                                ErosCorpus roCorpus,
                                 PredictionGenerator generator) {
     super(generator);
     this.chemicalsA = chemicalsA;
     this.chemicalsB = chemicalsB;
-    this.roList = roList;
+    this.roCorpus = roCorpus;
   }
 
   /**
@@ -51,8 +52,8 @@ public class TwoSubstrateRoExpander extends L2Expander {
   @Override
   public Iterable<PredictionSeed> getPredictionSeeds() {
 
-    List<Ero> listOfRos = getNSubstrateRos(roList, TWO_SUBSTRATES);
-    LOGGER.info("The number of ROs to apply is %d", listOfRos.size());
+    roCorpus.filterCorpusBySubstrateCount(TWO_SUBSTRATES);
+    LOGGER.info("The number of ROs to apply is %d", roCorpus.getRos().size());
 
     LOGGER.info("Constructing ro to molecule structures for metabolite list and chemicals of interest list.");
     Map<Integer, Set<Molecule>> roIdToMoleculesA = constructRoToMolecules(chemicalsA);
@@ -62,7 +63,7 @@ public class TwoSubstrateRoExpander extends L2Expander {
     List<PredictionSeed> result = new ArrayList<>();
 
     int roProcessedCounter = 0;
-    for (Ero ro : listOfRos) {
+    for (Ero ro : roCorpus.getRos()) {
 
       SerializableReactor reactor;
       try {
@@ -73,7 +74,7 @@ public class TwoSubstrateRoExpander extends L2Expander {
       }
 
       roProcessedCounter++;
-      LOGGER.info("Processing the %d indexed ro out of %s ros", roProcessedCounter, listOfRos.size());
+      LOGGER.info("Processing the %d indexed ro out of %s ros", roProcessedCounter, roCorpus.getRos().size());
 
       Set<Molecule> roMoleculesA = roIdToMoleculesB.get(ro.getId());
       Set<Molecule> roMoleculesB = roIdToMoleculesA.get(ro.getId());

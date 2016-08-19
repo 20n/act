@@ -142,9 +142,10 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       // Try to read RO ID argument as file if possible
       try {
         roIdFile = new File(cl.getOptionValue(OPTION_RO_IDS))
-        val erosCorpus = new ErosCorpus()
-        erosCorpus.loadValidationCorpus()
-        roIds = erosCorpus.getRoIdListFromFile(roIdFile).asScala.toList
+        val erosCorpus = new ErosCorpus
+        erosCorpus.loadValidationCorpus
+        erosCorpus.filterCorpusByIdFile(roIdFile)
+        roIds = erosCorpus.getRoIds.asScala.toList
       } catch {
         // If not a file, assume a list.
         case e: IOException => {
