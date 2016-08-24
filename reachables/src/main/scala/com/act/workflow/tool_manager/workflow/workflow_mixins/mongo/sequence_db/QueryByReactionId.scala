@@ -19,7 +19,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
     *
     * @return List of protein sequences.
     */
-  def createFastaByReactionId(reactionIds: List[Long], outputFile: File, mongoConnection: MongoDB, organismRegex: Option[String] = None): Unit = {
+  def createFastaByReactionId(reactionIds: List[Long], outputFile: File, mongoConnection: MongoDB): Unit = {
     val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
 
     // We want back the sequence, enzyme number, name, and the ID in our DB.
@@ -29,12 +29,13 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
       s"${SequenceKeywords.METADATA.toString}.${SequenceKeywords.NAME.toString}")
 
     val returnSequenceDocuments: Iterator[DBObject] =
-      querySequencesMatchingReactionIdIterator(reactionIds, mongoConnection, returnFields, organismRegex)
+      querySequencesMatchingReactionIdIterator(reactionIds, mongoConnection, returnFields)
+
 
     /*
       Map sequences and name to proteinSequences
     */
-    val outputStream = new BufferedWriter(new FileWriter(outputFile))
+    val outputWriter = new BufferedWriter(new FileWriter(outputFile))
     for (document: DBObject <- returnSequenceDocuments) {
 
       val id = document.get(SEQUENCE_DB_KEYWORD_ID)
@@ -61,12 +62,12 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
           but the DB_ID should guarantee uniqueness
         */
         newSeq.setOriginalHeader(s"NAME: ${name.toString} | EC: ${ecnum.toString} | DB_ID: ${id.toString}")
-        writeProteinSequenceToFasta(newSeq, outputStream)
+        writeProteinSequenceToFasta(newSeq, outputWriter)
       } else {
         methodLogger.error(s"Sequence identified that does not have a sequence.  DB entry is ${id.toString}")
       }
     }
-    outputStream.close()
+    outputWriter.close()
   }
 
   /**

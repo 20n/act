@@ -153,8 +153,6 @@ class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach with TimeL
     JobManager.getOrderOfJobCompletion(2) should (equal("B") or equal("C"))
     JobManager.getOrderOfJobCompletion(3) should be("D")
     JobManager.getOrderOfJobCompletion(4) should (equal("E") or equal("F"))
-
-    println(JobManager.getOrderOfJobCompletion)
   }
 
   "Jobs" should "be able to create independent jobs by indicating a given job shouldn't be waited for" in {
