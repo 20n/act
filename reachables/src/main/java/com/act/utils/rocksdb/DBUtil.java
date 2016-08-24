@@ -34,7 +34,7 @@ public class DBUtil {
       .setDisableDataSync(true)
       .setAllowMmapReads(true) // Trying all sorts of performance tweaking knobs, which are not well documented. :(
       .setAllowMmapWrites(true)
-      .setWriteBufferSize(1 << 27)
+      .setWriteBufferSize(1 << 27) // Warning: setting this higher inflates the index size w/o obvious time benefits.
       .setArenaBlockSize(1 << 20)
       .setCompressionType(CompressionType.SNAPPY_COMPRESSION) // Will hopefully trade CPU for I/O.
       ;
