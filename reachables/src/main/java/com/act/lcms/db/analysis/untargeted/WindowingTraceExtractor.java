@@ -38,6 +38,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -405,6 +406,7 @@ public class WindowingTraceExtractor {
         LOGGER.info("Finished writing %d traces", i);
       }
       dbAndHandles.put(COLUMN_FAMILIES.TARGET_TO_WINDOW, keyBytes, valBytes);
+      allTraces.set(i, Collections.emptyList());
     }
 
     dbAndHandles.getDb().flush(new FlushOptions());
