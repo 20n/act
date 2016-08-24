@@ -211,7 +211,7 @@ public class WindowingTraceAnalyzer {
       MS1ScanForWellAndMassCharge scanForWell = new MS1ScanForWellAndMassCharge();
       scanForWell.setMetlinIons(Collections.singletonList(label));
       scanForWell.getIonsToSpectra().put(label, rangeAndTrace.getRight());
-      Double maxPeakTime = ms1.computeStats(scanForWell, label);
+      Double maxPeakTime = ms1.computeAndStorePeakProfile(scanForWell, label);
 
       WindowAnalysisResult result = new WindowAnalysisResult(
           rangeAndTrace.getLeft(), rangeAndTrace.getMiddle(),
