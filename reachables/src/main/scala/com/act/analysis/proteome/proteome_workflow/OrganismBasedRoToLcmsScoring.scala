@@ -9,7 +9,7 @@ import com.act.workflow.tool_manager.workflow.workflow_mixins.base.WorkingDirect
 import com.act.workflow.tool_manager.workflow.workflow_mixins.composite.{RoToSequences, SarTreeConstructor}
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 
-class HumanRoToLcmsScoring extends Workflow with RoToSequences with SarTreeConstructor with WorkingDirectoryUtility {
+class OrganismBasedRoToLcmsScoring extends Workflow with RoToSequences with SarTreeConstructor with WorkingDirectoryUtility {
 
   override val HELP_MESSAGE = "Workflow to convert RO number into a FASTA file with only human sequences."
 
@@ -22,6 +22,7 @@ class HumanRoToLcmsScoring extends Workflow with RoToSequences with SarTreeConst
   private val OPTION_L2_PREDICTION_CORPUS_TO_SCORE = "l"
   private val OPTION_FORCE = "f"
   private val OPTION_OUTPUT_TSV = "t"
+  private val OPTION_ORGANISM_REGEX = "o"
 
   override def getCommandLineOptions: Options = {
 
@@ -69,6 +70,12 @@ class HumanRoToLcmsScoring extends Workflow with RoToSequences with SarTreeConst
         longOpt("output-tsv").
         desc("The output tsv to write the scorings to."),
 
+      CliOption.builder(OPTION_ORGANISM_REGEX).
+        longOpt("org-regex").
+        hasArg.
+        desc("Part of all of an organism name. Automatically flanked by .* to be flexible." +
+          "If this is not provided the default is to match to humans."),
+
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
     val opts: Options = new Options()
@@ -84,6 +91,9 @@ class HumanRoToLcmsScoring extends Workflow with RoToSequences with SarTreeConst
     val clustalBinaries = new File(cl.getOptionValue(OPTION_CLUSTAL_BINARIES))
     val inchiFile = new File(cl.getOptionValue(OPTION_L2_PREDICTION_CORPUS_TO_SCORE))
 
+    val organismName = cl.getOptionValue(OPTION_ORGANISM_REGEX, "sapiens")
+    val orgRegex = Option(s".*$organismName.*")
+
     // Setup all the constant paths here
     val outputFastaPath = defineOutputFilePath(
       cl,
@@ -96,7 +106,7 @@ class HumanRoToLcmsScoring extends Workflow with RoToSequences with SarTreeConst
     val alignedFastaPath: File = defineOutputFilePath(
       cl,
       OPTION_ALIGNED_FASTA_FILE_OUTPUT,
-      "Human_RO_" + ro,
+      s"RO_$ro.ORG_$organismName",
       "output.aligned.fasta",
       workingDir
     )
@@ -104,7 +114,7 @@ class HumanRoToLcmsScoring extends Workflow with RoToSequences with SarTreeConst
     val outputFile: File = defineOutputFilePath(
       cl,
       OPTION_OUTPUT_TSV,
-      "Human_RO_" + ro,
+      s"RO_$ro.ORG_$organismName.${inchiFile.getName}",
       "BioRankingOutput",
       workingDir,
       fileEnding = "tsv"
@@ -118,9 +128,8 @@ class HumanRoToLcmsScoring extends Workflow with RoToSequences with SarTreeConst
       // Create the FASTA file out of all the relevant sequences.
       val roToFasta = ScalaJobWrapper.wrapScalaFunction(s"Write Fasta From RO, RO=$ro",
         writeFastaFileFromEnzymesMatchingRos(List(ro), outputFastaPath,
-          cl.getOptionValue(OPTION_DATABASE), organism = Option(".*sapiens.*")) _)
+          cl.getOptionValue(OPTION_DATABASE), organism = orgRegex) _)
       headerJob.thenRun(roToFasta)
-
 
       val alignFastaSequences = ClustalOmegaWrapper.alignProteinFastaFile(outputFastaPath, alignedFastaPath)
       headerJob.thenRun(alignFastaSequences)
