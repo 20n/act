@@ -46,13 +46,13 @@ public class ReactionDesalter extends BiointerpretationProcessor {
   private Desalter desalter;
   private int desalterFailuresCounter = 0;
 
-  public ReactionDesalter(NoSQLAPI inputApi) {
-    super(inputApi);
-  }
-
   @Override
   public String getName() {
     return PROCESSOR_NAME;
+  }
+
+  public ReactionDesalter(NoSQLAPI inputApi) {
+    super(inputApi);
   }
 
   @Override

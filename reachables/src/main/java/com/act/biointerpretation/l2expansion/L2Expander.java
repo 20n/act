@@ -17,18 +17,21 @@ import java.util.List;
 import java.util.Optional;
 
 public abstract class L2Expander implements Serializable {
+  private static final long serialVersionUID = 5846728290095735668L;
+
+  private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
+
   // This SAR accepts every substrate.
   @JsonIgnore
   protected static final List<Sar> NO_SAR = Collections.unmodifiableList(Collections.singletonList(new NoSar()));
-  private static final long serialVersionUID = 5846728290095735668L;
-  private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
+
   private PredictionGenerator generator;
+
+  public abstract Iterable<PredictionSeed> getPredictionSeeds();
 
   public L2Expander(PredictionGenerator generator) {
     this.generator = generator;
   }
-
-  public abstract Iterable<PredictionSeed> getPredictionSeeds();
 
   /**
    * Get predictions for this expander without logging progress.

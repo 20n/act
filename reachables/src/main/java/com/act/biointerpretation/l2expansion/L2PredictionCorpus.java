@@ -78,7 +78,7 @@ public class L2PredictionCorpus implements Serializable {
       return result;
     }
     throw new IllegalArgumentException("Id " + id + " is not present in corpus, or the id->prediction map has not " +
-            "been repopulated since it was added.");
+        "been repopulated since it was added.");
   }
 
   /**

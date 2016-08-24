@@ -33,6 +33,8 @@ public class OneSubstrateSubstructureSar implements Sar {
   private static final MolSearchOptions LOOSE_SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
 
   static {
+    LOOSE_SEARCH_OPTIONS.setStereoModel(SearchConstants.STEREO_IGNORE);
+    LOOSE_SEARCH_OPTIONS.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL4);
     LOOSE_SEARCH_OPTIONS.setTimeoutLimitMilliseconds(1000);
   }
 

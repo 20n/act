@@ -44,36 +44,36 @@ public class ProductScorer {
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {
     {
       add(Option.builder(OPTION_PREDICTION_CORPUS)
-              .argName("input corpus path")
-              .desc("The absolute path to the input prediction corpus.")
-              .hasArg()
-              .longOpt("input-corpus-path")
-              .required(true)
+          .argName("input corpus path")
+          .desc("The absolute path to the input prediction corpus.")
+          .hasArg()
+          .longOpt("input-corpus-path")
+          .required(true)
       );
       add(Option.builder(OPTION_LCMS_RESULTS)
-              .argName("lcms results")
-              .desc("The path to a file of lcms results.")
-              .hasArg()
-              .longOpt("input-lcms-results")
+          .argName("lcms results")
+          .desc("The path to a file of lcms results.")
+          .hasArg()
+          .longOpt("input-lcms-results")
       );
       add(Option.builder(OPTION_SCORED_SARS)
-              .argName("scored sars corpus")
-              .hasArg()
-              .longOpt("input-scored-sars")
+          .argName("scored sars corpus")
+          .hasArg()
+          .longOpt("input-scored-sars")
       );
       add(Option.builder(OPTION_OUTPUT_PATH)
-              .argName("output path")
-              .desc("The path to which to write the output.")
-              .hasArg()
-              .longOpt("output-path")
-              .required(true)
+          .argName("output path")
+          .desc("The path to which to write the output.")
+          .hasArg()
+          .longOpt("output-path")
+          .required(true)
       );
     }
   };
 
 
   public static final String HELP_MESSAGE =
-          "This class is used to rank the products of PredictionCorpus according to a set of SARs.";
+      "This class is used to rank the products of PredictionCorpus according to a set of SARs.";
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
@@ -104,10 +104,10 @@ public class ProductScorer {
     File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
 
     JavaRunnable productScoreRunner = getProductScorer(
-            inputCorpusFile,
-            scoredSarsFile,
-            lcmsFile,
-            outputFile);
+        inputCorpusFile,
+        scoredSarsFile,
+        lcmsFile,
+        outputFile);
 
     LOGGER.info("Scoring products.");
     productScoreRunner.run();
@@ -164,8 +164,8 @@ public class ProductScorer {
             // If a SAR was matched, add info about it to the projector name, and put its score into the map
             SarTreeNode bestSar = maybeBestSar.get();
             nameAppendage += ":" +
-                    bestSar.getHierarchyId() + ":" +
-                    bestSar.getRankingScore();
+                bestSar.getHierarchyId() + ":" +
+                bestSar.getRankingScore();
             prediction.setProjectorName(prediction.getProjectorName() + nameAppendage);
             predictionToScoreMap.put(prediction, bestSar.getRankingScore());
           } else {
@@ -179,8 +179,8 @@ public class ProductScorer {
         LOGGER.info("Sorting predictions in decreasing order of best associated SAR rank.");
         List<L2Prediction> predictionList = new ArrayList<>(predictionToScoreMap.keySet());
         predictionList.sort((a, b) -> -Double.compare(
-                predictionToScoreMap.get(a),
-                predictionToScoreMap.get(b)));
+            predictionToScoreMap.get(a),
+            predictionToScoreMap.get(b)));
 
         // Wrap results in a corpus and write to file.
         L2PredictionCorpus finalCorpus = new L2PredictionCorpus(predictionList);
