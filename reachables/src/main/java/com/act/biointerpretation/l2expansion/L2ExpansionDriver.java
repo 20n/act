@@ -254,7 +254,7 @@ public class L2ExpansionDriver {
                 L2ExpansionDriver.convertListOfInchisToMolecules(chemicalInchis.getInchiList(), mongoDB);
         List<Chemical> metaboliteChemicals =
                 L2ExpansionDriver.convertListOfInchisToMolecules(inchiCorpus.getInchiList(), mongoDB);
-        return new TwoSubstrateRoExpander(chemicalsOfInterest, metaboliteChemicals, getRoList(cl), generator);
+        return new TwoSubstrateRoExpander(chemicalsOfInterest, metaboliteChemicals, getRoCorpus(cl), generator);
 
       case SAR:
         LOGGER.info("Running sar-based expansion.");

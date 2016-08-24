@@ -79,7 +79,7 @@ public abstract class BiointerpretationProcessor {
    * @throws Exception
    */
   public void run()
-      throws IOException, LicenseProcessingException, ReactionException { // TODO: are these enough?
+          throws IOException, LicenseProcessingException, ReactionException { // TODO: are these enough?
     failIfNotInitialized();
 
     LOGGER.debug("Starting %s", getName());
@@ -220,17 +220,17 @@ public abstract class BiointerpretationProcessor {
       }
 
       Reaction newRxn = new Reaction(
-          -1, // Assume the id will be set when the reaction is written to the DB.
-          new Long[0],
-          new Long[0],
-          new Long[0],
-          new Long[0],
-          new Long[0],
-          oldRxn.getECNum(),
-          oldRxn.getConversionDirection(),
-          oldRxn.getPathwayStepDirection(),
-          oldRxn.getReactionName(),
-          oldRxn.getRxnDetailType()
+              -1, // Assume the id will be set when the reaction is written to the DB.
+              new Long[0],
+              new Long[0],
+              new Long[0],
+              new Long[0],
+              new Long[0],
+              oldRxn.getECNum(),
+              oldRxn.getConversionDirection(),
+              oldRxn.getPathwayStepDirection(),
+              oldRxn.getReactionName(),
+              oldRxn.getRxnDetailType()
       );
 
       // Add the data source and references from the source to the destination
@@ -308,10 +308,10 @@ public abstract class BiointerpretationProcessor {
 
     // Substrate/product counts must be identical before and after migration.
     if (migratedSubstrates.size() != oldSubstrates.length ||
-        migratedProducts.size() != oldProducts.length) {
+            migratedProducts.size() != oldProducts.length) {
       throw new RuntimeException(String.format(
-          "Pre/post substrate/product migration lengths don't match for source reaction %d: %d -> %d, %d -> %d",
-          oldRxn.getUUID(), oldSubstrates.length, migratedSubstrates.size(), oldProducts.length, migratedProducts.size()
+              "Pre/post substrate/product migration lengths don't match for source reaction %d: %d -> %d, %d -> %d",
+              oldRxn.getUUID(), oldSubstrates.length, migratedSubstrates.size(), oldProducts.length, migratedProducts.size()
       ));
     }
 
@@ -334,11 +334,11 @@ public abstract class BiointerpretationProcessor {
     List<Long> migratedProductCofactors = mapChemicalIds(oldProductCofactors);
 
     if (migratedSubstrateCofactors.size() != oldSubstrateCofactors.length ||
-        migratedProductCofactors.size() != oldProductCofactors.length) {
+            migratedProductCofactors.size() != oldProductCofactors.length) {
       throw new RuntimeException(String.format(
-          "Pre/post sub/prod cofactor migration lengths don't match for source reaction %d: %d -> %d, %d -> %d",
-          oldRxn.getUUID(), oldSubstrateCofactors.length, migratedSubstrateCofactors.size(),
-          oldProductCofactors.length, migratedProductCofactors.size()
+              "Pre/post sub/prod cofactor migration lengths don't match for source reaction %d: %d -> %d, %d -> %d",
+              oldRxn.getUUID(), oldSubstrateCofactors.length, migratedSubstrateCofactors.size(),
+              oldProductCofactors.length, migratedProductCofactors.size()
       ));
     }
 
@@ -350,8 +350,8 @@ public abstract class BiointerpretationProcessor {
 
     if (migratedCoenzymes.size() != oldCoenzymes.length) {
       throw new RuntimeException(String.format(
-          "Pre/post coenzyme migration lengths don't match for source reaction %d: %d -> %d",
-          oldRxn.getUUID(), oldCoenzymes.length, migratedCoenzymes.size()
+              "Pre/post coenzyme migration lengths don't match for source reaction %d: %d -> %d",
+              oldRxn.getUUID(), oldCoenzymes.length, migratedCoenzymes.size()
       ));
     }
     newRxn.setCoenzymes(migratedCoenzymes.toArray(new Long[migratedCoenzymes.size()]));
@@ -359,8 +359,8 @@ public abstract class BiointerpretationProcessor {
 
   private List<Long> mapChemicalIds(Long[] chemIds) {
     return
-        Arrays.asList(chemIds).stream().
-            map(oldChemIdToNewChemId::get).filter(x -> x != null).collect(Collectors.toList());
+            Arrays.asList(chemIds).stream().
+                    map(oldChemIdToNewChemId::get).filter(x -> x != null).collect(Collectors.toList());
   }
 
   // Cache seen organism ids locally to speed up migration.
@@ -429,14 +429,14 @@ public abstract class BiointerpretationProcessor {
 
         // Store the seq document to get an id that'll be stored in the protein object.
         int seqId = api.getWriteDB().submitToActSeqDB(
-            seq.getSrcdb(),
-            seq.getEc(),
-            seq.getOrgName(),
-            newSeqOrganismId, // Use freshly migrated organism id to replace the old one.
-            seq.getSequence(),
-            seq.getReferences(),
-            seq.getReactionsCatalyzed(), // these will be updated in afterProcessReactions()
-            MongoDBToJSON.conv(seq.getMetadata())
+                seq.getSrcdb(),
+                seq.getEc(),
+                seq.getOrgName(),
+                newSeqOrganismId, // Use freshly migrated organism id to replace the old one.
+                seq.getSequence(),
+                seq.getReferences(),
+                seq.getReactionsCatalyzed(), // these will be updated in afterProcessReactions()
+                MongoDBToJSON.conv(seq.getMetadata())
         );
         // TODO: we should migrate all the seq documents with zero references over to the new DB.
 
