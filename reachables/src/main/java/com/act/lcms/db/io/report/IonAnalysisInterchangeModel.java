@@ -6,20 +6,20 @@ package com.act.lcms.db.io.report;
  *
  * Example:
  * <pre>
- {
- "results" : [ {
- "_id" : 1,
- "mass_charge" : 331.13876999999997,
- "valid" : false,
- "molecules" : [ {
- "inchi" : "InChI=1S/C15H22O8/c1-20-7-11-12(17)13(18)14(19)15(23-11)22-6-8-3-4-9(16)10(5-8)21-2/h3-5,11-19H,6-7H2,1-2H3/t11-,12-,13+,14-,15-/m1/s1",
- "ion" : "M+H",
- "plot" : "331.13876999999997_37-1669-1670-_CHEM_6170.pdf",
- "snr" : 224.9610985335781,
- "time" : 208.54700088500977,
- "intensity" : 6954.61328125
- }]
- }]
+  {
+     "results" : [ {
+      "_id" : 1,
+      "mass_charge" : 331.13876999999997,
+      "valid" : false,
+      "molecules" : [ {
+       "inchi" : "InChI=1S/C15H22O8/c1-20-7-11-12(17)13(18)14(19)15(23-11)22-6-8-3-4-9(16)10(5-8)21-2/h3-5,11-19H,6-7H2,1-2H3/t11-,12-,13+,14-,15-/m1/s1",
+       "ion" : "M+H",
+       "plot" : "331.13876999999997_37-1669-1670-_CHEM_6170.pdf",
+       "snr" : 224.9610985335781,
+       "time" : 208.54700088500977,
+       "intensity" : 6954.61328125
+      }]
+     }]
  }
  </pre>
  */
@@ -89,7 +89,7 @@ public class IonAnalysisInterchangeModel {
         // but when low concentrations exist we would rather take an OR and
         // be conservative, avoiding false negatives.
         if (this.inchiToIsHit.get(molecule.getInchi()) == null ||
-                !this.inchiToIsHit.get(molecule.getInchi())) {
+            !this.inchiToIsHit.get(molecule.getInchi())) {
           this.inchiToIsHit.put(molecule.getInchi(), isHit);
         }
       }
@@ -196,7 +196,7 @@ public class IonAnalysisInterchangeModel {
     for (int i = 0; i < totalNumberOfMassCharges; i++) {
 
       int totalNumberOfMoleculesInMassChargeResult =
-              deserializedResultsForPositiveReplicates.get(0).getResults().get(i).getMolecules().size();
+          deserializedResultsForPositiveReplicates.get(0).getResults().get(i).getMolecules().size();
 
       // For each mass charge, iterate through each molecule under the mass charge
       for (int j = 0; j < totalNumberOfMoleculesInMassChargeResult; j++) {
@@ -208,9 +208,9 @@ public class IonAnalysisInterchangeModel {
           HitOrMiss molecule = deserializedResultsForPositiveReplicates.get(k).getResults().get(i).getMolecules().get(j);
 
           if (molecule.getIntensity() < intensityThreshold ||
-                  molecule.getSnr() < snrThreshold ||
-                  molecule.getTime() < timeThreshold) {
-            moleculePassedThresholdsForAllPositiveReplicates = false;
+              molecule.getSnr() < snrThreshold ||
+              molecule.getTime() < timeThreshold) {
+           moleculePassedThresholdsForAllPositiveReplicates = false;
           }
         }
 
@@ -235,9 +235,9 @@ public class IonAnalysisInterchangeModel {
    * @throws IOException
    */
   public static Set<String> getSupersetOfIonicVariants(List<String> filepaths,
-                                                       Double snrThreshold,
-                                                       Double intensityThreshold,
-                                                       Double timeThreshold) throws IOException {
+                                       Double snrThreshold,
+                                       Double intensityThreshold,
+                                       Double timeThreshold) throws IOException {
 
     Set<String> inchis = new HashSet<>();
     List<IonAnalysisInterchangeModel> deserializedResultsForPositiveReplicates = new ArrayList<>();
@@ -266,7 +266,7 @@ public class IonAnalysisInterchangeModel {
     for (ResultForMZ resultForMZ : results) {
       for (HitOrMiss hitOrMiss : resultForMZ.getMolecules()) {
         if (hitOrMiss.getIntensity() > intensityThreshold && hitOrMiss.getSnr() > snrThreshold &&
-                hitOrMiss.getTime() > timeThreshold) {
+            hitOrMiss.getTime() > timeThreshold) {
           resultSet.add(hitOrMiss.getInchi());
         }
       }

@@ -29,8 +29,29 @@ public class ReactionMerger extends BiointerpretationProcessor {
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionMerger.class);
   private static final String PROCESSOR_NAME = "Reaction Merger";
 
+  @Override
+  public String getName() {
+    return PROCESSOR_NAME;
+  }
+
   public ReactionMerger(NoSQLAPI noSQLAPI) {
     super(noSQLAPI);
+  }
+
+  @Override
+  public void init() {
+    // Do nothing for this class, as there's no initialization necessary.
+    markInitialized();
+  }
+
+  @Override
+  public void processReactions() {
+    LOGGER.info("Reading all reactions");
+    Iterator<Reaction> rxns = getNoSQLAPI().readRxnsFromInKnowledgeGraph();
+    Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups = hashReactions(rxns);
+    LOGGER.info("Found %d reaction groups, merging", reactionGroups.size());
+    mergeAllReactions(reactionGroups);
+    LOGGER.info("Done merging reactions");
   }
 
   protected static Map<SubstratesProducts, PriorityQueue<Long>> hashReactions(Iterator<Reaction> reactionIterator) {
@@ -56,25 +77,72 @@ public class ReactionMerger extends BiointerpretationProcessor {
     return reactionGroups;
   }
 
-  @Override
-  public String getName() {
-    return PROCESSOR_NAME;
-  }
+  public static class SubstratesProducts {
+    // TODO: also consider ec-umber, coefficients, and other reaction attributes.
+    Set<Long> substrates = null, products = null,
+        substrateCofactors = null, productCofactors = null, coenzymes = null;
+    Map<Long, Integer> substrateCoefficients = null, productCoefficients = null;
+    String ecnum = null;
+    ConversionDirectionType conversionDirectionType = null;
+    StepDirection pathwayStepDirection = null;
 
-  @Override
-  public void init() {
-    // Do nothing for this class, as there's no initialization necessary.
-    markInitialized();
-  }
+    public SubstratesProducts(Reaction reaction) {
+      // TODO: should we copy these to be safe, or just assume nobody will mess with them?
+      this.substrates = new HashSet<>(Arrays.asList(reaction.getSubstrates()));
+      this.products = new HashSet<>(Arrays.asList(reaction.getProducts()));
+      this.substrateCofactors = new HashSet<>(Arrays.asList(reaction.getSubstrateCofactors()));
+      this.productCofactors = new HashSet<>(Arrays.asList(reaction.getProductCofactors()));
+      this.coenzymes = new HashSet<>(Arrays.asList(reaction.getCoenzymes()));
 
-  @Override
-  public void processReactions() {
-    LOGGER.info("Reading all reactions");
-    Iterator<Reaction> rxns = getNoSQLAPI().readRxnsFromInKnowledgeGraph();
-    Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups = hashReactions(rxns);
-    LOGGER.info("Found %d reaction groups, merging", reactionGroups.size());
-    mergeAllReactions(reactionGroups);
-    LOGGER.info("Done merging reactions");
+      this.substrateCoefficients = new HashMap<>(this.substrates.size());
+      for (Long id : reaction.getSubstrateIdsOfSubstrateCoefficients()) {
+        this.substrateCoefficients.put(id, reaction.getSubstrateCoefficient(id));
+      }
+
+      this.productCoefficients = new HashMap<>(this.products.size());
+      for (Long id : reaction.getProductIdsOfProductCoefficients()) {
+        this.productCoefficients.put(id, reaction.getProductCoefficient(id));
+      }
+
+      this.ecnum = reaction.getECNum();
+      this.conversionDirectionType = reaction.getConversionDirection();
+      this.pathwayStepDirection = reaction.getPathwayStepDirection();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      SubstratesProducts that = (SubstratesProducts) o;
+
+      if (!substrates.equals(that.substrates)) return false;
+      if (!products.equals(that.products)) return false;
+      if (!substrateCofactors.equals(that.substrateCofactors)) return false;
+      if (!productCofactors.equals(that.productCofactors)) return false;
+      if (!coenzymes.equals(that.coenzymes)) return false;
+      if (!substrateCoefficients.equals(that.substrateCoefficients)) return false;
+      if (!productCoefficients.equals(that.productCoefficients)) return false;
+      if (ecnum != null ? !ecnum.equals(that.ecnum) : that.ecnum != null) return false;
+      return conversionDirectionType == that.conversionDirectionType &&
+          pathwayStepDirection == that.pathwayStepDirection;
+
+    }
+
+    @Override
+    public int hashCode() {
+      int result = substrates.hashCode();
+      result = 31 * result + products.hashCode();
+      result = 31 * result + substrateCofactors.hashCode();
+      result = 31 * result + productCofactors.hashCode();
+      result = 31 * result + coenzymes.hashCode();
+      result = 31 * result + substrateCoefficients.hashCode();
+      result = 31 * result + productCoefficients.hashCode();
+      result = 31 * result + (ecnum != null ? ecnum.hashCode() : 0);
+      result = 31 * result + (conversionDirectionType != null ? conversionDirectionType.hashCode() : 0);
+      result = 31 * result + (pathwayStepDirection != null ? pathwayStepDirection.hashCode() : 0);
+      return result;
+    }
   }
 
   private Reaction mergeReactions(List<Reaction> reactions) {
@@ -150,74 +218,6 @@ public class ReactionMerger extends BiointerpretationProcessor {
       }
 
       mergeReactions(reactions);
-    }
-  }
-
-  public static class SubstratesProducts {
-    // TODO: also consider ec-umber, coefficients, and other reaction attributes.
-    Set<Long> substrates = null, products = null,
-            substrateCofactors = null, productCofactors = null, coenzymes = null;
-    Map<Long, Integer> substrateCoefficients = null, productCoefficients = null;
-    String ecnum = null;
-    ConversionDirectionType conversionDirectionType = null;
-    StepDirection pathwayStepDirection = null;
-
-    public SubstratesProducts(Reaction reaction) {
-      // TODO: should we copy these to be safe, or just assume nobody will mess with them?
-      this.substrates = new HashSet<>(Arrays.asList(reaction.getSubstrates()));
-      this.products = new HashSet<>(Arrays.asList(reaction.getProducts()));
-      this.substrateCofactors = new HashSet<>(Arrays.asList(reaction.getSubstrateCofactors()));
-      this.productCofactors = new HashSet<>(Arrays.asList(reaction.getProductCofactors()));
-      this.coenzymes = new HashSet<>(Arrays.asList(reaction.getCoenzymes()));
-
-      this.substrateCoefficients = new HashMap<>(this.substrates.size());
-      for (Long id : reaction.getSubstrateIdsOfSubstrateCoefficients()) {
-        this.substrateCoefficients.put(id, reaction.getSubstrateCoefficient(id));
-      }
-
-      this.productCoefficients = new HashMap<>(this.products.size());
-      for (Long id : reaction.getProductIdsOfProductCoefficients()) {
-        this.productCoefficients.put(id, reaction.getProductCoefficient(id));
-      }
-
-      this.ecnum = reaction.getECNum();
-      this.conversionDirectionType = reaction.getConversionDirection();
-      this.pathwayStepDirection = reaction.getPathwayStepDirection();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-
-      SubstratesProducts that = (SubstratesProducts) o;
-
-      if (!substrates.equals(that.substrates)) return false;
-      if (!products.equals(that.products)) return false;
-      if (!substrateCofactors.equals(that.substrateCofactors)) return false;
-      if (!productCofactors.equals(that.productCofactors)) return false;
-      if (!coenzymes.equals(that.coenzymes)) return false;
-      if (!substrateCoefficients.equals(that.substrateCoefficients)) return false;
-      if (!productCoefficients.equals(that.productCoefficients)) return false;
-      if (ecnum != null ? !ecnum.equals(that.ecnum) : that.ecnum != null) return false;
-      return conversionDirectionType == that.conversionDirectionType &&
-              pathwayStepDirection == that.pathwayStepDirection;
-
-    }
-
-    @Override
-    public int hashCode() {
-      int result = substrates.hashCode();
-      result = 31 * result + products.hashCode();
-      result = 31 * result + substrateCofactors.hashCode();
-      result = 31 * result + productCofactors.hashCode();
-      result = 31 * result + coenzymes.hashCode();
-      result = 31 * result + substrateCoefficients.hashCode();
-      result = 31 * result + productCoefficients.hashCode();
-      result = 31 * result + (ecnum != null ? ecnum.hashCode() : 0);
-      result = 31 * result + (conversionDirectionType != null ? conversionDirectionType.hashCode() : 0);
-      result = 31 * result + (pathwayStepDirection != null ? pathwayStepDirection.hashCode() : 0);
-      return result;
     }
   }
 }

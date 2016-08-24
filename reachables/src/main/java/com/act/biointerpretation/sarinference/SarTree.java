@@ -253,8 +253,9 @@ public class SarTree {
       throw new IllegalArgumentException("HierarchyIDs only use positive integer indices.");
     }
     return new StringBuilder(node.getHierarchyId())
-            .append(".")
-            .append(Integer.toString(index))
-            .toString();
+        .append(".")
+        .append(Integer.toString(index))
+        .toString();
   }
 }
+

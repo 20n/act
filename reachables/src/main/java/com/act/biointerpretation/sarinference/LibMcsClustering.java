@@ -42,46 +42,46 @@ public class LibMcsClustering {
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {
     {
       add(Option.builder(OPTION_PREDICTION_CORPUS)
-              .argName("input corpus path")
-              .desc("The absolute path to the input prediction corpus.")
-              .hasArg()
-              .longOpt("input-corpus-path")
-              .required()
+          .argName("input corpus path")
+          .desc("The absolute path to the input prediction corpus.")
+          .hasArg()
+          .longOpt("input-corpus-path")
+          .required()
       );
       add(Option.builder(OPTION_POSITIVE_INCHIS)
-              .argName("positive inchis file")
-              .desc("The path to a file of positive inchis from LCMS analysis of the prediction corpus.")
-              .hasArg()
-              .longOpt("input-positive-inchis")
-              .required()
+          .argName("positive inchis file")
+          .desc("The path to a file of positive inchis from LCMS analysis of the prediction corpus.")
+          .hasArg()
+          .longOpt("input-positive-inchis")
+          .required()
       );
       add(Option.builder(OPTION_SARTREE_PATH)
-              .argName("sartree path")
-              .desc("The path to which to write the intermediate file produced by structure clustering.")
-              .hasArg()
-              .longOpt("sartree-path")
-              .required()
+          .argName("sartree path")
+          .desc("The path to which to write the intermediate file produced by structure clustering.")
+          .hasArg()
+          .longOpt("sartree-path")
+          .required()
       );
       add(Option.builder(OPTION_SCORED_SAR_PATH)
-              .argName("scored sar path")
-              .desc("The path to which to write the final output file of scored sars.")
-              .hasArg()
-              .longOpt("scored-sar-path")
-              .required()
+          .argName("scored sar path")
+          .desc("The path to which to write the final output file of scored sars.")
+          .hasArg()
+          .longOpt("scored-sar-path")
+          .required()
       );
       add(Option.builder(OPTION_HELP)
-              .argName("help")
-              .desc("Prints this help message.")
-              .longOpt("help")
+          .argName("help")
+          .desc("Prints this help message.")
+          .longOpt("help")
       );
     }
   };
 
   public static final String HELP_MESSAGE =
-          "This class is used to build sars from an L2Prediction run and LCMS analysis results.  The inputs are an " +
-                  "L2PredictionCorpus and a file with all the product inchis that came up as positive in the LCMS analysis. " +
-                  "The output is a list of Sars with percentageHits scores based on how predictive they are of the " +
-                  "reactions in the corpus.";
+      "This class is used to build sars from an L2Prediction run and LCMS analysis results.  The inputs are an " +
+          "L2PredictionCorpus and a file with all the product inchis that came up as positive in the LCMS analysis. " +
+          "The output is a list of Sars with percentageHits scores based on how predictive they are of the " +
+          "reactions in the corpus.";
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
@@ -124,12 +124,12 @@ public class LibMcsClustering {
 
     JavaRunnable clusterer = getClusterer(inputCorpusFile, sartreeFile);
     JavaRunnable scorer = getSarScorer(
-            inputCorpusFile,
-            sartreeFile,
-            positiveInchisFile,
-            scoredSarFile,
-            SAR_SCORING_FUNCTION,
-            THRESHOLD_TREE_SIZE);
+        inputCorpusFile,
+        sartreeFile,
+        positiveInchisFile,
+        scoredSarFile,
+        SAR_SCORING_FUNCTION,
+        THRESHOLD_TREE_SIZE);
 
     LOGGER.info("Running clustering.");
     clusterer.run();
@@ -202,7 +202,7 @@ public class LibMcsClustering {
        * @throws MolFormatException If a molecule cannot be imported from an inchi.
        */
       private Collection<Molecule> importMoleculesWithPredictionIds(L2PredictionCorpus inputCorpus)
-              throws MolFormatException {
+          throws MolFormatException {
         Map<String, Molecule> inchiToMoleculeMap = new HashMap<>();
         for (L2Prediction prediction : inputCorpus.getCorpus()) {
           for (String substrateInchi : prediction.getSubstrateInchis()) { // For now this should only be one substrate
@@ -211,9 +211,9 @@ public class LibMcsClustering {
               inchiToMoleculeMap.put(substrateInchi, mol);
             } else {
               List<Integer> predictionIds =
-                      (ArrayList<Integer>) inchiToMoleculeMap
-                              .get(substrateInchi)
-                              .getPropertyObject(SarTreeNode.PREDICTION_ID_KEY);
+                  (ArrayList<Integer>) inchiToMoleculeMap
+                      .get(substrateInchi)
+                      .getPropertyObject(SarTreeNode.PREDICTION_ID_KEY);
               predictionIds.add(prediction.getId());
             }
           }
@@ -246,12 +246,12 @@ public class LibMcsClustering {
    * @return A JavaRunnable to run the SAR scoring.
    */
   public static JavaRunnable getSarScorer(
-          File predictionsFile,
-          File sarTreeInput,
-          File lcmsInput,
-          File sarTreeNodeOutput,
-          SarTreeNode.ScoringFunctions scoringFunction,
-          Integer subtreeThreshold) {
+      File predictionsFile,
+      File sarTreeInput,
+      File lcmsInput,
+      File sarTreeNodeOutput,
+      SarTreeNode.ScoringFunctions scoringFunction,
+      Integer subtreeThreshold) {
 
     return new JavaRunnable() {
       @Override
