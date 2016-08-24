@@ -19,7 +19,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
     *
     * @return List of protein sequences.
     */
-  def createFastaByReactionId(reactionIds: List[Long], outputFile: File, mongoConnection: MongoDB): Unit = {
+  def createFastaByReactionId(reactionIds: List[Long], outputFile: File, mongoConnection: MongoDB, organismRegex: Option[String] = None): Unit = {
     val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
 
     // We want back the sequence, enzyme number, name, and the ID in our DB.
@@ -29,7 +29,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
       s"$SEQUENCE_DB_KEYWORD_METADATA.$SEQUENCE_DB_KEYWORD_NAME")
 
     val returnSequenceDocuments: Iterator[DBObject] =
-      querySequencesMatchingReactionIdIterator(reactionIds, mongoConnection, returnFields)
+      querySequencesMatchingReactionIdIterator(reactionIds, mongoConnection, returnFields, organismRegex)
 
 
     /*
