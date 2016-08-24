@@ -27,8 +27,6 @@ import javax.xml.stream.XMLStreamException;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -40,14 +38,12 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 
 public class WindowingTraceExtractor {
   private static final Logger LOGGER = LogManager.getFormatterLogger(WindowingTraceExtractor.class);
@@ -204,7 +200,7 @@ public class WindowingTraceExtractor {
       dbAndHandles = DBUtil.createNewRocksDB(rocksDBFile, COLUMN_FAMILIES.values());
 
       LOGGER.info("Extracting traces");
-      Triple<List<MZWindow>, List<Double>, List<Pair<DataOutputStream, ByteArrayOutputStream>>> windowsTimesAndTraces =
+      Triple<List<MZWindow>, List<Double>, List<List<Double>>> windowsTimesAndTraces =
           extractTracesToIndex(targetMZs, spectrumIterator);
 
       LOGGER.info("Writing search targets to on-disk index");
@@ -259,7 +255,7 @@ public class WindowingTraceExtractor {
    * @param iter An iterator over an LCMS data file.
    * @return The windows, time points, and per-window traces.
    */
-  private Triple<List<MZWindow>, List<Double>, List<Pair<DataOutputStream, ByteArrayOutputStream>>> extractTracesToIndex(
+  private Triple<List<MZWindow>, List<Double>, List<List<Double>>> extractTracesToIndex(
       List<Double> targetMZs,
       Iterator<LCMSSpectrum> iter)
       throws RocksDBException, IOException {
@@ -302,15 +298,11 @@ public class WindowingTraceExtractor {
 
     List<Double> times = new ArrayList<>();
 
-    List<Pair<DataOutputStream, ByteArrayOutputStream>> allTraces =
-        new ArrayList<Pair<DataOutputStream, ByteArrayOutputStream>>(windows.size()) {{
+    List<List<Double>> allTraces = new ArrayList<List<Double>>(windows.size()) {{
       for (int i = 0; i < windows.size(); i++) {
-        add(makeStreamsForTrace());
+        add(new ArrayList<>());
       }
     }};
-
-    // Maintain a list of accumulators that will be written into each trace's output stream once counting is done.
-    double[] accumulators = new double[windows.size()];
 
     int timepointCounter = 0;
     while (iter.hasNext()) {
@@ -319,14 +311,19 @@ public class WindowingTraceExtractor {
 
       // Store one list of the time values so we can knit times and intensity sums later to form XZs.
       times.add(time);
+
+      /* Extend allTraces to add a row of intensity values for this time point.  We build this incrementally because the
+       * LCMSSpectrum iterator doesn't tell us how many time points to expect up front. The one we're working on is
+       * always the last in the list. */
+      for (List<Double> trace : allTraces) {
+        trace.add(0.0d);
+      }
+
       timepointCounter++;
 
       if (timepointCounter % 100 == 0) {
         LOGGER.info("Extracted %d timepoints (now at %.3fs)", timepointCounter, time);
       }
-
-      // Zero out the accumulators for this time point.
-      Arrays.fill(accumulators, 0.0);
 
       /* We use a sweep-line approach to scanning through the m/z windows so that we can aggregate all intensities in
        * one pass over the current LCMSSpectrum (this saves us one inner loop in our extraction process).  The m/z
@@ -369,15 +366,10 @@ public class WindowingTraceExtractor {
          * By the end of the outer loop, trace(t) = Sum(intensity) | win_min <= m/z <= win_max @ time point # t */
         for (MZWindow window : workingQueue) {
           // TODO: count the number of times we add intensities to each window's accumulator for MS1-style warnings.
-          accumulators[window.getIndex()] += intensity;
+          List<Double> trace = allTraces.get(window.getIndex());
+          Double accumulator = trace.get(trace.size() - 1); // Get the current XZ, i.e. the one at this time point.
+          trace.set(trace.size() - 1, accumulator + intensity);
         }
-      }
-
-      /* Write the accumulated value for each window into its corresponding output stream.  The output streams will
-       * convert to bytes and compress online, so we don't have to worry about explicitly maintaining or updating
-       * structures to hold the new accumulated value. */
-      for (int i = 0; i < accumulators.length; i++) {
-        allTraces.get(i).getLeft().writeDouble(accumulators[i]);
       }
     }
 
@@ -402,26 +394,19 @@ public class WindowingTraceExtractor {
 
   private void writeTracesToDB(RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles,
                                List<Double> times,
-                               List<Pair<DataOutputStream, ByteArrayOutputStream>> allTraces)
-      throws RocksDBException, IOException {
+                               List<List<Double>> allTraces) throws RocksDBException, IOException {
 
     LOGGER.info("Writing timepoints to on-disk index (%d points)", times.size());
     dbAndHandles.put(COLUMN_FAMILIES.TIMEPOINTS, TIMEPOINTS_KEY, serializeDoubleList(times));
     for (int i = 0; i < allTraces.size(); i++) {
-      Pair<DataOutputStream, ByteArrayOutputStream> trace = allTraces.get(i);
-      trace.getLeft().flush();
       byte[] keyBytes = serializeObject(i);
-      byte[] valBytes = trace.getRight().toByteArray();
+      byte[] valBytes = serializeDoubleList(allTraces.get(i));
       dbAndHandles.put(COLUMN_FAMILIES.ID_TO_TRACE, keyBytes, valBytes);
       if (i % 1000 == 0) {
         LOGGER.info("Finished writing %d traces", i);
       }
       dbAndHandles.put(COLUMN_FAMILIES.TARGET_TO_WINDOW, keyBytes, valBytes);
-
-      // Close and drop the reference to the streams so the GC knows we're finished with them.
-      trace.getLeft().close();
-      trace.getRight().close();
-      allTraces.set(i, null);
+      allTraces.set(i, Collections.emptyList());
     }
 
     dbAndHandles.getDb().flush(new FlushOptions());
@@ -483,15 +468,7 @@ public class WindowingTraceExtractor {
             LOGGER.error(msg);
             throw new RuntimeException(msg);
           }
-          trace = readTraceByteAsStream(traceBytes);
-
-          // If we didn't get back times.size() intensity values, we must have lost some data.  Fail fast!
-          if (trace.size() != times.size()) {
-            String msg = String.format("Deserialized trace size does not match times size: %d vs. %d",
-                trace.size(), times.size());
-            LOGGER.error(msg);
-            throw new RuntimeException(msg);
-          }
+          trace = deserializeDoubleList(traceBytes);
         } catch (RocksDBException e) {
           LOGGER.error("Caught RocksDBException when trying to extract trace %d (%.6f): %s",
               window.getIndex(), window.getTargetMZ(), e.getMessage());
@@ -565,20 +542,5 @@ public class WindowingTraceExtractor {
 
   public static Double windowCenterFromMin(Double min) {
     return min + WINDOW_WIDTH_FROM_CENTER;
-  }
-
-  // Keep these next two methods next to each other, as the stream wrapping must be symmetrical.
-  private static List<Double> readTraceByteAsStream(byte[] traceBytes) throws IOException {
-    DataInputStream dis = new DataInputStream(new GZIPInputStream(new ByteArrayInputStream(traceBytes)));
-    List<Double> vals = new ArrayList<>();
-    while (dis.available() > 0) {
-      vals.add(dis.readDouble());
-    }
-    return vals;
-  }
-
-  private static Pair<DataOutputStream, ByteArrayOutputStream> makeStreamsForTrace() throws IOException {
-    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    return Pair.of(new DataOutputStream(new GZIPOutputStream(bos)), bos);
   }
 }
