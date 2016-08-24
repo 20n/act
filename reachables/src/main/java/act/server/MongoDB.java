@@ -1944,7 +1944,7 @@ public class MongoDB {
       cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
     }
 
-    return new DBIterator(cursor); // DBIterator is just a wrapper classs
+    return new DBIterator(cursor); // DBIterator is just a wrapper class
   }
 
   public DBIterator getIteratorOverReactions(boolean notimeout) {
