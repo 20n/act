@@ -8,12 +8,10 @@ import com.act.workflow.tool_manager.workflow.Workflow
 import com.act.workflow.tool_manager.workflow.workflow_mixins.base.WorkingDirectoryUtility
 import com.act.workflow.tool_manager.workflow.workflow_mixins.composite.{RoToSequences, SarTreeConstructor}
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
-import org.apache.logging.log4j.LogManager
 
 class HumanRoToLcmsScoring extends Workflow with RoToSequences with SarTreeConstructor with WorkingDirectoryUtility {
 
   override val HELP_MESSAGE = "Workflow to convert RO number into a FASTA file with only human sequences."
-  override val logger = LogManager.getLogger(getClass.getName)
 
   private val OPTION_DATABASE = "d"
   private val OPTION_OUTPUT_FASTA_FILE = "f"
@@ -113,7 +111,7 @@ class HumanRoToLcmsScoring extends Workflow with RoToSequences with SarTreeConst
     )
 
     // Cache previous alignments
-    if (!alignedFastaPath.exists && !cl.hasOption(OPTION_FORCE)) {
+    if (cl.hasOption(OPTION_FORCE) || !alignedFastaPath.exists) {
       verifyInputFile(clustalBinaries)
       ClustalOmegaWrapper.setBinariesLocation(clustalBinaries)
 

@@ -16,7 +16,7 @@ class EcnumToProteinPredictionFlow
   with WorkingDirectoryUtility {
 
   override val HELP_MESSAGE = "Workflow to convert EC numbers into protein predictions based on HMMs."
-  override val logger = LogManager.getLogger(getClass.getName)
+  val logger = LogManager.getLogger(getClass.getName)
 
   private val OPTION_ALIGNED_FASTA_FILE_OUTPUT = "a"
   private val OPTION_OUTPUT_HMM = "m"
