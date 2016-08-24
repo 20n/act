@@ -4,6 +4,10 @@ assemblySettings
 
 name := "reachables"
 
+/*
+  This option allows us to run Spark through the job manager.
+  If we did not have this option, Spark is not able to correctly establish a class path.
+ */
 fork := true
 
 version := "0.1"
@@ -101,7 +105,6 @@ libraryDependencies ++= {
        * USD(1 million) (1000 dollars) / (1 tonnes)
        */
       "com.squants"  %% "squants"  % "0.6.2",
-      "org.scalaz" %% "scalaz-core" % "7.2.5",
   /*
    * the maven repo jar seem to be outdated, or incompatible.
    * we posted to the indigo group bugs. The current resolution
