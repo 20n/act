@@ -5,11 +5,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.rocksdb.ColumnFamilyDescriptor;
 import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.CompactionStyle;
 import org.rocksdb.CompressionType;
 import org.rocksdb.DBOptions;
+import org.rocksdb.MergeOperator;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
+import org.rocksdb.StringAppendOperator;
 
 import java.io.File;
 import java.nio.charset.Charset;
@@ -31,8 +34,9 @@ public class DBUtil {
       .setDisableDataSync(true)
       .setAllowMmapReads(true) // Trying all sorts of performance tweaking knobs, which are not well documented. :(
       .setAllowMmapWrites(true)
-      .setWriteBufferSize(1 << 27)
+      .setWriteBufferSize(1 << 30)
       .setArenaBlockSize(1 << 20)
+      .setAllowOsBuffer(true)
       .setCompressionType(CompressionType.SNAPPY_COMPRESSION) // Will hopefully trade CPU for I/O.
       ;
 

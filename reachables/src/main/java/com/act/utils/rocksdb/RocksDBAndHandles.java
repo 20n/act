@@ -44,4 +44,8 @@ public class RocksDBAndHandles<T extends ColumnFamilyEnumeration> {
   public RocksIterator newIterator(T columnFamily) throws RocksDBException {
     return this.db.newIterator(getHandle(columnFamily));
   }
+
+  // Don't expose merge: it appears to be broken in RocksDB JNI.
+
+
 }

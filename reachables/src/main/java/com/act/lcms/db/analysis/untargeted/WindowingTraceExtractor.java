@@ -22,9 +22,13 @@ import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
 
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.stream.XMLStreamException;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -33,7 +37,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -44,46 +47,16 @@ public class WindowingTraceExtractor {
   private static final Logger LOGGER = LogManager.getFormatterLogger(WindowingTraceExtractor.class);
   private static final Charset UTF8 = StandardCharsets.UTF_8;
   private static final byte[] TIMEPOINTS_KEY = "timepoints".getBytes(UTF8);
-  private static final Double MIN_MZ = 50.0;
-  private static final Double MAX_MZ = 950.0;
-  /* STEP_SIZE and WINDOW_WIDTH_FROM_CENTER are chosen carefully and deliberately to eliminate the possibility of false
-   * negatives in the output of the downstream analysis.  Specifically
-   *   WINDOW_WIDTH_FROM_CENTER = DEFAULT_WINDOW_WIDTH_FROM_CENTER + STEP_SIZE / 2.
-   * Where DEFAULT_WINDOW_WIDTH_FROM_CENTER ~ resolution of the instrument = 0.01 daltons.
-   *
-   * The rationale behind this stems from this observation: for a given STEP_SIZE, the maximum distance of any m/z from
-   * the nearest center of a window is STEP_SIZE / 2.  If the maximum distance from any m/z to the nearest center of
-   * a window is STEP_SIZE / 2, then a window with width from center (DEFAULT_WINDOW_WIDTH_FROM_CENTER + STEP_SIZE / 2)
-   * is guaranteed to subsume windows of width DEFAULT_WINDOW_WIDTH_FROM_CENTER for all m/z values within STEP_SIZE / 2
-   * of its center.  For each m/z that is more than STEP_SIZE / 2 away from its center, its nearest center will
-   * necessarily belong to another window, as windows cover the entire range of the instrument in STEP_SIZE increments.
-   *
-   * Here's an illustration of this concept:
-   *
-   * STEP_SIZE = 0.005
-   * WINDOW_WIDTH_FROM_CENTER = 0.0125 = DEFAULT_WINDOW_WIDTH_FROM_CENTER + STEP_SIZE / 2
-   *                               low    mid   high label
-   * |----|----|                0.0075 0.0200 0.0325
-   *   |----|----X              0.0125 0.0250 0.0375
-   *     |----|--X-|            0.0175 0.0300 0.0425
-   *       |----|X---|          0.0225 0.0350 0.0475     A
-   *         [...X...] Ideal window
-   *         |---X|----|        0.0275 0.0400 0.0525     B
-   *           |-X--|----|      0.0325 0.0450 0.0575
-   *             X----|----|    0.0375 0.0500 0.0625
-   * hits?(X) = hits?(A) U hits?(B)
-   *   or
-   * hits?(X) = |X - center(A)| <= |X - center(B)| ? hits?(A) : hits?(B)
-   */
-  private static final Double STEP_SIZE = 0.005;
-  private static final Double WINDOW_WIDTH_FROM_CENTER = 0.0125; // Set explicitly to avoid FP error.
+
+  private static final Double WINDOW_WIDTH_FROM_CENTER = 0.0100;
 
   // TODO: make this take a plate barcode and well coordinates instead of a scan file.
   public static final String OPTION_INDEX_PATH = "x";
   public static final String OPTION_SCAN_FILE = "i";
+  public static final String OPTION_TARGET_MASSES = "m";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class extracts windowed traces from an LCMS scan files, ",
+      "This class extracts traces from an LCMS scan files for a list of target m/z values, ",
       "and writes them to an on-disk index for later processing."
   }, "");
 
@@ -100,6 +73,12 @@ public class WindowingTraceExtractor {
         .hasArg().required()
         .longOpt("input")
     );
+    add(Option.builder(OPTION_TARGET_MASSES)
+        .argName("target mass file")
+        .desc("A file containing m/z values for which to search")
+        .hasArg().required()
+        .longOpt("target-masses")
+    );
     add(Option.builder("h")
         .argName("help")
         .desc("Prints this help message")
@@ -114,7 +93,7 @@ public class WindowingTraceExtractor {
   }
 
   public enum COLUMN_FAMILIES implements ColumnFamilyEnumeration<COLUMN_FAMILIES> {
-    RANGE_TO_ID("range_to_id"),
+    TARGET_TO_WINDOW("target_mz_to_window_obj"),
     ID_TO_TRACE("id_to_trace"),
     TIMEPOINTS("timepoints"),
     ;
@@ -141,17 +120,6 @@ public class WindowingTraceExtractor {
       return reverseNameMap.get(name);
     }
   }
-
-  // This is a list of aggregation windows, stored as <min, max, index> triples.
-  public static final List<Triple<Double, Double, Integer>> WINDOWS_W_IDX = Collections.unmodifiableList(
-      new ArrayList<Triple<Double, Double, Integer>>(){{
-        int i = 0;
-        // TODO: compute this in a way that minimizes FP error, or at least reuse the previous max as the next min.
-        for (double center = MIN_MZ; center <= MAX_MZ; center += STEP_SIZE, i++) {
-          add(Triple.of(center - WINDOW_WIDTH_FROM_CENTER, center + WINDOW_WIDTH_FROM_CENTER, i));
-        }
-      }}
-  );
 
   public WindowingTraceExtractor() {
 
@@ -192,36 +160,52 @@ public class WindowingTraceExtractor {
 
     File inputFile = new File(cl.getOptionValue(OPTION_SCAN_FILE));
     if (!inputFile.exists()) {
-      System.err.format("Cannot find input scan file at %s", inputFile.getAbsolutePath());
+      System.err.format("Cannot find input scan file at %s\n", inputFile.getAbsolutePath());
       HELP_FORMATTER.printHelp(WindowingTraceExtractor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     File rocksDBFile = new File(cl.getOptionValue(OPTION_INDEX_PATH));
     if (rocksDBFile.exists()) {
-      System.err.format("Index file at %s already exists--remove and retry", rocksDBFile.getAbsolutePath());
+      System.err.format("Index file at %s already exists--remove and retry\n", rocksDBFile.getAbsolutePath());
       HELP_FORMATTER.printHelp(WindowingTraceExtractor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
-    WindowingTraceExtractor extractor = new WindowingTraceExtractor();
+    List<Double> targetMZs = new ArrayList<>();
+    try (BufferedReader reader = new BufferedReader(new FileReader(cl.getOptionValue(OPTION_TARGET_MASSES)))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        targetMZs.add(Double.valueOf(line));
+      }
+    }
 
-    LOGGER.info("Accessing scan file at %s", inputFile.getAbsolutePath());
+    WindowingTraceExtractor extractor = new WindowingTraceExtractor();
+    extractor.processScan(targetMZs, inputFile, rocksDBFile);
+  }
+
+  public void processScan(List<Double> targetMZs, File scanFile, File rocksDBFile)
+      throws RocksDBException, ParserConfigurationException, XMLStreamException, IOException {
+    LOGGER.info("Accessing scan file at %s", scanFile.getAbsolutePath());
     LCMSNetCDFParser parser = new LCMSNetCDFParser();
-    Iterator<LCMSSpectrum> spectrumIterator = parser.getIterator(inputFile.getAbsolutePath());
+    Iterator<LCMSSpectrum> spectrumIterator = parser.getIterator(scanFile.getAbsolutePath());
 
     LOGGER.info("Opening index at %s", rocksDBFile.getAbsolutePath());
     RocksDB.loadLibrary();
     RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles = null;
+
     try {
       dbAndHandles = DBUtil.createNewRocksDB(rocksDBFile, COLUMN_FAMILIES.values());
 
       LOGGER.info("Extracting traces");
-      Pair<List<Double>, List<List<Double>>> timesAndTraces = extractor.extractTraces(spectrumIterator);
+      Triple<List<MZWindow>, List<Double>, List<List<Double>>> windowsTimesAndTraces =
+          extractTracesToIndex(targetMZs, spectrumIterator);
+
+      LOGGER.info("Writing search targets to on-disk index");
+      writeWindowsToDB(dbAndHandles, windowsTimesAndTraces.getLeft());
 
       LOGGER.info("Writing trace data to on-disk index");
-      extractor.writeTracesToDB(dbAndHandles, timesAndTraces.getLeft(), timesAndTraces.getRight());
-
+      writeTracesToDB(dbAndHandles, windowsTimesAndTraces.getMiddle(), windowsTimesAndTraces.getRight());
     } finally {
       if (dbAndHandles != null) {
         dbAndHandles.getDb().close();
@@ -231,20 +215,54 @@ public class WindowingTraceExtractor {
     LOGGER.info("Done");
   }
 
+  // Package private.
+  static class MZWindow {
+    int index;
+    Double targetMZ;
+    double min;
+    double max;
+
+    public MZWindow(int index, Double targetMZ) {
+      this.index = index;
+      this.targetMZ = targetMZ;
+      this.min = targetMZ - WINDOW_WIDTH_FROM_CENTER;
+      this.max = targetMZ + WINDOW_WIDTH_FROM_CENTER;
+    }
+
+    public int getIndex() {
+      return index;
+    }
+
+    public Double getTargetMZ() {
+      return targetMZ;
+    }
+
+    public double getMin() {
+      return min;
+    }
+
+    public double getMax() {
+      return max;
+    }
+  }
+
   /**
    * Initiate a data feast of all traces within some window allocation.  OM NOM NOM.
    * @param iter An iterator over an LCMS data file.
-   * @return Extracted time points and traces per window (organized by index).
+   * @return The windows, time points, and per-window traces.
    */
-  private Pair<List<Double>, List<List<Double>>> extractTraces(Iterator<LCMSSpectrum> iter) {
+  private Triple<List<MZWindow>, List<Double>, List<List<Double>>> extractTracesToIndex(
+      List<Double> targetMZs,
+      Iterator<LCMSSpectrum> iter)
+      throws RocksDBException, IOException {
     /* allTraces is a 2D array of aggregated intensity values over the <mz window, time> domains.  The organization of
      * this matrix works in conjunction with the list of windows and the list of times that we build in parallel.
      *
      * The three structures look like:
-     * WINDOWS_W_IDX:
-     *   <min_0, max_0, 0>,
-     *   <min_1, max_1, 1>,
-     *   <min_2, max_2, 2>,
+     * windows:
+     *   <min_0, target_0, max_0>,
+     *   <min_1, target_1, max_1>,
+     *   <min_2, target_2, max_2>,
      *   ...
      *
      * times:
@@ -266,12 +284,21 @@ public class WindowingTraceExtractor {
      * When we want to create an iterator over the <time, intensity> traces (i.e. List<XZ>) for each window, we knit the
      * single time array together with the appropriate list of intensity values online, reducing the overhead of storing
      * several hundred million XZ objects (which turns out to be fairly expensive). */
-    List<List<Double>> allTraces = new ArrayList<List<Double>>(WINDOWS_W_IDX.size()) {{
-      for (int i = 0; i < WINDOWS_W_IDX.size(); i++) {
+    List<MZWindow> windows = new ArrayList<MZWindow>() {{
+      int i = 0;
+      for (Double targetMZ : targetMZs) {
+        add(new MZWindow(i, targetMZ));
+        i++;
+      }
+    }};
+
+    List<Double> times = new ArrayList<>();
+
+    List<List<Double>> allTraces = new ArrayList<List<Double>>(windows.size()) {{
+      for (int i = 0; i < windows.size(); i++) {
         add(new ArrayList<>());
       }
     }};
-    List<Double> times = new ArrayList<>();
 
     int timepointCounter = 0;
     while (iter.hasNext()) {
@@ -287,6 +314,7 @@ public class WindowingTraceExtractor {
       for (List<Double> trace : allTraces) {
         trace.add(0.0d);
       }
+
       timepointCounter++;
 
       if (timepointCounter % 100 == 0) {
@@ -299,9 +327,9 @@ public class WindowingTraceExtractor {
        * The next window in m/z order is guaranteed to be the next one we want to consider since we address the points
        * in m/z order as well.  As soon as we've passed out of the range of one of our windows, we discard it.  It is
        * valid for a window to be added to and discarded from the working queue in one application of the work loop. */
-      LinkedList<Triple<Double, Double, Integer>> workingQueue = new LinkedList<>();
+      LinkedList<MZWindow> workingQueue = new LinkedList<>();
       // TODO: can we reuse these instead of creating fresh?
-      LinkedList<Triple<Double, Double, Integer>> tbdQueue = new LinkedList<>(WINDOWS_W_IDX);
+      LinkedList<MZWindow> tbdQueue = new LinkedList<>(windows);
 
       // Assumption: these arrive in m/z order.
       for (Pair<Double, Double> mzIntensity : spectrum.getIntensities()) {
@@ -309,12 +337,12 @@ public class WindowingTraceExtractor {
         Double intensity = mzIntensity.getRight();
 
         // First, shift any applicable ranges onto the working queue based on their minimum mz.
-        while (!tbdQueue.isEmpty() && tbdQueue.peekFirst().getLeft() <= mz) {
+        while (!tbdQueue.isEmpty() && tbdQueue.peekFirst().getMin() <= mz) {
           workingQueue.add(tbdQueue.pop());
         }
 
         // Next, remove any ranges we've passed.
-        while (!workingQueue.isEmpty() && workingQueue.peekFirst().getMiddle() < mz) {
+        while (!workingQueue.isEmpty() && workingQueue.peekFirst().getMax() < mz) {
           workingQueue.pop();
         }
 
@@ -330,10 +358,11 @@ public class WindowingTraceExtractor {
 
         // The working queue should now hold only ranges that include this m/z value.  Sweep line swept!
 
-        /* Now add this intensity to the most recent XZ value for each of the items in the working queue (max 2?).
+        /* Now add this intensity to accumulator value for each of the items in the working queue.
          * By the end of the outer loop, trace(t) = Sum(intensity) | win_min <= m/z <= win_max @ time point # t */
-        for (Triple<Double, Double, Integer> triple : workingQueue) {
-          List<Double> trace = allTraces.get(triple.getRight());
+        for (MZWindow window : workingQueue) {
+          // TODO: count the number of times we add intensities to each window's accumulator for MS1-style warnings.
+          List<Double> trace = allTraces.get(window.getIndex());
           Double accumulator = trace.get(trace.size() - 1); // Get the current XZ, i.e. the one at this time point.
           trace.set(trace.size() - 1, accumulator + intensity);
         }
@@ -342,24 +371,29 @@ public class WindowingTraceExtractor {
 
     // Trace data has been devoured.  Might want to loosen the belt at this point...
     LOGGER.info("Done extracting %d traces", allTraces.size());
-    return Pair.of(times, allTraces);
+
+    return Triple.of(windows, times, allTraces);
+  }
+
+  private void writeWindowsToDB(RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles, List<MZWindow> windows)
+      throws RocksDBException, IOException {
+    for (MZWindow window : windows) {
+      byte[] keyBytes = serializeObject(window.getTargetMZ());
+      byte[] valBytes = serializeObject(window);
+
+      dbAndHandles.put(COLUMN_FAMILIES.TARGET_TO_WINDOW, keyBytes, valBytes);
+    }
+
+    dbAndHandles.getDb().flush(new FlushOptions());
+    LOGGER.info("Done writing window data to index");
   }
 
   private void writeTracesToDB(RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles,
                                List<Double> times,
                                List<List<Double>> allTraces) throws RocksDBException, IOException {
-    for (Triple<Double, Double, Integer> triple : WINDOWS_W_IDX) {
-      Pair<Double, Double> range = Pair.of(triple.getLeft(), triple.getMiddle());
-
-      byte[] keyBytes = serializeObject(range);
-      byte[] valBytes = serializeObject(triple.getRight());
-
-      dbAndHandles.put(COLUMN_FAMILIES.RANGE_TO_ID, keyBytes, valBytes);
-    }
 
     LOGGER.info("Writing timepoints to on-disk index (%d points)", times.size());
     dbAndHandles.put(COLUMN_FAMILIES.TIMEPOINTS, TIMEPOINTS_KEY, serializeDoubleList(times));
-
     for (int i = 0; i < allTraces.size(); i++) {
       byte[] keyBytes = serializeObject(i);
       byte[] valBytes = serializeDoubleList(allTraces.get(i));
@@ -367,16 +401,17 @@ public class WindowingTraceExtractor {
       if (i % 1000 == 0) {
         LOGGER.info("Finished writing %d traces", i);
       }
+      dbAndHandles.put(COLUMN_FAMILIES.TARGET_TO_WINDOW, keyBytes, valBytes);
     }
 
     dbAndHandles.getDb().flush(new FlushOptions());
     LOGGER.info("Done writing trace data to index");
   }
 
-  public Iterator<Triple<Double, Double, List<XZ>>> getIteratorOverTraces(File index)
+  public Iterator<Pair<Double, List<XZ>>> getIteratorOverTraces(File index)
       throws IOException, RocksDBException {
     RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles = DBUtil.openExistingRocksDB(index, COLUMN_FAMILIES.values());
-    final RocksIterator rangesIterator = dbAndHandles.newIterator(COLUMN_FAMILIES.RANGE_TO_ID);
+    final RocksIterator rangesIterator = dbAndHandles.newIterator(COLUMN_FAMILIES.TARGET_TO_WINDOW);
 
     rangesIterator.seekToFirst();
 
@@ -392,46 +427,50 @@ public class WindowingTraceExtractor {
       throw new UncheckedIOException(e);
     }
 
-    return new Iterator<Triple<Double, Double, List<XZ>>>() {
+    return new Iterator<Pair<Double, List<XZ>>>() {
       @Override
       public boolean hasNext() {
         return rangesIterator.isValid();
       }
 
       @Override
-      public Triple<Double, Double, List<XZ>> next() {
-        byte[] keyBytes = rangesIterator.key();
+      public Pair<Double, List<XZ>> next() {
         byte[] valBytes = rangesIterator.value();
-        Pair<Double, Double> range;
-        Integer traceIndex;
+        MZWindow window;
         try {
-          range = deserializeObject(keyBytes);
-          traceIndex = deserializeObject(valBytes);
+          window = deserializeObject(valBytes);
         } catch (IOException e) {
-          LOGGER.error("Caught IOException when iterating over window ranges: %s", e.getMessage());
+          LOGGER.error("Caught IOException when iterating over mz windows: %s", e.getMessage());
           throw new UncheckedIOException(e);
         } catch (ClassNotFoundException e) {
-          LOGGER.error("Caught ClassNotFoundException when iterating over window ranges: %s", e.getMessage());
+          LOGGER.error("Caught ClassNotFoundException when iterating over mz window: %s", e.getMessage());
           throw new RuntimeException(e);
+        }
+
+        byte[] traceKeyBytes;
+        try {
+          traceKeyBytes = serializeObject(window.getIndex());
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
         }
 
         List<Double> trace;
         try {
-          byte[] traceBytes = dbAndHandles.get(COLUMN_FAMILIES.ID_TO_TRACE, valBytes);
+          byte[] traceBytes = dbAndHandles.get(COLUMN_FAMILIES.ID_TO_TRACE, traceKeyBytes);
           if (traceBytes == null) {
-            String msg = String.format("Got null byte array back for trace key %d (%.3f - %.3f)",
-                traceIndex, range.getLeft(), range.getRight());
+            String msg = String.format("Got null byte array back for trace key %d (target: %.6f)",
+                window.getIndex(), window.getTargetMZ());
             LOGGER.error(msg);
             throw new RuntimeException(msg);
           }
           trace = deserializeDoubleList(traceBytes);
         } catch (RocksDBException e) {
-          LOGGER.error("Caught RocksDBException when trying to extract range %d (%f - %f): %s",
-              traceIndex, range.getLeft(), range.getRight(), e.getMessage());
+          LOGGER.error("Caught RocksDBException when trying to extract trace %d (%.6f): %s",
+              window.getIndex(), window.getTargetMZ(), e.getMessage());
           throw new RuntimeException(e);
         } catch (IOException e) {
-          LOGGER.error("Caught IOException when trying to extract range %d (%f - %f): %s",
-              traceIndex, range.getLeft(), range.getRight(), e.getMessage());
+          LOGGER.error("Caught IOException when trying to extract trace %d (%.6f): %s",
+              window.getIndex(), window.getTargetMZ(), e.getMessage());
           throw new UncheckedIOException(e);
         }
 
@@ -450,7 +489,7 @@ public class WindowingTraceExtractor {
          * advance only after we've read the current value, which means the next hasNext call after we've walked off the
          * edge will return false. */
         rangesIterator.next();
-        return Triple.of(range.getLeft(), range.getRight(), xzs);
+        return Pair.of(window.getTargetMZ(), xzs);
       }
     };
   }
