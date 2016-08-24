@@ -205,12 +205,10 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
         val deeperScores: List[Double] = nodesMatchingSar map (node =>
           // Leaf Node
           if (sarTree.getChildren(node).isEmpty) {
-
             // Get really excited if we see an exact match
             if (node.getSubstructure.equals(molecule)) {
               baseAdd * baseAdd * baseAdd
             } else {
-
               // TODO Add a heuristic in to filter out REALLY REALLY large and general substrates.
               // Slightly penalize if overshoot substrate
               -baseAdd

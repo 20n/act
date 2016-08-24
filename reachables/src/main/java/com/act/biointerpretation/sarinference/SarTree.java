@@ -124,11 +124,13 @@ public class SarTree {
     // If it is a leaf node, it should always have the PREDICTION_ID_KEY property object- we added it earlier!
     // Thus we should add those prediction IDs to the SarTreeNode.
     Object propertyObject = molecule.getPropertyObject(SarTreeNode.PREDICTION_ID_KEY);
-    try {
-      predictionIds = Arrays.asList(OBJECT_MAPPER.readValue(propertyObject.toString(), Integer[].class));
-    } catch (IOException e) {
-      LOGGER.info("Couldn't deserialize %s into list : %s", propertyObject, e.getMessage());
-      throw new RuntimeException(e);
+    if (propertyObject != null) {
+      try {
+        predictionIds = Arrays.asList(OBJECT_MAPPER.readValue(propertyObject.toString(), Integer[].class));
+      } catch (IOException e) {
+        LOGGER.info("Couldn't deserialize %s into list : %s", propertyObject, e.getMessage());
+        throw new RuntimeException(e);
+      }
     }
 
     return new SarTreeNode(molecule, hierId, predictionIds);
