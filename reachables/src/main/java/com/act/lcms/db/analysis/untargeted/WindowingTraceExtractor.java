@@ -32,6 +32,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -215,8 +216,10 @@ public class WindowingTraceExtractor {
     LOGGER.info("Done");
   }
 
-  // Package private.
-  static class MZWindow {
+  // Make this public so it can be de/serialized
+  public static class MZWindow implements Serializable {
+    private static final long serialVersionUID = -3326765598920871504L;
+
     int index;
     Double targetMZ;
     double min;
