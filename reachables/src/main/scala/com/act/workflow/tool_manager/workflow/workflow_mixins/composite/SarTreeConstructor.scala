@@ -1,7 +1,6 @@
 package com.act.workflow.tool_manager.workflow.workflow_mixins.composite
 
 import java.io.File
-import java.lang.NullPointerException
 
 import act.server.MongoDB
 import chemaxon.clustering.LibraryMCS
@@ -12,7 +11,6 @@ import com.act.biointerpretation.sarinference.{SarTree, SarTreeNode}
 import com.act.utils.TSVWriter
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.cross_db.SequenceIdToRxnInchis
 import com.act.workflow.tool_manager.workflow.workflow_mixins.spark.SparkRdd
-import org.apache.logging.log4j.LogManager
 import org.apache.spark.mllib.linalg.{Vector => SparkVector}
 import org.apache.spark.rdd.RDD
 
@@ -49,6 +47,10 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
 
     val inchis: Set[String] = hits flatMap (_.getProductInchis) toSet
 
+    if (inchis.isEmpty) throw new RuntimeException("After filtering for InChIs that were marked as hits, " +
+      "we found no InChIs leftover.  Please ensure that your L2PredictionCorpus Projector Name " +
+      "contains HIT if the LCMS marked it as a hit and that you have input a serialized L2PredictionCorpus.")
+
     /*
 
       Parse and cluster aligned fasta file
@@ -70,7 +72,6 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
 
     // Shutdown spark as we no longer need it.
     sparkStopContext(sparkContext)
-
 
     /*
 
@@ -109,14 +110,16 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     val writtenMap = ListMap(inchiScores.toSeq.sortBy(-_._2): _*)
 
     // Write to file, use TSV because InChIs don't play well with csvs
-    val writer = new TSVWriter[String, String](List("InChI", "Score"))
+    val writer = new TSVWriter[String, String](List("InChI", "Score", "Rank"))
     writer.open(outputFile)
 
     val largestScore: Double = writtenMap.values.max
+    var counter = 1
     for ((key, value) <- writtenMap) {
       // Normalize based on largest score to 100
-      val row = Map("InChI" -> key, "Score" -> s"${100.0 * value / largestScore}")
+      val row = Map("InChI" -> key, "Score" -> s"${100.0 * value / largestScore}", "Rank" -> s"$counter")
       writer.append(row.asJava)
+      counter += 1
     }
     writer.close()
   }
