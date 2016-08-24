@@ -93,7 +93,7 @@ public class MongoDB {
       if (!force) {
         // Require explicit confirmation from the user before dropping an existing DB.
         System.out.format("Going to drop: %s:%d/%s. Type \"DROP\" (without quotes) and press enter to proceed.\n",
-                mongoActHost, port, dbs);
+            mongoActHost, port, dbs);
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
           String readLine = reader.readLine();
           if (!"DROP".equals(readLine)) {
@@ -277,10 +277,10 @@ public class MongoDB {
       return "-" + d;
 
     if ((d instanceof Long && dref instanceof Long) ||
-            (d instanceof Double && dref instanceof Double) ||
-            (d instanceof Integer && dref instanceof Integer) ||
-            (d instanceof Boolean && dref instanceof Boolean) ||
-            (d instanceof String && dref instanceof String))
+        (d instanceof Double && dref instanceof Double) ||
+        (d instanceof Integer && dref instanceof Integer) ||
+        (d instanceof Boolean && dref instanceof Boolean) ||
+        (d instanceof String && dref instanceof String))
       return compare_primitive(d, dref);
     else if (d instanceof BasicDBList && dref instanceof BasicDBList)
       return compare((BasicDBList) d, (BasicDBList) dref, listsAreSet);
@@ -324,7 +324,7 @@ public class MongoDB {
         refKeys.remove(k);
 
         Object d;
-        if ((d = compare(val, refval, listsAreSet)) != null) {
+          if ((d = compare(val, refval, listsAreSet)) != null) {
           // keys identical but values differ, add without the + or - to key
           different = true;
           diff.put(k, d);
@@ -510,7 +510,7 @@ public class MongoDB {
    * @param metaObjects A list of metadata objects to append to the metadata list in Mongo.
    */
   public void appendChemicalXRefMetadata(
-          String inchi, String idPath, String id, String metaPath, BasicDBList metaObjects) {
+      String inchi, String idPath, String id, String metaPath, BasicDBList metaObjects) {
     if (idPath == null && metaPath == null) {
       return;
     }
@@ -631,7 +631,7 @@ public class MongoDB {
     listOfRos.addAll(matchedROs);
 
     BasicDBObject updateDerivedDataContainerWithMatchedRos =
-            new BasicDBObject("$set", new BasicDBObject("derived_data.matched_ros", listOfRos));
+        new BasicDBObject("$set", new BasicDBObject("derived_data.matched_ros", listOfRos));
     this.dbChemicals.update(query, updateDerivedDataContainerWithMatchedRos);
   }
 
@@ -854,7 +854,7 @@ public class MongoDB {
       if (isForBalance != null && isForBalance) continue;
       originalProductIDs.add(productID);
       product.put("coefficient", r.getProductCoefficient(
-              productID) );
+          productID) );
       newProducts.add(product);
     }
     Set<Long> productsNew = r.getProductIdsOfProductCoefficients();
@@ -932,11 +932,11 @@ public class MongoDB {
       // this function is designed to only submit a new entry
       // if you need to update an existing entry, use updateActReaction
       String msg = StringUtils.join(new String[] {
-              "FATAL Error: Aborting in MongoDB.submitToActReactionDB.",
-              "Reaction asked to add has a populated ID field," ,
-              "i.e., != -1, while this function strictly appends" ,
-              "to the DB and so will not honor the id field.",
-              r.toString()
+        "FATAL Error: Aborting in MongoDB.submitToActReactionDB.",
+        "Reaction asked to add has a populated ID field," ,
+        "i.e., != -1, while this function strictly appends" ,
+        "to the DB and so will not honor the id field.",
+        r.toString()
       }, "\n");
       System.err.println(msg);
       throw new RuntimeException(msg);
@@ -1379,42 +1379,42 @@ public class MongoDB {
   private void addToDefiniteCofactorsMaps(SomeCofactorNames cofactor, Chemical c) {
     Long id = c.getUuid();
     switch (cofactor) {
-      case Water: SomeCofactorNames.Water.setMongoDBId(id); break;
-      case ATP: SomeCofactorNames.ATP.setMongoDBId(id); break;
-      case Acceptor: SomeCofactorNames.Acceptor.setMongoDBId(id); break;
-      case AcceptorH2: SomeCofactorNames.AcceptorH2.setMongoDBId(id); break;
-      case ReducedAcceptor: SomeCofactorNames.ReducedAcceptor.setMongoDBId(id); break;
-      case OxidizedFerredoxin: SomeCofactorNames.OxidizedFerredoxin.setMongoDBId(id); break;
-      case ReducedFerredoxin: SomeCofactorNames.ReducedFerredoxin.setMongoDBId(id); break;
-      case CO2: SomeCofactorNames.CO2.setMongoDBId(id); break;
-      case BicarbonateHCO3: SomeCofactorNames.BicarbonateHCO3.setMongoDBId(id); break;
-      case CoA: SomeCofactorNames.CoA.setMongoDBId(id); break;
-      case H: SomeCofactorNames.H.setMongoDBId(id); break;
-      case NH3: SomeCofactorNames.NH3.setMongoDBId(id); break;
-      case HCl: SomeCofactorNames.HCl.setMongoDBId(id); break;
-      case Cl: SomeCofactorNames.Cl.setMongoDBId(id); break;
-      case O2: SomeCofactorNames.O2.setMongoDBId(id); break;
-      case CTP: SomeCofactorNames.CTP.setMongoDBId(id); break;
-      case dATP: SomeCofactorNames.dATP.setMongoDBId(id); break;
-      case H2S: SomeCofactorNames.H2S.setMongoDBId(id); break;
-      case dGTP: SomeCofactorNames.dGTP.setMongoDBId(id); break;
-      case PhosphoricAcid: SomeCofactorNames.PhosphoricAcid.setMongoDBId(id); break;
-      case I: SomeCofactorNames.I.setMongoDBId(id); break;
-      case MolI: SomeCofactorNames.MolI.setMongoDBId(id); break;
-      case AMP: SomeCofactorNames.AMP.setMongoDBId(id); break;
-      case Phosphoadenylylsulfate: SomeCofactorNames.Phosphoadenylylsulfate.setMongoDBId(id); break;
-      case H2SO3: SomeCofactorNames.H2SO3.setMongoDBId(id); break;
-      case adenylylsulfate: SomeCofactorNames.adenylylsulfate.setMongoDBId(id); break;
-      case GTP: SomeCofactorNames.GTP.setMongoDBId(id); break;
-      case NADPH: SomeCofactorNames.NADPH.setMongoDBId(id); break;
-      case dADP: SomeCofactorNames.dADP.setMongoDBId(id); break;
-      case NADP: SomeCofactorNames.NADP.setMongoDBId(id); break;
-      case UMP: SomeCofactorNames.UMP.setMongoDBId(id); break;
-      case dCDP: SomeCofactorNames.dCDP.setMongoDBId(id); break;
-      case ADP: SomeCofactorNames.ADP.setMongoDBId(id); break;
-      case ADPm: SomeCofactorNames.ADPm.setMongoDBId(id); break;
-      case UDP: SomeCofactorNames.UDP.setMongoDBId(id); break;
-      default: break;
+    case Water: SomeCofactorNames.Water.setMongoDBId(id); break;
+    case ATP: SomeCofactorNames.ATP.setMongoDBId(id); break;
+    case Acceptor: SomeCofactorNames.Acceptor.setMongoDBId(id); break;
+    case AcceptorH2: SomeCofactorNames.AcceptorH2.setMongoDBId(id); break;
+    case ReducedAcceptor: SomeCofactorNames.ReducedAcceptor.setMongoDBId(id); break;
+    case OxidizedFerredoxin: SomeCofactorNames.OxidizedFerredoxin.setMongoDBId(id); break;
+    case ReducedFerredoxin: SomeCofactorNames.ReducedFerredoxin.setMongoDBId(id); break;
+    case CO2: SomeCofactorNames.CO2.setMongoDBId(id); break;
+    case BicarbonateHCO3: SomeCofactorNames.BicarbonateHCO3.setMongoDBId(id); break;
+    case CoA: SomeCofactorNames.CoA.setMongoDBId(id); break;
+    case H: SomeCofactorNames.H.setMongoDBId(id); break;
+    case NH3: SomeCofactorNames.NH3.setMongoDBId(id); break;
+    case HCl: SomeCofactorNames.HCl.setMongoDBId(id); break;
+    case Cl: SomeCofactorNames.Cl.setMongoDBId(id); break;
+    case O2: SomeCofactorNames.O2.setMongoDBId(id); break;
+    case CTP: SomeCofactorNames.CTP.setMongoDBId(id); break;
+    case dATP: SomeCofactorNames.dATP.setMongoDBId(id); break;
+    case H2S: SomeCofactorNames.H2S.setMongoDBId(id); break;
+    case dGTP: SomeCofactorNames.dGTP.setMongoDBId(id); break;
+    case PhosphoricAcid: SomeCofactorNames.PhosphoricAcid.setMongoDBId(id); break;
+    case I: SomeCofactorNames.I.setMongoDBId(id); break;
+    case MolI: SomeCofactorNames.MolI.setMongoDBId(id); break;
+    case AMP: SomeCofactorNames.AMP.setMongoDBId(id); break;
+    case Phosphoadenylylsulfate: SomeCofactorNames.Phosphoadenylylsulfate.setMongoDBId(id); break;
+    case H2SO3: SomeCofactorNames.H2SO3.setMongoDBId(id); break;
+    case adenylylsulfate: SomeCofactorNames.adenylylsulfate.setMongoDBId(id); break;
+    case GTP: SomeCofactorNames.GTP.setMongoDBId(id); break;
+    case NADPH: SomeCofactorNames.NADPH.setMongoDBId(id); break;
+    case dADP: SomeCofactorNames.dADP.setMongoDBId(id); break;
+    case NADP: SomeCofactorNames.NADP.setMongoDBId(id); break;
+    case UMP: SomeCofactorNames.UMP.setMongoDBId(id); break;
+    case dCDP: SomeCofactorNames.dCDP.setMongoDBId(id); break;
+    case ADP: SomeCofactorNames.ADP.setMongoDBId(id); break;
+    case ADPm: SomeCofactorNames.ADPm.setMongoDBId(id); break;
+    case UDP: SomeCofactorNames.UDP.setMongoDBId(id); break;
+    default: break;
     }
 
   }
@@ -1436,76 +1436,76 @@ public class MongoDB {
     public Long getMongoDBId() { return this.mongodbId; }
 
     private static final String[] raw_definiteCofactors = {
-            // 0 Water:
-            "InChI=1S/H2O/h1H2", // [H2o, H2O, h2O][water, Dihydrogen oxide, Water vapor, Distilled water, oxidane, Deionized water, Purified water, Water, purified, Dihydrogen Monoxide, DHMO, oxygen, OH-, monohydrate, aqua, hydrate, o-]
-            // 1 ATP:
-            "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6+,7?,10-/m1/s1", // [L-ATP, D-ATP, araATP, alphaATP, adenosyl-ribose triphosphate, adenosine 5'-triphosphate, 5'-ATP, ATP, adenosine triphosphate][Adenosine triphosphate, Striadyne, Myotriphos, Triadenyl, Triphosphaden, Atriphos, Glucobasin, Adephos, Adetol, Triphosaden, AC1NSUB1, [[(2S,5S)-5-(6-aminopurin-9-yl)-3,4-dihydroxyoxolan-2-yl]methoxy-hydroxyphosphoryl] phosphono hydrogen phosphate, Adenosine 5'-(tetrahydrogen triphosphate)]
-            // 2 Acceptor:
-            "InChI=1S/R", // [acceptor, oxidized adrenal ferredoxin, oxidized adrenodoxin][]
-            // 3 AcceptorH2:
-            "InChI=1S/RH2/h1H2", // [reduced adrenal ferredoxin, reduced adrenodoxin, acceptor-H2, acceptorH2][]
-            // 4 ReducedAcceptor:
-            "InChI=1S/RH3/h1H3", // [reduced acceptor, AH2, putidaredoxin, donor][]
-            // 5 OxidizedFerredoxin:
-            "InChI=1S/4RS.2Fe.2S/c4*1-2;;;;/q4*-1;2*+5;;", // [oxidized ferredoxin][]
-            // 6 ReducedFerredoxin:
-            "InChI=1S/4RS.2Fe.2S/c4*1-2;;;;/q4*-1;2*+4;;", // [reduced ferredoxin][]
-            // 7 CO2:
-            "InChI=1S/CO2/c2-1-3", // [carbon dioxide, carbon dioxide, carbonic acid gas]
-            // 8 BicarbonateHCO3:
-            "InChI=1S/CH2O3/c2-1(3)4/h(H2,2,3,4)/p-1", // [HCO3-, bicarbonate, bicarbonate]
-            // 9 CoA
-            "InChI=1S/C21H36N7O16P3S/c1-21(2,16(31)19(32)24-4-3-12(29)23-5-6-48)8-41-47(38,39)44-46(36,37)40-7-11-15(43-45(33,34)35)14(30)20(42-11)28-10-27-13-17(22)25-9-26-18(13)28/h9-11,14-16,20,30-31,48H,3-8H2,1-2H3,(H,23,29)(H,24,32)(H,36,37)(H,38,39)(H2,22,25,26)(H2,33,34,35)/t11-,14-,15-,16+,20-/m1/s1", // [coenzyme A, CoA-SH, CoASH]
-            // 10 H
-            "InChI=1S/p+1", // [H+/out, H+/in, H+out]
-            // 11 NH3
-            "InChI=1S/H3N/h1H3", // Ammonia Gas
-            // 12 HCl, Cl-
-            "InChI=1S/ClH/h1H", // hydrochloric acid, hydrogen chloride, Muriatic acid
-            // 13 Cl-
-            "InChI=1S/ClH/h1H/p-1", // [Cl-/out, Cl-/in, chloride]
-            // 14 O2
-            "InChI=1S/O2/c1-2", // oxygen molecule, Molecular oxygen, Dioxygen
-            // 15 CTP
-            "InChI=1S/C9H16N3O14P3/c10-5-1-2-12(9(15)11-5)8-7(14)6(13)4(24-8)3-23-28(19,20)26-29(21,22)25-27(16,17)18/h1-2,4,6-8,13-14H,3H2,(H,19,20)(H,21,22)(H2,10,11,15)(H2,16,17,18)/t4-,6-,7+,8-/m1/s1", // L-CTP, D-CTP, cytosine arabinoside 5'-triphosphate
-            // 16 dATP
-            "InChI=1S/C10H16N5O12P3/c11-9-8-10(13-3-12-9)15(4-14-8)7-1-5(16)6(25-7)2-24-29(20,21)27-30(22,23)26-28(17,18)19/h3-7,16H,1-2H2,(H,20,21)(H,22,23)(H2,11,12,13)(H2,17,18,19)/t5-,6+,7+/m0/s1", // deoxyATP, L-dATP, L-2'-dATP
-            // 17 hydrogen sulfide
-            "InChI=1S/H2S/h1H2", // hydrogensulfide, hydrogen sulfide, hydrogen sulfide
-            // 18 dGTP
-            "InChI=1S/C10H16N5O13P3/c11-10-13-8-7(9(17)14-10)12-3-15(8)6-1-4(16)5(26-6)2-25-30(21,22)28-31(23,24)27-29(18,19)20/h3-6,16H,1-2H2,(H,21,22)(H,23,24)(H2,18,19,20)(H3,11,13,14,17)/t4-,5+,6+/m0/s1", // 2'-dGTP, D-GTP, deoxyGTP
-            // 19 Phosphoric acid
-            "InChI=1S/H3O4P/c1-5(2,3)4/h(H3,1,2,3,4)", // phosphate/out, phosphate/in, Phosphoric acid
-            // 20 Iodide ion
-            "InChI=1S/HI/h1H/p-1", // [iodide, Iodide, Iodide ion]
-            // 21 Molecular iodine
-            "InChI=1S/I2/c1-2", // [Molecular iodine, Iodine solution, Tincture iodine]
-            // 22 AMP
-            "InChI=1S/C10H14N5O7P/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(22-10)1-21-23(18,19)20/h2-4,6-7,10,16-17H,1H2,(H2,11,12,13)(H2,18,19,20)/t4-,6-,7+,10-/m1/s1", // 5'AMP, arabinosyl adenine 5'-phosphate, arabinosyl adenine 5'-monophosphate
-            // 23 3-phosphoadenylylsulfate
-            "InChI=1S/C10H15N5O13P2S/c11-8-5-9(13-2-12-8)15(3-14-5)10-6(16)7(27-29(17,18)19)4(26-10)1-25-30(20,21)28-31(22,23)24/h2-4,6-7,10,16H,1H2,(H,20,21)(H2,11,12,13)(H2,17,18,19)(H,22,23,24)/t4-,6-,7-,10-/m1/s1", // [3'-phosphoadenylylsulfate, 3'-phosphoadenylyl 5'-phosphosulfate, 3-phosphoadenylylsulfate]
-            // 24 Sulfur dioxide solution
-            "InChI=1S/H2O3S/c1-4(2)3/h(H2,1,2,3)", // [Sulfurous acid, Sulphurous acid, Sulfur dioxide solution]
-            // 25 adenylylsulfate
-            "InChI=1S/C10H14N5O10PS/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(24-10)1-23-26(18,19)25-27(20,21)22/h2-4,6-7,10,16-17H,1H2,(H,18,19)(H2,11,12,13)(H,20,21,22)/t4-,6-,7-,10-/m1/s1", // adenosine 5-phosphosulfate, adenylylsulfate, adenosine 5'-phosphate 5'-sulfate
-            // 26 GTP
-            "InChI=1S/C10H16N5O14P3/c11-10-13-7-4(8(18)14-10)12-2-15(7)9-6(17)5(16)3(27-9)1-26-31(22,23)29-32(24,25)28-30(19,20)21/h2-3,5-6,9,16-17H,1H2,(H,22,23)(H,24,25)(H2,19,20,21)(H3,11,13,14,18)/t3-,5-,6-,9-/m1/s1", // guanosine 5'-triphosphate, GUANOSINE TRIPHOSPHATE, 5'-GTP
-            // 27 NADPH
-            "InChI=1S/C21H30N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1,3-4,7-8,10-11,13-16,20-21,29-31H,2,5-6H2,(H2,23,32)(H,36,37)(H,38,39)(H2,22,24,25)(H2,33,34,35)/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1", // NAD(P)H, 2'-NADPH, NADPH
-            // 28 dADP
-            "InChI=1S/C10H15N5O9P2/c11-9-8-10(13-3-12-9)15(4-14-8)7-1-5(16)6(23-7)2-22-26(20,21)24-25(17,18)19/h3-7,16H,1-2H2,(H,20,21)(H2,11,12,13)(H2,17,18,19)/t5-,6+,7+/m0/s1", // 2'-dADP, 2'-deoxy-ADP, deoxyADP
-            // 29 NADP+
-            "InChI=1S/C21H28N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1-4,7-8,10-11,13-16,20-21,29-31H,5-6H2,(H7-,22,23,24,25,32,33,34,35,36,37,38,39)/p+1/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1", // NAD(P)+, beta-NADP+, 2'-NADP+
-            // 30 UMP
-            "InChI=1S/C9H13N2O9P/c12-5-1-2-11(9(15)10-5)8-7(14)6(13)4(20-8)3-19-21(16,17)18/h1-2,4,6-8,13-14H,3H2,(H,10,12,15)(H2,16,17,18)/t4-,6+,7?,8-/m1/s1", // D-UMP, deazauridine 5'-phosphate, ara-UMP
-            // 31 dCDP
-            "InChI=1S/C9H15N3O10P2/c10-7-1-2-12(9(14)11-7)8-3-5(13)6(21-8)4-20-24(18,19)22-23(15,16)17/h1-2,5-6,8,13H,3-4H2,(H,18,19)(H2,10,11,14)(H2,15,16,17)/t5-,6+,8+/m0/s1", // L-dCDP, D-dCDP, 2'-deoxy-CDP
-            // 32 ADP
-            "InChI=1S/C10H15N5O10P2/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(24-10)1-23-27(21,22)25-26(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7+,10-/m1/s1", // L-ADP, D-ADP, araADP
-            // 33 ADP from metacyc
-            "InChI=1S/C10H15N5O10P2/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(24-10)1-23-27(21,22)25-26(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H2,11,12,13)(H2,18,19,20)/p-3", // ADP
-            // 34 UDP from metacyc
-            "InChI=1S/C9H14N2O12P2/c12-5-1-2-11(9(15)10-5)8-7(14)6(13)4(22-8)3-21-25(19,20)23-24(16,17)18/h1-2,4,6-8,13-14H,3H2,(H,19,20)(H,10,12,15)(H2,16,17,18)", // UDP
+      // 0 Water:
+      "InChI=1S/H2O/h1H2", // [H2o, H2O, h2O][water, Dihydrogen oxide, Water vapor, Distilled water, oxidane, Deionized water, Purified water, Water, purified, Dihydrogen Monoxide, DHMO, oxygen, OH-, monohydrate, aqua, hydrate, o-]
+      // 1 ATP:
+      "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6+,7?,10-/m1/s1", // [L-ATP, D-ATP, araATP, alphaATP, adenosyl-ribose triphosphate, adenosine 5'-triphosphate, 5'-ATP, ATP, adenosine triphosphate][Adenosine triphosphate, Striadyne, Myotriphos, Triadenyl, Triphosphaden, Atriphos, Glucobasin, Adephos, Adetol, Triphosaden, AC1NSUB1, [[(2S,5S)-5-(6-aminopurin-9-yl)-3,4-dihydroxyoxolan-2-yl]methoxy-hydroxyphosphoryl] phosphono hydrogen phosphate, Adenosine 5'-(tetrahydrogen triphosphate)]
+      // 2 Acceptor:
+      "InChI=1S/R", // [acceptor, oxidized adrenal ferredoxin, oxidized adrenodoxin][]
+      // 3 AcceptorH2:
+      "InChI=1S/RH2/h1H2", // [reduced adrenal ferredoxin, reduced adrenodoxin, acceptor-H2, acceptorH2][]
+      // 4 ReducedAcceptor:
+      "InChI=1S/RH3/h1H3", // [reduced acceptor, AH2, putidaredoxin, donor][]
+      // 5 OxidizedFerredoxin:
+      "InChI=1S/4RS.2Fe.2S/c4*1-2;;;;/q4*-1;2*+5;;", // [oxidized ferredoxin][]
+      // 6 ReducedFerredoxin:
+      "InChI=1S/4RS.2Fe.2S/c4*1-2;;;;/q4*-1;2*+4;;", // [reduced ferredoxin][]
+      // 7 CO2:
+      "InChI=1S/CO2/c2-1-3", // [carbon dioxide, carbon dioxide, carbonic acid gas]
+      // 8 BicarbonateHCO3:
+      "InChI=1S/CH2O3/c2-1(3)4/h(H2,2,3,4)/p-1", // [HCO3-, bicarbonate, bicarbonate]
+      // 9 CoA
+      "InChI=1S/C21H36N7O16P3S/c1-21(2,16(31)19(32)24-4-3-12(29)23-5-6-48)8-41-47(38,39)44-46(36,37)40-7-11-15(43-45(33,34)35)14(30)20(42-11)28-10-27-13-17(22)25-9-26-18(13)28/h9-11,14-16,20,30-31,48H,3-8H2,1-2H3,(H,23,29)(H,24,32)(H,36,37)(H,38,39)(H2,22,25,26)(H2,33,34,35)/t11-,14-,15-,16+,20-/m1/s1", // [coenzyme A, CoA-SH, CoASH]
+      // 10 H
+      "InChI=1S/p+1", // [H+/out, H+/in, H+out]
+      // 11 NH3
+      "InChI=1S/H3N/h1H3", // Ammonia Gas
+      // 12 HCl, Cl-
+      "InChI=1S/ClH/h1H", // hydrochloric acid, hydrogen chloride, Muriatic acid
+      // 13 Cl-
+      "InChI=1S/ClH/h1H/p-1", // [Cl-/out, Cl-/in, chloride]
+      // 14 O2
+      "InChI=1S/O2/c1-2", // oxygen molecule, Molecular oxygen, Dioxygen
+      // 15 CTP
+      "InChI=1S/C9H16N3O14P3/c10-5-1-2-12(9(15)11-5)8-7(14)6(13)4(24-8)3-23-28(19,20)26-29(21,22)25-27(16,17)18/h1-2,4,6-8,13-14H,3H2,(H,19,20)(H,21,22)(H2,10,11,15)(H2,16,17,18)/t4-,6-,7+,8-/m1/s1", // L-CTP, D-CTP, cytosine arabinoside 5'-triphosphate
+      // 16 dATP
+      "InChI=1S/C10H16N5O12P3/c11-9-8-10(13-3-12-9)15(4-14-8)7-1-5(16)6(25-7)2-24-29(20,21)27-30(22,23)26-28(17,18)19/h3-7,16H,1-2H2,(H,20,21)(H,22,23)(H2,11,12,13)(H2,17,18,19)/t5-,6+,7+/m0/s1", // deoxyATP, L-dATP, L-2'-dATP
+      // 17 hydrogen sulfide
+      "InChI=1S/H2S/h1H2", // hydrogensulfide, hydrogen sulfide, hydrogen sulfide
+      // 18 dGTP
+      "InChI=1S/C10H16N5O13P3/c11-10-13-8-7(9(17)14-10)12-3-15(8)6-1-4(16)5(26-6)2-25-30(21,22)28-31(23,24)27-29(18,19)20/h3-6,16H,1-2H2,(H,21,22)(H,23,24)(H2,18,19,20)(H3,11,13,14,17)/t4-,5+,6+/m0/s1", // 2'-dGTP, D-GTP, deoxyGTP
+      // 19 Phosphoric acid
+      "InChI=1S/H3O4P/c1-5(2,3)4/h(H3,1,2,3,4)", // phosphate/out, phosphate/in, Phosphoric acid
+      // 20 Iodide ion
+      "InChI=1S/HI/h1H/p-1", // [iodide, Iodide, Iodide ion]
+      // 21 Molecular iodine
+      "InChI=1S/I2/c1-2", // [Molecular iodine, Iodine solution, Tincture iodine]
+      // 22 AMP
+      "InChI=1S/C10H14N5O7P/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(22-10)1-21-23(18,19)20/h2-4,6-7,10,16-17H,1H2,(H2,11,12,13)(H2,18,19,20)/t4-,6-,7+,10-/m1/s1", // 5'AMP, arabinosyl adenine 5'-phosphate, arabinosyl adenine 5'-monophosphate
+      // 23 3-phosphoadenylylsulfate
+      "InChI=1S/C10H15N5O13P2S/c11-8-5-9(13-2-12-8)15(3-14-5)10-6(16)7(27-29(17,18)19)4(26-10)1-25-30(20,21)28-31(22,23)24/h2-4,6-7,10,16H,1H2,(H,20,21)(H2,11,12,13)(H2,17,18,19)(H,22,23,24)/t4-,6-,7-,10-/m1/s1", // [3'-phosphoadenylylsulfate, 3'-phosphoadenylyl 5'-phosphosulfate, 3-phosphoadenylylsulfate]
+      // 24 Sulfur dioxide solution
+      "InChI=1S/H2O3S/c1-4(2)3/h(H2,1,2,3)", // [Sulfurous acid, Sulphurous acid, Sulfur dioxide solution]
+      // 25 adenylylsulfate
+      "InChI=1S/C10H14N5O10PS/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(24-10)1-23-26(18,19)25-27(20,21)22/h2-4,6-7,10,16-17H,1H2,(H,18,19)(H2,11,12,13)(H,20,21,22)/t4-,6-,7-,10-/m1/s1", // adenosine 5-phosphosulfate, adenylylsulfate, adenosine 5'-phosphate 5'-sulfate
+      // 26 GTP
+      "InChI=1S/C10H16N5O14P3/c11-10-13-7-4(8(18)14-10)12-2-15(7)9-6(17)5(16)3(27-9)1-26-31(22,23)29-32(24,25)28-30(19,20)21/h2-3,5-6,9,16-17H,1H2,(H,22,23)(H,24,25)(H2,19,20,21)(H3,11,13,14,18)/t3-,5-,6-,9-/m1/s1", // guanosine 5'-triphosphate, GUANOSINE TRIPHOSPHATE, 5'-GTP
+      // 27 NADPH
+      "InChI=1S/C21H30N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1,3-4,7-8,10-11,13-16,20-21,29-31H,2,5-6H2,(H2,23,32)(H,36,37)(H,38,39)(H2,22,24,25)(H2,33,34,35)/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1", // NAD(P)H, 2'-NADPH, NADPH
+      // 28 dADP
+      "InChI=1S/C10H15N5O9P2/c11-9-8-10(13-3-12-9)15(4-14-8)7-1-5(16)6(23-7)2-22-26(20,21)24-25(17,18)19/h3-7,16H,1-2H2,(H,20,21)(H2,11,12,13)(H2,17,18,19)/t5-,6+,7+/m0/s1", // 2'-dADP, 2'-deoxy-ADP, deoxyADP
+      // 29 NADP+
+      "InChI=1S/C21H28N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1-4,7-8,10-11,13-16,20-21,29-31H,5-6H2,(H7-,22,23,24,25,32,33,34,35,36,37,38,39)/p+1/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1", // NAD(P)+, beta-NADP+, 2'-NADP+
+      // 30 UMP
+      "InChI=1S/C9H13N2O9P/c12-5-1-2-11(9(15)10-5)8-7(14)6(13)4(20-8)3-19-21(16,17)18/h1-2,4,6-8,13-14H,3H2,(H,10,12,15)(H2,16,17,18)/t4-,6+,7?,8-/m1/s1", // D-UMP, deazauridine 5'-phosphate, ara-UMP
+      // 31 dCDP
+      "InChI=1S/C9H15N3O10P2/c10-7-1-2-12(9(14)11-7)8-3-5(13)6(21-8)4-20-24(18,19)22-23(15,16)17/h1-2,5-6,8,13H,3-4H2,(H,18,19)(H2,10,11,14)(H2,15,16,17)/t5-,6+,8+/m0/s1", // L-dCDP, D-dCDP, 2'-deoxy-CDP
+      // 32 ADP
+      "InChI=1S/C10H15N5O10P2/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(24-10)1-23-27(21,22)25-26(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7+,10-/m1/s1", // L-ADP, D-ADP, araADP
+      // 33 ADP from metacyc
+      "InChI=1S/C10H15N5O10P2/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(24-10)1-23-27(21,22)25-26(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H2,11,12,13)(H2,18,19,20)/p-3", // ADP
+      // 34 UDP from metacyc
+      "InChI=1S/C9H14N2O12P2/c12-5-1-2-11(9(15)10-5)8-7(14)6(13)4(22-8)3-21-25(19,20)23-24(16,17)18/h1-2,4,6-8,13-14H,3H2,(H,19,20)(H,10,12,15)(H2,16,17,18)", // UDP
     };
 
     private static String[] _definiteCofactors = convertToConsistent(raw_definiteCofactors, "Installed cofactors");
@@ -1679,7 +1679,7 @@ public class MongoDB {
   }
 
   private static final BasicDBObject DEFAULT_CURSOR_ORDER_BY_ID =
-          new BasicDBObject("$query", new BasicDBObject()).append("$orderby", new BasicDBObject("_id", 1));
+      new BasicDBObject("$query", new BasicDBObject()).append("$orderby", new BasicDBObject("_id", 1));
   private DBCursor constructCursorForMatchingChemicals(String field, Object val, BasicDBObject keys) {
     DBCursor cur;
     if (field != null) {
@@ -1935,17 +1935,15 @@ public class MongoDB {
     return new DBIterator(cursor);
   }
 
-
   public DBIterator getIteratorOverChemicals(BasicDBObject matchCriterion, boolean notimeout, BasicDBObject keys) {
-
     if (keys == null) {
       keys = new BasicDBObject();
-      // keys.put(projection, 1); // 1 means include, rest are excluded
+    }
+    DBCursor cursor = this.dbChemicals.find(matchCriterion, keys);
+    if (notimeout) {
+      cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
     }
 
-    DBCursor cursor = this.dbChemicals.find(matchCriterion, keys);
-    if (notimeout)
-      cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
     return new DBIterator(cursor); // DBIterator is just a wrapper classs
   }
 
@@ -2032,11 +2030,11 @@ public class MongoDB {
 
     String conversionDirectionString = (String) o.get("conversion_direction");
     ConversionDirectionType conversionDirection = conversionDirectionString == null ? null :
-            ConversionDirectionType.valueOf(conversionDirectionString);
+        ConversionDirectionType.valueOf(conversionDirectionString);
 
     String pathwayStepDirectionString = (String) o.get("pathway_step_direction");
     StepDirection pathwayStepDirection = pathwayStepDirectionString == null ? null :
-            StepDirection.valueOf(pathwayStepDirectionString);
+        StepDirection.valueOf(pathwayStepDirectionString);
 
     for (int i = 0; i < substrates.size(); i++) {
       Boolean forBalance = (Boolean)((DBObject)substrates.get(i)).get("balance");
@@ -2059,12 +2057,12 @@ public class MongoDB {
     }
 
     Reaction result = new Reaction(uuid,
-            (Long[]) substr.toArray(new Long[0]),
-            (Long[]) prod.toArray(new Long[0]),
-            (Long[]) substrCofact.toArray(new Long[0]),
-            (Long[]) prodCofact.toArray(new Long[0]),
-            (Long[]) coenz.toArray(new Long[0]),
-            ecnum, conversionDirection, pathwayStepDirection, name_field, type
+        (Long[]) substr.toArray(new Long[0]),
+        (Long[]) prod.toArray(new Long[0]),
+        (Long[]) substrCofact.toArray(new Long[0]),
+        (Long[]) prodCofact.toArray(new Long[0]),
+        (Long[]) coenz.toArray(new Long[0]),
+        ecnum, conversionDirection, pathwayStepDirection, name_field, type
     );
 
     for (int i = 0; i < substrates.size(); i++) {
@@ -2308,7 +2306,7 @@ public class MongoDB {
   public Reaction getReactionFromUUID(Long reactionUUID) {
     if (reactionUUID < 0) {
       throw new RuntimeException(String.format(
-              "getReactionFromUUID called with a negaive number (%d).  It used to reverse the reaction.", reactionUUID));
+          "getReactionFromUUID called with a negaive number (%d).  It used to reverse the reaction.", reactionUUID));
     }
     BasicDBObject query = new BasicDBObject();
     query.put("_id", reactionUUID);
@@ -2403,7 +2401,7 @@ public class MongoDB {
     List<Seq> seqs = new ArrayList<>();
     BasicDBObject query = new BasicDBObject();
     query.put("metadata.accession.genbank_protein",
-            new BasicDBObject("$elemMatch", new BasicDBObject("$eq", accession)));
+        new BasicDBObject("$elemMatch", new BasicDBObject("$eq", accession)));
 
     DBCursor cur = this.dbSeq.find(query, new BasicDBObject());
     try {
@@ -2425,7 +2423,7 @@ public class MongoDB {
     BasicDBObject query = new BasicDBObject();
     query.put("seq", seq);
     query.put("metadata.accession.genbank_nucleotide",
-            new BasicDBObject("$elemMatch", new BasicDBObject("$eq", accession)));
+        new BasicDBObject("$elemMatch", new BasicDBObject("$eq", accession)));
 
     DBCursor cur = this.dbSeq.find(query, new BasicDBObject());
     try {
@@ -2504,10 +2502,10 @@ public class MongoDB {
     Set<Long> rxns_catalyzed = from_dblist(rxn_refs, dummyLong);
 
     return Seq.rawInit(id, ecnum, org_id, org_name, aa_seq, references, meta, src,
-            // the rest of the params are the ones that are typically
-            // "constructed". But since we are reading from the DB, we manually init
-            rxns_catalyzed
-    );
+                        // the rest of the params are the ones that are typically
+                        // "constructed". But since we are reading from the DB, we manually init
+                        rxns_catalyzed
+                       );
   }
 
   public Organism convertDBObjectToOrg(DBObject o) {
@@ -2621,7 +2619,7 @@ public class MongoDB {
           Reaction.RefDataSource src = Reaction.RefDataSource.valueOf((String)ref.get("src"));
           String val = (String)ref.get("val");
           refs.add(new P<Reaction.RefDataSource, String>(src, val));
-        }
+      }
     }
     return refs;
   }
@@ -3097,8 +3095,8 @@ public class MongoDB {
       long id = c.getUuid();
       BasicDBObject query = new BasicDBObject("_id", id);
       BasicDBObject update = new BasicDBObject("$set",
-              new BasicDBObject("xref.CHEBI.metadata.applications",
-                      applicationSet.getBasicDBObject()));
+          new BasicDBObject("xref.CHEBI.metadata.applications",
+              applicationSet.getBasicDBObject()));
       this.dbChemicals.update(query, update);
     }
   }
@@ -3112,7 +3110,7 @@ public class MongoDB {
    * References: https://docs.mongodb.com/manual/aggregation/
    * @param pipeline A list of DBObjects that will be sequentially applied via aggregate.
    * @return An iterator over all the matching objects.
-   */
+     */
   public Iterator<DBObject> applyPipelineOverSequences(List<DBObject> pipeline){
     AggregationOutput cursor = this.dbSeq.aggregate(pipeline);
     return cursor.results().iterator();
