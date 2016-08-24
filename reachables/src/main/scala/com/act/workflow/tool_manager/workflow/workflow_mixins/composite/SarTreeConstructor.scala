@@ -1,6 +1,7 @@
 package com.act.workflow.tool_manager.workflow.workflow_mixins.composite
 
 import java.io.File
+import java.lang.NullPointerException
 
 import act.server.MongoDB
 import chemaxon.clustering.LibraryMCS
@@ -21,7 +22,6 @@ import scala.collection.immutable.ListMap
 
 
 trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
-  override val logger = LogManager.getLogger(getClass)
 
   /**
     * Takes in an aligned protein file and an inchi file.
@@ -93,16 +93,18 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     // Use the same Mongo connection for each SAR creation
     val sarCreator: (List[Long]) => SarTree =
       createSarTreeFromSequencesIds(connectToMongoDatabase(), REACTION_DB_KEYWORD_PRODUCTS) _
+
+    // Collect all the SAR trees that were successfully created.
     val clusteredSars: Map[Int, SarTree] = clusterMap mapValues sarCreator
 
     // Score inchis by the clusters
     val inchisCorpus = new L2InchiCorpus(inchis)
     val results = scoreInchiList(clusteredSars, inchisCorpus)
 
-    sortInAscendingOrderAndWriteToFsv(results, outputFile)
+    sortInAscendingOrderAndWriteToTsv(results, outputFile)
   }
 
-  def sortInAscendingOrderAndWriteToFsv(inchiScores: Map[String, Double], outputFile: File): Unit = {
+  def sortInAscendingOrderAndWriteToTsv(inchiScores: Map[String, Double], outputFile: File): Unit = {
     // Sort ascending
     val writtenMap = ListMap(inchiScores.toSeq.sortBy(-_._2): _*)
 
@@ -148,7 +150,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     val sarTrees = sarTreeClusters.values toList
 
     // Score each cluster and reduce the scoring down into the sum of all the clusters
-    val combinedInchiScore: List[Map[String, Double]] = sarTrees map (scoreCorpusAgainstSarTree(_, inchiCorpus))
+    val combinedInchiScore: List[Map[String, Double]] = sarTrees flatMap (scoreCorpusAgainstSarTree(_, inchiCorpus))
 
     // All keys are the same so we are safe to use just the first to merge on
     combinedInchiScore.head.keys map { key =>
@@ -165,14 +167,16 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     *
     * @return
     */
-  def scoreCorpusAgainstSarTree(sarTree: SarTree, inchiCorpus: L2InchiCorpus): Map[String, Double] = {
+  def scoreCorpusAgainstSarTree(sarTree: SarTree, inchiCorpus: L2InchiCorpus): Option[Map[String, Double]] = {
+    if (sarTree == null) return None
+
     val inchiScores: List[Double] =
       inchiCorpus.getMolecules map {
         scoreInchiAgainstSarTree(sarTree, sarTree.getRootNodes toList, _)
       } toList
 
     // Inchi -> Scoring Map
-    (inchiCorpus.getInchiList.toList zip inchiScores) toMap
+    Option((inchiCorpus.getInchiList.toList zip inchiScores) toMap)
   }
 
 

@@ -44,7 +44,7 @@ trait WorkingDirectoryUtility {
 
   def createWorkingDirectory(workingDirectory: File): Unit = {
     if (!workingDirectory.exists()) {
-      logger.info(s"Creating working directories up to ${workingDirectory.getAbsolutePath}")
+      workflowDirectoryLogger.info(s"Creating working directories up to ${workingDirectory.getAbsolutePath}")
       workingDirectory.mkdirs()
     }
   }

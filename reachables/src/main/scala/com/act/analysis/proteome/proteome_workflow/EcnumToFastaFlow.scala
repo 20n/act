@@ -13,7 +13,7 @@ class EcnumToFastaFlow extends Workflow
   with WorkingDirectoryUtility {
 
   override val HELP_MESSAGE = "Workflow to convert EC Numbers into an unaligned FASTA file."
-  override val logger = LogManager.getLogger(getClass.getName)
+  val logger = LogManager.getLogger(getClass.getName)
   private val OPTION_EC_NUM = "e"
   private val OPTION_OUTPUT_FASTA_FILE = "f"
   private val OPTION_WORKING_DIRECTORY = "w"
