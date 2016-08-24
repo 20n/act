@@ -18,36 +18,36 @@ trait WriteProteinSequenceToFasta {
     * (At about ~300k of sequences things start to get slow/stop, this method that doesn't happen).
     *
     * @param proteinSequence A given protein sequence instance
-    * @param outputStream    The stream to write to.
+    * @param outputWriter    The stream to write to.
     */
-  def writeProteinSequenceToFasta(proteinSequence: ProteinSequence, outputStream: BufferedWriter) {
+  def writeProteinSequenceToFasta(proteinSequence: ProteinSequence, outputWriter: BufferedWriter) {
     val header: String = headerFormat.getHeader(proteinSequence)
 
-    writeFastaHeader(header, outputStream)
-    writeFastaSequence(proteinSequence, outputStream)
+    writeFastaHeader(header, outputWriter)
+    writeFastaSequence(proteinSequence, outputWriter)
   }
 
-  private def writeFastaHeader(header: String, outputStream: BufferedWriter): Unit = {
-    outputStream.write(">")
-    outputStream.write(header)
-    outputStream.newLine()
+  private def writeFastaHeader(header: String, outputWriter: BufferedWriter): Unit = {
+    outputWriter.write(">")
+    outputWriter.write(header)
+    outputWriter.newLine()
   }
 
-  private def writeFastaSequence(sequence: ProteinSequence, outputStream: BufferedWriter): Unit = {
+  private def writeFastaSequence(sequence: ProteinSequence, outputWriter: BufferedWriter): Unit = {
     var characterCount: Integer = 0
     val seq: String = sequence.getSequenceAsString()
 
     for (i <- Range(0, seq.length)) {
-      outputStream.write(seq.charAt(i))
+      outputWriter.write(seq.charAt(i))
       characterCount += 1
       if (characterCount == lineLength) {
-        outputStream.newLine()
+        outputWriter.newLine()
         characterCount = 0
       }
     }
 
     if (sequence.getLength % lineLength != 0) {
-      outputStream.newLine()
+      outputWriter.newLine()
     }
   }
 }

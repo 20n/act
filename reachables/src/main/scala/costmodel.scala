@@ -56,8 +56,8 @@ class CostModel {
   type MMolPerLiterHour = Double
 
   /********************************************************************************************
-    *  Unit Conversions
-    ********************************************************************************************/
+  *  Unit Conversions
+  ********************************************************************************************/
 
   def waterDensity: Density = (1 kg) / (1 liters)
   def brothDensity: Density = waterDensity
@@ -69,8 +69,8 @@ class CostModel {
   }
 
   /********************************************************************************************
-    *  Constants
-    ********************************************************************************************/
+  *  Constants
+  ********************************************************************************************/
 
   val defaultFermRunTime: Time = 10 days
   val defaultBrothMassPerBatch: Mass = VolumeToMass(360 cubicMeters)
@@ -151,8 +151,8 @@ class CostModel {
   case object Antifoam    { val n = "Antifoam"; }
 
   /********************************************************************************************
-    *  Sensible defaults and external caller
-    ********************************************************************************************/
+  *  Sensible defaults and external caller
+  ********************************************************************************************/
 
   var strainTiter: Titer = Defaults.defaultTiter;
   var strainYield: Yield = Defaults.defaultYield;
@@ -183,8 +183,8 @@ class CostModel {
   }
 
   /********************************************************************************************
-    *  Consumptions and cost per batch
-    ********************************************************************************************/
+  *  Consumptions and cost per batch
+  ********************************************************************************************/
   def workingVolume: Volume = vesselSize * pcOfVesselUsed.value
   def finalByInitialVol: Double = brothMassPerBatch.value / VolumeToMass(workingVolume).value
   def literDaysPerBatch = literDay(vesselSize, fermRunTime)
@@ -200,8 +200,8 @@ class CostModel {
   def consumablesPerBatch: Money = mediaPerBatch + glcPerBatch + ammoniaPerBatch
 
   /********************************************************************************************
-    *  Rental Model: Cost with CMOs
-    ********************************************************************************************/
+  *  Rental Model: Cost with CMOs
+  ********************************************************************************************/
   def costWithCMOs(): Price[Mass] = {
     val rentPerBatch = location.rentalRate * literDaysPerBatch
 
@@ -221,8 +221,8 @@ class CostModel {
   // NAS/shared-data/Tim Revak/Cost Models/20n COG, v2 25JUL16.xlsx
 
   /********************************************************************************************
-    *  Bottom Up Model: Cost with Build Your Own Plant
-    ********************************************************************************************/
+  *  Bottom Up Model: Cost with Build Your Own Plant
+  ********************************************************************************************/
   def costWithBYOPlant(): Price[Mass] = {
     // TODO fill out the cost model for Build Your Own Plant
     throw new UnsupportedOperationException()
@@ -355,7 +355,7 @@ class ROIModel {
     val npv = getNPV(invested, profitRamp)
     val gain: Money = profitRamp.reduce(_ + _)
     val roi: Dimensionless = ((gain - invested).value / invested.value) percent
-
+   
     (npv, roi)
   }
 
