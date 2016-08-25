@@ -19,17 +19,16 @@ trait SequenceIdToRxnInchis extends QueryBySequenceId with MongoWorkflowUtilitie
 
   val logger = LogManager.getLogger("sequencesToInchis")
 
-  def sequencesIdsToInchis(sequences: Set[Long],
-                           chemicalKeywordToLookAt: String,
-                           mongoConnection: MongoDB): Set[String] = {
-    val reactionIds: Set[Long] = getReactionsCatalyzedBySequenceId(sequences, mongoConnection)
-    val chemicalIds: Set[Long] = getChemicalsByReactionId(reactionIds, chemicalKeywordToLookAt, mongoConnection)
-    getInchisFromChemicalIds(chemicalIds, mongoConnection)
+  def sequencesIdsToInchis(mongoConnection: MongoDB)
+                          (sequences: Set[Long], chemicalKeywordToLookAt: String): Set[String] = {
+    val reactionIds: Set[Long] = getReactionsCatalyzedBySequenceId(mongoConnection)(sequences)
+    val chemicalIds: Set[Long] = getChemicalsByReactionId(mongoConnection)(reactionIds, chemicalKeywordToLookAt)
+    getInchisFromChemicalIds(mongoConnection)(chemicalIds)
   }
 
 
-  def getReactionsCatalyzedBySequenceId(sequences: Set[Long],
-                                        mongoConnection: MongoDB): Set[Long] = {
+  def getReactionsCatalyzedBySequenceId(mongoConnection: MongoDB)
+                                       (sequences: Set[Long]): Set[Long] = {
     // Get all the sequences and their reactions
     val returnValues: Iterator[DBObject] =
       querySequencesBySequenceId(sequences.toList, mongoConnection, List(SEQUENCE_DB_KEYWORD_RXN_REFS))
@@ -44,15 +43,14 @@ trait SequenceIdToRxnInchis extends QueryBySequenceId with MongoWorkflowUtilitie
     rxnRefSet.toSet
   }
 
-  def getChemicalsByReactionId(reactionIds: Set[Long],
-                               chemicalKeywordToLookAt: String,
-                               mongoConnection: MongoDB): Set[Long] = {
+  def getChemicalsByReactionId(mongoConnection: MongoDB)
+                              (reactionIds: Set[Long], chemicalKeywordToLookAt: String): Set[Long] = {
     // With each of those reactions, get the substrate's chem ids
     val chemicalSet = mutable.Set[Long]()
     for (reaction <- reactionIds) {
       val key = new BasicDBObject(REACTION_DB_KEYWORD_ID, reaction)
       val filter = new BasicDBObject(s"$REACTION_DB_KEYWORD_ENZ_SUMMARY.$chemicalKeywordToLookAt", 1)
-      val iterator: Iterator[DBObject] = mongoQueryReactions(mongoConnection, key, filter)
+      val iterator: Iterator[DBObject] = mongoQueryReactions(mongoConnection)(key, filter)
 
       for (substrate: DBObject <- iterator) {
         val enzSummary = substrate.get(REACTION_DB_KEYWORD_ENZ_SUMMARY).asInstanceOf[BasicDBObject]
@@ -71,14 +69,13 @@ trait SequenceIdToRxnInchis extends QueryBySequenceId with MongoWorkflowUtilitie
     chemicalSet.toSet
   }
 
-  def getInchisFromChemicalIds(chemicalIds: Set[Long],
-                               mongoConnection: MongoDB): Set[String] = {
+  def getInchisFromChemicalIds(mongoConnection: MongoDB)(chemicalIds: Set[Long]): Set[String] = {
     // With all the substrates in hand, we now need to find the inchis!
     val inchiSet = mutable.Set[String]()
     for (substrate <- chemicalIds) {
       val key = new BasicDBObject(CHEMICAL_DB_KEYWORD_ID, substrate)
       val filter = new BasicDBObject(CHEMICAL_DB_KEYWORD_INCHI, 1)
-      val iterator: Iterator[DBObject] = mongoQueryChemicals(mongoConnection, key, filter)
+      val iterator: Iterator[DBObject] = mongoQueryChemicals(mongoConnection)(key, filter)
 
       // Only except 1 item from iterator
       for (chemical: DBObject <- iterator) {

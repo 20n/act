@@ -12,6 +12,11 @@ object AlignedFastaFileParser {
 
   val logger = LogManager.getLogger(getClass.getName)
 
+  /*
+    * An arbitrary mapping that consistently one-hot encodes aligned amino acids.
+    * The one-hot encoding size is MapSize - 1, so this gives us the index to assign a "1" to for a given character.
+    *
+    */
   val characterMap: Map[Char, Int] = Map[Char, Int](
     '-' -> -1,
     'R' -> 0,
@@ -41,11 +46,12 @@ object AlignedFastaFileParser {
     if (!fastaFile.exists()) {
       val message = s"Supplied pre-aligned fasta file supplied does not exist.  " +
         s"Supplied file had a path of ${fastaFile.getAbsolutePath}."
+      logger.error(message)
       throw new RuntimeException(message)
     }
 
     // We use a linked hash map here because the order matters in regards to repeatability.
-    val alignedProteins: mutable.LinkedHashMap[String, String] = mutable.LinkedHashMap[String, String]()
+    val alignedProteins = mutable.LinkedHashMap[String, String]()
 
     // Get an iterator over the given file
     val lines: Iterator[String] = scala.io.Source.fromFile(fastaFile).getLines()
@@ -59,7 +65,7 @@ object AlignedFastaFileParser {
       val (proteinSequence, remaining) = iterator.span(!_.startsWith(NEW_PROTEIN_INDICATOR))
       val protein: String = proteinSequence.mkString
 
-      // Add results to buffers
+      // Add results to buffer
       alignedProteins(header) = protein
 
       // Parse the rest of the file.

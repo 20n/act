@@ -134,7 +134,7 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
 
     methodLogger.info("Querying enzymes with the desired reactions for sequences from Mongo")
     methodLogger.info(s"Running query $seqKey against DB.  Return filter is $reactionIdReturnFilter. ")
-    val sequenceReturnIterator: Iterator[DBObject] = mongoQuerySequences(mongoConnection, seqKey, reactionIdReturnFilter)
+    val sequenceReturnIterator: Iterator[DBObject] = mongoQuerySequences(mongoConnection)(seqKey, reactionIdReturnFilter)
     methodLogger.info("Finished sequence query.")
 
     sequenceReturnIterator

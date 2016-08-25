@@ -169,8 +169,8 @@ trait MongoWorkflowUtilities {
     mongo.getIteratorOverReactions(key, false, filter).toIterator
   }
 
-  def mongoQueryChemicals(mongo: MongoDB, key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
-    logger.info(s"Querying reaction database with the query $key.  Filtering values to obtain $filter")
+  def mongoQueryChemicals(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
+    logger.debug(s"Querying reaction database with the query $key.  Filtering values to obtain $filter")
     mongo.getIteratorOverChemicals(key, false, filter).toIterator
   }
 

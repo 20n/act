@@ -11,7 +11,9 @@ import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 
 class OrganismBasedRoToLcmsScoring extends Workflow with RoToSequences with SarTreeConstructor with WorkingDirectoryUtility {
 
-  override val HELP_MESSAGE = "Workflow to convert RO number into a FASTA file with only human sequences."
+  override val HELP_MESSAGE = "Workflow to convert RO number into a FASTA file with only a given organism's sequences.  " +
+    "Then, we do sequence clustering and rank an InChI corpus against the " +
+    "SeqSars that were created from that organism's sequence."
 
   private val OPTION_DATABASE = "d"
   private val OPTION_OUTPUT_FASTA_FILE = "f"
@@ -98,7 +100,7 @@ class OrganismBasedRoToLcmsScoring extends Workflow with RoToSequences with SarT
     val outputFastaPath = defineOutputFilePath(
       cl,
       OPTION_OUTPUT_FASTA_FILE,
-      "Human_RO_" + ro,
+      s"RO_$ro.ORG_$organismName",
       "output.fasta",
       workingDir
     )
@@ -127,8 +129,13 @@ class OrganismBasedRoToLcmsScoring extends Workflow with RoToSequences with SarT
 
       // Create the FASTA file out of all the relevant sequences.
       val roToFasta = ScalaJobWrapper.wrapScalaFunction(s"Write Fasta From RO, RO=$ro",
-        writeFastaFileFromEnzymesMatchingRos(List(ro), outputFastaPath,
-          cl.getOptionValue(OPTION_DATABASE), organism = orgRegex) _)
+        writeFastaFileFromEnzymesMatchingRos(
+          List(ro),
+          outputFastaPath,
+          cl.getOptionValue(OPTION_DATABASE),
+          organism = orgRegex)
+          _
+      )
       headerJob.thenRun(roToFasta)
 
       val alignFastaSequences = ClustalOmegaWrapper.alignProteinFastaFile(outputFastaPath, alignedFastaPath)
@@ -137,9 +144,13 @@ class OrganismBasedRoToLcmsScoring extends Workflow with RoToSequences with SarT
 
     val sarTrees =
       ScalaJobWrapper.wrapScalaFunction("Construct SAR Trees",
-        constructSarTreesFromAlignedFasta(alignedFastaPath, inchiFile, outputFile) _)
+        constructSarTreesFromAlignedFasta(
+          alignedFastaPath,
+          inchiFile,
+          outputFile)
+          _
+      )
     headerJob.thenRun(sarTrees)
-
 
     headerJob
   }
