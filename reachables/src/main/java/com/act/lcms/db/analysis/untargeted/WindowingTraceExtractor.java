@@ -447,7 +447,7 @@ public class WindowingTraceExtractor {
 
       @Override
       public Pair<Double, List<XZ>> next() {
-        byte[] valBytes = rangesIterator.key();
+        byte[] valBytes = rangesIterator.value();
         MZWindow window;
         windowNum++;
         try {
