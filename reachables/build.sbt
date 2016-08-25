@@ -6,7 +6,7 @@ name := "reachables"
 
 /*
   This option allows us to run Spark through the job manager.
-  If we did not have this option, Spark is not able to correctly establish a class path.
+  If we did not use this option, Spark will not able to correctly establish a class path.
  */
 fork := true
 
