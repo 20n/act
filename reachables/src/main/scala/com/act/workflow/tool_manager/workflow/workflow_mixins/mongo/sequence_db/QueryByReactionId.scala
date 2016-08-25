@@ -4,12 +4,12 @@ import java.io.{BufferedWriter, File, FileWriter}
 
 import act.server.MongoDB
 import com.act.workflow.tool_manager.workflow.workflow_mixins.base.WriteProteinSequenceToFasta
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoWorkflowUtilities, SequenceKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
 import org.biojava.nbio.core.sequence.ProteinSequence
 
-trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequenceToFasta with SequenceDatabaseKeywords {
+trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequenceToFasta {
 
   /**
     * Takes in a list of reaction IDs and creates outputs a list of ProteinSequences known to do those reactions.
@@ -23,10 +23,10 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
     val methodLogger = LogManager.getLogger("querySequencesForSequencesByReactionId")
 
     // We want back the sequence, enzyme number, name, and the ID in our DB.
-    val returnFields = List(SEQUENCE_DB_KEYWORD_ID,
-      SEQUENCE_DB_KEYWORD_SEQ,
-      SEQUENCE_DB_KEYWORD_ECNUM,
-      s"$SEQUENCE_DB_KEYWORD_METADATA.$SEQUENCE_DB_KEYWORD_NAME")
+    val returnFields = List(SequenceKeywords.ID.toString,
+      SequenceKeywords.SEQ.toString,
+      SequenceKeywords.ECNUM.toString,
+      s"${SequenceKeywords.METADATA.toString}.${SequenceKeywords.NAME.toString}")
 
     val returnSequenceDocuments: Iterator[DBObject] =
       querySequencesMatchingReactionIdIterator(reactionIds, mongoConnection, returnFields, organismRegex)
@@ -38,11 +38,11 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
     val outputWriter = new BufferedWriter(new FileWriter(outputFile))
     for (document: DBObject <- returnSequenceDocuments) {
 
-      val id = document.get(SEQUENCE_DB_KEYWORD_ID)
-      val seq = document.get(SEQUENCE_DB_KEYWORD_SEQ)
+      val id = document.get(SequenceKeywords.ID.toString)
+      val seq = document.get(SequenceKeywords.SEQ.toString)
 
       // Enzymes may not have an enzyme number
-      val ecnum = if (document.get(SEQUENCE_DB_KEYWORD_ECNUM) != null) document.get(SEQUENCE_DB_KEYWORD_ECNUM) else "None"
+      val ecnum: String = getWithDefault(document, SequenceKeywords.ECNUM, "None")
 
       // Make sure it has a sequence
       if (seq != null) {
@@ -50,18 +50,15 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
         val newSeq = new ProteinSequence(seq.toString)
 
         // Enzymes may not have a name
-        val name = if (document.get(s"$SEQUENCE_DB_KEYWORD_METADATA.$SEQUENCE_DB_KEYWORD_NAME") != null) {
-          document.get(s"$SEQUENCE_DB_KEYWORD_METADATA.$SEQUENCE_DB_KEYWORD_NAME")
-        } else {
-          "None"
-        }
+        val nameLocation = s"${SequenceKeywords.METADATA.toString}.${SequenceKeywords.NAME.toString}"
+        val name: String = getWithDefault(document, nameLocation, "None")
 
         /*
           These headers are required to be unique or else downstream software will likely crash.
           This header may not be unique based on Name/EC number alone (For example, if they are both none),
           but the DB_ID should guarantee uniqueness
         */
-        newSeq.setOriginalHeader(s"NAME: ${name.toString} | EC: ${ecnum.toString} | DB_ID: ${id.toString}")
+        newSeq.setOriginalHeader(s"NAME: $name | EC: $ecnum | DB_ID: ${id.toString}")
         writeProteinSequenceToFasta(newSeq, outputWriter)
       } else {
         methodLogger.error(s"Sequence identified that does not have a sequence.  DB entry is ${id.toString}")
@@ -121,9 +118,9 @@ trait QueryByReactionId extends MongoWorkflowUtilities with WriteProteinSequence
     reactionIds.map(rId => reactionList.add(rId.asInstanceOf[AnyRef]))
 
     // Elem match on all rxn_to_reactant groups in that array
-    val seqKey = new BasicDBObject(SEQUENCE_DB_KEYWORD_RXN_REFS, defineMongoIn(reactionList))
+    val seqKey = createDbObject(SequenceKeywords.RXN_REFS, defineMongoIn(reactionList))
     if (organismRegex.isDefined) {
-      seqKey.put(SEQUENCE_DB_KEYWORD_ORGANISM_NAME, defineMongoRegex(organismRegex.get))
+      appendKeyToDbObject(seqKey, SequenceKeywords.ORGANISM_NAME, defineMongoRegex(organismRegex.get))
     }
 
 

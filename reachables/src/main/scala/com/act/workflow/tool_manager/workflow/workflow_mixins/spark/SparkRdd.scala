@@ -30,7 +30,6 @@ trait SparkRdd {
     spark.stop()
   }
 
-  // If this is 10, 10% of the entries must be 1, for example.
   /**
     * Takes in a list of aligned protein strings and outputs a row
     * matrix containing those clusters after the've been encoded using a characterMap.
@@ -43,8 +42,8 @@ trait SparkRdd {
     *
     * @return A row matrix constructed under the above circumstances
     */
-  def sparkCreateRowMatrix(spark: SparkContext)
-                          (proteinAlignments: List[String],
+  def sparkOneHotEncodeProteinAlignments(spark: SparkContext)
+                                        (proteinAlignments: List[String],
                            characterMap: Map[Char, Int],
                            percentOfRowsThatAreNotZeroToKeep: Double): RowMatrix = {
     require(percentOfRowsThatAreNotZeroToKeep >= 0 && percentOfRowsThatAreNotZeroToKeep <= 100,
@@ -55,7 +54,7 @@ trait SparkRdd {
     val oneHotCount = characterMap.values.max + 1
 
     // Precreate the array we will fill in
-    val a = Array.ofDim[Double](proteinAlignments.head.length * oneHotCount, proteinAlignments.length)
+    val oneHotEncodingArray = Array.ofDim[Double](proteinAlignments.head.length * oneHotCount, proteinAlignments.length)
 
     // For each protein
     for (proteinIndex <- proteinAlignments.indices) {
@@ -79,7 +78,8 @@ trait SparkRdd {
         if (shiftValue >= 0) {
           /*
             Initial array: [0,0,0, 0,0,0]
-            AB means that the first character (j = 0) is 0 and the second character (j = 2) is 1
+            AB means that the first character (Protein Character Index = 0) is 0 and the second character
+            (Protein Character Index = 2) is 1
             If our alphabet size is 3, we've designated a 3 wide array for each character.
 
             Thus, our first math would be:
@@ -91,7 +91,7 @@ trait SparkRdd {
               Which matches our expectation of the one-hot encoding.
           */
           val aIndex: Int = proteinCharacterIndex * oneHotCount + shiftValue
-          a(aIndex)(proteinIndex) = 1.0
+          oneHotEncodingArray(aIndex)(proteinIndex) = 1.0
         }
       }
     }
@@ -103,8 +103,10 @@ trait SparkRdd {
 
     // Because we one hot encode with the value 1, the sum of a column divided
     // by its length is also the percent of rows that have a value.
-    val filteredA = a.filter(column => column.sum[Double] > gapThreshold)
-    val vectorize: Seq[SparkVector] = filteredA.map(x => Vectors.dense(x)).toSeq
+    val filteredA = oneHotEncodingArray filter (column => column.sum[Double] > gapThreshold)
+
+    // Convert array to a sequence of Spark's vectors
+    val vectorize: Seq[SparkVector] = filteredA map Vectors.dense toSeq
 
     // Turn into a RowMatrix so we can use it downstream
     val rows = spark.makeRDD[SparkVector](vectorize)
@@ -156,9 +158,6 @@ trait SparkRdd {
     * @return A list of cluster assignments for each row.
     */
   def sparkKmeansCluster(inputRdd: RDD[SparkVector], numberOfClusters: Int, numberOfIterations: Int = 200): List[Int] = {
-    /*
-       KMeans clustering
-     */
     val clusters = KMeans.train(inputRdd, numberOfClusters, numberOfIterations)
 
     val predictions: RDD[Int] = clusters.predict(inputRdd)

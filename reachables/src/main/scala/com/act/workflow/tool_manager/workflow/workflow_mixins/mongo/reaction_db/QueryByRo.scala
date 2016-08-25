@@ -1,11 +1,11 @@
 package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.reaction_db
 
 import act.server.MongoDB
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoWorkflowUtilities, ReactionKeywords}
 import com.mongodb.{BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
 
-trait QueryByRo extends MongoWorkflowUtilities with ReactionDatabaseKeywords {
+trait QueryByRo extends MongoWorkflowUtilities {
   /**
     * Query reactions based on RO Values, return only the ID
     *
@@ -19,7 +19,7 @@ trait QueryByRo extends MongoWorkflowUtilities with ReactionDatabaseKeywords {
                                        mongoConnection: MongoDB): Map[Long, Map[String, AnyRef]] = {
     val methodLogger = LogManager.getLogger("queryReactionsForReactionIdsByRo")
 
-    queryReactionsForValuesByRo(roValues, mongoConnection, List(REACTION_DB_KEYWORD_ID))
+    queryReactionsForValuesByRo(roValues, mongoConnection, List(ReactionKeywords.ID.toString))
   }
 
   /**
@@ -44,7 +44,8 @@ trait QueryByRo extends MongoWorkflowUtilities with ReactionDatabaseKeywords {
       Map RO values to a list of mechanistic validator things we will want to see
     */
 
-    val roObjects = roValues.map(r => new BasicDBObject(s"$REACTION_DB_KEYWORD_MECHANISTIC_VALIDATOR.$r", getMongoExists))
+    val roObjects =
+      roValues.map(r => new BasicDBObject(s"${ReactionKeywords.MECHANISTIC_VALIDATOR.toString}.$r", getMongoExists))
     val queryRoValue = convertListToMongoDbList(roObjects)
 
     // Setup the query and filter for just the reaction ID

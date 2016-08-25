@@ -13,10 +13,9 @@ object AlignedFastaFileParser {
   val logger = LogManager.getLogger(getClass.getName)
 
   /*
-    * An arbitrary mapping that consistently one-hot encodes aligned amino acids.
-    * The one-hot encoding size is MapSize - 1, so this gives us the index to assign a "1" to for a given character.
-    *
-    */
+    An arbitrary mapping that consistently one-hot encodes aligned amino acids.
+    The one-hot encoding size is MapSize - 1, so this gives us the index to assign a "1" to for a given character.
+   */
   val characterMap: Map[Char, Int] = Map[Char, Int](
     '-' -> -1,
     'R' -> 0,

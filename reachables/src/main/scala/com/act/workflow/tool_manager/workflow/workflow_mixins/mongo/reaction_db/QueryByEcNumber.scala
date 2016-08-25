@@ -1,13 +1,13 @@
 package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.reaction_db
 
 import act.server.MongoDB
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoWorkflowUtilities, ReactionKeywords}
 import com.mongodb.casbah.Imports.{BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
 
 import scala.collection.mutable.ListBuffer
 
-trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywords {
+trait QueryByEcNumber extends MongoWorkflowUtilities {
 
   /**
     * Returns just the reaction Ids of the documents matching the EC number.
@@ -20,7 +20,7 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
     */
   def queryReactionsForReactionIdsByEcNumber(roughEcnum: String,
                                              mongoConnection: MongoDB): Map[Long, Map[String, AnyRef]] = {
-    queryReactionsForValuesByEcNumber(roughEcnum, mongoConnection, List(REACTION_DB_KEYWORD_ID))
+    queryReactionsForValuesByEcNumber(roughEcnum, mongoConnection, List(ReactionKeywords.ID.toString))
   }
 
   /**
@@ -50,7 +50,7 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
 
     // Setup the query and filter for just the reaction ID
     val regex = defineMongoRegex(ecnumRegex)
-    val reactionIdQuery = new BasicDBObject(REACTION_DB_KEYWORD_ECNUM, regex)
+    val reactionIdQuery = createDbObject(ReactionKeywords.ECNUM, regex)
 
     // Create the return filter by adding all fields onto the return filter DB object
     val reactionIdReturnFilter = new BasicDBObject()
@@ -113,7 +113,7 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
 
     // Setup the query and filter for just the reaction ID
     val regex = defineMongoRegex(ecnumRegex)
-    val reactionIdQuery = new BasicDBObject(REACTION_DB_KEYWORD_ECNUM, regex)
+    val reactionIdQuery = createDbObject(ReactionKeywords.ECNUM, regex)
 
     /*
      1) Match all reactions that have this ecnum
@@ -125,16 +125,16 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
     */
     val pipeline = List[DBObject](
       defineMongoMatch(reactionIdQuery),
-      defineMongoUnwind(REACTION_DB_KEYWORD_PROTEINS),
-      defineMongoGroup(formatUnwoundName(REACTION_DB_KEYWORD_PROTEINS, REACTION_DB_KEYWORD_KM), REACTION_DB_KEYWORD_KM),
-      defineMongoUnwind(REACTION_DB_KEYWORD_KM),
-      defineMongoGroup(formatUnwoundName(REACTION_DB_KEYWORD_KM, REACTION_DB_KEYWORD_VALUE), REACTION_DB_KEYWORD_VALUE),
-      defineMongoUnwind(REACTION_DB_KEYWORD_VALUE)
+      defineMongoUnwind(ReactionKeywords.PROTEINS),
+      defineMongoGroup(formatUnwoundName(ReactionKeywords.PROTEINS, ReactionKeywords.KM), ReactionKeywords.KM),
+      defineMongoUnwind(ReactionKeywords.KM),
+      defineMongoGroup(formatUnwoundName(ReactionKeywords.KM, ReactionKeywords.VALUE), ReactionKeywords.VALUE),
+      defineMongoUnwind(ReactionKeywords.VALUE)
     )
 
     methodLogger.info(s"Constructed pipeline $pipeline")
     // Convert the iterator to a list and return
     val finalDocumentIterator = mongoApplyPipelineReactions(mongoConnection, pipeline)
-    mongoReturnQueryToMap(finalDocumentIterator, List(REACTION_DB_KEYWORD_ID, REACTION_DB_KEYWORD_VALUE))
+    mongoReturnQueryToMap(finalDocumentIterator, List(ReactionKeywords.ID.toString, ReactionKeywords.VALUE.toString))
   }
 }

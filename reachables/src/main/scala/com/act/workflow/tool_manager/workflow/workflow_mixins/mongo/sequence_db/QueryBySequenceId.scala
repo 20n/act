@@ -1,11 +1,11 @@
 package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.sequence_db
 
 import act.server.MongoDB
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoWorkflowUtilities, SequenceKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
 
-trait QueryBySequenceId extends MongoWorkflowUtilities with SequenceDatabaseKeywords {
+trait QueryBySequenceId extends MongoWorkflowUtilities {
   def querySequencesBySequenceId(sequenceIds: List[Long], mongoConnection: MongoDB,
                                  returnFilterFields: List[String]): Iterator[DBObject] = {
     val methodLogger = LogManager.getLogger("querySequencesBySequenceId")
@@ -13,7 +13,7 @@ trait QueryBySequenceId extends MongoWorkflowUtilities with SequenceDatabaseKeyw
     sequenceIds.map(sequenceId => sequenceIdList.add(sequenceId.asInstanceOf[AnyRef]))
 
     // Elem match on all rxn_to_reactant groups in that array
-    val seqKey = new BasicDBObject(SEQUENCE_DB_KEYWORD_ID, defineMongoIn(sequenceIdList))
+    val seqKey = createDbObject(SequenceKeywords.ID, defineMongoIn(sequenceIdList))
 
     val sequenceIdReturnFilter = new BasicDBObject()
     for (field <- returnFilterFields) {
@@ -26,6 +26,5 @@ trait QueryBySequenceId extends MongoWorkflowUtilities with SequenceDatabaseKeyw
     methodLogger.info("Finished sequence query.")
 
     sequenceReturnIterator
-
   }
 }
