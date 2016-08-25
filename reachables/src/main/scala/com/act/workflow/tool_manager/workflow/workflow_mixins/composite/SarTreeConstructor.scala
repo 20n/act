@@ -131,8 +131,8 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
       // Normalize based on largest score to 100
       val row = Map(
         "InChI" -> key,
-        "Raw Score" -> s"$value",
-        "Score" -> s"${100.0 * value / largestScore}",
+        "Raw Score" -> f"$value%.6f",
+        "Score" -> f"${100.0 * value / largestScore}%.3f",
         "Rank" -> s"$counter")
       writer.append(row.asJava)
       counter += 1
