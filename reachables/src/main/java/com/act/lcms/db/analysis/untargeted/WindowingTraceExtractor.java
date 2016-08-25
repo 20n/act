@@ -304,6 +304,9 @@ public class WindowingTraceExtractor {
       }
     }};
 
+    // Keep an array of accumulators around to reduce the overhead of accessing the trace matrix for accumulation.
+    double[] accumulators = new double[windows.size()];
+
     int timepointCounter = 0;
     while (iter.hasNext()) {
       LCMSSpectrum spectrum = iter.next();
@@ -312,11 +315,8 @@ public class WindowingTraceExtractor {
       // Store one list of the time values so we can knit times and intensity sums later to form XZs.
       times.add(time);
 
-      /* Extend allTraces to add a row of intensity values for this time point.  We build this incrementally because the
-       * LCMSSpectrum iterator doesn't tell us how many time points to expect up front. The one we're working on is
-       * always the last in the list. */
-      for (List<Double> trace : allTraces) {
-        trace.add(0.0d);
+      for (int i = 0; i < accumulators.length; i++) {
+        accumulators[i] = 0.0;
       }
 
       timepointCounter++;
@@ -366,10 +366,14 @@ public class WindowingTraceExtractor {
          * By the end of the outer loop, trace(t) = Sum(intensity) | win_min <= m/z <= win_max @ time point # t */
         for (MZWindow window : workingQueue) {
           // TODO: count the number of times we add intensities to each window's accumulator for MS1-style warnings.
-          List<Double> trace = allTraces.get(window.getIndex());
-          Double accumulator = trace.get(trace.size() - 1); // Get the current XZ, i.e. the one at this time point.
-          trace.set(trace.size() - 1, accumulator + intensity);
+          accumulators[window.getIndex()] += intensity;
         }
+      }
+
+      /* Extend allTraces to add a row of accumulated intensity values for this time point.  We build this incrementally
+       * because the LCMSSpectrum iterator doesn't tell us how many time points to expect up front. */
+      for (int i = 0; i < accumulators.length; i++) {
+        allTraces.get(i).add(accumulators[i]);
       }
     }
 
