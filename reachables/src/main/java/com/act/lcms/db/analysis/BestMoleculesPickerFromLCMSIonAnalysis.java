@@ -31,7 +31,8 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
   public static final String OPTION_MIN_SNR_THRESHOLD = "s";
   public static final String OPTION_GET_IONS_SUPERSET = "f";
   public static final String OPTION_JSON_FORMAT = "j";
-  public static final String OPTION_MIN_OF_REPLICATES = "t";
+  public static final String OPTION_MIN_OF_REPLICATES = "m";
+  public static final String OPTION_FILTER_BY_THRESHOLD = "p";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_INPUT_FILES)
@@ -77,15 +78,15 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
         .desc("Output the result in the IonAnalysisInterchangeModel json format. If not, just output a list of inchis")
         .longOpt("json-format")
     );
-    add(Option.builder(OPTION_GET_IONS_SUPERSET)
-        .argName("ions superset")
-        .desc("A run option on all the ionic variant files on a single replicate run")
-        .longOpt("ions-superset")
-    );
     add(Option.builder(OPTION_MIN_OF_REPLICATES)
         .argName("min of replicates")
         .desc("Get the min intensities, SNR and times of multiple replicates")
         .longOpt("ions-superset")
+    );
+    add(Option.builder(OPTION_FILTER_BY_THRESHOLD)
+        .argName("filter by threshold")
+        .desc("Filter files by threshold amounts")
+        .longOpt("filter-threshold")
     );
   }};
 
@@ -140,35 +141,36 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
       System.exit(1);
     }
 
+    List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
+
+    if (cl.hasOption(OPTION_MIN_OF_REPLICATES)) {
+      Function<List<Double>, Pair<Double, Boolean>> filterFunction = (List<Double> listOfVals) ->
+          Pair.of(listOfVals.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal)), true);
+
+      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
+          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
+          filterFunction, filterFunction, filterFunction);
+
+      printToFile(cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT), model);
+      return;
+    }
+
     Double minSnrThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_SNR_THRESHOLD));
     Double minIntensityThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_INTENSITY_THRESHOLD));
     Double minTimeThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_TIME_THRESHOLD));
 
-    List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
-
-    IonAnalysisInterchangeModel model;
-
     if (cl.hasOption(OPTION_GET_IONS_SUPERSET)) {
-      model = IonAnalysisInterchangeModel.getSupersetOfIonicVariants(
+      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.getSupersetOfIonicVariants(
           IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
           minSnrThreshold,
           minIntensityThreshold,
           minTimeThreshold);
-    } else if (cl.hasOption(OPTION_MIN_OF_REPLICATES)) {
-      Function<List<Double>, Pair<Double, Boolean>> intensityFilterFunction = (List<Double> listOfIntensities) ->
-          Pair.of(listOfIntensities.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal)), true);
 
-      Function<List<Double>, Pair<Double, Boolean>> snrFilterFunction = (List<Double> listOfSnrs) ->
-          Pair.of(listOfSnrs.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal)), true);
+      printToFile(cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT), model);
+      return;
+    }
 
-      Function<List<Double>, Pair<Double, Boolean>> timeFilterFunction = (List<Double> listOfTimes) ->
-          Pair.of(listOfTimes.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal)), true);
-
-      model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
-          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
-          intensityFilterFunction, snrFilterFunction,
-          timeFilterFunction);
-    } else {
+    if (cl.hasOption(OPTION_FILTER_BY_THRESHOLD)) {
       Function<List<Double>, Pair<Double, Boolean>> intensityFilterFunction = (List<Double> listOfIntensities) -> {
         for (Double val : listOfIntensities) {
           if (val < minIntensityThreshold) {
@@ -205,11 +207,11 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
         return Pair.of(listOfTimes.get(0), true);
       };
 
-      model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
+      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
           IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
           intensityFilterFunction, snrFilterFunction, timeFilterFunction);
-    }
 
-    printToFile(cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT), model);
+      printToFile(cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT), model);
+    }
   }
 }
