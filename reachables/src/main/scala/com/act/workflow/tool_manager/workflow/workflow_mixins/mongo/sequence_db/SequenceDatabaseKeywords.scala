@@ -1,5 +1,9 @@
 package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.sequence_db
 
+import squants.Ratio
+import squants.market.Price
+import squants.mass.Mass
+
 trait SequenceDatabaseKeywords {
   // Add to these as needed
   val SEQUENCE_DB_KEYWORD_ECNUM = "ecnum"

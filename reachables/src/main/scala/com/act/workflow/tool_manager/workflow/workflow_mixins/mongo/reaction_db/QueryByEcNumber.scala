@@ -61,7 +61,7 @@ trait QueryByEcNumber extends MongoWorkflowUtilities with ReactionDatabaseKeywor
     // Deploy DB query w/ error checking to ensure we got something
     methodLogger.info(s"Running query $reactionIdQuery against DB.  Return filter is $reactionIdReturnFilter")
     val dbReactionIdsIterator: Iterator[DBObject] =
-      mongoQueryReactions(mongoConnection, reactionIdQuery, reactionIdReturnFilter)
+      mongoQueryReactions(mongoConnection)(reactionIdQuery, reactionIdReturnFilter)
     val dbReactionReturnValues = mongoDbIteratorToSet(dbReactionIdsIterator)
 
     mongoReturnQueryToMap(dbReactionReturnValues, returnFilterFields)

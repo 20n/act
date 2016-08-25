@@ -25,6 +25,8 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     * Takes in an aligned protein file and an inchi file.
     * From this, scores each inchi based on the sequence clustering of the input aligned protein file.
     *
+    * The values below with defaults were found via trial and error, change at your own peril.
+    *
     * @param alignedProteinFile                Previously aligned protein sequence file
     * @param inchisToScore                     InchiCorpus style inchi file
     * @param principleComponentCount           The number of principle components to use for clustering
@@ -52,7 +54,6 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
       "contains HIT if the LCMS marked it as a hit and that you have input a serialized L2PredictionCorpus.")
 
     /*
-
       Parse and cluster aligned fasta file
      */
     // String 1 is header, string 2 is sequence
@@ -60,7 +61,12 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     val headers: List[String] = parsedFile map (_._1)
     val sequences: List[String] = parsedFile map (_._2)
 
-    // Use spark to cluster the sequences
+    /*
+      Use spark to cluster the sequences.
+      We use spark because it is an effective and flexible linear algebra and machine learning library.
+      For example, it allows us to do PCA, Kmeans,
+      and Array manipulation all using only set of kinda-similar data structures.
+     */
     val sparkContext = sparkDefineContext("Sequence Clustering", "local")
 
     val sparkRdd =
@@ -74,7 +80,6 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     sparkStopContext(sparkContext)
 
     /*
-
       Score inchis based on the above clustering
      */
 
@@ -91,33 +96,44 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
       case (cluster, header) => (cluster, header map (_._2.split("DB_ID: ")(1) toLong))
     }
 
-    // Use the same Mongo connection for each SAR creation
-    val sarCreator: (List[Long]) => SarTree =
-      createSarTreeFromSequencesIds(connectToMongoDatabase(), REACTION_DB_KEYWORD_PRODUCTS) _
+    /*
+     Use the same Mongo connection for each SAR creation
+
+     We choose to use the reaction products here because we are looking at LCMS results,
+     which contain the end-result of a reaction, not the starting point.
+     Therefore, it is more biologically relevant to look at the products and to
+     find similar products than to look at the substrates and expect to find them in a sample.
+     */
+    val sarCreator: ((List[Long]) => SarTree) =
+      createSarTreeFromSequencesIds(connectToMongoDatabase())(REACTION_DB_KEYWORD_PRODUCTS) _
 
     // Collect all the SAR trees that were successfully created.
     val clusteredSars: Map[Int, SarTree] = clusterMap mapValues sarCreator
 
     // Score inchis by the clusters
     val inchisCorpus = new L2InchiCorpus(inchis)
-    val results = scoreInchiList(clusteredSars, inchisCorpus)
+    val results = scoreInchiCorpus(clusteredSars, inchisCorpus)
 
-    sortInAscendingOrderAndWriteToTsv(results, outputFile)
+    sortInDescendingOrderAndWriteToTsv(results, outputFile)
   }
 
-  def sortInAscendingOrderAndWriteToTsv(inchiScores: Map[String, Double], outputFile: File): Unit = {
+  def sortInDescendingOrderAndWriteToTsv(inchiScores: Map[String, Double], outputFile: File): Unit = {
     // Sort ascending
     val writtenMap = ListMap(inchiScores.toSeq.sortBy(-_._2): _*)
 
     // Write to file, use TSV because InChIs don't play well with csvs
-    val writer = new TSVWriter[String, String](List("InChI", "Score", "Rank"))
+    val writer = new TSVWriter[String, String](List("InChI", "Raw Score", "Score", "Rank"))
     writer.open(outputFile)
 
     val largestScore: Double = writtenMap.values.max
     var counter = 1
     for ((key, value) <- writtenMap) {
       // Normalize based on largest score to 100
-      val row = Map("InChI" -> key, "Score" -> s"${100.0 * value / largestScore}", "Rank" -> s"$counter")
+      val row = Map(
+        "InChI" -> key,
+        "Raw Score" -> s"$value",
+        "Score" -> s"${100.0 * value / largestScore}",
+        "Rank" -> s"$counter")
       writer.append(row.asJava)
       counter += 1
     }
@@ -133,23 +149,24 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     *
     * @return
     */
-  def createSarTreeFromSequencesIds(mongoConnection: MongoDB, chemicalKeywordToLookAt: String)
+  def createSarTreeFromSequencesIds(mongoConnection: MongoDB)
+                                   (chemicalKeywordToLookAt: String)
                                    (sequenceIds: List[Long]): SarTree = {
-    val inchis = sequencesIdsToInchis(sequenceIds.toSet, chemicalKeywordToLookAt, mongoConnection)
+    val inchis = sequencesIdsToInchis(mongoConnection)(sequenceIds.toSet, chemicalKeywordToLookAt)
     val clusterSarTree = new SarTree()
     clusterSarTree.buildByClustering(new LibraryMCS(), new L2InchiCorpus(inchis).getMolecules)
     clusterSarTree
   }
 
   /**
-    * Takes in every cluster
+    * Takes in every cluster then scores and sums them.
     *
     * @param sarTreeClusters A map of all the clusters and their respective sar tree
     * @param inchiCorpus     The inchi corpus we are scoring
     *
-    * @return
+    * @return A map of Inchi -> Score, where the score is a single Double.
     */
-  def scoreInchiList(sarTreeClusters: Map[Int, SarTree], inchiCorpus: L2InchiCorpus): Map[String, Double] = {
+  def scoreInchiCorpus(sarTreeClusters: Map[Int, SarTree], inchiCorpus: L2InchiCorpus): Map[String, Double] = {
     val sarTrees = sarTreeClusters.values toList
 
     // Score each cluster and reduce the scoring down into the sum of all the clusters

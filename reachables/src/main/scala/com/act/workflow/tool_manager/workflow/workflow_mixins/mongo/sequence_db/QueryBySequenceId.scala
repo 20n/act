@@ -22,7 +22,7 @@ trait QueryBySequenceId extends MongoWorkflowUtilities with SequenceDatabaseKeyw
 
     methodLogger.info("Querying enzymes with the desired reactions for sequences from Mongo")
     methodLogger.info(s"Running query $seqKey against DB.  Return filter is $sequenceIdReturnFilter. ")
-    val sequenceReturnIterator: Iterator[DBObject] = mongoQuerySequences(mongoConnection, seqKey, sequenceIdReturnFilter)
+    val sequenceReturnIterator: Iterator[DBObject] = mongoQuerySequences(mongoConnection)(seqKey, sequenceIdReturnFilter)
     methodLogger.info("Finished sequence query.")
 
     sequenceReturnIterator

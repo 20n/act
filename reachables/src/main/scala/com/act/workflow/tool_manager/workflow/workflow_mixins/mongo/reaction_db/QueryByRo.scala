@@ -57,7 +57,7 @@ trait QueryByRo extends MongoWorkflowUtilities with ReactionDatabaseKeywords {
     // Deploy DB query w/ error checking to ensure we got something
     methodLogger.info(s"Running query $reactionIdQuery against DB.  Return filter is $reactionReturnFilter")
     val dbReactionIdsIterator: Iterator[DBObject] =
-      mongoQueryReactions(mongoConnection, reactionIdQuery, reactionReturnFilter)
+      mongoQueryReactions(mongoConnection)(reactionIdQuery, reactionReturnFilter)
 
     mongoReturnQueryToMap(dbReactionIdsIterator, returnFilterFields)
   }
