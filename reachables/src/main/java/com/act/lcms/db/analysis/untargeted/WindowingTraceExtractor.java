@@ -409,7 +409,8 @@ public class WindowingTraceExtractor {
       if (i % 1000 == 0) {
         LOGGER.info("Finished writing %d traces", i);
       }
-      dbAndHandles.put(COLUMN_FAMILIES.TARGET_TO_WINDOW, keyBytes, valBytes);
+
+      // Drop this trace as soon as it's written so the GC can pick it up and hopefully reduce memory pressure.
       allTraces.set(i, Collections.emptyList());
     }
 
@@ -437,6 +438,8 @@ public class WindowingTraceExtractor {
     }
 
     return new Iterator<Pair<Double, List<XZ>>>() {
+      int windowNum = 0;
+
       @Override
       public boolean hasNext() {
         return rangesIterator.isValid();
@@ -444,15 +447,17 @@ public class WindowingTraceExtractor {
 
       @Override
       public Pair<Double, List<XZ>> next() {
-        byte[] valBytes = rangesIterator.value();
+        byte[] valBytes = rangesIterator.key();
         MZWindow window;
+        windowNum++;
         try {
           window = deserializeObject(valBytes);
         } catch (IOException e) {
-          LOGGER.error("Caught IOException when iterating over mz windows: %s", e.getMessage());
+          LOGGER.error("Caught IOException when iterating over mz windows (%d): %s", windowNum, e.getMessage());
           throw new UncheckedIOException(e);
         } catch (ClassNotFoundException e) {
-          LOGGER.error("Caught ClassNotFoundException when iterating over mz window: %s", e.getMessage());
+          LOGGER.error("Caught ClassNotFoundException when iterating over mz windows (%d): %s",
+              windowNum, e.getMessage());
           throw new RuntimeException(e);
         }
 
