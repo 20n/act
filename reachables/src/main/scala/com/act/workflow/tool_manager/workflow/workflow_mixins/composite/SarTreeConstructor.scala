@@ -9,6 +9,7 @@ import com.act.analysis.proteome.files.AlignedFastaFileParser
 import com.act.biointerpretation.l2expansion.{L2InchiCorpus, L2PredictionCorpus}
 import com.act.biointerpretation.sarinference.{SarTree, SarTreeNode}
 import com.act.utils.TSVWriter
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.ReactionKeywords
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.cross_db.SequenceIdToRxnInchis
 import com.act.workflow.tool_manager.workflow.workflow_mixins.spark.SparkRdd
 import org.apache.spark.mllib.linalg.{Vector => SparkVector}
@@ -63,14 +64,13 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
 
     /*
       Use spark to cluster the sequences.
-      We use spark because it is an effective and flexible linear algebra and machine learning library.
-      For example, it allows us to do PCA, Kmeans,
-      and Array manipulation all using only set of kinda-similar data structures.
+      Spark has flexible linear algebra and machine learning libraries that we can leverage.
+      For example, it allows us to do PCA, Kmeans, and manipulate arrays easily.
      */
     val sparkContext = sparkDefineContext("Sequence Clustering", "local")
 
     val sparkRdd =
-      sparkCreateRowMatrix(sparkContext)(sequences, AlignedFastaFileParser.characterMap, percentOfRowsThatAreNotZeroToKeep)
+      sparkOneHotEncodeProteinAlignments(sparkContext)(sequences, AlignedFastaFileParser.characterMap, percentOfRowsThatAreNotZeroToKeep)
     val principleComponents: RDD[SparkVector] = sparkPca(sparkContext)(sparkRdd, principleComponentCount)
 
     // Ordered list of clusters that will map onto the sequence
@@ -105,7 +105,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
      find similar products than to look at the substrates and expect to find them in a sample.
      */
     val sarCreator: ((List[Long]) => SarTree) =
-      createSarTreeFromSequencesIds(connectToMongoDatabase())(REACTION_DB_KEYWORD_PRODUCTS) _
+      createSarTreeFromSequencesIds(connectToMongoDatabase())(ReactionKeywords.PRODUCTS.toString) _
 
     // Collect all the SAR trees that were successfully created.
     val clusteredSars: Map[Int, SarTree] = clusterMap mapValues sarCreator

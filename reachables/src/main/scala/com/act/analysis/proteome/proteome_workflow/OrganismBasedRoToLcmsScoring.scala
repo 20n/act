@@ -129,12 +129,7 @@ class OrganismBasedRoToLcmsScoring extends Workflow with RoToSequences with SarT
 
       // Create the FASTA file out of all the relevant sequences.
       val roToFasta = ScalaJobWrapper.wrapScalaFunction(s"Write Fasta From RO, RO=$ro",
-        writeFastaFileFromEnzymesMatchingRos(
-          List(ro),
-          outputFastaPath,
-          cl.getOptionValue(OPTION_DATABASE),
-          organism = orgRegex)
-          _
+        writeFastaFileFromEnzymesMatchingRos(List(ro), outputFastaPath, cl.getOptionValue(OPTION_DATABASE), organism = orgRegex) _
       )
       headerJob.thenRun(roToFasta)
 
@@ -144,11 +139,7 @@ class OrganismBasedRoToLcmsScoring extends Workflow with RoToSequences with SarT
 
     val sarTrees =
       ScalaJobWrapper.wrapScalaFunction("Construct SAR Trees",
-        constructSarTreesFromAlignedFasta(
-          alignedFastaPath,
-          inchiFile,
-          outputFile)
-          _
+        constructSarTreesFromAlignedFasta(alignedFastaPath, inchiFile, outputFile) _
       )
     headerJob.thenRun(sarTrees)
 
