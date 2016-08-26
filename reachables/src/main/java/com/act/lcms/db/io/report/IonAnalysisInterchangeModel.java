@@ -56,6 +56,12 @@ public class IonAnalysisInterchangeModel {
     NO_DATA
   }
 
+  public enum METRIC {
+    SNR,
+    INTENSITY,
+    TIME
+  }
+
   @JsonProperty("results")
   private List<ResultForMZ> results;
   private Map<String, Boolean> inchiToIsHit;
@@ -101,6 +107,45 @@ public class IonAnalysisInterchangeModel {
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile))) {
       OBJECT_MAPPER.writeValue(predictionWriter, this);
     }
+  }
+
+  /**
+   * This function is used to log frequency distribution of the ion model
+   * @param metric The metric on which the frequency distrbution is plotted
+   * @return A map of a range to the count of molecules that get bucketed in that range
+   */
+  public Map<Pair<Double, Double>, Integer> computeLogFrequencyDistributionOfHitsToMetric(METRIC metric) {
+    Map<Pair<Double, Double>, Integer> rangeToHitCount = new HashMap<>();
+
+    for (ResultForMZ resultForMZ : this.getResults()) {
+      for (HitOrMiss molecule : resultForMZ.getMolecules()) {
+
+        Double power = 0.0;
+
+        switch (metric) {
+          case TIME:
+            power = Math.log10(molecule.getTime());
+            break;
+          case INTENSITY:
+            power = Math.log10(molecule.getIntensity());
+            break;
+          case SNR:
+            power = Math.log10(molecule.getSnr());
+            break;
+        }
+
+        // We add a small amount to the ceiling case to address a case where the power is an exact number, say 4.0. Then
+        // the floor and ceiling with be 4.0, whereas we want them to be 4.0 and 5.0, respectively.
+        Pair<Double, Double> key = Pair.of(Math.pow(10.0, Math.floor(power)), Math.pow(10.0, Math.ceil(power + Double.MIN_VALUE)));
+        if (rangeToHitCount.containsKey(key)) {
+          rangeToHitCount.put(key, rangeToHitCount.get(key) + 1);
+        } else {
+          rangeToHitCount.put(key, 1);
+        }
+      }
+    }
+
+    return rangeToHitCount;
   }
 
   /**
