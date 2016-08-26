@@ -18,7 +18,7 @@ import java.util.List;
 
 public class L2PredictionCorpusOperations {
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2PredictionCorpusOperations.class);
-  private static final String OPTION_GET_LIST_OF_PRODUCTS = "f";
+  private static final String OPTION_WRITE_PRODUCTS_AS_LIST_OF_INCHIS = "f";
   private static final String OPTION_OUTPUT_PATH = "o";
   private static final String OPTION_INPUT_PATH = "i";
 
@@ -43,7 +43,7 @@ public class L2PredictionCorpusOperations {
           .longOpt("input-file-path")
           .required(true)
       );
-      add(Option.builder(OPTION_GET_LIST_OF_PRODUCTS)
+      add(Option.builder(OPTION_WRITE_PRODUCTS_AS_LIST_OF_INCHIS)
           .argName("get list of products from prediction corpus")
           .desc("The list of products from input prediction corpus file")
           .hasArg()
@@ -79,9 +79,9 @@ public class L2PredictionCorpusOperations {
       System.exit(1);
     }
 
-    if (cl.hasOption(OPTION_GET_LIST_OF_PRODUCTS)) {
+    if (cl.hasOption(OPTION_WRITE_PRODUCTS_AS_LIST_OF_INCHIS)) {
       L2PredictionCorpus corpus = L2PredictionCorpus.readPredictionsFromJsonFile(
-          new File(cl.getOptionValue(OPTION_GET_LIST_OF_PRODUCTS)));
+          new File(cl.getOptionValue(OPTION_WRITE_PRODUCTS_AS_LIST_OF_INCHIS)));
       corpus.writePredictionsAsInchiList(new File(cl.getOptionValue(OPTION_OUTPUT_PATH)));
     }
   }
