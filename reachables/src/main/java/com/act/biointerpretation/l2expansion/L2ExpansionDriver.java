@@ -47,6 +47,7 @@ public class L2ExpansionDriver {
   private static final String OPTION_EXPANSION_TYPE = "t";
   private static final String OPTION_ADDITIONAL_CHEMICALS = "p";
   private static final String OPTION_HELP = "h";
+  private static final String OPTION_GET_LIST_OF_PRODUCTS = "f";
 
   public static final String HELP_MESSAGE =
       "This class is used to carry out L2 expansion. It first applies every RO from the input RO list to " +

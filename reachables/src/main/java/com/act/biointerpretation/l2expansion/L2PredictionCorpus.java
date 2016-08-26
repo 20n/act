@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import net.didion.jwnl.data.Exc;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -163,6 +164,22 @@ public class L2PredictionCorpus implements Serializable {
   public void writePredictionsToJsonFile(File outputFile) throws IOException {
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile))) {
       OBJECT_MAPPER.writeValue(predictionWriter, this);
+    }
+  }
+
+  /**
+   * Write the L2PredictionCorpus to file in list of inchis format.
+   *
+   * @param outputFile Where to write the file.
+   * @throws IOException
+   */
+  public void writePredictionsAsInchiList(File outputFile) throws IOException {
+    try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile))) {
+      Set<String> productInchis = new HashSet<>(this.getUniqueProductInchis());
+      for (String inchi : productInchis) {
+        predictionWriter.write(inchi);
+        predictionWriter.write("\n");
+      }
     }
   }
 
