@@ -208,10 +208,10 @@ public class IonAnalysisInterchangeModel {
 
   /**
    * This function takes in multiple LCMS mining results  (in the IonAnalysisInterchangeModel format), which happens
-   * when we have multiple positive control replicates, extracts all the molecule hits from each file and applied
+   * when we have multiple positive control replicates, extracts all the molecule hits from each file and applies
    * filter functions on intensity, time and snr. These filter functions provide two features: they are used to
-   * transform results from multiple replicate to a statistics, like a min function across replicates. Second, they are
-   * used to filter molecules.
+   * transform results from multiple replicate to statistics, like a min function across replicates. Second, they are
+   * used to filter in/out molecules based on the logic of the filter function.
    * @param replicateModels The list of IonAnalysisInterchangeModels to be analyzed
    * @param intensityFilterAndTransformFunction The intensity filter function takes in a list of intensity values and outputs
    *                                a transformed statistic and whether or not to add the Molecule hit to the final
@@ -277,6 +277,8 @@ public class IonAnalysisInterchangeModel {
           timeList.add(sampleRepresentativeMz.getMolecules().get(j).getTime());
         }
 
+        // Check if the filter function for each metric wants to throw out the molecule. If none of them want to throw
+        // out the molecule, then add the molecule to the final result.
         if (intensityFilterAndTransformFunction.apply(intensityList).getRight() &&
             snrFilterAndTransformFunction.apply(snrList).getRight() &&
             timeFilterAndTransformFunction.apply(timeList).getRight()) {
