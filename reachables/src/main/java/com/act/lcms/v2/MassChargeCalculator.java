@@ -332,7 +332,15 @@ public class MassChargeCalculator {
     MassChargeMap map = new MassChargeMap();
     /* Map over the sources, extracting or computing the mass as we go to encapsulate any unsafe behavior outside the
      * MassChargeMap constructor. */
-    map.loadSourcesAndMasses(mzSources.stream().map(x -> Pair.of(x, computeMass(x))).collect(Collectors.toList()));
+    List<Pair<MZSource, Double>> sourcesAndMasses = new ArrayList<>();
+    for (MZSource source : mzSources) {
+      try {
+        sourcesAndMasses.add(Pair.of(source, computeMass(source)));
+      } catch (Exception e) {
+        LOGGER.error("MZSource %d threw an error during mass calculation, skipping", source.getId());
+      }
+    }
+    map.loadSourcesAndMasses(sourcesAndMasses);
     return map;
   }
 
