@@ -19,7 +19,6 @@ import java.util.List;
 public class L2PredictionCorpusOperations {
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2PredictionCorpusOperations.class);
   private static final String OPTION_WRITE_PRODUCTS_AS_LIST_OF_INCHIS = "f";
-  private static final String OPTION_OUTPUT_PATH = "o";
   private static final String OPTION_INPUT_PATH = "i";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[] {
@@ -29,13 +28,6 @@ public class L2PredictionCorpusOperations {
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {
     {
-      add(Option.builder(OPTION_OUTPUT_PATH)
-          .argName("output file path")
-          .desc("The path to the file to which to write the json file of predicted reactions.")
-          .hasArg()
-          .longOpt("output-file-path")
-          .required(true)
-      );
       add(Option.builder(OPTION_INPUT_PATH)
           .argName("input file path")
           .desc("The input path of the prediction corpus")
@@ -45,7 +37,8 @@ public class L2PredictionCorpusOperations {
       );
       add(Option.builder(OPTION_WRITE_PRODUCTS_AS_LIST_OF_INCHIS)
           .argName("get list of products from prediction corpus")
-          .desc("The list of products from input prediction corpus file")
+          .desc("Get the list of products from input prediction corpus file and print them line by line to the output" +
+              "file in the argument")
           .hasArg()
           .longOpt("list-of-products")
       );
@@ -82,7 +75,7 @@ public class L2PredictionCorpusOperations {
     if (cl.hasOption(OPTION_WRITE_PRODUCTS_AS_LIST_OF_INCHIS)) {
       L2PredictionCorpus corpus = L2PredictionCorpus.readPredictionsFromJsonFile(
           new File(cl.getOptionValue(OPTION_WRITE_PRODUCTS_AS_LIST_OF_INCHIS)));
-      corpus.writePredictionsAsInchiList(new File(cl.getOptionValue(OPTION_OUTPUT_PATH)));
+      corpus.writePredictionsAsInchiList(new File(cl.getOptionValue(OPTION_WRITE_PRODUCTS_AS_LIST_OF_INCHIS)));
     }
   }
 }

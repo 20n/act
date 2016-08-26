@@ -174,10 +174,10 @@ public class L2PredictionCorpus implements Serializable {
    */
   public void writePredictionsAsInchiList(File outputFile) throws IOException {
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile))) {
-      Set<String> productInchis = new HashSet<>(this.getUniqueProductInchis());
+      Set<String> productInchis = this.getUniqueProductInchis();
       for (String inchi : productInchis) {
         predictionWriter.write(inchi);
-        predictionWriter.write("\n");
+        predictionWriter.newLine();
       }
     }
   }
