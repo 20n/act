@@ -51,7 +51,7 @@ public class MassChargeCalculator {
     CLIUtil cliUtil = new CLIUtil(MassChargeCalculator.class, HELP_MESSAGE, OPTION_BUILDERS);
     CommandLine cl = cliUtil.parseCommandLine(args);
 
-    File inputFile = new File(OPTION_INPUT_INCHI_LIST);
+    File inputFile = new File(cl.getOptionValue(OPTION_INPUT_INCHI_LIST));
     if (!inputFile.exists()) {
       cliUtil.failWithMessage("Input file at does not exist at %s", inputFile.getAbsolutePath());
     }
@@ -62,8 +62,13 @@ public class MassChargeCalculator {
       while ((line = reader.readLine()) != null) {
         line = line.trim();
         sources.add(new MZSource(line));
+        if (sources.size() % 1000 == 0) {
+          LOGGER.info("Loaded %d sources from input file", sources.size());
+        }
       }
     }
+
+    LOGGER.info("Loaded %d sources in total from input file", sources.size());
 
     MassChargeMap mzMap = MassChargeCalculator.makeMassChargeMap(sources);
 
