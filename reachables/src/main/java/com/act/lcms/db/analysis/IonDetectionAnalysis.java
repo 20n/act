@@ -520,6 +520,9 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
 
     LOGGER.info("The number of mass charge hits are %d out of %d", numberOfMassChargeHits, massChargeToChemicalAndIon.keySet().size());
 
+    // If the analysis is a replicate analysis, we combine the results from the various replicates into one file.
+    // If the analysis is a non-replicate analysis, we do not do this since each of the pos+neg analysis cannot/should not
+    // be compared since the positive wells are not replicates.
     if (!isNonReplicateAnalysis) {
       LOGGER.info("Conducting post processing since we have more than one positive well and this is a replicate analysis");
 
