@@ -75,6 +75,7 @@ public class MassChargeCalculator {
     // This is actually a map of collision counts to counts of collision counts, but that is too long!
     Map<Integer, Integer> collisionCounts = new HashMap<>();
     Iterator<Double> mzs = mzMap.ionMZIterator();
+    int mzCounter = 0;
     while (mzs.hasNext()) {
       Double mz = mzs.next();
       Integer collisions = mzMap.ionMZToMZSources(mz).size();
@@ -83,6 +84,10 @@ public class MassChargeCalculator {
         oldCount = 0;
       }
       collisionCounts.put(collisions, oldCount + 1);
+      mzCounter++;
+      if (mzCounter % 1000 == 0) {
+        LOGGER.info("Resolved %d mz's", mzCounter);
+      }
     }
 
     List<Integer> sortedCollisions = new ArrayList<>(collisionCounts.keySet());
