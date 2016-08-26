@@ -55,6 +55,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
   private static final String OPTION_OUTPUT_PREFIX = "o";
   private static final String OPTION_PLOTTING_DIR = "p";
   private static final String OPTION_INCLUDE_IONS = "i";
+  private static final String OPTION_NON_REPLICATE_ANALYSIS = "n";
   private static final String OPTION_LIST_OF_INCHIS_INPUT_FILE = "f";
   // This input file is structured as a tsv file with the following schema:
   //    WELL_TYPE  PLATE_BARCODE  WELL_ROW  WELL_COLUMN
@@ -122,6 +123,12 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
         .argName("file input type")
         .desc("If this option is specified, the input corpus is a list of inchis")
         .longOpt("file-input-type")
+    );
+    add(Option.builder(OPTION_NON_REPLICATE_ANALYSIS)
+        .argName("non replicate analysis")
+        .desc("This option is for lcms analysis on multiple positive wells that are not replicates. The default is " +
+            "replicate analysis.")
+        .longOpt("non-replicate-analysis")
     );
   }};
 
@@ -447,11 +454,13 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
    * @param chemIDToMassCharge Fake chem name (representing each bin) to mass charge.
    * @param massChargeToChemicalAndIon Mass charge value to pair of Chemical and Ion combination
    * @param outputPrefix The output prefix to write output results to.
+   * @paam isNonReplicateAnalysis The boolean is true if the analysis is a non replicate analysis.
    * @throws Exception
    */
   public void runLCMSMiningAnalysisAndPlotResults(Map<String, Double> chemIDToMassCharge,
                                                   Map<Double, Set<Pair<String, String>>> massChargeToChemicalAndIon,
-                                                  String outputPrefix)
+                                                  String outputPrefix,
+                                                  Boolean isNonReplicateAnalysis)
       throws Exception {
 
     Map<T, Map<String, Triple<String, XZ, Double>>> lcmsAnalysisResultForEachPositiveWell =
@@ -511,9 +520,8 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
 
     LOGGER.info("The number of mass charge hits are %d out of %d", numberOfMassChargeHits, massChargeToChemicalAndIon.keySet().size());
 
-    if (positiveWells.size() > 1) {
-
-      LOGGER.info("Conducting post processing since we have more than one positive well");
+    if (!isNonReplicateAnalysis) {
+      LOGGER.info("Conducting post processing since we have more than one positive well and this is a replicate analysis");
 
       // Post process analysis
       List<IonAnalysisInterchangeModel.ResultForMZ> experimentalResults = new ArrayList<>();
@@ -619,7 +627,8 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
       IonDetectionAnalysis<LCMSWell> ionDetectionAnalysis = new IonDetectionAnalysis<LCMSWell>(lcmsDir, positiveWells,
           negativeWells, plottingDirectory, plateCache, searchMZs, db);
 
-      ionDetectionAnalysis.runLCMSMiningAnalysisAndPlotResults(chemIDToMassCharge, massChargeToChemicalAndIon, outputPrefix);
+      ionDetectionAnalysis.runLCMSMiningAnalysisAndPlotResults(chemIDToMassCharge, massChargeToChemicalAndIon,
+          outputPrefix, cl.hasOption(OPTION_NON_REPLICATE_ANALYSIS));
     }
   }
 }
