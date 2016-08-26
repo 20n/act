@@ -341,7 +341,13 @@ public class MassChargeCalculator {
     String msg;
     switch (mzSource.getKind()) {
       case INCHI:
-        Pair<Double, Integer> massAndCharge = MassCalculator.calculateMassAndCharge(mzSource.getInchi());
+        Pair<Double, Integer> massAndCharge;
+        try {
+          massAndCharge = MassCalculator.calculateMassAndCharge(mzSource.getInchi());
+        } catch (Exception e) {
+          LOGGER.error("Calculating mass for molecule %s failed: %s", mzSource.getInchi(), e.getMessage());
+          throw e;
+        }
         if (massAndCharge.getRight() > 0) {
           LOGGER.warn("(MZSrc %d) Molecule %s has a positive charge %d; ionization may not have the expected effect",
               mzSource.getId(), mzSource.getInchi(), massAndCharge.getRight());
