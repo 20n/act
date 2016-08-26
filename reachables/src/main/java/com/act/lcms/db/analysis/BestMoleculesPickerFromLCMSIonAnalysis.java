@@ -22,8 +22,8 @@ import java.util.function.Function;
 
 public class BestMoleculesPickerFromLCMSIonAnalysis {
 
-  public static final Boolean DO_NOT_THROW_MOLECULE = true;
-  public static final Boolean THROW_MOLECULE = false;
+  public static final Boolean DO_NOT_THROW_OUT_MOLECULE = true;
+  public static final Boolean THROW_OUT_MOLECULE = false;
   public static final Integer REPRESENTATIVE_INDEX = 0;
   public static final Double LOWEST_POSSIBLE_VALUE_FOR_METRIC = 0.0;
   public static final String OPTION_INPUT_FILES = "i";
@@ -110,7 +110,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
    * @param model The model that is being written
    * @throws IOException
    */
-  public static void printAllInchisToFile(String fileName, Boolean jsonFormat, IonAnalysisInterchangeModel model) throws IOException {
+  public static void printAllInchisToFile(IonAnalysisInterchangeModel model, String fileName, Boolean jsonFormat) throws IOException {
     if (jsonFormat) {
       model.writeToJsonFile(new File(fileName));
     } else {
@@ -151,13 +151,13 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
       // multiple replicates. The right side of the pair says that no values needs to be filtered out, which happens
       // in the thresholding cases (not here).
       Function<List<Double>, Pair<Double, Boolean>> minStatFunction = (List<Double> listOfVals) ->
-          Pair.of(listOfVals.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal)), DO_NOT_THROW_MOLECULE);
+          Pair.of(listOfVals.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal)), DO_NOT_THROW_OUT_MOLECULE);
 
       IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
           IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
           minStatFunction, minStatFunction, minStatFunction);
 
-      printAllInchisToFile(cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT), model);
+      printAllInchisToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
       return;
     }
 
@@ -172,7 +172,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
           minIntensityThreshold,
           minTimeThreshold);
 
-      printAllInchisToFile(cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT), model);
+      printAllInchisToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
       return;
     }
 
@@ -180,44 +180,44 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
       Function<List<Double>, Pair<Double, Boolean>> intensityFilterFunction = (List<Double> listOfIntensities) -> {
         for (Double val : listOfIntensities) {
           if (val < minIntensityThreshold) {
-            return Pair.of(LOWEST_POSSIBLE_VALUE_FOR_METRIC, THROW_MOLECULE);
+            return Pair.of(LOWEST_POSSIBLE_VALUE_FOR_METRIC, THROW_OUT_MOLECULE);
           }
         }
 
         // If all the intensities for all the replicates pass the threshold, then keep the molecule in the output
-        /// ion model and set the intensities to a placeholder intensities, in this case, the first element's intensities.
-        return Pair.of(listOfIntensities.get(REPRESENTATIVE_INDEX), DO_NOT_THROW_MOLECULE);
+        // ion model and set the intensities to a placeholder intensities, in this case, the first element's intensities.
+        return Pair.of(listOfIntensities.get(REPRESENTATIVE_INDEX), DO_NOT_THROW_OUT_MOLECULE);
       };
 
       Function<List<Double>, Pair<Double, Boolean>> snrFilterFunction = (List<Double> listOfSnrs) -> {
         for (Double val : listOfSnrs) {
           if (val < minSnrThreshold) {
-            return Pair.of(LOWEST_POSSIBLE_VALUE_FOR_METRIC, THROW_MOLECULE);
+            return Pair.of(LOWEST_POSSIBLE_VALUE_FOR_METRIC, THROW_OUT_MOLECULE);
           }
         }
 
         // If all the snrs for all the replicates pass the threshold, then keep the molecule in the output
-        /// ion model and set the snr to a placeholder snr, in this case, the first element's snr.
-        return Pair.of(listOfSnrs.get(REPRESENTATIVE_INDEX), DO_NOT_THROW_MOLECULE);
+        // ion model and set the snr to a placeholder snr, in this case, the first element's snr.
+        return Pair.of(listOfSnrs.get(REPRESENTATIVE_INDEX), DO_NOT_THROW_OUT_MOLECULE);
       };
 
       Function<List<Double>, Pair<Double, Boolean>> timeFilterFunction = (List<Double> listOfTimes) -> {
         for (Double val : listOfTimes) {
           if (val < minTimeThreshold) {
-            return Pair.of(LOWEST_POSSIBLE_VALUE_FOR_METRIC, THROW_MOLECULE);
+            return Pair.of(LOWEST_POSSIBLE_VALUE_FOR_METRIC, THROW_OUT_MOLECULE);
           }
         }
 
         // If all the times for all the replicates pass the threshold, then keep the molecule in the output
         // ion model and set the time to a placeholder times, in this case, the first element's times.
-        return Pair.of(listOfTimes.get(REPRESENTATIVE_INDEX), DO_NOT_THROW_MOLECULE);
+        return Pair.of(listOfTimes.get(REPRESENTATIVE_INDEX), DO_NOT_THROW_OUT_MOLECULE);
       };
 
       IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
           IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
           intensityFilterFunction, snrFilterFunction, timeFilterFunction);
 
-      printAllInchisToFile(cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT), model);
+      printAllInchisToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
     }
   }
 }
