@@ -110,11 +110,11 @@ public class IonAnalysisInterchangeModel {
   }
 
   /**
-   * This function is used to log frequency distribution of the ion model
-   * @param metric The metric on which the frequency distrbution is plotted
+   * This function is used to compute log frequency distribution of the ion model vs a metric.
+   * @param metric The metric on which the frequency distribution is plotted
    * @return A map of a range to the count of molecules that get bucketed in that range
    */
-  public Map<Pair<Double, Double>, Integer> computeLogFrequencyDistributionOfHitsToMetric(METRIC metric) {
+  public Map<Pair<Double, Double>, Integer> computeLogFrequencyDistributionOfMoleculeCountToMetric(METRIC metric) {
     Map<Pair<Double, Double>, Integer> rangeToHitCount = new HashMap<>();
 
     for (ResultForMZ resultForMZ : this.getResults()) {
@@ -207,24 +207,6 @@ public class IonAnalysisInterchangeModel {
   }
 
   /**
-   * This function loads in multiple serialized IonAnalysisInterchangeModels and deserializes them
-   * @param filepaths File path to the serialized IonAnalysisInterchangeModels
-   * @return A list of IonAnalysisInterchangeModels corresponding to the files.
-   * @throws IOException
-   */
-  public static List<IonAnalysisInterchangeModel> loadMultipleIonAnalysisInterchangeModelsFromFiles(List<String> filepaths)
-      throws IOException {
-
-    List<IonAnalysisInterchangeModel> deserializedResultsForPositiveReplicates = new ArrayList<>();
-    for (String filePath : filepaths) {
-      IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
-      model.loadResultsFromFile(new File(filePath));
-      deserializedResultsForPositiveReplicates.add(model);
-    }
-    return deserializedResultsForPositiveReplicates;
-  }
-
-  /**
    * This function takes in multiple LCMS mining results  (in the IonAnalysisInterchangeModel format), which happens
    * when we have multiple positive control replicates, extracts all the molecule hits from each file and applied
    * filter functions on intensity, time and snr. These filter functions provide two features: they are used to
@@ -290,10 +272,9 @@ public class IonAnalysisInterchangeModel {
             throw new RuntimeException("The replicates are not ordered similarly. Please verify if the correct replicates are being used.");
           }
 
-          HitOrMiss molecule = sampleRepresentativeMz.getMolecules().get(j);
-          snrList.add(molecule.getSnr());
-          intensityList.add(molecule.getIntensity());
-          timeList.add(molecule.getTime());
+          snrList.add(sampleRepresentativeMz.getMolecules().get(j).getSnr());
+          intensityList.add(sampleRepresentativeMz.getMolecules().get(j).getIntensity());
+          timeList.add(sampleRepresentativeMz.getMolecules().get(j).getTime());
         }
 
         if (intensityFilterAndTransformFunction.apply(intensityList).getRight() &&
@@ -315,7 +296,25 @@ public class IonAnalysisInterchangeModel {
   }
 
   /**
-   * This function is used to get the superset inchis from various files representing the different lcms ion runs for
+   * This function loads in multiple serialized IonAnalysisInterchangeModels and deserializes them
+   * @param filepaths File paths to the serialized IonAnalysisInterchangeModels
+   * @return A list of IonAnalysisInterchangeModels corresponding to the files.
+   * @throws IOException
+   */
+  public static List<IonAnalysisInterchangeModel> loadMultipleIonAnalysisInterchangeModelsFromFiles(List<String> filepaths)
+      throws IOException {
+
+    List<IonAnalysisInterchangeModel> deserializedResultsForPositiveReplicates = new ArrayList<>();
+    for (String filePath : filepaths) {
+      IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
+      model.loadResultsFromFile(new File(filePath));
+      deserializedResultsForPositiveReplicates.add(model);
+    }
+    return deserializedResultsForPositiveReplicates;
+  }
+
+  /**
+   * This function is used to get the superset inchis from various models representing the different lcms ion runs for
    * a given chemical on a single replicate
    * @param models IonAnalysisInterchangeModels for each ionic variant
    * @param snrThreshold The snr threshold
