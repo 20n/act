@@ -257,6 +257,9 @@ public class MassChargeCalculator {
     void loadSourcesAndMasses(List<Pair<MZSource, Double>> sourcesAndMasses) throws IOException {
       monoisotopicMasses = new LinkedHashMap<>(sourcesAndMasses.size()); // Preserve order for easier testing.
 
+      LOGGER.info("Converting m/z sources into ionic masses and resolving collisions");
+      int sourceCounter = 0;
+      int ionCounter = 0;
       for (Pair<MZSource, Double> sourceAndMass : sourcesAndMasses) {
         MZSource source = sourceAndMass.getLeft();
         Double monoMass = sourceAndMass.getRight();
@@ -280,10 +283,15 @@ public class MassChargeCalculator {
         for (Map.Entry<String, Double> ion : ions.entrySet()) {
           List<Pair<String, Double>> reverseMapping = reverseIonicMasses.get(ion.getValue());
           if (reverseMapping == null) {
-            reverseMapping = new ArrayList<Pair<String, Double>>(1); // Assume few collisions.
+            reverseMapping = new ArrayList<>(1); // Assume few collisions.
             reverseIonicMasses.put(ion.getValue(), reverseMapping);
           }
           reverseMapping.add(Pair.of(ion.getKey(), monoMass));
+          ionCounter++;
+        }
+        sourceCounter++;
+        if (sourceCounter % 1000 == 0) {
+          LOGGER.info("Resolved %d sources, handled %d ion m/z's in total", sourceCounter, ionCounter);
         }
       }
     }

@@ -76,7 +76,7 @@ public class CLIUtil {
   }
 
   public void failWithMessage(String msg) {
-    System.out.format(msg);
+    System.out.println(msg);
     HELP_FORMATTER.printHelp(callingClass.getCanonicalName(), helpMessage, opts, null, true);
     System.exit(1);
   }
