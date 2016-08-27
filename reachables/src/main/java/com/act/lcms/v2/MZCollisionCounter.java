@@ -1,6 +1,7 @@
 package com.act.lcms.v2;
 
 import com.act.utils.CLIUtil;
+import com.act.utils.TSVWriter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.lang3.StringUtils;
@@ -29,6 +30,7 @@ public class MZCollisionCounter {
   private static final Logger LOGGER = LogManager.getFormatterLogger(MZCollisionCounter.class);
 
   private static final String OPTION_INPUT_INCHI_LIST = "i";
+  private static final String OPTION_OUTPUT_FILE = "o";
   private static final String OPTION_COUNT_WINDOW_INTERSECTIONS = "w";
   private static final String OPTION_ONLY_CONSIDER_IONS = "n";
   private static final Double WINDOW_TOLERANCE = 0.01;
@@ -45,6 +47,13 @@ public class MZCollisionCounter {
         .hasArg()
         .required()
         .longOpt("input-file")
+    );
+    add(Option.builder(OPTION_OUTPUT_FILE)
+        .argName("output-file")
+        .desc("Write collision histogram data to an output file (default: stdout)")
+        .hasArg()
+        .required()
+        .longOpt("output-file")
     );
     add(Option.builder(OPTION_COUNT_WINDOW_INTERSECTIONS)
         .desc("Count intersections of +/-0.01 Dalton mass charge windows instead of counting exact collisions")
@@ -87,64 +96,79 @@ public class MZCollisionCounter {
       considerIons = new HashSet<>(ions);
     }
 
-    LOGGER.info("Loaded %d sources in total from input file", sources.size());
+    TSVWriter<String, Long> tsvWriter = new TSVWriter<>(Arrays.asList("collisions", "count"));
+    tsvWriter.open(new File(cl.getOptionValue(OPTION_OUTPUT_FILE)));
 
-    MassChargeCalculator.MassChargeMap mzMap = MassChargeCalculator.makeMassChargeMap(sources, considerIons);
+    try {
+      LOGGER.info("Loaded %d sources in total from input file", sources.size());
 
-    if (!cl.hasOption(OPTION_COUNT_WINDOW_INTERSECTIONS)) {
-      // Do a precise analysis of the m/z collisions if windowing is not specified.
+      MassChargeCalculator.MassChargeMap mzMap = MassChargeCalculator.makeMassChargeMap(sources, considerIons);
 
-      LOGGER.info("Computing precise collision histogram.");
-      Iterable<Double> mzs = mzMap.ionMZIterable();
-      Map<Integer, Long> collisionHistogram =
-          histogram(StreamSupport.stream(mzs.spliterator(), false).map(mz -> { // See comment about Iterable below.
-            try {
-              return mzMap.ionMZToMZSources(mz).size();
-            } catch (NoSuchElementException e) {
-              LOGGER.error("Caught no such element exception for mz %f: %s", mz, e.getMessage());
-              throw e;
-            }
-          }));
-      List<Integer> sortedCollisions = new ArrayList<>(collisionHistogram.keySet());
-      Collections.sort(sortedCollisions);
-      for (Integer collision : sortedCollisions) {
-        LOGGER.info("%d: %d", collision, collisionHistogram.get(collision));
-      }
-    } else {
-      // Compute windows for every m/z.  We don't care about the original mz values since we just want the count.
-      List<Double> mzs = mzMap.ionMZsSorted();
-      // Window = lower bound, counter, upper bound.  Counter in the middle for easy memory.
-      LinkedList<Triple<Double, LongAdder, Double>> allWindows = new LinkedList<Triple<Double, LongAdder, Double>>() {{
-        for (Double mz : mzs) {
-          // CPU for memory trade-off: don't
-          add(Triple.of(mz - WINDOW_TOLERANCE, new LongAdder(), mz + WINDOW_TOLERANCE));
+      if (!cl.hasOption(OPTION_COUNT_WINDOW_INTERSECTIONS)) {
+        // Do a precise analysis of the m/z collisions if windowing is not specified.
+
+        LOGGER.info("Computing precise collision histogram.");
+        Iterable<Double> mzs = mzMap.ionMZIterable();
+        Map<Integer, Long> collisionHistogram =
+            histogram(StreamSupport.stream(mzs.spliterator(), false).map(mz -> { // See comment about Iterable below.
+              try {
+                return mzMap.ionMZToMZSources(mz).size();
+              } catch (NoSuchElementException e) {
+                LOGGER.error("Caught no such element exception for mz %f: %s", mz, e.getMessage());
+                throw e;
+              }
+            }));
+        List<Integer> sortedCollisions = new ArrayList<>(collisionHistogram.keySet());
+        Collections.sort(sortedCollisions);
+        for (Integer collision : sortedCollisions) {
+          tsvWriter.append(new HashMap<String, Long>() {{
+            put("collisions", collision.longValue());
+            put("count", collisionHistogram.get(collision));
+          }});
         }
-      }};
+      } else {
+        // Compute windows for every m/z.  We don't care about the original mz values since we just want the count.
+        List<Double> mzs = mzMap.ionMZsSorted();
+        // Window = lower bound, counter, upper bound.  Counter in the middle for easy memory.
+        LinkedList<Triple<Double, LongAdder, Double>> allWindows = new LinkedList<Triple<Double, LongAdder, Double>>() {{
+          for (Double mz : mzs) {
+            // CPU for memory trade-off: don't
+            add(Triple.of(mz - WINDOW_TOLERANCE, new LongAdder(), mz + WINDOW_TOLERANCE));
+          }
+        }};
 
-      // Sweep line time!  The window ranges are the interesting points.  We just accumulate overlap counts as we go.
-      LinkedList<Triple<Double, LongAdder, Double>> workingSet = new LinkedList<>();
-      List<Triple<Double, LongAdder, Double>> finishedSet = new LinkedList<>();
+        // Sweep line time!  The window ranges are the interesting points.  We just accumulate overlap counts as we go.
+        LinkedList<Triple<Double, LongAdder, Double>> workingSet = new LinkedList<>();
+        List<Triple<Double, LongAdder, Double>> finishedSet = new LinkedList<>();
 
-      while (allWindows.size() > 0) {
-        Triple<Double, LongAdder, Double> thisWindow = allWindows.pop();
-        // Remove any windows from the working set that don't overlap with the next window.
-        while (workingSet.size() > 0 && workingSet.peekFirst().getRight() < thisWindow.getLeft()) {
-          finishedSet.add(workingSet.pop());
+        while (allWindows.size() > 0) {
+          Triple<Double, LongAdder, Double> thisWindow = allWindows.pop();
+          // Remove any windows from the working set that don't overlap with the next window.
+          while (workingSet.size() > 0 && workingSet.peekFirst().getRight() < thisWindow.getLeft()) {
+            finishedSet.add(workingSet.pop());
+          }
+          workingSet.add(thisWindow);
+
+          // Add one to each overlapping window to remember that this new window intersects with all of them.
+          workingSet.forEach(t -> t.getMiddle().increment());
         }
-        workingSet.add(thisWindow);
 
-        // Add one to each overlapping window to remember that this new window intersects with all of them.
-        workingSet.forEach(t -> t.getMiddle().increment());
+        // All the interesting events are done, so drop the remaining windows into the finished set.
+        finishedSet.addAll(workingSet);
+
+        Map<Long, Long> collisionHistogram = histogram(finishedSet.stream().map(t -> t.getMiddle().longValue()));
+        List<Long> sortedCollisions = new ArrayList<>(collisionHistogram.keySet());
+        Collections.sort(sortedCollisions);
+        for (Long collision : sortedCollisions) {
+          tsvWriter.append(new HashMap<String, Long>() {{
+            put("collisions", collision.longValue());
+            put("count", collisionHistogram.get(collision));
+          }});
+        }
       }
-
-      // All the interesting events are done, so drop the remaining windows into the finished set.
-      finishedSet.addAll(workingSet);
-
-      Map<Long, Long> collisionHistogram = histogram(finishedSet.stream().map(t -> t.getMiddle().longValue()));
-      List<Long> sortedCollisions = new ArrayList<>(collisionHistogram.keySet());
-      Collections.sort(sortedCollisions);
-      for (Long collision : sortedCollisions) {
-        LOGGER.info("%d: %d", collision, collisionHistogram.get(collision));
+    } finally {
+      if (tsvWriter != null) {
+        tsvWriter.close();
       }
     }
   }
