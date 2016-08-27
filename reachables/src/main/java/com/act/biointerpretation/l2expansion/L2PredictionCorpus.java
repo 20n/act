@@ -167,6 +167,22 @@ public class L2PredictionCorpus implements Serializable {
   }
 
   /**
+   * Write the L2PredictionCorpus to file in list of inchis format.
+   *
+   * @param outputFile Where to write the file.
+   * @throws IOException
+   */
+  public void writePredictionsAsInchiList(File outputFile) throws IOException {
+    try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile))) {
+      Set<String> productInchis = this.getUniqueProductInchis();
+      for (String inchi : productInchis) {
+        predictionWriter.write(inchi);
+        predictionWriter.newLine();
+      }
+    }
+  }
+
+  /**
    * Get a list of all product inchis from corpus.
    */
   @JsonIgnore
