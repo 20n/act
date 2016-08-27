@@ -2,23 +2,15 @@ package com.act.lcms.v2;
 
 import com.act.lcms.MS1;
 import com.act.lcms.MassCalculator;
-import com.act.utils.CLIUtil;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.Option;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,75 +20,6 @@ import java.util.stream.Collectors;
 
 public class MassChargeCalculator {
   private static final Logger LOGGER = LogManager.getFormatterLogger(MassChargeCalculator.class);
-
-  private static String OPTION_INPUT_INCHI_LIST = "i";
-
-  private static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class calculates the monoisoptic masses of a list of InChIs, computes ion m/z's for those masses, ",
-      "and computes the distribution of m/z collisions over these m/z's, producing a histogram as its output."
-  }, "");
-
-  public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
-    add(Option.builder(OPTION_INPUT_INCHI_LIST)
-        .argName("input-file")
-        .desc("An input file containing just InChIs")
-        .hasArg()
-        .required()
-        .longOpt("input-file")
-    );
-  }};
-
-
-  public static void main(String[] args) throws Exception {
-    CLIUtil cliUtil = new CLIUtil(MassChargeCalculator.class, HELP_MESSAGE, OPTION_BUILDERS);
-    CommandLine cl = cliUtil.parseCommandLine(args);
-
-    File inputFile = new File(cl.getOptionValue(OPTION_INPUT_INCHI_LIST));
-    if (!inputFile.exists()) {
-      cliUtil.failWithMessage("Input file at does not exist at %s", inputFile.getAbsolutePath());
-    }
-
-    List<MZSource> sources = new ArrayList<>();
-    try (BufferedReader reader = new BufferedReader(new FileReader(inputFile))) {
-      String line;
-      while ((line = reader.readLine()) != null) {
-        line = line.trim();
-        sources.add(new MZSource(line));
-        if (sources.size() % 1000 == 0) {
-          LOGGER.info("Loaded %d sources from input file", sources.size());
-        }
-      }
-    }
-
-    LOGGER.info("Loaded %d sources in total from input file", sources.size());
-
-    MassChargeMap mzMap = MassChargeCalculator.makeMassChargeMap(sources);
-
-    // This is actually a map of collision counts to counts of collision counts, but that is too long!
-    Map<Integer, Integer> collisionCounts = new HashMap<>();
-    Iterator<Double> mzs = mzMap.ionMZIterator();
-    int mzCounter = 0;
-    while (mzs.hasNext()) {
-      Double mz = mzs.next();
-      Integer collisions = mzMap.ionMZToMZSources(mz).size();
-      Integer oldCount = collisionCounts.get(collisions);
-      if (oldCount == null) {
-        oldCount = 0;
-      }
-      collisionCounts.put(collisions, oldCount + 1);
-      mzCounter++;
-      if (mzCounter % 1000 == 0) {
-        LOGGER.info("Resolved %d mz's", mzCounter);
-      }
-    }
-
-    List<Integer> sortedCollisions = new ArrayList<>(collisionCounts.keySet());
-    Collections.sort(sortedCollisions);
-    for (Integer collision : sortedCollisions) {
-      LOGGER.info("%d: %d", collision, collisionCounts.get(collision));
-    }
-  }
-
 
   /**
    * An MZSource is a handle to the result of ionic mass/charge computation.  Once m/z computation has been completed
@@ -241,29 +164,45 @@ public class MassChargeCalculator {
       );
     }
 
-    public Iterator<MZSource> mzSourceIterator() {
-      return monoisotopicMasses.keySet().iterator();
+    /* Use Iterable -> Stream instead of Iterator, as Iterator doesn't play nicely with streams on its own.
+     * Iterator + Stream.generate = java.util.NoSuchElementException = :(
+     * http://stackoverflow.com/questions/24511052/how-to-convert-an-iterator-to-a-stream */
+    public Iterable<MZSource> mzSourceIterable() {
+      return () -> monoisotopicMasses.keySet().iterator();
     }
 
-    public Iterator<Double> monoisotopicMassIterator() {
-      return reverseIonicMasses.keySet().iterator();
+    public Iterable<Double> monoisotopicMassIterable() {
+      return () -> reverseIonicMasses.keySet().iterator();
     }
 
-    public Iterator<Double> ionMZIterator() {
-      return reverseIonicMasses.keySet().iterator();
+    public Iterable<Double> ionMZIterable() {
+      return () -> reverseIonicMasses.keySet().iterator();
+    }
+
+    // Package private--this one can eat a whole lot of memory, so we prefer the streaming approaches.
+    List<Double> ionMZsSorted() {
+      List<Double> results = new ArrayList<>(reverseIonicMasses.keySet());
+      Collections.sort(results);
+      return results;
     }
 
     // Package private again.
-    void loadSourcesAndMasses(List<Pair<MZSource, Double>> sourcesAndMasses) throws IOException {
+    void loadSourcesAndMasses(List<Pair<MZSource, Double>> sourcesAndMasses, Set<String> onlyConsiderIons)
+        throws IOException {
       monoisotopicMasses = new LinkedHashMap<>(sourcesAndMasses.size()); // Preserve order for easier testing.
 
-      LOGGER.info("Converting m/z sources into ionic masses and resolving collisions");
+      LOGGER.info("Converting %d m/z sources into ionic masses and resolving collisions", sourcesAndMasses.size());
       int sourceCounter = 0;
       int ionCounter = 0;
       for (Pair<MZSource, Double> sourceAndMass : sourcesAndMasses) {
         MZSource source = sourceAndMass.getLeft();
         Double monoMass = sourceAndMass.getRight();
         monoisotopicMasses.put(source, monoMass);
+
+        sourceCounter++;
+        if (sourceCounter % 1000 == 0) {
+          LOGGER.info("Resolved %d sources, handled %d ion m/z's in total", sourceCounter, ionCounter);
+        }
 
         if (reverseMonoisotopicMasses.containsKey(monoMass)) {
           reverseMonoisotopicMasses.get(monoMass).add(source);
@@ -279,6 +218,12 @@ public class MassChargeCalculator {
         reverseMonoisotopicMasses.put(monoMass, sourcesWithThisMass);
 
         Map<String, Double> ions = MS1.getIonMasses(monoMass, MS1.IonMode.POS);
+        // Filter to only the specified ions if the onlyConsider set is non-empty; allow all ions by default.
+        if (onlyConsiderIons.size() != 0) {
+          ions = ions.entrySet().stream().
+              filter(e -> onlyConsiderIons.contains(e.getKey())).
+              collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        }
 
         for (Map.Entry<String, Double> ion : ions.entrySet()) {
           List<Pair<String, Double>> reverseMapping = reverseIonicMasses.get(ion.getValue());
@@ -289,11 +234,8 @@ public class MassChargeCalculator {
           reverseMapping.add(Pair.of(ion.getKey(), monoMass));
           ionCounter++;
         }
-        sourceCounter++;
-        if (sourceCounter % 1000 == 0) {
-          LOGGER.info("Resolved %d sources, handled %d ion m/z's in total", sourceCounter, ionCounter);
-        }
       }
+      LOGGER.info("Done resolving %d sources, found %d ion m/z's in total", sourceCounter, ionCounter);
     }
 
     public List<Double> getUniqueIonicMasses() {
@@ -329,6 +271,11 @@ public class MassChargeCalculator {
   }
 
   public static MassChargeMap makeMassChargeMap(List<MZSource> mzSources) throws IOException {
+    return makeMassChargeMap(mzSources, Collections.emptySet());
+  }
+
+  public static MassChargeMap makeMassChargeMap(List<MZSource> mzSources, Set<String> onlyConsiderIons)
+      throws IOException {
     MassChargeMap map = new MassChargeMap();
     /* Map over the sources, extracting or computing the mass as we go to encapsulate any unsafe behavior outside the
      * MassChargeMap constructor. */
@@ -340,7 +287,8 @@ public class MassChargeCalculator {
         LOGGER.error("MZSource %d threw an error during mass calculation, skipping", source.getId());
       }
     }
-    map.loadSourcesAndMasses(sourcesAndMasses);
+    LOGGER.info("Consumed %d mzSources, sourcesAndMasses has %d entries", mzSources.size(), sourcesAndMasses.size());
+    map.loadSourcesAndMasses(sourcesAndMasses, onlyConsiderIons);
     return map;
   }
 
