@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 public class IonAnalysisInterchangeModel {
 
@@ -53,6 +54,11 @@ public class IonAnalysisInterchangeModel {
     HIT,
     MISS,
     NO_DATA
+  }
+
+  public enum METRIC {
+    MASS,
+    INCHI
   }
 
   @JsonProperty("results")
@@ -146,6 +152,36 @@ public class IonAnalysisInterchangeModel {
     }
     // If every prediction is a HIT, return HIT.
     return LCMS_RESULT.HIT;
+  }
+
+  public static Map<String, Set<String>> getMoleculeHitsForEachInputFile(List<String> filepaths,
+                                                                         METRIC metric,
+                                                                         Double snrThreshold,
+                                                                         Double intensityThreshold,
+                                                                         Double timeThreshold) throws IOException {
+
+    Map<String, IonAnalysisInterchangeModel> fileToIonAnalysisInterchangeModel = new HashMap<>();
+    Map<String, Set<String>> result = new HashMap<>();
+
+    for (String filePath : filepaths) {
+      IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
+      model.loadResultsFromFile(new File(filePath));
+      fileToIonAnalysisInterchangeModel.put(String.format("%s_intensity%f_snr%f_metric%s", filePath, intensityThreshold, snrThreshold, metric.toString()), model);
+    }
+
+    for (Map.Entry<String, IonAnalysisInterchangeModel> entry : fileToIonAnalysisInterchangeModel.entrySet()) {
+      if (metric.equals(METRIC.INCHI)) {
+        result.put(entry.getKey(), entry.getValue().getAllMoleculeHits(snrThreshold, intensityThreshold, timeThreshold));
+      } else {
+        result.put(entry.getKey(),
+            entry.getValue().getAllMassHits(
+                snrThreshold,
+                intensityThreshold,
+                timeThreshold).stream().map(mz -> Double.toString(mz)).collect(Collectors.toSet()));
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -268,6 +304,23 @@ public class IonAnalysisInterchangeModel {
         if (hitOrMiss.getIntensity() > intensityThreshold && hitOrMiss.getSnr() > snrThreshold &&
             hitOrMiss.getTime() > timeThreshold) {
           resultSet.add(hitOrMiss.getInchi());
+        }
+      }
+    }
+    return resultSet;
+  }
+
+  public Set<Double> getAllMassHits(Double snrThreshold, Double intensityThreshold, Double timeThreshold) {
+    Set<Double> resultSet = new HashSet<>();
+    for (ResultForMZ resultForMZ : results) {
+      for (HitOrMiss hitOrMiss : resultForMZ.getMolecules()) {
+        // If any of the molecules under the mass charge is a hit, then add the mass charge to the bag.
+        // ASSUMPTION: We are not comparing combined replicate files, in which case, the invariant of all molecules
+        // under the mass charge being the same metric values is not true.
+        if (hitOrMiss.getIntensity() > intensityThreshold && hitOrMiss.getSnr() > snrThreshold &&
+            hitOrMiss.getTime() > timeThreshold) {
+          resultSet.add(resultForMZ.getMz());
+          break;
         }
       }
     }
