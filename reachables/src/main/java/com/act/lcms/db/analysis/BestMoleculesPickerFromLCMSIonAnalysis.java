@@ -147,7 +147,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     positiveReplicateResults.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis_copy/ss_d1_ur_mn");
     positiveReplicateResults.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis_copy/ss_d2_ur_mn");
     positiveReplicateResults.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis_copy/ss_d3_ur_mn");
-    //positiveReplicateResults.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/ss_d2_ur_ev.json");
+    positiveReplicateResults.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis_copy/ss_d2_ur_ev");
 
     // Chris
     positiveReplicateResults.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis_copy/chris_min");
