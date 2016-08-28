@@ -164,8 +164,8 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
     writeToFile(filePathToVals2);
 
-    minSnrThreshold = 1000000.0;
-    minIntensityThreshold = 10000000.0;
+    minIntensityThreshold = 1000000.0;
+    minSnrThreshold = 10000000.0;
 
     Map<String, Set<String>> filePathToVals3 =
         IonAnalysisInterchangeModel.getMoleculeHitsForEachInputFile(positiveReplicateResults,
