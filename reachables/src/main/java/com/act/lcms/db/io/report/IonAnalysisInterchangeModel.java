@@ -167,6 +167,7 @@ public class IonAnalysisInterchangeModel {
    * This function results all the inchis from the model.
    * @return A set of inchis
    */
+  @JsonIgnore
   public Set<String> getAllInchis() {
     Set<String> result = new HashSet<>();
     for (ResultForMZ resultForMZ : this.getResults()) {
