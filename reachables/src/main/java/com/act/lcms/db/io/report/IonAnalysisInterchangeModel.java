@@ -110,6 +110,22 @@ public class IonAnalysisInterchangeModel {
     }
   }
 
+  public void filterByIons(Set<String> ions) {
+    List<ResultForMZ> resultForMZs = new ArrayList<>();
+
+    for (ResultForMZ resultForMZ : this.getResults()) {
+      ResultForMZ newResultForMz = new ResultForMZ(resultForMZ.getMz(), resultForMZ.getIsValid());
+      for (HitOrMiss molecule : resultForMZ.getMolecules()) {
+        if (ions.contains(molecule.getIon())) {
+          newResultForMz.addMolecule(molecule);
+        }
+      }
+      resultForMZs.add(newResultForMz);
+    }
+
+    this.setResults(resultForMZs);
+  }
+
   /**
    * This function is used to compute log frequency distribution of the ion model vs a metric.
    * @param metric The metric on which the frequency distribution is plotted
@@ -433,6 +449,12 @@ public class IonAnalysisInterchangeModel {
       this.mz = mz;
       this.molecules = new ArrayList<>();
       this.isValid = false;
+    }
+
+    public ResultForMZ(Double mz, Boolean hit) {
+      this.id = ID_COUNTER.incrementAndGet();
+      this.mz = mz;
+      this.isValid = hit;
     }
 
     public Long getId() {
