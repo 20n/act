@@ -57,7 +57,7 @@ public class BingSearchRanker {
   public static final String INSTALLER_DATABASE = "actv01";
 
   // Configuration for usage explorer UI
-  public static final String HOST_USAGE_EXPLORER = "usage-explorer";
+  public static final String HOST_USAGE_EXPLORER = "chimay";
   public static final int PORT_USAGE_EXPLORER = 8080;
 
   // Define options for CLI
