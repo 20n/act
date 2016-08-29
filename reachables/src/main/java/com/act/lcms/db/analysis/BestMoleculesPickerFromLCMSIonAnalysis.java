@@ -129,15 +129,15 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     } else {
       try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(fileName))) {
 
-        TreeMap<String, String> inchiToIon = new TreeMap<>();
+        TreeMap<Double, Pair<String, String>> massChargeToChemicalAndIon = new TreeMap<>();
         for (IonAnalysisInterchangeModel.ResultForMZ resultForMZ : model.getResults()) {
           for (IonAnalysisInterchangeModel.HitOrMiss molecule : resultForMZ.getMolecules()) {
-            inchiToIon.put(molecule.getInchi(), molecule.getIon());
+            massChargeToChemicalAndIon.put(resultForMZ.getMz(), Pair.of(molecule.getInchi(), molecule.getIon());
           }
         }
 
-        for (Map.Entry<String, String> entry : inchiToIon.entrySet()) {
-          predictionWriter.append(String.format("Inchi: %s, Ion: %s", entry.getKey(), entry.getValue()));
+        for (Map.Entry<Double, Pair<String, String>> entry : massChargeToChemicalAndIon.entrySet()) {
+          predictionWriter.append(String.format("MZ: %s, Inchi: %s, Ion: %s", entry.getKey(), entry.getValue().getLeft(), entry.getValue().getRight()));
           predictionWriter.newLine();
         }
       }
