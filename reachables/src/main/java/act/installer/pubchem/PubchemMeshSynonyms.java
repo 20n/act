@@ -257,6 +257,9 @@ public class PubchemMeshSynonyms {
   public String fetchCIDFromInchi(String inchi) {
     // The clone method has its own implementation in the SelectBuilder. Thus safe to use!
     SelectBuilder sb = CID_QUERY_TMPL.clone();
+    // The inchi litteral needs to be create with a language tag, otherwise it will not match anything
+    // See "Matching Litteral with Language Tags" (https://www.w3.org/TR/rdf-sparql-query/#matchLangTags)
+    // for more information
     sb.setVar(Var.alloc("inchi_string"), NodeFactory.createLiteral(inchi, ENGLISH_LANG_TAG));
     Query query = sb.build();
 
