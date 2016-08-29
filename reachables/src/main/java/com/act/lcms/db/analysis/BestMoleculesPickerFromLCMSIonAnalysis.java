@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.function.Function;
 
 public class BestMoleculesPickerFromLCMSIonAnalysis {
@@ -98,6 +100,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
         .argName("filter by ions")
         .desc("Filter files by ion")
         .hasArgs()
+        .valueSeparator(',')
         .longOpt("filter-by-ions")
     );
   }};
@@ -120,13 +123,21 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
    * @param model The model that is being written
    * @throws IOException
    */
-  public static void printAllInchisToFile(IonAnalysisInterchangeModel model, String fileName, Boolean jsonFormat) throws IOException {
+  public static void printInchisAndIonsToFile(IonAnalysisInterchangeModel model, String fileName, Boolean jsonFormat) throws IOException {
     if (jsonFormat) {
       model.writeToJsonFile(new File(fileName));
     } else {
       try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(fileName))) {
-        for (String inchi : model.getAllInchis()) {
-          predictionWriter.append(inchi);
+
+        TreeMap<String, String> inchiToIon = new TreeMap<>();
+        for (IonAnalysisInterchangeModel.ResultForMZ resultForMZ : model.getResults()) {
+          for (IonAnalysisInterchangeModel.HitOrMiss molecule : resultForMZ.getMolecules()) {
+            inchiToIon.put(molecule.getInchi(), molecule.getIon());
+          }
+        }
+
+        for (Map.Entry<String, String> entry : inchiToIon.entrySet()) {
+          predictionWriter.append(String.format("Inchi: %s, Ion: %s", entry.getKey(), entry.getValue()));
           predictionWriter.newLine();
         }
       }
@@ -191,7 +202,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
           IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
           filterAndTransformFunction);
 
-      printAllInchisToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
+      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
       return;
     }
 
@@ -206,7 +217,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
           minIntensityThreshold,
           minTimeThreshold);
 
-      printAllInchisToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
+      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
       return;
     }
 
@@ -241,7 +252,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
         model.filterByIons(new HashSet<>(Arrays.asList(cl.getOptionValues(OPTION_FILTER_BY_IONS))));
       }
 
-      printAllInchisToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
+      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
     }
   }
 }
