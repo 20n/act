@@ -10,10 +10,16 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -25,6 +31,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
   public static final String OPTION_MIN_TIME_THRESHOLD = "t";
   public static final String OPTION_MIN_SNR_THRESHOLD = "s";
   public static final String OPTION_GET_IONS_SUPERSET = "f";
+  public static final String OPTION_GET_CHEMICAL_STATISTICS = "c";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_INPUT_FILES)
@@ -65,6 +72,12 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
         .desc("A run option on all the ionic variant files on a single replicate run")
         .longOpt("ions-superset")
     );
+    add(Option.builder(OPTION_GET_CHEMICAL_STATISTICS)
+        .argName("get chemical statistics")
+        .desc("Get chemicals from input file")
+        .hasArg()
+        .longOpt("chemical-statistics")
+    );
   }};
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[] {
@@ -76,6 +89,20 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
   static {
     HELP_FORMATTER.setWidth(100);
+  }
+
+  public static Set<String> readChemicalsFromFile(File in) throws IOException {
+    FileReader fileReader = new FileReader(in);
+    Set<String> inchis = new HashSet<>();
+
+    try (BufferedReader reader = new BufferedReader(fileReader)) {
+      String inchi = null;
+      while((inchi = reader.readLine()) != null) {
+        inchis.add(inchi);
+      }
+    }
+
+    return inchis;
   }
 
   public static void main(String[] args) throws Exception {
@@ -98,11 +125,35 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
       System.exit(1);
     }
 
+    List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
+
+    if (cl.hasOption(OPTION_GET_CHEMICAL_STATISTICS)) {
+      Set<String> inchis = readChemicalsFromFile(new File(cl.getOptionValue(OPTION_GET_CHEMICAL_STATISTICS)));
+
+      for (String file : positiveReplicateResults) {
+        System.out.println(file);
+
+        IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
+        model.loadResultsFromFile(new File(file));
+
+        for (IonAnalysisInterchangeModel.ResultForMZ resultForMZ : model.getResults()) {
+          for (IonAnalysisInterchangeModel.HitOrMiss hitOrMiss : resultForMZ.getMolecules()) {
+            if (inchis.contains(hitOrMiss.getInchi())) {
+              System.out.println(String.format("Ion: %s", hitOrMiss.getIon()));
+              System.out.println(String.format("Intensity: %s", hitOrMiss.getIntensity()));
+              System.out.println(String.format("SNR: %s", hitOrMiss.getSnr()));
+              System.out.println(String.format("Time: %s", hitOrMiss.getTime()));
+            }
+          }
+        }
+      }
+
+      return;
+    }
+
     Double minSnrThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_SNR_THRESHOLD));
     Double minIntensityThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_INTENSITY_THRESHOLD));
     Double minTimeThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_TIME_THRESHOLD));
-
-    List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
 
     Set<String> inchis = cl.hasOption(OPTION_GET_IONS_SUPERSET) ?
         IonAnalysisInterchangeModel.getSupersetOfIonicVariants(positiveReplicateResults, minSnrThreshold,
