@@ -30,6 +30,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -214,23 +215,16 @@ public class IonAnalysisInterchangeModel {
    * transform results from multiple replicate to statistics, like a min function across replicates. Second, they are
    * used to filter in/out molecules based on the logic of the filter function.
    * @param replicateModels The list of IonAnalysisInterchangeModels to be analyzed
-   * @param intensityFilterAndTransformFunction The intensity filter function takes in a list of intensity values and outputs
+   * @param filterAndTransformFunction The intensity filter function takes in a list of intensity values and outputs
    *                                a transformed statistic and whether or not to add the Molecule hit to the final
    *                                result.
-   * @param snrFilterAndTransformFunction The snr filter function takes in a list of snr values and outputs
-   *                          a transformed statistic and whether or not to add the Molecule hit to the final
-   *                          result.
-   * @param timeFilterAndTransformFunction The time filter function takes in a list of time values and outputs
-   *                           a transformed statistic and whether or not to add the Molecule hit to the final
-   *                           result.
    * @return A list of inchis that are valid molecule hits in all the input files and pass all the thresholds.
    * @throws IOException
    */
   public static IonAnalysisInterchangeModel filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
       List<IonAnalysisInterchangeModel> replicateModels,
-      Function<List<Double>, Pair<Double, Boolean>> intensityFilterAndTransformFunction,
-      Function<List<Double>, Pair<Double, Boolean>> snrFilterAndTransformFunction,
-      Function<List<Double>, Pair<Double, Boolean>> timeFilterAndTransformFunction) throws IOException {
+      Function<Triple<List<Double>, List<Double>, List<Double>>, Pair<Triple<Double, Double, Double>, Boolean>> filterAndTransformFunction)
+      throws IOException {
 
     int totalNumberOfMassCharges = replicateModels.get(0).getResults().size();
     IonAnalysisInterchangeModel resultModel = new IonAnalysisInterchangeModel();
@@ -273,20 +267,22 @@ public class IonAnalysisInterchangeModel {
             throw new RuntimeException("The replicates are not ordered similarly. Please verify if the correct replicates are being used.");
           }
 
-          snrList.add(sampleRepresentativeMz.getMolecules().get(j).getSnr());
-          intensityList.add(sampleRepresentativeMz.getMolecules().get(j).getIntensity());
-          timeList.add(sampleRepresentativeMz.getMolecules().get(j).getTime());
+          HitOrMiss molecule = sampleRepresentativeMz.getMolecules().get(j);
+          snrList.add(molecule.getSnr());
+          intensityList.add(molecule.getIntensity());
+          timeList.add(molecule.getTime());
         }
 
         // Check if the filter function for each metric wants to throw out the molecule. If none of them want to throw
         // out the molecule, then add the molecule to the final result.
-        if (intensityFilterAndTransformFunction.apply(intensityList).getRight() &&
-            snrFilterAndTransformFunction.apply(snrList).getRight() &&
-            timeFilterAndTransformFunction.apply(timeList).getRight()) {
+        Pair<Triple<Double, Double, Double>, Boolean> valuesAndShouldRetainMolecule =
+            filterAndTransformFunction.apply(Triple.of(intensityList, snrList, timeList));
+
+        if (valuesAndShouldRetainMolecule.getRight()) {
           HitOrMiss molecule = representativeMZ.getMolecules().get(j);
-          molecule.setIntensity(intensityFilterAndTransformFunction.apply(intensityList).getLeft());
-          molecule.setSnr(snrFilterAndTransformFunction.apply(snrList).getLeft());
-          molecule.setTime(timeFilterAndTransformFunction.apply(timeList).getLeft());
+          molecule.setIntensity(valuesAndShouldRetainMolecule.getLeft().getLeft());
+          molecule.setSnr(valuesAndShouldRetainMolecule.getLeft().getMiddle());
+          molecule.setTime(valuesAndShouldRetainMolecule.getLeft().getRight());
           resultForMZ.addMolecule(molecule);
         }
       }

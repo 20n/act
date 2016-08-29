@@ -10,6 +10,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
+import org.apache.regexp.RE;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -24,6 +26,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
   public static final Boolean DO_NOT_THROW_OUT_MOLECULE = true;
   public static final Boolean THROW_OUT_MOLECULE = false;
+  public static final Integer TIME_TOLERANCE_IN_SECONDS = 5;
   public static final Integer REPRESENTATIVE_INDEX = 0;
   public static final Double LOWEST_POSSIBLE_VALUE_FOR_METRIC = 0.0;
   public static final String OPTION_INPUT_FILES = "i";
@@ -146,16 +149,38 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
 
     if (cl.hasOption(OPTION_MIN_OF_REPLICATES)) {
+      Function<Triple<List<Double>, List<Double>, List<Double>>, Pair<Triple<Double, Double, Double>, Boolean>>
+          filterAndTransformFunction = (Triple<List<Double>, List<Double>, List<Double>> listOfPeakStats) -> {
 
-      // The minStatFunction finds the min of a list of doubles, in this case, intensity, snr or time values across
-      // multiple replicates. The right side of the pair says that no values needs to be filtered out, which happens
-      // in the thresholding cases (not here).
-      Function<List<Double>, Pair<Double, Boolean>> minStatFunction = (List<Double> listOfVals) ->
-          Pair.of(listOfVals.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal)), DO_NOT_THROW_OUT_MOLECULE);
+        List<Double> intensityValues = listOfPeakStats.getLeft();
+        List<Double> snrValues = listOfPeakStats.getMiddle();
+        List<Double> timeValues = listOfPeakStats.getRight();
+
+        Double minTime = timeValues.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal));
+        Double maxTime = timeValues.stream().reduce(Double.MIN_VALUE, (accum, newVal) -> Math.max(accum, newVal));
+
+        if (maxTime - minTime < TIME_TOLERANCE_IN_SECONDS) {
+          Double minIntensity = intensityValues.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal));
+
+          // ASSUMPTION: We assume that the list of SNR, Intensity and Time values are ordered similarly by replicates.
+          Integer indexOfMinIntensityReplicate = intensityValues.indexOf(minIntensity);
+          return Pair.of(
+              Triple.of(minIntensity, snrValues.get(indexOfMinIntensityReplicate),
+                  timeValues.get(indexOfMinIntensityReplicate)), DO_NOT_THROW_OUT_MOLECULE);
+        } else {
+          // TODO: We can just throw such molecules.
+          return Pair.of(
+              Triple.of(
+                  LOWEST_POSSIBLE_VALUE_FOR_METRIC,
+                  LOWEST_POSSIBLE_VALUE_FOR_METRIC,
+                  LOWEST_POSSIBLE_VALUE_FOR_METRIC),
+              DO_NOT_THROW_OUT_MOLECULE);
+        }
+      };
 
       IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
           IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
-          minStatFunction, minStatFunction, minStatFunction);
+          filterAndTransformFunction);
 
       printAllInchisToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
       return;
@@ -177,45 +202,31 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     }
 
     if (cl.hasOption(OPTION_FILTER_BY_THRESHOLD)) {
-      Function<List<Double>, Pair<Double, Boolean>> intensityFilterFunction = (List<Double> listOfIntensities) -> {
-        for (Double val : listOfIntensities) {
-          if (val < minIntensityThreshold) {
-            return Pair.of(LOWEST_POSSIBLE_VALUE_FOR_METRIC, THROW_OUT_MOLECULE);
-          }
+      Function<Triple<List<Double>, List<Double>, List<Double>>, Pair<Triple<Double, Double, Double>, Boolean>>
+          filterAndTransformFunction = (Triple<List<Double>, List<Double>, List<Double>> listOfPeakStats) -> {
+
+        List<Double> intensityValues = listOfPeakStats.getLeft();
+        List<Double> snrValues = listOfPeakStats.getMiddle();
+        List<Double> timeValues = listOfPeakStats.getRight();
+
+        if (intensityValues.size() > 1 && snrValues.size() > 1 && timeValues.size() > 1) {
+          throw new RuntimeException("This filter is meant for analysis for only one replicate.");
         }
 
-        // If all the intensities for all the replicates pass the threshold, then keep the molecule in the output
-        // ion model and set the intensities to a placeholder intensities, in this case, the first element's intensities.
-        return Pair.of(listOfIntensities.get(REPRESENTATIVE_INDEX), DO_NOT_THROW_OUT_MOLECULE);
-      };
+        Double intensity = intensityValues.get(REPRESENTATIVE_INDEX);
+        Double snr = snrValues.get(REPRESENTATIVE_INDEX);
+        Double time = timeValues.get(REPRESENTATIVE_INDEX);
 
-      Function<List<Double>, Pair<Double, Boolean>> snrFilterFunction = (List<Double> listOfSnrs) -> {
-        for (Double val : listOfSnrs) {
-          if (val < minSnrThreshold) {
-            return Pair.of(LOWEST_POSSIBLE_VALUE_FOR_METRIC, THROW_OUT_MOLECULE);
-          }
+        if (intensity > minIntensityThreshold && snr > minSnrThreshold && time > minTimeThreshold) {
+          return Pair.of(Triple.of(intensity, snr, time), DO_NOT_THROW_OUT_MOLECULE);
+        } else {
+          return Pair.of(Triple.of(intensity, snr, time), THROW_OUT_MOLECULE);
         }
-
-        // If all the snrs for all the replicates pass the threshold, then keep the molecule in the output
-        // ion model and set the snr to a placeholder snr, in this case, the first element's snr.
-        return Pair.of(listOfSnrs.get(REPRESENTATIVE_INDEX), DO_NOT_THROW_OUT_MOLECULE);
-      };
-
-      Function<List<Double>, Pair<Double, Boolean>> timeFilterFunction = (List<Double> listOfTimes) -> {
-        for (Double val : listOfTimes) {
-          if (val < minTimeThreshold) {
-            return Pair.of(LOWEST_POSSIBLE_VALUE_FOR_METRIC, THROW_OUT_MOLECULE);
-          }
-        }
-
-        // If all the times for all the replicates pass the threshold, then keep the molecule in the output
-        // ion model and set the time to a placeholder times, in this case, the first element's times.
-        return Pair.of(listOfTimes.get(REPRESENTATIVE_INDEX), DO_NOT_THROW_OUT_MOLECULE);
       };
 
       IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
           IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
-          intensityFilterFunction, snrFilterFunction, timeFilterFunction);
+          filterAndTransformFunction);
 
       printAllInchisToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
     }
