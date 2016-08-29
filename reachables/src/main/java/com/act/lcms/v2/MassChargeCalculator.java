@@ -4,6 +4,7 @@ import com.act.lcms.MS1;
 import com.act.lcms.MassCalculator;
 import com.act.lcms.db.io.DB;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -36,6 +37,7 @@ public class MassChargeCalculator {
    * computed from that source of a monoisotopic mass.  In turn, any peaks associated with a particular m/z can be
    * mapped back to the source from which the search window in which the peak was found was originally derived.
    */
+  @JsonInclude(JsonInclude.Include.NON_NULL) // Hide unused fields since this is effectively a tagged union/sum type.
   public static class MZSource implements Serializable {
     private static final long serialVersionUID = -6359715907934400901L;
 
@@ -50,18 +52,21 @@ public class MassChargeCalculator {
       ;
     }
 
-    @JsonProperty("kind")
-    KIND kind;
-    @JsonProperty("inchi")
+    @JsonProperty(value = "kind", required = true)
+    KIND kind = KIND.UNKNOWN;
+    @JsonProperty(value = "inchi")
     String inchi;
-    @JsonProperty("arbitrary_mass")
+    @JsonProperty(value = "arbitrary_mass")
     Double arbitraryMass;
     // Don't use Pair here, as Jackson 2.6 chokes on it.
-    @JsonProperty("pre_extracted_label")
+    @JsonProperty(value = "pre_extracted_label")
     String preExtractedLabel;
-    @JsonProperty("pre_extracted_mass")
+    @JsonProperty(value = "pre_extracted_mass")
     Double preExtractedMass;
-    @JsonProperty("id")
+    /* Note: this ID is for logging/convenience only.  It is not intended as a durable or consistent pointer to a
+     * particular MZSource.  The caller is responsible for understanding the true source/meaning of an MZSource
+     * object; by itself, it is just a handle to some computation. */
+    @JsonProperty(value = "id", required = true)
     @JsonDeserialize(using = MZSourceIDDeserializer.class)
     Integer objectId;
 
