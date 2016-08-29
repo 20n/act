@@ -455,6 +455,7 @@ public class IonAnalysisInterchangeModel {
       this.id = ID_COUNTER.incrementAndGet();
       this.mz = mz;
       this.isValid = hit;
+      this.molecules = new ArrayList<>();
     }
 
     public Long getId() {
