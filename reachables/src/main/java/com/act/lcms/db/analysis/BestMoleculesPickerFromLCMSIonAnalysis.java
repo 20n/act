@@ -132,7 +132,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
         TreeMap<Double, Pair<String, String>> massChargeToChemicalAndIon = new TreeMap<>();
         for (IonAnalysisInterchangeModel.ResultForMZ resultForMZ : model.getResults()) {
           for (IonAnalysisInterchangeModel.HitOrMiss molecule : resultForMZ.getMolecules()) {
-            massChargeToChemicalAndIon.put(resultForMZ.getMz(), Pair.of(molecule.getInchi(), molecule.getIon());
+            massChargeToChemicalAndIon.put(resultForMZ.getMz(), Pair.of(molecule.getInchi(), molecule.getIon()));
           }
         }
 
