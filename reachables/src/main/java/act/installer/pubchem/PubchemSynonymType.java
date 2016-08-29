@@ -44,4 +44,9 @@ public enum PubchemSynonymType {
   PubchemSynonymType(String cheminfId) {
     this.cheminfId = cheminfId;
   }
+
+  @Override
+  public String toString() {
+    return this.name();
+  }
 }

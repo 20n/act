@@ -45,4 +45,9 @@ public enum MeshTermType {
   MeshTermType(String lexicalTag) {
     this.lexicalTag = lexicalTag;
   }
+
+  @Override
+  public String toString() {
+    return this.name();
+  }
 }
