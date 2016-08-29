@@ -11,7 +11,6 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.regexp.RE;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -19,6 +18,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.function.Function;
 
@@ -38,6 +38,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
   public static final String OPTION_JSON_FORMAT = "j";
   public static final String OPTION_MIN_OF_REPLICATES = "m";
   public static final String OPTION_FILTER_BY_THRESHOLD = "p";
+  public static final String OPTION_FILTER_BY_IONS = "k";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_INPUT_FILES)
@@ -92,6 +93,12 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
         .argName("filter by threshold")
         .desc("Filter files by threshold amounts")
         .longOpt("filter-threshold")
+    );
+    add(Option.builder(OPTION_FILTER_BY_IONS)
+        .argName("filter by ions")
+        .desc("Filter files by ion")
+        .hasArgs()
+        .longOpt("filter-by-ions")
     );
   }};
 
@@ -164,11 +171,13 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
           // ASSUMPTION: We assume that the list of SNR, Intensity and Time values are ordered similarly by replicates.
           Integer indexOfMinIntensityReplicate = intensityValues.indexOf(minIntensity);
+
+          // The SNR and Time values will be the copy of the replicate with the lowest intensity value.
           return Pair.of(
               Triple.of(minIntensity, snrValues.get(indexOfMinIntensityReplicate),
                   timeValues.get(indexOfMinIntensityReplicate)), DO_NOT_THROW_OUT_MOLECULE);
         } else {
-          // TODO: We can just throw such molecules.
+          // TODO: We can just throw out such molecules.
           return Pair.of(
               Triple.of(
                   LOWEST_POSSIBLE_VALUE_FOR_METRIC,
@@ -227,6 +236,10 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
       IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
           IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
           filterAndTransformFunction);
+
+      if (cl.hasOption(OPTION_FILTER_BY_IONS)) {
+        model.filterByIons(new HashSet<>(Arrays.asList(cl.getOptionValues(OPTION_FILTER_BY_IONS))));
+      }
 
       printAllInchisToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
     }
