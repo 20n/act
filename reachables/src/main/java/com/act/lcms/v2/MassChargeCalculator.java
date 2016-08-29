@@ -2,12 +2,20 @@ package com.act.lcms.v2;
 
 import com.act.lcms.MS1;
 import com.act.lcms.MassCalculator;
+import com.act.lcms.db.io.DB;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -28,8 +36,11 @@ public class MassChargeCalculator {
    * computed from that source of a monoisotopic mass.  In turn, any peaks associated with a particular m/z can be
    * mapped back to the source from which the search window in which the peak was found was originally derived.
    */
-  public static class MZSource {
-    private static volatile AtomicInteger instanceCounter = new AtomicInteger(0);
+  public static class MZSource implements Serializable {
+    private static final long serialVersionUID = -6359715907934400901L;
+
+    @JsonIgnore
+    private static transient AtomicInteger instanceCounter = new AtomicInteger(0);
 
     private enum KIND {
       INCHI, // An InChI whose mass to import.
@@ -45,25 +56,43 @@ public class MassChargeCalculator {
     String inchi;
     @JsonProperty("arbitrary_mass")
     Double arbitraryMass;
-    @JsonProperty("pre_extracted_mass") // TODO: will Pair de/serialize without a custom class?
-    Pair<String, Double> preExtractedMass;
+    // Don't use Pair here, as Jackson 2.6 chokes on it.
+    @JsonProperty("pre_extracted_label")
+    String preExtractedLabel;
+    @JsonProperty("pre_extracted_mass")
+    Double preExtractedMass;
+    @JsonProperty("id")
+    @JsonDeserialize(using = MZSourceIDDeserializer.class)
     Integer objectId;
 
+    /**
+     * Construct a source based on an InChI.  Monoisotopic mass will automatically be calculated using MassCalculator.
+     * @param inchi The inchi whose mass to use.
+     */
     public MZSource(String inchi) {
       this.kind = KIND.INCHI;
       this.inchi = inchi;
       setId();
     }
 
+    /**
+     * Construct a source based on an arbitrary monoisotopic mass.  Do not use average mass for this value.
+     * @param arbitraryMass Some monoisotopic mass to use as a source.
+     */
     public MZSource(Double arbitraryMass) {
       this.kind = KIND.ARBITRARY_MASS;
       this.arbitraryMass = arbitraryMass;
       setId();
     }
 
+    /**
+     * Construct a source based on the result of {@link com.act.lcms.db.analysis.Utils#extractMassFromString}.
+     * @param extractMassFromStringResult The results of {@link com.act.lcms.db.analysis.Utils#extractMassFromString}.
+     */
     public MZSource(Pair<String, Double> extractMassFromStringResult) {
       this.kind = KIND.PRE_EXTRACTED_MASS;
-      this.preExtractedMass = extractMassFromStringResult;
+      this.preExtractedLabel = extractMassFromStringResult.getLeft();
+      this.preExtractedMass  = extractMassFromStringResult.getRight();
       setId();
     }
 
@@ -75,7 +104,7 @@ public class MassChargeCalculator {
       objectId = instanceCounter.getAndIncrement();
     }
 
-    public Integer getId() {
+    Integer getId() {
       return objectId;
     }
 
@@ -93,7 +122,7 @@ public class MassChargeCalculator {
     }
 
     Pair<String, Double> getPreExtractedMass() {
-      return preExtractedMass;
+      return Pair.of(preExtractedLabel, preExtractedMass);
     }
 
     /* Note: these methods are more complicated than they need be.  Specifically, since objectId should be unique, it's
@@ -127,9 +156,38 @@ public class MassChargeCalculator {
       result = 31 * result + objectId.hashCode();
       return result;
     }
+
+    public static class MZSourceIDDeserializer extends JsonDeserializer<Integer> {
+      @Override
+      public Integer deserialize(JsonParser p, DeserializationContext ctxt)
+          throws IOException, JsonProcessingException {
+        final int thisId = p.getIntValue();
+        /* Set the instance counter to the current document's id + 1 if it isn't already higher.  This will (weakly)
+         * ensure that any newly created documents don't collide with whatever we're reading in.
+         *
+         * TODO: these ids are awful, and are certainly something I expect to regret implementing.  We should use
+         * something better, make ids cleanly transient, or try to get away from ids at all.
+         */
+        instanceCounter.getAndUpdate(x -> Integer.max(x, thisId + 1));
+        return thisId;
+      }
+    }
+
+    private void readObject(java.io.ObjectInputStream in)
+        throws IOException, ClassNotFoundException {
+      in.defaultReadObject();
+      // See comment in JSON id serializer re: why we need special id handling.
+      instanceCounter.getAndUpdate(x -> Integer.max(x, getId() + 1));
+    }
   }
 
-  public static class MassChargeMap {
+  /**
+   * A MassChargeMap is built from a list of MZSources, and stores the monoisotopic and ionic mass variants for each
+   * of those sources.
+   */
+  public static class MassChargeMap implements Serializable {
+    private static final long serialVersionUID = -332580987490663497L;
+
     // Tracks the monoisotopic mass for a given source, which can then be used to find collisions in the reverse map.
     Map<MZSource, Double> monoisotopicMasses;
     // Maps each monoisotopic mass to any colliding sources.
