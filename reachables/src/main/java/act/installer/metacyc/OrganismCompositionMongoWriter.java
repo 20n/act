@@ -60,7 +60,7 @@ public class OrganismCompositionMongoWriter {
   String METACYC_URI_PREFIX = "http://www.metacyc.org/META/NEW-IMAGE?object=";
 
   // Pattern to extract ecnums from metacyc standard names
-  private final static Pattern metacycStandardNameEcnum = Pattern.compile("\\(EC (\\.|\\w)*\\)");
+  private final static Pattern metacycStandardNameEcnum = Pattern.compile("\\(EC ([0-9a-zA-Z_.-]+)[^)]*\\)");
 
   // Metacyc ids/metadata will be written to these fields in the DB.
   public static final String METACYC_OBJECT_MODEL_XREF_ID_PATH = "xref.METACYC.id";
@@ -819,9 +819,7 @@ public class OrganismCompositionMongoWriter {
       // Sometimes more than 1 EC Number exists.
       // However, we only grab the first one for now to keep ecnum as a single value field.
       if (ecnumMatcher.find()) {
-        ecnum = ecnumMatcher.group();
-        ecnum = ecnum.replace("(EC ", "");
-        ecnum = ecnum.replace(")", "");
+        ecnum = ecnumMatcher.group(1);
       }
     }
 

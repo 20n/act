@@ -320,7 +320,11 @@ public class Main {
       // looking up the number of files to-be-processed.
 
       System.out.println("Looking for biopax files at " + path);
-      int nfiles = new MetaCyc(path).getNumFilesToBeProcessed();
+
+      // Initialize so we can pass the owl files around later.
+      MetaCyc init = new MetaCyc(path);
+      int nfiles = init.getNumFilesToBeProcessed();
+
       System.out.println("Total: " + nfiles + " level3 biopax files found.");
       System.out.println("Range: [" + start + ", " + end + ")");
       int chunk = 1; // you can go up to a max of about 20 chunks (mem:3gb)
@@ -334,7 +338,9 @@ public class Main {
         //
         // By default, metacyc will load all Tier 1,2, and 3 files.
         // If you need it to load only 38 Tier 1,2 files call m.loadOnlyTier12(true)
-        MetaCyc m = new MetaCyc(path);
+        //
+        // Give metacyc the precomputed owls so we don't need to do that again.
+        MetaCyc m = new MetaCyc(path, init.getOWLs());
 
         int chunkEnd = i + chunk > end ? end : i + chunk;
         System.out.format("Processing: [%d, %d)\n", i, chunkEnd);

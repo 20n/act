@@ -19,11 +19,11 @@ import java.util.regex.Pattern;
 
 public class MetaCyc {
   public static final String METACYC_COMPOUND_FILE_NAME = "compounds.dat";
-  private final ArrayList<String> owlFiles = new ArrayList<>();
 
   // map from location of biopax L3 file to the corresponding parsed organism model
   HashMap<String, OrganismComposition> organismModels;
   String sourceDir;
+  private List<String> owlFiles;
 
   // if onlyTier12 is set, then only the 38 main files are processed
   // we identify them as not having names that contain one of
@@ -34,8 +34,13 @@ public class MetaCyc {
   boolean onlyTier12;
 
   public MetaCyc(String dirWithL3Files) {
+    this(dirWithL3Files, null);
+  }
+
+  public MetaCyc(String dirWithL3Files, List<String> owlFiles){
     this.organismModels = new HashMap<String, OrganismComposition>();
     this.sourceDir = dirWithL3Files;
+    this.owlFiles = owlFiles;
 
     // by default, we process of level3 biopax files found in the directory
     // so we set the flag that restricts to Tier 1 and 2 as false.
@@ -80,7 +85,7 @@ public class MetaCyc {
    * @param organismDirectory Where all the organism files are contained
    * @return String representation of the organism's common name.
      */
-  private String getOrganismCommonName(File organismDirectory){
+  private String getOrganismCommonName(File organismDirectory) {
     // We look in the species file for the organism information.
     final File DATA_LOCATION = new File(organismDirectory, "species.dat");
     final String COMMON_NAME_LINE_START = "COMMON-NAME - ";
@@ -92,15 +97,9 @@ public class MetaCyc {
       // Also remove white space just to be safe.
       return roughOrganism.replace(COMMON_NAME_LINE_START, "").trim();
 
-    } catch(IOException e){
-      System.err.println("File not found error on species file.  File was" + organismDirectory.getAbsolutePath());
-      System.exit(1);
+    } catch(IOException e) {
+      throw new RuntimeException("File not found error on species file.  File was " + organismDirectory.getAbsolutePath());
     }
-
-    // If we don't find what we are looking for stop the whole installer to ensure this value exists.
-    System.err.println("Did not find common name in species file.  File was " + organismDirectory.getAbsolutePath());
-    System.exit(1);
-    return null;
   }
 
   /**
@@ -109,7 +108,7 @@ public class MetaCyc {
    * @param organismDirectory Where all the organism files are contained
    * @return String representation of the organism's NCBI taxonomy ID
    */
-  private String getOrganismNcbiId(File organismDirectory){
+  private String getOrganismNcbiId(File organismDirectory) {
     // We look in the species file for the organism information.
     final File DATA_LOCATION = new File(organismDirectory, "species.dat");
     final String NCBI_LINE_START = "DBLINKS - (NCBI-TAXONOMY-DB \"";
@@ -122,15 +121,9 @@ public class MetaCyc {
       roughOrganism = roughOrganism.replace(NCBI_LINE_START, "");
       return roughOrganism.split("\"")[0];
 
-    } catch(IOException e){
-      System.err.println("File not found error on species file. File was" + organismDirectory.getAbsolutePath());
-      System.exit(1);
+    } catch(IOException e) {
+      throw new RuntimeException("File not found error on species file.  File was " + organismDirectory.getAbsolutePath());
     }
-
-    // If we don't find what we are looking for stop the whole installer to ensure this value exists.
-    System.err.println("Did not find common name in species file. File was" + organismDirectory.getAbsolutePath());
-    System.exit(1);
-    return null;
   }
 
 
@@ -381,8 +374,9 @@ public class MetaCyc {
 
   public List<String> getOWLs() {
     // If this was called previously we will have a list of all the cached files.
-    if (owlFiles.size() > 0) return owlFiles;
-
+    System.out.println("Owl files is " + owlFiles + " prior to.");
+    if (owlFiles != null) return owlFiles;
+    System.out.println("Owl files is " + owlFiles);
 
     String dir = this.sourceDir;
     boolean onlyTier12Files = this.onlyTier12;
@@ -417,7 +411,7 @@ public class MetaCyc {
       public boolean accept(File dir, String nm) { return nm.endsWith("level3.owl"); }
     };
 
-    List<String> allL3 = new ArrayList<String>();
+    ArrayList<String> allL3 = new ArrayList<String>();
     for (String subdir : new File(dir).list(subdirfltr)) {
       for (String owlfile : new File(dir, subdir).list(owlfltr)) {
         allL3.add(subdir + "/" + owlfile);
@@ -425,7 +419,7 @@ public class MetaCyc {
     }
 
     Collections.sort(allL3);
-    owlFiles.addAll(allL3);
+    owlFiles = allL3;
     return allL3;
   }
 
