@@ -60,7 +60,7 @@ public class OrganismCompositionMongoWriter {
   String METACYC_URI_PREFIX = "http://www.metacyc.org/META/NEW-IMAGE?object=";
 
   // Pattern to extract ecnums from metacyc standard names
-  private static Pattern metacycStandardNameEcnum = Pattern.compile("\\(EC (\\.|\\w)*\\)");
+  private final static Pattern metacycStandardNameEcnum = Pattern.compile("\\(EC (\\.|\\w)*\\)");
 
   // Metacyc ids/metadata will be written to these fields in the DB.
   public static final String METACYC_OBJECT_MODEL_XREF_ID_PATH = "xref.METACYC.id";
