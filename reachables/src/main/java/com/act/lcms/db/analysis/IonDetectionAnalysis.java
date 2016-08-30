@@ -127,8 +127,8 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     add(Option.builder(OPTION_NON_REPLICATE_ANALYSIS)
         .argName("non replicate analysis")
         .desc("This option is for lcms analysis on multiple positive wells that are not replicates. The default is " +
-            "replicate analysis. In replicate analysis, we simply add all the peak results into one model JSON object " +
-            "while in non-replicate analysis, we do not do this step.")
+            "replicate analysis. In replicate analysis, we simply add all the peak results from all replicates into one " +
+            "model JSON object while in non-replicate analysis, we do not do this step.")
         .longOpt("non-replicate-analysis")
     );
   }};
