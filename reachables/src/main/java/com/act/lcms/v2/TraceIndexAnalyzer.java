@@ -3,6 +3,7 @@ package com.act.lcms.v2;
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
 import com.act.lcms.XZ;
+import com.act.lcms.db.analysis.WaveformAnalysis;
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,6 +30,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -83,12 +85,9 @@ public class TraceIndexAnalyzer {
     HELP_FORMATTER.setWidth(100);
   }
 
-  public static class WindowAnalysisResult {
+  public static class AnalysisResult {
     @JsonProperty("mz")
     private Double mz;
-
-    @JsonProperty("log_snr")
-    private Double logSnr;
 
     @JsonProperty("peak_intensity")
     private Double peakIntensity;
@@ -96,13 +95,12 @@ public class TraceIndexAnalyzer {
     @JsonProperty("peak_time")
     private Double peakTime;
 
-    protected WindowAnalysisResult() {
+    protected AnalysisResult() {
 
     }
 
-    public WindowAnalysisResult(Double mz, Double logSnr, Double peakIntensity, Double peakTime) {
+    public AnalysisResult(Double mz, Double peakIntensity, Double peakTime) {
       this.mz = mz;
-      this.logSnr = logSnr;
       this.peakIntensity = peakIntensity;
       this.peakTime = peakTime;
     }
@@ -113,14 +111,6 @@ public class TraceIndexAnalyzer {
 
     protected void setMz(Double mz) {
       this.mz = mz;
-    }
-
-    public Double getLogSnr() {
-      return logSnr;
-    }
-
-    protected void setLogSnr(Double logSnr) {
-      this.logSnr = logSnr;
     }
 
     public Double getPeakIntensity() {
@@ -184,7 +174,7 @@ public class TraceIndexAnalyzer {
   private void runExtraction(File rocksDBFile, File outputFile, Optional<String> maybePlotsPrefix)
       throws RocksDBException, IOException {
     MS1 ms1 = new MS1();
-    List<WindowAnalysisResult> results = new ArrayList<>();
+    List<AnalysisResult> results = new ArrayList<>();
 
     // Extract each target's trace, computing and saving stats as we go.  This should fit in memory no problem.
     Iterator<Pair<Double, List<XZ>>> traceIterator = new TraceIndexExtractor().getIteratorOverTraces(rocksDBFile);
@@ -199,14 +189,21 @@ public class TraceIndexAnalyzer {
       scanForWell.getIonsToSpectra().put(label, targetAndTrace.getRight());
       Double maxPeakTime = ms1.computeAndStorePeakProfile(scanForWell, label);
 
-      WindowAnalysisResult result = new WindowAnalysisResult(
-          targetAndTrace.getLeft(),
-          scanForWell.getLogSNRForIon(label),
-          scanForWell.getMaxIntensityForIon(label),
-          maxPeakTime
-      );
+      Pair<List<XZ>, Map<Double, Double>> timeWindowsAndMaxes =
+          WaveformAnalysis.compressIntensityAndTimeGraphsAndFindMaxIntensityInEveryTimeWindow(
+              targetAndTrace.getRight(), 5); // Same as waveform analysis
+      List<XZ> calledPeaks = WaveformAnalysis.detectPeaksInIntensityTimeWaveform(
+          timeWindowsAndMaxes.getLeft(), 250.0d); // Same as waveform analysis.
 
-      results.add(result);
+      for (XZ calledPeak : calledPeaks) {
+        AnalysisResult result = new AnalysisResult(
+            targetAndTrace.getLeft(),
+            timeWindowsAndMaxes.getRight().get(calledPeak.getTime()),
+            calledPeak.getTime()
+        );
+
+        results.add(result);
+      }
     }
 
     LOGGER.info("Writing window stats to JSON file");
@@ -221,7 +218,7 @@ public class TraceIndexAnalyzer {
     }
   }
 
-  private void plotAnalysisResults(String prefix, List<WindowAnalysisResult> analysisResults) throws IOException {
+  private void plotAnalysisResults(String prefix, List<AnalysisResult> analysisResults) throws IOException {
     File dataFile = new File(prefix + ".data");
     File outputFile = new File(StringUtils.join(Arrays.asList(prefix, PLOT_FORMAT_EXTENSION), '.'));
     File gnuplotFile = new File(StringUtils.join(Arrays.asList(prefix, "gnuplot"), '.'));
@@ -236,28 +233,18 @@ public class TraceIndexAnalyzer {
        * Retention times < 15.0s usually indicate junk that has flowed in with the dead volume, and historically we've
        * been okay ignoring it.  I know we've detected some molecules before this time, but anything that shows up in
        * the first 10 to 20s of a run is highly suspicious.  Our min-threshold is pretty generous and avoids cases
-       * where a window might be dividing by zero or something terrible like that.  The LogSNR threshold is in place to
-       * avoid allowing `Infinity` values from reaching gnuplot, which confuse it.  These are also probably due to
-       * dividing by zero. */
-      List<WindowAnalysisResult> filteredResults =
+       * where a window might be dividing by zero or something terrible like that.  */
+      List<AnalysisResult> filteredResults =
           analysisResults.stream().
               filter(r -> r.getPeakTime() >= MIN_TIME_THRESHOLD_SECONDS). // Anything before is likely dead volume.
               filter(r -> r.getPeakIntensity() >= MIN_INTENSITY_THRESHOLD). // This is well below the noise floor.
-              filter(r -> r.getLogSnr() <= MAX_LOG_SNR_THRESHOLD). // Probably means div by zero.
               collect(Collectors.toList());
-
-      // First write the log SNRs.
-      filteredResults.stream().
-          map(r -> Pair.of(r.getMz(), Double.max(0.00, r.getLogSnr()))). // -100 LogSNR values don't help, so -> 0.0.
-          forEach(p -> writeRow(writer, p));
-      snrMax = filteredResults.stream().map(WindowAnalysisResult::getLogSnr).max(Double::compare);
-      writer.write("\n\n");
 
       // Then write the peak intensities.
       filteredResults.stream().
           map(r -> Pair.of(r.getMz(), r.getPeakIntensity())).
           forEach(p -> writeRow(writer, p));
-      intensityMax = filteredResults.stream().map(WindowAnalysisResult::getPeakIntensity).max(Double::compare);
+      intensityMax = filteredResults.stream().map(AnalysisResult::getPeakIntensity).max(Double::compare);
       writer.write("\n\n");
     }
 
@@ -265,11 +252,9 @@ public class TraceIndexAnalyzer {
     List<Gnuplotter.PlotConfiguration> plotConfigurations = new ArrayList<Gnuplotter.PlotConfiguration>() {{
       // There will definitely be values present for every Optional max.
       add(new Gnuplotter.PlotConfiguration(Gnuplotter.PlotConfiguration.KIND.GRAPH,
-          "LogSNR", 0, snrMax.get()));
-      add(new Gnuplotter.PlotConfiguration(Gnuplotter.PlotConfiguration.KIND.GRAPH,
           "Max Intensity", 1, intensityMax.get()));
     }};
-    plotter.plot2D(dataFile.getAbsolutePath(), outputFile.getAbsolutePath(), "M/Z", "LogSNR or Intensity",
+    plotter.plot2D(dataFile.getAbsolutePath(), outputFile.getAbsolutePath(), "M/Z", "Intensity",
         PLOT_FORMAT_EXTENSION, null, null, plotConfigurations, gnuplotFile.getAbsolutePath());
   }
 
