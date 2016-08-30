@@ -358,10 +358,10 @@ public class MetaCyc {
       public boolean accept(File dir, String nm) { return nm.endsWith("level3.owl"); }
     };
 
-    ArrayList<String> allL3 = new ArrayList<String>();
+    List<String> allL3 = new ArrayList<>();
     for (String subdir : new File(dir).list(subdirfltr)) {
       for (String owlfile : new File(dir, subdir).list(owlfltr)) {
-        allL3.add(subdir + "/" + owlfile);
+        allL3.add(new File(subdir, owlfile).getAbsolutePath());
       }
     }
 

@@ -55,6 +55,10 @@ public class OrganismCompositionMongoWriter {
   HashMap<String, String> uniqueKeyToInChImap;
   boolean debugFails = false;
 
+  // Cache these values as they'll base the same throughout.
+  private String organism = null;
+  private Long organismDbId = null;
+
   // metacyc id's are in Unification DB=~name of origin, ID.matches(METACYC_URI_PREFIX)
   String METACYC_URI_IDS = "^[A-Z0-9-]+$"; //
   // to get valid Metacyc website URL
@@ -809,17 +813,21 @@ public class OrganismCompositionMongoWriter {
     Set<JSONObject> refs = toJSONObject(seqRef.getRefs()); // this contains things like UniProt accession#s, other db references etc.
 
     // Submit the name to the organism database if it doesn't exist.
-    // TODO Cache this so we don't constantly ask the DB for it.
-    HashMap bioSourceMap = this.src.getMap(BioSource.class);
-    if (bioSourceMap.size() != 1){
-      throw new RuntimeException("Incorrect number of BioSources found.");
-    }
+    if (organism == null) {
+      HashMap bioSourceMap = this.src.getMap(BioSource.class);
+      if (bioSourceMap.size() != 1) {
+        throw new RuntimeException(
+                String.format("Incorrect number of BioSources found. Set was of size %d", bioSourceMap.size()));
+      }
 
+      BioSource s = (BioSource) bioSourceMap.get(bioSourceMap.keySet().iterator().next());
 
-    BioSource s = (BioSource) bioSourceMap.get(bioSourceMap.keySet().toArray()[0]);
-    Long organismId = db.getOrganismId((String) s.getName().toArray()[0]);
-    if (organismId == -1) {
-      organismId = db.submitToActOrganismNameDB((String) s.getName().toArray()[0]);
+      this.organism = s.getName().iterator().next();
+
+      this.organismDbId = db.getOrganismId((String) s.getName().toArray()[0]);
+      if (this.organismDbId == -1) {
+        this.organismDbId = db.submitToActOrganismNameDB((String) s.getName().toArray()[0]);
+      }
     }
 
     String ecnum = null;
@@ -834,7 +842,7 @@ public class OrganismCompositionMongoWriter {
 
     String dir = direction == null ? "NULL" : direction.toString();
     String act_inh = act_inhibit == null ? "NULL" : act_inhibit.toString();
-    SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, organismId, name, ecnum, comments, refs, rxnid, rxn, act_inh, dir);
+    SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, this.organismDbId, name, ecnum, comments, refs, rxnid, rxn, act_inh, dir);
     long seqid = entry.writeToDB(db, Seq.AccDB.metacyc);
 
     return seqid;
