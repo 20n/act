@@ -159,7 +159,9 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
       List<String> header = new ArrayList<>();
       header.add("Name");
-      header.add("Stats");
+      header.add("Intensity");
+      header.add("SNR");
+      header.add("Time");
       header.add("Sample");
       header.add("Inchi");
 
@@ -206,8 +208,9 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
                 }
               }
 
-              row.put("Stats", String.format("SNR: %s, Intensity: %s, Time: %s", formatter.format(hitOrMiss.getIntensity()),
-                  formatter.format(hitOrMiss.getIntensity()), new DecimalFormat("0.00").format(hitOrMiss.getTime())));
+              row.put("Intensity", formatter.format(hitOrMiss.getIntensity()));
+              row.put("SNR", formatter.format(hitOrMiss.getSnr()));
+              row.put("Time", new DecimalFormat("0.00").format(hitOrMiss.getTime()));
               row.put("Sample", file.split("/")[6]);
 
               writer.append(row);
