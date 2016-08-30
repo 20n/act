@@ -102,31 +102,6 @@ public class MetaCyc {
     }
   }
 
-  /**
-   * Retrieves the NCBI taxonomy ID of the organism that the flat-file directory describes.
-   *
-   * @param organismDirectory Where all the organism files are contained
-   * @return String representation of the organism's NCBI taxonomy ID
-   */
-  private String getOrganismNcbiId(File organismDirectory) {
-    // We look in the species file for the organism information.
-    final File DATA_LOCATION = new File(organismDirectory, "species.dat");
-    final String NCBI_LINE_START = "DBLINKS - (NCBI-TAXONOMY-DB \"";
-
-    try (final BufferedReader speciesReader = new BufferedReader(new FileReader(DATA_LOCATION))) {
-      // Form of NCBI-TAXONOMY-DB "<TAX #>" <Other junk>
-      String roughOrganism = speciesReader.lines().filter(line -> line.startsWith(NCBI_LINE_START)).findFirst().get();
-
-      // Prune off non NCBI Value stuff.
-      roughOrganism = roughOrganism.replace(NCBI_LINE_START, "");
-      return roughOrganism.split("\"")[0];
-
-    } catch(IOException e) {
-      throw new RuntimeException("File not found error on species file.  File was " + organismDirectory.getAbsolutePath());
-    }
-  }
-
-
   // process only the source file whose names are passed
   public void process(List<String> files) {
     for (String file : files) {
@@ -146,10 +121,9 @@ public class MetaCyc {
       try (FileInputStream f = new FileInputStream(INPUT_FILE)) {
         // Both of these will crash the installer if they don't find, so we will get the values we want.
         String organismName = getOrganismCommonName(new File(this.sourceDir, file).getParentFile());
-        String organismId = getOrganismNcbiId(new File(this.sourceDir, file).getParentFile());
 
         // Construct the organism and read the owl file.
-        OrganismComposition o = new OrganismComposition(organismName, organismId, uniqueKeyToInChIMap);
+        OrganismComposition o = new OrganismComposition(organismName, uniqueKeyToInChIMap);
         new BioPaxFile(o).initFrom(f);
         this.organismModels.put(file, o);
 
