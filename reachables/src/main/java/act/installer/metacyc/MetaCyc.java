@@ -374,9 +374,7 @@ public class MetaCyc {
 
   public List<String> getOWLs() {
     // If this was called previously we will have a list of all the cached files.
-    System.out.println("Owl files is " + owlFiles + " prior to.");
     if (owlFiles != null) return owlFiles;
-    System.out.println("Owl files is " + owlFiles);
 
     String dir = this.sourceDir;
     boolean onlyTier12Files = this.onlyTier12;
