@@ -1,4 +1,4 @@
-package com.act.lcms.db.analysis.untargeted;
+package com.act.lcms.v2;
 
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
@@ -32,8 +32,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class WindowingTraceAnalyzer {
-  private static final Logger LOGGER = LogManager.getFormatterLogger(WindowingTraceAnalyzer.class);
+public class TraceIndexAnalyzer {
+  private static final Logger LOGGER = LogManager.getFormatterLogger(TraceIndexAnalyzer.class);
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private static final String PLOT_FORMAT_EXTENSION = "pdf";
@@ -152,12 +152,12 @@ public class WindowingTraceAnalyzer {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       System.err.format("Argument parsing failed: %s\n", e.getMessage());
-      HELP_FORMATTER.printHelp(WindowingTraceExtractor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(TraceIndexExtractor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     if (cl.hasOption("help")) {
-      HELP_FORMATTER.printHelp(WindowingTraceExtractor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(TraceIndexExtractor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
 
@@ -165,13 +165,13 @@ public class WindowingTraceAnalyzer {
     File rocksDBFile = new File(cl.getOptionValue(OPTION_INDEX_PATH));
     if (!rocksDBFile.exists()) {
       System.err.format("Index file at %s does not exist, nothing to analyze", rocksDBFile.getAbsolutePath());
-      HELP_FORMATTER.printHelp(WindowingTraceExtractor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(TraceIndexExtractor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     LOGGER.info("Starting analysis");
 
-    WindowingTraceAnalyzer analyzer = new WindowingTraceAnalyzer();
+    TraceIndexAnalyzer analyzer = new TraceIndexAnalyzer();
     analyzer.runExtraction(
         rocksDBFile,
         new File(cl.getOptionValue(OPTION_OUTPUT_PATH)),
@@ -187,7 +187,7 @@ public class WindowingTraceAnalyzer {
     List<WindowAnalysisResult> results = new ArrayList<>();
 
     // Extract each target's trace, computing and saving stats as we go.  This should fit in memory no problem.
-    Iterator<Pair<Double, List<XZ>>> traceIterator = new WindowingTraceExtractor().getIteratorOverTraces(rocksDBFile);
+    Iterator<Pair<Double, List<XZ>>> traceIterator = new TraceIndexExtractor().getIteratorOverTraces(rocksDBFile);
     while (traceIterator.hasNext()) {
       Pair<Double, List<XZ>> targetAndTrace = traceIterator.next();
 
@@ -217,7 +217,7 @@ public class WindowingTraceAnalyzer {
     // Don't use Optional.map here because exceptions.  Sigh.
     if (maybePlotsPrefix.isPresent()) {
       LOGGER.info("Writing plots of LogSNR/max peak intensity over m/z");
-      new WindowingTraceAnalyzer().plotAnalysisResults(maybePlotsPrefix.get(), results);
+      new TraceIndexAnalyzer().plotAnalysisResults(maybePlotsPrefix.get(), results);
     }
   }
 

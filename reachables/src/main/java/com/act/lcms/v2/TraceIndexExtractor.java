@@ -1,4 +1,4 @@
-package com.act.lcms.db.analysis.untargeted;
+package com.act.lcms.v2;
 
 import com.act.lcms.LCMSNetCDFParser;
 import com.act.lcms.LCMSSpectrum;
@@ -45,8 +45,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-public class WindowingTraceExtractor {
-  private static final Logger LOGGER = LogManager.getFormatterLogger(WindowingTraceExtractor.class);
+public class TraceIndexExtractor {
+  private static final Logger LOGGER = LogManager.getFormatterLogger(TraceIndexExtractor.class);
   private static final Charset UTF8 = StandardCharsets.UTF_8;
   private static final byte[] TIMEPOINTS_KEY = "timepoints".getBytes(UTF8);
 
@@ -123,7 +123,7 @@ public class WindowingTraceExtractor {
     }
   }
 
-  public WindowingTraceExtractor() {
+  public TraceIndexExtractor() {
 
   }
 
@@ -139,12 +139,12 @@ public class WindowingTraceExtractor {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       System.err.format("Argument parsing failed: %s\n", e.getMessage());
-      HELP_FORMATTER.printHelp(WindowingTraceExtractor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(TraceIndexExtractor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     if (cl.hasOption("help")) {
-      HELP_FORMATTER.printHelp(WindowingTraceExtractor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(TraceIndexExtractor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
 
@@ -163,14 +163,14 @@ public class WindowingTraceExtractor {
     File inputFile = new File(cl.getOptionValue(OPTION_SCAN_FILE));
     if (!inputFile.exists()) {
       System.err.format("Cannot find input scan file at %s\n", inputFile.getAbsolutePath());
-      HELP_FORMATTER.printHelp(WindowingTraceExtractor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(TraceIndexExtractor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     File rocksDBFile = new File(cl.getOptionValue(OPTION_INDEX_PATH));
     if (rocksDBFile.exists()) {
       System.err.format("Index file at %s already exists--remove and retry\n", rocksDBFile.getAbsolutePath());
-      HELP_FORMATTER.printHelp(WindowingTraceExtractor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(TraceIndexExtractor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
@@ -182,7 +182,7 @@ public class WindowingTraceExtractor {
       }
     }
 
-    WindowingTraceExtractor extractor = new WindowingTraceExtractor();
+    TraceIndexExtractor extractor = new TraceIndexExtractor();
     extractor.processScan(targetMZs, inputFile, rocksDBFile);
   }
 
