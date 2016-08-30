@@ -1,5 +1,6 @@
 package act.installer.metacyc;
 
+import act.installer.metacyc.annotations.BioSource;
 import act.installer.metacyc.annotations.Stoichiometry;
 import act.installer.metacyc.annotations.Term;
 import act.installer.metacyc.entities.ChemicalStructure;
@@ -809,9 +810,16 @@ public class OrganismCompositionMongoWriter {
 
     // Submit the name to the organism database if it doesn't exist.
     // TODO Cache this so we don't constantly ask the DB for it.
-    Long organismId = db.getOrganismId(this.src.organism);
+    HashMap bioSourceMap = this.src.getMap(BioSource.class);
+    if (bioSourceMap.size() != 1){
+      throw new RuntimeException("Incorrect number of BioSources found.");
+    }
+
+
+    BioSource s = (BioSource) bioSourceMap.get(bioSourceMap.keySet().toArray()[0]);
+    Long organismId = db.getOrganismId((String) s.getName().toArray()[0]);
     if (organismId == -1) {
-      organismId = db.submitToActOrganismNameDB(this.src.organism);
+      organismId = db.submitToActOrganismNameDB((String) s.getName().toArray()[0]);
     }
 
     String ecnum = null;

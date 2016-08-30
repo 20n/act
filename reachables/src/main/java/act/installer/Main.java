@@ -320,7 +320,6 @@ public class Main {
       // looking up the number of files to-be-processed.
 
       System.out.println("Looking for biopax files at " + path);
-
       // Initialize so we can pass the owl files around later.
       MetaCyc init = new MetaCyc(path);
       int nfiles = init.getNumFilesToBeProcessed();

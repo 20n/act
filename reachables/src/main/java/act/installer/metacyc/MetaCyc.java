@@ -79,29 +79,6 @@ public class MetaCyc {
     System.out.println("You can process about 10 files in 4GB of runtime memory");
   }
 
-  /**
-   * Retrieves the common name of the organism that the flat-file directory describes.
-   *
-   * @param organismDirectory Where all the organism files are contained
-   * @return String representation of the organism's common name.
-     */
-  private String getOrganismCommonName(File organismDirectory) {
-    // We look in the species file for the organism information.
-    final File DATA_LOCATION = new File(organismDirectory, "species.dat");
-    final String COMMON_NAME_LINE_START = "COMMON-NAME - ";
-
-    try (final BufferedReader speciesReader = new BufferedReader(new FileReader(DATA_LOCATION))) {
-      String roughOrganism = speciesReader.lines().filter(line -> line.startsWith(COMMON_NAME_LINE_START)).findFirst().get();
-
-      // Form of COMMON-NAME - <VALUE>
-      // Also remove white space just to be safe.
-      return roughOrganism.replace(COMMON_NAME_LINE_START, "").trim();
-
-    } catch(IOException e) {
-      throw new RuntimeException("File not found error on species file.  File was " + organismDirectory.getAbsolutePath());
-    }
-  }
-
   // process only the source file whose names are passed
   public void process(List<String> files) {
     for (String file : files) {
@@ -119,11 +96,9 @@ public class MetaCyc {
       }
 
       try (FileInputStream f = new FileInputStream(INPUT_FILE)) {
-        // Both of these will crash the installer if they don't find, so we will get the values we want.
-        String organismName = getOrganismCommonName(new File(this.sourceDir, file).getParentFile());
-
         // Construct the organism and read the owl file.
-        OrganismComposition o = new OrganismComposition(organismName, uniqueKeyToInChIMap);
+        OrganismComposition o = new OrganismComposition(uniqueKeyToInChIMap);
+
         new BioPaxFile(o).initFrom(f);
         this.organismModels.put(file, o);
 

@@ -28,8 +28,6 @@ import java.util.List;
 import java.util.Set;
 
 public class OrganismComposition {
-  String organism;
-
   // Entities
   HashMap<Resource, Protein> proteins;
   HashMap<Resource, RNA> rnas;
@@ -71,8 +69,7 @@ public class OrganismComposition {
 
   HashMap<String, String> uniqueKeyToInChImap;
 
-  public OrganismComposition(String organism, HashMap<String, String> uniqueKeyToInChImap) {
-    this.organism = organism;
+  public OrganismComposition(HashMap<String, String> uniqueKeyToInChImap) {
     this.proteins = new HashMap<Resource, Protein>();
     this.rnas = new HashMap<Resource, RNA>();
     this.proteinRnaRefs = new HashMap<Resource, ProteinRNARef>();
