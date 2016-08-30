@@ -1,6 +1,9 @@
 package com.act.lcms.db.analysis;
 
+import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
 import com.act.lcms.db.io.report.IonAnalysisInterchangeModel;
+import com.act.utils.TSVParser;
+import com.act.utils.TSVWriter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -17,10 +20,14 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class BestMoleculesPickerFromLCMSIonAnalysis {
@@ -128,25 +135,89 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
 
     if (cl.hasOption(OPTION_GET_CHEMICAL_STATISTICS)) {
+
+      TSVParser parser = new TSVParser();
+      parser.parse(new File("/Users/vijaytramakrishnan/Desktop/porfovour/test.tsv"));
+      List<Map<String, String>> inputRows = parser.getResults();
+
+      Map<String, String> inchiToName = new HashMap<>();
+      Set<String> chemsOfInterest = new HashSet<>();
+      for(Map<String, String> cell : inputRows) {
+        inchiToName.put(cell.get("inchi"), cell.get("name"));
+        chemsOfInterest.add(cell.get("inchi"));
+      }
+
+
+      L2PredictionCorpus corpus47 = new L2PredictionCorpus();
+      corpus47 = corpus47.readPredictionsFromJsonFile(new File("/Volumes/shared-data/Vijay/jaffna/projections/predictions.47"));
+
+      L2PredictionCorpus corpus228 = new L2PredictionCorpus();
+      corpus228 = corpus228.readPredictionsFromJsonFile(new File("/Volumes/shared-data/Vijay/jaffna/projections/predictions.228"));
+
+
       Set<String> inchis = readChemicalsFromFile(new File(cl.getOptionValue(OPTION_GET_CHEMICAL_STATISTICS)));
 
-      for (String file : positiveReplicateResults) {
-        System.out.println(file);
+      List<String> header = new ArrayList<>();
+      header.add("Name");
+      header.add("Stats");
+      header.add("Sample");
+      header.add("Inchi");
 
+      NumberFormat formatter = new DecimalFormat("0.#E0");
+
+      TSVWriter<String, String> writer = new TSVWriter<>(header);
+      writer.open(new File(cl.getOptionValue(OPTION_OUTPUT_FILE)));
+
+      for (String file : positiveReplicateResults) {
         IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
         model.loadResultsFromFile(new File(file));
 
         for (IonAnalysisInterchangeModel.ResultForMZ resultForMZ : model.getResults()) {
           for (IonAnalysisInterchangeModel.HitOrMiss hitOrMiss : resultForMZ.getMolecules()) {
-            if (inchis.contains(hitOrMiss.getInchi())) {
-              System.out.println(String.format("Ion: %s", hitOrMiss.getIon()));
-              System.out.println(String.format("Intensity: %s", hitOrMiss.getIntensity()));
-              System.out.println(String.format("SNR: %s", hitOrMiss.getSnr()));
-              System.out.println(String.format("Time: %s", hitOrMiss.getTime()));
+            if (inchis.contains(hitOrMiss.getInchi()) && hitOrMiss.getIon().equals("M+H")) {
+
+              Map<String, String> row = new HashMap<>();
+
+              if (chemsOfInterest.contains(hitOrMiss.getInchi())) {
+                row.put("Name", inchiToName.get(hitOrMiss.getInchi()));
+                row.put("Inchi", "");
+              } else {
+
+                if (corpus47.getUniqueProductInchis().contains(hitOrMiss.getInchi())) {
+                  Set<String> substrates =
+                      corpus47.applyFilter(l2Prediction -> l2Prediction.getProductInchis().contains(hitOrMiss.getInchi())).getUniqueSubstrateInchis();
+
+                  for (String substrate : substrates) {
+                    row.put("Name", inchiToName.get(substrate) + "_RO47");
+                    row.put("Inchi", hitOrMiss.getInchi());
+                    break;
+                  }
+                }
+
+                if (corpus228.getUniqueProductInchis().contains(hitOrMiss.getInchi())) {
+                  Set<String> substrates =
+                      corpus228.applyFilter(l2Prediction -> l2Prediction.getProductInchis().contains(hitOrMiss.getInchi())).getUniqueSubstrateInchis();
+
+                  for (String substrate : substrates) {
+                    row.put("Name", inchiToName.get(substrate) + "_RO228");
+                    row.put("Inchi", hitOrMiss.getInchi());
+                    break;
+                  }
+                }
+              }
+
+              row.put("Stats", String.format("SNR: %s, Intensity: %s, Time: %s", formatter.format(hitOrMiss.getIntensity()),
+                  formatter.format(hitOrMiss.getIntensity()), new DecimalFormat("0.00").format(hitOrMiss.getTime())));
+              row.put("Sample", file.split("/")[6]);
+
+              writer.append(row);
+              writer.flush();
             }
           }
         }
       }
+
+      writer.close();
 
       return;
     }
