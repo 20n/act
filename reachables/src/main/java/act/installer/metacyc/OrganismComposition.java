@@ -1,16 +1,36 @@
 package act.installer.metacyc;
 
-import act.installer.metacyc.entities.*;
-import act.installer.metacyc.processes.*;
-import act.installer.metacyc.annotations.*;
-import act.installer.metacyc.references.*;
+import act.installer.metacyc.annotations.BioSource;
+import act.installer.metacyc.annotations.DeltaG;
+import act.installer.metacyc.annotations.Stoichiometry;
+import act.installer.metacyc.annotations.Term;
+import act.installer.metacyc.entities.ChemicalStructure;
+import act.installer.metacyc.entities.Complex;
+import act.installer.metacyc.entities.Protein;
+import act.installer.metacyc.entities.ProteinRNARef;
+import act.installer.metacyc.entities.RNA;
+import act.installer.metacyc.entities.SmallMolecule;
+import act.installer.metacyc.entities.SmallMoleculeRef;
+import act.installer.metacyc.processes.BiochemicalPathwayStep;
+import act.installer.metacyc.processes.Catalysis;
+import act.installer.metacyc.processes.Conversion;
+import act.installer.metacyc.processes.Modulation;
+import act.installer.metacyc.processes.Pathway;
+import act.installer.metacyc.references.Evidence;
+import act.installer.metacyc.references.Provenance;
+import act.installer.metacyc.references.Publication;
+import act.installer.metacyc.references.Relationship;
+import act.installer.metacyc.references.Unification;
 
 import java.util.HashMap;
-import java.util.Set;
-import java.util.List;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class OrganismComposition {
+  String organism;
+  String organismId;
+
   // Entities
   HashMap<Resource, Protein> proteins;
   HashMap<Resource, RNA> rnas;
@@ -52,7 +72,9 @@ public class OrganismComposition {
 
   HashMap<String, String> uniqueKeyToInChImap;
 
-  public OrganismComposition(HashMap<String, String> uniqueKeyToInChImap) {
+  public OrganismComposition(String organism, String organismId, HashMap<String, String> uniqueKeyToInChImap) {
+    this.organism = organism;
+    this.organismId = organismId;
     this.proteins = new HashMap<Resource, Protein>();
     this.rnas = new HashMap<Resource, RNA>();
     this.proteinRnaRefs = new HashMap<Resource, ProteinRNARef>();

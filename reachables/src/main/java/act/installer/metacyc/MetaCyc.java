@@ -1,23 +1,22 @@
 package act.installer.metacyc;
 
 import act.server.MongoDB;
+import act.shared.Chemical;
 
 import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FilenameFilter;
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Arrays;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import act.shared.Chemical;
 
 public class MetaCyc {
   public static final String METACYC_COMPOUND_FILE_NAME = "compounds.dat";
@@ -75,6 +74,40 @@ public class MetaCyc {
     System.out.println("You can process about 10 files in 4GB of runtime memory");
   }
 
+  private String getOrganismCommonName(File parentDirectory){
+    // We look in the species file for the organism information.
+    try (BufferedReader speciesReader = new BufferedReader(new FileReader(new File(parentDirectory, "species.dat")))) {
+      String roughOrganism = speciesReader.lines().filter(line -> line.startsWith("COMMON-NAME")).findFirst().get();
+      // Form of COMMON-NAME - <VALUE>
+      return roughOrganism.replace("COMMON-NAME - ", "");
+    } catch(IOException e){
+      System.err.println("File not found error on species file.  " +
+              "File was" + parentDirectory.getAbsolutePath()); System.exit(1);
+    }
+    // If we don't find what we are looking for stop the whole installer to ensure this value exists.
+    System.err.println("Did not find common name in species file.  " +
+            "File was " + parentDirectory.getAbsolutePath()); System.exit(1);
+    return null;
+  }
+
+  private String getOrganismNcbiId(File parentDirectory){
+    // We look in the species file for the organism information.
+    try (BufferedReader speciesReader = new BufferedReader(new FileReader(new File(parentDirectory, "species.dat")))) {
+      String roughOrganism = speciesReader.lines().filter(line -> line.startsWith("DBLINKS - (NCBI-TAXONOMY-DB ")).findFirst().get();
+      // Form of NCBI-TAXONOMY-DB "<TAX #>" <Other junk>
+      roughOrganism = roughOrganism.replace("DBLINKS - (NCBI-TAXONOMY-DB \"", "");
+      return roughOrganism.split("\"")[0];
+    } catch(IOException e){
+      System.err.println("File not found error on species file. " +
+              "File was" + parentDirectory.getAbsolutePath()); System.exit(1);
+    }
+    // If we don't find what we are looking for stop the whole installer to ensure this value exists.
+    System.err.println("Did not find common name in species file. " +
+            "File was" + parentDirectory.getAbsolutePath()); System.exit(1);
+    return null;
+  }
+
+
   // process only the source file whose names are passed
   public void process(List<String> files) {
 
@@ -86,7 +119,10 @@ public class MetaCyc {
 
       System.out.println("Processing: " + file);
       if (file.endsWith("leishcyc/biopax-level3.owl")) {
-        System.out.println("Friendly reminder: Did you patch this leishcyc file with the diff in src/main/resources/leishcyc.biopax-level3.owl.diff to take care of the bad data in the original? If you are running over the plain downloaded file, then this will crash.");
+        System.out.println("Friendly reminder: Did you patch this leishcyc file with the " +
+                "diff in src/main/resources/leishcyc.biopax-level3.owl.diff to take care of " +
+                "the bad data in the original? If you are running over the plain downloaded file, " +
+                "then this will crash.");
       }
 
       try {
@@ -95,7 +131,11 @@ public class MetaCyc {
         System.err.println("Could not find: " + file + ". Abort."); System.exit(-1);
       }
 
-      OrganismComposition o = new OrganismComposition(uniqueKeyToInChIMap);
+      // Both of these will crash the installer if they don't find, so we will get the values we want.
+      String organismName = getOrganismCommonName(new File(this.sourceDir, file).getParentFile());
+      String organismId = getOrganismNcbiId(new File(this.sourceDir, file).getParentFile());
+      
+      OrganismComposition o = new OrganismComposition(organismName, organismId, uniqueKeyToInChIMap);
       new BioPaxFile(o).initFrom(f);
       this.organismModels.put(file, o);
 
@@ -373,6 +413,5 @@ public class MetaCyc {
       owriter.write();
     }
   }
-
 }
 

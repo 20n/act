@@ -1,36 +1,32 @@
 package act.installer.sequence;
 
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.HashMap;
-import act.server.MongoDB;
+import act.shared.Reaction;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.sar.SAR;
-import act.shared.Reaction;
-
 import com.mongodb.DBObject;
-
-import org.json.JSONObject;
 import org.json.JSONArray;
-import org.json.XML;
-import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class MetacycEntry extends SequenceEntry {
   JSONObject data;
 
-  public static SequenceEntry initFromMetacycEntry(String sequence, Long org_id, String standardName, Set<String> comments, Set<JSONObject> metacyc_refs, long rxnid, Reaction rxn, String activation_inhibition, String direction) {
-    return new MetacycEntry(sequence, org_id, standardName, comments, metacyc_refs, rxnid, rxn, activation_inhibition, direction);
+  public static SequenceEntry initFromMetacycEntry(String sequence, Long org_id, String standardName, String ecnumber, Set<String> comments, Set<JSONObject> metacyc_refs, long rxnid, Reaction rxn, String activation_inhibition, String direction) {
+    return new MetacycEntry(sequence, org_id, standardName, ecnumber, comments, metacyc_refs, rxnid, rxn, activation_inhibition, direction);
   }
 
-  public MetacycEntry(String sequence, Long org_id, String standardName, Set<String> comments, Set<JSONObject> metacyc_refs, long rxnid, Reaction rxn, String activation_inhibition, String direction) {
+  public MetacycEntry(String sequence, Long org_id, String standardName, String ec, Set<String> comments, Set<JSONObject> metacyc_refs, long rxnid, Reaction rxn, String activation_inhibition, String direction) {
 
     this.sequence = sequence;
     this.org_id = org_id;
     this.refs = new ArrayList<>();
-    this.ec = null; // metacyc does not directly provide ec#s
+    this.ec = ec;
     this.accessions = new HashSet<String>();
 
     // inits this.catalyzed_{rxns, substrates, products}
