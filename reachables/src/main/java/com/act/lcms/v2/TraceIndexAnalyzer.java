@@ -187,7 +187,6 @@ public class TraceIndexAnalyzer {
       MS1ScanForWellAndMassCharge scanForWell = new MS1ScanForWellAndMassCharge();
       scanForWell.setMetlinIons(Collections.singletonList(label));
       scanForWell.getIonsToSpectra().put(label, targetAndTrace.getRight());
-      Double maxPeakTime = ms1.computeAndStorePeakProfile(scanForWell, label);
 
       Pair<List<XZ>, Map<Double, Double>> timeWindowsAndMaxes =
           WaveformAnalysis.compressIntensityAndTimeGraphsAndFindMaxIntensityInEveryTimeWindow(

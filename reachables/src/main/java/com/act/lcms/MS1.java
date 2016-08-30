@@ -2,23 +2,25 @@ package com.act.lcms;
 
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.plotter.WriteAndPlotMS1Results;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.stream.XMLStreamException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Arrays;
 import java.util.Set;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.stream.XMLStreamException;
 
 public class MS1 {
 
@@ -220,15 +222,7 @@ public class MS1 {
 
   /* DO NOT change this function while `getMS1` depends on it.  This approach has been thorougly manually vetted; any
    * changes will eliminate our ability to compare optimized results to a consistent baseline. */
-  /**
-   * Computes the SNR, max intensity, and peak time for a given ion and the trace available in an MS1Scan object.
-   * Returns the retention time of that peak since there doesn't seem to be a good place to store that now...
-   *
-   * @param scanResults An object containing the trace to analyze.
-   * @param ionDesc The ion key to use when performing the trace analysis.
-   * @return
-   */
-  public Double computeAndStorePeakProfile(MS1ScanForWellAndMassCharge scanResults, String ionDesc) {
+  public void computeAndStorePeakProfile(MS1ScanForWellAndMassCharge scanResults, String ionDesc) {
     List<XZ> curve = scanResults.getIonsToSpectra().get(ionDesc);
 
     Integer sz = curve.size();
@@ -238,12 +232,10 @@ public class MS1 {
     for (XZ signal : curve) {
       Double intensity = signal.getIntensity();
       if (maxIntensity == null) {
-        maxIntensity = intensity;
-        maxIntensityTime = signal.getTime();
+        maxIntensity = intensity; maxIntensityTime = signal.getTime();
       } else {
         if (maxIntensity < intensity) {
-          maxIntensity = intensity;
-          maxIntensityTime = signal.getTime();
+          maxIntensity = intensity; maxIntensityTime = signal.getTime();
         }
       }
     }
@@ -252,8 +244,7 @@ public class MS1 {
     List<XZ> signalIntensities = new ArrayList<>();
     List<XZ> ambientIntensities = new ArrayList<>();
     for (XZ measured : curve) {
-      if (measured.getTime() > maxIntensityTime - PEAK_WIDTH / 2.0d &&
-          measured.getTime() < maxIntensityTime + PEAK_WIDTH / 2.0d) {
+      if (measured.getTime() > maxIntensityTime - PEAK_WIDTH/2.0d && measured.getTime() < maxIntensityTime + PEAK_WIDTH/2.0d) {
         signalIntensities.add(measured);
       } else {
         ambientIntensities.add(measured);
@@ -285,9 +276,6 @@ public class MS1 {
     if (logSNR > -100.0d) {
       LOGGER.info("%10s: logSNR: %5.1f Max: %7.0f SignalAvg: %7.0f Ambient Avg: %7.0f %s\n", ionDesc, logSNR, maxIntensity, avgIntensitySignal, avgIntensityAmbient, isGoodPeak(scanResults, ionDesc) ? "INCLUDED" : "");
     }
-
-    // TODO: there must be a better way to pass this around...
-    return maxIntensityTime;
   }
 
   boolean isGoodPeak(MS1ScanForWellAndMassCharge scans, String ion) {
