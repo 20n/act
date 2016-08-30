@@ -211,7 +211,7 @@ public class IonAnalysisInterchangeModel {
   /**
    * This function takes in multiple LCMS mining results  (in the IonAnalysisInterchangeModel format), which happens
    * when we have multiple positive control replicates, extracts all the molecule hits from each file and applies
-   * a filter function on the replicate hits. The filter function provide two features: it is used to transform results
+   * a filter function across the replicate hits. The filter function provide two features: it is used to transform results
    * from multiple replicate to a single HitOrMiss molecule, like a min function across replicates. Second, it is
    * used to filter in/out molecules based on the logic of the filter function.
    * @param replicateModels The list of IonAnalysisInterchangeModels to be analyzed
@@ -250,11 +250,6 @@ public class IonAnalysisInterchangeModel {
 
       // For each mass charge, iterate through each molecule under the mass charge
       for (int j = 0; j < totalNumberOfMoleculesInMassChargeResult; j++) {
-
-        List<Double> snrList = new ArrayList<>();
-        List<Double> intensityList = new ArrayList<>();
-        List<Double> timeList = new ArrayList<>();
-
         List<HitOrMiss> moleculesFromReplicates = new ArrayList<>();
 
         // For each molecule, make sure it passes the threshold we set across every elem in deserializedResultsForPositiveReplicates,
@@ -271,16 +266,12 @@ public class IonAnalysisInterchangeModel {
 
           HitOrMiss molecule = sampleRepresentativeMz.getMolecules().get(j);
           moleculesFromReplicates.add(molecule);
-          snrList.add(molecule.getSnr());
-          intensityList.add(molecule.getIntensity());
-          timeList.add(molecule.getTime());
         }
 
-        // Check if the filter function for each metric wants to throw out the molecule. If none of them want to throw
-        // out the molecule, then add the molecule to the final result.
         Pair<HitOrMiss, Boolean> transformedMoleculeAndShouldRetainMolecule =
             filterAndTransformFunction.apply(moleculesFromReplicates);
 
+        // Check if the filter function  wants to throw out the molecule. If not, then add the molecule to the final result.
         if (transformedMoleculeAndShouldRetainMolecule.getRight()) {
           resultForMZ.addMolecule(transformedMoleculeAndShouldRetainMolecule.getLeft());
         }

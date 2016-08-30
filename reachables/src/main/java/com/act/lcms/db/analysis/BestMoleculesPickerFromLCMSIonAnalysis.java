@@ -195,18 +195,19 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
         List<Double> snrValues = listOfReplicateMolecules.stream().map(molecule -> molecule.getSnr()).collect(Collectors.toList());
         List<Double> timeValues = listOfReplicateMolecules.stream().map(molecule -> molecule.getTime()).collect(Collectors.toList());
 
-        Double minTime = timeValues.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal));
-        Double maxTime = timeValues.stream().reduce(Double.MIN_VALUE, (accum, newVal) -> Math.max(accum, newVal));
-
         IonAnalysisInterchangeModel.HitOrMiss result = new IonAnalysisInterchangeModel.HitOrMiss();
         result.setInchi(listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getInchi());
         result.setIon(listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getIon());
         result.setPlot("NIL");
 
+        // We get the min and max time to calculate how much do the replicates deviate in time for the same signal. If
+        // the deviation in the time axis is greater than our tolerance, we know the signal is bad.
+        Double minTime = timeValues.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal));
+        Double maxTime = timeValues.stream().reduce(Double.MIN_VALUE, (accum, newVal) -> Math.max(accum, newVal));
+
         if (maxTime - minTime < TIME_TOLERANCE_IN_SECONDS) {
           Double minIntensity = intensityValues.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal));
 
-          // ASSUMPTION: We assume that the list of SNR, Intensity and Time values are ordered similarly by replicates.
           Integer indexOfMinIntensityReplicate = intensityValues.indexOf(minIntensity);
 
           // The SNR and Time values will be the copy of the replicate with the lowest intensity value.
@@ -250,6 +251,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
     if (cl.hasOption(OPTION_FILTER_BY_THRESHOLD)) {
 
+      // We need to set this variable as a final since it is used in a lambda function below.
       final Set<String> ions;
       if (cl.hasOption(OPTION_FILTER_BY_IONS)) {
         ions = new HashSet<>(Arrays.asList(cl.getOptionValues(OPTION_FILTER_BY_IONS)));
@@ -264,19 +266,15 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
           throw new RuntimeException("This filter is meant for analysis for only one replicate.");
         }
 
-        Double intensity = listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getIntensity();
-        Double snr = listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getSnr();
-        Double time = listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getTime();
-        String ion = listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getIon();
+        IonAnalysisInterchangeModel.HitOrMiss representationMolecule = listOfReplicateMolecules.get(REPRESENTATIVE_INDEX);
+
+        Double intensity = representationMolecule.getIntensity();
+        Double snr = representationMolecule.getSnr();
+        Double time = representationMolecule.getTime();
+        String ion = representationMolecule.getIon();
 
         IonAnalysisInterchangeModel.HitOrMiss molecule = new IonAnalysisInterchangeModel.HitOrMiss(
-            listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getInchi(),
-            listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getIon(),
-            snr,
-            time,
-            intensity,
-            listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getPlot()
-        );
+            representationMolecule.getInchi(), ion, snr, time, intensity, representationMolecule.getPlot());
 
         if (intensity > minIntensityThreshold && snr > minSnrThreshold && time > minTimeThreshold &&
             (ions.size() == 0 || ions.contains(ion))) {
