@@ -1,7 +1,5 @@
 package com.act.lcms.v2;
 
-import com.act.lcms.Gnuplotter;
-import com.act.lcms.MS1;
 import com.act.lcms.XZ;
 import com.act.lcms.db.analysis.WaveformAnalysis;
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
@@ -19,33 +17,23 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.rocksdb.RocksDBException;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 public class TraceIndexAnalyzer {
   private static final Logger LOGGER = LogManager.getFormatterLogger(TraceIndexAnalyzer.class);
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-  private static final String PLOT_FORMAT_EXTENSION = "pdf";
-
-  private static final Double MIN_TIME_THRESHOLD_SECONDS = 15.0;
-  private static final Double MIN_INTENSITY_THRESHOLD = 100.0;
-  private static final Double MAX_LOG_SNR_THRESHOLD = 1000.0;
+  private static final Integer WAVEFORM_TIME_SLICE_WINDOW = 5; // Same as WaveformAnalysis.
+  private static final Double WAVEFORM_MIN_THRESHOLD = 250.0d; // Same as WaveformAnalysis, but what units?!
 
   private static final String OPTION_INDEX_PATH = "x";
-  private static final String OPTION_PLOT_PREFIX = "p";
   private static final String OPTION_OUTPUT_PATH = "o";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
@@ -59,12 +47,6 @@ public class TraceIndexAnalyzer {
         .desc("A path to the directory where the on-disk index is stored; must already exist")
         .hasArg().required()
         .longOpt("index")
-    );
-    add(Option.builder(OPTION_PLOT_PREFIX)
-        .argName("plot prefix")
-        .desc("A prefix for the plot data files and PDF of the analysis results")
-        .hasArg()
-        .longOpt("plot-prefix")
     );
     add(Option.builder(OPTION_OUTPUT_PATH)
         .argName("outputpath")
@@ -164,16 +146,14 @@ public class TraceIndexAnalyzer {
     TraceIndexAnalyzer analyzer = new TraceIndexAnalyzer();
     analyzer.runExtraction(
         rocksDBFile,
-        new File(cl.getOptionValue(OPTION_OUTPUT_PATH)),
-        cl.hasOption(OPTION_PLOT_PREFIX) ? Optional.of(cl.getOptionValue(OPTION_PLOT_PREFIX)) : Optional.empty()
+        new File(cl.getOptionValue(OPTION_OUTPUT_PATH))
     );
 
     LOGGER.info("Done");
   }
 
-  private void runExtraction(File rocksDBFile, File outputFile, Optional<String> maybePlotsPrefix)
+  private void runExtraction(File rocksDBFile, File outputFile)
       throws RocksDBException, IOException {
-    MS1 ms1 = new MS1();
     List<AnalysisResult> results = new ArrayList<>();
 
     // Extract each target's trace, computing and saving stats as we go.  This should fit in memory no problem.
@@ -190,9 +170,9 @@ public class TraceIndexAnalyzer {
 
       Pair<List<XZ>, Map<Double, Double>> timeWindowsAndMaxes =
           WaveformAnalysis.compressIntensityAndTimeGraphsAndFindMaxIntensityInEveryTimeWindow(
-              targetAndTrace.getRight(), 5); // Same as waveform analysis
+              targetAndTrace.getRight(), WAVEFORM_TIME_SLICE_WINDOW); // Same as waveform analysis
       List<XZ> calledPeaks = WaveformAnalysis.detectPeaksInIntensityTimeWaveform(
-          timeWindowsAndMaxes.getLeft(), 250.0d); // Same as waveform analysis.
+          timeWindowsAndMaxes.getLeft(), WAVEFORM_MIN_THRESHOLD); // Same as waveform analysis.
 
       for (XZ calledPeak : calledPeaks) {
         AnalysisResult result = new AnalysisResult(
@@ -208,60 +188,6 @@ public class TraceIndexAnalyzer {
     LOGGER.info("Writing window stats to JSON file");
     try (FileOutputStream fos = new FileOutputStream(outputFile)) {
       OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(fos, results);
-    }
-
-    // Don't use Optional.map here because exceptions.  Sigh.
-    if (maybePlotsPrefix.isPresent()) {
-      LOGGER.info("Writing plots of LogSNR/max peak intensity over m/z");
-      new TraceIndexAnalyzer().plotAnalysisResults(maybePlotsPrefix.get(), results);
-    }
-  }
-
-  private void plotAnalysisResults(String prefix, List<AnalysisResult> analysisResults) throws IOException {
-    File dataFile = new File(prefix + ".data");
-    File outputFile = new File(StringUtils.join(Arrays.asList(prefix, PLOT_FORMAT_EXTENSION), '.'));
-    File gnuplotFile = new File(StringUtils.join(Arrays.asList(prefix, "gnuplot"), '.'));
-
-    Optional<Double> snrMax, intensityMax, timeMax;
-    try (BufferedWriter writer = new BufferedWriter(new FileWriter(dataFile))) {
-      // Pull out the features of each window and write them as tables so we can plot them across the M/Z domain.
-
-      /* Filter out some nonsensical or useless results when producing the graphs, which just add noise to already very
-       * busy plots.  Note that these only apply to the plots, not to the results (we can always filter post-analysis).
-       *
-       * Retention times < 15.0s usually indicate junk that has flowed in with the dead volume, and historically we've
-       * been okay ignoring it.  I know we've detected some molecules before this time, but anything that shows up in
-       * the first 10 to 20s of a run is highly suspicious.  Our min-threshold is pretty generous and avoids cases
-       * where a window might be dividing by zero or something terrible like that.  */
-      List<AnalysisResult> filteredResults =
-          analysisResults.stream().
-              filter(r -> r.getPeakTime() >= MIN_TIME_THRESHOLD_SECONDS). // Anything before is likely dead volume.
-              filter(r -> r.getPeakIntensity() >= MIN_INTENSITY_THRESHOLD). // This is well below the noise floor.
-              collect(Collectors.toList());
-
-      // Then write the peak intensities.
-      filteredResults.stream().
-          map(r -> Pair.of(r.getMz(), r.getPeakIntensity())).
-          forEach(p -> writeRow(writer, p));
-      intensityMax = filteredResults.stream().map(AnalysisResult::getPeakIntensity).max(Double::compare);
-      writer.write("\n\n");
-    }
-
-    Gnuplotter plotter = new Gnuplotter();
-    List<Gnuplotter.PlotConfiguration> plotConfigurations = new ArrayList<Gnuplotter.PlotConfiguration>() {{
-      // There will definitely be values present for every Optional max.
-      add(new Gnuplotter.PlotConfiguration(Gnuplotter.PlotConfiguration.KIND.GRAPH,
-          "Max Intensity", 1, intensityMax.get()));
-    }};
-    plotter.plot2D(dataFile.getAbsolutePath(), outputFile.getAbsolutePath(), "M/Z", "Intensity",
-        PLOT_FORMAT_EXTENSION, null, null, plotConfigurations, gnuplotFile.getAbsolutePath());
-  }
-
-  private void writeRow(BufferedWriter writer, Pair<Double, Double> row) throws UncheckedIOException {
-    try {
-      writer.write(String.format("%.3f\t%.3f\n", row.getLeft(), row.getRight()));
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
     }
   }
 }
