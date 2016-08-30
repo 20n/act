@@ -1,6 +1,6 @@
 package act.installer.metacyc;
 
-import act.shared.ConsistentInChI;
+import act.installer.metacyc.annotations.BioSource;
 import act.installer.metacyc.annotations.Stoichiometry;
 import act.installer.metacyc.annotations.Term;
 import act.installer.metacyc.entities.ChemicalStructure;
@@ -17,6 +17,7 @@ import act.installer.sequence.MetacycEntry;
 import act.installer.sequence.SequenceEntry;
 import act.server.MongoDB;
 import act.shared.Chemical;
+import act.shared.ConsistentInChI;
 import act.shared.Reaction;
 import act.shared.Seq;
 import com.ggasoftware.indigo.Indigo;
@@ -40,6 +41,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class OrganismCompositionMongoWriter {
   MongoDB db;
@@ -52,10 +55,17 @@ public class OrganismCompositionMongoWriter {
   HashMap<String, String> uniqueKeyToInChImap;
   boolean debugFails = false;
 
+  // Cache these values as they'll base the same throughout.
+  private String organism = null;
+  private Long organismDbId = null;
+
   // metacyc id's are in Unification DB=~name of origin, ID.matches(METACYC_URI_PREFIX)
   String METACYC_URI_IDS = "^[A-Z0-9-]+$"; //
   // to get valid Metacyc website URL
   String METACYC_URI_PREFIX = "http://www.metacyc.org/META/NEW-IMAGE?object=";
+
+  // Pattern to extract ecnums from metacyc standard names
+  private final static Pattern metacycStandardNameEcnum = Pattern.compile("\\(EC ([0-9a-zA-Z_.-]+)[^)]*\\)");
 
   // Metacyc ids/metadata will be written to these fields in the DB.
   public static final String METACYC_OBJECT_MODEL_XREF_ID_PATH = "xref.METACYC.id";
@@ -302,7 +312,7 @@ public class OrganismCompositionMongoWriter {
 
     // construct protein info object to be installed into the rxn
     Long[] orgIDs = getOrganismIDs(c);
-    Long[] seqs = getCatalyzingSequence(c, rxn, rxnid);
+    Long[] seqs = createCatalyzingSequences(c, rxn, rxnid);
     JSONObject proteinInfo = constructProteinInfo(c, orgIDs, seqs);
 
     // add it to the in-memory object
@@ -767,7 +777,7 @@ public class OrganismCompositionMongoWriter {
     return orgs.toArray(new Long[0]);
   }
 
-  Long[] getCatalyzingSequence(Catalysis c, Reaction rxn, long rxnid) {
+  Long[] createCatalyzingSequences(Catalysis c, Reaction rxn, long rxnid) {
     // c.controller(type: Protein).proteinRef(type ProteinRNARef).sequence
     // c.controller(type: Complex).component(type: Protein) .. as above
     List<NXT> proteinPath = Arrays.asList( NXT.controller, NXT.ref );
@@ -779,19 +789,19 @@ public class OrganismCompositionMongoWriter {
     for (BPElement seqRef : this.src.traverse(c, proteinPath)) {
       //  String seq = ((ProteinRNARef)seqRef).getSeq();
       //  if (seq == null) continue;
-      seqs.add(getCatalyzingSequence(c, (ProteinRNARef) seqRef, rxn, rxnid));
+      seqs.add(writeCatalyzingSequenceToDb(c, (ProteinRNARef) seqRef, rxn, rxnid));
     }
     // extract the sequences of proteins that make up complexes that control the rxn
     for (BPElement seqRef : this.src.traverse(c, complexPath)) {
       //  String seq = ((ProteinRNARef)seqRef).getSeq();
       //  if (seq == null) continue;
-      seqs.add(getCatalyzingSequence(c, (ProteinRNARef) seqRef, rxn, rxnid));
+      seqs.add(writeCatalyzingSequenceToDb(c, (ProteinRNARef) seqRef, rxn, rxnid));
     }
 
     return seqs.toArray(new Long[0]);
   }
 
-  Long getCatalyzingSequence(Catalysis c, ProteinRNARef seqRef, Reaction rxn, long rxnid) {
+  Long writeCatalyzingSequenceToDb(Catalysis c, ProteinRNARef seqRef, Reaction rxn, long rxnid) {
     // the Catalysis object has ACTIVATION/INHIBITION and L->R or R->L annotations
     // put them alongside the sequence that controls the Conversion
     org.biopax.paxtools.model.level3.ControlType act_inhibit = c.getControlType();
@@ -802,20 +812,37 @@ public class OrganismCompositionMongoWriter {
     String name = seqRef.getStandardName();
     Set<JSONObject> refs = toJSONObject(seqRef.getRefs()); // this contains things like UniProt accession#s, other db references etc.
 
-    Long org_id = null;
-    BPElement organism = this.src.resolve(org);
-    /* `organism` might be null if the sequence doesn't have an organism reference or if that organism reference is
-     * dangling.  In either case, only get/store the organism's id if we're able to find it in the source data.
-     */
-    if (organism != null) {
-      org_id = getOrganismID(organism);
-    } else {
-      System.err.format("WARNING: catalysis %s does not have a valid organism reference (%s)\n", c.getID(), org);
+    // Submit the name to the organism database if it doesn't exist.
+    if (organism == null) {
+      HashMap bioSourceMap = this.src.getMap(BioSource.class);
+      if (bioSourceMap.size() != 1) {
+        throw new RuntimeException(
+                String.format("Incorrect number of BioSources found. Set was of size %d", bioSourceMap.size()));
+      }
+
+      BioSource s = (BioSource) bioSourceMap.get(bioSourceMap.keySet().iterator().next());
+
+      this.organism = s.getName().iterator().next();
+
+      this.organismDbId = db.getOrganismId(this.organism);
+      if (this.organismDbId == -1) {
+        this.organismDbId = db.submitToActOrganismNameDB(this.organism);
+      }
+    }
+
+    String ecnum = null;
+    if (name != null) {
+      Matcher ecnumMatcher = metacycStandardNameEcnum.matcher(name);
+      // Sometimes more than 1 EC Number exists.
+      // However, we only grab the first one for now to keep ecnum as a single value field.
+      if (ecnumMatcher.find()) {
+        ecnum = ecnumMatcher.group(1);
+      }
     }
 
     String dir = direction == null ? "NULL" : direction.toString();
     String act_inh = act_inhibit == null ? "NULL" : act_inhibit.toString();
-    SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, org_id, name, comments, refs, rxnid, rxn, act_inh, dir);
+    SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, this.organismDbId, name, ecnum, comments, refs, rxnid, rxn, act_inh, dir);
     long seqid = entry.writeToDB(db, Seq.AccDB.metacyc);
 
     return seqid;

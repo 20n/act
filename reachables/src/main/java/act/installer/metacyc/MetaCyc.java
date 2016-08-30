@@ -1,23 +1,21 @@
 package act.installer.metacyc;
 
 import act.server.MongoDB;
+import act.shared.Chemical;
 
 import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.FilenameFilter;
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Arrays;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import act.shared.Chemical;
 
 public class MetaCyc {
   public static final String METACYC_COMPOUND_FILE_NAME = "compounds.dat";
@@ -25,6 +23,7 @@ public class MetaCyc {
   // map from location of biopax L3 file to the corresponding parsed organism model
   HashMap<String, OrganismComposition> organismModels;
   String sourceDir;
+  private List<String> owlFiles;
 
   // if onlyTier12 is set, then only the 38 main files are processed
   // we identify them as not having names that contain one of
@@ -35,8 +34,13 @@ public class MetaCyc {
   boolean onlyTier12;
 
   public MetaCyc(String dirWithL3Files) {
+    this(dirWithL3Files, null);
+  }
+
+  public MetaCyc(String dirWithL3Files, List<String> owlFiles){
     this.organismModels = new HashMap<String, OrganismComposition>();
     this.sourceDir = dirWithL3Files;
+    this.owlFiles = owlFiles;
 
     // by default, we process of level3 biopax files found in the directory
     // so we set the flag that restricts to Tier 1 and 2 as false.
@@ -77,34 +81,31 @@ public class MetaCyc {
 
   // process only the source file whose names are passed
   public void process(List<String> files) {
-
-
-    FileInputStream f = null;
     for (String file : files) {
-      System.out.format("Processing biopax file %s\n", new File(this.sourceDir, file).getAbsolutePath());
-      HashMap<String, String> uniqueKeyToInChIMap = generateUniqueKeyToInChIMapping(new File(this.sourceDir, file));
+      final File INPUT_FILE = new File(this.sourceDir, file);
 
-      System.out.println("Processing: " + file);
+      System.out.format("Processing biopax file %s\n", INPUT_FILE.getAbsolutePath());
+      HashMap<String, String> uniqueKeyToInChIMap = generateUniqueKeyToInChIMapping(INPUT_FILE);
+
+      System.out.println("Processing: " + INPUT_FILE.getAbsolutePath());
       if (file.endsWith("leishcyc/biopax-level3.owl")) {
-        System.out.println("Friendly reminder: Did you patch this leishcyc file with the diff in src/main/resources/leishcyc.biopax-level3.owl.diff to take care of the bad data in the original? If you are running over the plain downloaded file, then this will crash.");
+        System.out.println("Friendly reminder: Did you patch this leishcyc file with the " +
+                "diff in src/main/resources/leishcyc.biopax-level3.owl.diff to take care of " +
+                "the bad data in the original? If you are running over the plain downloaded file, " +
+                "then this will crash.");
       }
 
-      try {
-        f = new FileInputStream(this.sourceDir + "/" + file);
-      } catch (FileNotFoundException e) {
-        System.err.println("Could not find: " + file + ". Abort."); System.exit(-1);
+      try (FileInputStream f = new FileInputStream(INPUT_FILE)) {
+        // Construct the organism and read the owl file.
+        OrganismComposition o = new OrganismComposition(uniqueKeyToInChIMap);
+
+        new BioPaxFile(o).initFrom(f);
+        this.organismModels.put(file, o);
+
+      } catch(IOException e) {
+        System.err.println("Error while handling file : " + INPUT_FILE.getAbsolutePath() + ". Aborting.");
+        System.exit(-1);
       }
-
-      OrganismComposition o = new OrganismComposition(uniqueKeyToInChIMap);
-      new BioPaxFile(o).initFrom(f);
-      this.organismModels.put(file, o);
-
-      try {
-        f.close();
-      } catch (IOException e) {
-        System.err.println("Could not close: " + file);
-      }
-
     }
   }
 
@@ -321,6 +322,8 @@ public class MetaCyc {
   };
 
   public List<String> getOWLs() {
+    // If this was called previously we will have a list of all the cached files.
+    if (owlFiles != null) return owlFiles;
 
     String dir = this.sourceDir;
     boolean onlyTier12Files = this.onlyTier12;
@@ -355,14 +358,15 @@ public class MetaCyc {
       public boolean accept(File dir, String nm) { return nm.endsWith("level3.owl"); }
     };
 
-    List<String> allL3 = new ArrayList<String>();
+    List<String> allL3 = new ArrayList<>();
     for (String subdir : new File(dir).list(subdirfltr)) {
       for (String owlfile : new File(dir, subdir).list(owlfltr)) {
-        allL3.add(subdir + "/" + owlfile);
+        allL3.add(new File(subdir, owlfile).getAbsolutePath());
       }
     }
 
     Collections.sort(allL3);
+    owlFiles = allL3;
     return allL3;
   }
 
@@ -373,6 +377,5 @@ public class MetaCyc {
       owriter.write();
     }
   }
-
 }
 

@@ -1,39 +1,28 @@
 package act.installer;
 
+import act.installer.bing.BingSearcher;
+import act.installer.bing.MoleculeCorpus;
+import act.installer.brenda.BrendaSQL;
+import act.installer.kegg.KeggParser;
+import act.installer.metacyc.MetaCyc;
+import act.installer.patents.FTO;
+import act.installer.sequence.SwissProt;
+import act.server.MongoDB;
+import act.shared.Chemical;
+import act.shared.ConsistentInChI;
+
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileWriter;
-import java.io.PrintWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.List;
 import java.util.Set;
-
-import act.installer.bing.BingSearcher;
-import act.installer.bing.MoleculeCorpus;
-import act.installer.brenda.SQLConnection;
-import act.installer.kegg.KeggParser;
-import act.installer.metacyc.MetaCyc;
-import act.installer.sequence.SwissProt;
-import act.installer.SeqIdentMapper;
-
-import act.shared.ConsistentInChI;
-import act.server.MongoDB;
-import act.shared.Chemical;
-import act.shared.Organism;
-import act.shared.helpers.P;
-import act.installer.patents.FTO;
-import act.installer.brenda.BrendaSQL;
 
 
 public class Main {
@@ -319,7 +308,7 @@ public class Main {
       db.close();
 
     } else if (args[0].equals("METACYC")) {
-      String path = System.getProperty("user.dir")+"/"+args[4];
+      String path = new File(System.getProperty("user.dir"), args[4]).getAbsolutePath();
       int start = Integer.parseInt(args[5]);
       int end = Integer.parseInt(args[6]);
 
@@ -330,7 +319,11 @@ public class Main {
       // call m.loadOnlyTier12(true) in the loop below (and when
       // looking up the number of files to-be-processed.
 
-      int nfiles = new MetaCyc(path).getNumFilesToBeProcessed();
+      System.out.println("Looking for biopax files at " + path);
+      // Initialize so we can pass the owl files around later.
+      MetaCyc init = new MetaCyc(path);
+      int nfiles = init.getNumFilesToBeProcessed();
+
       System.out.println("Total: " + nfiles + " level3 biopax files found.");
       System.out.println("Range: [" + start + ", " + end + ")");
       int chunk = 1; // you can go up to a max of about 20 chunks (mem:3gb)
@@ -344,7 +337,9 @@ public class Main {
         //
         // By default, metacyc will load all Tier 1,2, and 3 files.
         // If you need it to load only 38 Tier 1,2 files call m.loadOnlyTier12(true)
-        MetaCyc m = new MetaCyc(path);
+        //
+        // Give metacyc the precomputed owls so we don't need to do that again.
+        MetaCyc m = new MetaCyc(path, init.getOWLs());
 
         int chunkEnd = i + chunk > end ? end : i + chunk;
         System.out.format("Processing: [%d, %d)\n", i, chunkEnd);

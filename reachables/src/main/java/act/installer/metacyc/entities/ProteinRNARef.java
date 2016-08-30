@@ -1,13 +1,14 @@
 package act.installer.metacyc.entities;
 
-import act.installer.metacyc.Resource;
 import act.installer.metacyc.BPElement;
-import act.installer.metacyc.OrganismComposition;
 import act.installer.metacyc.JsonHelper;
 import act.installer.metacyc.NXT;
+import act.installer.metacyc.OrganismComposition;
+import act.installer.metacyc.Resource;
 import org.json.JSONObject;
-import java.util.Set;
+
 import java.util.HashSet;
+import java.util.Set;
 
 public class ProteinRNARef extends BPElement {
   Resource organism; // referring to the BioSource this protein is in
@@ -21,7 +22,15 @@ public class ProteinRNARef extends BPElement {
   // we call these when looking up date in OrganismCompositionMongoWriter:getSequence(Catalysis)
   public String getSeq() { return this.sequence; }
   public Resource getOrg() { return this.organism; }
-  public String getStandardName() { return this.standardName; }
+
+  // Allow access to standard name that was in BPElement
+  public String getStandardName() {
+    if (this.standardName == null) {
+      return super.getStandardName();
+    } else {
+      return this.standardName;
+    }
+  }
   public Set<String> getComments() { return this.comments; }
   public Set<Resource> getRefs() { return this.memberEntityRef; }
 
