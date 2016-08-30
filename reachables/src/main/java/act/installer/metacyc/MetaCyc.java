@@ -19,6 +19,7 @@ import java.util.regex.Pattern;
 
 public class MetaCyc {
   public static final String METACYC_COMPOUND_FILE_NAME = "compounds.dat";
+  private final ArrayList<String> owlFiles = new ArrayList<>();
 
   // map from location of biopax L3 file to the corresponding parsed organism model
   HashMap<String, OrganismComposition> organismModels;
@@ -379,6 +380,9 @@ public class MetaCyc {
   };
 
   public List<String> getOWLs() {
+    // If this was called previously we will have a list of all the cached files.
+    if (owlFiles.size() > 0) return owlFiles;
+
 
     String dir = this.sourceDir;
     boolean onlyTier12Files = this.onlyTier12;
@@ -421,6 +425,7 @@ public class MetaCyc {
     }
 
     Collections.sort(allL3);
+    owlFiles.addAll(allL3);
     return allL3;
   }
 
