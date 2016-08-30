@@ -1,5 +1,6 @@
 package com.act.lcms.db.analysis;
 
+import com.act.lcms.MassCalculator;
 import com.act.lcms.db.io.report.IonAnalysisInterchangeModel;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -137,7 +138,14 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
         }
 
         for (Map.Entry<Double, Pair<String, String>> entry : massChargeToChemicalAndIon.entrySet()) {
-          predictionWriter.append(String.format("MZ: %s, Inchi: %s, Ion: %s", entry.getKey(), entry.getValue().getLeft(), entry.getValue().getRight()));
+
+          System.out.println(String.format("MZ: %s\tInchi: %s\tIon: %s\tMass: %s", entry.getKey(),
+              entry.getValue().getLeft(), entry.getValue().getRight(),
+              MassCalculator.calculateMass(entry.getValue().getLeft()).toString()));
+
+          predictionWriter.append(String.format("MZ: %s\tInchi: %s\tIon: %s\tMass: %s", entry.getKey(),
+              entry.getValue().getLeft(), entry.getValue().getRight(),
+              MassCalculator.calculateMass(entry.getValue().getLeft()).toString()));
           predictionWriter.newLine();
         }
       }
