@@ -127,7 +127,8 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     add(Option.builder(OPTION_NON_REPLICATE_ANALYSIS)
         .argName("non replicate analysis")
         .desc("This option is for lcms analysis on multiple positive wells that are not replicates. The default is " +
-            "replicate analysis.")
+            "replicate analysis. In replicate analysis, we simply add all the peak results into one model JSON object " +
+            "while in non-replicate analysis, we do not do this step.")
         .longOpt("non-replicate-analysis")
     );
   }};
@@ -520,8 +521,9 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
 
     LOGGER.info("The number of mass charge hits are %d out of %d", numberOfMassChargeHits, massChargeToChemicalAndIon.keySet().size());
 
-    // If the analysis is a replicate analysis, we combine the results from the various replicates into one file.
-    // If the analysis is a non-replicate analysis, we do not do this since each of the pos+neg analysis cannot/should not
+    // If the analysis is a replicate analysis, we combine the results from the various replicates into one file by simply
+    // adding all the peak results from the replcates into one model.
+    // If the analysis is a non-replicate analysis, we do not do this step since each of the pos+neg analysis should not
     // be compared since the positive wells are not replicates.
     if (!isNonReplicateAnalysis) {
       LOGGER.info("Conducting post processing since we have more than one positive well and this is a replicate analysis");
