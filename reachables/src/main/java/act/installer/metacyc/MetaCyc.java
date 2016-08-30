@@ -74,36 +74,62 @@ public class MetaCyc {
     System.out.println("You can process about 10 files in 4GB of runtime memory");
   }
 
-  private String getOrganismCommonName(File parentDirectory){
+  /**
+   * Retrieves the common name of the organism that the flat-file directory describes.
+   *
+   * @param organismDirectory Where all the organism files are contained
+   * @return String representation of the organism's common name.
+     */
+  private String getOrganismCommonName(File organismDirectory){
     // We look in the species file for the organism information.
-    try (BufferedReader speciesReader = new BufferedReader(new FileReader(new File(parentDirectory, "species.dat")))) {
-      String roughOrganism = speciesReader.lines().filter(line -> line.startsWith("COMMON-NAME")).findFirst().get();
+    final File DATA_LOCATION = new File(organismDirectory, "species.dat");
+    final String COMMON_NAME_LINE_START = "COMMON-NAME - ";
+
+    try (final BufferedReader speciesReader = new BufferedReader(new FileReader(DATA_LOCATION))) {
+      String roughOrganism = speciesReader.lines().filter(line -> line.startsWith(COMMON_NAME_LINE_START)).findFirst().get();
+
       // Form of COMMON-NAME - <VALUE>
-      return roughOrganism.replace("COMMON-NAME - ", "");
+      // Also remove white space just to be safe.
+      return roughOrganism.replace(COMMON_NAME_LINE_START, "").trim();
+
     } catch(IOException e){
-      System.err.println("File not found error on species file.  " +
-              "File was" + parentDirectory.getAbsolutePath()); System.exit(1);
+      System.err.println("File not found error on species file.  File was" + organismDirectory.getAbsolutePath());
+      System.exit(1);
     }
+
     // If we don't find what we are looking for stop the whole installer to ensure this value exists.
-    System.err.println("Did not find common name in species file.  " +
-            "File was " + parentDirectory.getAbsolutePath()); System.exit(1);
+    System.err.println("Did not find common name in species file.  File was " + organismDirectory.getAbsolutePath());
+    System.exit(1);
     return null;
   }
 
-  private String getOrganismNcbiId(File parentDirectory){
+  /**
+   * Retrieves the NCBI taxonomy ID of the organism that the flat-file directory describes.
+   *
+   * @param organismDirectory Where all the organism files are contained
+   * @return String representation of the organism's NCBI taxonomy ID
+   */
+  private String getOrganismNcbiId(File organismDirectory){
     // We look in the species file for the organism information.
-    try (BufferedReader speciesReader = new BufferedReader(new FileReader(new File(parentDirectory, "species.dat")))) {
-      String roughOrganism = speciesReader.lines().filter(line -> line.startsWith("DBLINKS - (NCBI-TAXONOMY-DB ")).findFirst().get();
+    final File DATA_LOCATION = new File(organismDirectory, "species.dat");
+    final String NCBI_LINE_START = "DBLINKS - (NCBI-TAXONOMY-DB \"";
+
+    try (final BufferedReader speciesReader = new BufferedReader(new FileReader(DATA_LOCATION))) {
       // Form of NCBI-TAXONOMY-DB "<TAX #>" <Other junk>
-      roughOrganism = roughOrganism.replace("DBLINKS - (NCBI-TAXONOMY-DB \"", "");
+      String roughOrganism = speciesReader.lines().filter(line -> line.startsWith(NCBI_LINE_START)).findFirst().get();
+
+      // Prune off non NCBI Value stuff.
+      roughOrganism = roughOrganism.replace(NCBI_LINE_START, "");
       return roughOrganism.split("\"")[0];
+
     } catch(IOException e){
-      System.err.println("File not found error on species file. " +
-              "File was" + parentDirectory.getAbsolutePath()); System.exit(1);
+      System.err.println("File not found error on species file. File was" + organismDirectory.getAbsolutePath());
+      System.exit(1);
     }
+
     // If we don't find what we are looking for stop the whole installer to ensure this value exists.
-    System.err.println("Did not find common name in species file. " +
-            "File was" + parentDirectory.getAbsolutePath()); System.exit(1);
+    System.err.println("Did not find common name in species file. File was" + organismDirectory.getAbsolutePath());
+    System.exit(1);
     return null;
   }
 
@@ -134,7 +160,7 @@ public class MetaCyc {
       // Both of these will crash the installer if they don't find, so we will get the values we want.
       String organismName = getOrganismCommonName(new File(this.sourceDir, file).getParentFile());
       String organismId = getOrganismNcbiId(new File(this.sourceDir, file).getParentFile());
-      
+
       OrganismComposition o = new OrganismComposition(organismName, organismId, uniqueKeyToInChIMap);
       new BioPaxFile(o).initFrom(f);
       this.organismModels.put(file, o);
