@@ -548,8 +548,4 @@ public class WindowingTraceExtractor {
     }
     return results;
   }
-
-  public static Double windowCenterFromMin(Double min) {
-    return min + WINDOW_WIDTH_FROM_CENTER;
-  }
 }

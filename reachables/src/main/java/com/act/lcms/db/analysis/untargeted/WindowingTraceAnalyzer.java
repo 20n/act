@@ -14,7 +14,6 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.rocksdb.RocksDBException;
@@ -85,11 +84,8 @@ public class WindowingTraceAnalyzer {
   }
 
   public static class WindowAnalysisResult {
-    @JsonProperty("min_mz")
-    private Double minMz;
-
-    @JsonProperty("max_mz")
-    private Double maxMz;
+    @JsonProperty("mz")
+    private Double mz;
 
     @JsonProperty("log_snr")
     private Double logSnr;
@@ -104,28 +100,19 @@ public class WindowingTraceAnalyzer {
 
     }
 
-    public WindowAnalysisResult(Double minMz, Double maxMz, Double logSnr, Double peakIntensity, Double peakTime) {
-      this.minMz = minMz;
-      this.maxMz = maxMz;
+    public WindowAnalysisResult(Double mz, Double logSnr, Double peakIntensity, Double peakTime) {
+      this.mz = mz;
       this.logSnr = logSnr;
       this.peakIntensity = peakIntensity;
       this.peakTime = peakTime;
     }
 
-    public Double getMinMz() {
-      return minMz;
+    public Double getMz() {
+      return mz;
     }
 
-    protected void setMinMz(Double minMz) {
-      this.minMz = minMz;
-    }
-
-    public Double getMaxMz() {
-      return maxMz;
-    }
-
-    protected void setMaxMz(Double maxMz) {
-      this.maxMz = maxMz;
+    protected void setMz(Double mz) {
+      this.mz = mz;
     }
 
     public Double getLogSnr() {
@@ -199,21 +186,21 @@ public class WindowingTraceAnalyzer {
     MS1 ms1 = new MS1();
     List<WindowAnalysisResult> results = new ArrayList<>();
 
-    // Extract each window's trace, computing and saving stats as we go.  This should fit in memory no problem.
+    // Extract each target's trace, computing and saving stats as we go.  This should fit in memory no problem.
     Iterator<Pair<Double, List<XZ>>> traceIterator = new WindowingTraceExtractor().getIteratorOverTraces(rocksDBFile);
     while (traceIterator.hasNext()) {
-      Pair<Double, List<XZ>> rangeAndTrace = traceIterator.next();
+      Pair<Double, List<XZ>> targetAndTrace = traceIterator.next();
 
-      String label = String.format("%.6f", rangeAndTrace.getLeft());
+      String label = String.format("%.6f", targetAndTrace.getLeft());
 
       // Note: here we cheat by knowing how the MS1 class is going to use this incredibly complex container.
       MS1ScanForWellAndMassCharge scanForWell = new MS1ScanForWellAndMassCharge();
       scanForWell.setMetlinIons(Collections.singletonList(label));
-      scanForWell.getIonsToSpectra().put(label, rangeAndTrace.getRight());
+      scanForWell.getIonsToSpectra().put(label, targetAndTrace.getRight());
       Double maxPeakTime = ms1.computeAndStorePeakProfile(scanForWell, label);
 
       WindowAnalysisResult result = new WindowAnalysisResult(
-          rangeAndTrace.getLeft(), rangeAndTrace.getLeft(),
+          targetAndTrace.getLeft(),
           scanForWell.getLogSNRForIon(label),
           scanForWell.getMaxIntensityForIon(label),
           maxPeakTime
@@ -250,8 +237,8 @@ public class WindowingTraceAnalyzer {
        * been okay ignoring it.  I know we've detected some molecules before this time, but anything that shows up in
        * the first 10 to 20s of a run is highly suspicious.  Our min-threshold is pretty generous and avoids cases
        * where a window might be dividing by zero or something terrible like that.  The LogSNR threshold is in place to
-       * avoid allowing `Infinity` values from reaching gnuplot, which confsuse it.  These are also probably due to
-       * dividing by zero.  */
+       * avoid allowing `Infinity` values from reaching gnuplot, which confuse it.  These are also probably due to
+       * dividing by zero. */
       List<WindowAnalysisResult> filteredResults =
           analysisResults.stream().
               filter(r -> r.getPeakTime() >= MIN_TIME_THRESHOLD_SECONDS). // Anything before is likely dead volume.
@@ -261,15 +248,14 @@ public class WindowingTraceAnalyzer {
 
       // First write the log SNRs.
       filteredResults.stream().
-          map(r -> Pair.of(WindowingTraceExtractor.windowCenterFromMin(r.getMinMz()),
-              Double.max(0.00, r.getLogSnr()))). // -100 LogSNR values don't help, so just zero them out.
+          map(r -> Pair.of(r.getMz(), Double.max(0.00, r.getLogSnr()))). // -100 LogSNR values don't help, so -> 0.0.
           forEach(p -> writeRow(writer, p));
       snrMax = filteredResults.stream().map(WindowAnalysisResult::getLogSnr).max(Double::compare);
       writer.write("\n\n");
 
       // Then write the peak intensities.
       filteredResults.stream().
-          map(r -> Pair.of(WindowingTraceExtractor.windowCenterFromMin(r.getMinMz()), r.getPeakIntensity())).
+          map(r -> Pair.of(r.getMz(), r.getPeakIntensity())).
           forEach(p -> writeRow(writer, p));
       intensityMax = filteredResults.stream().map(WindowAnalysisResult::getPeakIntensity).max(Double::compare);
       writer.write("\n\n");
