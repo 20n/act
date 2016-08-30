@@ -108,7 +108,7 @@ public class MZCollisionCounter {
         // Do a precise analysis of the m/z collisions if windowing is not specified.
 
         LOGGER.info("Computing precise collision histogram.");
-        Iterable<Double> mzs = mzMap.ionMZIterable();
+        Iterable<Double> mzs = mzMap.ionMZIter();
         Map<Integer, Long> collisionHistogram =
             histogram(StreamSupport.stream(mzs.spliterator(), false).map(mz -> { // See comment about Iterable below.
               try {

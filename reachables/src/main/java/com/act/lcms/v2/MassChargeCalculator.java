@@ -230,15 +230,15 @@ public class MassChargeCalculator {
     /* Use Iterable -> Stream instead of Iterator, as Iterator doesn't play nicely with streams on its own.
      * Iterator + Stream.generate = java.util.NoSuchElementException = :(
      * http://stackoverflow.com/questions/24511052/how-to-convert-an-iterator-to-a-stream */
-    public Iterable<MZSource> mzSourceIterable() {
+    public Iterable<MZSource> mzSourceIter() {
       return () -> monoisotopicMasses.keySet().iterator();
     }
 
-    public Iterable<Double> monoisotopicMassIterable() {
-      return () -> reverseIonicMasses.keySet().iterator();
+    public Iterable<Double> monoisotopicMassIter() {
+      return () -> reverseMonoisotopicMasses.keySet().iterator();
     }
 
-    public Iterable<Double> ionMZIterable() {
+    public Iterable<Double> ionMZIter() {
       return () -> reverseIonicMasses.keySet().iterator();
     }
 
@@ -246,7 +246,8 @@ public class MassChargeCalculator {
     List<Double> ionMZsSorted() {
       List<Double> results = new ArrayList<>(reverseIonicMasses.keySet());
       Collections.sort(results);
-      return results;
+      // The keySet has already unique'd all the values, so all we need to do is sort 'em and return 'em.
+      return Collections.unmodifiableList(results); // Make the list unmodifiable for safety's sake (we own the masses).
     }
 
     // Package private again.
@@ -299,13 +300,6 @@ public class MassChargeCalculator {
         }
       }
       LOGGER.info("Done resolving %d sources, found %d ion m/z's in total", sourceCounter, ionCounter);
-    }
-
-    public List<Double> getUniqueIonicMasses() {
-      List<Double> masses = new ArrayList<Double>(reverseIonicMasses.keySet());
-      Collections.sort(masses);
-      // The keySet has already unique'd all the values, so all we need to do is sort 'em and return 'em.
-      return Collections.unmodifiableList(masses); // Make the list unmodifiable for safety's sake (we own the masses).
     }
 
     /**
