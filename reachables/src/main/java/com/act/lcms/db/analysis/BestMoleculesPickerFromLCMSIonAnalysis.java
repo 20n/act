@@ -11,6 +11,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
+import org.apache.regexp.RE;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -21,8 +22,10 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class BestMoleculesPickerFromLCMSIonAnalysis {
 
@@ -167,15 +170,20 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
 
     if (cl.hasOption(OPTION_MIN_OF_REPLICATES)) {
-      Function<Triple<List<Double>, List<Double>, List<Double>>, Pair<Triple<Double, Double, Double>, Boolean>>
-          filterAndTransformFunction = (Triple<List<Double>, List<Double>, List<Double>> listOfPeakStats) -> {
+      Function<List<IonAnalysisInterchangeModel.HitOrMiss>, Pair<IonAnalysisInterchangeModel.HitOrMiss, Boolean>>
+          filterAndTransformFunction = (List<IonAnalysisInterchangeModel.HitOrMiss> listOfReplicateMolecules) -> {
 
-        List<Double> intensityValues = listOfPeakStats.getLeft();
-        List<Double> snrValues = listOfPeakStats.getMiddle();
-        List<Double> timeValues = listOfPeakStats.getRight();
+        List<Double> intensityValues = listOfReplicateMolecules.stream().map(molecule -> molecule.getIntensity()).collect(Collectors.toList());
+        List<Double> snrValues = listOfReplicateMolecules.stream().map(molecule -> molecule.getSnr()).collect(Collectors.toList());
+        List<Double> timeValues = listOfReplicateMolecules.stream().map(molecule -> molecule.getTime()).collect(Collectors.toList());
 
         Double minTime = timeValues.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal));
         Double maxTime = timeValues.stream().reduce(Double.MIN_VALUE, (accum, newVal) -> Math.max(accum, newVal));
+
+        IonAnalysisInterchangeModel.HitOrMiss result = new IonAnalysisInterchangeModel.HitOrMiss();
+        result.setInchi(listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getInchi());
+        result.setIon(listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getIon());
+        result.setPlot("NIL");
 
         if (maxTime - minTime < TIME_TOLERANCE_IN_SECONDS) {
           Double minIntensity = intensityValues.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal));
@@ -184,17 +192,18 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
           Integer indexOfMinIntensityReplicate = intensityValues.indexOf(minIntensity);
 
           // The SNR and Time values will be the copy of the replicate with the lowest intensity value.
-          return Pair.of(
-              Triple.of(minIntensity, snrValues.get(indexOfMinIntensityReplicate),
-                  timeValues.get(indexOfMinIntensityReplicate)), DO_NOT_THROW_OUT_MOLECULE);
+          result.setSnr(snrValues.get(indexOfMinIntensityReplicate));
+          result.setIntensity(minIntensity);
+          result.setTime(timeValues.get(indexOfMinIntensityReplicate));
+
+          return Pair.of(result, DO_NOT_THROW_OUT_MOLECULE);
         } else {
           // TODO: We can just throw out such molecules.
-          return Pair.of(
-              Triple.of(
-                  LOWEST_POSSIBLE_VALUE_FOR_METRIC,
-                  LOWEST_POSSIBLE_VALUE_FOR_METRIC,
-                  LOWEST_POSSIBLE_VALUE_FOR_METRIC),
-              DO_NOT_THROW_OUT_MOLECULE);
+          result.setSnr(LOWEST_POSSIBLE_VALUE_FOR_METRIC);
+          result.setIntensity(LOWEST_POSSIBLE_VALUE_FOR_METRIC);
+          result.setTime(LOWEST_POSSIBLE_VALUE_FOR_METRIC);
+
+          return Pair.of(result, DO_NOT_THROW_OUT_MOLECULE);
         }
       };
 
@@ -222,35 +231,46 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     }
 
     if (cl.hasOption(OPTION_FILTER_BY_THRESHOLD)) {
-      Function<Triple<List<Double>, List<Double>, List<Double>>, Pair<Triple<Double, Double, Double>, Boolean>>
-          filterAndTransformFunction = (Triple<List<Double>, List<Double>, List<Double>> listOfPeakStats) -> {
 
-        List<Double> intensityValues = listOfPeakStats.getLeft();
-        List<Double> snrValues = listOfPeakStats.getMiddle();
-        List<Double> timeValues = listOfPeakStats.getRight();
+      final Set<String> ions;
+      if (cl.hasOption(OPTION_FILTER_BY_IONS)) {
+        ions = new HashSet<>(Arrays.asList(cl.getOptionValues(OPTION_FILTER_BY_IONS)));
+      } else {
+        ions = new HashSet<>();
+      }
 
-        if (intensityValues.size() > 1 && snrValues.size() > 1 && timeValues.size() > 1) {
+      Function<List<IonAnalysisInterchangeModel.HitOrMiss>, Pair<IonAnalysisInterchangeModel.HitOrMiss, Boolean>>
+          filterAndTransformFunction = (List<IonAnalysisInterchangeModel.HitOrMiss> listOfReplicateMolecules) -> {
+
+        if (listOfReplicateMolecules.size() > 1) {
           throw new RuntimeException("This filter is meant for analysis for only one replicate.");
         }
 
-        Double intensity = intensityValues.get(REPRESENTATIVE_INDEX);
-        Double snr = snrValues.get(REPRESENTATIVE_INDEX);
-        Double time = timeValues.get(REPRESENTATIVE_INDEX);
+        Double intensity = listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getIntensity();
+        Double snr = listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getSnr();
+        Double time = listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getTime();
+        String ion = listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getIon();
 
-        if (intensity > minIntensityThreshold && snr > minSnrThreshold && time > minTimeThreshold) {
-          return Pair.of(Triple.of(intensity, snr, time), DO_NOT_THROW_OUT_MOLECULE);
+        IonAnalysisInterchangeModel.HitOrMiss molecule = new IonAnalysisInterchangeModel.HitOrMiss(
+            listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getInchi(),
+            listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getIon(),
+            snr,
+            time,
+            intensity,
+            listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getPlot()
+        );
+
+        if (intensity > minIntensityThreshold && snr > minSnrThreshold && time > minTimeThreshold &&
+            (ions.size() == 0 || ions.contains(ion))) {
+          return Pair.of(molecule, DO_NOT_THROW_OUT_MOLECULE);
         } else {
-          return Pair.of(Triple.of(intensity, snr, time), THROW_OUT_MOLECULE);
+          return Pair.of(molecule, THROW_OUT_MOLECULE);
         }
       };
 
       IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
           IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
           filterAndTransformFunction);
-
-      if (cl.hasOption(OPTION_FILTER_BY_IONS)) {
-        model.filterByIons(new HashSet<>(Arrays.asList(cl.getOptionValues(OPTION_FILTER_BY_IONS))));
-      }
 
       printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
     }

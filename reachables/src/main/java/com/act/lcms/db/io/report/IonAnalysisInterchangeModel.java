@@ -110,22 +110,6 @@ public class IonAnalysisInterchangeModel {
     }
   }
 
-  public void filterByIons(Set<String> ions) {
-    List<ResultForMZ> resultForMZs = new ArrayList<>();
-
-    for (ResultForMZ resultForMZ : this.getResults()) {
-      ResultForMZ newResultForMz = new ResultForMZ(resultForMZ.getMz(), resultForMZ.getIsValid());
-      for (HitOrMiss molecule : resultForMZ.getMolecules()) {
-        if (ions.contains(molecule.getIon())) {
-          newResultForMz.addMolecule(molecule);
-        }
-      }
-      resultForMZs.add(newResultForMz);
-    }
-
-    this.setResults(resultForMZs);
-  }
-
   /**
    * This function is used to compute log frequency distribution of the ion model vs a metric.
    * @param metric The metric on which the frequency distribution is plotted
@@ -227,19 +211,19 @@ public class IonAnalysisInterchangeModel {
   /**
    * This function takes in multiple LCMS mining results  (in the IonAnalysisInterchangeModel format), which happens
    * when we have multiple positive control replicates, extracts all the molecule hits from each file and applies
-   * filter functions on intensity, time and snr. These filter functions provide two features: they are used to
-   * transform results from multiple replicate to statistics, like a min function across replicates. Second, they are
+   * a filter function on the replicate hits. The filter function provide two features: it is used to transform results
+   * from multiple replicate to a single HitOrMiss molecule, like a min function across replicates. Second, it is
    * used to filter in/out molecules based on the logic of the filter function.
    * @param replicateModels The list of IonAnalysisInterchangeModels to be analyzed
-   * @param filterAndTransformFunction The intensity filter function takes in a list of intensity values and outputs
-   *                                a transformed statistic and whether or not to add the Molecule hit to the final
-   *                                result.
+   * @param filterAndTransformFunction This filter function takes in multiple HitOrMiss objects from replicates and
+   *                                   performs a transformation operation on them to produce one HitOrMiss object
+   *                                   and a boolean to keep the transformed molecule in the resulting model.
    * @return A list of inchis that are valid molecule hits in all the input files and pass all the thresholds.
    * @throws IOException
    */
   public static IonAnalysisInterchangeModel filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
       List<IonAnalysisInterchangeModel> replicateModels,
-      Function<Triple<List<Double>, List<Double>, List<Double>>, Pair<Triple<Double, Double, Double>, Boolean>> filterAndTransformFunction)
+      Function<List<HitOrMiss>, Pair<HitOrMiss, Boolean>> filterAndTransformFunction)
       throws IOException {
 
     int totalNumberOfMassCharges = replicateModels.get(0).getResults().size();
@@ -271,6 +255,8 @@ public class IonAnalysisInterchangeModel {
         List<Double> intensityList = new ArrayList<>();
         List<Double> timeList = new ArrayList<>();
 
+        List<HitOrMiss> moleculesFromReplicates = new ArrayList<>();
+
         // For each molecule, make sure it passes the threshold we set across every elem in deserializedResultsForPositiveReplicates,
         // ie across each positive replicate + neg control experiment results
         for (int k = 0; k < replicateModels.size(); k++) {
@@ -284,6 +270,7 @@ public class IonAnalysisInterchangeModel {
           }
 
           HitOrMiss molecule = sampleRepresentativeMz.getMolecules().get(j);
+          moleculesFromReplicates.add(molecule);
           snrList.add(molecule.getSnr());
           intensityList.add(molecule.getIntensity());
           timeList.add(molecule.getTime());
@@ -291,15 +278,11 @@ public class IonAnalysisInterchangeModel {
 
         // Check if the filter function for each metric wants to throw out the molecule. If none of them want to throw
         // out the molecule, then add the molecule to the final result.
-        Pair<Triple<Double, Double, Double>, Boolean> valuesAndShouldRetainMolecule =
-            filterAndTransformFunction.apply(Triple.of(intensityList, snrList, timeList));
+        Pair<HitOrMiss, Boolean> transformedMoleculeAndShouldRetainMolecule =
+            filterAndTransformFunction.apply(moleculesFromReplicates);
 
-        if (valuesAndShouldRetainMolecule.getRight()) {
-          HitOrMiss molecule = representativeMZ.getMolecules().get(j);
-          molecule.setIntensity(valuesAndShouldRetainMolecule.getLeft().getLeft());
-          molecule.setSnr(valuesAndShouldRetainMolecule.getLeft().getMiddle());
-          molecule.setTime(valuesAndShouldRetainMolecule.getLeft().getRight());
-          resultForMZ.addMolecule(molecule);
+        if (transformedMoleculeAndShouldRetainMolecule.getRight()) {
+          resultForMZ.addMolecule(transformedMoleculeAndShouldRetainMolecule.getLeft());
         }
       }
 
@@ -521,7 +504,7 @@ public class IonAnalysisInterchangeModel {
     private Double intensity;
 
     // For deserialization.
-    protected HitOrMiss() {
+    public HitOrMiss() {
 
     }
 
@@ -538,7 +521,7 @@ public class IonAnalysisInterchangeModel {
       return inchi;
     }
 
-    protected void setInchi(String inchi) {
+    public void setInchi(String inchi) {
       this.inchi = inchi;
     }
 
@@ -546,7 +529,7 @@ public class IonAnalysisInterchangeModel {
       return ion;
     }
 
-    protected void setIon(String ion) {
+    public void setIon(String ion) {
       this.ion = ion;
     }
 
@@ -554,7 +537,7 @@ public class IonAnalysisInterchangeModel {
       return snr;
     }
 
-    protected void setSnr(Double snr) {
+    public void setSnr(Double snr) {
       this.snr = snr;
     }
 
@@ -562,7 +545,7 @@ public class IonAnalysisInterchangeModel {
       return time;
     }
 
-    protected void setTime(Double time) {
+    public void setTime(Double time) {
       this.time = time;
     }
 
@@ -570,7 +553,7 @@ public class IonAnalysisInterchangeModel {
       return intensity;
     }
 
-    protected void setIntensity(Double intensity) {
+    public void setIntensity(Double intensity) {
       this.intensity = intensity;
     }
 
