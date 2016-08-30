@@ -197,7 +197,10 @@ public class TraceIndexExtractor {
     RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles = null;
 
     try {
+      // TODO: add to existing DB instead of complaining if the DB already exists.  That'll enable one index per scan.
       dbAndHandles = DBUtil.createNewRocksDB(rocksDBFile, COLUMN_FAMILIES.values());
+
+      // TODO: split targetMZs into batches of ~100k and extract incrementally to allow huge input sets.
 
       LOGGER.info("Extracting traces");
       Triple<List<MZWindow>, List<Double>, List<List<Double>>> windowsTimesAndTraces =
