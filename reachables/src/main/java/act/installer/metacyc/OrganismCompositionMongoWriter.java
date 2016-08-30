@@ -808,6 +808,7 @@ public class OrganismCompositionMongoWriter {
     Set<JSONObject> refs = toJSONObject(seqRef.getRefs()); // this contains things like UniProt accession#s, other db references etc.
 
     // Submit the name to the organism database if it doesn't exist.
+    // TODO Cache this so we don't constantly ask the DB for it.
     Long organismId = db.getOrganismId(this.src.organism);
     if (organismId == -1) {
       organismId = db.submitToActOrganismNameDB(this.src.organism);
