@@ -137,20 +137,15 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     List<String> positiveReplicateResults = new ArrayList<>();
 
     // Lauren
-    positiveReplicateResults.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis_copy/lr_d1_ur_mn");
-    positiveReplicateResults.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis_copy/lr_d1_ur_ev");
-    positiveReplicateResults.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis_copy/lr_d2_ur_ev");
-    positiveReplicateResults.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis_copy/lr_d2_ur_mn");
+    positiveReplicateResults.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis_copy/lr_min");
 
     // Saurabh
-    positiveReplicateResults.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis_copy/ss_d1_ur_ev");
-    positiveReplicateResults.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis_copy/ss_d1_ur_mn");
-    positiveReplicateResults.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis_copy/ss_d2_ur_mn");
-    positiveReplicateResults.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis_copy/ss_d3_ur_mn");
-    positiveReplicateResults.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis_copy/ss_d2_ur_ev");
+    positiveReplicateResults.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis_copy/ss_min");
 
     // Chris
-    positiveReplicateResults.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis_copy/chris_min");
+    positiveReplicateResults.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis_copy/cr_min");
+
+    positiveReplicateResults.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis_copy/min_all_replicates");
 
     Map<String, Set<String>> filePathToVals =
         IonAnalysisInterchangeModel.getMoleculeHitsForEachInputFile(positiveReplicateResults,
