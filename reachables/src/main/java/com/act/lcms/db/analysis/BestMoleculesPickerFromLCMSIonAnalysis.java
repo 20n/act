@@ -1,6 +1,8 @@
 package com.act.lcms.db.analysis;
 
+import com.act.lcms.MassCalculator;
 import com.act.lcms.db.io.report.IonAnalysisInterchangeModel;
+import com.act.utils.TSVWriter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -10,15 +12,15 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.lang3.tuple.Triple;
-import org.apache.regexp.RE;
 
+import javax.ws.rs.HEAD;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +46,10 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
   public static final String OPTION_MIN_OF_REPLICATES = "m";
   public static final String OPTION_FILTER_BY_THRESHOLD = "p";
   public static final String OPTION_FILTER_BY_IONS = "k";
+  public static final String HEADER_INCHI = "Inchi";
+  public static final String HEADER_MASS = "Monoisotopic Mass";
+  public static final String HEADER_MZ = "MZ";
+  public static final String HEADER_ION = "Ion";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_INPUT_FILES)
@@ -119,8 +125,15 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     HELP_FORMATTER.setWidth(100);
   }
 
+  public static final List<String> OUTPUT_TSV_HEADER_FIELDS = new ArrayList<String>() {{
+    add(HEADER_INCHI);
+    add(HEADER_ION);
+    add(HEADER_MASS);
+    add(HEADER_MZ);
+  }};
+
   /**
-   * This function is used to print the model either as a json or as a list of inchis
+   * This function is used to print the model either as a json or as a TSV file containing relevant statistics.
    * @param fileName The name of file
    * @param jsonFormat Whether it needs to be outputted in a json format or a a list of inchis, one per line.
    * @param model The model that is being written
@@ -130,20 +143,25 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     if (jsonFormat) {
       model.writeToJsonFile(new File(fileName));
     } else {
-      try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(fileName))) {
+      List<String> header = new ArrayList<>();
+      header.addAll(OUTPUT_TSV_HEADER_FIELDS);
 
-        TreeMap<String, String> inchiToIon = new TreeMap<>();
-        for (IonAnalysisInterchangeModel.ResultForMZ resultForMZ : model.getResults()) {
-          for (IonAnalysisInterchangeModel.HitOrMiss molecule : resultForMZ.getMolecules()) {
-            inchiToIon.put(molecule.getInchi(), molecule.getIon());
-          }
-        }
+      TSVWriter<String, String> writer = new TSVWriter<>(header);
+      writer.open(new File(fileName));
 
-        for (Map.Entry<String, String> entry : inchiToIon.entrySet()) {
-          predictionWriter.append(String.format("Inchi: %s, Ion: %s", entry.getKey(), entry.getValue()));
-          predictionWriter.newLine();
+      for (IonAnalysisInterchangeModel.ResultForMZ resultForMZ : model.getResults()) {
+        for (IonAnalysisInterchangeModel.HitOrMiss molecule : resultForMZ.getMolecules()) {
+          Map<String, String> row = new HashMap<>();
+          row.put(HEADER_INCHI, molecule.getInchi());
+          row.put(HEADER_ION, molecule.getIon());
+          row.put(HEADER_MASS, MassCalculator.calculateMass(molecule.getInchi()).toString());
+          row.put(HEADER_MZ, resultForMZ.getMz().toString());
+          writer.append(row);
+          writer.flush();
         }
       }
+
+      writer.close();
     }
   }
 
