@@ -43,31 +43,36 @@ public class PubchemMeshSynonyms {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(PubchemMeshSynonyms.class);
 
-  public static final String OPTION_SERVICE_HOST_IP = "h";
+  public static final String OPTION_SERVICE_HOST = "h";
   public static final String OPTION_SERVICE_PORT = "p";
   public static final String OPTION_QUERY_INCHI = "i";
 
   public static final String HELP_MESSAGE =
       "This class provides an API to get Pubchem synonyms and MeSH terms given an InChI string.";
 
+  // The Virtuoso SPARQL endpoint, lives by default on Chimay at port 8890
+  private static final String DEFAULT_SERVICE_HOST = "chimay";
+  private static final String DEFAULT_SERVICE_PORT = "8890";
+
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
-    add(Option.builder(OPTION_SERVICE_HOST_IP)
-        .argName("SERVICE_HOST_IP")
-        .desc("The SPARQL server host's IP.")
+    add(Option.builder(OPTION_SERVICE_HOST)
+        .argName("SERVICE_HOST")
+        .desc("The SPARQL server host. Default is " + DEFAULT_SERVICE_HOST)
         .hasArg()
-        .longOpt("service_host_ip")
+        .longOpt("service_host")
         .type(String.class)
     );
     add(Option.builder(OPTION_SERVICE_PORT)
         .argName("SERVICE_PORT")
-        .desc("The SPARQL server host's port")
+        .desc("The SPARQL server host's port. Default is " + DEFAULT_SERVICE_PORT)
         .hasArg()
         .longOpt("service_port")
         .type(Integer.class)
     );
     add(Option.builder(OPTION_QUERY_INCHI)
         .argName("QUERY_INCHI")
-        .desc("The InChI string to fetch synonyms for")
+        .desc("The InChI string to fetch synonyms for. " +
+            "For example, InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10) representing APAP")
         .hasArg()
         .longOpt("query_inchi")
         .type(String.class)
@@ -80,15 +85,8 @@ public class PubchemMeshSynonyms {
     HELP_FORMATTER.setWidth(100);
   }
 
-  // The Virtuoso SPARQL endpoint, lives by default on Chimay at port 8890
-  private static final String DEFAULT_SERVICE_HOST_IP = "10.0.20.19";
-  private static final String DEFAULT_SERVICE_PORT = "8890";
-
   private static final String CID_PATTERN = "CID\\d+";
   private static final String ENGLISH_LANG_TAG = "en";
-
-  // InChI string (representing APAP) to be used as example in the main method
-  private static final String TEST_INCHI = "InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)";
 
   private String sparqlService;
 
@@ -214,9 +212,9 @@ public class PubchemMeshSynonyms {
       return;
     }
 
-    String serviceHostIp = cl.getOptionValue(OPTION_SERVICE_HOST_IP, DEFAULT_SERVICE_HOST_IP);
+    String serviceHostIp = cl.getOptionValue(OPTION_SERVICE_HOST, DEFAULT_SERVICE_HOST);
     Integer servicePort = Integer.parseInt(cl.getOptionValue(OPTION_SERVICE_PORT, DEFAULT_SERVICE_PORT));
-    String queryInchi = cl.getOptionValue(OPTION_QUERY_INCHI, TEST_INCHI);
+    String queryInchi = cl.getOptionValue(OPTION_QUERY_INCHI);
 
     PubchemMeshSynonyms pubchemMeshSynonyms = new PubchemMeshSynonyms(serviceHostIp, servicePort);
     String cid = pubchemMeshSynonyms.fetchCIDFromInchi(queryInchi);
@@ -225,11 +223,13 @@ public class PubchemMeshSynonyms {
       LOGGER.info("Resulting Pubchem synonyms for %s are: %s", queryInchi, pubchemSynonyms);
       Map<MeshTermType, Set<String>> meshTerms = pubchemMeshSynonyms.fetchMeshTermsFromCID(cid);
       LOGGER.info("Resulting MeSH term s for %s are: %s", queryInchi, meshTerms);
+    } else {
+      LOGGER.info("No PubChem compound ID was found for the input InChI.");
     }
   }
 
   public PubchemMeshSynonyms() {
-    sparqlService = getServiceFromHostParams(DEFAULT_SERVICE_HOST_IP, Integer.parseInt(DEFAULT_SERVICE_PORT));
+    sparqlService = getServiceFromHostParams(DEFAULT_SERVICE_HOST, Integer.parseInt(DEFAULT_SERVICE_PORT));
   }
 
   public PubchemMeshSynonyms(String hostIp, Integer port) {
@@ -247,8 +247,9 @@ public class PubchemMeshSynonyms {
           .build();
 
     } catch (URISyntaxException e) {
-      LOGGER.error("An error occurred when trying to build the SPARQL service URI", e);
-      System.exit(1);
+      String msg = String.format("An error occurred when trying to build the SPARQL service URI: %s", e);
+      LOGGER.error(msg);
+      throw new RuntimeException(msg);
     }
     LOGGER.debug("Constructed the following URL for SPARQL service: %s", uri.toString());
     return uri != null? uri.toString(): null;
@@ -285,7 +286,7 @@ public class PubchemMeshSynonyms {
     Pattern p = Pattern.compile(CID_PATTERN);
     Matcher m = p.matcher(resourceName);
     String cid = null;
-    while (m.find()) {
+    if (m.find()) {
       cid = m.group(0);
     }
     return cid;
