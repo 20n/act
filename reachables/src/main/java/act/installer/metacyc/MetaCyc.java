@@ -6,7 +6,6 @@ import act.shared.Chemical;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -136,14 +135,13 @@ public class MetaCyc {
 
   // process only the source file whose names are passed
   public void process(List<String> files) {
-
-
-    FileInputStream f = null;
     for (String file : files) {
-      System.out.format("Processing biopax file %s\n", new File(this.sourceDir, file).getAbsolutePath());
-      HashMap<String, String> uniqueKeyToInChIMap = generateUniqueKeyToInChIMapping(new File(this.sourceDir, file));
+      final File INPUT_FILE = new File(this.sourceDir, file);
 
-      System.out.println("Processing: " + file);
+      System.out.format("Processing biopax file %s\n", INPUT_FILE.getAbsolutePath());
+      HashMap<String, String> uniqueKeyToInChIMap = generateUniqueKeyToInChIMapping(INPUT_FILE);
+
+      System.out.println("Processing: " + INPUT_FILE.getAbsolutePath());
       if (file.endsWith("leishcyc/biopax-level3.owl")) {
         System.out.println("Friendly reminder: Did you patch this leishcyc file with the " +
                 "diff in src/main/resources/leishcyc.biopax-level3.owl.diff to take care of " +
@@ -151,26 +149,20 @@ public class MetaCyc {
                 "then this will crash.");
       }
 
-      try {
-        f = new FileInputStream(this.sourceDir + "/" + file);
-      } catch (FileNotFoundException e) {
-        System.err.println("Could not find: " + file + ". Abort."); System.exit(-1);
+      try (FileInputStream f = new FileInputStream(INPUT_FILE)) {
+        // Both of these will crash the installer if they don't find, so we will get the values we want.
+        String organismName = getOrganismCommonName(new File(this.sourceDir, file).getParentFile());
+        String organismId = getOrganismNcbiId(new File(this.sourceDir, file).getParentFile());
+
+        // Construct the organism and read the owl file.
+        OrganismComposition o = new OrganismComposition(organismName, organismId, uniqueKeyToInChIMap);
+        new BioPaxFile(o).initFrom(f);
+        this.organismModels.put(file, o);
+
+      } catch(IOException e) {
+        System.err.println("Error while handling file : " + INPUT_FILE.getAbsolutePath() + ". Aborting.");
+        System.exit(-1);
       }
-
-      // Both of these will crash the installer if they don't find, so we will get the values we want.
-      String organismName = getOrganismCommonName(new File(this.sourceDir, file).getParentFile());
-      String organismId = getOrganismNcbiId(new File(this.sourceDir, file).getParentFile());
-
-      OrganismComposition o = new OrganismComposition(organismName, organismId, uniqueKeyToInChIMap);
-      new BioPaxFile(o).initFrom(f);
-      this.organismModels.put(file, o);
-
-      try {
-        f.close();
-      } catch (IOException e) {
-        System.err.println("Could not close: " + file);
-      }
-
     }
   }
 
