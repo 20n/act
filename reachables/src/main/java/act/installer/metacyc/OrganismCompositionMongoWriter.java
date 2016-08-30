@@ -824,9 +824,9 @@ public class OrganismCompositionMongoWriter {
 
       this.organism = s.getName().iterator().next();
 
-      this.organismDbId = db.getOrganismId((String) s.getName().toArray()[0]);
+      this.organismDbId = db.getOrganismId(this.organism);
       if (this.organismDbId == -1) {
-        this.organismDbId = db.submitToActOrganismNameDB((String) s.getName().toArray()[0]);
+        this.organismDbId = db.submitToActOrganismNameDB(this.organism);
       }
     }
 
