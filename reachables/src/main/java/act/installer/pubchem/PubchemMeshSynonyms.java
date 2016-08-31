@@ -43,7 +43,7 @@ public class PubchemMeshSynonyms {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(PubchemMeshSynonyms.class);
 
-  public static final String OPTION_SERVICE_HOST = "h";
+  public static final String OPTION_SERVICE_HOST = "s";
   public static final String OPTION_SERVICE_PORT = "p";
   public static final String OPTION_QUERY_INCHI = "i";
 
@@ -59,14 +59,14 @@ public class PubchemMeshSynonyms {
         .argName("SERVICE_HOST")
         .desc("The SPARQL server host. Default is " + DEFAULT_SERVICE_HOST)
         .hasArg()
-        .longOpt("service_host")
+        .longOpt("service-host")
         .type(String.class)
     );
     add(Option.builder(OPTION_SERVICE_PORT)
         .argName("SERVICE_PORT")
         .desc("The SPARQL server host's port. Default is " + DEFAULT_SERVICE_PORT)
         .hasArg()
-        .longOpt("service_port")
+        .longOpt("service-port")
         .type(Integer.class)
     );
     add(Option.builder(OPTION_QUERY_INCHI)
@@ -74,7 +74,8 @@ public class PubchemMeshSynonyms {
         .desc("The InChI string to fetch synonyms for. " +
             "For example, InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10) representing APAP")
         .hasArg()
-        .longOpt("query_inchi")
+        .required()
+        .longOpt("query-inchi")
         .type(String.class)
     );
   }};
@@ -247,7 +248,7 @@ public class PubchemMeshSynonyms {
           .build();
 
     } catch (URISyntaxException e) {
-      String msg = String.format("An error occurred when trying to build the SPARQL service URI: %s", e);
+      String msg = String.format("An error occurred when trying to build the SPARQL service URI: %s", e.getMessage());
       LOGGER.error(msg);
       throw new RuntimeException(msg);
     }
