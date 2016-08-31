@@ -1,12 +1,17 @@
 package act.installer.bing
 
-import squants.time.{Days, Time}
+import squants.time.Time
+import squants.time.Days
+
 import squants.mass.Mass
 import squants.mass.Kilograms
 import squants.space.Volume
 import squants.space.Litres
 import squants.Dimensionless
-import squants.market.{Money, Price, USD}
+
+import squants.market.Money
+import squants.market.USD
+import squants.market.Price
 import squants.Ratio
 import squants.LikeRatio
 import squants.thermal.Temperature
@@ -278,7 +283,8 @@ class InvestModel {
     def curve(x: Double) = { 0.02 * sinh(8 * x - 3.9) + 0.5 }
 
     // From observations, we know titer is the predominant cost,
-    // For now, we return the average of the normalized yield and titer values
+    // For now, we compute a return based on the average of the normalized yield and titer values
+    // TODO: we could potentially skew that mean towards titer (with a weighted mean) to reflect its predominance
     curve((normTiter + normYield) / 2)
   }
 
@@ -369,8 +375,6 @@ object ExploreRange {
   private val logger = LogManager.getLogger(getClass.getName)
 
   def main(args: Array[String]) {
-
-
     val cl = parseCommandLineOptions(args)
 
     // market price USD/ton of product
@@ -419,17 +423,15 @@ object ExploreRange {
     }
   }
 
-  def getOutcomeVsYieldTable(titer: Double, price: Double, m: String, loc: String): String = {
+  def getOutcomeVsYieldTable(titer: Double, price: Double, mode: String, location: String): String = {
 
     val t = Titer(titer grams, 1 liters)
-
     val p = USD(price)
-    val mode = m match {
+    val m = mode match {
       case "CMOS" => Defaults.CMOS
       case _ => Defaults.BYOP
     }
-
-    val location = loc match {
+    val l = location match {
       case "GER" => Defaults.GER
       case "ITL" => Defaults.ITL
       case "IND" => Defaults.IND
@@ -439,17 +441,16 @@ object ExploreRange {
       case _ => Defaults.GER
     }
 
-    val hdr = List("Yield", "NPV", "ROIPercent", "COGS", "InvestM", "InvestY").mkString("\t")
-
     val buf = new StringBuilder
-    buf ++= hdr
+    val header = List("Yield", "NPV", "ROIPercent", "COGS", "InvestM", "InvestY").mkString("\t")
+    buf ++= header
     buf ++= "\n"
 
     for (yieldv <- 1.0 to 100 by 1.0) {
       val y = Yield(yieldv grams, 100 grams)
       val investment: (Money, Time) = investmodel.getInvestmentRequired(y, t)
-      val cogs: Price[Mass] = costmodel.getPerTonCost(y, t, mode, location)
-      val roi: (Money, Dimensionless) = roimodel.getROI(y, t, p, mode, location)
+      val cogs: Price[Mass] = costmodel.getPerTonCost(y, t, m, l)
+      val roi: (Money, Dimensionless) = roimodel.getROI(y, t, p, m, l)
 
       val yieldPc = y.ratio * 100
       val investMillions = investment._1.value / 1e6
@@ -500,7 +501,7 @@ object ExploreRange {
         required(true).
         hasArg.
         longOpt("market-price").
-        desc("The market price"),
+        desc("The market price, in $$/T, used as a model input."),
 
       CliOption.builder(OPTION_MODE).
         required(true).
@@ -512,7 +513,7 @@ object ExploreRange {
         required(true).
         hasArg.
         longOpt("output-format").
-        desc("The output format, one of Readable or TSV "),
+        desc("The output format, one of Readable or TSV."),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
