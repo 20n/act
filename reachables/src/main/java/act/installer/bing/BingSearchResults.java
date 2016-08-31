@@ -52,7 +52,7 @@ public class BingSearchResults {
   private static final Integer TOP_N = 50;
   
   // The centralized location for caching Bing Search queries.
-  private static final String BING_CACHE_HOST = "chimay";
+  private static final String BING_CACHE_HOST = "bing-cache";
   private static final int BING_CACHE_MONGO_PORT = 27777;
   private static final String BING_CACHE_MONGO_DATABASE = "bingsearch";
 
