@@ -9,7 +9,7 @@ import org.scalatest.time.SpanSugar._
 
 class ShellWrapperTest extends FlatSpec with Matchers with TimeLimitedTests with BeforeAndAfterEach {
   override val defaultTestSignaler = ThreadSignaler
-  val timeLimit = 5 seconds
+  val timeLimit = 15 seconds
 
   override def beforeEach(): Unit = {
     JobManager.setVerbosity(0)

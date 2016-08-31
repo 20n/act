@@ -70,6 +70,10 @@ abstract class Job(name: String) {
 
   private def status: StatusManager = internalState.statusManager
 
+  def getName: String = {
+    this.name
+  }
+
   def runNextJob(): Unit = {
     internalState.runManager.runNextJob(internalState.dependencyManager)
   }
@@ -136,10 +140,6 @@ abstract class Job(name: String) {
 
   override def toString: String = {
     s"[Job]<$getName>"
-  }
-
-  def getName: String = {
-    this.name
   }
 
   protected def markAsSuccess(): Unit = {
@@ -320,7 +320,7 @@ class DependencyManager {
     * Checks to make sure we aren't waiting on anymore jobs.
     * If we aren't, removes the first element of the jobBuffer and runs all jobs in that list.
     */
-  def runNextJobIfReady(currentJob: Job): Unit = {
+  def runNextJobIfReady(currentJob: Job): Unit = synchronized {
     if (waitingOnReturnJobs) return
 
     // Start next batch if exists
@@ -396,9 +396,9 @@ class RunManager(job: Job) {
 
   def returnJob: Option[Job] = _returnJob
 
-  def returnJob_=(value: Job): Unit = _returnJob = Option(value)
-
   def returnJob_=(value: Option[Job]): Unit = _returnJob = value
+
+  def returnJob_=(value: Job): Unit = _returnJob = Option(value)
 
   def hasReturnJob: Boolean = _returnJob.isDefined
 
@@ -501,6 +501,14 @@ class StatusManager {
     getJobStatus == StatusCodes.Success
   }
 
+  def getJobStatus: String = synchronized {
+    this.status
+  }
+
+  def setJobStatus(newStatus: String): Unit = synchronized {
+    this.status = newStatus
+  }
+
   def isFailed: Boolean = {
     getJobStatus.equals(StatusCodes.Failure) |
       getJobStatus.equals(StatusCodes.ParentProcessFailure) |
@@ -513,14 +521,6 @@ class StatusManager {
 
   def isRunning: Boolean = {
     getJobStatus == StatusCodes.Running
-  }
-
-  def getJobStatus: String = synchronized {
-    this.status
-  }
-
-  def setJobStatus(newStatus: String): Unit = synchronized {
-    this.status = newStatus
   }
 
   override def toString: String = {
