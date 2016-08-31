@@ -31,7 +31,8 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
   public static final Boolean THROW_OUT_MOLECULE = false;
   public static final Integer TIME_TOLERANCE_IN_SECONDS = 5;
   public static final Integer REPRESENTATIVE_INDEX = 0;
-  public static final Double LOWEST_POSSIBLE_VALUE_FOR_METRIC = 0.0;
+  // The peak statistic could be intensity, SNR or time.
+  public static final Double LOWEST_POSSIBLE_VALUE_FOR_PEAK_STATISTIC = 0.0;
   public static final String OPTION_INPUT_FILES = "i";
   public static final String OPTION_OUTPUT_FILE = "o";
   public static final String OPTION_MIN_INTENSITY_THRESHOLD = "n";
@@ -40,7 +41,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
   public static final String OPTION_GET_IONS_SUPERSET = "f";
   public static final String OPTION_JSON_FORMAT = "j";
   public static final String OPTION_MIN_OF_REPLICATES = "m";
-  public static final String OPTION_FILTER_BY_THRESHOLD = "p";
+  public static final String OPTION_THRESHOLD_ANALYSIS = "p";
   public static final String OPTION_FILTER_BY_IONS = "k";
   public static final String HEADER_INCHI = "Inchi";
   public static final String HEADER_MASS = "Monoisotopic Mass";
@@ -96,10 +97,10 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
         .desc("Get the min intensities, SNR and times of multiple replicates")
         .longOpt("ions-superset")
     );
-    add(Option.builder(OPTION_FILTER_BY_THRESHOLD)
-        .argName("filter by threshold")
-        .desc("Filter files by threshold amounts")
-        .longOpt("filter-threshold")
+    add(Option.builder(OPTION_THRESHOLD_ANALYSIS)
+        .argName("threshold analysis")
+        .desc("Do threshold analysis")
+        .longOpt("threshold-analysis")
     );
     add(Option.builder(OPTION_FILTER_BY_IONS)
         .argName("filter by ions")
@@ -214,9 +215,9 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
           return Pair.of(result, DO_NOT_THROW_OUT_MOLECULE);
         } else {
           // TODO: We can just throw out such molecules.
-          result.setSnr(LOWEST_POSSIBLE_VALUE_FOR_METRIC);
-          result.setIntensity(LOWEST_POSSIBLE_VALUE_FOR_METRIC);
-          result.setTime(LOWEST_POSSIBLE_VALUE_FOR_METRIC);
+          result.setSnr(LOWEST_POSSIBLE_VALUE_FOR_PEAK_STATISTIC);
+          result.setIntensity(LOWEST_POSSIBLE_VALUE_FOR_PEAK_STATISTIC);
+          result.setTime(LOWEST_POSSIBLE_VALUE_FOR_PEAK_STATISTIC);
 
           return Pair.of(result, DO_NOT_THROW_OUT_MOLECULE);
         }
@@ -245,14 +246,12 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
       return;
     }
 
-    if (cl.hasOption(OPTION_FILTER_BY_THRESHOLD)) {
+    if (cl.hasOption(OPTION_THRESHOLD_ANALYSIS)) {
 
       // We need to set this variable as a final since it is used in a lambda function below.
-      final Set<String> ions;
+      final Set<String> ions = new HashSet<>();
       if (cl.hasOption(OPTION_FILTER_BY_IONS)) {
-        ions = new HashSet<>(Arrays.asList(cl.getOptionValues(OPTION_FILTER_BY_IONS)));
-      } else {
-        ions = new HashSet<>();
+        ions.addAll(Arrays.asList(cl.getOptionValues(OPTION_FILTER_BY_IONS)));
       }
 
       Function<List<IonAnalysisInterchangeModel.HitOrMiss>, Pair<IonAnalysisInterchangeModel.HitOrMiss, Boolean>>
@@ -272,6 +271,8 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
         IonAnalysisInterchangeModel.HitOrMiss molecule = new IonAnalysisInterchangeModel.HitOrMiss(
             representationMolecule.getInchi(), ion, snr, time, intensity, representationMolecule.getPlot());
 
+        // If the intensity, snr and time pass the thresholds set AND the ion of the peak molecule is within the set of
+        // ions we want extracted, we keep the molecule. Else, we throw it away.
         if (intensity > minIntensityThreshold && snr > minSnrThreshold && time > minTimeThreshold &&
             (ions.size() == 0 || ions.contains(ion))) {
           return Pair.of(molecule, DO_NOT_THROW_OUT_MOLECULE);

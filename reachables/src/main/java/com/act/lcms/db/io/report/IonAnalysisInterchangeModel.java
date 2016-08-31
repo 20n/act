@@ -137,11 +137,7 @@ public class IonAnalysisInterchangeModel {
         // We add a small amount to the ceiling case to address a case where the power is an exact number, say 4.0. Then
         // the floor and ceiling with be 4.0, whereas we want them to be 4.0 and 5.0, respectively.
         Pair<Double, Double> key = Pair.of(Math.pow(10.0, Math.floor(power)), Math.pow(10.0, Math.ceil(power + Double.MIN_VALUE)));
-        if (rangeToHitCount.containsKey(key)) {
-          rangeToHitCount.put(key, rangeToHitCount.get(key) + 1);
-        } else {
-          rangeToHitCount.put(key, 1);
-        }
+        rangeToHitCount.compute(key, (k, v) -> (v == null) ? 1 : v + 1);
       }
     }
 
@@ -225,6 +221,8 @@ public class IonAnalysisInterchangeModel {
       Function<List<HitOrMiss>, Pair<HitOrMiss, Boolean>> filterAndTransformFunction)
       throws IOException {
 
+    // Since all replicates have the same number of peak results, we can use the first model as a representative model
+    // for the total num of mass charges.
     int totalNumberOfMassCharges = replicateModels.get(0).getResults().size();
     IonAnalysisInterchangeModel resultModel = new IonAnalysisInterchangeModel();
     List<ResultForMZ> resultsForMZs = new ArrayList<>();
@@ -236,6 +234,7 @@ public class IonAnalysisInterchangeModel {
      */
 
     // Iterate through every mass charge
+    // TODO: Consider using a parallel stream here
     for (int i = 0; i < totalNumberOfMassCharges; i++) {
       ResultForMZ representativeMZ = replicateModels.get(0).getResults().get(i);
       Double representativeMassCharge = representativeMZ.getMz();

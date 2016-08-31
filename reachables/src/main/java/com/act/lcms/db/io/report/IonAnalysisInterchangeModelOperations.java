@@ -49,7 +49,7 @@ public class IonAnalysisInterchangeModelOperations {
       add(Option.builder(OPTION_LOG_DISTRIBUTION)
           .argName("log-distribution")
           .desc("This option is for calculating the log distribution of a metric (SNR, Intensity, Time) over molecule" +
-              "counts in the model")
+              " counts in the model. One of the metrics needs to be supplied for this analysis to work.")
           .hasArg()
           .longOpt("log-distribution")
           .required()
