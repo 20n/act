@@ -1,24 +1,16 @@
 package act.installer.bing
 
-import squants.time.Time
-import squants.time.Days
-
+import squants.time.{Days, Time}
 import squants.mass.Mass
 import squants.mass.Kilograms
 import squants.space.Volume
 import squants.space.Litres
 import squants.Dimensionless
-
-import squants.market.Money
-import squants.market.USD
-import squants.market.Price
+import squants.market.{Money, Price, USD}
 import squants.Ratio
 import squants.LikeRatio
 import squants.thermal.Temperature
-import squants.Quantity
-import squants.mass.Moles
 import squants.mass.Density
-import squants.mass.ChemicalAmount
 
 // these provide implicit converters such as
 // (XX dollars) (XX days) (XX kg) (XX liters) etc.
@@ -28,8 +20,6 @@ import squants.space.VolumeConversions.VolumeConversions
 import squants.DimensionlessConversions.DimensionlessConversions
 import squants.market.MoneyConversions.MoneyConversions
 import squants.thermal.TemperatureConversions.TemperatureConversions
-import squants.energy.PowerConversions.PowerConversions
-import squants.mass.ChemicalAmountConversions.ChemicalAmountConversions
 
 // Getting (XX millions) i.e., a dimensionless multiplier has
 // different exporting consideration than the other conversions above
@@ -38,7 +28,6 @@ import squants.mass.ChemicalAmountConversions.ChemicalAmountConversions
 import squants.DimensionlessConversions._
 
 import scala.math.sinh
-import java.lang.UnsupportedOperationException
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.logging.log4j.LogManager
 
@@ -78,15 +67,6 @@ class CostModel {
   def literDay(v: Volume, t: Time): Double = {
     v.toLitres * t.toDays
   }
-  sealed trait Location { def name: String; def rentalRate: Money }
-  def cmoRate(centsPerLiterDay: Double): Money = { USD(centsPerLiterDay / 100.00) }
-  // See email thread "Model" between Saurabh, Jeremiah, Tim Revak for cost quotes from various places
-  case object GER extends Location { val name = "Germany"; val rentalRate = cmoRate(5.0) }
-  case object ITL extends Location { val name = "Italy"; val rentalRate = cmoRate(8.0) }
-  case object IND extends Location { val name = "India"; val rentalRate = cmoRate(10.0) }
-  case object CHN extends Location { val name = "China"; val rentalRate = cmoRate(5.3) }
-  case object MID extends Location { val name = "Midwest"; val rentalRate = cmoRate(8.3) }
-  case object MEX extends Location { val name = "Mexico"; val rentalRate = cmoRate(8.3) }
 
   /************************************ Fermentation ****************************************/
   // Productivity and Titer
@@ -159,16 +139,18 @@ class CostModel {
   var operationMode: Defaults.OperationMode = Defaults.defaultOperationMode
   var fermRunTime: Time = defaultFermRunTime;
   var brothMassPerBatch: Mass = defaultBrothMassPerBatch
-  var location: Location = GER;
+  var location: Defaults.Location = Defaults.defaultLocation;
 
   def getPerTonCost(y: Double, t: Double): Double = {
-    val cost: Price[Mass] = getPerTonCost(Yield(y grams, 100 grams), Titer(t grams, 1 litres), Defaults.defaultOperationMode)
+    val cost: Price[Mass] = getPerTonCost(Yield(y grams, 100 grams), Titer(t grams, 1 litres),
+      Defaults.defaultOperationMode, Defaults.defaultLocation)
     cost.convertToBase(1 tonnes).value
   }
 
-  def getPerTonCost(yield_is: Yield, titer_is: Titer, mode: Defaults.OperationMode): Price[Mass] = {
+  def getPerTonCost(yield_is: Yield, titer_is: Titer, mode: Defaults.OperationMode, location_is: Defaults.Location): Price[Mass] = {
     strainTiter = titer_is
     strainYield = yield_is
+    location = location_is
     val fermCost = mode match {
       case Defaults.CMOS => costWithCMOs
       case Defaults.BYOP => costWithBYOPlant
@@ -264,6 +246,17 @@ object Defaults {
   case object CMOS extends OperationMode
   case object BYOP extends OperationMode
   val defaultOperationMode: OperationMode = CMOS // BYOP
+
+  sealed trait Location { def name: String; def rentalRate: Money }
+  def cmoRate(centsPerLiterDay: Double): Money = { USD(centsPerLiterDay / 100.00) }
+  // See email thread "Model" between Saurabh, Jeremiah, Tim Revak for cost quotes from various places
+  case object GER extends Location { val name = "Germany"; val rentalRate = cmoRate(5.0) }
+  case object ITL extends Location { val name = "Italy"; val rentalRate = cmoRate(8.0) }
+  case object IND extends Location { val name = "India"; val rentalRate = cmoRate(10.0) }
+  case object CHN extends Location { val name = "China"; val rentalRate = cmoRate(5.3) }
+  case object MID extends Location { val name = "Midwest"; val rentalRate = cmoRate(8.3) }
+  case object MEX extends Location { val name = "Mexico"; val rentalRate = cmoRate(8.3) }
+  val defaultLocation: Location = GER
 }
 
 class InvestModel {
@@ -284,10 +277,9 @@ class InvestModel {
     // a resonable approximation would be 0.02\sinh(8x-3.9)+0.5 (between (0,0) and (1,1)
     def curve(x: Double) = { 0.02 * sinh(8 * x - 3.9) + 0.5 }
 
-    // TODO: return a convolved outcome based on titer AND yield
     // From observations, we know titer is the predominant cost,
-    // so for now we compute a return curve on titer
-    curve(normTiter)
+    // For now, we return the average of the normalized yield and titer values
+    curve((normTiter + normYield) / 2)
   }
 
   def cost(normYield: Double, normTiter: Double): Money = {
@@ -331,14 +323,16 @@ class ROIModel {
     discountedProfits.reduce(_ + _)
   }
 
-  def getROI(): (Money, Dimensionless) = getROI(Defaults.defaultYield, Defaults.defaultTiter, Defaults.defaultPricePerTon, Defaults.defaultOperationMode)
+  def getROI(): (Money, Dimensionless) = getROI(Defaults.defaultYield, Defaults.defaultTiter,
+    Defaults.defaultPricePerTon, Defaults.defaultOperationMode, Defaults.defaultLocation)
 
-  def getROI(yield_is: Yield, titer_is: Titer, marketPricePerTon: Money, mode: Defaults.OperationMode): (Money, Dimensionless) = {
+  def getROI(yield_is: Yield, titer_is: Titer, marketPricePerTon: Money,
+             mode: Defaults.OperationMode, location: Defaults.Location): (Money, Dimensionless) = {
     strainTiter = titer_is
     strainYield = yield_is
     productPrice = marketPricePerTon
 
-    val productionPrice: Price[Mass] = new CostModel().getPerTonCost(yield_is, titer_is, mode)
+    val productionPrice: Price[Mass] = new CostModel().getPerTonCost(yield_is, titer_is, mode, location)
     val productionPricePerTon: Money = productionPrice * (1 tonnes)
     val profitPerTon: Money = marketPricePerTon - productionPricePerTon
     val eventualProfit: Money = profitPerTon * BigDecimal(volume.value)
@@ -349,7 +343,7 @@ class ROIModel {
     val stepNum = yearsToFullScale
     val profitRamp: List[Money] = (0 to stepNum - 1).toList.map(BigDecimal(_) * step + startingProfit)
 
-    val investmentNeed: (Money, Time) = new InvestModel().getInvestment()
+    val investmentNeed: (Money, Time) = new InvestModel().getInvestmentRequired(strainYield, strainTiter)
 
     val invested: Money = investmentNeed._1
     val npv = getNPV(invested, profitRamp)
@@ -358,7 +352,6 @@ class ROIModel {
    
     (npv, roi)
   }
-
 }
 
 object ExploreRange {
@@ -376,6 +369,8 @@ object ExploreRange {
   private val logger = LogManager.getLogger(getClass.getName)
 
   def main(args: Array[String]) {
+
+
     val cl = parseCommandLineOptions(args)
 
     // market price USD/ton of product
@@ -401,8 +396,8 @@ object ExploreRange {
         val y = Yield(yieldv grams, 100 grams)
         val t = Titer(titerv grams, 1 litres)
         val investment: (Money, Time) = investmodel.getInvestmentRequired(y, t)
-        val cogs: Price[Mass] = costmodel.getPerTonCost(y, t, mode)
-        val roi: (Money, Dimensionless) = roimodel.getROI(y, t, p, mode)
+        val cogs: Price[Mass] = costmodel.getPerTonCost(y, t, mode, Defaults.defaultLocation)
+        val roi: (Money, Dimensionless) = roimodel.getROI(y, t, p, mode, Defaults.defaultLocation)
 
         outformat match {
           case OutHuman => {
@@ -422,6 +417,51 @@ object ExploreRange {
         }
       }
     }
+  }
+
+  def getOutcomeVsYieldTable(titer: Double, price: Double, m: String, loc: String): String = {
+
+    val t = Titer(titer grams, 1 liters)
+
+    val p = USD(price)
+    val mode = m match {
+      case "CMOS" => Defaults.CMOS
+      case _ => Defaults.BYOP
+    }
+
+    val location = loc match {
+      case "GER" => Defaults.GER
+      case "ITL" => Defaults.ITL
+      case "IND" => Defaults.IND
+      case "CHN" => Defaults.CHN
+      case "MID" => Defaults.MID
+      case "MEX" => Defaults.MEX
+      case _ => Defaults.GER
+    }
+
+    val hdr = List("Yield", "NPV", "ROIPercent", "COGS", "InvestM", "InvestY").mkString("\t")
+
+    val buf = new StringBuilder
+    buf ++= hdr
+    buf ++= "\n"
+
+    for (yieldv <- 1.0 to 100 by 1.0) {
+      val y = Yield(yieldv grams, 100 grams)
+      val investment: (Money, Time) = investmodel.getInvestmentRequired(y, t)
+      val cogs: Price[Mass] = costmodel.getPerTonCost(y, t, mode, location)
+      val roi: (Money, Dimensionless) = roimodel.getROI(y, t, p, mode, location)
+
+      val yieldPc = y.ratio * 100
+      val investMillions = investment._1.value / 1e6
+      val investYears = investment._2.value / 365
+      val cogsForTon = cogs.convertToBase(1.0 tonnes).value
+      val npv = roi._1.value / 1e6
+      val roiPc = roi._2.value * 100
+
+      buf ++= f"$yieldPc%2.2f\t$npv%.2f\t$roiPc%.2f\t$cogsForTon%.2f\t$investMillions%.2f\t$investYears%.2f"
+      buf ++= "\n"
+    }
+    buf.toString
   }
 
   private val OPTION_MARKET_PRICE = "p"
@@ -460,8 +500,7 @@ object ExploreRange {
         required(true).
         hasArg.
         longOpt("market-price").
-        desc("The EC number to query against in format of X.X.X.X, " +
-          "such as the value 6.1.1 will match 6.1.1.1 as well as 6.1.1.2"),
+        desc("The market price"),
 
       CliOption.builder(OPTION_MODE).
         required(true).
