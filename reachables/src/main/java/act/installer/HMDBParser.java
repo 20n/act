@@ -13,21 +13,31 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
+import org.xml.sax.SAXException;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLInputFactory;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class HMDBParser {
   private static final Logger LOGGER = LogManager.getFormatterLogger(HMDBParser.class);
 
   private static final boolean ENABLE_XML_STREAM_TEXT_COALESCING = true;
+
+  /* HMDB files all have five digits from 1 through 61388 as of the initial writing of this class.  I've allowed for an
+   * extra digit in case the next release of the DB exceeds 100k metabolites.  We also log rejected files just in case.
+   */
+  private static final Pattern HMDB_FILE_REGEX = Pattern.compile("^HMDB\\d{5,6}\\.xml$");
 
   private enum HMDB_XPATH {
     // Names
@@ -221,5 +231,56 @@ public class HMDBParser {
     chem.putRef(Chemical.REFS.HMDB, meta);
 
     return chem;
+  }
+
+  protected List<File> findHMDBFilesInDirectory(File dir) throws IOException {
+    List<File> results = new ArrayList<>();
+    for (File file : dir.listFiles()) { // Do our own filtering so we can log rejects, of which we expect very few.
+      if (HMDB_FILE_REGEX.matcher(file.getName()).matches()) {
+        results.add(file);
+      } else {
+        LOGGER.warn("Found non-conforming HMDB file in directory %s: %s", dir.getAbsolutePath(), file.getName());
+      }
+    }
+    return results;
+  }
+
+  public void run(File inputDir) throws IOException, IllegalArgumentException {
+    if (inputDir == null || !inputDir.isDirectory()) {
+      String msg = String.format("Unable to read input directory at %s",
+          inputDir == null ? "null" : inputDir.getAbsolutePath());
+      LOGGER.error(msg);
+      throw new RuntimeException(msg);
+    }
+
+    List<File> files = findHMDBFilesInDirectory(inputDir);
+
+    for (File file : files) {
+      LOGGER.debug("Processing HMDB XML file %s", file.getAbsolutePath());
+
+      /* Promote our XML-specific exceptions to generic IllegalArgumentExceptions to reduce error handling surface
+       * area for the caller. */
+      Document d;
+      try {
+        d = documentBuilder.parse(file);
+      } catch (SAXException e) {
+        String msg = String.format("Unable to parse XML file at %s: %s", file.getAbsolutePath(), e.getMessage());
+        throw new IllegalArgumentException(msg, e);
+      }
+
+      Chemical chem;
+      try {
+        chem = extractChemicalFromXMLDocument(d);
+      } catch (JaxenException e) {
+        String msg = String.format("Unable to extract features from XML file at %s: %s",
+            file.getAbsolutePath(), e.getMessage());
+        throw new IllegalArgumentException(msg, e);
+      }
+
+      // submitToActChemicalDB creates or merges as necessary.
+      Long id = db.getNextAvailableChemicalDBid();
+      db.submitToActChemicalDB(chem, id);
+      LOGGER.debug("Submitted chemical %d to the DB", id);
+    }
   }
 }
