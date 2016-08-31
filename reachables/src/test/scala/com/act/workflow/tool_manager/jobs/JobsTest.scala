@@ -8,7 +8,7 @@ import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
 
 class JobsTest extends FlatSpec with Matchers with BeforeAndAfterEach with TimeLimitedTests {
   override val defaultTestSignaler = ThreadSignaler
-  val timeLimit = 5 seconds
+  val timeLimit = 15 seconds
 
   override def beforeEach(): Unit = {
     JobManager.setVerbosity(0)

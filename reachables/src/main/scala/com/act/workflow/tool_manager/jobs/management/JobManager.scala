@@ -17,7 +17,7 @@ object JobManager {
   // Lock for job manager
   private var numberLock = new AtomicLatch()
 
-  private var jobCompleteOrdering = new ListBuffer[Job]
+  private var jobCompleteOrdering = new ListBuffer[Job]()
 
   private var jobToAwaitFor: Option[Job] = None
 
