@@ -112,7 +112,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
 
     // Score inchis by the clusters
     val inchisCorpus = new L2InchiCorpus(inchis)
-    val results = scoreInchiCorpus(clusteredSars, inchisCorpus)
+    val results = scoreInchiList(clusteredSars, inchisCorpus)
 
     sortInDescendingOrderAndWriteToTsv(results, outputFile)
   }
@@ -153,7 +153,6 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     }
     writer.close()
   }
-
   /**
     * Takes in a set of sequence IDs and creates a Sar Tree from the
     *
@@ -172,14 +171,16 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
   }
 
   /**
-    * Takes in every cluster then scores and sums them.
+    * Takes in every cluster
     *
     * @param sarTreeClusters A map of all the clusters and their respective sar tree
     * @param inchiCorpus     The inchi corpus we are scoring
     *
-    * @return A map of Inchi -> Score, where the score is a single Double.
+    * @return
     */
-  def scoreInchiCorpus(sarTreeClusters: Map[Int, SarTree], inchiCorpus: L2InchiCorpus): Map[String, Double] = {
+  def scoreInchiList(sarTreeClusters: Map[Int, SarTree], inchiCorpus: L2InchiCorpus): Map[String, Double] = {
+    val sarTrees = sarTreeClusters.values toList
+
     // Score each cluster and reduce the scoring down into the sum of all the clusters
     val combinedInchiScore: ParSeq[ParMap[String, Double]] = sarTreeClusters.par.map({ case (key, value) =>
       logger.info(s"Started scoring corpus $key.")
@@ -209,11 +210,12 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
   def scoreCorpusAgainstSarTree(sarTree: SarTree, inchiCorpus: L2InchiCorpus): ParMap[String, Double] = {
     val inchiToMoleculeMap: Map[String, Molecule] = (inchiCorpus.getInchiList zip inchiCorpus.getMolecules) toMap
 
-    val inchiScorer: Molecule => Double = scoreInchiAgainstSarSubtree(sarTree, sarTree.getRootNodes.toList) _
-
     val scoredInchis: ParMap[String, Double] = inchiToMoleculeMap.par.map {
-      case (key, value) => (key, inchiScorer(value))
+      case (key, value) => (key, scoreInchiAgainstSarTree(sarTree, sarTree.getRootNodes.toList, value))
     }
+
+    scoredInchis
+  }
 
     scoredInchis
   }
@@ -227,31 +229,29 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     *
     * @return
     */
-  def scoreInchiAgainstSarSubtree(sarTree: SarTree, currentLevelList: Seq[SarTreeNode])(queryMolecule: Molecule): Double = {
+  def scoreInchiAgainstSarTree(sarTree: SarTree, currentLevelList: Seq[SarTreeNode], queryMolecule: Molecule): Double = {
     // Arbitrary score value
     val baseAdd = 10.0
 
-    // Step 1: Figure out if a given node is a hit or a miss
-    def scoreMolecule(sarTreeNode: SarTreeNode): Double = {
-      val matchesSar = sarTreeNode.getSar.test(List[Molecule](queryMolecule))
-      baseAdd * (if (matchesSar) scoreHit(sarTreeNode) else scoreMiss(sarTreeNode))
-    }
-
+    // Score if SAR tree node is a hit
     def scoreHit(sarTreeNode: SarTreeNode): Double = {
       val similarity = ChemicalSimilarity.calculateSimilarity(queryMolecule, sarTreeNode.getSubstructure)
 
-      // If a tree node doesn't have children, it is a leaf and therefore a chemical used to construct the SAR tree.
-      val sarTreeChildren: Seq[SarTreeNode] = sarTree.getChildren(sarTreeNode).toList
-
-      // Handle the leaf node uniquely.  Leaf node occurs when the children are empty.
-      if (sarTreeChildren.isEmpty) {
-        // Similarity 1 means we give full points, otherwise we give a quickly 
-        // decreasing amount as the molecules increase in distance from each other.
-        baseAdd * Math.pow(similarity, 2.0)
-      } else {
-        // Adding one adds a bit of weight to traversal (Deeper -> more score)
-        1 + scoreInchiAgainstSarSubtree(sarTree, sarTreeChildren)(queryMolecule)
+      def scoreExactMatch(): Double = {
+        baseAdd * baseAdd
       }
+      def scoreSubstrateIsSubstructureOfQuery(): Double = {
+        -(1 - similarity)
+      }
+
+      val sarTreeChildren: Seq[SarTreeNode] = sarTree.getChildren(sarTreeNode).toList
+      val isLeafNode = sarTreeChildren.isEmpty
+
+      if (isLeafNode) {
+        return if (similarity >= 1) scoreExactMatch() else scoreSubstrateIsSubstructureOfQuery()
+      }
+
+      1 + scoreInchiAgainstSarTree(sarTree, sarTreeChildren, queryMolecule)
     }
 
     // Score if SAR tree node is a miss
@@ -259,7 +259,13 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
       ChemicalSimilarity.calculateSimilarity(queryMolecule, sarTreeNode.getSubstructure)
     }
 
-    // Score every molecule and return the sum of their scores.
-    currentLevelList.map(scoreMolecule).sum
+    // Figure out where to put the SAR tree node.
+    def scoreMolecule(sarTreeNode: SarTreeNode): Double = {
+      val matchesSar = sarTreeNode.getSar.test(List[Molecule](queryMolecule))
+
+      baseAdd * (if (matchesSar) scoreHit(sarTreeNode) else scoreMiss(sarTreeNode))
+    }
+
+    currentLevelList map scoreMolecule sum
   }
 }

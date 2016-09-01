@@ -1,90 +1,52 @@
 package com.act.analysis.chemicals
 
-import chemaxon.descriptors.{SimilarityCalculator, SimilarityCalculatorFactory}
+import chemaxon.descriptors.{CFParameters, ChemicalFingerprint, SimilarityCalculator, SimilarityCalculatorFactory}
 import chemaxon.struc.Molecule
-import com.act.analysis.chemicals.molecules.MoleculeConversions
-import org.apache.log4j.LogManager
+
+import scala.collection.concurrent.TrieMap
 
 object ChemicalSimilarity {
-  private val logger = LogManager.getLogger(getClass)
 
-  private implicit def stringToMolecule(s: String): Molecule = MoleculeConversions.stringToMolecule(s)
+  private val cfp = new CFParameters()
+  cfp.setLength(2048)
+  cfp.setBondCount(15)
+  cfp.setBitCount(4)
 
-  def calculatorSettings: Option[String] = _calculatorSettings
-  private def calculatorSettings_=(value: String): Unit = _calculatorSettings = Option(value)
-  var _calculatorSettings: Option[String] = None
+  // Instead of remaking for all SARs, we cache our calculators on by their query chemicals.
+  private val factoryCache = TrieMap[Molecule, SimilarityCalculator[Array[Int]]]()
+  private val chemicalCache = TrieMap[Molecule, Array[Int]]()
 
-  /**
-    * @param userCalculatorSettings The settings with which to apply the similarity calculation with
-    *                             The current default value was chosen as Tanimoto
-    *                             gives no favor to the query vs target molecule.
-    */
-  def init(userCalculatorSettings: String = "TANIMOTO"): Unit = {
-    require(calculatorSettings.isEmpty, "Chemical similarity calculator was already initialized.")
-    calculatorSettings = userCalculatorSettings
-    logger.info(s"Using the following settings for Similarity calculations: $userCalculatorSettings")
+  def calculateSimilarity(query: Molecule, target: Molecule): Double = {
+    val cachedSimCalc = factoryCache.get(query)
+
+    val simCalc: SimilarityCalculator[Array[Int]] =
+      if (cachedSimCalc.isDefined) cachedSimCalc.get else SimilarityCalculatorFactory.create("TVERSKY;0.33;0.99")
+
+    // Setup calculator if it is new
+    if (cachedSimCalc.isEmpty) {
+      simCalc.setQueryFingerprint(moleculeToIntArray(query))
+      factoryCache.putIfAbsent(query, simCalc)
+    }
+
+    simCalc.getSimilarity(moleculeToIntArray(target))
   }
 
-  def calculateSimilarity(query: Molecule, target: Molecule): Double = helperCalculateSimilarity(query, target)
+  private def moleculeToIntArray(mol: Molecule): Array[Int] = {
+    val intArray: Option[Array[Int]] = chemicalCache.get(mol)
 
-  def calculateSimilarity(query: String, target: Molecule): Double = helperCalculateSimilarity(query, target)
+    if (intArray.isEmpty) {
+      val qfp = new ChemicalFingerprint(cfp)
 
-  def calculateSimilarity(query: Molecule, target: String): Double = helperCalculateSimilarity(query, target)
+      // Chemaxon uses some internal modules that can cause concurrent issues.
+      this.synchronized {
+        qfp.generate(mol)
+      }
 
-  def calculateSimilarity(query: String, target: String): Double = helperCalculateSimilarity(query, target)
+      val result = qfp.toFloatArray map (x => x.toInt)
+      chemicalCache.putIfAbsent(mol, result)
+      return result
+    }
 
-  /**
-    * For two molecules, use a calculator to determine their closeness.
-    *
-    * @param query              Molecule to use as the query molecule.
-    * @param target             Molecule you are targeting to see how similar it is to the query.
-    *
-    * @return Similarity value between 0 and 1.
-    */
-  private def helperCalculateSimilarity(query: Molecule, target: Molecule): Double = {
-    val simCalc = getSimCalculator(query)
-    simCalc.getSimilarity(MoleculeConversions.toIntArray(target))
+    intArray.get
   }
-
-
-  /**
-    * For two molecules, use a calculator to determine how far away they are
-    *
-    * @param query  Molecule to use as the query molecule.
-    * @param target Molecule you are targeting to see how similar it is to the query.
-    *
-    * @return Dissimilarity value between 0 and 1.
-    */
-  private def helperCalculateDissimilarity(query: Molecule, target: Molecule): Double = {
-    val simCalc = getSimCalculator(query)
-    simCalc.getDissimilarity(MoleculeConversions.toIntArray(target))
-  }
-
-  /**
-    * Given settings, retrieves a Similarity calculator for those settings and that query molecule.
-    *
-    * @param queryMolecule Molecule to query
-    *
-    * @return A Similarity calculator.
-    */
-  private def getSimCalculator(queryMolecule: Molecule): SimilarityCalculator[Array[Int]] = {
-    require(calculatorSettings.isDefined, "Please run ChemicalSimilarity.init() prior to doing comparisons.  " +
-      "If you'd like to use a non-default calculator, you can supply those parameters during initialization.")
-
-    // Main advantage of using the factory is that we can set custom params,
-    // comes with the disadvantage of needing to make into an Int array.
-    val simCalc = SimilarityCalculatorFactory.create(calculatorSettings.get)
-    simCalc.setQueryFingerprint(MoleculeConversions.toIntArray(queryMolecule))
-
-    simCalc
-  }
-
-  def calculateDissimilarity(query: Molecule, target: Molecule): Double = helperCalculateDissimilarity(query, target)
-
-  def calculateDissimilarity(query: String, target: Molecule): Double = helperCalculateDissimilarity(query, target)
-
-  def calculateDissimilarity(query: Molecule, target: String): Double = helperCalculateDissimilarity(query, target)
-
-  def calculateDissimilarity(query: String, target: String): Double = helperCalculateDissimilarity(query, target)
-
 }
