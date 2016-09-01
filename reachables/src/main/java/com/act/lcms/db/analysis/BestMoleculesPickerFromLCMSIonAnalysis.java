@@ -136,19 +136,19 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
     if (cl.hasOption(OPTION_GET_CHEMICAL_STATISTICS)) {
 
-      Set<String> inchis = readChemicalsFromFile(new File("/Users/vijaytramakrishnan/Desktop/porfovour/inchis"));
+      Set<String> inchis = readChemicalsFromFile(new File("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/inchis"));
 
       IonAnalysisInterchangeModel minPositiveModel = new IonAnalysisInterchangeModel();
-      minPositiveModel.loadResultsFromFile(new File("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis_copy/jca_ss_min_drugs"));
+      minPositiveModel.loadResultsFromFile(new File("/mnt/shared-data/Vijay/jaffna/issue_371_analysis_copy/jca_ss_min_drugs"));
 
       List<String> negFiles = new ArrayList<>();
-      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/lr_d1_ur_mn");
-      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/lr_d2_ur_mn");
-      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/lr_d2_ur_ev");
-      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/lr_d1_ur_ev");
-      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/ss_d1_ur_ev.json");
-      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/ss_d1_ur_mn.json");
-      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/ss_d2_ur_mn.json");
+      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/lr_d1_ur_mn");
+      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/lr_d2_ur_mn");
+      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/lr_d2_ur_ev");
+      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/lr_d1_ur_ev");
+      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/ss_d1_ur_ev.json");
+      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/ss_d1_ur_mn.json");
+      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/ss_d2_ur_mn.json");
 
       List<IonAnalysisInterchangeModel> negModels = new ArrayList<>();
       for (String negFile : negFiles) {
