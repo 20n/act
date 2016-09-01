@@ -1,6 +1,6 @@
 package com.act.analysis.chemicals
 
-import chemaxon.descriptors.{CFParameters, ChemicalFingerprint, SimilarityCalculator, SimilarityCalculatorFactory}
+import chemaxon.descriptors.{CFParameters, ChemicalFingerprint, SimilarityCalculatorFactory}
 import chemaxon.struc.Molecule
 
 import scala.collection.concurrent.TrieMap
@@ -10,15 +10,15 @@ import scala.collection.concurrent.TrieMap
   */
 object ChemicalSimilarity {
 
-  // Instead of remaking for all SARs, we cache our calculators by their query chemicals.
-  private val factoryCache = TrieMap[String, TrieMap[Molecule, SimilarityCalculator[Array[Int]]]]()
+
+  // If a chemical's Array[Int] form has been calculated, cache it for reuse later (Really speeds up SAR tree traversal).
+  private val chemicalCache = TrieMap[Molecule, Array[Int]]()
+
+  // Set all on the same line so this default declaration stays together.
+  private var _cfp = new CFParameters()
   _cfp.setLength(2048)
   _cfp.setBondCount(15)
   _cfp.setBitCount(4)
-  // If a chemical's Array[Int] form has been calculated, cache it for reuse later (Really speeds up SAR tree traversal).
-  private val chemicalCache = TrieMap[Molecule, Array[Int]]()
-  // Var
-  private var _cfp = new CFParameters()
 
   /**
     * For two molecules, use a calculator to determine their closeness.
