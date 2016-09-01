@@ -297,9 +297,9 @@ public class HMDBParser {
       Document proteinDoc = documentBuilder.newDocument();
       proteinDoc.adoptNode(n);
       proteinDoc.appendChild(n);
-      String name = getText(HMDB_XPATH.PROTEIN_L2_NAME_TEXT, doc);
-      String uniprotId = getText(HMDB_XPATH.PROTEIN_L2_UNIPROT_ID_TEXT, doc);
-      String geneName = getText(HMDB_XPATH.PROTEIN_L2_GENE_NAME_TEXT, doc);
+      String name = getText(HMDB_XPATH.PROTEIN_L2_NAME_TEXT, proteinDoc);
+      String uniprotId = getText(HMDB_XPATH.PROTEIN_L2_UNIPROT_ID_TEXT, proteinDoc);
+      String geneName = getText(HMDB_XPATH.PROTEIN_L2_GENE_NAME_TEXT, proteinDoc);
       proteinAttributes.add(Triple.of(name, uniprotId, geneName));
     }
 
