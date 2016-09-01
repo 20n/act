@@ -30,6 +30,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -386,6 +387,9 @@ public class HMDBParser {
 
     List<File> files = findHMDBFilesInDirectory(inputDir);
     LOGGER.info("Found %d HMDB XML files in directory %s", files.size(), inputDir.getAbsolutePath());
+
+    // Sort for consistency + sanity.
+    Collections.sort(files, (a, b) -> a.getName().compareTo(b.getName()));
 
     for (File file : files) {
       LOGGER.debug("Processing HMDB XML file %s", file.getAbsolutePath());
