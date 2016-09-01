@@ -19,6 +19,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Represents a set of inchis.
@@ -26,9 +27,10 @@ import java.util.List;
 public class L2InchiCorpus {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2InchiCorpus.class);
-  private List<String> corpus = new ArrayList<>();
 
-  private List<Molecule> molecules = null;
+  private static final String INCHI_IMPORT_SETTINGS = "inchi";
+  private static ConcurrentHashMap<String, Molecule> inchiMoleculeCache = new ConcurrentHashMap<>();
+  private List<String> corpus = new ArrayList<>();
 
   public L2InchiCorpus() {
   }
@@ -39,14 +41,21 @@ public class L2InchiCorpus {
 
   /**
    * This function imports a given inchi to a Molecule.
-   * TODO: Add a cache map from inchis -> molecules to this class to avoid redoing import
    *
    * @param inchi Input inchi.
    * @return The resulting Molecule.
    * @throws MolFormatException
    */
-  public static Molecule importMolecule(String inchi) throws MolFormatException {
-    return MolImporter.importMol(inchi, INCHI_IMPORT_SETTINGS);
+  static Molecule importMolecule(String inchi) throws MolFormatException {
+    // We can't use the fancier methods here because MolImporter throws a checked exception and lambdas don't allow that
+    Molecule inchiMolecule = inchiMoleculeCache.get(inchi);
+
+    if (inchiMolecule == null) {
+      inchiMolecule = MolImporter.importMol(inchi, INCHI_IMPORT_SETTINGS);
+      inchiMoleculeCache.put(inchi, inchiMolecule);
+    }
+
+    return inchiMolecule;
   }
 
   /**
@@ -91,8 +100,7 @@ public class L2InchiCorpus {
             inchi ->
             {
               try {
-                // Defaults to "inchi"
-                Molecule mol = MoleculeImporter.importMolecule(inchi);
+                Molecule mol = importMolecule(inchi);
                 if (mol.getMass() > massCutoff) {
                   LOGGER.warn("Throwing out molecule %s because of mass %f and %d atoms.",
                           inchi, mol.getMass(), mol.getAtomCount());
@@ -108,8 +116,6 @@ public class L2InchiCorpus {
   }
 
   public List<Molecule> getMolecules() {
-    if (this.molecules != null) return this.molecules;
-
     List<Molecule> results = new ArrayList<>(getInchiList().size());
     for (String inchi : getInchiList()) {
       try {
@@ -118,7 +124,6 @@ public class L2InchiCorpus {
         LOGGER.error("MolFormatException on metabolite %s. %s", inchi, e.getMessage());
       }
     }
-    this.molecules = results;
     return results;
   }
 
