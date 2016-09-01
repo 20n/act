@@ -1,7 +1,16 @@
 package act.installer;
 
+import act.installer.pubchem.PubchemParser;
 import act.server.MongoDB;
 import act.shared.Chemical;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -30,7 +39,56 @@ import java.util.stream.Collectors;
 public class HMDBParser {
   private static final Logger LOGGER = LogManager.getFormatterLogger(HMDBParser.class);
 
-  private static final boolean ENABLE_XML_STREAM_TEXT_COALESCING = true;
+  private static final String OPTION_INPUT_DIRECTORY = "i";
+  private static final String OPTION_DB_HOST = "H";
+  private static final String OPTION_DB_PORT = "p";
+  private static final String OPTION_DB_NAME = "d";
+
+  private static final String DEFAULT_DB_HOST = "localhost";
+  private static final String DEFAULT_DB_PORT = "27017";
+  private static final String DEFAULT_DB_NAME = "actv01";
+
+  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
+      "This class parses HMDB XML files, converts them into chemical documents, and stores them in a DB",
+  }, "");
+
+  public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
+    add(Option.builder(OPTION_INPUT_DIRECTORY)
+        .argName("input dir")
+        .desc("The directory where the HMDB XML files live")
+        .hasArg()
+        .required()
+        .longOpt("input-dir")
+    );
+    add(Option.builder(OPTION_DB_HOST)
+        .argName("hostname")
+        .desc("The DB host to which to connect")
+        .hasArg()
+        .longOpt("db-host")
+    );
+    add(Option.builder(OPTION_DB_PORT)
+        .argName("port")
+        .desc("The DB port to which to connect")
+        .hasArg()
+        .longOpt("db-port")
+    );
+    add(Option.builder(OPTION_DB_NAME)
+        .argName("name")
+        .desc("The name of the DB to which to install the HMDB chemicals")
+        .hasArg()
+        .longOpt("db-name")
+    );
+    add(Option.builder("h")
+        .argName("help")
+        .desc("Prints this help message")
+        .longOpt("help")
+    );
+  }};
+
+  public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
+  static {
+    HELP_FORMATTER.setWidth(100);
+  }
 
   /* HMDB files all have five digits from 1 through 61388 as of the initial writing of this class.  I've allowed for an
    * extra digit in case the next release of the DB exceeds 100k metabolites.  We also log rejected files just in case.
@@ -102,6 +160,47 @@ public class HMDBParser {
     DOMXPath compile() throws JaxenException {
       return new DOMXPath(this.getPath());
     }
+  }
+
+  private static void main(String[] args) throws Exception {
+    // Parse the command line options
+    Options opts = new Options();
+    for (Option.Builder b : OPTION_BUILDERS) {
+      opts.addOption(b.build());
+    }
+
+    CommandLine cl = null;
+    try {
+      CommandLineParser parser = new DefaultParser();
+      cl = parser.parse(opts, args);
+    } catch (ParseException e) {
+      LOGGER.error("Argument parsing failed: %s\n", e.getMessage());
+      HELP_FORMATTER.printHelp(PubchemParser.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      System.exit(1);
+    }
+
+    if (cl.hasOption("help")) {
+      HELP_FORMATTER.printHelp(PubchemParser.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      return;
+    }
+
+    File inputDir = new File(cl.getOptionValue(OPTION_INPUT_DIRECTORY));
+    if (!inputDir.isDirectory()) {
+      System.err.format("Input directory at %s is not a directory\n", inputDir.getAbsolutePath());
+      System.exit(1);
+    }
+
+    String dbName = cl.getOptionValue(OPTION_DB_NAME, DEFAULT_DB_NAME);
+    String dbHost = cl.getOptionValue(OPTION_DB_HOST, DEFAULT_DB_HOST);
+    Integer dbPort = Integer.valueOf(cl.getOptionValue(OPTION_DB_PORT, DEFAULT_DB_PORT));
+
+    LOGGER.info("Connecting to %s:%d/%s", dbHost, dbPort, dbName);
+    MongoDB db = new MongoDB(dbHost, dbPort, dbName);
+    HMDBParser parser = Factory.makeParser(db);
+
+    LOGGER.info("Starting parser");
+    parser.run(inputDir);
+    LOGGER.info("Done");
   }
 
   private final Map<HMDB_XPATH, XPath> xpaths = new HashMap<>();
