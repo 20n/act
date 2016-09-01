@@ -136,91 +136,142 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
     if (cl.hasOption(OPTION_GET_CHEMICAL_STATISTICS)) {
 
-      TSVParser parser = new TSVParser();
-      parser.parse(new File("/Users/vijaytramakrishnan/Desktop/porfovour/test.tsv"));
-      List<Map<String, String>> inputRows = parser.getResults();
+      Set<String> inchis = readChemicalsFromFile(new File("/Users/vijaytramakrishnan/Desktop/porfovour/inchis"));
 
-      Map<String, String> inchiToName = new HashMap<>();
-      Set<String> chemsOfInterest = new HashSet<>();
-      for(Map<String, String> cell : inputRows) {
-        inchiToName.put(cell.get("inchi"), cell.get("name"));
-        chemsOfInterest.add(cell.get("inchi"));
+      IonAnalysisInterchangeModel minPositiveModel = new IonAnalysisInterchangeModel();
+      minPositiveModel.loadResultsFromFile(new File("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis_copy/jca_ss_min_drugs"));
+
+      List<String> negFiles = new ArrayList<>();
+      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/lr_d1_ur_mn");
+      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/lr_d2_ur_mn");
+      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/lr_d2_ur_ev");
+      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/lr_d1_ur_ev");
+      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/ss_d1_ur_ev.json");
+      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/ss_d1_ur_mn.json");
+      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/ss_d2_ur_mn.json");
+
+      List<IonAnalysisInterchangeModel> negModels = new ArrayList<>();
+      for (String negFile : negFiles) {
+        IonAnalysisInterchangeModel negModel = new IonAnalysisInterchangeModel();
+        negModel.loadResultsFromFile(new File(negFile));
+        negModels.add(negModel);
       }
 
+      try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(new File("out.inchi")))) {
+        for (String inchi : inchis) {
+          for (int i = 0; i < minPositiveModel.getResults().size(); i++) {
+            for (int j = 0; j < minPositiveModel.getResults().get(i).getMolecules().size(); j++) {
+              IonAnalysisInterchangeModel.HitOrMiss hitOrMiss = minPositiveModel.getResults().get(i).getMolecules().get(j);
+              if (hitOrMiss.getInchi().equals(inchi) && hitOrMiss.getIon().equals("M+H")) {
+                if (hitOrMiss.getIntensity() > 0.0 && hitOrMiss.getSnr() > 0.0) {
 
-      L2PredictionCorpus corpus47 = new L2PredictionCorpus();
-      corpus47 = corpus47.readPredictionsFromJsonFile(new File("/Volumes/shared-data/Vijay/jaffna/projections/predictions.47"));
+                  Double maxIntensity = Double.MIN_VALUE;
+                  Double maxSNR = Double.MIN_VALUE;
 
-      L2PredictionCorpus corpus228 = new L2PredictionCorpus();
-      corpus228 = corpus228.readPredictionsFromJsonFile(new File("/Volumes/shared-data/Vijay/jaffna/projections/predictions.228"));
-
-
-      Set<String> inchis = readChemicalsFromFile(new File(cl.getOptionValue(OPTION_GET_CHEMICAL_STATISTICS)));
-
-      List<String> header = new ArrayList<>();
-      header.add("Name");
-      header.add("Intensity");
-      header.add("SNR");
-      header.add("Time");
-      header.add("Sample");
-      header.add("Inchi");
-
-      NumberFormat formatter = new DecimalFormat("0.#E0");
-
-      TSVWriter<String, String> writer = new TSVWriter<>(header);
-      writer.open(new File(cl.getOptionValue(OPTION_OUTPUT_FILE)));
-
-      for (String file : positiveReplicateResults) {
-        IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
-        model.loadResultsFromFile(new File(file));
-
-        for (IonAnalysisInterchangeModel.ResultForMZ resultForMZ : model.getResults()) {
-          for (IonAnalysisInterchangeModel.HitOrMiss hitOrMiss : resultForMZ.getMolecules()) {
-            if (inchis.contains(hitOrMiss.getInchi()) && hitOrMiss.getIon().equals("M+H")) {
-
-              Map<String, String> row = new HashMap<>();
-
-              if (chemsOfInterest.contains(hitOrMiss.getInchi())) {
-                row.put("Name", inchiToName.get(hitOrMiss.getInchi()));
-                row.put("Inchi", "");
-              } else {
-
-                if (corpus47.getUniqueProductInchis().contains(hitOrMiss.getInchi())) {
-                  Set<String> substrates =
-                      corpus47.applyFilter(l2Prediction -> l2Prediction.getProductInchis().contains(hitOrMiss.getInchi())).getUniqueSubstrateInchis();
-
-                  for (String substrate : substrates) {
-                    row.put("Name", inchiToName.get(substrate) + "_RO47");
-                    row.put("Inchi", hitOrMiss.getInchi());
-                    break;
+                  for (int k = 0; k < negModels.size(); k++) {
+                    IonAnalysisInterchangeModel.HitOrMiss hitOrMissNeg = negModels.get(k).getResults().get(i).getMolecules().get(j);
+                    if ((hitOrMissNeg.getTime() > hitOrMiss.getTime() - 5.0) && (hitOrMissNeg.getTime() < hitOrMiss.getTime() + 5.0)) {
+                      maxIntensity = Math.max(maxIntensity, hitOrMissNeg.getIntensity());
+                      maxSNR = Math.max(maxSNR, hitOrMissNeg.getSnr());
+                    }
                   }
-                }
 
-                if (corpus228.getUniqueProductInchis().contains(hitOrMiss.getInchi())) {
-                  Set<String> substrates =
-                      corpus228.applyFilter(l2Prediction -> l2Prediction.getProductInchis().contains(hitOrMiss.getInchi())).getUniqueSubstrateInchis();
-
-                  for (String substrate : substrates) {
-                    row.put("Name", inchiToName.get(substrate) + "_RO228");
-                    row.put("Inchi", hitOrMiss.getInchi());
-                    break;
+                  if (hitOrMiss.getIntensity()/maxIntensity > 5.0 && hitOrMiss.getSnr()/maxSNR > 10.0) {
+                    predictionWriter.write(inchi);
                   }
                 }
               }
-
-              row.put("Intensity", formatter.format(hitOrMiss.getIntensity()));
-              row.put("SNR", formatter.format(hitOrMiss.getSnr()));
-              row.put("Time", new DecimalFormat("0.00").format(hitOrMiss.getTime()));
-              row.put("Sample", file.split("/")[6]);
-
-              writer.append(row);
-              writer.flush();
             }
           }
         }
       }
 
-      writer.close();
+
+//      TSVParser parser = new TSVParser();
+//      parser.parse(new File("/Users/vijaytramakrishnan/Desktop/porfovour/test.tsv"));
+//      List<Map<String, String>> inputRows = parser.getResults();
+//
+//      Map<String, String> inchiToName = new HashMap<>();
+//      Set<String> chemsOfInterest = new HashSet<>();
+//      for(Map<String, String> cell : inputRows) {
+//        inchiToName.put(cell.get("inchi"), cell.get("name"));
+//        chemsOfInterest.add(cell.get("inchi"));
+//      }
+//
+//
+//      L2PredictionCorpus corpus47 = new L2PredictionCorpus();
+//      corpus47 = corpus47.readPredictionsFromJsonFile(new File("/Volumes/shared-data/Vijay/jaffna/projections/predictions.47"));
+//
+//      L2PredictionCorpus corpus228 = new L2PredictionCorpus();
+//      corpus228 = corpus228.readPredictionsFromJsonFile(new File("/Volumes/shared-data/Vijay/jaffna/projections/predictions.228"));
+//
+//
+//      Set<String> inchis = readChemicalsFromFile(new File(cl.getOptionValue(OPTION_GET_CHEMICAL_STATISTICS)));
+//
+//      List<String> header = new ArrayList<>();
+//      header.add("Name");
+//      header.add("Intensity");
+//      header.add("SNR");
+//      header.add("Time");
+//      header.add("Sample");
+//      header.add("Inchi");
+//
+//      NumberFormat formatter = new DecimalFormat("0.#E0");
+//
+//      TSVWriter<String, String> writer = new TSVWriter<>(header);
+//      writer.open(new File(cl.getOptionValue(OPTION_OUTPUT_FILE)));
+//
+//      for (String file : positiveReplicateResults) {
+//        IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
+//        model.loadResultsFromFile(new File(file));
+//
+//        for (IonAnalysisInterchangeModel.ResultForMZ resultForMZ : model.getResults()) {
+//          for (IonAnalysisInterchangeModel.HitOrMiss hitOrMiss : resultForMZ.getMolecules()) {
+//            if (inchis.contains(hitOrMiss.getInchi()) && hitOrMiss.getIon().equals("M+H")) {
+//
+//              Map<String, String> row = new HashMap<>();
+//
+//              if (chemsOfInterest.contains(hitOrMiss.getInchi())) {
+//                row.put("Name", inchiToName.get(hitOrMiss.getInchi()));
+//                row.put("Inchi", "");
+//              } else {
+//
+//                if (corpus47.getUniqueProductInchis().contains(hitOrMiss.getInchi())) {
+//                  Set<String> substrates =
+//                      corpus47.applyFilter(l2Prediction -> l2Prediction.getProductInchis().contains(hitOrMiss.getInchi())).getUniqueSubstrateInchis();
+//
+//                  for (String substrate : substrates) {
+//                    row.put("Name", inchiToName.get(substrate) + "_RO47");
+//                    row.put("Inchi", hitOrMiss.getInchi());
+//                    break;
+//                  }
+//                }
+//
+//                if (corpus228.getUniqueProductInchis().contains(hitOrMiss.getInchi())) {
+//                  Set<String> substrates =
+//                      corpus228.applyFilter(l2Prediction -> l2Prediction.getProductInchis().contains(hitOrMiss.getInchi())).getUniqueSubstrateInchis();
+//
+//                  for (String substrate : substrates) {
+//                    row.put("Name", inchiToName.get(substrate) + "_RO228");
+//                    row.put("Inchi", hitOrMiss.getInchi());
+//                    break;
+//                  }
+//                }
+//              }
+//
+//              row.put("Intensity", formatter.format(hitOrMiss.getIntensity()));
+//              row.put("SNR", formatter.format(hitOrMiss.getSnr()));
+//              row.put("Time", new DecimalFormat("0.00").format(hitOrMiss.getTime()));
+//              row.put("Sample", file.split("/")[6]);
+//
+//              writer.append(row);
+//              writer.flush();
+//            }
+//          }
+//        }
+//      }
+//
+//      writer.close();
 
       return;
     }
