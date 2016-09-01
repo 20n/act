@@ -106,6 +106,7 @@ public class HMDBParser {
    * Note also the description of features we're *not* currently extracting.  There are other data in the HMDB entries
    * that may be useful at some point, but in the interest of time are being ignored for now. */
   private enum HMDB_XPATH {
+    HMDB_ID_TEXT("/metabolite/accession/text()"),
     // Names
     PRIMARY_NAME_TEXT("/metabolite/name/text()"),
     IUPAC_NAME_TEXT("/metabolite/iupac_name/text()"),
@@ -261,6 +262,8 @@ public class HMDBParser {
    * @throws JSONException
    */
   protected Chemical extractChemicalFromXMLDocument(Document doc) throws JaxenException, JSONException {
+    String hmdbId = getText(HMDB_XPATH.HMDB_ID_TEXT, doc);
+
     String primaryName = getText(HMDB_XPATH.PRIMARY_NAME_TEXT, doc);
     String iupacName = getText(HMDB_XPATH.IUPAC_NAME_TEXT, doc);
     List<String> synonyms = getTextFromNodes(HMDB_XPATH.SYNONYMS_NODES, doc);
@@ -318,6 +321,7 @@ public class HMDBParser {
     chem.addSynonym(iupacName); // TODO: is there a better place for this?
 
     JSONObject meta = new JSONObject()
+        .put("hmdb_id", hmdbId)
         .put("ontology", new JSONObject()
             .put("status", ontologyStatus)
             .put("origins", new JSONArray(ontologyOrigins))

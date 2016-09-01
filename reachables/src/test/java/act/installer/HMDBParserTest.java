@@ -50,6 +50,7 @@ public class HMDBParserTest {
     // Pick apart the XRef
     JSONObject xref = chem.getRef(Chemical.REFS.HMDB);
 
+    assertEquals("HMDB ID matches", "HMDB01859", xref.getString("hmdb_id"));
     assertEquals("Metlin ID matches", "6353", xref.getString("metlin_id"));
     assertEquals("ChEBI ID matches", "46195", xref.getString("chebi_id"));
 
