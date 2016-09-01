@@ -44,8 +44,8 @@ trait SparkRdd {
     */
   def sparkOneHotEncodeProteinAlignments(spark: SparkContext)
                                         (proteinAlignments: List[String],
-                           characterMap: Map[Char, Int],
-                           percentOfRowsThatAreNotZeroToKeep: Double): RowMatrix = {
+                                         characterMap: Map[Char, Int],
+                                         percentOfRowsThatAreNotZeroToKeep: Double): RowMatrix = {
     require(percentOfRowsThatAreNotZeroToKeep >= 0 && percentOfRowsThatAreNotZeroToKeep <= 100,
       s"Percent of row that is nonzero prior to keeping must be between 0 and 100.  " +
         s"Supplied value was $percentOfRowsThatAreNotZeroToKeep")
