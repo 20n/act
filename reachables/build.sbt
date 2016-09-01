@@ -4,6 +4,12 @@ assemblySettings
 
 name := "reachables"
 
+/*
+  This option allows us to run Spark through the job manager.
+  If we did not use this option, Spark will not able to correctly establish a class path.
+ */
+fork := true
+
 version := "0.1"
 
 scalaVersion := "2.10.3"

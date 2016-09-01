@@ -6,9 +6,9 @@ import org.apache.commons.cli.CommandLine
 import org.apache.logging.log4j.LogManager
 
 trait WorkingDirectoryUtility {
-  val logger = LogManager.getLogger(getClass)
+  private val workflowDirectoryLogger = LogManager.getLogger(getClass)
 
-  def defineOutputFilePath(cl: CommandLine, optionName: String, identifier: String, defaultValue: String, workingDirectory: String): File = {
+  def defineOutputFilePath(cl: CommandLine, optionName: String, identifier: String, defaultValue: String, workingDirectory: String, fileEnding: String = ""): File = {
     createWorkingDirectory(new File(workingDirectory))
 
     // Spaces tend to be bad for file names
@@ -16,10 +16,10 @@ trait WorkingDirectoryUtility {
 
     // <User chosen or default file name>_<UID> ... Add UID to end in case absolute file path is supplied
     val fileNameHead = cl.getOptionValue(optionName, defaultValue)
-    val fileName = s"${fileNameHead}_$filteredIdentifier"
+    val fileName = s"${fileNameHead}_$filteredIdentifier${if (!fileEnding.equals("")) s".$fileEnding" else ""}"
 
     val finalFile = new File(workingDirectory, fileName)
-    logger.info(s"The final file path for file $optionName was ${finalFile.getAbsoluteFile}")
+    workflowDirectoryLogger.info(s"The final file path for file $optionName was ${finalFile.getAbsoluteFile}")
 
     verifyOutputFile(finalFile)
 
@@ -44,7 +44,7 @@ trait WorkingDirectoryUtility {
 
   def createWorkingDirectory(workingDirectory: File): Unit = {
     if (!workingDirectory.exists()) {
-      logger.info(s"Creating working directories up to ${workingDirectory.getAbsolutePath}")
+      workflowDirectoryLogger.info(s"Creating working directories up to ${workingDirectory.getAbsolutePath}")
       workingDirectory.mkdirs()
     }
   }

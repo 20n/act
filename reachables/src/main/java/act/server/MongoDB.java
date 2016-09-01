@@ -1935,6 +1935,18 @@ public class MongoDB {
     return new DBIterator(cursor);
   }
 
+  public DBIterator getIteratorOverChemicals(BasicDBObject matchCriterion, boolean notimeout, BasicDBObject keys) {
+    if (keys == null) {
+      keys = new BasicDBObject();
+    }
+    DBCursor cursor = this.dbChemicals.find(matchCriterion, keys);
+    if (notimeout) {
+      cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
+    }
+
+    return new DBIterator(cursor); // DBIterator is just a wrapper class
+  }
+
   public DBIterator getIteratorOverReactions(boolean notimeout) {
     return getIteratorOverReactions(DEFAULT_CURSOR_ORDER_BY_ID, notimeout, null);
   }

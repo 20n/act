@@ -11,21 +11,6 @@ import scala.collection.mutable
 trait MongoWorkflowUtilities {
   private val logger = LogManager.getLogger(getClass.getName)
 
-  // Mongo field that should always exist
-  private val ID = "_id"
-
-  // General use
-  private val EXISTS = dollarString("exists")
-  private val OR = dollarString("or")
-  private val AND = dollarString("and")
-  private val IN = dollarString("in")
-  private val REGEX = dollarString("regex")
-
-  // Aggregation
-  private val MATCH = dollarString("match")
-  private val UNWIND = dollarString("unwind")
-  private val GROUP = dollarString("group")
-  private val PUSH = dollarString("push")
 
 
   /*
@@ -48,10 +33,17 @@ trait MongoWorkflowUtilities {
     new MongoDB(host, port, db)
   }
 
+  def createDbObject(values: Map[Keyword, Any]): BasicDBObject = {
+    new BasicDBObject(values map { case (key, value) => key.value -> value })
+  }
 
-  /*
-    Mongo string utilities
-   */
+  def formatUnwoundName(listName: Keyword, valueName: Keyword): String = {
+    formatUnwoundName(listName.toString, valueName.toString)
+  }
+
+  def formatUnwoundName(listName: String, valueName: Keyword): String = {
+    formatUnwoundName(listName, valueName.toString)
+  }
 
   /**
     * Unwinding a list creates a value that can be found by the name <PreviousListName>.<ValueName>.
@@ -74,6 +66,10 @@ trait MongoWorkflowUtilities {
     s"$listName.$valueName"
   }
 
+  def formatUnwoundName(listName: Keyword, valueName: String): String = {
+    formatUnwoundName(listName.toString, valueName)
+  }
+
   /**
     * Creates a new query that checks if something exists
     * True: Exists
@@ -84,13 +80,8 @@ trait MongoWorkflowUtilities {
     * @return DBObject that matches the above conditions
     */
   def getMongoExists: BasicDBObject = {
-    new BasicDBObject(EXISTS, true)
+    createDbObject(MongoKeywords.EXISTS, true)
   }
-
-
-  /*
-    General Mongo functionality
-   */
 
   /**
     * Creates a new query that checks if something doesn't exist
@@ -102,7 +93,7 @@ trait MongoWorkflowUtilities {
     * @return DB Object that matches the above conditions
     */
   def getMongoDoesntExist: BasicDBObject = {
-    new BasicDBObject(EXISTS, false)
+    createDbObject(MongoKeywords.EXISTS, false)
   }
 
   /**
@@ -115,8 +106,13 @@ trait MongoWorkflowUtilities {
     * @return DBObject containing this query
     */
   def defineMongoOr(truthValueList: BasicDBList): BasicDBObject = {
-    new BasicDBObject(OR, truthValueList)
+    createDbObject(MongoKeywords.OR, truthValueList)
   }
+
+
+  /*
+    General Mongo functionality
+   */
 
   /**
     * Truth value that returns true if all members of the truthValueList evaluate to true
@@ -128,7 +124,7 @@ trait MongoWorkflowUtilities {
     * @return DBObject containing this query
     */
   def defineMongoAnd(truthValueList: BasicDBList): BasicDBObject = {
-    new BasicDBObject(AND, truthValueList)
+    createDbObject(MongoKeywords.AND, truthValueList)
   }
 
   /**
@@ -141,7 +137,7 @@ trait MongoWorkflowUtilities {
     * @return DBObject containing this query
     */
   def defineMongoIn(queryList: BasicDBList): BasicDBObject = {
-    new BasicDBObject(IN, queryList)
+    createDbObject(MongoKeywords.IN, queryList)
   }
 
   /**
@@ -154,7 +150,7 @@ trait MongoWorkflowUtilities {
     * @return DBObject containing this query
     */
   def defineMongoRegex(regex: String): BasicDBObject = {
-    new BasicDBObject(REGEX, regex)
+    createDbObject(MongoKeywords.REGEX, regex)
   }
 
   /**
@@ -168,9 +164,14 @@ trait MongoWorkflowUtilities {
     *
     * @return An iterator over the returned documents
     */
-  def mongoQueryReactions(mongo: MongoDB, key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
-    logger.info(s"Querying reaction database with the query $key.  Filtering values to obtain $filter")
+  def mongoQueryReactions(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
+    logger.debug(s"Querying reaction database with the query $key.  Filtering values to obtain $filter")
     mongo.getIteratorOverReactions(key, false, filter).toIterator
+  }
+
+  def mongoQueryChemicals(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
+    logger.debug(s"Querying reaction database with the query $key.  Filtering values to obtain $filter")
+    mongo.getIteratorOverChemicals(key, false, filter).toIterator
   }
 
   /**
@@ -184,8 +185,8 @@ trait MongoWorkflowUtilities {
     *
     * @return An iterator over the returned documents
     */
-  def mongoQuerySequences(mongo: MongoDB, key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
-    logger.info(s"Querying sequence database with the query $key.  Filtering values to obtain $filter")
+  def mongoQuerySequences(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
+    logger.debug(s"Querying sequence database with the query $key.  Filtering values to obtain $filter")
     mongo.getDbIteratorOverSeq(key, false, filter).toIterator
   }
 
@@ -202,12 +203,12 @@ trait MongoWorkflowUtilities {
     * @return DBObject constructing this request.
     */
   def defineMongoMatch(thingsToMatch: BasicDBObject): BasicDBObject = {
-    new BasicDBObject(MATCH, thingsToMatch)
+    createDbObject(MongoKeywords.MATCH, thingsToMatch)
   }
 
-  /*
-   Mongo aggregation handling.
-   */
+  def createDbObject(key: Keyword, value: Any): BasicDBObject = {
+    new BasicDBObject(key.toString, value)
+  }
 
   /**
     * Takes a a list within the Mongo document and unwinds it.  Unwinding a list creates the pattern shown below:
@@ -223,8 +224,40 @@ trait MongoWorkflowUtilities {
     *
     * @return A formatted query that will do the above operation
     */
-  def defineMongoUnwind(listName: String): BasicDBObject = {
-    new BasicDBObject(UNWIND, dollarString(listName))
+  def defineMongoUnwind(listName: Keyword): BasicDBObject = {
+    createDbObject(MongoKeywords.UNWIND, dollarString(listName))
+  }
+
+  /*
+   Mongo aggregation handling.
+   */
+
+  private def dollarString(inputKeyword: Keyword): String = {
+    dollarString(inputKeyword.value)
+  }
+
+  /**
+    * Many Mongo queries require a dollar sign in front of the keyword.  Example: $exists
+    *
+    * The dollar sign is also used during aggregation to reference intermediate documents. Example: $_id
+    *
+    * Thus, this function changes f("String") -> "$String"
+    *
+    * @param inputString The string to be converted into dollar format
+    *
+    * @return Modified string
+    */
+  private def dollarString(inputString: String): String = {
+    // Escape one dollar and do the input as well
+    s"$$$inputString"
+  }
+
+  def defineMongoGroup(nameOfGroupingValue: Keyword, outputListName: Keyword): BasicDBObject = {
+    defineMongoGroup(nameOfGroupingValue.toString, outputListName.toString)
+  }
+
+  def defineMongoGroup(nameOfGroupingValue: String, outputListName: Keyword): BasicDBObject = {
+    defineMongoGroup(nameOfGroupingValue, outputListName.toString)
   }
 
   /**
@@ -246,32 +279,37 @@ trait MongoWorkflowUtilities {
     */
   def defineMongoGroup(nameOfGroupingValue: String, outputListName: String): BasicDBObject = {
     // Create an array for the expression
-    val pushing = new BasicDBObject(PUSH, dollarString(nameOfGroupingValue))
+    val pushing = createDbObject(MongoKeywords.PUSH, dollarString(nameOfGroupingValue))
 
     // Name the output array
     val groupMap = new BasicDBObject(outputListName, pushing)
 
     // The new document always requires an ID, so we just use the prior ID.
-    groupMap.append(ID, dollarString(ID))
+    appendKeyToDbObject(groupMap, MongoKeywords.ID, dollarString(MongoKeywords.ID))
 
     // Finally, we group everything together
-    new BasicDBObject(GROUP, groupMap)
+    createDbObject(MongoKeywords.GROUP, groupMap)
   }
 
-  /**
-    * Many Mongo queries require a dollar sign in front of the keyword.  Example: $exists
-    *
-    * The dollar sign is also used during aggregation to reference intermediate documents. Example: $_id
-    *
-    * Thus, this function changes f("String") -> "$String"
-    *
-    * @param inputString The string to be converted into dollar format
-    *
-    * @return Modified string
-    */
-  private def dollarString(inputString: String): String = {
-    // Escape one dollar and do the input as well
-    s"$$$inputString"
+  def appendKeyToDbObject(currentObject: BasicDBObject, key: Keyword, value: Any): BasicDBObject = {
+    currentObject.append(key.value, value)
+  }
+
+  def defineMongoGroup(nameOfGroupingValue: Keyword, outputListName: String): BasicDBObject = {
+    defineMongoGroup(nameOfGroupingValue.toString, outputListName)
+  }
+
+  def getWithDefault(document: DBObject, key: Keyword, default: String): String = {
+    getWithDefault(document, key.toString, default)
+  }
+
+  def getWithDefault(document: DBObject, key: String, default: String): String = {
+    val documentVal: AnyRef = document.get(key)
+    if (documentVal == null) {
+      default
+    } else {
+      documentVal.toString
+    }
   }
 
   /**
@@ -362,7 +400,7 @@ trait MongoWorkflowUtilities {
     */
   def mongoReturnQueryToMap(iterator: Iterable[DBObject], fields: List[String]): Map[Long, Map[String, AnyRef]] = {
     // For each field name, pull out the values of that document and add it to a list, and make a list of those.
-    val filteredFields = fields.filter(!_.equals(ID))
+    val filteredFields = fields.filter(!_.equals(MongoKeywords.ID.toString))
 
     // Map each field as the key and the information in the document to what it goes to.
     def defineFields(document: DBObject): Map[String, AnyRef] = {
@@ -370,7 +408,8 @@ trait MongoWorkflowUtilities {
     }
 
     // Each document mapped by the ID mapped to a map of fields
-    val mapOfMaps = iterator map (document => document.get(ID).asInstanceOf[Int].toLong -> defineFields(document)) toMap
+    val mapOfMaps = iterator map (document =>
+      document.get(MongoKeywords.ID.toString).asInstanceOf[Int].toLong -> defineFields(document)) toMap
 
     // Exit if all values are empty, so error check here as we convert to a map.
     mapOfMaps.size match {

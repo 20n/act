@@ -19,7 +19,7 @@ import scala.collection.JavaConverters._
 
 class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtility {
 
-  override val logger = LogManager.getLogger(getClass.getName)
+  val logger = LogManager.getLogger(getClass.getName)
 
   override val HELP_MESSAGE = "Workflow to run untargeted metabolomics pipeline. This runs all steps in the pipeline," +
     "beginning with L2Expansion, followed by LCMS analysis, and then structure clustering and SAR scoring."
