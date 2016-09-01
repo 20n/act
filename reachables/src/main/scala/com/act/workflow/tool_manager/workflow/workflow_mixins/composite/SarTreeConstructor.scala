@@ -233,39 +233,61 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     // Arbitrary score value
     val baseAdd = 10.0
 
-    // Score if SAR tree node is a hit
+    /**
+      * Scoring function for a SAR hit.
+      *
+      * @param sarTreeNode Tree node that has been determined to be a SAR hit.
+      *
+      * @return
+      */
     def scoreHit(sarTreeNode: SarTreeNode): Double = {
-      val similarity = ChemicalSimilarity.calculateSimilarity(queryMolecule, sarTreeNode.getSubstructure)
+      val similarity = ChemicalSimilarity.calculateSimilarity()(queryMolecule, sarTreeNode.getSubstructure)
 
+      /**
+        * Value if a molecule exactly matches another
+        *
+        */
       def scoreExactMatch(): Double = {
         baseAdd * baseAdd
       }
+
+      /**
+        * When the leaf node is a substructure of the input molecule.
+        *
+        * For limited test cases around acetaminophen,
+        * we've found this better distinguishes known vs unknown metabolites.
+        *
+        * @return
+        */
       def scoreSubstrateIsSubstructureOfQuery(): Double = {
         -(1 - similarity)
       }
 
+      // If a tree node doesn't have children, it is a leaf and therefore a chemical used to construct the SAR tree.
       val sarTreeChildren: Seq[SarTreeNode] = sarTree.getChildren(sarTreeNode).toList
       val isLeafNode = sarTreeChildren.isEmpty
 
       if (isLeafNode) {
+        // Similarity of 1 means exact match.
         return if (similarity >= 1) scoreExactMatch() else scoreSubstrateIsSubstructureOfQuery()
       }
 
+      // Adding one adds a bit of weight to traversal (Deeper -> more score)
       1 + scoreInchiAgainstSarTree(sarTree, sarTreeChildren, queryMolecule)
     }
 
     // Score if SAR tree node is a miss
     def scoreMiss(sarTreeNode: SarTreeNode): Double = {
-      ChemicalSimilarity.calculateSimilarity(queryMolecule, sarTreeNode.getSubstructure)
+      ChemicalSimilarity.calculateSimilarity()(queryMolecule, sarTreeNode.getSubstructure)
     }
 
     // Figure out where to put the SAR tree node.
     def scoreMolecule(sarTreeNode: SarTreeNode): Double = {
       val matchesSar = sarTreeNode.getSar.test(List[Molecule](queryMolecule))
-
       baseAdd * (if (matchesSar) scoreHit(sarTreeNode) else scoreMiss(sarTreeNode))
     }
 
+    // Score every molecule and return the sum of their scores.
     currentLevelList map scoreMolecule sum
   }
 }
