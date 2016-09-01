@@ -178,6 +178,8 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
                   if (hitOrMiss.getIntensity()/maxIntensity > 5.0 && hitOrMiss.getSnr()/maxSNR > 10.0) {
                     predictionWriter.write(inchi);
+                    predictionWriter.newLine();
+                    predictionWriter.flush();
                   }
                 }
               }
