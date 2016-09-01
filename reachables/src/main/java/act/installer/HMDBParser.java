@@ -162,7 +162,7 @@ public class HMDBParser {
     }
   }
 
-  private static void main(String[] args) throws Exception {
+  public static void main(String[] args) throws Exception {
     // Parse the command line options
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
