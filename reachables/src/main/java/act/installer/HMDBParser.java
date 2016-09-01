@@ -318,26 +318,26 @@ public class HMDBParser {
     chem.addSynonym(iupacName); // TODO: is there a better place for this?
 
     JSONObject meta = new JSONObject()
-        .append("ontology", new JSONObject()
-            .append("status", ontologyStatus)
-            .append("origins", new JSONArray(ontologyOrigins))
-            .append("functions", new JSONArray(ontologyFunctions))
-            .append("applications", new JSONArray(ontologyApplications))
-            .append("locations", new JSONArray(ontologyLocations))
+        .put("ontology", new JSONObject()
+            .put("status", ontologyStatus)
+            .put("origins", new JSONArray(ontologyOrigins))
+            .put("functions", new JSONArray(ontologyFunctions))
+            .put("applications", new JSONArray(ontologyApplications))
+            .put("locations", new JSONArray(ontologyLocations))
         )
-        .append("location", new JSONObject()
-            .append("fluid", new JSONArray(locationFluids))
-            .append("tissue", new JSONArray(locationTissues))
+        .put("location", new JSONObject()
+            .put("fluid", new JSONArray(locationFluids))
+            .put("tissue", new JSONArray(locationTissues))
         )
-        .append("pathway_names", new JSONArray(pathwayNames))
-        .append("disease_names", new JSONArray(diseaseNames))
-        .append("metlin_id", metlinId)
-        .append("chebi_id", chebiId)
-        .append("proteins", new JSONArray(proteinAttributes.stream()
+        .put("pathway_names", new JSONArray(pathwayNames))
+        .put("disease_names", new JSONArray(diseaseNames))
+        .put("metlin_id", metlinId)
+        .put("chebi_id", chebiId)
+        .put("proteins", new JSONArray(proteinAttributes.stream()
             .map(t -> new JSONObject().
-                append("name", t.getLeft()).
-                append("uniprot_id", t.getMiddle()).
-                append("gene_name", t.getRight())
+                put("name", t.getLeft()).
+                put("uniprot_id", t.getMiddle()).
+                put("gene_name", t.getRight())
             ).collect(Collectors.toList())
         )
     );
