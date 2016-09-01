@@ -62,19 +62,19 @@ public class HMDBParser {
     );
     add(Option.builder(OPTION_DB_HOST)
         .argName("hostname")
-        .desc("The DB host to which to connect")
+        .desc(String.format("The DB host to which to connect (default: %s)", DEFAULT_DB_HOST))
         .hasArg()
         .longOpt("db-host")
     );
     add(Option.builder(OPTION_DB_PORT)
         .argName("port")
-        .desc("The DB port to which to connect")
+        .desc(String.format("The DB port to which to connect (default: %s)", DEFAULT_DB_PORT))
         .hasArg()
         .longOpt("db-port")
     );
     add(Option.builder(OPTION_DB_NAME)
         .argName("name")
-        .desc("The name of the DB to which to install the HMDB chemicals")
+        .desc(String.format("The name of the DB to which to install the HMDB chemicals (default: %s)", DEFAULT_DB_NAME))
         .hasArg()
         .longOpt("db-name")
     );
@@ -404,7 +404,7 @@ public class HMDBParser {
       db.submitToActChemicalDB(chem, id);
       LOGGER.debug("Submitted chemical %d to the DB", id);
     }
-    LOGGER.info("Done loading HMDB chemicals");
+    LOGGER.info("Loaded %d HMDB chemicals into DB", files.size());
   }
 
   public static class Factory {
