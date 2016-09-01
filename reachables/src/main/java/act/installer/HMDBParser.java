@@ -310,7 +310,7 @@ public class HMDBParser {
 
     chem.setCanon(primaryName);
 
-    if (pubchemId != null) {
+    if (pubchemId != null && !pubchemId.isEmpty()) {
       chem.setPubchem(Long.valueOf(pubchemId));
     }
 
