@@ -272,6 +272,12 @@ public class HMDBParser {
     String inchiKey = getText(HMDB_XPATH.INCHI_KEY_TEXT, doc);
     String smiles = getText(HMDB_XPATH.SMILES_TEXT, doc);
 
+    // Require an InChI if we're going to consume this molecule.
+    if (inchi == null || inchi.isEmpty()) {
+      LOGGER.warn("No InChI found for HMDB chemical %s, aborting", hmdbId);
+      return null;
+    }
+
     String ontologyStatus = getText(HMDB_XPATH.ONTOLOGY_STATUS_TEXT, doc);
     List<String> ontologyOrigins = getTextFromNodes(HMDB_XPATH.ONTOLOGY_ORIGINS_NODES, doc);
     List<String> ontologyFunctions = getTextFromNodes(HMDB_XPATH.ONTOLOGY_FUNCTIONS_NODES, doc);
@@ -401,6 +407,11 @@ public class HMDBParser {
         String msg = String.format("Unable to extract features from XML file at %s: %s",
             file.getAbsolutePath(), e.getMessage());
         throw new IllegalArgumentException(msg, e);
+      }
+
+      if (chem == null) {
+        LOGGER.warn("Unable to create chemical from file %s", file.getAbsolutePath());
+        continue;
       }
 
       // submitToActChemicalDB creates or merges as necessary.
