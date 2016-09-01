@@ -1,3 +1,22 @@
+# server.R performs the computations behind the scenes
+# It collects a list of inputs from ui.R and produces a list of output
+
+# Note that the R libraries "shiny" and "rscala" well as Scala should be installed on the machine.
+# To perform these tasks, please run in R:
+# install.packages(c("shiny", "rscala"))
+# scalaInstall()
+
+# Finally, this assumes that a fat jar of the reachables project has been created with the command `sbt assembly`
+# and is located at
+kFatJarLocation <- "../../../../target/scala-2.10/reachables-assembly-0.1.jar"
+
+# Constants
+kImportBingPackageCommand <- 'import act.installer.bing'
+kScalaCommand <- 'bing.ExploreRange.getOutcomeVsYieldTable(%s, %s, "CMOS", "%s")'
+
+k20nLogoLocation <- "../../resources/20n.png"
+kChartLabelSizeFactor <- 1.3
+
 library(shiny)
 library(rscala)
 
@@ -5,7 +24,7 @@ getData <- function(input, sc) {
   titer = input$titer
   price = input$market.price
   location <- input$location
-  command <- sprintf('bing.ExploreRange.getOutcomeVsYieldTable(%s, %s, "CMOS", "%s")', titer, price, location)
+  command <- sprintf(kScalaCommand, titer, price, location)
   out <- sc%~%command
   con <- textConnection(out)
   on.exit(close(con))
@@ -20,7 +39,6 @@ getBreakEvenPoint <- function(data) {
 plotGraph <- function(input, data, output) {
   d <- data
   i <- getBreakEvenPoint(d)
-  
 
   switch(output,
          ROI = {
@@ -58,20 +76,21 @@ plotGraph <- function(input, data, output) {
            xLabel <- "Investment (Years)"
            xLim <- input$investment.years.max.min
         })
-  
-  plot(xValues, yValues, type = "l", col="blue",lwd=3, ylab = yLabel, xlab = xLabel, 
-       cex.lab=1.3, cex.axis=1.3, cex.main=1.3, cex.sub=1.3, xlim = xLim, main = yLabel)
+  # Line plot for the chart
+  plot(xValues, yValues, type="l", col="blue",lwd=3, ylab=yLabel, xlab=xLabel, xlim=xLim, main=yLabel,
+       cex.lab=kChartLabelSizeFactor, cex.axis=kChartLabelSizeFactor,
+       cex.main=kChartLabelSizeFactor, cex.sub=kChartLabelSizeFactor)
+  # Breakeven boundaries
   rect(0, rect.y.bottom, 30, rect.y.top, density = 3, col = "red")
 }
 
 shinyServer(function(input, output, session) {
   
-  sc=scalaInterpreter("/Users/tom/act/reachables/target/scala-2.10/reachables-assembly-0.1.jar")
-  sc%~%'import act.installer.bing'
+  sc=scalaInterpreter(kFatJarLocation)
+  sc%~%kImportBingPackageCommand
   
   output$logo <- renderImage({
-    # Return a list containing the filename
-    list(src = "20n.png",
+    list(src = k20nLogoLocation,
          contentType = 'image/png',
          width = "200",
          height = "120",
