@@ -262,6 +262,7 @@ object Defaults {
   case object MID extends Location { val name = "Midwest"; val rentalRate = cmoRate(8.3) }
   case object MEX extends Location { val name = "Mexico"; val rentalRate = cmoRate(8.3) }
   val defaultLocation: Location = GER
+  val allLocations: List[Location] = List(GER, ITL, IND, CHN, MID, MEX)
 }
 
 class InvestModel {
@@ -431,22 +432,13 @@ object ExploreRange {
       case "CMOS" => Defaults.CMOS
       case _ => Defaults.BYOP
     }
-    val l = location match {
-      case "GER" => Defaults.GER
-      case "ITL" => Defaults.ITL
-      case "IND" => Defaults.IND
-      case "CHN" => Defaults.CHN
-      case "MID" => Defaults.MID
-      case "MEX" => Defaults.MEX
-      case _ => Defaults.GER
-    }
-
+    val l: Defaults.Location = Defaults.allLocations.find(_.name.equals(location)).get
     val buf = new StringBuilder
     val header = List("Yield", "NPV", "ROIPercent", "COGS", "InvestM", "InvestY").mkString("\t")
     buf ++= header
     buf ++= "\n"
 
-    for (yieldv <- 1.0 to 100 by 1.0) {
+    val rows = for (yieldv <- 1.0 to 100 by 1.0) yield {
       val y = Yield(yieldv grams, 100 grams)
       val investment: (Money, Time) = investmodel.getInvestmentRequired(y, t)
       val cogs: Price[Mass] = costmodel.getPerTonCost(y, t, m, l)
@@ -459,10 +451,10 @@ object ExploreRange {
       val npv = roi._1.value / 1e6
       val roiPc = roi._2.value * 100
 
-      buf ++= f"$yieldPc%2.2f\t$npv%.2f\t$roiPc%.2f\t$cogsForTon%.2f\t$investMillions%.2f\t$investYears%.2f"
-      buf ++= "\n"
+      f"$yieldPc%2.2f\t$npv%.2f\t$roiPc%.2f\t$cogsForTon%.2f\t$investMillions%.2f\t$investYears%.2f"
     }
-    buf.toString
+    val contents = header :: rows.toList
+    contents.mkString("\n")
   }
 
   private val OPTION_MARKET_PRICE = "p"
