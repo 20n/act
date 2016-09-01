@@ -36,11 +36,11 @@ getBreakEvenPoint <- function(data) {
   which.min(abs(data$ROIPercent))
 }
 
-plotGraph <- function(input, data, output) {
+plotGraph <- function(input, data, outcome) {
   d <- data
   i <- getBreakEvenPoint(d)
 
-  switch(output,
+  switch(outcome,
          ROI = {
            yValues <- d$ROIPercent
            yLabel <- "ROI (%)"
