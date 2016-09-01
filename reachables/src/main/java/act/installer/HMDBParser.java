@@ -18,11 +18,9 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.stream.XMLInputFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +37,16 @@ public class HMDBParser {
    */
   private static final Pattern HMDB_FILE_REGEX = Pattern.compile("^HMDB\\d{5,6}\\.xml$");
 
+  /* Represent the HMDB paths as enums to constrain the universe of extracted features to a fixed set of paths.
+   * Most of the features are not sub-tree dependent, so we can just separate them into TEXT and NODES paths (i.e. paths
+   * that return a single string or paths that return nodes containing either a string or a sub-tree that needs to be
+   * re-parsed together).  For sub-trees requiring dependent parsing, where one path doesn't do the trick, we use the
+   * L1/L2 convention adopted in PubchemParser:
+   *   Structure: <feature name>_<level>[_<sub-feature or structure>]_<type>
+   * L1 extracts a sub-tree, while L2 extracts the features of the sub-tree so they can be linked together.
+   *
+   * Note also the description of features we're *not* currently extracting.  There are other data in the HMDB entries
+   * that may be useful at some point, but in the interest of time are being ignored for now. */
   private enum HMDB_XPATH {
     // Names
     PRIMARY_NAME_TEXT("/metabolite/name/text()"),
@@ -98,8 +106,8 @@ public class HMDBParser {
 
   private final Map<HMDB_XPATH, XPath> xpaths = new HashMap<>();
   private MongoDB db;
+  // This is required for extracting locality-dependent features of sub-trees using XPath.
   private DocumentBuilder documentBuilder;
-  private XMLInputFactory xmlInputFactory;
 
   protected HMDBParser(MongoDB db) {
     this.db = db;
@@ -110,26 +118,19 @@ public class HMDBParser {
       xpaths.put(xpath, xpath.compile());
     }
 
-    // This method pilfered from PubchemParser.java.
+    // This bit pilfered from PubchemParser.java.
     // TODO: next time we use this, put it in a common super class (do it once, do it again, then do it right!).
     DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
     documentBuilder = factory.newDocumentBuilder();
-
-    xmlInputFactory = XMLInputFactory.newInstance();
-
-    /* Configure the XMLInputFactory to return event streams that coalesce consecutive character events.  Without this
-     * we can end up with malformed names and InChIs, as XPath will only fetch the first text node if there are several
-     * text children under one parent. */
-    xmlInputFactory.setProperty(XMLInputFactory.IS_COALESCING, ENABLE_XML_STREAM_TEXT_COALESCING);
-    if ((Boolean) xmlInputFactory.getProperty(XMLInputFactory.IS_COALESCING)) {
-      LOGGER.info("Successfully configured XML stream to coalesce character elements.");
-    } else {
-      LOGGER.error("Unable to configure XML stream to coalesce character elements.");
-    }
   }
 
 
   // TODO: add some constraints on HMDB_XPATHs that allow us to programmatically check they're being applied correctly.
+  /**
+   * Get the text contents contained in a list of nodes.  Used for multi-valued fields that are siblings in the tree.
+   * @param n A list of nodes whose text content should be extracted.
+   * @return The text for each node.
+   */
   private static List<String> extractNodesText(List<Node> n) {
     return n.stream().map(Node::getTextContent).collect(Collectors.toList());
   }
@@ -138,6 +139,13 @@ public class HMDBParser {
     return (List<Node>) xpaths.get(xpath).selectNodes(doc); // No check, but guaranteed to return List<Node>.
   }
 
+  /**
+   * Extract the textual content for a set of sibling nodes appearing at some path in the specified document.
+   * @param xpath The path to use as a query.
+   * @param doc The document to query.
+   * @return The textual content of the nodes that live at the specified path.
+   * @throws JaxenException
+   */
   private List<String> getTextFromNodes(HMDB_XPATH xpath, Document doc) throws JaxenException {
     return extractNodesText(getNodes(xpath, doc));
   }
@@ -146,6 +154,13 @@ public class HMDBParser {
     return xpaths.get(xpath).stringValueOf(doc);
   }
 
+  /**
+   * Convert an HMDB XML document into a Chemical object.  Expects one chemical per document.
+   * @param doc A parsed HMDB XML doc.
+   * @return The corresponding chemical to store in the DB.
+   * @throws JaxenException
+   * @throws JSONException
+   */
   protected Chemical extractChemicalFromXMLDocument(Document doc) throws JaxenException, JSONException {
     String primaryName = getText(HMDB_XPATH.PRIMARY_NAME_TEXT, doc);
     String iupacName = getText(HMDB_XPATH.IUPAC_NAME_TEXT, doc);
@@ -245,6 +260,13 @@ public class HMDBParser {
     return results;
   }
 
+  /**
+   * Extract all chemicals from HMDB XML files that live in the specified directory and save them in the DB.
+   * Note that this search is not recursive: documents in sub-directories will be ignored.
+   * @param inputDir The directory to scan for HMDB XML files.
+   * @throws IOException
+   * @throws IllegalArgumentException
+   */
   public void run(File inputDir) throws IOException, IllegalArgumentException {
     if (inputDir == null || !inputDir.isDirectory()) {
       String msg = String.format("Unable to read input directory at %s",
@@ -254,6 +276,7 @@ public class HMDBParser {
     }
 
     List<File> files = findHMDBFilesInDirectory(inputDir);
+    LOGGER.info("Found %d HMDB XML files in directory %s", files.size(), inputDir.getAbsolutePath());
 
     for (File file : files) {
       LOGGER.debug("Processing HMDB XML file %s", file.getAbsolutePath());
@@ -281,6 +304,27 @@ public class HMDBParser {
       Long id = db.getNextAvailableChemicalDBid();
       db.submitToActChemicalDB(chem, id);
       LOGGER.debug("Submitted chemical %d to the DB", id);
+    }
+    LOGGER.info("Done loading HMDB chemicals");
+  }
+
+  public static class Factory {
+    public static HMDBParser makeParser(MongoDB db) {
+      HMDBParser parser = new HMDBParser(db);
+      // Promote XML-specific exceptions from parser initialization to runtime exceptions, as they are definite bugs.
+      try {
+        parser.init();
+      } catch (JaxenException e) {
+        LOGGER.error("BUG: caught JaxenException on initialization, which means programmer error: %s",
+            e.getMessage());
+        throw new RuntimeException(e);
+      } catch (ParserConfigurationException e) {
+        LOGGER.error("BUG: caught ParserConfigurationException on initialization, which means programmer error: %s",
+            e.getMessage());
+        throw new RuntimeException(e);
+      }
+
+      return parser;
     }
   }
 }
