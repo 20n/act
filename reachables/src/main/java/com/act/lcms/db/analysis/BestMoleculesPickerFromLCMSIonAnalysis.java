@@ -136,19 +136,19 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
     if (cl.hasOption(OPTION_GET_CHEMICAL_STATISTICS)) {
 
-      Set<String> inchis = readChemicalsFromFile(new File("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/inchis"));
+      Set<String> inchis = readChemicalsFromFile(new File("/Users/vijaytramakrishnan/Desktop/porfovour/inchis"));
 
       IonAnalysisInterchangeModel minPositiveModel = new IonAnalysisInterchangeModel();
-      minPositiveModel.loadResultsFromFile(new File("/mnt/shared-data/Vijay/jaffna/issue_371_analysis_copy/jca_ss_min_drugs"));
+      minPositiveModel.loadResultsFromFile(new File("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis_copy/jca_ss_min_drugs"));
 
       List<String> negFiles = new ArrayList<>();
-      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/lr_d1_ur_mn");
-      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/lr_d2_ur_mn");
-      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/lr_d2_ur_ev");
-      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/lr_d1_ur_ev");
-      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/ss_d1_ur_ev.json");
-      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/ss_d1_ur_mn.json");
-      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/ss_d2_ur_mn.json");
+      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/lr_d1_ur_mn");
+      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/lr_d2_ur_mn");
+      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/lr_d2_ur_ev");
+      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/lr_d1_ur_ev");
+      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/ss_d1_ur_ev.json");
+      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/ss_d1_ur_mn.json");
+      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/ss_d2_ur_mn.json");
 
       List<IonAnalysisInterchangeModel> negModels = new ArrayList<>();
       for (String negFile : negFiles) {
@@ -159,35 +159,41 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
       try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(new File("out.inchi")))) {
         for (String inchi : inchis) {
+
+          if (inchi.equals("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)")) {
+            int o = 0;
+          }
+
           for (int i = 0; i < minPositiveModel.getResults().size(); i++) {
             for (int j = 0; j < minPositiveModel.getResults().get(i).getMolecules().size(); j++) {
               IonAnalysisInterchangeModel.HitOrMiss hitOrMiss = minPositiveModel.getResults().get(i).getMolecules().get(j);
-              if (hitOrMiss.getInchi().equals(inchi) && hitOrMiss.getIon().equals("M+H")) {
-                if (hitOrMiss.getIntensity() > 0.0 && hitOrMiss.getSnr() > 0.0) {
 
-                  Double maxIntensity = Double.MIN_VALUE;
-                  Double maxSNR = Double.MIN_VALUE;
+              if (hitOrMiss.getInchi().equals(inchi) &&
+                  hitOrMiss.getIon().equals("M+H") &&
+                  hitOrMiss.getIntensity() > 0.0 &&
+                  hitOrMiss.getSnr() > 0.0) {
 
-                  for (int k = 0; k < negModels.size(); k++) {
-                    IonAnalysisInterchangeModel.HitOrMiss hitOrMissNeg = negModels.get(k).getResults().get(i).getMolecules().get(j);
-                    if ((hitOrMissNeg.getTime() > hitOrMiss.getTime() - 5.0) && (hitOrMissNeg.getTime() < hitOrMiss.getTime() + 5.0)) {
-                      maxIntensity = Math.max(maxIntensity, hitOrMissNeg.getIntensity());
-                      maxSNR = Math.max(maxSNR, hitOrMissNeg.getSnr());
-                    }
+                Double maxIntensity = Double.MIN_VALUE;
+                Double maxSNR = Double.MIN_VALUE;
+
+                for (int k = 0; k < negModels.size(); k++) {
+                  IonAnalysisInterchangeModel.HitOrMiss hitOrMissNeg = negModels.get(k).getResults().get(i).getMolecules().get(j);
+                  if ((hitOrMissNeg.getTime() > hitOrMiss.getTime() - 5.0) && (hitOrMissNeg.getTime() < hitOrMiss.getTime() + 5.0)) {
+                    maxIntensity = Math.max(maxIntensity, hitOrMissNeg.getIntensity());
+                    maxSNR = Math.max(maxSNR, hitOrMissNeg.getSnr());
                   }
+                }
 
-                  if (hitOrMiss.getIntensity()/maxIntensity > 5.0 && hitOrMiss.getSnr()/maxSNR > 10.0) {
-                    predictionWriter.write(inchi);
-                    predictionWriter.newLine();
-                    predictionWriter.flush();
-                  }
+                if (hitOrMiss.getIntensity()/maxIntensity > 5.0 && hitOrMiss.getSnr()/maxSNR > 10.0) {
+                  predictionWriter.write(inchi);
+                  predictionWriter.newLine();
+                  predictionWriter.flush();
                 }
               }
             }
           }
         }
       }
-
 
 //      TSVParser parser = new TSVParser();
 //      parser.parse(new File("/Users/vijaytramakrishnan/Desktop/porfovour/test.tsv"));
