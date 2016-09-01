@@ -132,23 +132,23 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
       System.exit(1);
     }
 
-    List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
+    //List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
 
     if (cl.hasOption(OPTION_GET_CHEMICAL_STATISTICS)) {
 
-      Set<String> inchis = readChemicalsFromFile(new File("/Users/vijaytramakrishnan/Desktop/porfovour/inchis"));
+        Set<String> inchis = readChemicalsFromFile(new File("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/inchis"));
 
       IonAnalysisInterchangeModel minPositiveModel = new IonAnalysisInterchangeModel();
-      minPositiveModel.loadResultsFromFile(new File("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis_copy/jca_ss_min_drugs"));
+      minPositiveModel.loadResultsFromFile(new File("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/ss_chris_min"));
 
       List<String> negFiles = new ArrayList<>();
-      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/lr_d1_ur_mn");
-      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/lr_d2_ur_mn");
-      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/lr_d2_ur_ev");
-      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/lr_d1_ur_ev");
-      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/ss_d1_ur_ev.json");
-      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/ss_d1_ur_mn.json");
-      negFiles.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis/ss_d2_ur_mn.json");
+      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/lr_d1_ur_mn");
+      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/lr_d2_ur_mn");
+      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/lr_d2_ur_ev");
+      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/lr_d1_ur_ev");
+      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/ss_d1_ur_ev.json");
+      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/ss_d1_ur_mn.json");
+      negFiles.add("/mnt/shared-data/Vijay/jaffna/issue_371_analysis/ss_d2_ur_mn.json");
 
       List<IonAnalysisInterchangeModel> negModels = new ArrayList<>();
       for (String negFile : negFiles) {
@@ -159,11 +159,6 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
       try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(new File("out.inchi")))) {
         for (String inchi : inchis) {
-
-          if (inchi.equals("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)")) {
-            int o = 0;
-          }
-
           for (int i = 0; i < minPositiveModel.getResults().size(); i++) {
             for (int j = 0; j < minPositiveModel.getResults().get(i).getMolecules().size(); j++) {
               IonAnalysisInterchangeModel.HitOrMiss hitOrMiss = minPositiveModel.getResults().get(i).getMolecules().get(j);
@@ -284,21 +279,21 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
       return;
     }
 
-    Double minSnrThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_SNR_THRESHOLD));
-    Double minIntensityThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_INTENSITY_THRESHOLD));
-    Double minTimeThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_TIME_THRESHOLD));
-
-    Set<String> inchis = cl.hasOption(OPTION_GET_IONS_SUPERSET) ?
-        IonAnalysisInterchangeModel.getSupersetOfIonicVariants(positiveReplicateResults, minSnrThreshold,
-            minIntensityThreshold, minTimeThreshold) :
-        IonAnalysisInterchangeModel.getAllMoleculeHitsFromMultiplePositiveReplicateFiles(
-        positiveReplicateResults, minSnrThreshold, minIntensityThreshold, minTimeThreshold);
-
-    try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(cl.getOptionValue(OPTION_OUTPUT_FILE)))) {
-      for (String inchi : inchis) {
-        predictionWriter.append(inchi);
-        predictionWriter.newLine();
-      }
-    }
+//    Double minSnrThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_SNR_THRESHOLD));
+//    Double minIntensityThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_INTENSITY_THRESHOLD));
+//    Double minTimeThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_TIME_THRESHOLD));
+//
+//    Set<String> inchis = cl.hasOption(OPTION_GET_IONS_SUPERSET) ?
+//        IonAnalysisInterchangeModel.getSupersetOfIonicVariants(positiveReplicateResults, minSnrThreshold,
+//            minIntensityThreshold, minTimeThreshold) :
+//        IonAnalysisInterchangeModel.getAllMoleculeHitsFromMultiplePositiveReplicateFiles(
+//        positiveReplicateResults, minSnrThreshold, minIntensityThreshold, minTimeThreshold);
+//
+//    try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(cl.getOptionValue(OPTION_OUTPUT_FILE)))) {
+//      for (String inchi : inchis) {
+//        predictionWriter.append(inchi);
+//        predictionWriter.newLine();
+//      }
+//    }
   }
 }
