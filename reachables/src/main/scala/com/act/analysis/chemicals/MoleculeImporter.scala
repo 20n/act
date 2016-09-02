@@ -31,6 +31,11 @@ object MoleculeImporter {
   @throws[MolFormatException]
   implicit def toMolecule(chemical: Chemical): String = chemical.getInChI
 
+  // For java
+  @throws[MolFormatException]
+  def importMolecule(chemical: Chemical): Molecule = {
+    importMolecule(toMolecule(chemical))
+  }
   object ChemicalSetting extends Enumeration {
     type MoleculeType = String
     val Inchi = "inchi"
