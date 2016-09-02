@@ -4,6 +4,7 @@ import act.shared.Chemical;
 import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.struc.Molecule;
+import com.act.analysis.chemicals.MoleculeImporter;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import com.act.biointerpretation.sars.SerializableReactor;
@@ -103,7 +104,7 @@ public class TwoSubstrateRoExpander extends L2Expander {
     Map<Integer, Set<Molecule>> result = new HashMap<>();
     for (Chemical chemical : chemicals) {
       try {
-        Molecule mol = L2InchiCorpus.importMolecule(chemical.getInChI());
+        Molecule mol = MoleculeImporter.importMolecule(chemical);
 
         for (Integer roId : chemical.getSubstructureRoIds()) {
           Set<Molecule> molecules = result.get(roId);
