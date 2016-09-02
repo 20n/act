@@ -15,10 +15,6 @@ object MoleculeConversions {
   _cfp.setBondCount(15)
   _cfp.setBitCount(4)
 
-  def cfp: CFParameters = {
-    _cfp
-  }
-
   /**
     * Utility to convert from a molecule to an Array[Int] using its chemical footprint.
     *
@@ -26,7 +22,7 @@ object MoleculeConversions {
     *
     * @return Array representing the input molecule.
     */
-  def moleculeToIntArray(mol: Molecule): Array[Int] = {
+  def toIntArray(mol: Molecule): Array[Int] = {
     val intArray: Option[Array[Int]] = chemicalCache.get(mol)
 
     // If it doesn't exist, we generate it
@@ -48,15 +44,10 @@ object MoleculeConversions {
     intArray.get
   }
 
-  def inchiToIntArray(inchi: String): Array[Int] = {
-    moleculeToIntArray(MoleculeImporter.importMoleculeFromInchi(inchi))
+  def cfp: CFParameters = {
+    _cfp
   }
 
-  def inchiOrMoleculeToIntArray(inchiOrMolecule: Either[String, Molecule]): Array[Int] ={
-    inchiOrMolecule match {
-      case Left(s) => inchiToIntArray(s)
-      case Right(m) => moleculeToIntArray(m)
-    }
-  }
+  private implicit def inchiToMolecule(inchi: String): Molecule = MoleculeImporter.importMolecule(inchi)
 }
 

@@ -7,10 +7,6 @@ import chemaxon.struc.Molecule
   * Concurrency safe cached molecule
   */
 object ChemicalSimilarity {
-  def calculatorSettings: Option[String] = _calculatorSettings
-
-  private def calculatorSettings_=(value: String): Unit = _calculatorSettings = Option(value)
-
   var _calculatorSettings: Option[String] = None
 
   /**
@@ -30,25 +26,9 @@ object ChemicalSimilarity {
     *
     * @return Similarity value between 0 and 1.
     */
-  private def calculateSimilarity(query: Either[String, Molecule], target: Either[String, Molecule]): Double = {
-    val simCalc = getSimCalculator(query)
-    simCalc.getSimilarity(MoleculeConversions.inchiOrMoleculeToIntArray(target))
-  }
-
-  def calculateSimilarity(query: String, target: String): Double = {
-    calculateSimilarity(Left(query), Left(target))
-  }
-
-  def calculateSimilarity(query: Molecule, target: String): Double = {
-    calculateSimilarity(Right(query), Left(target))
-  }
-
-  def calculateSimilarity(query: String, target: Molecule): Double = {
-    calculateSimilarity(Left(query), Right(target))
-  }
-
   def calculateSimilarity(query: Molecule, target: Molecule): Double = {
-    calculateSimilarity(Right(query), Right(target))
+    val simCalc = getSimCalculator(query)
+    simCalc.getSimilarity(MoleculeConversions.toIntArray(target))
   }
 
   /**
@@ -59,40 +39,31 @@ object ChemicalSimilarity {
     *
     * @return Dissimilarity value between 0 and 1.
     */
-  private def calculateDissimilarity(query: Either[String, Molecule], target: Either[String, Molecule]): Double = {
-    val simCalc = getSimCalculator(query)
-    simCalc.getDissimilarity(MoleculeConversions.inchiOrMoleculeToIntArray(target))
-  }
-
-  def calculateDissimilarity(query: String, target: String): Double = {
-    calculateDissimilarity(Left(query), Left(target))
-  }
-
-  def calculateDissimilarity(query: Molecule, target: String): Double = {
-    calculateDissimilarity(Right(query), Left(target))
-  }
-
-  def calculateDissimilarity(query: String, target: Molecule): Double = {
-    calculateDissimilarity(Left(query), Right(target))
-  }
-
   def calculateDissimilarity(query: Molecule, target: Molecule): Double = {
-    calculateDissimilarity(Right(query), Right(target))
+    val simCalc = getSimCalculator(query)
+    simCalc.getDissimilarity(MoleculeConversions.toIntArray(target))
   }
 
   /**
     * Given settings, retrieves a Similarity calculator for those settings and that query molecule.
     *
     * @param queryMolecule      Molecule to query
- *
+    *
     * @return                   A Similarity calculator.
     */
-  private def getSimCalculator(queryMolecule: Either[String, Molecule]): SimilarityCalculator[Array[Int]] ={
+  private def getSimCalculator(queryMolecule: Molecule): SimilarityCalculator[Array[Int]] = {
     require(calculatorSettings.isDefined, "Please run ChemicalSimilarity.init() prior to doing comparisons.  " +
       "If you'd like to use a non-default calculator, you can supply those parameters there as well.")
+
     val simCalc = SimilarityCalculatorFactory.create(calculatorSettings.get)
-    simCalc.setQueryFingerprint(MoleculeConversions.inchiOrMoleculeToIntArray(queryMolecule))
+    simCalc.setQueryFingerprint(MoleculeConversions.toIntArray(queryMolecule))
 
     simCalc
   }
+
+  def calculatorSettings: Option[String] = _calculatorSettings
+
+  private def calculatorSettings_=(value: String): Unit = _calculatorSettings = Option(value)
+
+  private implicit def inchiToMolecule(inchi: String): Molecule = MoleculeImporter.importMolecule(inchi)
 }
