@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class MassCalculator2Test {
   public static final String TEST_CASE_RESOURCE = "mass_calculator_test_cases.txt";
@@ -42,10 +41,9 @@ public class MassCalculator2Test {
         threshold += ACCEPTABLE_MASS_DELTA_THRESHOLD * actualMassAndCharge.getRight().doubleValue();
       }
 
-      Double massDelta = actualMassAndCharge.getLeft() - expectedMass;
-      assertTrue(String.format("Case %d: mass for %s is within delta threshold: %.6f vs. %.6f",
+      assertEquals(String.format("Case %d: mass for %s is within delta threshold: %.6f vs. %.6f",
           testCase, inchi, expectedMass, actualMassAndCharge.getLeft()),
-          massDelta >= -1.0 * threshold && massDelta <= threshold);
+          expectedMass, actualMassAndCharge.getLeft(), threshold);
       assertEquals(String.format("Case %d: charge %s matches expected", testCase, inchi),
           expectedCharge, actualMassAndCharge.getRight());
       testCase++;
