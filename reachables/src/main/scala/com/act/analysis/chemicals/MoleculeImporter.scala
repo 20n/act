@@ -7,34 +7,14 @@ import chemaxon.struc.Molecule
 import scala.collection.concurrent.TrieMap
 
 object MoleculeImporter {
-  private object ChemicalSetting extends Enumeration {
-    val Inchi = "inchi"
-    val Smiles = "smiles"
-  }
-
   private val moleculeCache = TrieMap[String, Molecule]()
 
   @throws[MolFormatException]
-  def importMoleculeFromInchi(inchi: String): Molecule = {
-    moleculeImportHelper(inchi, ChemicalSetting.Inchi)
-  }
-
-  @throws[MolFormatException]
-  def importMoleculeFromSmiles(smile: String): Molecule = {
-    moleculeImportHelper(smile, ChemicalSetting.Smiles)
-  }
-
-  @throws[MolFormatException]
-  def importMolecule(chemical: Chemical): Molecule = {
-    importMoleculeFromInchi(chemical.getInChI)
-  }
-
-  @throws[MolFormatException]
-  private def moleculeImportHelper(mol: String, setting: String): Molecule = {
+  def importMolecule(mol: String, setting: ChemicalSetting.MoleculeType = ChemicalSetting.Inchi): Molecule = {
     val molecule = moleculeCache.get(mol)
 
     if (molecule.isEmpty){
-      val newMolecule = MolImporter.importMol(mol, setting)
+      val newMolecule = MolImporter.importMol(mol)
       moleculeCache.put(mol, newMolecule)
       return newMolecule
     }
@@ -42,4 +22,12 @@ object MoleculeImporter {
     molecule.get
   }
 
+  @throws[MolFormatException]
+  private implicit def toMolecule(chemical: Chemical): String = chemical.getInChI
+
+  object ChemicalSetting extends Enumeration {
+    type MoleculeType = String
+    val Inchi = "inchi"
+    val Smiles = "smiles"
+  }
 }
