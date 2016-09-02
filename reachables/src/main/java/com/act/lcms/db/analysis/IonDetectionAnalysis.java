@@ -276,7 +276,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
           result.put(ScanData.KIND.POS_SAMPLE, values);
         }
 
-        ScanFile scanFile = new ScanFile(FAKE_ID, new File(lcmsDir, scanFileLocation).getAbsolutePath(), ScanFile.SCAN_MODE.POS, ScanFile.SCAN_FILE_TYPE.NC, FAKE_ID, FAKE_ID, FAKE_ID);
+        ScanFile scanFile = new ScanFile(FAKE_ID, scanFileLocation, ScanFile.SCAN_MODE.POS, ScanFile.SCAN_FILE_TYPE.NC, FAKE_ID, FAKE_ID, FAKE_ID);
         this.wellToScanFile.put(well, scanFile);
         values.add(well);
       } else {
