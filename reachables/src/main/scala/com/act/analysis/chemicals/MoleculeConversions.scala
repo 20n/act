@@ -44,10 +44,10 @@ object MoleculeConversions {
     intArray.get
   }
 
-  def cfp: CFParameters = {
+  private def cfp: CFParameters = {
     _cfp
   }
 
-  private implicit def inchiToMolecule(inchi: String): Molecule = MoleculeImporter.importMolecule(inchi)
+  implicit def inchiToMolecule(inchi: String): Molecule = MoleculeImporter.importMolecule(inchi)
 }
 

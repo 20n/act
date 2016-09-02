@@ -44,7 +44,7 @@ object ChemicalSimilarity {
     */
   private def getSimCalculator(queryMolecule: Molecule): SimilarityCalculator[Array[Int]] = {
     require(calculatorSettings.isDefined, "Please run ChemicalSimilarity.init() prior to doing comparisons.  " +
-      "If you'd like to use a non-default calculator, you can supply those parameters there as well.")
+      "If you'd like to use a non-default calculator, you can supply those parameters during initialization.")
 
     val simCalc = SimilarityCalculatorFactory.create(calculatorSettings.get)
     simCalc.setQueryFingerprint(MoleculeConversions.toIntArray(queryMolecule))
