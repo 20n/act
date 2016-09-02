@@ -1,0 +1,120 @@
+#!/bin/bash
+
+########################################
+# spawn_vm: creates an Azure VM using a host template and parameters
+#
+# usage: spawn_vm <config dir> <numeric identifier> [<admin username> [<public key file>]]"
+#
+# example: spawn_vm d11_v2_worker 50 mdaly ~/.ssh/id_rsa.pub
+#
+# This script wraps the azure CLI utilities to conveinently create a VM using JSON template
+# and parameter files that can be exported from the azure dashboard.
+# Note that some cross-host parameters like locations and security groups should be configured
+# directly in the parameters file.
+#
+# Before running this script, run the following commands and follow any instructions:
+#   $ azure login
+#   $ azure config mode arm
+# These will create a persistent session for interacting with Azure and will configure that
+# session to use the new resource manager, which makes management possible through the new Azure
+# web portal.
+#
+# This script can (carefully!) be used in a loop like:
+#   for i in $(seq 1 10); do
+#     spawn_vm d11_v2_worker worker-$i;
+#   done
+#
+# Note that azure only allows one VM to be created at a time, so this script cannot be
+# executed in parallel.
+########################################
+
+usage="usage: $0 <config dir> <numeric identifier> [<admin username> [<public key file>]]"
+
+# Check for dependencies.
+AZURE=`which azure`
+if [[ -z $AZURE ]]; then
+    echo "Couldn't find azure CLI tools.  Install with 'brew install azure-cli' and try again."
+    echo $usage
+    exit 1
+fi
+
+JQ=`which jq`
+if [[ -z $JQ ]]; then
+    echo "Couldn't find jq.  Install with 'brew install jq' and try again."
+    echo $usage
+    exit 1
+fi
+
+
+# Read and validate arguments.
+if [[ -z $1 || ! -d $1 ]]; then
+    echo "Must specify a directory containing configuration files."
+    echo $usage
+    exit 1
+fi
+
+if [[ -z $2 ]]; then
+    echo "Must specify a host suffix number."
+    echo $usage
+    exit 1
+fi
+
+CONFIG_DIR=$1
+SUFFIX=$2
+
+USER=$(whoami)
+if [[ ! -z $3 ]]; then
+    USER=$3
+fi
+
+echo "Using username '$USER' as admin user."
+
+KEY=""
+if [[ ! -z $4 ]]; then
+    if [[ ! $4 =~ \.pub$ ]]; then
+        echo "Public keys are expected to end with '.pub', but $4 does not.  Cowardly refusing to use a potentially private key."
+        echo $usage
+        exit 1
+    else
+        echo "Using public key at $4"
+        KEY=$(cat $4)
+    fi
+elif [[ -e $HOME/.ssh/id_rsa.pub ]]; then
+    echo "Using public key at ~/.ssh/id_rsa.pub"
+    KEY=$(cat $HOME/.ssh/id_rsa.pub)
+elif  [[ -e $HOME/.ssh/id_dsa.pub ]]; then
+    echo "Using public key at ~/.ssh/id_dsa.pub"
+    KEY=$(cat $HOME/.ssh/id_dsa.pub)
+else
+    echo "Cannot find public keys at default locations (~/.ssh/id_{rsa,dsa}.pub).  Specify key file explicitly."
+    echo $usage
+    exit 1
+fi
+
+# Create a temp file for VM-specific parameters.
+PARAMS_OUT=$(mktemp -t "spawn_vm")
+echo "Temporary parameters file at $PARAMS_OUT."
+
+HOSTNAME="twentyn-${SUFFIX}"
+NIC="${HOSTNAME}-nic"
+
+# Populate the parameters file.
+echo "Substituting hostname and NIC parameter values."
+$JQ ".parameters.virtualMachineName.value = \"${HOSTNAME}\" | .parameters.networkInterfaceName.value = \"$NIC\" | .parameters.adminUsername.value = \"$USER\" | .parameters.adminPublicKey.value = \"$KEY\"" \
+    $CONFIG_DIR/parameters.json > $PARAMS_OUT
+
+# Spin up a VM.
+echo "----------------------------------------"
+echo "Creating worker ${SUFFIX} with parameters:"
+echo "  Hostname: $HOSTNAME"
+echo "  NIC name: $NIC"
+echo "  Username: $USER"
+echo "  SSH key:  $KEY"
+echo "----------------------------------------"
+$AZURE group deployment create --resource-group twentyn-azure-central-us --template-file $CONFIG_DIR/template.json --parameters-file $PARAMS_OUT
+echo "----------------------------------------"
+# All done.
+echo "Cleaning up."
+rm -f $PARAMS_OUT
+
+echo "Done."
