@@ -2,6 +2,7 @@ package com.act.analysis.proteome.proteome_workflow
 
 import java.io.File
 
+import com.act.analysis.chemicals.ChemicalSimilarity
 import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.tool_wrappers.{ClustalOmegaWrapper, ScalaJobWrapper}
 import com.act.workflow.tool_manager.workflow.Workflow
@@ -25,6 +26,7 @@ class OrganismBasedRoToLcmsScoring extends Workflow with RoToSequences with SarT
   private val OPTION_FORCE = "f"
   private val OPTION_OUTPUT_TSV = "t"
   private val OPTION_ORGANISM_REGEX = "o"
+  private val OPTION_CHEMICAL_SIMILARITY_STRING = "s"
 
   override def getCommandLineOptions: Options = {
 
@@ -78,6 +80,12 @@ class OrganismBasedRoToLcmsScoring extends Workflow with RoToSequences with SarT
         desc("Part of all of an organism name. Automatically flanked by .* to be flexible." +
           "If this is not provided the default is to match to humans."),
 
+      CliOption.builder(OPTION_CHEMICAL_SIMILARITY_STRING).
+        longOpt("similarity-method").
+        hasArg.
+        desc("A string which is provided to Chemaxon's chemical " +
+          "SimilarityCalculatorFactory which creates calculators for molecule comparison."),
+
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
     val opts: Options = new Options()
@@ -121,6 +129,13 @@ class OrganismBasedRoToLcmsScoring extends Workflow with RoToSequences with SarT
       workingDir,
       fileEnding = "tsv"
     )
+
+    // Initialize similarity here so we only do it and the user can provide averages if they'd like
+    if (cl.hasOption(OPTION_CHEMICAL_SIMILARITY_STRING)){
+      ChemicalSimilarity.init(cl.getOptionValue(OPTION_CHEMICAL_SIMILARITY_STRING))
+    } else {
+      ChemicalSimilarity.init()
+    }
 
     // Cache previous alignments
     if (cl.hasOption(OPTION_FORCE) || !alignedFastaPath.exists) {
