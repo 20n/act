@@ -195,7 +195,7 @@ public class AnalysisHelper {
       MS1ScanForWellAndMassCharge ms1ScanForWellAndMassCharge = entry.getValue();
 
       Map<String, Double> singletonMass = Collections.singletonMap(chemicalName, massCharge);
-      result.put(entry.getKey(), new ScanData<T>(kind, plate, well, scanFile, chemicalName, singletonMass, ms1ScanForWellAndMassCharge));
+      result.put(entry.getKey(), new ScanData<T>(kind, null, well, scanFile, chemicalName, singletonMass, ms1ScanForWellAndMassCharge));
     }
 
     return result;
