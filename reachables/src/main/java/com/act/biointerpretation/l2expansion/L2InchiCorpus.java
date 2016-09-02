@@ -29,7 +29,8 @@ public class L2InchiCorpus {
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2InchiCorpus.class);
 
   private static final String INCHI_IMPORT_SETTINGS = "inchi";
-  private static ConcurrentHashMap<String, Molecule> inchiMoleculeCache = new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, Molecule> inchiMoleculeCache = new ConcurrentHashMap<>();
+
   private List<String> corpus = new ArrayList<>();
 
   public L2InchiCorpus() {
