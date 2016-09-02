@@ -9,6 +9,12 @@ import scala.collection.concurrent.TrieMap
 object MoleculeImporter {
   private val moleculeCache = TrieMap[String, Molecule]()
 
+  // For java
+  @throws[MolFormatException]
+  def importMolecule(chemical: Chemical): Molecule = {
+    importMolecule(toMolecule(chemical))
+  }
+
   // Overload for easy java interop.
   @throws[MolFormatException]
   def importMolecule(mol: String): Molecule = {
@@ -28,14 +34,8 @@ object MoleculeImporter {
     molecule.get
   }
 
-  @throws[MolFormatException]
-  implicit def toMolecule(chemical: Chemical): String = chemical.getInChI
+  private implicit def toMolecule(chemical: Chemical): String = chemical.getInChI
 
-  // For java
-  @throws[MolFormatException]
-  def importMolecule(chemical: Chemical): Molecule = {
-    importMolecule(toMolecule(chemical))
-  }
   object ChemicalSetting extends Enumeration {
     type MoleculeType = String
     val Inchi = "inchi"

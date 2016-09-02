@@ -22,6 +22,14 @@ object ChemicalSimilarity {
 
   private def calculatorSettings_=(value: String): Unit = _calculatorSettings = Option(value)
 
+  def calculateSimilarity(query: Molecule, target: Molecule): Double = helperCalculateSimilarity(query, target)
+
+  def calculateSimilarity(query: String, target: Molecule): Double = helperCalculateSimilarity(query, target)
+
+  def calculateSimilarity(query: Molecule, target: String): Double = helperCalculateSimilarity(query, target)
+
+  def calculateSimilarity(query: String, target: String): Double = helperCalculateSimilarity(query, target)
+
   /**
     * For two molecules, use a calculator to determine their closeness.
     *
@@ -30,9 +38,30 @@ object ChemicalSimilarity {
     *
     * @return Similarity value between 0 and 1.
     */
-  def calculateSimilarity(query: Molecule, target: Molecule): Double = {
+  private def helperCalculateSimilarity(query: Molecule, target: Molecule): Double = {
     val simCalc = getSimCalculator(query)
     simCalc.getSimilarity(MoleculeConversions.toIntArray(target))
+  }
+
+  def calculateDissimilarity(query: Molecule, target: Molecule): Double = helperCalculateDissimilarity(query, target)
+
+  def calculateDissimilarity(query: String, target: Molecule): Double = helperCalculateDissimilarity(query, target)
+
+  def calculateDissimilarity(query: Molecule, target: String): Double = helperCalculateDissimilarity(query, target)
+
+  def calculateDissimilarity(query: String, target: String): Double = helperCalculateDissimilarity(query, target)
+
+  /**
+    * For two molecules, use a calculator to determine how far away they are
+    *
+    * @param query  Molecule to use as the query molecule.
+    * @param target Molecule you are targeting to see how similar it is to the query.
+    *
+    * @return Dissimilarity value between 0 and 1.
+    */
+  private def helperCalculateDissimilarity(query: Molecule, target: Molecule): Double = {
+    val simCalc = getSimCalculator(query)
+    simCalc.getDissimilarity(MoleculeConversions.toIntArray(target))
   }
 
   /**
@@ -52,18 +81,5 @@ object ChemicalSimilarity {
     simCalc
   }
 
-  /**
-    * For two molecules, use a calculator to determine how far away they are
-    *
-    * @param query  Molecule to use as the query molecule.
-    * @param target Molecule you are targeting to see how similar it is to the query.
-    *
-    * @return Dissimilarity value between 0 and 1.
-    */
-  def calculateDissimilarity(query: Molecule, target: Molecule): Double = {
-    val simCalc = getSimCalculator(query)
-    simCalc.getDissimilarity(MoleculeConversions.toIntArray(target))
-  }
-
-  implicit def inchiToMolecule(inchi: String): Molecule = MoleculeImporter.importMolecule(inchi)
+  private implicit def inchiToMolecule(inchi: String): Molecule = MoleculeImporter.importMolecule(inchi)
 }
