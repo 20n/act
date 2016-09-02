@@ -3,7 +3,6 @@ package com.act.analysis.chemicals
 import act.shared.Chemical
 import chemaxon.formats.{MolFormatException, MolImporter}
 import chemaxon.struc.Molecule
-import com.act.workflow.tool_manager.jobs.StatusCodes.Value
 
 import scala.collection.concurrent.TrieMap
 
