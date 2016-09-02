@@ -392,16 +392,13 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
 
     for (T positiveWell : positiveWells) {
       ScanFile scanFile = AnalysisHelper.pickBestScanFileForWell(db, positiveWell);
-      System.out.println(String.format("Scanfile location: %s", scanFile.getFilename()));
-      System.out.println(String.format("Well ro: %d, Well col: %d", positiveWell.getPlateRow(), positiveWell.getPlateColumn()));
+      System.out.println(String.format("%s", scanFile.getFilename()));
     }
 
     for (T negativeWell : negativeWells) {
       ScanFile scanFile = AnalysisHelper.pickBestScanFileForWell(db, negativeWell);
-      System.out.println(String.format("Scanfile location: %s", scanFile.getFilename()));
-      System.out.println(String.format("Well ro: %d, Well col: %d", negativeWell.getPlateRow(), negativeWell.getPlateColumn()));
+      System.out.println(String.format("%s", scanFile.getFilename()));
     }
-
 
     for (T positiveWell : positiveWells) {
       LOGGER.info("Reading scan data for positive well number: %s", wellCounter.toString());
