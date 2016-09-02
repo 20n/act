@@ -39,62 +39,6 @@ public class L2InchiCorpus {
     corpus = new ArrayList<>(inchiList);
   }
 
-  /**
-   * This function imports a given inchi to a Molecule.
-   *
-   * @param inchi Input inchi.
-   * @return The resulting Molecule.
-   * @throws MolFormatException
-   */
-  static Molecule importMolecule(String inchi) throws MolFormatException {
-    // We can't use the fancier methods here because MolImporter throws a checked exception and lambdas don't allow that
-    Molecule inchiMolecule = inchiMoleculeCache.get(inchi);
-
-    if (inchiMolecule == null) {
-      inchiMolecule = MolImporter.importMol(inchi, INCHI_IMPORT_SETTINGS);
-      inchiMoleculeCache.put(inchi, inchiMolecule);
-    }
-
-    return inchiMolecule;
-  }
-
-  /**
-   * Wraps mass filtering so that it can be used as a step in a workflow
-   *
-   * @param inputSubstrates The initial list of substrates.
-   * @param outputFile      The file to which to write the output.
-   * @param massThreshold   The maximum mass to allow, in Daltons.
-   * @return A JavaRunnable that can be used in a workflow.
-   */
-  public static JavaRunnable getRunnableSubstrateFilterer(File inputSubstrates,
-                                                          File outputFile,
-                                                          Integer massThreshold) {
-    return new JavaRunnable() {
-
-      @Override
-      public void run() throws IOException {
-        // Verify files
-        FileChecker.verifyInputFile(inputSubstrates);
-        FileChecker.verifyAndCreateOutputFile(outputFile);
-
-        // Build input corpus
-        L2InchiCorpus inchis = new L2InchiCorpus();
-        inchis.loadCorpus(inputSubstrates);
-
-        // Apply filter
-        inchis.filterByMass(massThreshold);
-
-        // Write to output file
-        inchis.writeToFile(outputFile);
-      }
-
-      @Override
-      public String toString() {
-        return "mass_filterer_" + massThreshold.toString();
-      }
-    };
-  }
-
   public void filterByMass(Integer massCutoff) {
     corpus.removeIf(
             inchi ->
@@ -172,5 +116,61 @@ public class L2InchiCorpus {
 
   public List<String> getInchiList() {
     return corpus;
+  }
+
+  /**
+   * This function imports a given inchi to a Molecule.
+   *
+   * @param inchi Input inchi.
+   * @return The resulting Molecule.
+   * @throws MolFormatException
+   */
+  static Molecule importMolecule(String inchi) throws MolFormatException {
+    // We can't use the fancier methods here because MolImporter throws a checked exception and lambdas don't allow that
+    Molecule inchiMolecule = inchiMoleculeCache.get(inchi);
+
+    if (inchiMolecule == null) {
+      inchiMolecule = MolImporter.importMol(inchi, INCHI_IMPORT_SETTINGS);
+      inchiMoleculeCache.put(inchi, inchiMolecule);
+    }
+
+    return inchiMolecule;
+  }
+
+  /**
+   * Wraps mass filtering so that it can be used as a step in a workflow
+   *
+   * @param inputSubstrates The initial list of substrates.
+   * @param outputFile      The file to which to write the output.
+   * @param massThreshold   The maximum mass to allow, in Daltons.
+   * @return A JavaRunnable that can be used in a workflow.
+   */
+  public static JavaRunnable getRunnableSubstrateFilterer(File inputSubstrates,
+                                                          File outputFile,
+                                                          Integer massThreshold) {
+    return new JavaRunnable() {
+
+      @Override
+      public void run() throws IOException {
+        // Verify files
+        FileChecker.verifyInputFile(inputSubstrates);
+        FileChecker.verifyAndCreateOutputFile(outputFile);
+
+        // Build input corpus
+        L2InchiCorpus inchis = new L2InchiCorpus();
+        inchis.loadCorpus(inputSubstrates);
+
+        // Apply filter
+        inchis.filterByMass(massThreshold);
+
+        // Write to output file
+        inchis.writeToFile(outputFile);
+      }
+
+      @Override
+      public String toString() {
+        return "mass_filterer_" + massThreshold.toString();
+      }
+    };
   }
 }
