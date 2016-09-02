@@ -208,8 +208,10 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
   def scoreCorpusAgainstSarTree(sarTree: SarTree, inchiCorpus: L2InchiCorpus): ParMap[String, Double] = {
     val inchiToMoleculeMap: Map[String, Molecule] = (inchiCorpus.getInchiList zip inchiCorpus.getMolecules) toMap
 
+    val inchiScorer: Molecule => Double = scoreInchiAgainstSarTree(sarTree, sarTree.getRootNodes.toList)_
+
     val scoredInchis: ParMap[String, Double] = inchiToMoleculeMap.par.map {
-      case (key, value) => (key, scoreInchiAgainstSarTree(sarTree, sarTree.getRootNodes.toList, value))
+      case (key, value) => (key, inchiScorer(value))
     }
 
     scoredInchis
@@ -227,7 +229,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     *
     * @return
     */
-  def scoreInchiAgainstSarTree(sarTree: SarTree, currentLevelList: Seq[SarTreeNode], queryMolecule: Molecule): Double = {
+  def scoreInchiAgainstSarTree(sarTree: SarTree, currentLevelList: Seq[SarTreeNode])(queryMolecule: Molecule): Double = {
     // Arbitrary score value
     val baseAdd = 10.0
 
@@ -271,7 +273,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
       }
 
       // Adding one adds a bit of weight to traversal (Deeper -> more score)
-      1 + scoreInchiAgainstSarTree(sarTree, sarTreeChildren, queryMolecule)
+      1 + scoreInchiAgainstSarTree(sarTree, sarTreeChildren)(queryMolecule)
     }
 
     // Score if SAR tree node is a miss
