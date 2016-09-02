@@ -231,7 +231,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     */
   def scoreInchiAgainstSarTree(sarTree: SarTree, currentLevelList: Seq[SarTreeNode])(queryMolecule: Molecule): Double = {
     // Arbitrary score value
-    val baseAdd = 10.0
+    val baseAdd = 2.0
 
     /**
       * Scoring function for a SAR hit.
@@ -288,6 +288,6 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     }
 
     // Score every molecule and return the sum of their scores.
-    currentLevelList map scoreMolecule sum
+    currentLevelList.map(scoreMolecule).sum
   }
 }
