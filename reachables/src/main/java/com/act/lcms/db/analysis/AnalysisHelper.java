@@ -165,13 +165,6 @@ public class AnalysisHelper {
       ScanFile scanFile, T well, boolean useFineGrainedMZTolerance, boolean useSNRForPeakIdentification)
       throws ParserConfigurationException, IOException, XMLStreamException, SQLException {
 
-    // The foreign key constraint on wells ensure that plate will be non-null.
-    Plate plate = plateCache.get(well.getPlateId());
-    if (plate == null) {
-      plate = Plate.getPlateById(db, well.getPlateId());
-      plateCache.put(plate.getId(), plate);
-    }
-
     if (scanFile.getFileType() != ScanFile.SCAN_FILE_TYPE.NC) {
       LOGGER.error("Skipping scan file with non-NetCDF format: %s", scanFile.getFilename());
       return null;
