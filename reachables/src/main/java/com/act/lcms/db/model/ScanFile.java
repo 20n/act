@@ -479,7 +479,7 @@ public class ScanFile {
 
   private ScanFile() { }
 
-  protected ScanFile(Integer id, String filename, SCAN_MODE mode, SCAN_FILE_TYPE fileType,
+  public ScanFile(Integer id, String filename, SCAN_MODE mode, SCAN_FILE_TYPE fileType,
                      Integer plateId, Integer plateRow, Integer plateColumn) {
     this.id = id;
     this.fileName = filename;

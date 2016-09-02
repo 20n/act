@@ -249,7 +249,7 @@ public class LCMSWell extends PlateWell<LCMSWell> {
 
   private LCMSWell() { }
 
-  protected LCMSWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn, String msid,
+  public LCMSWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn, String msid,
                      String composition, String chemical, String note) {
     this.id = id;
     this.plateId = plateId;
