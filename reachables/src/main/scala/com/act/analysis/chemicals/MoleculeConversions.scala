@@ -52,8 +52,8 @@ object MoleculeConversions {
     moleculeToIntArray(MoleculeImporter.importMoleculeFromInchi(inchi))
   }
 
-  def chemicalToIntArray(chemical: Either[String, Molecule]): Array[Int] ={
-    chemical match {
+  def inchiOrMoleculeToIntArray(inchiOrMolecule: Either[String, Molecule]): Array[Int] ={
+    inchiOrMolecule match {
       case Left(s) => inchiToIntArray(s)
       case Right(m) => moleculeToIntArray(m)
     }

@@ -32,7 +32,7 @@ object ChemicalSimilarity {
     */
   private def calculateSimilarity(query: Either[String, Molecule], target: Either[String, Molecule]): Double = {
     val simCalc = getSimCalculator(query)
-    simCalc.getSimilarity(MoleculeConversions.chemicalToIntArray(target))
+    simCalc.getSimilarity(MoleculeConversions.inchiOrMoleculeToIntArray(target))
   }
 
   def calculateSimilarity(query: String, target: String): Double = {
@@ -61,7 +61,7 @@ object ChemicalSimilarity {
     */
   private def calculateDissimilarity(query: Either[String, Molecule], target: Either[String, Molecule]): Double = {
     val simCalc = getSimCalculator(query)
-    simCalc.getDissimilarity(MoleculeConversions.chemicalToIntArray(target))
+    simCalc.getDissimilarity(MoleculeConversions.inchiOrMoleculeToIntArray(target))
   }
 
   def calculateDissimilarity(query: String, target: String): Double = {
@@ -84,13 +84,14 @@ object ChemicalSimilarity {
     * Given settings, retrieves a Similarity calculator for those settings and that query molecule.
     *
     * @param queryMolecule      Molecule to query
+ *
     * @return                   A Similarity calculator.
     */
   private def getSimCalculator(queryMolecule: Either[String, Molecule]): SimilarityCalculator[Array[Int]] ={
     require(calculatorSettings.isDefined, "Please run ChemicalSimilarity.init() prior to doing comparisons.  " +
       "If you'd like to use a non-default calculator, you can supply those parameters there as well.")
     val simCalc = SimilarityCalculatorFactory.create(calculatorSettings.get)
-    simCalc.setQueryFingerprint(MoleculeConversions.chemicalToIntArray(queryMolecule))
+    simCalc.setQueryFingerprint(MoleculeConversions.inchiOrMoleculeToIntArray(queryMolecule))
 
     simCalc
   }
