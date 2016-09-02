@@ -34,7 +34,7 @@ public class ErosCorpusTest {
     corpusTwoSubstrates.loadValidationCorpus();
 
     corpusTwoSubstrates.filterCorpusBySubstrateCount(2);
-    assertEquals("One substrate ERO lists match in size",
+    assertEquals("Two substrates ERO lists match in size",
         fullCorpus.getRos().stream().
             filter(ero -> ero.getSubstrate_count().equals(2)).collect(Collectors.toList()).size(),
         corpusTwoSubstrates.getRos().size()
