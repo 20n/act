@@ -30,11 +30,13 @@ object ChemicalSimilarity {
     *
     * @return Similarity value between 0 and 1.
     */
-  def calculateSimilarity(calculatorSettings: String = "TVERSKY;0.33;0.99")(query: Molecule, target: Molecule): Double = {
+  def calculateSimilarity(calculatorSettings: String = "TVERSKY;0.33;0.99")
+                         (query: Molecule, target: Molecule): Double = {
     val simCalc = SimilarityCalculatorFactory.create(calculatorSettings)
-      simCalc.setQueryFingerprint(moleculeToIntArray(query))
+
+    simCalc.setQueryFingerprint(moleculeToIntArray(query))
     simCalc.getSimilarity(moleculeToIntArray(target))
-    }
+  }
 
   /**
     * Utility to convert from a molecule to an Array[Int] using its chemical footprint.
