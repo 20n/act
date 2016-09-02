@@ -57,7 +57,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
   private static final String OPTION_INCLUDE_IONS = "i";
   private static final String OPTION_NON_REPLICATE_ANALYSIS = "n";
   private static final String OPTION_LIST_OF_INCHIS_INPUT_FILE = "f";
-  private static final String OPTION_READ_RAW_PLATES = "r";
+  private static final String OPTION_NO_DB = "r";
 
   // This input file is structured as a tsv file with the following schema:
   //    WELL_TYPE  PLATE_BARCODE  WELL_ROW  WELL_COLUMN
@@ -67,10 +67,17 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
   private static final String HEADER_WELL_ROW = "WELL_ROW";
   private static final String HEADER_WELL_COLUMN = "WELL_COLUMN";
   private static final String HEADER_PLATE_BARCODE = "PLATE_BARCODE";
+  private static final String HEADER_SCAN_FILE_LOCATION = "SCAN_FILE";
   private static final String FAKE_CHEM_PREFIX = "CHEM_%05d";
+
+  public static final Integer FAKE_ID = 0;
+  public static final String FAKE_STRING = "FAKE";
 
   private static final Set<String> ALL_HEADERS =
       new HashSet<>(Arrays.asList(HEADER_WELL_TYPE, HEADER_WELL_ROW, HEADER_WELL_COLUMN, HEADER_PLATE_BARCODE));
+
+  private static final Set<String> ALL_HEADERS_NO_DB =
+      new HashSet<>(Arrays.asList(HEADER_WELL_TYPE, HEADER_WELL_ROW, HEADER_WELL_COLUMN, HEADER_PLATE_BARCODE, HEADER_SCAN_FILE_LOCATION));
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class takes as input an experimental setup containing positive wells and negative control well. Along with this ",
@@ -133,7 +140,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
             "model JSON object while in non-replicate analysis, we do not do this step.")
         .longOpt("non-replicate-analysis")
     );
-    add(Option.builder(OPTION_READ_RAW_PLATES)
+    add(Option.builder(OPTION_NO_DB)
         .argName("read raw plates")
         .desc("If this option is specified, the analysis will read raw plates from the config file")
         .longOpt("read-raw-plates")
@@ -150,27 +157,21 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
   private String plottingDirPath;
   private List<T> positiveWells;
   private List<T> negativeWells;
-  private Map<T, ScanFile> wellToScanFile;
-  private HashMap<Integer, Plate> plateCache;
+  private Map<LCMSWell, ScanFile> wellToScanFile;
   private Set<Pair<String, Double>> setOfMassCharges;
   private DB db;
   private Double progress;
 
   public IonDetectionAnalysis(File lcmsDir, List<T> positiveWells, List<T> negativeWells, String plottingDirPath,
-                              HashMap<Integer, Plate> plateCache, Set<Pair<String, Double>> setOfMassCharges, DB db) {
+                              Set<Pair<String, Double>> setOfMassCharges, DB db) {
     this.lcmsDir = lcmsDir;
     this.positiveWells = positiveWells;
     this.negativeWells = negativeWells;
-    this.plateCache = plateCache;
     this.setOfMassCharges = setOfMassCharges;
     this.db = db;
     this.plottingDirPath = plottingDirPath;
     this.progress = 0.0;
     this.wellToScanFile = new HashMap<>();
-  }
-
-  private void setWellToScanFile(T well, ScanFile scanFile) {
-    this.wellToScanFile.put(well, scanFile);
   }
 
   public static Map<Double, Set<Pair<String, String>>> constructMassChargeToChemicalIonsFromInputFile(
@@ -241,9 +242,62 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     return Pair.of(searchMZs, chemIDToMassCharge);
   }
 
-  public static Map<ScanData.KIND, List<LCMSWell>> readInputExperimentalSetup(DB db, File inputFile)
+  public Map<ScanData.KIND, List<LCMSWell>> readWithoutDBInputExperimentalSetup(File lcmsDir, File inputFile)
       throws IOException, SQLException, ClassNotFoundException {
 
+    TSVParser parser = new TSVParser();
+    parser.parse(inputFile);
+    Set<String> headerSet = new HashSet<>(parser.getHeader());
+
+    if (!headerSet.equals(ALL_HEADERS_NO_DB)) {
+      throw new RuntimeException(String.format("Invalid header types! The allowed header types are: %s",
+          StringUtils.join(ALL_HEADERS_NO_DB, ",")));
+    }
+
+    Map<ScanData.KIND, List<LCMSWell>> result = new HashMap<>();
+
+    for (Map<String, String> row : parser.getResults()) {
+      String wellType = row.get(HEADER_WELL_TYPE);
+      Integer rowCoordinate = Integer.parseInt(row.get(HEADER_WELL_ROW));
+      Integer columnCoordinate = Integer.parseInt(row.get(HEADER_WELL_COLUMN));
+      String scanFileLocation = row.get(HEADER_SCAN_FILE_LOCATION);
+
+      LCMSWell well = new LCMSWell(FAKE_ID, FAKE_ID, rowCoordinate, columnCoordinate, FAKE_STRING, FAKE_STRING, FAKE_STRING, FAKE_STRING);
+
+      if (well == null) {
+        throw new RuntimeException(String.format("Well plate id %d, row %d and col %d does not exist", well.getId(),
+            rowCoordinate, columnCoordinate));
+      }
+
+      if (wellType.equals("POS")) {
+        List<LCMSWell> values = result.get(ScanData.KIND.POS_SAMPLE);
+        if (values == null) {
+          values = new ArrayList<>();
+          result.put(ScanData.KIND.POS_SAMPLE, values);
+        }
+
+        ScanFile scanFile = new ScanFile(FAKE_ID, new File(lcmsDir, scanFileLocation).getAbsolutePath(), ScanFile.SCAN_MODE.POS, ScanFile.SCAN_FILE_TYPE.NC, FAKE_ID, FAKE_ID, FAKE_ID);
+        this.wellToScanFile.put(well, scanFile);
+        values.add(well);
+      } else {
+        List<LCMSWell> values = result.get(ScanData.KIND.NEG_CONTROL);
+        if (values == null) {
+          values = new ArrayList<>();
+          result.put(ScanData.KIND.NEG_CONTROL, values);
+        }
+
+        ScanFile scanFile = new ScanFile(FAKE_ID, scanFileLocation, ScanFile.SCAN_MODE.POS, ScanFile.SCAN_FILE_TYPE.NC, FAKE_ID, FAKE_ID, FAKE_ID);
+        this.wellToScanFile.put(well, scanFile);
+        values.add(well);
+      }
+    }
+
+    return result;
+  }
+
+
+  public static Map<ScanData.KIND, List<LCMSWell>> readWithDBInputExperimentalSetup(DB db, File inputFile)
+      throws IOException, SQLException, ClassNotFoundException {
     TSVParser parser = new TSVParser();
     parser.parse(inputFile);
     Set<String> headerSet = new HashSet<>(parser.getHeader());
@@ -307,38 +361,17 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
   public ChemicalToMapOfMetlinIonsToIntensityTimeValues getIntensityTimeProfileForMassChargesInWell(
       T well, ScanData.KIND kindOfWell) throws Exception {
 
-    Plate plate = plateCache.get(well.getPlateId());
-    if (plate == null) {
-      plate = Plate.getPlateById(db, well.getPlateId());
-      plateCache.put(plate.getId(), plate);
+    ScanFile bestScanFile = this.wellToScanFile.get(well);
+    if (bestScanFile == null) {
+      bestScanFile = AnalysisHelper.pickBestScanFileForWell(db, well);
     }
-
-    ScanFile bestScanFile = AnalysisHelper.pickBestScanFileForWell(db, well);
 
     if (bestScanFile == null) {
       throw new RuntimeException(String.format("Could not find scan file for well id %d", well.getId()));
     }
 
     Map<Pair<String, Double>, ScanData<T>> massChargePairToScanDataResult =
-        AnalysisHelper.getIntensityTimeValuesForEachMassChargeInScanFile(db, lcmsDir, setOfMassCharges, kindOfWell, plateCache,
-            bestScanFile, well, USE_FINE_GRAINED_TOLERANCE, USE_SNR_FOR_LCMS_ANALYSIS);
-
-    ChemicalToMapOfMetlinIonsToIntensityTimeValues signalProfile =
-        AnalysisHelper.constructChemicalToMapOfMetlinIonsToIntensityTimeValuesFromMassChargeData(
-            massChargePairToScanDataResult, kindOfWell);
-
-    if (signalProfile == null) {
-      throw new RuntimeException("No signal data available.");
-    }
-
-    return signalProfile;
-  }
-
-  public ChemicalToMapOfMetlinIonsToIntensityTimeValues getIntensityTimeProfileForMassChargesInWellWithoutDB(
-      T well, ScanFile bestScanFile, ScanData.KIND kindOfWell) throws Exception {
-
-    Map<Pair<String, Double>, ScanData<T>> massChargePairToScanDataResult =
-        AnalysisHelper.getIntensityTimeValuesForEachMassChargeInScanFileWithoutDB(lcmsDir, setOfMassCharges, kindOfWell, null,
+        AnalysisHelper.getIntensityTimeValuesForEachMassChargeInScanFile(lcmsDir, setOfMassCharges, kindOfWell,
             bestScanFile, well, USE_FINE_GRAINED_TOLERANCE, USE_SNR_FOR_LCMS_ANALYSIS);
 
     ChemicalToMapOfMetlinIonsToIntensityTimeValues signalProfile =
@@ -368,13 +401,8 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     for (T positiveWell : positiveWells) {
       LOGGER.info("Reading scan data for positive well number: %s", wellCounter.toString());
 
-      ChemicalToMapOfMetlinIonsToIntensityTimeValues positiveWellSignalProfiles = null;
-      if (this.wellToScanFile.get(positiveWell) == null) {
-        positiveWellSignalProfiles = getIntensityTimeProfileForMassChargesInWell(positiveWell, ScanData.KIND.POS_SAMPLE);
-      } else {
-        positiveWellSignalProfiles = getIntensityTimeProfileForMassChargesInWellWithoutDB(
-            positiveWell, this.wellToScanFile.get(positiveWell), ScanData.KIND.POS_SAMPLE);
-      }
+      ChemicalToMapOfMetlinIonsToIntensityTimeValues positiveWellSignalProfiles =
+          getIntensityTimeProfileForMassChargesInWell(positiveWell, ScanData.KIND.POS_SAMPLE);
 
       if (positiveWellSignalProfiles == null) {
         throw new RuntimeException("Peak positive analysis was null");
@@ -399,14 +427,8 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     for (T negativeWell : negativeWells) {
       LOGGER.info("Reading scan data for negative well number: %s", wellCounter.toString());
 
-      ChemicalToMapOfMetlinIonsToIntensityTimeValues negativeWellSignalProfiles = null;
-
-      if (this.wellToScanFile.get(negativeWell) == null) {
-        negativeWellSignalProfiles = getIntensityTimeProfileForMassChargesInWell(negativeWell, ScanData.KIND.NEG_CONTROL);
-      } else {
-        negativeWellSignalProfiles = getIntensityTimeProfileForMassChargesInWellWithoutDB(
-            negativeWell, this.wellToScanFile.get(negativeWell), ScanData.KIND.NEG_CONTROL);
-      }
+      ChemicalToMapOfMetlinIonsToIntensityTimeValues negativeWellSignalProfiles =
+          getIntensityTimeProfileForMassChargesInWell(negativeWell, ScanData.KIND.NEG_CONTROL);
 
       if (negativeWellSignalProfiles == null) {
         throw new RuntimeException("Peak negative analysis was null");
@@ -645,9 +667,40 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
       includeIons.add(DEFAULT_ION);
     }
 
-    if (cl.hasOption(OPTION_READ_RAW_PLATES))
+    if (cl.hasOption(OPTION_NO_DB)) {
+      File inputPredictionCorpus = new File(cl.getOptionValue(OPTION_INPUT_PREDICTION_CORPUS));
 
-    try (DB db = DB.openDBFromCLI(cl)) {
+      Map<Double, Set<Pair<String, String>>> massChargeToChemicalAndIon =
+          constructMassChargeToChemicalIonsFromInputFile(inputPredictionCorpus, includeIons, cl.hasOption(OPTION_LIST_OF_INCHIS_INPUT_FILE));
+
+      Pair<Set<Pair<String, Double>>, Map<String, Double>> values = constructFakeNameToMassChargeAndSetOfMassChargePairs(massChargeToChemicalAndIon.keySet());
+      Set<Pair<String, Double>> searchMZs = values.getLeft();
+      Map<String, Double> chemIDToMassCharge = values.getRight();
+
+      LOGGER.info("The number of mass charges are: %d", searchMZs.size());
+
+      IonDetectionAnalysis<LCMSWell> ionDetectionAnalysis2 = new IonDetectionAnalysis<LCMSWell>(lcmsDir, null,
+          null, plottingDirectory, searchMZs, null);
+
+      Map<ScanData.KIND, List<LCMSWell>> wellTypeToLCMSWells = ionDetectionAnalysis2.readWithoutDBInputExperimentalSetup(lcmsDir,
+          new File(cl.getOptionValue(OPTION_INPUT_POSITIVE_AND_NEGATIVE_CONTROL_WELLS_FILE)));
+
+      // Get experimental setup ie. positive and negative wells from config file
+      List<LCMSWell> positiveWells = wellTypeToLCMSWells.get(ScanData.KIND.POS_SAMPLE);
+      List<LCMSWell> negativeWells = wellTypeToLCMSWells.get(ScanData.KIND.NEG_CONTROL);
+
+      LOGGER.info("Number of positive wells is: %d", positiveWells.size());
+      LOGGER.info("Number of negative wells is: %d", negativeWells.size());
+
+      String outputPrefix = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
+
+      IonDetectionAnalysis<LCMSWell> ionDetectionAnalysis = new IonDetectionAnalysis<LCMSWell>(lcmsDir, positiveWells,
+          negativeWells, plottingDirectory, searchMZs, null);
+
+      ionDetectionAnalysis.wellToScanFile = ionDetectionAnalysis2.wellToScanFile;
+      ionDetectionAnalysis.runLCMSMiningAnalysisAndPlotResults(chemIDToMassCharge, massChargeToChemicalAndIon, outputPrefix);
+    } else {
+      DB db = DB.openDBFromCLI(cl);
       //ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
       File inputPredictionCorpus = new File(cl.getOptionValue(OPTION_INPUT_PREDICTION_CORPUS));
@@ -661,7 +714,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
 
       LOGGER.info("The number of mass charges are: %d", searchMZs.size());
 
-      Map<ScanData.KIND, List<LCMSWell>> wellTypeToLCMSWells = readInputExperimentalSetup(db,
+      Map<ScanData.KIND, List<LCMSWell>> wellTypeToLCMSWells = readWithDBInputExperimentalSetup(db,
           new File(cl.getOptionValue(OPTION_INPUT_POSITIVE_AND_NEGATIVE_CONTROL_WELLS_FILE)));
 
       // Get experimental setup ie. positive and negative wells from config file
@@ -671,11 +724,10 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
       LOGGER.info("Number of positive wells is: %d", positiveWells.size());
       LOGGER.info("Number of negative wells is: %d", negativeWells.size());
 
-      HashMap<Integer, Plate> plateCache = new HashMap<>();
       String outputPrefix = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
 
       IonDetectionAnalysis<LCMSWell> ionDetectionAnalysis = new IonDetectionAnalysis<LCMSWell>(lcmsDir, positiveWells,
-          negativeWells, plottingDirectory, plateCache, searchMZs, db);
+          negativeWells, plottingDirectory, searchMZs, db);
 
       ionDetectionAnalysis.runLCMSMiningAnalysisAndPlotResults(chemIDToMassCharge, massChargeToChemicalAndIon,
           outputPrefix, cl.hasOption(OPTION_NON_REPLICATE_ANALYSIS));

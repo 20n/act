@@ -146,11 +146,9 @@ public class AnalysisHelper {
   /**
    * This function gets the intensity-time values for each mass charge in a scan file and packages that up into a mapping
    * * between the mass charge pair and ScanData.
-   * @param db The db to query scan files from
    * @param lcmsDir The lcms dir where the lcms files are found
    * @param searchMZs The pair of chemical and mass charge pairs
    * @param kind The kind of plate the lcms was run over
-   * @param plateCache The plate cache
    * @param scanFile The scan file being examined
    * @param well The well being analyzed
    * @param useFineGrainedMZTolerance boolean for MZ tolerance
@@ -161,8 +159,8 @@ public class AnalysisHelper {
    * @throws Exception
    */
   public static <T extends PlateWell<T>> Map<Pair<String, Double>, ScanData<T>> getIntensityTimeValuesForEachMassChargeInScanFile(
-      DB db, File lcmsDir, Set<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer, Plate> plateCache,
-      ScanFile scanFile, T well, boolean useFineGrainedMZTolerance, boolean useSNRForPeakIdentification)
+      File lcmsDir, Set<Pair<String, Double>> searchMZs, ScanData.KIND kind, ScanFile scanFile, T well,
+      boolean useFineGrainedMZTolerance, boolean useSNRForPeakIdentification)
       throws ParserConfigurationException, IOException, XMLStreamException, SQLException {
 
     if (scanFile.getFileType() != ScanFile.SCAN_FILE_TYPE.NC) {
