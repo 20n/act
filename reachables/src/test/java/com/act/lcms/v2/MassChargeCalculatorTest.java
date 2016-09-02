@@ -61,8 +61,6 @@ public class MassChargeCalculatorTest {
         new HashSet<>(Arrays.asList("M+H", "M+Na"))
     );
 
-    // Note: this test is brittle thanks to FP comparisons.  If it fails due to tiny numeric errors, fret not + fix it.
-
     Double expectedMonoMass = 137.047679;
     List<Double> expectedIonMZs = Arrays.asList(138.054979, 160.036879); // M+H and M+Na of PABA
 
