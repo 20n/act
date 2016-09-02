@@ -4,7 +4,7 @@ import act.shared.Chemical;
 import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.struc.Molecule;
-import com.act.analysis.chemicals.molecules.MoleculeImporter;
+import com.act.analysis.chemicals.MoleculeImporter;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import com.act.biointerpretation.sars.SerializableReactor;
