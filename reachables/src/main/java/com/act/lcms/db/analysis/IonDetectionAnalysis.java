@@ -362,9 +362,6 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
       throw new RuntimeException(String.format("Could not find scan file for well id %d", well.getId()));
     }
 
-    System.out.println(String.format("Scan file location: %s", bestScanFile.getFilename()));
-    System.out.println(String.format("Well row: %d, well col: %d", well.getPlateRow(), well.getPlateColumn()));
-
     Map<Pair<String, Double>, ScanData<T>> massChargePairToScanDataResult =
         AnalysisHelper.getIntensityTimeValuesForEachMassChargeInScanFile(lcmsDir, setOfMassCharges, kindOfWell,
             bestScanFile, well, USE_FINE_GRAINED_TOLERANCE, USE_SNR_FOR_LCMS_ANALYSIS);
@@ -392,6 +389,19 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
         designUnitToWellIntensityTimeValuePairs = new HashMap<>();
 
     Integer wellCounter = 0;
+
+    for (T positiveWell : positiveWells) {
+      ScanFile scanFile = AnalysisHelper.pickBestScanFileForWell(db, positiveWell);
+      System.out.println(String.format("Scanfile location: %s", scanFile.getFilename()));
+      System.out.println(String.format("Well ro: %d, Well col: %d", positiveWell.getPlateRow(), positiveWell.getPlateColumn()));
+    }
+
+    for (T negativeWell : negativeWells) {
+      ScanFile scanFile = AnalysisHelper.pickBestScanFileForWell(db, negativeWell);
+      System.out.println(String.format("Scanfile location: %s", scanFile.getFilename()));
+      System.out.println(String.format("Well ro: %d, Well col: %d", negativeWell.getPlateRow(), negativeWell.getPlateColumn()));
+    }
+
 
     for (T positiveWell : positiveWells) {
       LOGGER.info("Reading scan data for positive well number: %s", wellCounter.toString());
