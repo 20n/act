@@ -35,43 +35,6 @@ public class L2InchiCorpus {
     corpus = new ArrayList<>(inchiList);
   }
 
-  /**
-   * Wraps mass filtering so that it can be used as a step in a workflow
-   *
-   * @param inputSubstrates The initial list of substrates.
-   * @param outputFile      The file to which to write the output.
-   * @param massThreshold   The maximum mass to allow, in Daltons.
-   * @return A JavaRunnable that can be used in a workflow.
-   */
-  public static JavaRunnable getRunnableSubstrateFilterer(File inputSubstrates,
-                                                          File outputFile,
-                                                          Integer massThreshold) {
-    return new JavaRunnable() {
-
-      @Override
-      public void run() throws IOException {
-        // Verify files
-        FileChecker.verifyInputFile(inputSubstrates);
-        FileChecker.verifyAndCreateOutputFile(outputFile);
-
-        // Build input corpus
-        L2InchiCorpus inchis = new L2InchiCorpus();
-        inchis.loadCorpus(inputSubstrates);
-
-        // Apply filter
-        inchis.filterByMass(massThreshold);
-
-        // Write to output file
-        inchis.writeToFile(outputFile);
-      }
-
-      @Override
-      public String toString() {
-        return "mass_filterer_" + massThreshold.toString();
-      }
-    };
-  }
-
   public void filterByMass(Integer massCutoff) {
     corpus.removeIf(
             inchi ->
@@ -149,5 +112,43 @@ public class L2InchiCorpus {
 
   public List<String> getInchiList() {
     return corpus;
+  }
+
+
+  /**
+   * Wraps mass filtering so that it can be used as a step in a workflow
+   *
+   * @param inputSubstrates The initial list of substrates.
+   * @param outputFile      The file to which to write the output.
+   * @param massThreshold   The maximum mass to allow, in Daltons.
+   * @return A JavaRunnable that can be used in a workflow.
+   */
+  public static JavaRunnable getRunnableSubstrateFilterer(File inputSubstrates,
+                                                          File outputFile,
+                                                          Integer massThreshold) {
+    return new JavaRunnable() {
+
+      @Override
+      public void run() throws IOException {
+        // Verify files
+        FileChecker.verifyInputFile(inputSubstrates);
+        FileChecker.verifyAndCreateOutputFile(outputFile);
+
+        // Build input corpus
+        L2InchiCorpus inchis = new L2InchiCorpus();
+        inchis.loadCorpus(inputSubstrates);
+
+        // Apply filter
+        inchis.filterByMass(massThreshold);
+
+        // Write to output file
+        inchis.writeToFile(outputFile);
+      }
+
+      @Override
+      public String toString() {
+        return "mass_filterer_" + massThreshold.toString();
+      }
+    };
   }
 }
