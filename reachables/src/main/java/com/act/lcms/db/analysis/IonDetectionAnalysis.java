@@ -56,6 +56,8 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
   private static final String OPTION_PLOTTING_DIR = "p";
   private static final String OPTION_INCLUDE_IONS = "i";
   private static final String OPTION_LIST_OF_INCHIS_INPUT_FILE = "f";
+  private static final String OPTION_READ_RAW_PLATES = "r";
+
   // This input file is structured as a tsv file with the following schema:
   //    WELL_TYPE  PLATE_BARCODE  WELL_ROW  WELL_COLUMN
   // eg.   POS        12389        0           1
@@ -123,6 +125,11 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
         .desc("If this option is specified, the input corpus is a list of inchis")
         .longOpt("file-input-type")
     );
+    add(Option.builder(OPTION_READ_RAW_PLATES)
+        .argName("read raw plates")
+        .desc("If this option is specified, the analysis will read raw plates from the config file")
+        .longOpt("read-raw-plates")
+    );
   }};
 
   static {
@@ -135,6 +142,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
   private String plottingDirPath;
   private List<T> positiveWells;
   private List<T> negativeWells;
+  private Map<T, ScanFile> wellToScanFile;
   private HashMap<Integer, Plate> plateCache;
   private Set<Pair<String, Double>> setOfMassCharges;
   private DB db;
@@ -150,6 +158,11 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     this.db = db;
     this.plottingDirPath = plottingDirPath;
     this.progress = 0.0;
+    this.wellToScanFile = new HashMap<>();
+  }
+
+  private void setWellToScanFile(T well, ScanFile scanFile) {
+    this.wellToScanFile.put(well, scanFile);
   }
 
   public static Map<Double, Set<Pair<String, String>>> constructMassChargeToChemicalIonsFromInputFile(
@@ -299,8 +312,26 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     }
 
     Map<Pair<String, Double>, ScanData<T>> massChargePairToScanDataResult =
-        AnalysisHelper.getIntensityTimeValuesForEachMassChargeInScanFile(db, lcmsDir, setOfMassCharges, kindOfWell,
-            plateCache, bestScanFile, well, USE_FINE_GRAINED_TOLERANCE, USE_SNR_FOR_LCMS_ANALYSIS);
+        AnalysisHelper.getIntensityTimeValuesForEachMassChargeInScanFile(db, lcmsDir, setOfMassCharges, kindOfWell, plateCache,
+            bestScanFile, well, USE_FINE_GRAINED_TOLERANCE, USE_SNR_FOR_LCMS_ANALYSIS);
+
+    ChemicalToMapOfMetlinIonsToIntensityTimeValues signalProfile =
+        AnalysisHelper.constructChemicalToMapOfMetlinIonsToIntensityTimeValuesFromMassChargeData(
+            massChargePairToScanDataResult, kindOfWell);
+
+    if (signalProfile == null) {
+      throw new RuntimeException("No signal data available.");
+    }
+
+    return signalProfile;
+  }
+
+  public ChemicalToMapOfMetlinIonsToIntensityTimeValues getIntensityTimeProfileForMassChargesInWellWithoutDB(
+      T well, ScanFile bestScanFile, ScanData.KIND kindOfWell) throws Exception {
+
+    Map<Pair<String, Double>, ScanData<T>> massChargePairToScanDataResult =
+        AnalysisHelper.getIntensityTimeValuesForEachMassChargeInScanFileWithoutDB(lcmsDir, setOfMassCharges, kindOfWell, null,
+            bestScanFile, well, USE_FINE_GRAINED_TOLERANCE, USE_SNR_FOR_LCMS_ANALYSIS);
 
     ChemicalToMapOfMetlinIonsToIntensityTimeValues signalProfile =
         AnalysisHelper.constructChemicalToMapOfMetlinIonsToIntensityTimeValuesFromMassChargeData(
@@ -325,11 +356,17 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
         designUnitToWellIntensityTimeValuePairs = new HashMap<>();
 
     Integer wellCounter = 0;
+
     for (T positiveWell : positiveWells) {
       LOGGER.info("Reading scan data for positive well number: %s", wellCounter.toString());
 
-      ChemicalToMapOfMetlinIonsToIntensityTimeValues positiveWellSignalProfiles =
-          getIntensityTimeProfileForMassChargesInWell(positiveWell, ScanData.KIND.POS_SAMPLE);
+      ChemicalToMapOfMetlinIonsToIntensityTimeValues positiveWellSignalProfiles = null;
+      if (this.wellToScanFile.get(positiveWell) == null) {
+        positiveWellSignalProfiles = getIntensityTimeProfileForMassChargesInWell(positiveWell, ScanData.KIND.POS_SAMPLE);
+      } else {
+        positiveWellSignalProfiles = getIntensityTimeProfileForMassChargesInWellWithoutDB(
+            positiveWell, this.wellToScanFile.get(positiveWell), ScanData.KIND.POS_SAMPLE);
+      }
 
       if (positiveWellSignalProfiles == null) {
         throw new RuntimeException("Peak positive analysis was null");
@@ -354,8 +391,14 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     for (T negativeWell : negativeWells) {
       LOGGER.info("Reading scan data for negative well number: %s", wellCounter.toString());
 
-      ChemicalToMapOfMetlinIonsToIntensityTimeValues negativeWellSignalProfiles =
-          getIntensityTimeProfileForMassChargesInWell(negativeWell, ScanData.KIND.NEG_CONTROL);
+      ChemicalToMapOfMetlinIonsToIntensityTimeValues negativeWellSignalProfiles = null;
+
+      if (this.wellToScanFile.get(negativeWell) == null) {
+        negativeWellSignalProfiles = getIntensityTimeProfileForMassChargesInWell(negativeWell, ScanData.KIND.POS_SAMPLE);
+      } else {
+        negativeWellSignalProfiles = getIntensityTimeProfileForMassChargesInWellWithoutDB(
+            negativeWell, this.wellToScanFile.get(negativeWell), ScanData.KIND.POS_SAMPLE);
+      }
 
       if (negativeWellSignalProfiles == null) {
         throw new RuntimeException("Peak negative analysis was null");

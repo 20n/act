@@ -201,6 +201,41 @@ public class AnalysisHelper {
     return result;
   }
 
+  public static <T extends PlateWell<T>> Map<Pair<String, Double>, ScanData<T>> getIntensityTimeValuesForEachMassChargeInScanFileWithoutDB(
+      File lcmsDir, Set<Pair<String, Double>> searchMZs, ScanData.KIND kind, Plate plate,
+      ScanFile scanFile, T well, boolean useFineGrainedMZTolerance, boolean useSNRForPeakIdentification)
+      throws ParserConfigurationException, IOException, XMLStreamException, SQLException {
+
+    if (scanFile.getFileType() != ScanFile.SCAN_FILE_TYPE.NC) {
+      LOGGER.error("Skipping scan file with non-NetCDF format: %s", scanFile.getFilename());
+      return null;
+    }
+
+    File localScanFile = new File(lcmsDir, scanFile.getFilename());
+    if (!localScanFile.exists() && localScanFile.isFile()) {
+      LOGGER.error("WARNING: could not find regular file at expected path: %s", localScanFile.getAbsolutePath());
+      return null;
+    }
+
+    Map<Pair<String, Double>, ScanData<T>> result = new HashMap<>();
+    MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdentification);
+
+    Map<Pair<String, Double>, MS1ScanForWellAndMassCharge> massChargeToMS1Results =
+        getMultipleMS1s(mm, searchMZs, localScanFile.getAbsolutePath());
+
+    for (Map.Entry<Pair<String, Double>, MS1ScanForWellAndMassCharge> entry : massChargeToMS1Results.entrySet()) {
+      String chemicalName = entry.getKey().getLeft();
+      Double massCharge = entry.getKey().getRight();
+      MS1ScanForWellAndMassCharge ms1ScanForWellAndMassCharge = entry.getValue();
+
+      Map<String, Double> singletonMass = Collections.singletonMap(chemicalName, massCharge);
+      result.put(entry.getKey(), new ScanData<T>(kind, plate, well, scanFile, chemicalName, singletonMass, ms1ScanForWellAndMassCharge));
+    }
+
+    return result;
+  }
+
+
   private static Map<Pair<String, Double>, MS1ScanForWellAndMassCharge> getMultipleMS1s(
       MS1 ms1, Set<Pair<String, Double>> metlinMasses, String ms1File)
       throws ParserConfigurationException, IOException, XMLStreamException {
