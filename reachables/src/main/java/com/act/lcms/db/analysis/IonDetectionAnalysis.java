@@ -389,17 +389,6 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
         designUnitToWellIntensityTimeValuePairs = new HashMap<>();
 
     Integer wellCounter = 0;
-
-    for (T positiveWell : positiveWells) {
-      ScanFile scanFile = AnalysisHelper.pickBestScanFileForWell(db, positiveWell);
-      System.out.println(String.format("%s", scanFile.getFilename()));
-    }
-
-    for (T negativeWell : negativeWells) {
-      ScanFile scanFile = AnalysisHelper.pickBestScanFileForWell(db, negativeWell);
-      System.out.println(String.format("%s", scanFile.getFilename()));
-    }
-
     for (T positiveWell : positiveWells) {
       LOGGER.info("Reading scan data for positive well number: %s", wellCounter.toString());
 
