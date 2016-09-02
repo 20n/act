@@ -18,6 +18,10 @@ object ChemicalSimilarity {
     calculatorSettings = userCalculatorSettings
   }
 
+  def calculatorSettings: Option[String] = _calculatorSettings
+
+  private def calculatorSettings_=(value: String): Unit = _calculatorSettings = Option(value)
+
   /**
     * For two molecules, use a calculator to determine their closeness.
     *
@@ -29,19 +33,6 @@ object ChemicalSimilarity {
   def calculateSimilarity(query: Molecule, target: Molecule): Double = {
     val simCalc = getSimCalculator(query)
     simCalc.getSimilarity(MoleculeConversions.toIntArray(target))
-  }
-
-  /**
-    * For two molecules, use a calculator to determine how far away they are
-    *
-    * @param query              Molecule to use as the query molecule.
-    * @param target             Molecule you are targeting to see how similar it is to the query.
-    *
-    * @return Dissimilarity value between 0 and 1.
-    */
-  def calculateDissimilarity(query: Molecule, target: Molecule): Double = {
-    val simCalc = getSimCalculator(query)
-    simCalc.getDissimilarity(MoleculeConversions.toIntArray(target))
   }
 
   /**
@@ -61,9 +52,18 @@ object ChemicalSimilarity {
     simCalc
   }
 
-  def calculatorSettings: Option[String] = _calculatorSettings
+  /**
+    * For two molecules, use a calculator to determine how far away they are
+    *
+    * @param query  Molecule to use as the query molecule.
+    * @param target Molecule you are targeting to see how similar it is to the query.
+    *
+    * @return Dissimilarity value between 0 and 1.
+    */
+  def calculateDissimilarity(query: Molecule, target: Molecule): Double = {
+    val simCalc = getSimCalculator(query)
+    simCalc.getDissimilarity(MoleculeConversions.toIntArray(target))
+  }
 
-  private def calculatorSettings_=(value: String): Unit = _calculatorSettings = Option(value)
-
-  private implicit def inchiToMolecule(inchi: String): Molecule = MoleculeImporter.importMolecule(inchi)
+  implicit def inchiToMolecule(inchi: String): Molecule = MoleculeImporter.importMolecule(inchi)
 }
