@@ -134,9 +134,12 @@ public class IonAnalysisInterchangeModel {
             break;
         }
 
-        // We add a small amount to the ceiling case to address a case where the power is an exact number, say 4.0. Then
-        // the floor and ceiling with be 4.0, whereas we want them to be 4.0 and 5.0, respectively.
-        Pair<Double, Double> key = Pair.of(Math.pow(10.0, Math.floor(power)), Math.pow(10.0, Math.ceil(power + Double.MIN_VALUE)));
+        Double floor = Math.floor(power);
+        Double ceiling = Math.ceil(power);
+
+        // If the floor and ceiling of a number are the same, we know this is a whole number, so we need to add 1 to
+        // get the next power of the number.
+        Pair<Double, Double> key = Pair.of(Math.pow(10.0, floor), Math.pow(10.0, floor.equals(ceiling) ? floor + 1 : ceiling));
         rangeToHitCount.compute(key, (k, v) -> (v == null) ? 1 : v + 1);
       }
     }
