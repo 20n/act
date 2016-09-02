@@ -241,7 +241,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
       * @return
       */
     def scoreHit(sarTreeNode: SarTreeNode): Double = {
-      val similarity = ChemicalSimilarity.calculateSimilarity()(queryMolecule, sarTreeNode.getSubstructure)
+      val similarity = ChemicalSimilarity.calculateSimilarity(queryMolecule, sarTreeNode.getSubstructure)
 
       /**
         * Value if a molecule exactly matches another
@@ -278,7 +278,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
 
     // Score if SAR tree node is a miss
     def scoreMiss(sarTreeNode: SarTreeNode): Double = {
-      ChemicalSimilarity.calculateSimilarity()(queryMolecule, sarTreeNode.getSubstructure)
+      ChemicalSimilarity.calculateSimilarity(queryMolecule, sarTreeNode.getSubstructure)
     }
 
     // Figure out where to put the SAR tree node.
