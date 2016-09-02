@@ -33,7 +33,7 @@ public class MassChargeCalculator {
   /**
    * An MZSource is a handle to the result of ionic mass/charge computation.  Once m/z computation has been completed
    * for a given set of mass sources (like InChIs, arbitrary numeric values, and the results of the very convenient
-   * Utils.extractMassFromString), the id of the resulting MZSource object can be used to access all of the m/z values
+   * Utils.extractMassFromString), the resulting MZSource object can be used to access all of the m/z values
    * computed from that source of a monoisotopic mass.  In turn, any peaks associated with a particular m/z can be
    * mapped back to the source from which the search window in which the peak was found was originally derived.
    */
@@ -203,7 +203,6 @@ public class MassChargeCalculator {
 
     // Package-private again.
     MassChargeMap() {
-
     }
 
     public List<MZSource> monoMassToMZSources(Double monoisotopicMass) {

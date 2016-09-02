@@ -86,8 +86,12 @@ public class MassCalculator2 {
       writer.format("InChI\tMass\tCharge\n");
 
       for (String inchi : inchis) {
-        Pair<Double, Integer> massAndCharge = calculateMassAndCharge(inchi);
-        writer.format("%s\t%.6f\t%3d\n", inchi, massAndCharge.getLeft(), massAndCharge.getRight());
+        try {
+          Pair<Double, Integer> massAndCharge = calculateMassAndCharge(inchi);
+          writer.format("%s\t%.6f\t%3d\n", inchi, massAndCharge.getLeft(), massAndCharge.getRight());
+        } catch (MolFormatException e) {
+          LOGGER.error("Unable to compute mass for %s: %s", inchi, e.getMessage());
+        }
       }
     }
   }

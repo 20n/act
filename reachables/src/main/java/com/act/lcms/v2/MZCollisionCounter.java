@@ -105,7 +105,7 @@ public class MZCollisionCounter {
       MassChargeCalculator.MassChargeMap mzMap = MassChargeCalculator.makeMassChargeMap(sources, considerIons);
 
       if (!cl.hasOption(OPTION_COUNT_WINDOW_INTERSECTIONS)) {
-        // Do a precise analysis of the m/z collisions if windowing is not specified.
+        // Do an exact analysis of the m/z collisions if windowing is not specified.
 
         LOGGER.info("Computing precise collision histogram.");
         Iterable<Double> mzs = mzMap.ionMZIter();
@@ -129,10 +129,10 @@ public class MZCollisionCounter {
       } else {
         // Compute windows for every m/z.  We don't care about the original mz values since we just want the count.
         List<Double> mzs = mzMap.ionMZsSorted();
-        // Window = lower bound, counter, upper bound.  Counter in the middle for easy memory.
+        // Window = lower bound, counter, upper bound.  Counter in the middle = easy to remember what's what.
         LinkedList<Triple<Double, LongAdder, Double>> allWindows = new LinkedList<Triple<Double, LongAdder, Double>>() {{
           for (Double mz : mzs) {
-            // CPU for memory trade-off: don't
+            // CPU for memory trade-off: don't re-compute the window bounds over and over and over and over and over.
             add(Triple.of(mz - WINDOW_TOLERANCE, new LongAdder(), mz + WINDOW_TOLERANCE));
           }
         }};
