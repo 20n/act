@@ -171,16 +171,14 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
   }
 
   /**
-    * Takes in every cluster
+    * Takes in every cluster then scores and sums them.
     *
     * @param sarTreeClusters A map of all the clusters and their respective sar tree
     * @param inchiCorpus     The inchi corpus we are scoring
     *
-    * @return
+    * @return A map of Inchi -> Score, where the score is a single Double.
     */
   def scoreInchiList(sarTreeClusters: Map[Int, SarTree], inchiCorpus: L2InchiCorpus): Map[String, Double] = {
-    val sarTrees = sarTreeClusters.values toList
-
     // Score each cluster and reduce the scoring down into the sum of all the clusters
     val combinedInchiScore: ParSeq[ParMap[String, Double]] = sarTreeClusters.par.map({ case (key, value) =>
       logger.info(s"Started scoring corpus $key.")
