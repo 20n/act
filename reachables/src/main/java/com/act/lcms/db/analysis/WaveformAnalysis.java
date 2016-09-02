@@ -20,12 +20,12 @@ import java.util.TreeMap;
 
 public class WaveformAnalysis {
   private static final int START_INDEX = 0;
-  private static final int COMPRESSION_CONSTANT = 5;
+  public static final int COMPRESSION_CONSTANT = 5;
   private static final Double DEFAULT_LOWEST_RMS_VALUE = 1.0;
   private static final Logger LOGGER = LogManager.getFormatterLogger(WaveformAnalysis.class);
 
   // We chose this value as a heuristic on how much time drift we are willing to accept for our analysis in seconds.
-  private static final Double RESTRICTED_RETENTION_TIME_WINDOW_IN_SECONDS = 5.0;
+  public static final Double RESTRICTED_RETENTION_TIME_WINDOW_IN_SECONDS = 5.0;
 
   // This constant is applied to comparing the negative controls against the positive.
   private static final Double POSITION_TIME_WINDOW_IN_SECONDS = 1.0;
@@ -483,7 +483,7 @@ public class WaveformAnalysis {
   // The peak detection value was selected after testing it among various intensity time values and choosing
   // a constant that did not let too many false positive peaks through but was selective enough to detect a
   // reasonable number of peaks for downstream processing.
-  private static final Double PEAK_DETECTION_THRESHOLD = 250.0d;
+  public static final Double PEAK_DETECTION_THRESHOLD = 250.0d;
 
   // We chose the 3 best peaks since after 3, since we almost never check for comparisons between the 4th best peak
   // in the standards chromatogram vs other results.

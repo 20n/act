@@ -10,6 +10,7 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -29,9 +30,6 @@ import java.util.Map;
 public class TraceIndexAnalyzer {
   private static final Logger LOGGER = LogManager.getFormatterLogger(TraceIndexAnalyzer.class);
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
-  private static final Integer WAVEFORM_TIME_SLICE_WINDOW = 5; // Same as WaveformAnalysis.
-  private static final Double WAVEFORM_MIN_THRESHOLD = 250.0d; // Same as WaveformAnalysis, but what units?!
 
   private static final String OPTION_INDEX_PATH = "x";
   private static final String OPTION_OUTPUT_PATH = "o";
@@ -78,7 +76,6 @@ public class TraceIndexAnalyzer {
     private Double peakTime;
 
     protected AnalysisResult() {
-
     }
 
     public AnalysisResult(Double mz, Double peakIntensity, Double peakTime) {
@@ -113,7 +110,7 @@ public class TraceIndexAnalyzer {
   }
 
   public static void main(String[] args) throws Exception {
-    org.apache.commons.cli.Options opts = new org.apache.commons.cli.Options();
+    Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
       opts.addOption(b.build());
     }
@@ -132,7 +129,6 @@ public class TraceIndexAnalyzer {
       HELP_FORMATTER.printHelp(TraceIndexExtractor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
-
 
     File rocksDBFile = new File(cl.getOptionValue(OPTION_INDEX_PATH));
     if (!rocksDBFile.exists()) {
@@ -170,9 +166,9 @@ public class TraceIndexAnalyzer {
 
       Pair<List<XZ>, Map<Double, Double>> timeWindowsAndMaxes =
           WaveformAnalysis.compressIntensityAndTimeGraphsAndFindMaxIntensityInEveryTimeWindow(
-              targetAndTrace.getRight(), WAVEFORM_TIME_SLICE_WINDOW); // Same as waveform analysis
+              targetAndTrace.getRight(), WaveformAnalysis.COMPRESSION_CONSTANT);
       List<XZ> calledPeaks = WaveformAnalysis.detectPeaksInIntensityTimeWaveform(
-          timeWindowsAndMaxes.getLeft(), WAVEFORM_MIN_THRESHOLD); // Same as waveform analysis.
+          timeWindowsAndMaxes.getLeft(), WaveformAnalysis.PEAK_DETECTION_THRESHOLD); // Same as waveform analysis.
 
       for (XZ calledPeak : calledPeaks) {
         AnalysisResult result = new AnalysisResult(
