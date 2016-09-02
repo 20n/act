@@ -394,10 +394,10 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
       ChemicalToMapOfMetlinIonsToIntensityTimeValues negativeWellSignalProfiles = null;
 
       if (this.wellToScanFile.get(negativeWell) == null) {
-        negativeWellSignalProfiles = getIntensityTimeProfileForMassChargesInWell(negativeWell, ScanData.KIND.POS_SAMPLE);
+        negativeWellSignalProfiles = getIntensityTimeProfileForMassChargesInWell(negativeWell, ScanData.KIND.NEG_CONTROL);
       } else {
         negativeWellSignalProfiles = getIntensityTimeProfileForMassChargesInWellWithoutDB(
-            negativeWell, this.wellToScanFile.get(negativeWell), ScanData.KIND.POS_SAMPLE);
+            negativeWell, this.wellToScanFile.get(negativeWell), ScanData.KIND.NEG_CONTROL);
       }
 
       if (negativeWellSignalProfiles == null) {
@@ -632,8 +632,10 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
       includeIons.add(DEFAULT_ION);
     }
 
+    if (cl.hasOption(OPTION_READ_RAW_PLATES))
+
     try (DB db = DB.openDBFromCLI(cl)) {
-      ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
+      //ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
       File inputPredictionCorpus = new File(cl.getOptionValue(OPTION_INPUT_PREDICTION_CORPUS));
 
