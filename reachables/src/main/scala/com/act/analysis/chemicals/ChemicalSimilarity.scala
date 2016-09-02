@@ -1,12 +1,7 @@
 package com.act.analysis.chemicals
 
-import breeze.linalg.*
-import chemaxon.descriptors.{CFParameters, ChemicalFingerprint, SimilarityCalculator, SimilarityCalculatorFactory}
+import chemaxon.descriptors.{SimilarityCalculator, SimilarityCalculatorFactory}
 import chemaxon.struc.Molecule
-import com.act.biointerpretation.l2expansion.L2InchiCorpus
-import com.act.similarity.similarity
-
-import scala.collection.concurrent.TrieMap
 
 /**
   * Concurrency safe cached molecule
