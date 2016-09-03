@@ -2,6 +2,7 @@ package com.act.lcms.v2;
 
 import com.act.lcms.LCMSNetCDFParser;
 import com.act.lcms.LCMSSpectrum;
+import com.act.lcms.MS1;
 import com.act.lcms.XZ;
 import com.act.utils.rocksdb.ColumnFamilyEnumeration;
 import com.act.utils.rocksdb.DBUtil;
@@ -11,6 +12,7 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -48,9 +50,14 @@ import java.util.Map;
 public class TraceIndexExtractor {
   private static final Logger LOGGER = LogManager.getFormatterLogger(TraceIndexExtractor.class);
   private static final Charset UTF8 = StandardCharsets.UTF_8;
+  /* TIMEPOINTS_KEY is a fixed key into a separate column family in the index that just holds a list of time points.
+   * Within that column family, there is only one entry:
+   *   "timepoints" -> serialized array of time point doubles
+   * and we use this key to write/read those time points.  Since time points are shared across all traces, we can
+   * maintain this one copy in the index and reconstruct the XZ pairs as we read trace intensity arrays. */
   private static final byte[] TIMEPOINTS_KEY = "timepoints".getBytes(UTF8);
 
-  private static final Double WINDOW_WIDTH_FROM_CENTER = 0.0100;
+  private static final Double WINDOW_WIDTH_FROM_CENTER = MS1.MS1_MZ_TOLERANCE_DEFAULT;
 
   // TODO: make this take a plate barcode and well coordinates instead of a scan file.
   public static final String OPTION_INDEX_PATH = "x";
@@ -124,11 +131,10 @@ public class TraceIndexExtractor {
   }
 
   public TraceIndexExtractor() {
-
   }
 
   public static void main(String[] args) throws Exception {
-    org.apache.commons.cli.Options opts = new org.apache.commons.cli.Options();
+    Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
       opts.addOption(b.build());
     }
@@ -203,14 +209,13 @@ public class TraceIndexExtractor {
       // TODO: split targetMZs into batches of ~100k and extract incrementally to allow huge input sets.
 
       LOGGER.info("Extracting traces");
-      Triple<List<MZWindow>, List<Double>, List<List<Double>>> windowsTimesAndTraces =
-          extractTracesToIndex(targetMZs, spectrumIterator);
+      IndexedTraces windowsTimesAndTraces = runSweepLine(targetMZs, spectrumIterator);
 
       LOGGER.info("Writing search targets to on-disk index");
-      writeWindowsToDB(dbAndHandles, windowsTimesAndTraces.getLeft());
+      writeWindowsToDB(dbAndHandles, windowsTimesAndTraces.getWindows());
 
       LOGGER.info("Writing trace data to on-disk index");
-      writeTracesToDB(dbAndHandles, windowsTimesAndTraces.getMiddle(), windowsTimesAndTraces.getRight());
+      writeTracesToDB(dbAndHandles, windowsTimesAndTraces.getTimes(), windowsTimesAndTraces.getAllTraces());
     } finally {
       if (dbAndHandles != null) {
         dbAndHandles.getDb().close();
@@ -253,14 +258,36 @@ public class TraceIndexExtractor {
     }
   }
 
+  private static class IndexedTraces {
+    List<MZWindow> windows;
+    List<Double> times;
+    List<List<Double>> allTraces;
+
+    public IndexedTraces(List<MZWindow> windows, List<Double> times, List<List<Double>> allTraces) {
+      this.windows = windows;
+      this.times = times;
+      this.allTraces = allTraces;
+    }
+
+    public List<MZWindow> getWindows() {
+      return windows;
+    }
+
+    public List<Double> getTimes() {
+      return times;
+    }
+
+    public List<List<Double>> getAllTraces() {
+      return allTraces;
+    }
+  }
+
   /**
    * Initiate a data feast of all traces within some window allocation.  OM NOM NOM.
    * @param iter An iterator over an LCMS data file.
    * @return The windows, time points, and per-window traces.
    */
-  private Triple<List<MZWindow>, List<Double>, List<List<Double>>> extractTracesToIndex(
-      List<Double> targetMZs,
-      Iterator<LCMSSpectrum> iter)
+  private IndexedTraces runSweepLine(List<Double> targetMZs, Iterator<LCMSSpectrum> iter)
       throws RocksDBException, IOException {
     /* allTraces is a 2D array of aggregated intensity values over the <mz window, time> domains.  The organization of
      * this matrix works in conjunction with the list of windows and the list of times that we build in parallel.
@@ -284,7 +311,7 @@ public class TraceIndexExtractor {
      *   i_2_0, i_2_1, i_2_2, ...
      *   ...
      *
-     * So the aggregate intensity for all m/z values in the window <max_1, max_1> at time point 2 is i_1_2.
+     * So the aggregate intensity for all m/z values in the window <min_1, max_1> at time point 2 is i_1_2.
      *
      * We keep the window and time values separate for 1) efficiency and 2) ordering (i.e. no window -> array maps).
      *
@@ -299,6 +326,12 @@ public class TraceIndexExtractor {
       }
     }};
 
+    /* We *must* ensure the windows are sorted in m/z order for the sweep line to work.  However, we don't know anything
+     * about the input targetMZs list, which may be immutable or may be in some order the client wants to preserve.
+     * Rather than mess with that array, we'll sort the windows in our internal array and leave be he client's targets.
+     */
+    Collections.sort(windows, (a, b) -> a.getTargetMZ().compareTo(b.getTargetMZ()));
+
     List<Double> times = new ArrayList<>();
 
     List<List<Double>> allTraces = new ArrayList<List<Double>>(windows.size()) {{
@@ -308,7 +341,7 @@ public class TraceIndexExtractor {
     }};
 
     // Keep an array of accumulators around to reduce the overhead of accessing the trace matrix for accumulation.
-    double[] accumulators = new double[windows.size()];
+    double[] sumIntensitiesInEachWindow = new double[windows.size()];
 
     int timepointCounter = 0;
     while (iter.hasNext()) {
@@ -318,8 +351,8 @@ public class TraceIndexExtractor {
       // Store one list of the time values so we can knit times and intensity sums later to form XZs.
       times.add(time);
 
-      for (int i = 0; i < accumulators.length; i++) {
-        accumulators[i] = 0.0;
+      for (int i = 0; i < sumIntensitiesInEachWindow.length; i++) {
+        sumIntensitiesInEachWindow[i] = 0.0;
       }
 
       timepointCounter++;
@@ -369,21 +402,21 @@ public class TraceIndexExtractor {
          * By the end of the outer loop, trace(t) = Sum(intensity) | win_min <= m/z <= win_max @ time point # t */
         for (MZWindow window : workingQueue) {
           // TODO: count the number of times we add intensities to each window's accumulator for MS1-style warnings.
-          accumulators[window.getIndex()] += intensity;
+          sumIntensitiesInEachWindow[window.getIndex()] += intensity;
         }
       }
 
       /* Extend allTraces to add a row of accumulated intensity values for this time point.  We build this incrementally
        * because the LCMSSpectrum iterator doesn't tell us how many time points to expect up front. */
-      for (int i = 0; i < accumulators.length; i++) {
-        allTraces.get(i).add(accumulators[i]);
+      for (int i = 0; i < sumIntensitiesInEachWindow.length; i++) {
+        allTraces.get(i).add(sumIntensitiesInEachWindow[i]);
       }
     }
 
     // Trace data has been devoured.  Might want to loosen the belt at this point...
     LOGGER.info("Done extracting %d traces", allTraces.size());
 
-    return Triple.of(windows, times, allTraces);
+    return new IndexedTraces(windows, times, allTraces);
   }
 
   private void writeWindowsToDB(RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles, List<MZWindow> windows)
@@ -492,7 +525,7 @@ public class TraceIndexExtractor {
         }
 
         if (trace.size() != times.size()) {
-          LOGGER.error("Found mistmatching trace and times size (%d vs. %d), continuing anyway",
+          LOGGER.error("Found mismatching trace and times size (%d vs. %d), continuing anyway",
               trace.size(), times.size());
         }
 

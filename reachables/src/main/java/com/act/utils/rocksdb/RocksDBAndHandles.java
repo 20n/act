@@ -45,7 +45,21 @@ public class RocksDBAndHandles<T extends ColumnFamilyEnumeration> {
     return this.db.newIterator(getHandle(columnFamily));
   }
 
-  // Don't expose merge: it appears to be broken in RocksDB JNI.
-
-
+  /* Important: don't expose merge(), as it appears to be broken in RocksDB JNI.
+   *
+   * RocksDB supports "merge" functionality, where a new value can be merged at the DB level (as opposed to the client
+   * level) into an existing value for a given key using a predefined function.
+   * See https://github.com/facebook/rocksdb/wiki/Merge-Operator.
+   *
+   * This ought to be super fast, as it's being done in the same stroke as the DB lookup--the old and new values should
+   * be in the CPU cache (assuming they fit) and the merge is done in a layer of the library that should have some
+   * notion of what operations will do right by the storage system.  So I tried it!
+   *
+   * Alas, calling merge() from Java causes the native layer to throw an exception that complains about a merge
+   * function not being defined.  When you specify a built-in merge function in the DB constructor, the exception
+   * *still* gets thrown.  Sad face!
+   *
+   * The workable alternative is to bubble the value all the way up to Java land, merge there, and then send the
+   * resulting value back to the DB.  This tends to be incredibly slow, however, so just don't expose it at all.
+   */
 }
