@@ -4,8 +4,8 @@ import java.lang.Class
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.logging.log4j.LogManager
 
-class OptDesc(val param: String, val longParam: String, name: String, desc: String, isReqd: Boolean = false, hasArg: Boolean = false) {
-
+class OptDesc(val param: String, val longParam: String, name: String, desc: String, 
+              isReqd: Boolean = false, hasArg: Boolean = false) {
   // This class holds POSIX style short argument (single character, e.g., `-f brilliant.txt`)
   // And also GNU-style long argument (multiple character, e.g., `--output-file=brilliant.txt`
   // http://www.gnu.org/software/libc/manual/html_node/Argument-Syntax.html
@@ -31,7 +31,6 @@ class OptDesc(val param: String, val longParam: String, name: String, desc: Stri
 // `cmdline.scala` in the repo. Will do that in the next PR
 class CmdLineParser(parent: String, args: Array[String], optDescs: List[OptDesc]) {
 
-
   val help_formatter: HelpFormatter = new HelpFormatter
   val help_message = ""
   help_formatter.setWidth(100)
@@ -54,7 +53,8 @@ class CmdLineParser(parent: String, args: Array[String], optDescs: List[OptDesc]
         // if long opt given then look up the corresponding single char param
         supportedOpts.find(_.longParam.equals(option)) match {
           case Some(o) => cmdline.getOptionValue(o.param)
-          case None => throw new Exception("You asked for a multiple-param that is not present in the option descriptions. Code failure. Fix!")
+          case None => throw new Exception("You asked for a multiple-param that is not present " + 
+                                            "in the option descriptions. Code failure. Please fix!")
         }
       }
     } 
