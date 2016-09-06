@@ -185,47 +185,10 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
 
     if (cl.hasOption(OPTION_MIN_OF_REPLICATES)) {
-      Function<List<IonAnalysisInterchangeModel.HitOrMiss>, Pair<IonAnalysisInterchangeModel.HitOrMiss, Boolean>>
-          filterAndTransformFunction = (List<IonAnalysisInterchangeModel.HitOrMiss> listOfReplicateMolecules) -> {
-
-        List<Double> intensityValues = listOfReplicateMolecules.stream().map(molecule -> molecule.getIntensity()).collect(Collectors.toList());
-        List<Double> snrValues = listOfReplicateMolecules.stream().map(molecule -> molecule.getSnr()).collect(Collectors.toList());
-        List<Double> timeValues = listOfReplicateMolecules.stream().map(molecule -> molecule.getTime()).collect(Collectors.toList());
-
-        IonAnalysisInterchangeModel.HitOrMiss result = new IonAnalysisInterchangeModel.HitOrMiss();
-        result.setInchi(listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getInchi());
-        result.setIon(listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getIon());
-        result.setPlot("NIL");
-
-        // We get the min and max time to calculate how much do the replicates deviate in time for the same signal. If
-        // the deviation in the time axis is greater than our tolerance, we know the signal is bad.
-        Double minTime = timeValues.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal));
-        Double maxTime = timeValues.stream().reduce(Double.MIN_VALUE, (accum, newVal) -> Math.max(accum, newVal));
-
-        if (maxTime - minTime < TIME_TOLERANCE_IN_SECONDS) {
-          Double minIntensity = intensityValues.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal));
-
-          Integer indexOfMinIntensityReplicate = intensityValues.indexOf(minIntensity);
-
-          // The SNR and Time values will be the copy of the replicate with the lowest intensity value.
-          result.setSnr(snrValues.get(indexOfMinIntensityReplicate));
-          result.setIntensity(minIntensity);
-          result.setTime(timeValues.get(indexOfMinIntensityReplicate));
-
-          return Pair.of(result, DO_NOT_THROW_OUT_MOLECULE);
-        } else {
-          // TODO: We can just throw out such molecules.
-          result.setSnr(LOWEST_POSSIBLE_VALUE_FOR_PEAK_STATISTIC);
-          result.setIntensity(LOWEST_POSSIBLE_VALUE_FOR_PEAK_STATISTIC);
-          result.setTime(LOWEST_POSSIBLE_VALUE_FOR_PEAK_STATISTIC);
-
-          return Pair.of(result, DO_NOT_THROW_OUT_MOLECULE);
-        }
-      };
+      HitOrMissReplicateTransformer transformer = new HitOrMissReplicateTransformer();
 
       IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
-          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
-          filterAndTransformFunction);
+          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults), transformer);
 
       printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
       return;
@@ -254,36 +217,12 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
         ions.addAll(Arrays.asList(cl.getOptionValues(OPTION_FILTER_BY_IONS)));
       }
 
-      Function<List<IonAnalysisInterchangeModel.HitOrMiss>, Pair<IonAnalysisInterchangeModel.HitOrMiss, Boolean>>
-          filterAndTransformFunction = (List<IonAnalysisInterchangeModel.HitOrMiss> listOfReplicateMolecules) -> {
-
-        if (listOfReplicateMolecules.size() > 1) {
-          throw new RuntimeException("This filter is meant for analysis for only one replicate.");
-        }
-
-        IonAnalysisInterchangeModel.HitOrMiss representationMolecule = listOfReplicateMolecules.get(REPRESENTATIVE_INDEX);
-
-        Double intensity = representationMolecule.getIntensity();
-        Double snr = representationMolecule.getSnr();
-        Double time = representationMolecule.getTime();
-        String ion = representationMolecule.getIon();
-
-        IonAnalysisInterchangeModel.HitOrMiss molecule = new IonAnalysisInterchangeModel.HitOrMiss(
-            representationMolecule.getInchi(), ion, snr, time, intensity, representationMolecule.getPlot());
-
-        // If the intensity, snr and time pass the thresholds set AND the ion of the peak molecule is within the set of
-        // ions we want extracted, we keep the molecule. Else, we throw it away.
-        if (intensity > minIntensityThreshold && snr > minSnrThreshold && time > minTimeThreshold &&
-            (ions.size() == 0 || ions.contains(ion))) {
-          return Pair.of(molecule, DO_NOT_THROW_OUT_MOLECULE);
-        } else {
-          return Pair.of(molecule, THROW_OUT_MOLECULE);
-        }
-      };
+      HitOrMissSingleSampleTransformer hitOrMissSingleSampleTransformer =
+          new HitOrMissSingleSampleTransformer(minIntensityThreshold, minSnrThreshold, minTimeThreshold, ions);
 
       IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
           IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
-          filterAndTransformFunction);
+          hitOrMissSingleSampleTransformer);
 
       printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
     }

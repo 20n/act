@@ -25,6 +25,7 @@ package com.act.lcms.db.io.report;
  */
 
 import com.act.biointerpretation.l2expansion.L2Prediction;
+import com.act.lcms.db.analysis.HitOrMissTransformer;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -213,7 +214,7 @@ public class IonAnalysisInterchangeModel {
    * from multiple replicate to a single HitOrMiss molecule, like a min function across replicates. Second, it is
    * used to filter in/out molecules based on the logic of the filter function.
    * @param replicateModels The list of IonAnalysisInterchangeModels to be analyzed
-   * @param filterAndTransformFunction This filter function takes in multiple HitOrMiss objects from replicates and
+   * @param hitOrMissTransformer This filter function takes in multiple HitOrMiss objects from replicates and
    *                                   performs a transformation operation on them to produce one HitOrMiss object
    *                                   and a boolean to keep the transformed molecule in the resulting model.
    * @return A list of inchis that are valid molecule hits in all the input files and pass all the thresholds.
@@ -221,7 +222,7 @@ public class IonAnalysisInterchangeModel {
    */
   public static IonAnalysisInterchangeModel filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
       List<IonAnalysisInterchangeModel> replicateModels,
-      Function<List<HitOrMiss>, Pair<HitOrMiss, Boolean>> filterAndTransformFunction)
+      HitOrMissTransformer hitOrMissTransformer)
       throws IOException {
 
     // Since all replicates have the same number of peak results, we can use the first model as a representative model
@@ -269,8 +270,7 @@ public class IonAnalysisInterchangeModel {
           moleculesFromReplicates.add(molecule);
         }
 
-        Pair<HitOrMiss, Boolean> transformedMoleculeAndShouldRetainMolecule =
-            filterAndTransformFunction.apply(moleculesFromReplicates);
+        Pair<HitOrMiss, Boolean> transformedMoleculeAndShouldRetainMolecule = hitOrMissTransformer.apply(moleculesFromReplicates);
 
         // Check if the filter function  wants to throw out the molecule. If not, then add the molecule to the final result.
         if (transformedMoleculeAndShouldRetainMolecule.getRight()) {
