@@ -11,9 +11,10 @@ object ChemicalSimilarity {
 
   /**
   * @param userCalculatorSettings The settings with which to apply the similarity calculation with
-  *                           The current default value was chosen based on the Chemaxon tutorial example.
+    *                             The current default value was chosen as Tanimoto
+    *                             gives no favor to the query vs target molecule.
   */
-  def init(userCalculatorSettings: String = "TVERSKY;0.33;0.99"): Unit = {
+  def init(userCalculatorSettings: String = "TANIMOTO"): Unit = {
     require(calculatorSettings.isEmpty, "Chemical similarity calculator was already initialized.")
     calculatorSettings = userCalculatorSettings
   }
@@ -25,10 +26,6 @@ object ChemicalSimilarity {
   def calculateSimilarity(query: Molecule, target: Molecule): Double = helperCalculateSimilarity(query, target)
 
   def calculateSimilarity(query: String, target: Molecule): Double = helperCalculateSimilarity(query, target)
-
-  def calculateSimilarity(query: Molecule, target: String): Double = helperCalculateSimilarity(query, target)
-
-  def calculateSimilarity(query: String, target: String): Double = helperCalculateSimilarity(query, target)
 
   /**
     * For two molecules, use a calculator to determine their closeness.
@@ -43,13 +40,30 @@ object ChemicalSimilarity {
     simCalc.getSimilarity(MoleculeConversions.toIntArray(target))
   }
 
+  /**
+    * Given settings, retrieves a Similarity calculator for those settings and that query molecule.
+    *
+    * @param queryMolecule Molecule to query
+    *
+    * @return A Similarity calculator.
+    */
+  private def getSimCalculator(queryMolecule: Molecule): SimilarityCalculator[Array[Int]] = {
+    require(calculatorSettings.isDefined, "Please run ChemicalSimilarity.init() prior to doing comparisons.  " +
+      "If you'd like to use a non-default calculator, you can supply those parameters during initialization.")
+
+    val simCalc = SimilarityCalculatorFactory.create(calculatorSettings.get)
+    simCalc.setQueryFingerprint(MoleculeConversions.toIntArray(queryMolecule))
+
+    simCalc
+  }
+
+  def calculateSimilarity(query: Molecule, target: String): Double = helperCalculateSimilarity(query, target)
+
+  def calculateSimilarity(query: String, target: String): Double = helperCalculateSimilarity(query, target)
+
   def calculateDissimilarity(query: Molecule, target: Molecule): Double = helperCalculateDissimilarity(query, target)
 
   def calculateDissimilarity(query: String, target: Molecule): Double = helperCalculateDissimilarity(query, target)
-
-  def calculateDissimilarity(query: Molecule, target: String): Double = helperCalculateDissimilarity(query, target)
-
-  def calculateDissimilarity(query: String, target: String): Double = helperCalculateDissimilarity(query, target)
 
   /**
     * For two molecules, use a calculator to determine how far away they are
@@ -64,22 +78,9 @@ object ChemicalSimilarity {
     simCalc.getDissimilarity(MoleculeConversions.toIntArray(target))
   }
 
-  /**
-    * Given settings, retrieves a Similarity calculator for those settings and that query molecule.
-    *
-    * @param queryMolecule      Molecule to query
-    *
-    * @return                   A Similarity calculator.
-    */
-  private def getSimCalculator(queryMolecule: Molecule): SimilarityCalculator[Array[Int]] = {
-    require(calculatorSettings.isDefined, "Please run ChemicalSimilarity.init() prior to doing comparisons.  " +
-      "If you'd like to use a non-default calculator, you can supply those parameters during initialization.")
+  def calculateDissimilarity(query: Molecule, target: String): Double = helperCalculateDissimilarity(query, target)
 
-    val simCalc = SimilarityCalculatorFactory.create(calculatorSettings.get)
-    simCalc.setQueryFingerprint(MoleculeConversions.toIntArray(queryMolecule))
-
-    simCalc
-  }
+  def calculateDissimilarity(query: String, target: String): Double = helperCalculateDissimilarity(query, target)
 
   private implicit def inchiToMolecule(inchi: String): Molecule = MoleculeImporter.importMolecule(inchi)
 }
