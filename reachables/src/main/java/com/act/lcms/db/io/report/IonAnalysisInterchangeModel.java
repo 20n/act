@@ -118,6 +118,9 @@ public class IonAnalysisInterchangeModel {
   public Map<Pair<Double, Double>, Integer> computeLogFrequencyDistributionOfMoleculeCountToMetric(METRIC metric) {
     Map<Pair<Double, Double>, Integer> rangeToHitCount = new HashMap<>();
 
+    Integer countOfZeroStats = 0;
+    Double minLogValue = Double.MAX_VALUE;
+
     for (ResultForMZ resultForMZ : this.getResults()) {
       for (HitOrMiss molecule : resultForMZ.getMolecules()) {
 
@@ -135,13 +138,21 @@ public class IonAnalysisInterchangeModel {
             break;
         }
 
-        Double floor = Math.floor(power);
-        Double ceiling = Math.ceil(power);
+        if (power.equals(Double.NEGATIVE_INFINITY)) {
+          // We know the statistic was 0 here.
+          countOfZeroStats++;
+          break;
+        }
 
-        // If the floor and ceiling of a number are the same, we know this is a whole number, so we need to add 1 to
-        // get the next power of the number.
-        Pair<Double, Double> key = Pair.of(Math.pow(10.0, floor), Math.pow(10.0, floor.equals(ceiling) ? floor + 1 : ceiling));
+        minLogValue = Math.min(minLogValue, Math.pow(10.0, Math.floor(power)));
+        Pair<Double, Double> key = Pair.of(Math.pow(10.0, Math.floor(power)), Math.pow(10.0, Math.floor(power) + 1));
         rangeToHitCount.compute(key, (k, v) -> (v == null) ? 1 : v + 1);
+      }
+
+      // We count the total number of zero statistics and put them in the 0 to minLog metric bucket.
+      if (countOfZeroStats > 0) {
+        Pair<Double, Double> key = Pair.of(0.0, minLogValue);
+        rangeToHitCount.put(key, countOfZeroStats);
       }
     }
 

@@ -27,12 +27,6 @@ import java.util.stream.Collectors;
 
 public class BestMoleculesPickerFromLCMSIonAnalysis {
 
-  public static final Boolean DO_NOT_THROW_OUT_MOLECULE = true;
-  public static final Boolean THROW_OUT_MOLECULE = false;
-  public static final Integer TIME_TOLERANCE_IN_SECONDS = 5;
-  public static final Integer REPRESENTATIVE_INDEX = 0;
-  // The peak statistic could be intensity, SNR or time.
-  public static final Double LOWEST_POSSIBLE_VALUE_FOR_PEAK_STATISTIC = 0.0;
   public static final String OPTION_INPUT_FILES = "i";
   public static final String OPTION_OUTPUT_FILE = "o";
   public static final String OPTION_MIN_INTENSITY_THRESHOLD = "n";
