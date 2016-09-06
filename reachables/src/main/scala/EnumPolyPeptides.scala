@@ -129,9 +129,6 @@ object EnumPolyPeptides {
     case None => throw new Exception("Invalid symbol for an amino acid.")
   }
 
-  val ionHeaders: List[(String, MS1.IonMode)] = MS1.ionDeltas.map(ion => (ion.getName, ion.getMode)).toList
-  val tsvHdrs = List("Representative", "M") ++ ionHeaders.map{ case (ionName, mode) => ionName + "/" + mode }
-
   class PeptideMass(val representative: List[AminoAcid],
                     val mass: Double,
                     val ionMasses: List[(MetlinIonMass, Double)]) {
@@ -166,10 +163,10 @@ object EnumPolyPeptides {
     finalMass
   }
 
-  def toPeptideMassRow(formula: Map[AminoAcid, Int]): PeptideMass = {
+  def toPeptideMassRow(formula: Map[AminoAcid, Int], ions: Option[List[String]]): PeptideMass = {
     val monoIsotopicMass = computeMonoIsotopicMass(formula)
 
-    new PeptideMass(formulaToListAAs(formula), monoIsotopicMass, computeMetlinIonMasses(monoIsotopicMass))
+    new PeptideMass(formulaToListAAs(formula), monoIsotopicMass, computeMetlinIonMasses(monoIsotopicMass, ions))
   }
 
   def getAminoAcidCombinations(maxLen: Int): Iterator[List[AminoAcid]] = {
@@ -196,44 +193,57 @@ object EnumPolyPeptides {
     aas.groupBy(identity).mapValues(_.size)
   }
 
-  def getPeptideEnumerator(maxLen: Int): Iterator[PeptideMass] = {
+  def getPeptideEnumerator(maxLen: Int, ions: Option[List[String]]): Iterator[PeptideMass] = {
     // we first get an iterator over all combinations with repetition of aminoacid sets
     val aminoacidGroups = getAminoAcidCombinations(maxLen)
 
     // now convert each List[AminoAcids] to formula Map[AminoAcids -> count] and then to PeptideMass row
-    val peptideMasses = aminoacidGroups.map(l => toPeptideMassRow(toFormula(l)))
+    val peptideMasses = aminoacidGroups.map(l => toPeptideMassRow(toFormula(l), ions))
 
     peptideMasses
   }
 
-  def computeMetlinIonMasses(m: Double): List[(MetlinIonMass, Double)] = {
+  def getMetlinIons(ionsRestriction: Option[List[String]]): List[MetlinIonMass] = ionsRestriction match {
+    case None => MS1.ionDeltas.toList
+    case Some(ions) => MS1.ionDeltas.filter(i => ions.contains(i.getName)).toList
+  }
+
+  def computeMetlinIonMasses(m: Double, ions: Option[List[String]]): List[(MetlinIonMass, Double)] = {
     // we could have called `MS1.java:queryMetlin`, but that creates a completely new List(MetlinIonMass)
     // My guess is that by using the `public static final ionDeltas` as the key the scala compiler
     // should be clever enough to not create copies of the key. The only extra memory we will use here
     // should be the computed mass values for the ions (the values of the map).
     def ionMassTuple(ion: MetlinIonMass): (MetlinIonMass, Double) = (ion -> MS1.computeIonMz(m, ion))
-    val ionMasses: List[(MetlinIonMass, Double)] = MS1.ionDeltas.map(ionMassTuple).toList
+    val ionMasses: List[(MetlinIonMass, Double)] = getMetlinIons(ions).map(ionMassTuple).toList
     ionMasses
+  }
+
+  def getTSVHdr(ions: Option[List[String]]) = {
+    val ionHeaders: List[(String, MS1.IonMode)] = getMetlinIons(ions).map(ion => (ion.getName, ion.getMode)).toList
+    val tsvHdrs = List("Representative", "M") ++ ionHeaders.map{ case (ionName, mode) => ionName + "/" + mode }
+    tsvHdrs
   }
 
   def main(args: Array[String]) {
 
     val className = this.getClass.getCanonicalName
-    val opts = List(optOutFile, optMaxLen)
+    val opts = List(optOutFile, optMaxLen, optIonSet)
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
     // read the command line options
-    val maxPeptideLength = cmdLine.get(optMaxLen).toInt
-    val outTsvFile = new PrintWriter(cmdLine.get(optOutFile))
+    val maxPeptideLength = (cmdLine get optMaxLen).toInt
+    val outTsvFile = new PrintWriter(cmdLine get optOutFile)
+    val ionSetGiven = cmdLine get optIonSet
+    val ionSet = ionSetGiven match { case null => None; case _ => Some(ionSetGiven.split(',').toList) }
     def writeFlush(line: String) = {
       outTsvFile.write(line + "\n")
       outTsvFile.flush
     }
 
     // do the actual work
-    writeFlush(tsvHdrs mkString "\t")
+    writeFlush(getTSVHdr(ionSet) mkString "\t")
     (1 to maxPeptideLength).foreach { peptideLen =>
-      val allMasses = getPeptideEnumerator(peptideLen)
+      val allMasses = getPeptideEnumerator(peptideLen, ionSet)
       allMasses.foreach(x => writeFlush(x.toString))
     }
     outTsvFile.close
@@ -259,6 +269,14 @@ object EnumPolyPeptides {
                                 "Also, note that above lengths 16 the polypeptide will be `>950Da` in size",
                                 "and hence beyond the size range current LCMS instrument can detect.").mkString,
                     isReqd = true, hasArg = true)
+
+  val optIonSet = new OptDesc(
+                    param = "i",
+                    longParam = "ion-set",
+                    name = "restricted ion set",
+                    desc = List("If the output set is to be limited to less than all ions from Metlin, ",
+                                "specify that set as a comma separated list here. E.g., M+H,M+Na").mkString,
+                    isReqd = false, hasArg = true)
 
   // TODO: move this into the tests directory
   def runAllUnitTests() {
@@ -305,7 +323,7 @@ object EnumPolyPeptides {
     // compare the size against the expected combinations formula
     def checkNumPeptidesEnumCorrect(lenPeptidesAndSz: (Int, Long)) {
       val (l, sz) = lenPeptidesAndSz
-      val enumSz = getPeptideEnumerator(l).size.toLong
+      val enumSz = getPeptideEnumerator(l, None).size.toLong
       assert( enumSz == sz )
     }
 
@@ -420,7 +438,7 @@ object EnumPolyPeptides {
     val lenSet = specificPeptidesToCheck.map(_.len).toSet
 
     lenSet.foreach( sz => {
-      val generator = getPeptideEnumerator(sz)
+      val generator = getPeptideEnumerator(sz, None)
       // get the set of peptides to check
       val peptides = specificPeptidesToCheck.filter(_.len == sz)
       // get the set of masses that the enumerator creates
