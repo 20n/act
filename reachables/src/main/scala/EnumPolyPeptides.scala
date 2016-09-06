@@ -121,7 +121,7 @@ case object Arg extends AminoAcid {
 }
 
 object EnumPolyPeptides {
-  val allAminoAcids = List(Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser, 
+  val allAminoAcids = List(Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser,
                            Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg)
 
   def fromSymbol(sym: Char): AminoAcid = allAminoAcids.find(_.symbol.equals(sym)) match {
@@ -132,7 +132,7 @@ object EnumPolyPeptides {
   val ionHeaders: List[(String, MS1.IonMode)] = MS1.ionDeltas.map(ion => (ion.getName, ion.getMode)).toList
   val tsvHdrs = List("Representative", "M") ++ ionHeaders.map{ case (ionName, mode) => ionName + "/" + mode }
 
-  class PeptideMass(val representative: List[AminoAcid], 
+  class PeptideMass(val representative: List[AminoAcid],
                     val mass: Double,
                     val ionMasses: List[(MetlinIonMass, Double)]) {
     override def toString() = {
@@ -140,29 +140,41 @@ object EnumPolyPeptides {
       val reprSymbol = representative.map(_.symbol.toString).reduce(_ + _)
 
       // note that here we assume that the list stays ordered the same way the header was computed for `tsvHdrs`
-      // both are computed from ionDeltas and so there should be no reordering of the lists 
+      // both are computed from ionDeltas and so there should be no reordering of the lists
       val ionMzs = ionMasses.map{ case (ion, mz) => truncateTo6Decimals(mz).toString }
       val together = List(reprSymbol, truncateTo6Decimals(mass).toString) ++ ionMzs
       together.mkString("\t")
     }
   }
 
-  def fromAminoAcidGroup(aaGrp: List[AminoAcid]): PeptideMass = {
-    val numPeptides = aaGrp.size
+  def formulaToListAAs(formula: Map[AminoAcid, Int]): List[AminoAcid] = {
+    val aminoAcidsInaRow = formula.toList.map{ case (a, n) => List.fill(n)(a) }.flatten
+    // return sorted, so that it looks like ADPPST as opposed to SAPDTP
+    aminoAcidsInaRow.sortWith(_.symbol < _.symbol)
+  }
+
+  def computeMonoIsotopicMass(formula: Map[AminoAcid, Int]): Double = {
+    val numPeptides = formula.values.reduce(_ + _)
 
     // This is where the actual algorithm from #419 is being implemented
     val numWatersToRemove = numPeptides - 1
     val massOfWater = List(H, O, H).map(_.monoIsotopicMass).reduce(_ + _)
     val massToRemove = numWatersToRemove * massOfWater
-    val combinedMass = aaGrp.map(_.monoIsotopicMass).reduce(_ + _)
+    val combinedMass = formulaToListAAs(formula).map(_.monoIsotopicMass).reduce(_ + _)
     val finalMass = combinedMass - massToRemove
 
-    new PeptideMass(aaGrp, finalMass, computeMetlinIonMasses(finalMass))
+    finalMass
+  }
+
+  def toPeptideMassRow(formula: Map[AminoAcid, Int]): PeptideMass = {
+    val monoIsotopicMass = computeMonoIsotopicMass(formula)
+
+    new PeptideMass(formulaToListAAs(formula), monoIsotopicMass, computeMetlinIonMasses(monoIsotopicMass))
   }
 
   def getAminoAcidCombinations(maxLen: Int): Iterator[List[AminoAcid]] = {
     // scala stdlib has a combinations(k) where it returns lists of size `k`
-    // to allow this combinations to create with repetitions we just give it 
+    // to allow this combinations to create with repetitions we just give it
     // the max allowed repetitions
 
     // first, create a list by replicating the elements maxLen number of times
@@ -179,12 +191,17 @@ object EnumPolyPeptides {
     pickSetNonDistinctElems.combinations(maxLen)
   }
 
+  def toFormula(aas: List[AminoAcid]): Map[AminoAcid, Int] = {
+    // convert List[AminoAcids] to formula Map[AminoAcids -> count]
+    aas.groupBy(identity).mapValues(_.size)
+  }
+
   def getPeptideEnumerator(maxLen: Int): Iterator[PeptideMass] = {
     // we first get an iterator over all combinations with repetition of aminoacid sets
     val aminoacidGroups = getAminoAcidCombinations(maxLen)
 
-    // now convert each List[AminoAcids] in the iterator to a PeptideMass row
-    val peptideMasses = aminoacidGroups.map(fromAminoAcidGroup)
+    // now convert each List[AminoAcids] to formula Map[AminoAcids -> count] and then to PeptideMass row
+    val peptideMasses = aminoacidGroups.map(l => toPeptideMassRow(toFormula(l)))
 
     peptideMasses
   }
@@ -208,7 +225,7 @@ object EnumPolyPeptides {
     // read the command line options
     val maxPeptideLength = cmdLine.get(optMaxLen).toInt
     val outTsvFile = new PrintWriter(cmdLine.get(optOutFile))
-    def writeFlush(line: String) = { 
+    def writeFlush(line: String) = {
       outTsvFile.write(line + "\n")
       outTsvFile.flush
     }
@@ -222,7 +239,7 @@ object EnumPolyPeptides {
     outTsvFile.close
 
     // run unit test to make sure code is still sane
-    // TODO: move this to tests framework. 
+    // TODO: move this to tests framework.
     runAllUnitTests
   }
 
@@ -237,7 +254,10 @@ object EnumPolyPeptides {
                     param = "n",
                     longParam = "max-peptide-length",
                     name = "max length of peptides",
-                    desc = "Maximum length, in num of amino acids, of polypeptides to consider. Note that this grows with C(19+n, n), i.e., close to exponential. Also, note that above lengths 16 the polypeptide will be `>950Da` in size and hence beyond the size range current LCMS instrument can detect.",
+                    desc = List("Maximum length, in num of amino acids, of polypeptides to consider. ",
+                                "Note that this grows with C(19+n, n), i.e., close to exponential. ",
+                                "Also, note that above lengths 16 the polypeptide will be `>950Da` in size",
+                                "and hence beyond the size range current LCMS instrument can detect.").mkString,
                     isReqd = true, hasArg = true)
 
   // TODO: move this into the tests directory
@@ -257,12 +277,12 @@ object EnumPolyPeptides {
   // imprecision in arithmetic, not physics.
   val tolerance = 1e-5
 
-  def equalUptoTolerance(a: Double, b: Double) = Math.abs(a - b) < tolerance 
+  def equalUptoTolerance(a: Double, b: Double) = Math.abs(a - b) < tolerance
 
   // as discussed in https://github.com/20n/act/issues/419#issuecomment-244655526
   // the size of the enumerated set has to be C(n+r-1, r) where n=20 and r=length of peptides
 
-  def choose(a: Int, b: Int) = { 
+  def choose(a: Int, b: Int) = {
     // n!
     def fact(n: Int): Long = if (n == 1) 1 else n * fact(n-1)
     // n!/n-k! = n * n-1 * ... * n-k+1
@@ -272,7 +292,7 @@ object EnumPolyPeptides {
     // so we compute the numerator and denominator separately
     // and we also know that C(a,b) = C(a,a-b), so we pick the version that minimizes
     // the numerator and denominator values
-    if (b < a-b) 
+    if (b < a-b)
       factUpto(a, a-b) / fact(b)
     else
       factUpto(a, b) / fact(a-b)
@@ -281,7 +301,7 @@ object EnumPolyPeptides {
 
   def checkEnumerationSizeCorrect() {
 
-    // we will create an enumeration class, get all its elements (will take time), and then 
+    // we will create an enumeration class, get all its elements (will take time), and then
     // compare the size against the expected combinations formula
     def checkNumPeptidesEnumCorrect(lenPeptidesAndSz: (Int, Long)) {
       val (l, sz) = lenPeptidesAndSz
@@ -297,16 +317,16 @@ object EnumPolyPeptides {
 
   def checkSpecificPeptides() {
 
-    // for the peptides here that do not have HMDB/Metlin links, you can validate the mass using the 
+    // for the peptides here that do not have HMDB/Metlin links, you can validate the mass using the
     // spreadsheet linked in the PR message for #420. An example of that is the DPPSAT peptide below.
 
     // list of specific peptides to check. tuples of their length, and accurate monoisotopic mass
     val dppsat = {
       val aa = Map('D'->1, 'P'->2, 'S'->1, 'A'->1, 'T'->1).map{ case (s, n) => fromSymbol(s) -> n }
       new Peptide(
-        len = 6, 
+        len = 6,
         composition = aa,
-        formula = Map(C->24, H->48, O->16, N->6, S->0),
+        formula = Map(C->33, H->47, O->8, N->7, S->0),
         mass = 586.259859
       )
     }
@@ -333,8 +353,8 @@ object EnumPolyPeptides {
     // See email thread on 08/30/16, subject "min of replicates across all samples using new algorithm"
     // Mark created plots for these masses under /shared-data/Mark/jaffna_lcms/issue_371/set3
     // where we can clearly see (in fine grained analysis) that our search for the mz 463.184234
-    // was pulling up the fourPeptideInUrineB mass. 
-    // 
+    // was pulling up the fourPeptideInUrineB mass.
+    //
     // Incidentally, it also pointed to the fact that we should be doing fine_grained instead of
     // coarse_grained, because we don't loose any signals, and in coarse grained all of
     // triPeptideInUrine and fourPeptideInUrine{A, B}) are hit as candidates for the peak that is
@@ -359,7 +379,7 @@ object EnumPolyPeptides {
         mass = 463.188942
       )
     }
-      
+     
     // https://metlin.scripps.edu/metabo_info.php?molid=109102
     val fourPeptideInUrineB = {
       new Peptide(
@@ -370,17 +390,37 @@ object EnumPolyPeptides {
       )
     }
 
-    val specificPeptidesToCheck = 
-      List(dppsat, 
+    val specificPeptidesToCheck =
+      List(dppsat,
           diPeptideVeryHighSignalInUrine,
           triPeptideInUrine,
           fourPeptideInUrineA,
           fourPeptideInUrineB)
 
-    val lenSet = specificPeptidesToCheck.map(_.len).toSet
+    // First check: We validate the construction of each individual polypeptide itself.
+    //   a) check that its specific chemical formula equals its specified monoisotopic mass
+    //   b) check that its specific AA formula equals its monoisotopic mass
+    specificPeptidesToCheck.foreach( pp => {
+      // check "a)"
+      val fromAminoAcids = computeMonoIsotopicMass(pp.composition)
+      println(s"from amino acid formula: $fromAminoAcids == ${pp.mass}")
+      assert( equalUptoTolerance(fromAminoAcids, pp.mass) )
+      // check "b)"
+      val fromAtoms = computeMassFromAtomicFormula(pp.formula)
+      println(s"from atomic formula: $fromAtoms == ${pp.mass}")
+      assert( equalUptoTolerance(fromAtoms, pp.mass) )
+    } )
+
+    // Second check: For each specific polypeptide, we validate that its mass shows up in the
+    // enumeration corresponding to its length.
+    // That is as simple as calling the enumerator and looking for the mass in the output
+    // But because we do not want to enumerate multiple times for the same length, we aggregate
+    // the peptides by length, and then make one enumerator, and check all of them in the output.
 
     // pick each length, create an enumerator for that length, and check that all peptides of
     // that length are contained within that enumerator's output of masses
+    val lenSet = specificPeptidesToCheck.map(_.len).toSet
+
     lenSet.foreach( sz => {
       val generator = getPeptideEnumerator(sz)
       // get the set of peptides to check
@@ -394,15 +434,16 @@ object EnumPolyPeptides {
       }
       val notFound = peptides.filterNot(p => massListHasPeptideMass(p.mass))
 
-      // assert that there are no peptides whose mass was not found, 
+      // assert that there are no peptides whose mass was not found,
       // i.e., all peptides had their masses in the output
       assert( notFound.size == 0 )
     })
+
   }
 
   val atomOrderInFormula = List(C, H, N, O, S)
   def computeFormulaFromElements(elems: Map[Atom, Int]) = {
-    // for each pair such as (C, 2) and (N, 5) specified in the elemental composition of an AA, first 
+    // for each pair such as (C, 2) and (N, 5) specified in the elemental composition of an AA, first
     // convert it `C2` and `N5` (the `.map` below), and then concatenate them together (the `.reduce` below)
     val elemnum: Map[Atom, String] = elems.map{
       case (atom, 0) => (atom, "")
@@ -410,16 +451,16 @@ object EnumPolyPeptides {
       case (atom, num) => (atom, atom.symbol + num.toString)
     }
 
-    atomOrderInFormula.map{ case atom => 
-      elemnum.get(atom) match { 
+    atomOrderInFormula.map{ case atom =>
+      elemnum.get(atom) match {
         case Some(elemN) => elemN
         case None => throw new Exception("formula does not have one of CHNOS specified")
       }
     }.reduce(_ + _)
   }
 
-  def computeMassFromElements(elems: Map[Atom, Int]) = {
-    // for each pair such as (C, 2) specified in the elemental composition of an AA, first convert 
+  def computeMassFromAtomicFormula(elems: Map[Atom, Int]): Double = {
+    // for each pair such as (C, 2) specified in the elemental composition of an AA, first convert
     // it `massOf(C) * 2` (the `.map` below), and then add them together (the `.reduce` below)
     elems.map{ case (atom, num) => atom.monoIsotopicMass * num }.reduce(_ + _)
   }
@@ -427,7 +468,7 @@ object EnumPolyPeptides {
   def checkAllAminoAcidMasses() {
     // check that each amino acid is specified precisely
     allAminoAcids.foreach(aa => {
-      val massFromElements: Double = computeMassFromElements(aa.elems)
+      val massFromElements: Double = computeMassFromAtomicFormula(aa.elems)
       val formulaFromElements: String = computeFormulaFromElements(aa.elems)
 
       // check that the pre-specified mass matches what we might compute from its atomic composition
