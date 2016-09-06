@@ -225,7 +225,7 @@ public class IonAnalysisInterchangeModel {
    * from multiple replicate to a single HitOrMiss molecule, like a min function across replicates. Second, it is
    * used to filter in/out molecules based on the logic of the filter function.
    * @param replicateModels The list of IonAnalysisInterchangeModels to be analyzed
-   * @param hitOrMissTransformer This filter function takes in multiple HitOrMiss objects from replicates and
+   * @param hitOrMissTransformer This filter function takes in single/multiple HitOrMiss objects from replicates and
    *                                   performs a transformation operation on them to produce one HitOrMiss object
    *                                   and a boolean to keep the transformed molecule in the resulting model.
    * @return A list of inchis that are valid molecule hits in all the input files and pass all the thresholds.
