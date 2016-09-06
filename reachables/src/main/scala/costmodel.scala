@@ -433,10 +433,7 @@ object ExploreRange {
       case _ => Defaults.BYOP
     }
     val l: Defaults.Location = Defaults.allLocations.find(_.name.equals(location)).get
-    val buf = new StringBuilder
     val header = List("Yield", "NPV", "ROIPercent", "COGS", "InvestM", "InvestY").mkString("\t")
-    buf ++= header
-    buf ++= "\n"
 
     val rows = for (yieldv <- 1.0 to 100 by 1.0) yield {
       val y = Yield(yieldv grams, 100 grams)

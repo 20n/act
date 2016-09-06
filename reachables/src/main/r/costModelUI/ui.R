@@ -62,8 +62,7 @@ shinyUI(fluidPage(
   fluidRow(
     class = "bottomLine",
     column(1),
-    column(10, kBottomMessage,
-           align="center"),
+    column(10, kBottomMessage, align="center"),
     column(1)
   )
 )
