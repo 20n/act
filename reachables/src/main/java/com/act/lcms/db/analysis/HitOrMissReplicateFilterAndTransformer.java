@@ -6,9 +6,16 @@ import org.apache.commons.lang3.tuple.Pair;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class HitOrMissReplicateTransformer extends HitOrMissTransformer<List<IonAnalysisInterchangeModel.HitOrMiss>> {
+public class HitOrMissReplicateFilterAndTransformer extends HitOrMissFilterAndTransformer<List<IonAnalysisInterchangeModel.HitOrMiss>> {
   public static final Integer TIME_TOLERANCE_IN_SECONDS = 5;
 
+  /**
+   * This function takes in a list of molecules from multiple replicates over the same time and alignes the peaks across
+   * these replicates. If the peaks can be aligned, the function reports the min statistic across those peaks, else it
+   * defaults to a low statistic.
+   * @param listOfReplicateMolecules
+   * @return A pair of transformed HitOrMiss molecule and whether to save the result in the final model.
+   */
   public Pair<IonAnalysisInterchangeModel.HitOrMiss, Boolean> apply(List<IonAnalysisInterchangeModel.HitOrMiss> listOfReplicateMolecules) {
 
     List<Double> intensityValues = listOfReplicateMolecules.stream().map(molecule -> molecule.getIntensity()).collect(Collectors.toList());

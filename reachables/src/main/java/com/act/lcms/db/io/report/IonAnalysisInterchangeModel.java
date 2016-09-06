@@ -25,7 +25,7 @@ package com.act.lcms.db.io.report;
  */
 
 import com.act.biointerpretation.l2expansion.L2Prediction;
-import com.act.lcms.db.analysis.HitOrMissTransformer;
+import com.act.lcms.db.analysis.HitOrMissFilterAndTransformer;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,7 +43,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class IonAnalysisInterchangeModel {
@@ -118,7 +117,10 @@ public class IonAnalysisInterchangeModel {
   public Map<Pair<Double, Double>, Integer> computeLogFrequencyDistributionOfMoleculeCountToMetric(METRIC metric) {
     Map<Pair<Double, Double>, Integer> rangeToHitCount = new HashMap<>();
 
+    // This variable represents the total number of statistics that have zero values.
     Integer countOfZeroStats = 0;
+
+    // This statistic represents the log value of the min statistic.
     Double minLogValue = Double.MAX_VALUE;
 
     for (ResultForMZ resultForMZ : this.getResults()) {
@@ -225,7 +227,7 @@ public class IonAnalysisInterchangeModel {
    * from multiple replicate to a single HitOrMiss molecule, like a min function across replicates. Second, it is
    * used to filter in/out molecules based on the logic of the filter function.
    * @param replicateModels The list of IonAnalysisInterchangeModels to be analyzed
-   * @param hitOrMissTransformer This filter function takes in single/multiple HitOrMiss objects from replicates and
+   * @param hitOrMissFilterAndTransformer This filter function takes in single/multiple HitOrMiss objects from replicates and
    *                                   performs a transformation operation on them to produce one HitOrMiss object
    *                                   and a boolean to keep the transformed molecule in the resulting model.
    * @return A list of inchis that are valid molecule hits in all the input files and pass all the thresholds.
@@ -233,7 +235,7 @@ public class IonAnalysisInterchangeModel {
    */
   public static IonAnalysisInterchangeModel filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
       List<IonAnalysisInterchangeModel> replicateModels,
-      HitOrMissTransformer hitOrMissTransformer)
+      HitOrMissFilterAndTransformer hitOrMissFilterAndTransformer)
       throws IOException {
 
     // Since all replicates have the same number of peak results, we can use the first model as a representative model
@@ -281,7 +283,7 @@ public class IonAnalysisInterchangeModel {
           moleculesFromReplicates.add(molecule);
         }
 
-        Pair<HitOrMiss, Boolean> transformedMoleculeAndShouldRetainMolecule = hitOrMissTransformer.apply(moleculesFromReplicates);
+        Pair<HitOrMiss, Boolean> transformedMoleculeAndShouldRetainMolecule = hitOrMissFilterAndTransformer.apply(moleculesFromReplicates);
 
         // Check if the filter function  wants to throw out the molecule. If not, then add the molecule to the final result.
         if (transformedMoleculeAndShouldRetainMolecule.getRight()) {

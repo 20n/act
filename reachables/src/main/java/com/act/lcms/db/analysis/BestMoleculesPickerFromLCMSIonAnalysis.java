@@ -11,7 +11,6 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,8 +21,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class BestMoleculesPickerFromLCMSIonAnalysis {
 
@@ -179,7 +176,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
 
     if (cl.hasOption(OPTION_MIN_OF_REPLICATES)) {
-      HitOrMissReplicateTransformer transformer = new HitOrMissReplicateTransformer();
+      HitOrMissReplicateFilterAndTransformer transformer = new HitOrMissReplicateFilterAndTransformer();
 
       IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
           IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults), transformer);
@@ -211,8 +208,8 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
         ions.addAll(Arrays.asList(cl.getOptionValues(OPTION_FILTER_BY_IONS)));
       }
 
-      HitOrMissSingleSampleTransformer hitOrMissSingleSampleTransformer =
-          new HitOrMissSingleSampleTransformer(minIntensityThreshold, minSnrThreshold, minTimeThreshold, ions);
+      HitOrMissSingleSampleFilterAndTransformer hitOrMissSingleSampleTransformer =
+          new HitOrMissSingleSampleFilterAndTransformer(minIntensityThreshold, minSnrThreshold, minTimeThreshold, ions);
 
       IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
           IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
