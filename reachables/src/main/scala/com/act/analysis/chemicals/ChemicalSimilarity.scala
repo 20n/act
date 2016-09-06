@@ -1,12 +1,16 @@
 package com.act.analysis.chemicals
 
 import chemaxon.descriptors.{SimilarityCalculator, SimilarityCalculatorFactory}
+import chemaxon.formats.MolFormatException
 import chemaxon.struc.Molecule
+import org.apache.log4j.LogManager
 
 /**
   * Concurrency safe cached molecule
   */
 object ChemicalSimilarity {
+  private val logger = LogManager.getLogger(getClass.getName)
+
   var _calculatorSettings: Option[String] = None
 
   /**
@@ -18,10 +22,6 @@ object ChemicalSimilarity {
     require(calculatorSettings.isEmpty, "Chemical similarity calculator was already initialized.")
     calculatorSettings = userCalculatorSettings
   }
-
-  def calculatorSettings: Option[String] = _calculatorSettings
-
-  private def calculatorSettings_=(value: String): Unit = _calculatorSettings = Option(value)
 
   def calculateSimilarity(query: Molecule, target: Molecule): Double = helperCalculateSimilarity(query, target)
 
@@ -40,23 +40,6 @@ object ChemicalSimilarity {
     simCalc.getSimilarity(MoleculeConversions.toIntArray(target))
   }
 
-  /**
-    * Given settings, retrieves a Similarity calculator for those settings and that query molecule.
-    *
-    * @param queryMolecule Molecule to query
-    *
-    * @return A Similarity calculator.
-    */
-  private def getSimCalculator(queryMolecule: Molecule): SimilarityCalculator[Array[Int]] = {
-    require(calculatorSettings.isDefined, "Please run ChemicalSimilarity.init() prior to doing comparisons.  " +
-      "If you'd like to use a non-default calculator, you can supply those parameters during initialization.")
-
-    val simCalc = SimilarityCalculatorFactory.create(calculatorSettings.get)
-    simCalc.setQueryFingerprint(MoleculeConversions.toIntArray(queryMolecule))
-
-    simCalc
-  }
-
   def calculateSimilarity(query: Molecule, target: String): Double = helperCalculateSimilarity(query, target)
 
   def calculateSimilarity(query: String, target: String): Double = helperCalculateSimilarity(query, target)
@@ -64,6 +47,10 @@ object ChemicalSimilarity {
   def calculateDissimilarity(query: Molecule, target: Molecule): Double = helperCalculateDissimilarity(query, target)
 
   def calculateDissimilarity(query: String, target: Molecule): Double = helperCalculateDissimilarity(query, target)
+
+  def calculateDissimilarity(query: Molecule, target: String): Double = helperCalculateDissimilarity(query, target)
+
+  def calculateDissimilarity(query: String, target: String): Double = helperCalculateDissimilarity(query, target)
 
   /**
     * For two molecules, use a calculator to determine how far away they are
@@ -78,9 +65,36 @@ object ChemicalSimilarity {
     simCalc.getDissimilarity(MoleculeConversions.toIntArray(target))
   }
 
-  def calculateDissimilarity(query: Molecule, target: String): Double = helperCalculateDissimilarity(query, target)
+  /**
+    * Given settings, retrieves a Similarity calculator for those settings and that query molecule.
+    *
+    * @param queryMolecule Molecule to query
+    *
+    * @return A Similarity calculator.
+    */
+  private def getSimCalculator(queryMolecule: Molecule): SimilarityCalculator[Array[Int]] = {
+    require(calculatorSettings.isDefined, "Please run ChemicalSimilarity.init() prior to doing comparisons.  " +
+      "If you'd like to use a non-default calculator, you can supply those parameters during initialization.")
 
-  def calculateDissimilarity(query: String, target: String): Double = helperCalculateDissimilarity(query, target)
+    // Main advantage of using the factory is that we can set custom params,
+    // comes with the disadvantage of needing to make into an Int array.
+    val simCalc = SimilarityCalculatorFactory.create(calculatorSettings.get)
+    simCalc.setQueryFingerprint(MoleculeConversions.toIntArray(queryMolecule))
 
-  private implicit def inchiToMolecule(inchi: String): Molecule = MoleculeImporter.importMolecule(inchi)
+    simCalc
+  }
+
+  def calculatorSettings: Option[String] = _calculatorSettings
+
+  private def calculatorSettings_=(value: String): Unit = _calculatorSettings = Option(value)
+
+  private implicit def stringToMolecule(s: String): Molecule =
+    try {
+      // Is InChI
+      MoleculeImporter.importMolecule(s)
+    } catch {
+      case e: MolFormatException =>
+        logger.debug("Unable to convert String to InChI, trying to convert to Smiles.")
+        MoleculeImporter.importMolecule(s, MoleculeImporter.ChemicalSetting.Smiles)
+    }
 }

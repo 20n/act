@@ -26,7 +26,7 @@ object MoleculeImporter {
     val molecule = moleculeCache.get(mol)
 
     if (molecule.isEmpty) {
-      val newMolecule = MolImporter.importMol(mol)
+      val newMolecule = MolImporter.importMol(mol, setting)
       moleculeCache.put(mol, newMolecule)
       return newMolecule
     }
