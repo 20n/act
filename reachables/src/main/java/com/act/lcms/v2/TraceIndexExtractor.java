@@ -259,6 +259,35 @@ public class TraceIndexExtractor {
   }
 
   private static class IndexedTraces {
+    /* IndexedTraces is a 2D array of aggregated intensity values over some <mz window, time> domains.  The organization
+     * of this matrix works in conjunction with the list of windows and the list of times that we build in parallel.
+     *
+     * The three structures look like:
+     * windows:
+     *   <min_0, target_0, max_0>,
+     *   <min_1, target_1, max_1>,
+     *   <min_2, target_2, max_2>,
+     *   ...
+     *
+     * times:
+     *   t_0,
+     *   t_1,
+     *   t_2,
+     *   ...
+     *
+     * allTraces (as i_{window_idx}_{time_idx}):
+     *   i_0_0, i_0_1, i_0_2, ...
+     *   i_1_0, i_1_1, i_1_2, ...
+     *   i_2_0, i_2_1, i_2_2, ...
+     *   ...
+     *
+     * So the aggregate intensity for all m/z values in the window <min_1, max_1> at time point 2 is i_1_2.
+     *
+     * We keep the window and time values separate for 1) efficiency and 2) ordering (i.e. no window -> array maps).
+     *
+     * When we want to create an iterator over the <time, intensity> traces (i.e. List<XZ>) for each window, we knit the
+     * single time array together with the appropriate list of intensity values online, reducing the overhead of storing
+     * several hundred million XZ objects (which turns out to be fairly expensive). */
     List<MZWindow> windows;
     List<Double> times;
     List<List<Double>> allTraces;
@@ -289,35 +318,7 @@ public class TraceIndexExtractor {
    */
   private IndexedTraces runSweepLine(List<Double> targetMZs, Iterator<LCMSSpectrum> iter)
       throws RocksDBException, IOException {
-    /* allTraces is a 2D array of aggregated intensity values over the <mz window, time> domains.  The organization of
-     * this matrix works in conjunction with the list of windows and the list of times that we build in parallel.
-     *
-     * The three structures look like:
-     * windows:
-     *   <min_0, target_0, max_0>,
-     *   <min_1, target_1, max_1>,
-     *   <min_2, target_2, max_2>,
-     *   ...
-     *
-     * times:
-     *   t_0,
-     *   t_1,
-     *   t_2,
-     *   ...
-     *
-     * allTraces (as i_{window_idx}_{time_idx}):
-     *   i_0_0, i_0_1, i_0_2, ...
-     *   i_1_0, i_1_1, i_1_2, ...
-     *   i_2_0, i_2_1, i_2_2, ...
-     *   ...
-     *
-     * So the aggregate intensity for all m/z values in the window <min_1, max_1> at time point 2 is i_1_2.
-     *
-     * We keep the window and time values separate for 1) efficiency and 2) ordering (i.e. no window -> array maps).
-     *
-     * When we want to create an iterator over the <time, intensity> traces (i.e. List<XZ>) for each window, we knit the
-     * single time array together with the appropriate list of intensity values online, reducing the overhead of storing
-     * several hundred million XZ objects (which turns out to be fairly expensive). */
+    // Create windows for sweep-linin'.
     List<MZWindow> windows = new ArrayList<MZWindow>() {{
       int i = 0;
       for (Double targetMZ : targetMZs) {
