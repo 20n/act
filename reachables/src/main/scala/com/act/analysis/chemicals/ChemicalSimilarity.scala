@@ -1,7 +1,6 @@
 package com.act.analysis.chemicals
 
 import chemaxon.descriptors.{SimilarityCalculator, SimilarityCalculatorFactory}
-import chemaxon.formats.MolFormatException
 import chemaxon.struc.Molecule
 import org.apache.log4j.LogManager
 
@@ -21,11 +20,14 @@ object ChemicalSimilarity {
   def init(userCalculatorSettings: String = "TANIMOTO"): Unit = {
     require(calculatorSettings.isEmpty, "Chemical similarity calculator was already initialized.")
     calculatorSettings = userCalculatorSettings
+    logger.info(s"Using the following settings for Similarity calculations: $userCalculatorSettings")
   }
 
   def calculateSimilarity(query: Molecule, target: Molecule): Double = helperCalculateSimilarity(query, target)
 
   def calculateSimilarity(query: String, target: Molecule): Double = helperCalculateSimilarity(query, target)
+
+  def calculateSimilarity(query: Molecule, target: String): Double = helperCalculateSimilarity(query, target)
 
   /**
     * For two molecules, use a calculator to determine their closeness.
@@ -40,17 +42,9 @@ object ChemicalSimilarity {
     simCalc.getSimilarity(MoleculeConversions.toIntArray(target))
   }
 
-  def calculateSimilarity(query: Molecule, target: String): Double = helperCalculateSimilarity(query, target)
-
   def calculateSimilarity(query: String, target: String): Double = helperCalculateSimilarity(query, target)
 
   def calculateDissimilarity(query: Molecule, target: Molecule): Double = helperCalculateDissimilarity(query, target)
-
-  def calculateDissimilarity(query: String, target: Molecule): Double = helperCalculateDissimilarity(query, target)
-
-  def calculateDissimilarity(query: Molecule, target: String): Double = helperCalculateDissimilarity(query, target)
-
-  def calculateDissimilarity(query: String, target: String): Double = helperCalculateDissimilarity(query, target)
 
   /**
     * For two molecules, use a calculator to determine how far away they are
@@ -88,13 +82,11 @@ object ChemicalSimilarity {
 
   private def calculatorSettings_=(value: String): Unit = _calculatorSettings = Option(value)
 
-  private implicit def stringToMolecule(s: String): Molecule =
-    try {
-      // Is InChI
-      MoleculeImporter.importMolecule(s)
-    } catch {
-      case e: MolFormatException =>
-        logger.debug("Unable to convert String to InChI, trying to convert to Smiles.")
-        MoleculeImporter.importMolecule(s, MoleculeImporter.ChemicalSetting.Smiles)
-    }
+  def calculateDissimilarity(query: String, target: Molecule): Double = helperCalculateDissimilarity(query, target)
+
+  def calculateDissimilarity(query: Molecule, target: String): Double = helperCalculateDissimilarity(query, target)
+
+  def calculateDissimilarity(query: String, target: String): Double = helperCalculateDissimilarity(query, target)
+
+  private implicit def stringToMolecule(s: String): Molecule = MoleculeConversions.stringToMolecule(s)
 }

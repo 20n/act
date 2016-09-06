@@ -1,11 +1,15 @@
 package com.act.analysis.chemicals
 
 import chemaxon.descriptors.{CFParameters, ChemicalFingerprint}
+import chemaxon.formats.MolFormatException
 import chemaxon.struc.Molecule
+import org.apache.log4j.LogManager
 
 import scala.collection.concurrent.TrieMap
 
 object MoleculeConversions {
+  private val logger = LogManager.getLogger(getClass.getName)
+
   // If a chemical's Array[Int] form has been calculated, cache it for reuse later (Really speeds up SAR tree traversal).
   private val chemicalCache = TrieMap[Molecule, Array[Int]]()
 
@@ -16,8 +20,6 @@ object MoleculeConversions {
   _cfp.setBitCount(4)
 
   def toIntArray(mol: Molecule): Array[Int] = helperToIntArray(mol)
-
-  def toIntArray(mol: String): Array[Int] = helperToIntArray(mol)
 
   /**
     * Utility to convert from a molecule to an Array[Int] using its chemical footprint.
@@ -52,6 +54,17 @@ object MoleculeConversions {
     _cfp
   }
 
-  private implicit def inchiToMolecule(inchi: String): Molecule = MoleculeImporter.importMolecule(inchi)
+  def toIntArray(mol: String): Array[Int] = helperToIntArray(mol)
+
+  implicit def stringToMolecule(s: String): Molecule = {
+    try {
+      // Is InChI
+      MoleculeImporter.importMolecule(s)
+    } catch {
+      case e: MolFormatException =>
+        logger.debug("Unable to convert String to InChI, trying to convert to Smiles.")
+        MoleculeImporter.importMolecule(s, MoleculeImporter.ChemicalSetting.Smiles)
+    }
+  }
 }
 
