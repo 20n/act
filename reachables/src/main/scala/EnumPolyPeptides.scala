@@ -297,7 +297,8 @@ object EnumPolyPeptides {
 
   def checkSpecificPeptides() {
 
-    // data should be consistent here and in the spreadsheet listed on issue #419, 5th comment (author=ss)
+    // for the peptides here that do not have HMDB/Metlin links, you can validate the mass using the 
+    // spreadsheet linked in the PR message for #420. An example of that is the DPPSAT peptide below.
 
     // list of specific peptides to check. tuples of their length, and accurate monoisotopic mass
     val dppsat = {
@@ -323,10 +324,14 @@ object EnumPolyPeptides {
       )
     }
 
+    // Below are four peptides between masses [463.1840, 463.1890]. We encountered signals around this
+    // mass when we were looking for a L4n1 mass at 463.184234 (which is a wierd non-human chemical)
+    // So we created plots for potential polypeptides in the range by looking the following 3 peptides
+    // from metlin hits:
     // https://metlin.scripps.edu/metabo_list_adv.php?molid=&mass_min=463.1840&mass_max=463.1890
-    // See email thread between @saurabh20n, @mark-20n
-    // Subject "min of replicates across all samples using new algorithm", dated 08/30/16
-    // Mark created plots under /shared-data/Mark/jaffna_lcms/issue_371/set3
+    //
+    // See email thread on 08/30/16, subject "min of replicates across all samples using new algorithm"
+    // Mark created plots for these masses under /shared-data/Mark/jaffna_lcms/issue_371/set3
     // where we can clearly see (in fine grained analysis) that our search for the mz 463.184234
     // was pulling up the fourPeptideInUrineB mass. 
     // 
