@@ -326,7 +326,7 @@ object EnumPolyPeptides {
       new Peptide(
         len = 6,
         composition = aa,
-        formula = Map(C->33, H->47, O->8, N->7, S->0),
+        formula = Map(C->24, H->38, O->11, N->6, S->0),
         mass = 586.259859
       )
     }
@@ -403,11 +403,9 @@ object EnumPolyPeptides {
     specificPeptidesToCheck.foreach( pp => {
       // check "a)"
       val fromAminoAcids = computeMonoIsotopicMass(pp.composition)
-      println(s"from amino acid formula: $fromAminoAcids == ${pp.mass}")
       assert( equalUptoTolerance(fromAminoAcids, pp.mass) )
       // check "b)"
       val fromAtoms = computeMassFromAtomicFormula(pp.formula)
-      println(s"from atomic formula: $fromAtoms == ${pp.mass}")
       assert( equalUptoTolerance(fromAtoms, pp.mass) )
     } )
 
