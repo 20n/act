@@ -134,7 +134,7 @@ public class ErosCorpus implements Iterable<Ero> {
    * @param count The required number of sybstrates.
    */
   public void filterCorpusBySubstrateCount(Integer count) {
-    ros.removeIf(ro -> ro.getSubstrate_count() != count);
+    ros.removeIf(ro -> !ro.getSubstrate_count().equals(count));
   }
 
   /**
