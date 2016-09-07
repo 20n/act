@@ -1,6 +1,6 @@
 shinyUI(fluidPage(
   fluidRow(
-    class = "myRow1",
+    class = "Header",
     column(2, imageOutput("logo", height = "100%")),
     column(8, headerPanel("LCMS data explorer"), align = "center"),
     column(2)
