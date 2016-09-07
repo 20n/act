@@ -99,7 +99,7 @@ shinyServer(function(input, output, session) {
       
       if (input$top.value) {
         # Display additional layer with top peak label
-        with(top.points, text3D(retention.time, mz, intensity * kLabelFactor, add = TRUE, labels = round(monoisotopic.masses, 6)))
+        with(top.points, text3D(retention.time, mz, intensity * kLabelFactor, add = TRUE, labels = round(mz, 6)))
       }
     })
   })
