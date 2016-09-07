@@ -40,8 +40,13 @@ class MzToFormula(numDigitsOfPrecision: Int = 5, formulaOver: Set[Atom] = Set(C,
   }
 
   // solver = z3 MIT license.
-  // git clone git@github.com:Z3Prover/z3.git instructions: https://github.com/Z3Prover/z3
+  // git clone git@github.com:Z3Prover/z3.git
+  // compile instructions: https://github.com/Z3Prover/z3
   // the jar needs to be in the lib: `com.microsoft.z3.jar`
+  // and the dynamic runtime link libraries in lib/native/${os}/
+  println(System.getProperty("java.library.path"))
+  System.loadLibrary("z3")
+  System.loadLibrary("z3java")
 
   val config = Map("model" -> "true")
   val ctx: Context = new Context(config)
@@ -81,15 +86,24 @@ class MzToFormula(numDigitsOfPrecision: Int = 5, formulaOver: Set[Atom] = Set(C,
 
     m match {
       case Some(model) => {
-        val cval = model getConstInterp c
-        val oval = model getConstInterp o
-        val nval = model getConstInterp n
+        val cval = solved(c, model)
+        val oval = solved(o, model) 
+        val nval = solved(n, model)
         println(s"C${cval}O${oval}N${nval} has mass approx 103")
         assert ((cval, nval, oval) == (5, 2, 1))
       }
       case None => assert (false)
     }
     m
+  }
+
+  def solved(bv: BitVecExpr, m: Model): Int = {
+    val interpretation: Expr = m.getConstInterp(bv)
+    // BitVecNum extends BitVecExpr, which extends Expr
+    // is there a better way to get to BitVecNum, than doing a cast to subclass?
+    // https://github.com/Z3Prover/z3/blob/master/src/api/java/BitVecNum.java
+    val num: BitVecNum = interpretation.asInstanceOf[BitVecNum]
+    num.getInt
   }
 }
   
