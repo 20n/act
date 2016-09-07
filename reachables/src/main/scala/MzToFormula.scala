@@ -44,9 +44,6 @@ class MzToFormula(numDigitsOfPrecision: Int = 5, formulaOver: Set[Atom] = Set(C,
   // compile instructions: https://github.com/Z3Prover/z3
   // the jar needs to be in the lib: `com.microsoft.z3.jar`
   // and the dynamic runtime link libraries in lib/native/${os}/
-  println(System.getProperty("java.library.path"))
-  System.loadLibrary("z3")
-  System.loadLibrary("z3java")
 
   val config = Map("model" -> "true")
   val ctx: Context = new Context(config)
@@ -89,8 +86,8 @@ class MzToFormula(numDigitsOfPrecision: Int = 5, formulaOver: Set[Atom] = Set(C,
         val cval = solved(c, model)
         val oval = solved(o, model) 
         val nval = solved(n, model)
-        println(s"C${cval}O${oval}N${nval} has mass approx 103")
         assert ((cval, nval, oval) == (5, 2, 1))
+        println(s"C${cval}O${oval}N${nval} has mass approx 103")
       }
       case None => assert (false)
     }
