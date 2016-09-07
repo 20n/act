@@ -43,16 +43,21 @@ class CmdLineParser(parent: String, args: Array[String], optDescs: List[OptDesc]
   val cmdline: CommandLine = parseCommandLineOptions(args) 
 
   def get(opt: OptDesc): String = get(opt.param)
-  def get(option: String): String = { 
+  def get(option: String): String = getHasHelper[String](option, cmdline.getOptionValue)
+
+  def has(opt: OptDesc): Boolean = has(opt.param)
+  def has(option: String): Boolean = getHasHelper[Boolean](option, cmdline.hasOption)
+  
+  def getHasHelper[T](option: String, outfn: String => T): T = {
     option.length match {
       case 1 => {
         // short arg, look it up directly
-        cmdline.getOptionValue(option)
+        outfn(option)
       }
       case _ => {
         // if long opt given then look up the corresponding single char param
         supportedOpts.find(_.longParam.equals(option)) match {
-          case Some(o) => cmdline.getOptionValue(o.param)
+          case Some(o) => outfn(o.param)
           case None => throw new Exception("You asked for a multiple-param that is not present " + 
                                             "in the option descriptions. Code failure. Please fix!")
         }

@@ -224,10 +224,37 @@ object EnumPolyPeptides {
     tsvHdrs
   }
 
+  class Stats {
+    val window = 1.0 // Da
+    var histogram = Map[Int, Int]()
+
+    def log(mz: Double) {
+      val n: Int = (math floor (mz / window)).toInt
+      val curr: Int = histogram.get(n) match { case None => 0; case Some(c) => c }
+      histogram = histogram + (n -> (curr + 1))
+    }
+
+    def log(row: PeptideMass) {
+      val masses = List(row.mass) ++ row.ionMasses.map{ case (_, mz) => mz }
+      masses foreach log
+    }
+
+    def mkString(kvDelim: String = "\t", entryDelim: String = "\n") = {
+      val columnGraph = histogram.map{ case (bucket, c) => (bucket * window, c) }.toList.sorted
+      val columns = columnGraph.map{ case (w, c) => w + kvDelim + c }
+      columns.mkString(entryDelim)
+    }
+  }
+
+  def writeFlush(outFile: PrintWriter, line: String) = {
+    outFile.write(line + "\n")
+    outFile.flush
+  }
+
   def main(args: Array[String]) {
 
     val className = this.getClass.getCanonicalName
-    val opts = List(optOutFile, optMaxLen, optIonSet)
+    val opts = List(optOutFile, optMaxLen, optIonSet, optRunStats)
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
     // read the command line options
@@ -235,18 +262,21 @@ object EnumPolyPeptides {
     val outTsvFile = new PrintWriter(cmdLine get optOutFile)
     val ionSetGiven = cmdLine get optIonSet
     val ionSet = ionSetGiven match { case null => None; case _ => Some(ionSetGiven.split(',').toList) }
-    def writeFlush(line: String) = {
-      outTsvFile.write(line + "\n")
-      outTsvFile.flush
-    }
+
+    // we'll be logging statistics, if the cmd line says so
+    val stats = new Stats
 
     // do the actual work
-    writeFlush(getTSVHdr(ionSet) mkString "\t")
+    writeFlush(outTsvFile, getTSVHdr(ionSet) mkString "\t")
     (1 to maxPeptideLength).foreach { peptideLen =>
       val allMasses = getPeptideEnumerator(peptideLen, ionSet)
-      allMasses.foreach(x => writeFlush(x.toString))
+      allMasses.foreach(x => {
+          stats log x
+          writeFlush(outTsvFile, x.toString)
+        })
     }
-    outTsvFile.close
+    outTsvFile.close()
+    if (cmdLine has optRunStats) { println(stats.mkString()) }
 
     // run unit test to make sure code is still sane
     // TODO: move this to tests framework.
@@ -277,6 +307,14 @@ object EnumPolyPeptides {
                     desc = List("If the output set is to be limited to less than all ions from Metlin, ",
                                 "specify that set as a comma separated list here. E.g., M+H,M+Na").mkString,
                     isReqd = false, hasArg = true)
+
+  val optRunStats = new OptDesc(
+                    param = "s",
+                    longParam = "run-stats",
+                    name = "accumulate stats after computing masses",
+                    desc = List("After computing masses for peptides, we examine and accumulate ",
+                                "some basic stats on the masses, e.g., their distribution.").mkString,
+                    isReqd = false, hasArg = false)
 
   // TODO: move this into the tests directory
   def runAllUnitTests() {
