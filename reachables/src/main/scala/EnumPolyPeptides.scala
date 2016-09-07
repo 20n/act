@@ -3,18 +3,14 @@ package com.act.lcms
 import java.io.PrintWriter
 import com.act.lcms.MS1.{MetlinIonMass}
 import act.shared.{CmdLineParser, OptDesc}
-import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, AminoAcid}
+import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, AminoAcid, AllAminoAcids}
 import act.shared.ChemicalSymbols.{Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser} 
 import act.shared.ChemicalSymbols.{Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg}
+import act.shared.ChemicalSymbols.Helpers.{fromSymbol, computeMassFromAtomicFormula, computeFormulaFromElements}
 
 object EnumPolyPeptides {
-  val allAminoAcids = List(Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser,
-                           Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg)
 
-  def fromSymbol(sym: Char): AminoAcid = allAminoAcids.find(_.symbol.equals(sym)) match {
-    case Some(aa) => aa
-    case None => throw new Exception("Invalid symbol for an amino acid.")
-  }
+  class Peptide(val len: Int, val composition: Map[AminoAcid, Int], val formula: Map[Atom, Int], val mass: Double)
 
   class PeptideMass(val representative: List[AminoAcid],
                     val mass: Double,
@@ -63,7 +59,7 @@ object EnumPolyPeptides {
 
     // first, create a list by replicating the elements maxLen number of times
     // this is a list of lists
-    val replicatedLists = List.fill(maxLen)(allAminoAcids)
+    val replicatedLists = List.fill(maxLen)(AllAminoAcids)
 
     // flatten the list created above, so that we have one long list of as many
     // repeated amino acids as can be in the final set. by repeating them here,
@@ -240,6 +236,7 @@ object EnumPolyPeptides {
     else
       factUpto(a, b) / fact(a-b)
   }
+
   def combinationsWithRepeats(n: Int, r: Int) = choose(n+r-1, r)
 
   def checkEnumerationSizeCorrect() {
@@ -255,8 +252,6 @@ object EnumPolyPeptides {
     // now iterate with peptide lengths 1..6
     (1 to 6).toList.map(len => (len, combinationsWithRepeats(20, len))).foreach(checkNumPeptidesEnumCorrect)
   }
-
-  class Peptide(val len: Int, val composition: Map[AminoAcid, Int], val formula: Map[Atom, Int], val mass: Double)
 
   def checkSpecificPeptides() {
 
@@ -382,33 +377,9 @@ object EnumPolyPeptides {
 
   }
 
-  val atomOrderInFormula = List(C, H, N, O, S)
-  def computeFormulaFromElements(elems: Map[Atom, Int]) = {
-    // for each pair such as (C, 2) and (N, 5) specified in the elemental composition of an AA, first
-    // convert it `C2` and `N5` (the `.map` below), and then concatenate them together (the `.reduce` below)
-    val elemnum: Map[Atom, String] = elems.map{
-      case (atom, 0) => (atom, "")
-      case (atom, 1) => (atom, atom.symbol.toString)
-      case (atom, num) => (atom, atom.symbol + num.toString)
-    }
-
-    atomOrderInFormula.map{ case atom =>
-      elemnum.get(atom) match {
-        case Some(elemN) => elemN
-        case None => throw new Exception("formula does not have one of CHNOS specified")
-      }
-    }.reduce(_ + _)
-  }
-
-  def computeMassFromAtomicFormula(elems: Map[Atom, Int]): Double = {
-    // for each pair such as (C, 2) specified in the elemental composition of an AA, first convert
-    // it `massOf(C) * 2` (the `.map` below), and then add them together (the `.reduce` below)
-    elems.map{ case (atom, num) => atom.monoIsotopicMass * num }.reduce(_ + _)
-  }
-
   def checkAllAminoAcidMasses() {
     // check that each amino acid is specified precisely
-    allAminoAcids.foreach(aa => {
+    AllAminoAcids.foreach(aa => {
       val massFromElements: Double = computeMassFromAtomicFormula(aa.elems)
       val formulaFromElements: String = computeFormulaFromElements(aa.elems)
 
@@ -429,5 +400,4 @@ object EnumPolyPeptides {
       assert(c1 == c2)
     }
   }
-
 }

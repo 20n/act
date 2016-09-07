@@ -119,4 +119,38 @@ object ChemicalSymbols {
     val url = "http://www.chemspider.com/Chemical-Structure.227.html"
   }
 
+  val AllAminoAcids = List(Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser,
+                           Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg)
+
+  object Helpers {
+    def fromSymbol(sym: Char): AminoAcid = ChemicalSymbols.AllAminoAcids.find(_.symbol.equals(sym)) match {
+      case Some(aa) => aa
+      case None => throw new Exception("Invalid symbol for an amino acid.")
+    }
+
+    val atomOrderInFormula = List(C, H, N, O, S, P)
+    def computeFormulaFromElements(elems: Map[Atom, Int]) = {
+      // for each pair such as (C, 2) and (N, 5) specified in the elemental composition of an AA, first
+      // convert it `C2` and `N5` (the `.map` below), and then concatenate them together (the `.reduce` below)
+      val elemnum: Map[Atom, String] = elems.map{
+        case (atom, 0) => (atom, "")
+        case (atom, 1) => (atom, atom.symbol.toString)
+        case (atom, num) => (atom, atom.symbol + num.toString)
+      }
+
+      atomOrderInFormula.map{ case atom =>
+        elemnum.get(atom) match {
+          case Some(elemN) => elemN
+          case None => throw new Exception("formula does not have one of CHNOS specified")
+        }
+      }.reduce(_ + _)
+    }
+
+    def computeMassFromAtomicFormula(elems: Map[Atom, Int]): Double = {
+      // for each pair such as (C, 2) specified in the elemental composition of an AA, first convert
+      // it `massOf(C) * 2` (the `.map` below), and then add them together (the `.reduce` below)
+      elems.map{ case (atom, num) => atom.monoIsotopicMass * num }.reduce(_ + _)
+    }
+  }
 }
+
