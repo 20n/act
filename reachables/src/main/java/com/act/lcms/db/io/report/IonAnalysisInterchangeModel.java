@@ -25,24 +25,25 @@ package com.act.lcms.db.io.report;
  */
 
 import com.act.biointerpretation.l2expansion.L2Prediction;
+import com.act.lcms.db.analysis.HitOrMissFilterAndTransformer;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 public class IonAnalysisInterchangeModel {
 
@@ -53,6 +54,12 @@ public class IonAnalysisInterchangeModel {
     HIT,
     MISS,
     NO_DATA
+  }
+
+  public enum METRIC {
+    SNR,
+    INTENSITY,
+    TIME
   }
 
   @JsonProperty("results")
@@ -103,6 +110,62 @@ public class IonAnalysisInterchangeModel {
   }
 
   /**
+   * This function is used to compute log frequency distribution of the ion model vs a metric.
+   * @param metric The metric on which the frequency distribution is plotted
+   * @return A map of a range to the count of molecules that get bucketed in that range
+   */
+  public Map<Pair<Double, Double>, Integer> computeLogFrequencyDistributionOfMoleculeCountToMetric(METRIC metric) {
+    Map<Pair<Double, Double>, Integer> rangeToHitCount = new HashMap<>();
+
+    // This variable represents the total number of statistics that have zero values.
+    Integer countOfZeroStats = 0;
+
+    // This statistic represents the log value of the min statistic.
+    Double minLogValue = Double.MAX_VALUE;
+
+    for (ResultForMZ resultForMZ : this.getResults()) {
+      for (HitOrMiss molecule : resultForMZ.getMolecules()) {
+
+        Double power = 0.0;
+
+        switch (metric) {
+          case TIME:
+            power = Math.log10(molecule.getTime());
+            break;
+          case INTENSITY:
+            power = Math.log10(molecule.getIntensity());
+            break;
+          case SNR:
+            power = Math.log10(molecule.getSnr());
+            break;
+        }
+
+        if (power.equals(Double.NEGATIVE_INFINITY)) {
+          // We know the statistic was 0 here.
+          countOfZeroStats++;
+          break;
+        }
+
+        Double floor = Math.floor(power);
+        Double lowerBound = Math.pow(10.0, floor);
+        Double upperBound = Math.pow(10.0, floor + 1);
+
+        minLogValue = Math.min(minLogValue, lowerBound);
+        Pair<Double, Double> key = Pair.of(lowerBound, upperBound);
+        rangeToHitCount.compute(key, (k, v) -> (v == null) ? 1 : v + 1);
+      }
+
+      // We count the total number of zero statistics and put them in the 0 to minLog metric bucket.
+      if (countOfZeroStats > 0) {
+        Pair<Double, Double> key = Pair.of(0.0, minLogValue);
+        rangeToHitCount.put(key, countOfZeroStats);
+      }
+    }
+
+    return rangeToHitCount;
+  }
+
+  /**
    * Returns HIT or MISS if the inchi is in the precalculated inchi->hit map, or NO_DATA if the inchi is not.
    * This will let us know if there has been any change in the inchi's form since the initial calculation, instead of
    * just silently returning a miss.
@@ -115,6 +178,19 @@ public class IonAnalysisInterchangeModel {
       return LCMS_RESULT.NO_DATA;
     }
     return this.inchiToIsHit.get(inchi) ? LCMS_RESULT.HIT : LCMS_RESULT.MISS;
+  }
+
+  /**
+   * This function results all the inchis from the model.
+   * @return A set of inchis
+   */
+  @JsonIgnore
+  public Set<String> getAllInchis() {
+    Set<String> result = new HashSet<>();
+    for (ResultForMZ resultForMZ : this.getResults()) {
+      result.addAll(resultForMZ.getMolecules().stream().map(molecule -> molecule.getInchi()).collect(Collectors.toList()));
+    }
+    return result;
   }
 
   /**
@@ -150,41 +226,27 @@ public class IonAnalysisInterchangeModel {
 
   /**
    * This function takes in multiple LCMS mining results  (in the IonAnalysisInterchangeModel format), which happens
-   * when we have multiple positive control replicates and extracts all the molecule hits from each file and makes
-   * sure they pass the input thresholds for SNR, time and intensity. If the molecule hit passes these thresholds for
-   * ALL the positive replicates, then the inchi is added to the result set.
-   * @param filepaths The list of files to be analyzed
-   * @param snrThreshold The snr threshold
-   * @param intensityThreshold The intensity threshold
-   * @param timeThreshold The time threshold
+   * when we have multiple positive control replicates, extracts all the molecule hits from each file and applies
+   * a filter function across the replicate hits. The filter function provide two features: it is used to transform results
+   * from multiple replicate to a single HitOrMiss molecule, like a min function across replicates. Second, it is
+   * used to filter in/out molecules based on the logic of the filter function.
+   * @param replicateModels The list of IonAnalysisInterchangeModels to be analyzed
+   * @param hitOrMissFilterAndTransformer This filter function takes in single/multiple HitOrMiss objects from replicates and
+   *                                   performs a transformation operation on them to produce one HitOrMiss object
+   *                                   and a boolean to keep the transformed molecule in the resulting model.
    * @return A list of inchis that are valid molecule hits in all the input files and pass all the thresholds.
    * @throws IOException
    */
-  public static Set<String> getAllMoleculeHitsFromMultiplePositiveReplicateFiles(List<String> filepaths,
-                                                                                 Double snrThreshold,
-                                                                                 Double intensityThreshold,
-                                                                                 Double timeThreshold) throws IOException {
+  public static IonAnalysisInterchangeModel filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
+      List<IonAnalysisInterchangeModel> replicateModels,
+      HitOrMissFilterAndTransformer hitOrMissFilterAndTransformer)
+      throws IOException {
 
-
-    List<IonAnalysisInterchangeModel> deserializedResultsForPositiveReplicates = new ArrayList<>();
-    for (String filePath : filepaths) {
-      IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
-      model.loadResultsFromFile(new File(filePath));
-
-      // Sort by mass charge for consistent comparisons across files
-      Collections.sort(model.getResults(), new Comparator<ResultForMZ>() {
-        @Override
-        public int compare(ResultForMZ o1, ResultForMZ o2) {
-          return o1.getMz().compareTo(o2.getMz());
-        }
-      });
-
-      deserializedResultsForPositiveReplicates.add(model);
-    }
-
-    int totalNumberOfMassCharges = deserializedResultsForPositiveReplicates.get(0).getResults().size();
-
-    Set<String> resultSet = new HashSet<>();
+    // Since all replicates have the same number of peak results, we can use the first model as a representative model
+    // for the total num of mass charges.
+    int totalNumberOfMassCharges = replicateModels.get(0).getResults().size();
+    IonAnalysisInterchangeModel resultModel = new IonAnalysisInterchangeModel();
+    List<ResultForMZ> resultsForMZs = new ArrayList<>();
 
     /**
      * Each element in deserializedResultsForPositiveReplicates now contains a list of mass charges to a list of
@@ -193,65 +255,112 @@ public class IonAnalysisInterchangeModel {
      */
 
     // Iterate through every mass charge
+    // TODO: Consider using a parallel stream here
     for (int i = 0; i < totalNumberOfMassCharges; i++) {
+      ResultForMZ representativeMZ = replicateModels.get(0).getResults().get(i);
+      Double representativeMassCharge = representativeMZ.getMz();
+      int totalNumberOfMoleculesInMassChargeResult = representativeMZ.getMolecules().size();
 
-      int totalNumberOfMoleculesInMassChargeResult =
-          deserializedResultsForPositiveReplicates.get(0).getResults().get(i).getMolecules().size();
+      ResultForMZ resultForMZ = new ResultForMZ(representativeMassCharge);
+      resultForMZ.setId(representativeMZ.getId());
+
+      // TODO: Take out the isValid field since it does not convey useful information for such post processing files.
+      resultForMZ.setIsValid(representativeMZ.getIsValid());
 
       // For each mass charge, iterate through each molecule under the mass charge
       for (int j = 0; j < totalNumberOfMoleculesInMassChargeResult; j++) {
-        Boolean moleculePassedThresholdsForAllPositiveReplicates = true;
+        List<HitOrMiss> moleculesFromReplicates = new ArrayList<>();
 
         // For each molecule, make sure it passes the threshold we set across every elem in deserializedResultsForPositiveReplicates,
         // ie across each positive replicate + neg control experiment results
-        for (int k = 0; k < deserializedResultsForPositiveReplicates.size(); k++) {
-          HitOrMiss molecule = deserializedResultsForPositiveReplicates.get(k).getResults().get(i).getMolecules().get(j);
+        for (int k = 0; k < replicateModels.size(); k++) {
+          ResultForMZ sampleRepresentativeMz = replicateModels.get(k).getResults().get(i);
 
-          if (molecule.getIntensity() < intensityThreshold ||
-              molecule.getSnr() < snrThreshold ||
-              molecule.getTime() < timeThreshold) {
-           moleculePassedThresholdsForAllPositiveReplicates = false;
+          // Since we are comparing across replicate files, we expect each ResultForMZ element in the each replicate's
+          // IonAnalysisInterchangeModel to be in the same order as other replicates. We check if the mass charges are the
+          // same across the samples to make sure the replicates aligned correctly.
+          if (!sampleRepresentativeMz.getMz().equals(representativeMassCharge)) {
+            throw new RuntimeException("The replicates are not ordered similarly. Please verify if the correct replicates are being used.");
           }
+
+          HitOrMiss molecule = sampleRepresentativeMz.getMolecules().get(j);
+          moleculesFromReplicates.add(molecule);
         }
 
-        if (moleculePassedThresholdsForAllPositiveReplicates) {
-          HitOrMiss molecule = deserializedResultsForPositiveReplicates.get(0).getResults().get(i).getMolecules().get(j);
-          resultSet.add(molecule.getInchi());
+        Pair<HitOrMiss, Boolean> transformedMoleculeAndShouldRetainMolecule = hitOrMissFilterAndTransformer.apply(moleculesFromReplicates);
+
+        // Check if the filter function  wants to throw out the molecule. If not, then add the molecule to the final result.
+        if (transformedMoleculeAndShouldRetainMolecule.getRight()) {
+          resultForMZ.addMolecule(transformedMoleculeAndShouldRetainMolecule.getLeft());
         }
       }
+
+      resultsForMZs.add(resultForMZ);
     }
 
-    return resultSet;
+    resultModel.setResults(resultsForMZs);
+    return resultModel;
   }
 
   /**
-   * This function is used to get the superset inchis from various files representing the different lcms ion runs for
-   * a given chemical on a single replicate
-   * @param filepaths File paths that represent each ionic variant file
-   * @param snrThreshold The snr threshold
-   * @param intensityThreshold The intensity threshold
-   * @param timeThreshold The time threshold
-   * @return The superset of all inchis in each ionic variant file.
+   * This function loads in multiple serialized IonAnalysisInterchangeModels and deserializes them
+   * @param filepaths File paths to the serialized IonAnalysisInterchangeModels
+   * @return A list of IonAnalysisInterchangeModels corresponding to the files.
    * @throws IOException
    */
-  public static Set<String> getSupersetOfIonicVariants(List<String> filepaths,
-                                       Double snrThreshold,
-                                       Double intensityThreshold,
-                                       Double timeThreshold) throws IOException {
+  public static List<IonAnalysisInterchangeModel> loadMultipleIonAnalysisInterchangeModelsFromFiles(List<String> filepaths)
+      throws IOException {
 
-    Set<String> inchis = new HashSet<>();
     List<IonAnalysisInterchangeModel> deserializedResultsForPositiveReplicates = new ArrayList<>();
     for (String filePath : filepaths) {
       IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
       model.loadResultsFromFile(new File(filePath));
       deserializedResultsForPositiveReplicates.add(model);
     }
+    return deserializedResultsForPositiveReplicates;
+  }
 
-    for (IonAnalysisInterchangeModel analysisInterchangeModel : deserializedResultsForPositiveReplicates) {
-      inchis.addAll(analysisInterchangeModel.getAllMoleculeHits(snrThreshold, intensityThreshold, timeThreshold));
+  /**
+   * This function is used to get the superset inchis from various models representing the different lcms ion runs for
+   * a given chemical on a single replicate
+   * @param models IonAnalysisInterchangeModels for each ionic variant
+   * @param snrThreshold The snr threshold
+   * @param intensityThreshold The intensity threshold
+   * @param timeThreshold The time threshold
+   * @return The superset of all inchis in each ionic variant file.
+   * @throws IOException
+   */
+  public static IonAnalysisInterchangeModel getSupersetOfIonicVariants(List<IonAnalysisInterchangeModel> models,
+                                       Double snrThreshold,
+                                       Double intensityThreshold,
+                                       Double timeThreshold) throws IOException {
+
+    IonAnalysisInterchangeModel resultModel = new IonAnalysisInterchangeModel();
+    List<ResultForMZ> resultForMZList = new ArrayList<>();
+
+    for (IonAnalysisInterchangeModel analysisInterchangeModel : models) {
+
+      for (ResultForMZ resultForMZ : analysisInterchangeModel.getResults()) {
+        List<HitOrMiss> allMoleculesThatPass = new ArrayList<>();
+
+        for (HitOrMiss molecule : resultForMZ.getMolecules()) {
+         if (molecule.getIntensity() > intensityThreshold &&
+             molecule.getSnr() > snrThreshold &&
+             molecule.getTime() > timeThreshold) {
+           allMoleculesThatPass.add(molecule);
+         }
+        }
+
+        if (allMoleculesThatPass.size() > 0) {
+          ResultForMZ newResultForMZ = new ResultForMZ(resultForMZ.getMz());
+          newResultForMZ.addMolecules(allMoleculesThatPass);
+          resultForMZList.add(newResultForMZ);
+        }
+      }
     }
 
-    return inchis;
+    resultModel.setResults(resultForMZList);
+    return resultModel;
   }
 
   /**
@@ -334,6 +443,13 @@ public class IonAnalysisInterchangeModel {
       this.isValid = false;
     }
 
+    public ResultForMZ(Double mz, Boolean hit) {
+      this.id = ID_COUNTER.incrementAndGet();
+      this.mz = mz;
+      this.isValid = hit;
+      this.molecules = new ArrayList<>();
+    }
+
     public Long getId() {
       return id;
     }
@@ -397,7 +513,7 @@ public class IonAnalysisInterchangeModel {
     private Double intensity;
 
     // For deserialization.
-    protected HitOrMiss() {
+    public HitOrMiss() {
 
     }
 
@@ -414,7 +530,7 @@ public class IonAnalysisInterchangeModel {
       return inchi;
     }
 
-    protected void setInchi(String inchi) {
+    public void setInchi(String inchi) {
       this.inchi = inchi;
     }
 
@@ -422,7 +538,7 @@ public class IonAnalysisInterchangeModel {
       return ion;
     }
 
-    protected void setIon(String ion) {
+    public void setIon(String ion) {
       this.ion = ion;
     }
 
@@ -430,7 +546,7 @@ public class IonAnalysisInterchangeModel {
       return snr;
     }
 
-    protected void setSnr(Double snr) {
+    public void setSnr(Double snr) {
       this.snr = snr;
     }
 
@@ -438,7 +554,7 @@ public class IonAnalysisInterchangeModel {
       return time;
     }
 
-    protected void setTime(Double time) {
+    public void setTime(Double time) {
       this.time = time;
     }
 
@@ -446,7 +562,7 @@ public class IonAnalysisInterchangeModel {
       return intensity;
     }
 
-    protected void setIntensity(Double intensity) {
+    public void setIntensity(Double intensity) {
       this.intensity = intensity;
     }
 
