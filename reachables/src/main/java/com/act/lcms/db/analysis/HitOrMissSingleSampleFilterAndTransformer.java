@@ -22,17 +22,17 @@ public class HitOrMissSingleSampleFilterAndTransformer extends HitOrMissFilterAn
 
   /**
    * This function takes in a HitOrMiss molecule and filters it based on metric thresholds.
-   * @param hitOrMissMolecule The molecule whose metric stats are being compared to the preset thresholds.
+   * @param oneOrMoreReplicates The molecule whose metric stats are being compared to the preset thresholds.
    * @return A pair of transformed HitOrMiss molecule and whether to save the result in the final model.
    */
-  public Pair<IonAnalysisInterchangeModel.HitOrMiss, Boolean> apply(IonAnalysisInterchangeModel.HitOrMiss hitOrMissMolecule) {
-    Double intensity = hitOrMissMolecule.getIntensity();
-    Double snr = hitOrMissMolecule.getSnr();
-    Double time = hitOrMissMolecule.getTime();
-    String ion = hitOrMissMolecule.getIon();
+  public Pair<IonAnalysisInterchangeModel.HitOrMiss, Boolean> apply(IonAnalysisInterchangeModel.HitOrMiss oneOrMoreReplicates) {
+    Double intensity = oneOrMoreReplicates.getIntensity();
+    Double snr = oneOrMoreReplicates.getSnr();
+    Double time = oneOrMoreReplicates.getTime();
+    String ion = oneOrMoreReplicates.getIon();
 
     IonAnalysisInterchangeModel.HitOrMiss molecule = new IonAnalysisInterchangeModel.HitOrMiss(
-        hitOrMissMolecule.getInchi(), ion, snr, time, intensity, hitOrMissMolecule.getPlot());
+        oneOrMoreReplicates.getInchi(), ion, snr, time, intensity, oneOrMoreReplicates.getPlot());
 
     // If the intensity, snr and time pass the thresholds set AND the ion of the peak molecule is within the set of
     // ions we want extracted, we keep the molecule. Else, we throw it away.

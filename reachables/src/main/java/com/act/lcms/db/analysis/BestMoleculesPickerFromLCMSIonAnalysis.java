@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class BestMoleculesPickerFromLCMSIonAnalysis {
+  public class BestMoleculesPickerFromLCMSIonAnalysis {
 
   public static final String OPTION_INPUT_FILES = "i";
   public static final String OPTION_OUTPUT_FILE = "o";

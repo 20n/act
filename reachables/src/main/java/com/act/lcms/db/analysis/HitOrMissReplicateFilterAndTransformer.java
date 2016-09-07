@@ -7,24 +7,29 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class HitOrMissReplicateFilterAndTransformer extends HitOrMissFilterAndTransformer<List<IonAnalysisInterchangeModel.HitOrMiss>> {
+
   public static final Integer TIME_TOLERANCE_IN_SECONDS = 5;
+  // The peak statistic could be intensity, SNR or time.
+  public static final Double LOWEST_POSSIBLE_VALUE_FOR_PEAK_STATISTIC = 0.0;
+  public static String NIL_PLOT = "NIL_PLOT";
+  public static final Integer REPRESENTATIVE_INDEX = 0;
 
   /**
    * This function takes in a list of molecules from multiple replicates over the same time and alignes the peaks across
    * these replicates. If the peaks can be aligned, the function reports the min statistic across those peaks, else it
    * defaults to a low statistic.
-   * @param listOfReplicateMolecules
+   * @param oneOrMoreReplicates
    * @return A pair of transformed HitOrMiss molecule and whether to save the result in the final model.
    */
-  public Pair<IonAnalysisInterchangeModel.HitOrMiss, Boolean> apply(List<IonAnalysisInterchangeModel.HitOrMiss> listOfReplicateMolecules) {
+  public Pair<IonAnalysisInterchangeModel.HitOrMiss, Boolean> apply(List<IonAnalysisInterchangeModel.HitOrMiss> oneOrMoreReplicates) {
 
-    List<Double> intensityValues = listOfReplicateMolecules.stream().map(molecule -> molecule.getIntensity()).collect(Collectors.toList());
-    List<Double> snrValues = listOfReplicateMolecules.stream().map(molecule -> molecule.getSnr()).collect(Collectors.toList());
-    List<Double> timeValues = listOfReplicateMolecules.stream().map(molecule -> molecule.getTime()).collect(Collectors.toList());
+    List<Double> intensityValues = oneOrMoreReplicates.stream().map(molecule -> molecule.getIntensity()).collect(Collectors.toList());
+    List<Double> snrValues = oneOrMoreReplicates.stream().map(molecule -> molecule.getSnr()).collect(Collectors.toList());
+    List<Double> timeValues = oneOrMoreReplicates.stream().map(molecule -> molecule.getTime()).collect(Collectors.toList());
 
     IonAnalysisInterchangeModel.HitOrMiss result = new IonAnalysisInterchangeModel.HitOrMiss();
-    result.setInchi(listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getInchi());
-    result.setIon(listOfReplicateMolecules.get(REPRESENTATIVE_INDEX).getIon());
+    result.setInchi(oneOrMoreReplicates.get(REPRESENTATIVE_INDEX).getInchi());
+    result.setIon(oneOrMoreReplicates.get(REPRESENTATIVE_INDEX).getIon());
     result.setPlot(NIL_PLOT);
 
     // We get the min and max time to calculate how much do the replicates deviate in time for the same signal. If

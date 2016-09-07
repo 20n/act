@@ -7,10 +7,5 @@ public abstract class HitOrMissFilterAndTransformer<T> {
   public static final Boolean DO_NOT_THROW_OUT_MOLECULE = true;
   public static final Boolean THROW_OUT_MOLECULE = false;
 
-  // The peak statistic could be intensity, SNR or time.
-  public static final Double LOWEST_POSSIBLE_VALUE_FOR_PEAK_STATISTIC = 0.0;
-  public static String NIL_PLOT = "NIL_PLOT";
-  public static final Integer REPRESENTATIVE_INDEX = 0;
-
-  public abstract Pair<IonAnalysisInterchangeModel.HitOrMiss, Boolean> apply(T replicates);
+  public abstract Pair<IonAnalysisInterchangeModel.HitOrMiss, Boolean> apply(T oneOrMoreReplicates);
 }
