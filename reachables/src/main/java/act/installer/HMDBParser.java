@@ -34,6 +34,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -114,7 +116,6 @@ public class HMDBParser {
     SYNONYMS_NODES("/metabolite/synonyms/synonym"),
     // Structures
     INCHI_TEXT("/metabolite/inchi/text()"),
-    INCHI_KEY_TEXT("/metabolite/inchikey/text()"),
     SMILES_TEXT("/metabolite/smiles/text()"),
     // Ontology
     ONTOLOGY_STATUS_TEXT("/metabolite/ontology/status/text()"),
@@ -176,7 +177,7 @@ public class HMDBParser {
       CommandLineParser parser = new DefaultParser();
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
-      LOGGER.error("Argument parsing failed: %s\n", e.getMessage());
+      System.err.format("Argument parsing failed: %s\n", e.getMessage());
       HELP_FORMATTER.printHelp(PubchemParser.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
@@ -270,7 +271,6 @@ public class HMDBParser {
     List<String> synonyms = getTextFromNodes(HMDB_XPATH.SYNONYMS_NODES, doc);
 
     String inchi = getText(HMDB_XPATH.INCHI_TEXT, doc);
-    String inchiKey = getText(HMDB_XPATH.INCHI_KEY_TEXT, doc);
     String smiles = getText(HMDB_XPATH.SMILES_TEXT, doc);
 
     // Require an InChI if we're going to consume this molecule.
@@ -313,10 +313,9 @@ public class HMDBParser {
       proteinAttributes.add(Triple.of(name, uniprotId, geneName));
     }
 
-    // Assumption: there will always be an InChI.
+    // Assumption: when we reach this point there will always be an InChI.
     Chemical chem = new Chemical(inchi);
     chem.setSmiles(smiles);
-    chem.setInchiKey(inchiKey); // Is this even necessary?
 
     chem.setCanon(primaryName);
 
@@ -358,8 +357,9 @@ public class HMDBParser {
     return chem;
   }
 
-  protected List<File> findHMDBFilesInDirectory(File dir) throws IOException {
-    List<File> results = new ArrayList<>();
+  protected SortedSet<File> findHMDBFilesInDirectory(File dir) throws IOException {
+    // Sort for consistency + sanity.
+    SortedSet<File> results = new TreeSet<>((a, b) -> a.getName().compareTo(b.getName()));
     for (File file : dir.listFiles()) { // Do our own filtering so we can log rejects, of which we expect very few.
       if (HMDB_FILE_REGEX.matcher(file.getName()).matches()) {
         results.add(file);
@@ -385,11 +385,8 @@ public class HMDBParser {
       throw new RuntimeException(msg);
     }
 
-    List<File> files = findHMDBFilesInDirectory(inputDir);
+    SortedSet<File> files = findHMDBFilesInDirectory(inputDir);
     LOGGER.info("Found %d HMDB XML files in directory %s", files.size(), inputDir.getAbsolutePath());
-
-    // Sort for consistency + sanity.
-    Collections.sort(files, (a, b) -> a.getName().compareTo(b.getName()));
 
     for (File file : files) {
       LOGGER.debug("Processing HMDB XML file %s", file.getAbsolutePath());
@@ -404,6 +401,9 @@ public class HMDBParser {
         throw new IllegalArgumentException(msg, e);
       }
 
+      /* Jaxen doesn't throw exceptions if it can't find a path, so a JaxenException here is completely unexpected.
+       * It might mean corrupted XML or some unrecoverable XPath problem that we don't expect.  In any case, promote
+       * the exception to the caller as it's unclear how we could deal with such an error here. */
       Chemical chem;
       try {
         chem = extractChemicalFromXMLDocument(d);
@@ -413,6 +413,7 @@ public class HMDBParser {
         throw new IllegalArgumentException(msg, e);
       }
 
+      // Not all HMDB entries contain
       if (chem == null) {
         LOGGER.warn("Unable to create chemical from file %s", file.getAbsolutePath());
         continue;
