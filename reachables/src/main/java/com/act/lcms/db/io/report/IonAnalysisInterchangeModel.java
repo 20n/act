@@ -147,11 +147,11 @@ public class IonAnalysisInterchangeModel {
         }
 
         Double floor = Math.floor(power);
-        Double powerOfFloor = Math.pow(10.0, floor);
-        Double powerOfCeiling = Math.pow(10.0, floor + 1);
+        Double lowerBound = Math.pow(10.0, floor);
+        Double upperBound = Math.pow(10.0, floor + 1);
 
-        minLogValue = Math.min(minLogValue, powerOfFloor);
-        Pair<Double, Double> key = Pair.of(powerOfFloor, powerOfCeiling);
+        minLogValue = Math.min(minLogValue, lowerBound);
+        Pair<Double, Double> key = Pair.of(lowerBound, upperBound);
         rangeToHitCount.compute(key, (k, v) -> (v == null) ? 1 : v + 1);
       }
 
