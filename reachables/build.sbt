@@ -25,7 +25,6 @@ resolvers ++= {
 }
 
 /* To disable tests during assembly, add this directive: `test in assembly := {}` */
-
 libraryDependencies ++= {
   Seq(
       "org.mongodb"             %% "casbah" % "2.7.1"
@@ -124,6 +123,12 @@ libraryDependencies ++= {
       "org.apache.maven.plugins" % "maven-surefire-report-plugin" % "2.17" % "test"
      )
 }
+
+// We need the following for platform specific native Z3 libraries
+val ostype = if (System.getProperty("os.name").startsWith("Linux")) "linux" else "mac"
+val libPath = Seq(System.getProperty("user.dir"), "lib", "native", s"$ostype").mkString(java.io.File.separator)
+
+javaOptions in run += s"-Djava.library.path=$libPath"
 
 Revolver.settings
 
