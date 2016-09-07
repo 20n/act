@@ -1,8 +1,11 @@
 library(shiny)
 library(plot3D)
 library(mzR)
+library(dplyr)
 
 kHydrogenMass <- 1.007276
+kChartLabelSizeFactor <- 1.3
+kLabelFactor <- 1.2
 
 shinyServer(function(input, output, session) {
  
@@ -19,7 +22,7 @@ shinyServer(function(input, output, session) {
   # Reactive value, loading all the scans in memory.
   # Recomputed only when filename changes
   full.data <- reactive({
-    filepath <- paste0('/mnt/data-level1/lcms-ms1/', input$filename)
+    filepath <- paste0('/Volumes/data-level1/lcms-ms1/', input$filename)
     msfile <- openMSfile(filepath, backend="netCDF")
     hd <- header(msfile)
     ms1 <- which(hd$msLevel == 1)
@@ -42,7 +45,7 @@ shinyServer(function(input, output, session) {
     scans <- full.data$ms1.scans[rtsel]
 
     # We need to replicate the retention time as many times as the length of each scan
-    scan.lengths <- unlist(lapply(scans, function(x) length(x[, 1])))
+    scan.lengths <- unlist(lapply(scans, nrow))
     retention.time <- rep(header$retentionTime[rtsel], scan.lengths)
     list(retention.time = retention.time, scans = scans)
   })
@@ -55,40 +58,34 @@ shinyServer(function(input, output, session) {
     target.ionic.mass <- input$target.monoisotopic.mass + kHydrogenMass
     min.ionic.mass <- target.ionic.mass - input$mz.band.halfwidth
     max.ionic.mass <- target.ionic.mass + input$mz.band.halfwidth
+    scans.header <- scans.and.header()
+    data <- with(scans.header, {
+      mz <- unlist(lapply(scans, function(x) x[, "mz"]))
+      intensity <- unlist(lapply(scans, function(x) x[, "intensity"]))
+      data.frame(mz = mz, retention.time = retention.time, intensity = intensity)
+    })
     
-    data <- scans.and.header()
-    
-    scans <- data$scans
-    retention.time <- data$retention.time
-    
-    mz <- unlist(lapply(scans, function(x) x[, 1]))
-    int <- unlist(lapply(scans, function(x) x[, 2]))
-
-    mzsel <- mz < max.ionic.mass & mz > min.ionic.mass
-    retention.time <- retention.time[mzsel]
-    mz <- mz[mzsel]
-    intensity <- int[mzsel]
-    list(retention.time = retention.time, mz = mz, intensity = intensity)
+    data %>%
+      filter(mz < max.ionic.mass & mz > min.ionic.mass) %>%
+      mutate(monoisotopic.masses = mz - kHydrogenMass)
   })
     
   output$plot <- renderPlot({
     data <- data.long()
-    if (input$top.value) {
-      intensity <- data$intensity + max(data$intensity) / 4
-    } else {
-      intensity <- data$intensity
-    }
-    monoisotopic.masses <- data$mz - kHydrogenMass
-    scatter3D(data$retention.time, monoisotopic.masses, data$intensity, pch = 16, cex = 1.5, type = "h",
-              colkey = list(side = 1, length = 0.5, width = 0.5, cex.clab = 0.75), expand = 0.5,
-              zlab = "Intensity", xlab = "Retention time", ylab = "m/z (Monoisotopic mass)",
-              theta = input$angle.theta, phi = input$angle.phi, ticktype = "detailed", zlim = c(0, max(intensity)))
-    if (input$top.value) {
-      # Compute index of max intensity point
-      ind.max <- head(sort(data$intensity, decreasing = TRUE, index.return = TRUE)$ix, 1)
-      # Display additional layer with top peak label
-      text3D(data$rt[ind.max], mz[ind.max], int[ind.max], expand = 0.5, 
-             theta = input$angle.theta, phi = input$angle.phi, labels = round(mz[ind.max], 6), add = TRUE)
-    }
+    with(data, {
+      # Label factor, used to plot labels a little above points
+      zlim.up <- max(intensity) * kLabelFactor
+      scatter3D(retention.time, monoisotopic.masses, intensity, pch = 16, cex = 1.5, type = "h",
+                colkey = list(side = 1, length = 0.5, width = 0.5, cex.clab = 0.75), expand = 0.5,
+                cex.lab=kChartLabelSizeFactor, cex.axis=kChartLabelSizeFactor,
+                cex.main=kChartLabelSizeFactor, cex.sub=kChartLabelSizeFactor,
+                zlab = "Intensity", xlab = "Retention time", ylab = "m/z (Monoisotopic mass)",
+                theta = input$angle.theta, phi = input$angle.phi, ticktype = "detailed", zlim = c(0, zlim.up))
+      top.points <- data %>% top_n(1, intensity)
+      if (input$top.value) {
+        # Display additional layer with top peak label
+        with(top.points, text3D(retention.time, monoisotopic.masses, intensity * kLabelFactor, add = TRUE, labels = round(monoisotopic.masses, 6)))
+      }
+    })
   })
 })
