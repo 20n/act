@@ -19,7 +19,7 @@ shinyServer(function(input, output, session) {
   # Reactive value, loading all the scans in memory.
   # Recomputed only when filename changes
   full.data <- reactive({
-    filepath <- paste0('/Volumes/data-level1/lcms-ms1/', input$filename)
+    filepath <- paste0('/mnt/data-level1/lcms-ms1/', input$filename)
     msfile <- openMSfile(filepath, backend="netCDF")
     hd <- header(msfile)
     ms1 <- which(hd$msLevel == 1)
