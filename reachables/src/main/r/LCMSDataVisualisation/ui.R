@@ -22,7 +22,7 @@ shinyUI(fluidPage(
       checkboxInput("top.value", label = "Display m/z value for highest peak", value = FALSE)
     ),
     mainPanel(
-      plotOutput("plot", height = "800px")
+      plotOutput("plot", height = "700px")
     )
   )
 )
