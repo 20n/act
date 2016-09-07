@@ -1,3 +1,5 @@
+kModes <- c("M", "M+H", "M+Na", "M+Li", "M+H+H2O")
+
 shinyUI(fluidPage(
   fluidRow(
     class = "Header",
@@ -12,6 +14,7 @@ shinyUI(fluidPage(
       sliderInput("retention.time.range", label = "Retention Time range",
                   min = 0, max = 450, value = c(130, 160)),
       h3("M/Z scope"),
+      selectInput("mode", label = "m/z mode", choices = kModes),
       numericInput("target.monoisotopic.mass", label = "Target monoisotopic mass", value = 463.184234, step = 0.001),
       numericInput("mz.band.halfwidth", label = "Mass charge band halfwidth", value = 0.01, step = 0.01),
       h3("Plot parameters"),
@@ -22,6 +25,7 @@ shinyUI(fluidPage(
       checkboxInput("top.value", label = "Display m/z value for highest peak", value = FALSE)
     ),
     mainPanel(
+      textOutput("target.mz"),
       plotOutput("plot", height = "700px")
     )
   )
