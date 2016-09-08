@@ -239,7 +239,6 @@ object SparkSingleSubstrateROProjector {
     // PROJECT!  Run ERO projection over all InChIs.
     val resultsRDD: RDD[(Ero, Double, L2PredictionCorpus)] =
       eroRDD.map(ero => {
-        LOGGER.info("Molecule count is " + validatedMolecules.size)
         val results = compute.run(licenseFileName, ero, validatedMolecules)
         (ero, results._1, results._2)
       })

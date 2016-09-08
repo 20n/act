@@ -40,10 +40,7 @@ public class SingleSubstrateRoExpander extends L2Expander {
     List<PredictionSeed> result = new ArrayList<>();
 
     // Use only single substrate reactions
-    LOGGER.info(roCorpus.getRos().get(0).getSubstrate_count());
     roCorpus.filterCorpusBySubstrateCount(ONE_SUBSTRATES);
-
-    LOGGER.info(roCorpus.getRos().size() + " ros are left after filtering");
 
     for (Ero ro : roCorpus.getRos()) {
       SerializableReactor reactor;
@@ -55,7 +52,6 @@ public class SingleSubstrateRoExpander extends L2Expander {
       }
 
       //iterate over every (substrate, ro) pair
-      LOGGER.info("substrate count as this point is " + substrates.size());
       for (Molecule substrate : substrates) {
         result.add(new PredictionSeed(ro.getId().toString(), Arrays.asList(substrate), reactor, NO_SAR));
       }
