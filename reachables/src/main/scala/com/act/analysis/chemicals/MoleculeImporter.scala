@@ -4,6 +4,7 @@ import act.shared.Chemical
 import chemaxon.formats.{MolFormatException, MolImporter}
 import chemaxon.struc.Molecule
 
+import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 
 object MoleculeImporter {
@@ -22,6 +23,11 @@ object MoleculeImporter {
   }
 
   private implicit def toMolecule(chemical: Chemical): String = chemical.getInChI
+
+  @throws[MolFormatException]
+  def importMolecule(mol: String, formats: java.util.List[String]): Molecule = {
+    importMolecule(mol, formats.asScala.toList)
+  }
 
   @throws[MolFormatException]
   def importMolecule(mol: String, formats: List[ChemicalFormat.MoleculeType]): Molecule = {
