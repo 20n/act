@@ -106,6 +106,7 @@ public class L2InchiCorpus {
         corpus.add(inchi);
       }
     }
+    LOGGER.info("Loaded " + corpus.size() + " molecules into corpus.");
   }
 
   /**
