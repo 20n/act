@@ -63,7 +63,7 @@ object MoleculeConversions {
     } catch {
       case e: MolFormatException =>
         logger.debug("Unable to convert String to InChI, trying to convert to Smiles.")
-        MoleculeImporter.importMolecule(s, MoleculeImporter.ChemicalSetting.Smiles)
+        MoleculeImporter.importMolecule(s, MoleculeImporter.ChemicalFormat.Smiles)
     }
   }
 }
