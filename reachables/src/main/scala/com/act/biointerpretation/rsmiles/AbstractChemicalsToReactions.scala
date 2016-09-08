@@ -26,7 +26,7 @@ object AbstractChemicalsToReactions {
     val abstractChemicals = getAbstractChemicals(db)
     val abstractReactions = getAbstractReactions(db)(abstractChemicals)
     //val constructedReactions = constructAndProjectReactions(db)(abstractReactions, abstractChemicals)
-    ParRange(1,4, step=1, inclusive = true).foreach(
+    ParRange(1, 6, step = 1, inclusive = true).foreach(
       subCount => writeSingleSubstrateStringsToFile(db)(abstractReactions, abstractChemicals, subCount, new File("/Volumes/shared-data/Michael/Rsmiles", s"AbstractReactions$subCount.Substrates")))
   }
 
@@ -113,26 +113,79 @@ object AbstractChemicalsToReactions {
     matchingReactions
   }
 
-  def writeSingleSubstrateStringsToFile(mongoDb: MongoDB)(abstractReactions: ParSeq[DBObject], abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int = -1, outputFile: File): Unit = {
+  def writeSingleSubstrateStringsToFile(mongoDb: MongoDB)(abstractReactions: ParSeq[DBObject], abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int, outputFile: File): Unit = {
     require(!outputFile.isDirectory, "The file you designated to output your files to is a directory and therefore is not a valid path.")
+    require(substrateCountFilter > 0, s"A reaction must have at least one substrate.  " +
+      s"You are looking for reactions with $substrateCountFilter substrates.")
 
-    logger.info("Creating a file containing all abstract InChIs")
+    logger.info(s"Creating a file containing all abstract InChIs " +
+      s"with $substrateCountFilter substrate${if (substrateCountFilter > 1) "s" else ""}.")
+
     val reactionConstructor: (DBObject) => Option[ReactionInformation] =
       constructDbReaction(mongoDb)(abstractChemicals, substrateCountFilter) _
 
     val processCounter = new AtomicInteger()
 
     val singleSubstrateReactions: ParSeq[ReactionInformation] = abstractReactions.flatMap(rxn => {
-      if (processCounter.incrementAndGet() % 100 == 0) {
-        logger.info(s"Total of ${processCounter.get} reactions have started processing so far.")
+      if (processCounter.incrementAndGet() % 10000 == 0) {
+        logger.info(s"Total of ${processCounter.get} reactions have started processing " +
+          s"so far for $substrateCountFilter substrate${if (substrateCountFilter > 1) "s" else ""}.")
       }
 
       reactionConstructor(rxn)
     }
     )
-    logger.info(s"Found ${singleSubstrateReactions.length} single substrate reactions.  Writing to file.")
+    logger.info(s"Found ${singleSubstrateReactions.length} " +
+      s"reactions with $substrateCountFilter substrate${if (substrateCountFilter > 1) "s" else ""}.  Writing to file.")
     val substrates: Seq[String] = singleSubstrateReactions.flatMap(_.getSubstrates.map(_.getString)).seq
     new L2InchiCorpus(substrates).writeToFile(outputFile)
+  }
+
+  def constructAndProjectReactions(mongoDb: MongoDB)(abstractReactions: ParSeq[DBObject], abstractChemicals: ParMap[Long, ChemicalInformation]): ParSeq[Option[Int]] = {
+    logger.info("Constructing reactions as substrate product pairs.")
+    /*
+      Construct in code reactions for each
+     */
+
+
+    logger.info("Projecting ROs on substrates to determine reaction ROs.")
+    /*
+      Project reactions
+     */
+    val eros = new ErosCorpus()
+    eros.loadValidationCorpus()
+    val projector = new ReactionProjector()
+    val fullRoProjection: (ReactionInformation) => Option[Int] =
+      projectReactionToDetermineRo(projector, eros.getRos.toList) _
+
+    val reactionConstructor: (DBObject) => Option[ReactionInformation] =
+      constructDbReaction(mongoDb)(abstractChemicals, 1) _
+
+    val processedCount = new AtomicInteger()
+
+
+    // For each element, we first create it, then try to do the RO mapping.
+    val scores: ParSeq[Option[Int]] = abstractReactions.map(rxn => {
+      val reactionInfo = reactionConstructor(rxn)
+      if (reactionInfo.isDefined) {
+        val projection: Option[Int] = fullRoProjection(reactionInfo.get)
+        if (processedCount.incrementAndGet() % 10000 == 0) {
+          logger.info(s"Total of ${processedCount.get} reactions have finished processing so far.")
+        }
+        projection
+      } else {
+        None
+      }
+    }
+    )
+
+    logger.info("Finished computing reactions.")
+
+    logger.info(s"$scores")
+    val hits = scores.flatten.length
+    logger.info(s"Number of hits: $hits | Number of misses: ${scores.length - hits}")
+
+    scores
   }
 
   private def constructDbReaction(mongoDb: MongoDB)(abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int = -1)(ob: DBObject): Option[ReactionInformation] = {
@@ -178,53 +231,6 @@ object AbstractChemicalsToReactions {
     val inchi = Mongo.mongoQueryChemicals(mongoDb)(query, null).next().get(ChemicalKeywords.INCHI.toString).asInstanceOf[String]
     val molecule = MoleculeImporter.importMolecule(inchi)
     List.fill(coefficient)(new ChemicalInformation(chemicalId.toInt, molecule, inchi))
-  }
-
-  def constructAndProjectReactions(mongoDb: MongoDB)(abstractReactions: ParSeq[DBObject], abstractChemicals: ParMap[Long, ChemicalInformation]): ParSeq[Option[Int]] = {
-    logger.info("Constructing reactions as substrate product pairs.")
-    /*
-      Construct in code reactions for each
-     */
-
-
-    logger.info("Projecting ROs on substrates to determine reaction ROs.")
-    /*
-      Project reactions
-     */
-    val eros = new ErosCorpus()
-    eros.loadValidationCorpus()
-    val projector = new ReactionProjector()
-    val fullRoProjection: (ReactionInformation) => Option[Int] =
-      projectReactionToDetermineRo(projector, eros.getRos.toList) _
-
-    val reactionConstructor: (DBObject) => Option[ReactionInformation] =
-      constructDbReaction(mongoDb)(abstractChemicals, 1) _
-
-    val processedCount = new AtomicInteger()
-
-
-    // For each element, we first create it, then try to do the RO mapping.
-    val scores: ParSeq[Option[Int]] = abstractReactions.map(rxn => {
-      val reactionInfo = reactionConstructor(rxn)
-      if (reactionInfo.isDefined) {
-        val projection: Option[Int] = fullRoProjection(reactionInfo.get)
-        if (processedCount.incrementAndGet() % 100 == 0) {
-          logger.info(s"Total of ${processedCount.get} reactions have finished processing so far.")
-        }
-        projection
-      } else {
-        None
-      }
-    }
-    )
-
-    logger.info("Finished computing reactions.")
-
-    logger.info(s"$scores")
-    val hits = scores.flatten.length
-    logger.info(s"Number of hits: $hits | Number of misses: ${scores.length - hits}")
-
-    scores
   }
 
   def projectReactionToDetermineRo(projector: ReactionProjector, eros: List[Ero])(reactionInformation: ReactionInformation): Option[Int] = {
