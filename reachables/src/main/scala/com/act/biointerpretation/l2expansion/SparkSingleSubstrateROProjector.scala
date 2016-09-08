@@ -2,9 +2,9 @@ package com.act.biointerpretation.l2expansion
 
 import java.io.File
 
-import chemaxon.formats.MolImporter
 import chemaxon.license.LicenseManager
 import chemaxon.struc.Molecule
+import com.act.analysis.chemicals.MoleculeImporter
 import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -84,6 +84,7 @@ object SparkSingleSubstrateROProjector {
   val OPTION_OUTPUT_DIRECTORY = "o"
   val OPTION_FILTER_FOR_SPECTROMETERY = "s"
   val OPTION_FILTER_REQUIRE_RO_NAMES = "n"
+  val OPTION_VALID_CHEMICAL_TYPES = "c"
 
   def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -112,6 +113,15 @@ object SparkSingleSubstrateROProjector {
       CliOption.builder(OPTION_FILTER_REQUIRE_RO_NAMES).
         longOpt("only-named-eros").
         desc("Only apply EROs from the validation corpus that have assigned names"),
+
+      CliOption.builder(OPTION_VALID_CHEMICAL_TYPES).
+        longOpt("valid-chemical-types").
+        hasArgs.
+        valueSeparator(',').
+        desc("A comma divided list of valid chemical types to import the substrate list as.  " +
+          "If your file is mixed, multiple can be provided." +
+          "Currently valid types are inchi, smiles, and smarts.  " +
+          "By default, only imports inchi."),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -176,11 +186,13 @@ object SparkSingleSubstrateROProjector {
     val eros = new ErosCorpus()
     eros.loadValidationCorpus()
     val fullErosList = eros.getRos
-    LOGGER.info("Filtering down to only one substrate ROs.");
+
+    LOGGER.info("Filtering down to only one substrate ROs.")
     if (cl.hasOption(OPTION_FILTER_REQUIRE_RO_NAMES)) {
-      LOGGER.info("Filtering down to only ROs with names.");
+      LOGGER.info("Filtering down to only ROs with names.")
       eros.retainNamedRos()
     }
+
     val erosList = eros.getRos.asScala
     LOGGER.info(s"Reduction in ERO list size: ${fullErosList.size} -> ${erosList.size}")
 
@@ -193,13 +205,16 @@ object SparkSingleSubstrateROProjector {
       inchiCorpus.filterByMass(950)
       LOGGER.info(s"Substrate list size after filtering: ${inchiCorpus.getInchiList.size}")
     }
-
     val molecules = inchiCorpus.getMolecules.asScala.toList
 
-    val validInchis = Source.fromFile(substratesListFile).getLines().
-      filter(_.startsWith("InChI=")).
-      filter(x => try { MolImporter.importMol(x); true } catch { case e : Exception => false }).toList
-    LOGGER.info(s"Loaded and validated ${validInchis.size} InChIs from source file at $substratesListFile")
+    // Allow for multiple chemical types
+    val chemicalFormats: List[String] = if (cl.hasOption(OPTION_VALID_CHEMICAL_TYPES))
+      cl.getOptionValues(OPTION_VALID_CHEMICAL_TYPES).toList
+    else
+      List(MoleculeImporter.ChemicalFormat.Inchi)
+    val validMolecules = Source.fromFile(substratesListFile).getLines().
+      filter(x => try { MoleculeImporter.importMolecule(x, chemicalFormats); true } catch { case e : Exception => false }).toList
+    LOGGER.info(s"Loaded and validated ${validMolecules.size} InChIs from source file at $substratesListFile")
 
     // Don't set a master here, spark-submit will do that for us.
     val conf = new SparkConf().setAppName("Spark RO Projection")
@@ -261,7 +276,7 @@ object SparkSingleSubstrateROProjector {
      * See http://stackoverflow.com/questions/31383904/how-can-i-force-spark-to-execute-code/31384084#31384084
      * for more context on Spark's laziness. */
     val resultCount = resultsRDD.persist().count()
-    LOGGER.info(s"Projection completed with ${resultCount} results")
+    LOGGER.info(s"Projection completed with $resultCount results")
 
     // Map over results and runtime, writing results to appropriate output files and collecting ids/runtime for reports.
     val mapper: (Ero, Double, L2PredictionCorpus) => (Integer, Double) = (ero, runtime, projectionResults) => {
