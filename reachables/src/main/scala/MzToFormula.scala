@@ -112,14 +112,14 @@ object Solver {
       (boolFn(expr), vars)
     }
     case Multi(op, es) => {
-      val boolFn = op match {
-        case And => ctx.mkAnd _
-        case Or  => ctx.mkOr _
-      }
       val (exprs, varsLists) = es.map(mkClause).unzip
       // exprs is a list, but we need to pass it to a vararg function, hence the `:_*`
       // if we just write boolFn(exprs) it expects a `boolFn(List[T])`, while the available is `boolFn(T*)`
-      (boolFn(exprs:_*), varsLists.reduce(_++_))
+      val boolExpr = op match {
+        case And => ctx.mkAnd(exprs:_*)
+        case Or  => ctx.mkOr(exprs:_*)
+      }
+      (boolExpr, varsLists.reduce(_++_))
     }
   }
 
@@ -163,8 +163,9 @@ object Solver {
     solveOne(eqns) match {
       case None => solns
       case Some(s) => {
-        val blockThisSoln = exclusionClause(s) :: eqns
-        solveManyAux(blockThisSoln, solns + s)
+        val blockingClause = exclusionClause(s)
+        // println(blockingClause)
+        solveManyAux(blockingClause :: eqns, solns + s)
       }
     }
   }
@@ -181,6 +182,7 @@ object Solver {
     // https://github.com/Z3Prover/z3/blob/master/src/api/java/BitVecNum.java
     val bv: BitVecExpr = e.asInstanceOf[BitVecExpr]
     val num: BitVecNum = bv.asInstanceOf[BitVecNum]
+    // println(s"num = $num")
     num.getInt
   }
 }
@@ -223,28 +225,36 @@ object MzToFormula {
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
     testOneSolnOverCNO(103, Some((5, 2, 1)))
+    testAllSolnOverCNO(103, Set((5, 2, 1), (0, 2, 5)))
   }
 
-  def testOneSolnOverCNO(approxMass: Int, expected: Option[Tuple3[Int, Int, Int]]) {
-
+  def getConstraintsOverCNO(c: Var, n: Var, o: Var, approxMass: Int) = {
     /* construct 12c + 15o + 14n == $approxMass */
-    val (c, n, o) = (Var("c"), Var("n"), Var("o"))
     val lhse = LinExpr(Set(Term(Const(12), c), Term(Const(15), o), Term(Const(14), n)))
     val rhse = Const(approxMass)
     val ineq = LinIneq(lhse, Eq, rhse)
 
     val bounds = List(
+      LinIneq(c, Ge, Const(0)),
       LinIneq(c, Lt, Const(approxMass)),
+      LinIneq(n, Ge, Const(0)),
       LinIneq(n, Lt, Const(approxMass)),
+      LinIneq(o, Ge, Const(0)),
       LinIneq(o, Lt, Const(approxMass))
     )
 
-    val sat = Solver.solveOne(ineq :: bounds)
+    ineq :: bounds
+  }
+
+  def testOneSolnOverCNO(approxMass: Int, expected: Option[(Int, Int, Int)]) {
+
+    val (c, n, o) = (Var("c"), Var("n"), Var("o"))
+    val constraints = getConstraintsOverCNO(c, n, o, approxMass)
+    val sat = Solver.solveOne(constraints)
 
     (sat, expected) match {
       case (Some(soln), Some(exp)) => {
-        println(s"solution = $soln")
-        println(s"C${soln(c)}O${soln(o)}N${soln(n)} has mass approx ${approxMass}")
+        println(s"Test find one: C${soln(c)}O${soln(o)}N${soln(n)} found with mass ~${approxMass}")
         assert( (soln(c), soln(n), soln(o)) == exp )
       }
       case (None, None) => {
@@ -255,6 +265,21 @@ object MzToFormula {
         assert (false)
       }
     }
+
+  }
+
+  def testAllSolnOverCNO(approxMass: Int, expected: Set[(Int, Int, Int)]) {
+
+    val (c, n, o) = (Var("c"), Var("n"), Var("o"))
+    val constraints = getConstraintsOverCNO(c, n, o, approxMass)
+    val sat = Solver.solveMany(constraints)
+
+    val solns = for (soln <- sat) yield (soln(c), soln(n), soln(o))
+    val descs = sat.map{ soln => s"C${soln(c)}O${soln(o)}N${soln(n)}" }
+    println(s"Test enumerate all: Found ${descs.size} formula with mass ~${approxMass}: $descs")
+
+    assert(solns equals expected)
+
   }
 
   val optOutFile = new OptDesc(
