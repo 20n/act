@@ -103,7 +103,7 @@ public class L2InchiCorpus {
           LOGGER.warn("Blank line detected in inchis file and ignored.");
           continue;
         }
-        corpus.add(inchi);
+        corpus.add(trimmed);
       }
     }
     LOGGER.info("Loaded " + corpus.size() + " molecules into corpus.");
