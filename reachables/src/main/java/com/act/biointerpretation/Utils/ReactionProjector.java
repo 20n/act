@@ -322,8 +322,8 @@ public class ReactionProjector {
       inchi = MolExporter.exportToFormat(molecule, INCHI_FORMAT);
       molToStringMap.put(molecule, inchi);
       return inchi;
-    } catch (MolExportException e) {
-      // Then try SMARTs format if that doesn't work.
+    } catch (MolExportException e){
+      // Then try SMARTs format if inchi doesn't work.
       String smiles = MolExporter.exportToFormat(molecule, SMARTS_FORMAT);
       molToStringMap.put(molecule, smiles);
       return smiles;
