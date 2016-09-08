@@ -40,5 +40,6 @@ object MoleculeImporter {
     type MoleculeType = String
     val Inchi = "inchi"
     val Smiles = "smiles"
+    val Smarts = "smarts"
   }
 }

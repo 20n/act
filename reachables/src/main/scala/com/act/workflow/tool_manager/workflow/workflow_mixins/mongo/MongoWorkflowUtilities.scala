@@ -42,10 +42,6 @@ trait MongoWorkflowUtilities {
     formatUnwoundName(listName.toString, valueName.toString)
   }
 
-  def formatUnwoundName(listName: String, valueName: Keyword): String = {
-    formatUnwoundName(listName, valueName.toString)
-  }
-
   /**
     * Unwinding a list creates a value that can be found by the name <PreviousListName>.<ValueName>.
     * This function standardizes that naming procedure for use in querying unwound variables within lists.
@@ -65,6 +61,10 @@ trait MongoWorkflowUtilities {
     */
   def formatUnwoundName(listName: String, valueName: String): String = {
     s"$listName.$valueName"
+  }
+
+  def formatUnwoundName(listName: String, valueName: Keyword): String = {
+    formatUnwoundName(listName, valueName.toString)
   }
 
   def formatUnwoundName(listName: Keyword, valueName: String): String = {
@@ -165,12 +165,12 @@ trait MongoWorkflowUtilities {
     *
     * @return An iterator over the returned documents
     */
-  def mongoQueryReactions(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
+  def mongoQueryReactions(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject, notimeout: Boolean = false): Iterator[DBObject] = {
     logger.debug(s"Querying reaction database with the query $key.  Filtering values to obtain $filter")
     mongo.getIteratorOverReactions(key, filter).toIterator
   }
 
-  def mongoQueryChemicals(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
+  def mongoQueryChemicals(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject, notimeout: Boolean = false): Iterator[DBObject] = {
     logger.debug(s"Querying reaction database with the query $key.  Filtering values to obtain $filter")
     mongo.getIteratorOverChemicals(key, filter).toIterator
   }
@@ -192,7 +192,7 @@ trait MongoWorkflowUtilities {
     *
     * @return An iterator over the returned documents
     */
-  def mongoQuerySequences(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
+  def mongoQuerySequences(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject, notimeout: Boolean = false): Iterator[DBObject] = {
     logger.debug(s"Querying sequence database with the query $key.  Filtering values to obtain $filter")
     mongo.getDbIteratorOverSeq(key, filter).toIterator
   }
@@ -213,10 +213,6 @@ trait MongoWorkflowUtilities {
     createDbObject(MongoKeywords.MATCH, thingsToMatch)
   }
 
-  def createDbObject(key: Keyword, value: Any): BasicDBObject = {
-    new BasicDBObject(key.toString, value)
-  }
-
   /**
     * Takes a a list within the Mongo document and unwinds it.  Unwinding a list creates the pattern shown below:
     *
@@ -235,33 +231,13 @@ trait MongoWorkflowUtilities {
     createDbObject(MongoKeywords.UNWIND, dollarString(listName))
   }
 
-  /*
-   Mongo aggregation handling.
-   */
-
-  private def dollarString(inputKeyword: Keyword): String = {
-    dollarString(inputKeyword.value)
-  }
-
-  /**
-    * Many Mongo queries require a dollar sign in front of the keyword.  Example: $exists
-    *
-    * The dollar sign is also used during aggregation to reference intermediate documents. Example: $_id
-    *
-    * Thus, this function changes f("String") -> "$String"
-    *
-    * @param inputString The string to be converted into dollar format
-    *
-    * @return Modified string
-    */
-  private def dollarString(inputString: String): String = {
-    // Escape one dollar and do the input as well
-    s"$$$inputString"
-  }
-
   def defineMongoGroup(nameOfGroupingValue: Keyword, outputListName: Keyword): BasicDBObject = {
     defineMongoGroup(nameOfGroupingValue.toString, outputListName.toString)
   }
+
+  /*
+   Mongo aggregation handling.
+   */
 
   def defineMongoGroup(nameOfGroupingValue: String, outputListName: Keyword): BasicDBObject = {
     defineMongoGroup(nameOfGroupingValue, outputListName.toString)
@@ -296,6 +272,30 @@ trait MongoWorkflowUtilities {
 
     // Finally, we group everything together
     createDbObject(MongoKeywords.GROUP, groupMap)
+  }
+
+  def createDbObject(key: Keyword, value: Any): BasicDBObject = {
+    new BasicDBObject(key.toString, value)
+  }
+
+  private def dollarString(inputKeyword: Keyword): String = {
+    dollarString(inputKeyword.value)
+  }
+
+  /**
+    * Many Mongo queries require a dollar sign in front of the keyword.  Example: $exists
+    *
+    * The dollar sign is also used during aggregation to reference intermediate documents. Example: $_id
+    *
+    * Thus, this function changes f("String") -> "$String"
+    *
+    * @param inputString The string to be converted into dollar format
+    *
+    * @return Modified string
+    */
+  private def dollarString(inputString: String): String = {
+    // Escape one dollar and do the input as well
+    s"$$$inputString"
   }
 
   def appendKeyToDbObject(currentObject: BasicDBObject, key: Keyword, value: Any): BasicDBObject = {
