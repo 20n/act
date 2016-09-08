@@ -5,6 +5,7 @@ import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import com.act.biointerpretation.sars.SerializableReactor;
+import org.apache.commons.logging.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -39,6 +40,7 @@ public class SingleSubstrateRoExpander extends L2Expander {
     List<PredictionSeed> result = new ArrayList<>();
 
     // Use only single substrate reactions
+    LOGGER.info(roCorpus.getRos().get(0).getSubstrate_count());
     roCorpus.filterCorpusBySubstrateCount(ONE_SUBSTRATES);
 
     LOGGER.info(roCorpus.getRos().size() + " ros are left after filtering");
