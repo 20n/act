@@ -1,9 +1,7 @@
 package com.act.biointerpretation.Utils;
 
-import chemaxon.calculations.clean.Cleaner;
-import chemaxon.calculations.hydrogenize.Hydrogenize;
 import chemaxon.formats.MolExporter;
-import chemaxon.formats.MolImporter;
+import chemaxon.marvin.io.MolExportException;
 import chemaxon.reaction.ConcurrentReactorProcessor;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
@@ -14,8 +12,6 @@ import chemaxon.sss.search.SearchException;
 import chemaxon.struc.Molecule;
 import chemaxon.util.iterator.MoleculeIterator;
 import chemaxon.util.iterator.MoleculeIteratorFactory;
-import com.act.biointerpretation.sars.OneSubstrateSubstructureSar;
-import com.act.biointerpretation.sars.Sar;
 import org.apache.commons.collections4.Bag;
 import org.apache.commons.collections4.bag.HashBag;
 import org.apache.logging.log4j.LogManager;
@@ -34,6 +30,7 @@ public class ReactionProjector {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionProjector.class);
   private static final String INCHI_FORMAT = "inchi:AuxNone";
+  private static final String SMARTS_FORMAT = "smarts";
   private static final String MOL_NOT_FOUND = "NOT_FOUND";
 
   private static final MolSearchOptions LAX_SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
@@ -50,7 +47,7 @@ public class ReactionProjector {
   }
 
   private MolSearch searcher;
-  private Map<Molecule, String> molToInchiMap;
+  private Map<Molecule, String> molToStringMap;
 
   public ReactionProjector() {
     this(DEFAULT_SEARCHER);
@@ -58,7 +55,7 @@ public class ReactionProjector {
 
   public ReactionProjector(MolSearch searcher) {
     this.searcher = searcher;
-    this.molToInchiMap = new HashMap<>();
+    this.molToStringMap = new HashMap<>();
   }
 
   /**
@@ -67,7 +64,7 @@ public class ReactionProjector {
    * with their inchis.
    */
   public void clearInchiCache() {
-    molToInchiMap = new HashMap<>();
+    molToStringMap = new HashMap<>();
   }
 
   /**
@@ -253,7 +250,7 @@ public class ReactionProjector {
     }
 
     // Second ordering is same if two molecules are equal.
-    if (getInchi(mols[0]).equals(getInchi(mols[1]))) {
+    if (getMoleculeString(mols[0]).equals(getMoleculeString(mols[1]))) {
       return results;
     }
 
@@ -300,7 +297,7 @@ public class ReactionProjector {
   private String getStringHash(Molecule[] mols) throws IOException {
     StringBuilder builder = new StringBuilder();
     for (Molecule molecule : mols) {
-      builder.append(getInchi(molecule));
+      builder.append(getMoleculeString(molecule));
     }
     return builder.toString();
   }
@@ -313,15 +310,23 @@ public class ReactionProjector {
    * @return The molecule's inchi.
    * @throws IOException
    */
-  private String getInchi(Molecule molecule) throws IOException {
-    String inchi = molToInchiMap.getOrDefault(molecule, MOL_NOT_FOUND);
+  private String getMoleculeString(Molecule molecule) throws IOException {
+    String inchi = molToStringMap.getOrDefault(molecule, MOL_NOT_FOUND);
 
     if (!inchi.equals(MOL_NOT_FOUND)) {
       return inchi;
     }
 
-    inchi = MolExporter.exportToFormat(molecule, INCHI_FORMAT);
-    molToInchiMap.put(molecule, inchi);
-    return inchi;
+    try {
+      // First try inchi format
+      inchi = MolExporter.exportToFormat(molecule, INCHI_FORMAT);
+      molToStringMap.put(molecule, inchi);
+      return inchi;
+    } catch (MolExportException e) {
+      // Then try SMARTs format if that doesn't work.
+      String smiles = MolExporter.exportToFormat(molecule, SMARTS_FORMAT);
+      molToStringMap.put(molecule, smiles);
+      return smiles;
+    }
   }
 }
