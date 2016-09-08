@@ -213,11 +213,11 @@ object SparkSingleSubstrateROProjector {
       LOGGER.info(s"Substrate list size after filtering: ${inchiCorpus.getInchiList.size}")
     }
 
-    val molecules = inchiCorpus.getMolecules(chemicalFormats.asJava).asScala.toList
-
-    val validMolecules = Source.fromFile(substratesListFile).getLines().
+    val validMolecules: List[String] = Source.fromFile(substratesListFile).getLines().
       filter(x => try { MoleculeImporter.importMolecule(x, chemicalFormats); true } catch { case e : Exception => false }).toList
     LOGGER.info(s"Loaded and validated ${validMolecules.size} InChIs from source file at $substratesListFile")
+
+    val validatedMolecules = validMolecules.map(MoleculeImporter.importMolecule(_, chemicalFormats))
 
     // Don't set a master here, spark-submit will do that for us.
     val conf = new SparkConf().setAppName("Spark RO Projection")
@@ -238,7 +238,7 @@ object SparkSingleSubstrateROProjector {
     // PROJECT!  Run ERO projection over all InChIs.
     val resultsRDD: RDD[(Ero, Double, L2PredictionCorpus)] =
       eroRDD.map(ero => {
-        val results = compute.run(licenseFileName, ero, molecules)
+        val results = compute.run(licenseFileName, ero, validatedMolecules)
         (ero, results._1, results._2)
       })
 
