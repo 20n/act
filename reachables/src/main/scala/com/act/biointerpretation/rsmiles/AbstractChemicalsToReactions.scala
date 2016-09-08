@@ -15,7 +15,7 @@ import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.log4j.LogManager
 
 import scala.collection.JavaConversions._
-import scala.collection.parallel.immutable.{ParMap, ParSeq}
+import scala.collection.parallel.immutable.{ParMap, ParRange, ParSeq}
 
 
 object AbstractChemicalsToReactions {
@@ -26,7 +26,8 @@ object AbstractChemicalsToReactions {
     val abstractChemicals = getAbstractChemicals(db)
     val abstractReactions = getAbstractReactions(db)(abstractChemicals)
     //val constructedReactions = constructAndProjectReactions(db)(abstractReactions, abstractChemicals)
-    writeSingleSubstrateStringsToFile(db)(abstractReactions, abstractChemicals)
+    ParRange(1,4, step=1, inclusive = true).foreach(
+      subCount => writeSingleSubstrateStringsToFile(db)(abstractReactions, abstractChemicals, subCount, new File("/Volumes/shared-data/Michael/Rsmiles", s"AbstractReactions$subCount.Substrates")))
   }
 
   def getAbstractChemicals(mongoDb: MongoDB): ParMap[Long, ChemicalInformation] = {
@@ -112,10 +113,12 @@ object AbstractChemicalsToReactions {
     matchingReactions
   }
 
-  def writeSingleSubstrateStringsToFile(mongoDb: MongoDB)(abstractReactions: ParSeq[DBObject], abstractChemicals: ParMap[Long, ChemicalInformation]): Unit = {
+  def writeSingleSubstrateStringsToFile(mongoDb: MongoDB)(abstractReactions: ParSeq[DBObject], abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int = -1, outputFile: File): Unit = {
+    require(!outputFile.isDirectory, "The file you designated to output your files to is a directory and therefore is not a valid path.")
+
     logger.info("Creating a file containing all abstract InChIs")
     val reactionConstructor: (DBObject) => Option[ReactionInformation] =
-      constructDbReaction(mongoDb)(abstractChemicals, substrateMax = 1) _
+      constructDbReaction(mongoDb)(abstractChemicals, substrateCountFilter) _
 
     val processCounter = new AtomicInteger()
 
@@ -129,10 +132,10 @@ object AbstractChemicalsToReactions {
     )
     logger.info(s"Found ${singleSubstrateReactions.length} single substrate reactions.  Writing to file.")
     val substrates: Seq[String] = singleSubstrateReactions.flatMap(_.getSubstrates.map(_.getString)).seq
-    new L2InchiCorpus(substrates).writeToFile(new File("/Volumes/shared-data/Michael/Rsmiles"))
+    new L2InchiCorpus(substrates).writeToFile(outputFile)
   }
 
-  private def constructDbReaction(mongoDb: MongoDB)(abstractChemicals: ParMap[Long, ChemicalInformation], substrateMax: Int = Int.MaxValue)(ob: DBObject): Option[ReactionInformation] = {
+  private def constructDbReaction(mongoDb: MongoDB)(abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int = -1)(ob: DBObject): Option[ReactionInformation] = {
     val substrates = ob.get(s"${ReactionKeywords.ENZ_SUMMARY}").asInstanceOf[BasicDBObject].get(s"${ReactionKeywords.SUBSTRATES}").asInstanceOf[BasicDBList]
     val products = ob.get(s"${ReactionKeywords.ENZ_SUMMARY}").asInstanceOf[BasicDBObject].get(s"${ReactionKeywords.PRODUCTS}").asInstanceOf[BasicDBList]
 
@@ -141,7 +144,7 @@ object AbstractChemicalsToReactions {
     }
 
     val substrateList = substrates.toList
-    if (substrateList.length > substrateMax) {
+    if (substrateCountFilter > 0 && substrateList.length != substrateCountFilter) {
       return None
     }
 
@@ -195,7 +198,7 @@ object AbstractChemicalsToReactions {
       projectReactionToDetermineRo(projector, eros.getRos.toList) _
 
     val reactionConstructor: (DBObject) => Option[ReactionInformation] =
-      constructDbReaction(mongoDb)(abstractChemicals, substrateMax = 1) _
+      constructDbReaction(mongoDb)(abstractChemicals, 1) _
 
     val processedCount = new AtomicInteger()
 
