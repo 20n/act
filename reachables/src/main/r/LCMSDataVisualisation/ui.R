@@ -19,7 +19,7 @@ shinyUI(fluidPage(
       numericInput("mz.band.halfwidth", label = "Mass charge band halfwidth", value = 0.01, step = 0.01),
       h3("Plot parameters"),
       sliderInput("angle.theta", label = "Azimuthal Angle (left <-> right)", 
-                  min = 0, max = 360, value = 90, step = 10),
+                  min = 0, max = 360, value = 90, step = 5),
       sliderInput("angle.phi", label = "Colatitude Angle (up <-> down)",
                   min = 0, max = 90, value = 20, step = 5),
       checkboxInput("top.value", label = "Display m/z value for highest peak", value = FALSE)
