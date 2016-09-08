@@ -8,7 +8,8 @@ import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 
 object MoleculeImporter {
-  private val moleculeCache = TrieMap[String, Molecule]()
+  // Have a cache for each format.
+  private val moleculeCache = TrieMap[ChemicalFormat.MoleculeType, TrieMap[String, Molecule]]()
 
   // For java
   @throws[MolFormatException]
@@ -54,11 +55,16 @@ object MoleculeImporter {
 
   @throws[MolFormatException]
   def importMolecule(mol: String, format: ChemicalFormat.MoleculeType): Molecule = {
-    val molecule = moleculeCache.get(mol)
+    val formatCache = moleculeCache.get(format)
+    if (formatCache.isEmpty){
+      moleculeCache.put(format, new TrieMap[String, Molecule])
+    }
+
+    val molecule = moleculeCache(format).get(mol)
 
     if (molecule.isEmpty) {
       val newMolecule = MolImporter.importMol(mol, format)
-      moleculeCache.put(mol, newMolecule)
+      moleculeCache(format).put(mol, newMolecule)
       return newMolecule
     }
 
