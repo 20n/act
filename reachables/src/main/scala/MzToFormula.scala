@@ -27,8 +27,16 @@ case object Ge extends CompareOp
 case object Le extends CompareOp
 case object Eq extends CompareOp
 
-sealed trait Inequality
-case class LinIneq(val lhs: Expr, val ineq: CompareOp, val rhs: Expr) extends Inequality
+sealed trait BoolOp
+case object And extends BoolOp
+case object Or extends BoolOp
+case object Not extends BoolOp
+
+sealed trait BooleanExpr
+case class LinIneq(val lhs: Expr, val ineq: CompareOp, val rhs: Expr) extends BooleanExpr
+case class Binary(val a: BooleanExpr, val op: BoolOp, val b: BooleanExpr) extends BooleanExpr
+case class Multi(val op: BoolOp, val b: List[BooleanExpr]) extends BooleanExpr
+case class Unary(val op: BoolOp, val a: BooleanExpr) extends BooleanExpr
 
 object Solver {
 
@@ -45,10 +53,10 @@ object Solver {
   val bvSz = 32
   val bv_type: Sort = ctx mkBitVecSort bvSz
 
-  type BvVars = (BitVecExpr, Map[FuncDecl, Var])
-  type BoolVars = (BoolExpr, Map[FuncDecl, Var]) 
+  type SMTExprVars = (BitVecExpr, Map[FuncDecl, Var])
+  type SMTBoolExprVars = (BoolExpr, Map[FuncDecl, Var]) 
 
-  def mkExpr(e: Expr): BvVars = e match {
+  def mkExpr(e: Expr): SMTExprVars = e match {
     case Const(c)         => {
       val expr = ctx.mkNumeral(c.toString, bv_type).asInstanceOf[BitVecNum]
       (expr, Map())
@@ -66,7 +74,7 @@ object Solver {
     case LinExpr(ts)      => {
       // we need to write this separately so that we can specify the type of the anonymous function
       // otherwise the reduce below is unable to infer the type and defaults to `Any` causing compile failure
-      val fn: (BvVars, BvVars) => BvVars = { 
+      val fn: (SMTExprVars, SMTExprVars) => SMTExprVars = { 
         case ((bv1, vars1), (bv2, vars2)) => (ctx.mkBVAdd(bv1, bv2), vars1 ++ vars2) 
       }
       val terms = ts.map(mkExpr)
@@ -74,29 +82,52 @@ object Solver {
     }
   }
 
-  def mkIneq(eq: LinIneq): BoolVars = {
-    val compareFn = eq.ineq match {
-      case Lt => ctx.mkBVSLT _
-      case Gt => ctx.mkBVSGT _
-      case Ge => ctx.mkBVSGE _
-      case Le => ctx.mkBVSLE _
-      case Eq => ctx.mkEq _
+  def mkClause(eq: BooleanExpr): SMTBoolExprVars = eq match {
+    case LinIneq(lhs, op, rhs) => {
+      val compareFn = op match {
+        case Lt => ctx.mkBVSLT _
+        case Gt => ctx.mkBVSGT _
+        case Ge => ctx.mkBVSGE _
+        case Le => ctx.mkBVSLE _
+        case Eq => ctx.mkEq _
+      }
+      val (lExpr, varsLhs) = mkExpr(lhs)
+      val (rExpr, varsRhs) = mkExpr(rhs)
+      (compareFn(lExpr, rExpr), varsLhs ++ varsRhs)
     }
-    val (lhs, varsLhs) = mkExpr(eq.lhs)
-    val (rhs, varsRhs) = mkExpr(eq.rhs)
-    (compareFn(lhs, rhs), varsLhs ++ varsRhs)
+    case Binary(e1, op, e2) => {
+      val boolFn = op match {
+        case And => ctx.mkAnd _
+        case Or  => ctx.mkOr _
+      }
+      val (lhs, varsLhs) = mkClause(e1)
+      val (rhs, varsRhs) = mkClause(e2)
+      (boolFn(lhs, rhs), varsLhs ++ varsRhs)
+    }
+    case Unary(op, e) => {
+      val boolFn = op match {
+        case Not => ctx.mkNot _
+      }
+      val (expr, vars) = mkClause(e)
+      (boolFn(expr), vars)
+    }
+    case Multi(op, es) => {
+      val boolFn = op match {
+        case And => ctx.mkAnd _
+        case Or  => ctx.mkOr _
+      }
+      val (exprs, varsLists) = es.map(mkClause).unzip
+      // exprs is a list, but we need to pass it to a vararg function, hence the `:_*`
+      // if we just write boolFn(exprs) it expects a `boolFn(List[T])`, while the available is `boolFn(T*)`
+      (boolFn(exprs:_*), varsLists.reduce(_++_))
+    }
   }
 
-  def solveOne(eq: LinIneq, bounds: List[LinIneq]): Option[Map[Var, Int]] = {
+  def solveOne(eqns: List[BooleanExpr]): Option[Map[Var, Int]] = {
     
-    val (ctr, varsInEq) = mkIneq(eq)
-    val (bnds, varsBnds) = bounds.map(mkIneq).unzip
+    val (constraints, varsInEq) = eqns.map(mkClause).unzip
 
-    val varsInBounds = varsBnds.reduce(_++_)
-    val vars: Map[FuncDecl, Var] = varsInEq ++ varsInBounds
-
-    // val boundConstraints = Set(b1, b2, b3)
-    val constraints = Set(ctr) ++ bnds.toSet
+    val vars = varsInEq.reduce(_++_)
 
     // get the model (if one exists) from the sat solver, else prove unsatisfiable
     val m: Option[Model] = {
@@ -126,13 +157,30 @@ object Solver {
     }
   }
 
+  def solveMany(eqns: List[BooleanExpr]): Set[Map[Var, Int]] = solveManyAux(eqns, Set())
+
+  def solveManyAux(eqns: List[BooleanExpr], solns: Set[Map[Var, Int]]): Set[Map[Var, Int]] = {
+    solveOne(eqns) match {
+      case None => solns
+      case Some(s) => {
+        val blockThisSoln = exclusionClause(s) :: eqns
+        solveManyAux(blockThisSoln, solns + s)
+      }
+    }
+  }
+
+  def exclusionClause(soln: Map[Var, Int]): BooleanExpr = {
+    val varEqVal: ((Var, Int)) => BooleanExpr = { case (v, c) => LinIneq(v, Eq, Const(c)) }
+    val blockingClause = Unary(Not, Multi(And, soln.map(varEqVal).toList))
+    blockingClause
+  }
+
   def solved(e: com.microsoft.z3.Expr, m: Model): Int = {
     // BitVecNum extends BitVecExpr, which extends Expr
     // is there a better way to get to BitVecNum, than doing a cast to subclass?
     // https://github.com/Z3Prover/z3/blob/master/src/api/java/BitVecNum.java
     val bv: BitVecExpr = e.asInstanceOf[BitVecExpr]
     val num: BitVecNum = bv.asInstanceOf[BitVecNum]
-    println(s"bv: $bv and num: $num")
     num.getInt
   }
 }
@@ -191,7 +239,7 @@ object MzToFormula {
       LinIneq(o, Lt, Const(approxMass))
     )
 
-    val sat = Solver.solveOne(ineq, bounds)
+    val sat = Solver.solveOne(ineq :: bounds)
 
     (sat, expected) match {
       case (Some(soln), Some(exp)) => {
