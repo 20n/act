@@ -196,22 +196,25 @@ object SparkSingleSubstrateROProjector {
     val erosList = eros.getRos.asScala
     LOGGER.info(s"Reduction in ERO list size: ${fullErosList.size} -> ${erosList.size}")
 
+    // Allow for multiple chemical types
+    val chemicalFormats: List[String] = if (cl.hasOption(OPTION_VALID_CHEMICAL_TYPES))
+      cl.getOptionValues(OPTION_VALID_CHEMICAL_TYPES).toList
+    else
+      List(MoleculeImporter.ChemicalFormat.Inchi)
+
     val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)
     val inchiCorpus = new L2InchiCorpus()
     inchiCorpus.loadCorpus(new File(substratesListFile))
+
 
     if (cl.hasOption(OPTION_FILTER_FOR_SPECTROMETERY)) {
       LOGGER.info(s"Substrate list size before mass filtering: ${inchiCorpus.getInchiList.size}")
       inchiCorpus.filterByMass(950)
       LOGGER.info(s"Substrate list size after filtering: ${inchiCorpus.getInchiList.size}")
     }
-    val molecules = inchiCorpus.getMolecules.asScala.toList
 
-    // Allow for multiple chemical types
-    val chemicalFormats: List[String] = if (cl.hasOption(OPTION_VALID_CHEMICAL_TYPES))
-      cl.getOptionValues(OPTION_VALID_CHEMICAL_TYPES).toList
-    else
-      List(MoleculeImporter.ChemicalFormat.Inchi)
+    val molecules = inchiCorpus.getMolecules(chemicalFormats.asJava).asScala.toList
+
     val validMolecules = Source.fromFile(substratesListFile).getLines().
       filter(x => try { MoleculeImporter.importMolecule(x, chemicalFormats); true } catch { case e : Exception => false }).toList
     LOGGER.info(s"Loaded and validated ${validMolecules.size} InChIs from source file at $substratesListFile")
