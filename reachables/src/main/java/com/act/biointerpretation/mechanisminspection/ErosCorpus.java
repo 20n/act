@@ -131,7 +131,7 @@ public class ErosCorpus implements Iterable<Ero> {
   /**
    * Filter corpus to only contain ROs with the given number of substrates.
    *
-   * @param count The required number of sybstrates.
+   * @param count The required number of substrates.
    */
   public void filterCorpusBySubstrateCount(Integer count) {
     ros.removeIf(ro -> !ro.getSubstrate_count().equals(count));
