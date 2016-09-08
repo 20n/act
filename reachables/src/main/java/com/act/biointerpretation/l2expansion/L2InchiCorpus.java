@@ -57,7 +57,7 @@ public class L2InchiCorpus {
 
   public List<Molecule> getMolecules() {
     List<String> wrappedInchi = new ArrayList<>();
-    wrappedInchi.add(MoleculeImporter.ChemicalFormat.Inchi());
+    wrappedInchi.add(MoleculeImporter.ChemicalFormat$.MODULE$.Inchi());
     return getMolecules(wrappedInchi);
   }
 
