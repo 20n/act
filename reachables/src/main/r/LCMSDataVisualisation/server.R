@@ -59,7 +59,6 @@ shinyServer(function(input, output, session) {
   # Recomputed only when the target mass or the mz band halfwidth changes
   data.long <- reactive({
     
-    # We need to transform the monoisotopic mass to the ionic mass for matching with LCMS m/z values
     target.mz.value <- target.mz()
     min.ionic.mass <- target.mz.value - input$mz.band.halfwidth
     max.ionic.mass <- target.mz.value + input$mz.band.halfwidth
@@ -87,14 +86,18 @@ shinyServer(function(input, output, session) {
   output$plot <- renderPlot({
     data <- data.long()
     with(data, {
-      # Label factor, used to plot labels a little above points
+      
+      target.mz.value <- target.mz()
+      min.ionic.mass <- target.mz.value - input$mz.band.halfwidth
+      max.ionic.mass <- target.mz.value + input$mz.band.halfwidth
+      
       zlim.up <- max(intensity) * kLabelFactor
       scatter3D(retention.time, mz, intensity, pch = 16, cex = 1.5, type = "h",
                 colkey = list(side = 1, length = 0.5, width = 0.5, cex.clab = 0.75), expand = 0.5,
                 cex.lab=kChartLabelSizeFactor, cex.axis=kChartLabelSizeFactor,
                 cex.main=kChartLabelSizeFactor, cex.sub=kChartLabelSizeFactor,
                 zlab = "Intensity", xlab = "Retention time", ylab = "m/z (Monoisotopic mass)",
-                theta = input$angle.theta, phi = input$angle.phi, ticktype = "detailed", zlim = c(0, zlim.up))
+                theta = input$angle.theta, phi = input$angle.phi, ticktype = "detailed", ylim = c(min.ionic.mass, max.ionic.mass), zlim = c(0, zlim.up))
       top.points <- data %>% top_n(1, intensity)
       
       if (input$top.value) {
