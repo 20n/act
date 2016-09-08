@@ -20,6 +20,9 @@ case class Var(val id: String) extends Expr
 case class Term(val c: Const, val v: Var) extends Expr
 case class LinExpr(val terms: Set[Term]) extends Expr
 
+// The below is not the right way to structure this.
+// There should be case classes for And, Or, Not, Lt, Gt that extend BooleanExpr
+// TODO: fix this before mainlining this code
 sealed trait CompareOp
 case object Lt extends CompareOp
 case object Gt extends CompareOp
@@ -187,8 +190,16 @@ object Solver {
   }
 }
   
-class MzToFormula(numDigitsOfPrecision: Int = 5, formulaOver: Set[Atom] = Set(C,H,O,N,S,P)) {
+class MzToFormula(numDigitsOfPrecision: Int = 5, elements: Set[Atom] = Set(C,H,O,N,S,P)) {
   type ChemicalFormula = Map[Atom, Int]
+  val intMassesForAtoms = elements.map(a => { 
+      val integralMass = (math round a.monoIsotopicMass).toInt
+      (a, integralMass) 
+    }).toMap
+  val varsForAtoms = elements.map(a => {
+      val variable = Var(a.symbol.toString)
+      (a, variable)
+    }).toMap
 
   // we can formulate an (under-determined) equation using integer variables c, h, o, n, s..
   // that define the final formula of the composition of the molecule:
@@ -215,6 +226,46 @@ class MzToFormula(numDigitsOfPrecision: Int = 5, formulaOver: Set[Atom] = Set(C,
   def formulaeForMz(mz: Double): Set[ChemicalFormula] = {
     Set()
   }
+
+  def buildConstraintOverInts(closeMz: Int) = {
+    val linExprTerms: Set[Term] = elements.map(a => {
+        val coefficient = Const(intMassesForAtoms(a))
+        val variable = varsForAtoms(a)
+        Term(coefficient, variable)
+      }
+    )
+    val lhse = LinExpr(linExprTerms)
+    val rhse = Const(closeMz)
+    val ineq = LinIneq(lhse, Eq, rhse)
+
+    // instantiate upper and lower bounds on each variable
+    // sat solvers, when asked to enumerate will absolutely find all solutions
+    // which means if we search over the domain of 32 length bitvectors (bv32)
+    // then the two complement representation might allow for values that are 
+    // negative. So bounds help in ensuring we are looking in the right places.
+    val boundLists = elements.map(a => {
+        val min = 0
+        // TODO: check performance of the sat solving with these intricate bounds
+        // This precise a bound may be making life difficult for the solver.
+        // Alternatives are: 
+        //  #1) `closeMz`
+        //  #2) lowest x, such that 2^x > closeMz
+        // `#2` is a bit vector with only a single highest significant bit set
+        // that translates to a very easy comparison boolean circuit.
+        val max = (math ceil (closeMz.toDouble / a.monoIsotopicMass)).toInt
+        val lowerBound = LinIneq(varsForAtoms(a), Ge, Const(0))
+        val upperBound = LinIneq(varsForAtoms(a), Le, Const(max))
+        (lowerBound, upperBound)
+      }
+    ).toList.unzip
+
+    // combine all bounds
+    val bounds = boundLists match {
+      case (la, lb) => la ++ lb 
+    }
+
+    ineq :: bounds
+  }
 }
 
 object MzToFormula {
@@ -224,6 +275,7 @@ object MzToFormula {
     val opts = List()
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
+    val formulator = new MzToFormula // Hah! The "formulator"
     testOneSolnOverCNO(103, Some((5, 2, 1)))
     testAllSolnOverCNO(103, Set((5, 2, 1), (0, 2, 5)))
   }
