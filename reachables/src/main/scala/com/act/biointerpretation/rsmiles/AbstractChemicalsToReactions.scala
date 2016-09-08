@@ -15,11 +15,15 @@ import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.log4j.LogManager
 
 import scala.collection.JavaConversions._
+import scala.collection.concurrent.TrieMap
 import scala.collection.parallel.immutable.{ParMap, ParRange, ParSeq}
 
 
 object AbstractChemicalsToReactions {
   val logger = LogManager.getLogger(getClass)
+
+  // Keeps track of other concurrent jobs that have previously determined the number of substrates in a reaction.
+  private val knownSubstrateCount = TrieMap[DBObject, Int]()
 
   def main(args: Array[String]) {
     val db = Mongo.connectToMongoDatabase()
@@ -27,7 +31,7 @@ object AbstractChemicalsToReactions {
     val abstractReactions = getAbstractReactions(db)(abstractChemicals)
     //val constructedReactions = constructAndProjectReactions(db)(abstractReactions, abstractChemicals)
     ParRange(1, 6, step = 1, inclusive = true).foreach(
-      subCount => writeSingleSubstrateStringsToFile(db)(abstractReactions, abstractChemicals, subCount, new File("/Volumes/shared-data/Michael/Rsmiles", s"AbstractReactions$subCount.Substrates")))
+      subCount => writeSubstrateStringsForSubstrateCount(db)(abstractReactions, abstractChemicals, subCount, new File("/Volumes/shared-data/Michael/Rsmiles", s"AbstractReactions$subCount.Substrates")))
   }
 
   def getAbstractChemicals(mongoDb: MongoDB): ParMap[Long, ChemicalInformation] = {
@@ -113,8 +117,9 @@ object AbstractChemicalsToReactions {
     matchingReactions
   }
 
-  def writeSingleSubstrateStringsToFile(mongoDb: MongoDB)(abstractReactions: ParSeq[DBObject], abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int, outputFile: File): Unit = {
-    require(!outputFile.isDirectory, "The file you designated to output your files to is a directory and therefore is not a valid path.")
+  def writeSubstrateStringsForSubstrateCount(mongoDb: MongoDB)(abstractReactions: ParSeq[DBObject], abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int, outputFile: File): Unit = {
+    require(!outputFile.isDirectory, "The file you designated to output your files " +
+      "to is a directory and therefore is not a valid path.")
     require(substrateCountFilter > 0, s"A reaction must have at least one substrate.  " +
       s"You are looking for reactions with $substrateCountFilter substrates.")
 
@@ -135,10 +140,63 @@ object AbstractChemicalsToReactions {
       reactionConstructor(rxn)
     }
     )
+
     logger.info(s"Found ${singleSubstrateReactions.length} " +
       s"reactions with $substrateCountFilter substrate${if (substrateCountFilter > 1) "s" else ""}.  Writing to file.")
     val substrates: Seq[String] = singleSubstrateReactions.flatMap(_.getSubstrates.map(_.getString)).seq
     new L2InchiCorpus(substrates).writeToFile(outputFile)
+  }
+
+  private def constructDbReaction(mongoDb: MongoDB)(abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int = -1)(ob: DBObject): Option[ReactionInformation] = {
+    val prior = knownSubstrateCount.get(ob)
+    // Another reaction has already looked at this one and decided that the substrate count isn't correct.
+    if (prior.isDefined && prior.get != substrateCountFilter) {
+      return None
+    }
+
+    val substrates = ob.get(s"${ReactionKeywords.ENZ_SUMMARY}").asInstanceOf[BasicDBObject].get(s"${ReactionKeywords.SUBSTRATES}").asInstanceOf[BasicDBList]
+    val products = ob.get(s"${ReactionKeywords.ENZ_SUMMARY}").asInstanceOf[BasicDBObject].get(s"${ReactionKeywords.PRODUCTS}").asInstanceOf[BasicDBList]
+
+    if (substrates == null | products == null) {
+      return None
+    }
+
+    val substrateList = substrates.toList
+    if (substrateCountFilter > 0 && substrateList.length != substrateCountFilter) {
+      knownSubstrateCount.put(ob, substrateList.length)
+      return None
+    }
+
+    val productList = products.toList
+
+    // Make sure we load everything in.
+    val moleculeLoader = loadMolecule(mongoDb)(abstractChemicals) _
+
+    try {
+      val substrateMoleculeList: List[ChemicalInformation] = substrateList.flatMap(x => moleculeLoader(x.asInstanceOf[DBObject]))
+      val productMoleculeList: List[ChemicalInformation] = productList.flatMap(x => moleculeLoader(x.asInstanceOf[DBObject]))
+
+      val rxnInfo = new ReactionInformation(ob.get(ReactionKeywords.ID.toString).asInstanceOf[Int], substrateMoleculeList, productMoleculeList)
+      Option(rxnInfo)
+    } catch {
+      case e: MolFormatException => None
+    }
+  }
+
+  private def loadMolecule(mongoDb: MongoDB)(abstractChemicals: ParMap[Long, ChemicalInformation])(dbObj: DBObject): List[ChemicalInformation] = {
+    val hitGoodChem: Option[ChemicalInformation] = abstractChemicals.get(dbObj.get(ReactionKeywords.PUBCHEM.toString).asInstanceOf[Long])
+    val coefficient = dbObj.get(ReactionKeywords.COEFFICIENT.toString).asInstanceOf[Int]
+
+    if (hitGoodChem.isDefined) {
+      return List.fill(coefficient)(hitGoodChem.get)
+    }
+
+    // Try to look for real molecules if we can't find it in our abstract stack.
+    val chemicalId = dbObj.get(ReactionKeywords.PUBCHEM.toString).asInstanceOf[Long]
+    val query = Mongo.createDbObject(ChemicalKeywords.ID, chemicalId)
+    val inchi = Mongo.mongoQueryChemicals(mongoDb)(query, null).next().get(ChemicalKeywords.INCHI.toString).asInstanceOf[String]
+    val molecule = MoleculeImporter.importMolecule(inchi)
+    List.fill(coefficient)(new ChemicalInformation(chemicalId.toInt, molecule, inchi))
   }
 
   def constructAndProjectReactions(mongoDb: MongoDB)(abstractReactions: ParSeq[DBObject], abstractChemicals: ParMap[Long, ChemicalInformation]): ParSeq[Option[Int]] = {
@@ -186,51 +244,6 @@ object AbstractChemicalsToReactions {
     logger.info(s"Number of hits: $hits | Number of misses: ${scores.length - hits}")
 
     scores
-  }
-
-  private def constructDbReaction(mongoDb: MongoDB)(abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int = -1)(ob: DBObject): Option[ReactionInformation] = {
-    val substrates = ob.get(s"${ReactionKeywords.ENZ_SUMMARY}").asInstanceOf[BasicDBObject].get(s"${ReactionKeywords.SUBSTRATES}").asInstanceOf[BasicDBList]
-    val products = ob.get(s"${ReactionKeywords.ENZ_SUMMARY}").asInstanceOf[BasicDBObject].get(s"${ReactionKeywords.PRODUCTS}").asInstanceOf[BasicDBList]
-
-    if (substrates == null | products == null) {
-      return None
-    }
-
-    val substrateList = substrates.toList
-    if (substrateCountFilter > 0 && substrateList.length != substrateCountFilter) {
-      return None
-    }
-
-    val productList = products.toList
-
-    // Make sure we load everything in.
-    val moleculeLoader = loadMolecule(mongoDb)(abstractChemicals) _
-
-    try {
-      val substrateMoleculeList: List[ChemicalInformation] = substrateList.flatMap(x => moleculeLoader(x.asInstanceOf[DBObject]))
-      val productMoleculeList: List[ChemicalInformation] = productList.flatMap(x => moleculeLoader(x.asInstanceOf[DBObject]))
-
-      val rxnInfo = new ReactionInformation(ob.get(ReactionKeywords.ID.toString).asInstanceOf[Int], substrateMoleculeList, productMoleculeList)
-      Option(rxnInfo)
-    } catch {
-      case e: MolFormatException => None
-    }
-  }
-
-  private def loadMolecule(mongoDb: MongoDB)(abstractChemicals: ParMap[Long, ChemicalInformation])(dbObj: DBObject): List[ChemicalInformation] = {
-    val hitGoodChem: Option[ChemicalInformation] = abstractChemicals.get(dbObj.get(ReactionKeywords.PUBCHEM.toString).asInstanceOf[Long])
-    val coefficient = dbObj.get(ReactionKeywords.COEFFICIENT.toString).asInstanceOf[Int]
-
-    if (hitGoodChem.isDefined) {
-      return List.fill(coefficient)(hitGoodChem.get)
-    }
-
-    // Try to look for real molecules if we can't find it in our abstract stack.
-    val chemicalId = dbObj.get(ReactionKeywords.PUBCHEM.toString).asInstanceOf[Long]
-    val query = Mongo.createDbObject(ChemicalKeywords.ID, chemicalId)
-    val inchi = Mongo.mongoQueryChemicals(mongoDb)(query, null).next().get(ChemicalKeywords.INCHI.toString).asInstanceOf[String]
-    val molecule = MoleculeImporter.importMolecule(inchi)
-    List.fill(coefficient)(new ChemicalInformation(chemicalId.toInt, molecule, inchi))
   }
 
   def projectReactionToDetermineRo(projector: ReactionProjector, eros: List[Ero])(reactionInformation: ReactionInformation): Option[Int] = {
