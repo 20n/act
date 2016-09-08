@@ -56,10 +56,16 @@ public class L2InchiCorpus {
   }
 
   public List<Molecule> getMolecules() {
+    List<String> wrappedInchi = new ArrayList<>();
+    wrappedInchi.add(MoleculeImporter.ChemicalFormat.Inchi());
+    return getMolecules(wrappedInchi);
+  }
+
+  public List<Molecule> getMolecules(List<String> formats) {
     List<Molecule> results = new ArrayList<>(getInchiList().size());
     for (String inchi : getInchiList()) {
       try {
-        results.add(MoleculeImporter.importMolecule(inchi));
+        results.add(MoleculeImporter.importMolecule(inchi, formats));
       } catch (MolFormatException e) {
         LOGGER.error("MolFormatException on metabolite %s. %s", inchi, e.getMessage());
       }
