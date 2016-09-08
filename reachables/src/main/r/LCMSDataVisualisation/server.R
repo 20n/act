@@ -96,7 +96,7 @@ shinyServer(function(input, output, session) {
                 colkey = list(side = 1, length = 0.5, width = 0.5, cex.clab = 0.75), expand = 0.5,
                 cex.lab=kChartLabelSizeFactor, cex.axis=kChartLabelSizeFactor,
                 cex.main=kChartLabelSizeFactor, cex.sub=kChartLabelSizeFactor,
-                zlab = "Intensity ()", xlab = "Retention time (sec)", ylab = "m/z (Da)",
+                zlab = "Intensity", xlab = "Retention time (sec)", ylab = "m/z (Da)",
                 theta = input$angle.theta, phi = input$angle.phi, ticktype = "detailed", ylim = c(min.ionic.mass, max.ionic.mass), zlim = c(0, zlim.up))
       top.points <- data %>% top_n(1, intensity)
       
