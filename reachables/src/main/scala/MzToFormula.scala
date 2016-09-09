@@ -126,6 +126,28 @@ object Solver {
     }
   }
 
+  def getVars(e: Expr): Set[Var] = e match {
+    case Const(_)    => Set()
+    case Var(n)      => Set(Var(n))
+    case Term(c, v)  => Set(v)
+    case LinExpr(ts) => ts.map(getVars).reduce(_++_)
+  }
+
+  def getVars(eq: BooleanExpr): Set[Var] = eq match {
+    case LinIneq(lhs, _, rhs) => {
+      getVars(lhs) ++ getVars(rhs)
+    }
+    case Binary(e1, _, e2) => {
+      getVars(e1) ++ getVars(e2)
+    }
+    case Unary(_, e) => {
+      getVars(e)
+    }
+    case Multi(_, es) => {
+      es.map(getVars).reduce(_++_)
+    }
+  }
+
   def solveOne(eqns: List[BooleanExpr]): Option[Map[Var, Int]] = {
     
     val (constraints, varsInEq) = eqns.map(mkClause).unzip
@@ -190,16 +212,15 @@ object Solver {
   }
 }
   
-class MzToFormula(numDigitsOfPrecision: Int = 5, elements: Set[Atom] = Set(C,H,O,N,S,P)) {
+class MzToFormula(numDigitsOfPrecision: Int = 5, elements: Set[Atom] = Set(C,H,N,O,P,S)) {
   type ChemicalFormula = Map[Atom, Int]
   val intMassesForAtoms = elements.map(a => { 
       val integralMass = (math round a.monoIsotopicMass).toInt
       (a, integralMass) 
     }).toMap
-  val varsForAtoms = elements.map(a => {
-      val variable = Var(a.symbol.toString)
-      (a, variable)
-    }).toMap
+  def atomToVar(a: Atom) = Var(a.symbol.toString)
+  val varsForAtoms = elements.map(a => (a, atomToVar(a))).toMap
+  val atomsForVars = elements.map(a => (atomToVar(a), a)).toMap
 
   // we can formulate an (under-determined) equation using integer variables c, h, o, n, s..
   // that define the final formula of the composition of the molecule:
@@ -224,7 +245,32 @@ class MzToFormula(numDigitsOfPrecision: Int = 5, elements: Set[Atom] = Set(C,H,O
   // all of those solutions!
 
   def formulaeForMz(mz: Double): Set[ChemicalFormula] = {
+    val RHSints = (-1 to 1).map(delta => (math round mz).toInt + delta).toSet
+
+    val candidateFormulae: Set[ChemicalFormula] = RHSints.map( intMz => {
+      val constraints = buildConstraintOverInts(intMz)
+      val sat = Solver.solveMany(constraints)
+      val formulae = sat.map(soln => soln.map{ case (v, value) => (atomsForVars(v), value) })
+      val allSatFormulae = sat.map{ soln => s"${buildChemFormula(soln)}" }
+      println(s"Candidate solutions for the int with +-2 delta: $allSatFormulae")
+      formulae
+    }).flatten
+
+
+    // candidateFormulae has all formulae for deltas (-+2) to the closest int mz
+    // For each formula that we get, we need to calculate whether this is truly the right
+    // mz when computed at the precise mass. If it is then we filter it out to the final
+    // formulae as as true solution
+
     Set()
+  }
+
+  def buildChemFormula(soln: Map[Var, Int]) = {
+    elements.map(a => {
+        val v = atomToVar(a)
+        if (soln(v) != 0) a.symbol.toString + soln(v) else ""
+      }
+    ).reduce(_+_)
   }
 
   def buildConstraintOverInts(closeMz: Int) = {
@@ -275,42 +321,51 @@ object MzToFormula {
     val opts = List()
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
-    val formulator = new MzToFormula // Hah! The "formulator"
-    testOneSolnOverCNO(103, Some((5, 2, 1)))
-    testAllSolnOverCNO(103, Set((5, 2, 1), (0, 2, 5)))
-  }
+    (new MzToFormula(elements = Set(C, H, N, O))).formulaeForMz(151.163)
 
-  def getConstraintsOverCNO(c: Var, n: Var, o: Var, approxMass: Int) = {
-    /* construct 12c + 15o + 14n == $approxMass */
-    val lhse = LinExpr(Set(Term(Const(12), c), Term(Const(15), o), Term(Const(14), n)))
-    val rhse = Const(approxMass)
-    val ineq = LinIneq(lhse, Eq, rhse)
-
-    val bounds = List(
-      LinIneq(c, Ge, Const(0)),
-      LinIneq(c, Lt, Const(approxMass)),
-      LinIneq(n, Ge, Const(0)),
-      LinIneq(n, Lt, Const(approxMass)),
-      LinIneq(o, Ge, Const(0)),
-      LinIneq(o, Lt, Const(approxMass))
+    // This is a case where the type parameter is needed or else the compiler fails to infer 
+    // the right type for the tuple elements. we can specify it as a type on the variable,
+    // or parameter to the constructor. The latter looks more readable.
+    val testcases = Set[(Set[Atom], Int, Set[Map[Atom, Int]])](
+      (
+        Set(C, N, O),  // atoms to derive formulae over
+        104,           // atomic mass aiming for
+        Set(Map(C->6, N->0, O->2), // sets of valid formulae
+          Map(C->5, N->2, O->1), 
+          Map(C->1, N->2, O->4), 
+          Map(C->2, N->0, O->5), 
+          Map(C->4, N->4, O->0), 
+          Map(C->0, N->4, O->3))
+      )
     )
 
-    ineq :: bounds
+    testcases.foreach{ test => 
+      {
+        val (elems, intMz, validAtomicFormulae) = test
+        val formulator = new MzToFormula(elements = elems) // Hah! The "formulator"
+        val constraints = formulator.buildConstraintOverInts(intMz)
+        val validSolns = validAtomicFormulae.map(_.map(kv => (formulator.atomToVar(kv._1), kv._2)))
+        testOneSolnOverCNO(constraints, intMz, validSolns, formulator)
+        testAllSolnOverCNO(constraints, intMz, validSolns, formulator)
+      }
+    }
   }
 
-  def testOneSolnOverCNO(approxMass: Int, expected: Option[(Int, Int, Int)]) {
+  def testOneSolnOverCNO(constraints: List[BooleanExpr], intMz: Int, expected: Set[Map[Var, Int]], f: MzToFormula) {
 
-    val (c, n, o) = (Var("c"), Var("n"), Var("o"))
-    val constraints = getConstraintsOverCNO(c, n, o, approxMass)
+    val vars = constraints.map(Solver.getVars).flatten
     val sat = Solver.solveOne(constraints)
 
     (sat, expected) match {
-      case (Some(soln), Some(exp)) => {
-        println(s"Test find one: C${soln(c)}O${soln(o)}N${soln(n)} found with mass ~${approxMass}")
-        assert( (soln(c), soln(n), soln(o)) == exp )
+      case (None, s) => {
+        if (s.size == 0)
+          println(s"No formula over CNO has approx mass ${intMz}. As expected. Solver proved correctly.")
+        else
+          assert(false) // found a solution when none should have existed
       }
-      case (None, None) => {
-        println(s"No formula over CNO has approx mass ${approxMass}. This is expected.")
+      case (Some(soln), _) => {
+        println(s"Test find one: ${f.buildChemFormula(soln)} found with mass ~${intMz}")
+        assert( expected contains soln )
       }
       case _ => {
         // unexpected outcome from the sat solver
@@ -320,18 +375,18 @@ object MzToFormula {
 
   }
 
-  def testAllSolnOverCNO(approxMass: Int, expected: Set[(Int, Int, Int)]) {
+  def testAllSolnOverCNO(constraints: List[BooleanExpr], intMz: Int, expected: Set[Map[Var, Int]], f: MzToFormula) {
 
-    val (c, n, o) = (Var("c"), Var("n"), Var("o"))
-    val constraints = getConstraintsOverCNO(c, n, o, approxMass)
+    val vars = constraints.map(Solver.getVars).flatten
     val sat = Solver.solveMany(constraints)
 
-    val solns = for (soln <- sat) yield (soln(c), soln(n), soln(o))
-    val descs = sat.map{ soln => s"C${soln(c)}O${soln(o)}N${soln(n)}" }
-    println(s"Test enumerate all: Found ${descs.size} formula with mass ~${approxMass}: $descs")
-
-    assert(solns equals expected)
-
+    val descs = sat.map{ soln => s"${f.buildChemFormula(soln)}" }
+    println(s"Test enumerate all: Found ${descs.size} formulae with mass ~${intMz}: $descs")
+    if (!(sat equals expected)) {
+      println(s"satisfying solution - expected = ${sat -- expected}")
+      println(s"expected - satisfying solution = ${expected -- sat}")
+      assert( false )
+    }
   }
 
   val optOutFile = new OptDesc(
