@@ -9,6 +9,19 @@ import act.shared.ChemicalSymbols.{Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, 
 import act.shared.ChemicalSymbols.Helpers.{fromSymbol, computeMassFromAtomicFormula, computeFormulaFromElements}
 
 object EnumPolyPeptides {
+  // This class enumerates all polypeptides upto a certain mass.
+  // Consider a polypeptide of length 6 composed of the aminoacids, shortname "DPPSAT", 
+  // made of 'D' 'P' 'P' 'S' 'A' 'T'. ChemicalSymbols.AminoAcid has to longname mapping:
+  // D = Aspartate P = Proline, S = Serine A = Alanine T = Threonine
+  // Go to http://web.expasy.org/peptide_mass/ and input "DPPSAT", select "[M]": Mass 586.2598
+  // See also the test `checkSpecificPeptides() { val dppsat: Peptide ..}` with mass 586.259859
+
+  // The primary interface is through the function `getPeptideEnumerator` and the heavy 
+  // lifting done by `getAminoAcidCombinations`. We only need to get combinations and not
+  // permutations because all peptides with the same multi-set of aminoacids will have the
+  // same mass. Once we enumerate the multi-sets, we compute for each `M` its ion masses
+  // such as `M+H` `M+Na` by calling into the MS1.MetlinIonMass and this `row` of data
+  // is held in PeptideMass. That is what we write to the output file.
 
   class Peptide(val len: Int, val composition: Map[AminoAcid, Int], val formula: Map[Atom, Int], val mass: Double)
 
@@ -28,13 +41,13 @@ object EnumPolyPeptides {
   }
 
   def formulaToListAAs(formula: Map[AminoAcid, Int]): List[AminoAcid] = {
-    val aminoAcidsInaRow = formula.toList.map{ case (a, n) => List.fill(n)(a) }.flatten
+    val aminoAcidsInaRow = formula.toList.flatMap{ case (a, n) => List.fill(n)(a) }
     // return sorted, so that it looks like ADPPST as opposed to SAPDTP
     aminoAcidsInaRow.sortWith(_.symbol < _.symbol)
   }
 
   def computeMonoIsotopicMass(formula: Map[AminoAcid, Int]): Double = {
-    val numPeptides = formula.values.reduce(_ + _)
+    val numPeptides = formula.values.sum
 
     // This is where the actual algorithm from #419 is being implemented
     val numWatersToRemove = numPeptides - 1
@@ -78,10 +91,10 @@ object EnumPolyPeptides {
 
   def getPeptideEnumerator(maxLen: Int, ions: Option[List[String]]): Iterator[PeptideMass] = {
     // we first get an iterator over all combinations with repetition of aminoacid sets
-    val aminoacidGroups = getAminoAcidCombinations(maxLen)
+    val aminoAcidGroups = getAminoAcidCombinations(maxLen)
 
     // now convert each List[AminoAcids] to formula Map[AminoAcids -> count] and then to PeptideMass row
-    val peptideMasses = aminoacidGroups.map(l => toPeptideMassRow(toFormula(l), ions))
+    val peptideMasses = aminoAcidGroups.map(l => toPeptideMassRow(toFormula(l), ions))
 
     peptideMasses
   }
@@ -141,10 +154,13 @@ object EnumPolyPeptides {
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
     // read the command line options
-    val maxPeptideLength = (cmdLine get optMaxLen).toInt
-    val outTsvFile = new PrintWriter(cmdLine get optOutFile)
-    val ionSetGiven = cmdLine get optIonSet
-    val ionSet = ionSetGiven match { case null => None; case _ => Some(ionSetGiven.split(',').toList) }
+    val maxPeptideLength: Int = (cmdLine get optMaxLen).toInt
+    val outTsvFile: PrintWriter = new PrintWriter(cmdLine get optOutFile)
+    val ionSetGiven: String = cmdLine get optIonSet
+    val ionSet: Option[List[String]] = ionSetGiven match { 
+      case null => None
+      case _ => Some(ionSetGiven.split(',').toList) 
+    }
 
     // we'll be logging statistics, if the cmd line says so
     val stats = new Stats
@@ -177,26 +193,26 @@ object EnumPolyPeptides {
                     param = "n",
                     longParam = "max-peptide-length",
                     name = "max length of peptides",
-                    desc = List("Maximum length, in num of amino acids, of polypeptides to consider. ",
-                                "Note that this grows with C(19+n, n), i.e., close to exponential. ",
-                                "Also, note that above lengths 16 the polypeptide will be `>950Da` in size",
-                                "and hence beyond the size range current LCMS instrument can detect.").mkString,
+                    desc = """Maximum length, in num of amino acids, of polypeptides to consider. 
+                              Note that this grows with C(19+n, n), i.e., close to exponential.
+                              Also, note that above lengths 16 the polypeptide will be `>950Da` in size
+                              and hence beyond the size range current LCMS instrument can detect.""",
                     isReqd = true, hasArg = true)
 
   val optIonSet = new OptDesc(
                     param = "i",
                     longParam = "ion-set",
                     name = "restricted ion set",
-                    desc = List("If the output set is to be limited to less than all ions from Metlin, ",
-                                "specify that set as a comma separated list here. E.g., M+H,M+Na").mkString,
+                    desc = """If the output set is to be limited to less than all ions from Metlin,
+                              specify that set as a comma separated list here. E.g., M+H,M+Na""",
                     isReqd = false, hasArg = true)
 
   val optRunStats = new OptDesc(
                     param = "s",
                     longParam = "run-stats",
                     name = "accumulate stats after computing masses",
-                    desc = List("After computing masses for peptides, we examine and accumulate ",
-                                "some basic stats on the masses, e.g., their distribution.").mkString,
+                    desc = """After computing masses for peptides, we examine and accumulate
+                              some basic stats on the masses, e.g., their distribution.""",
                     isReqd = false, hasArg = false)
 
   // TODO: move this into the tests directory
@@ -372,7 +388,7 @@ object EnumPolyPeptides {
 
       // assert that there are no peptides whose mass was not found,
       // i.e., all peptides had their masses in the output
-      assert( notFound.size == 0 )
+      assert( notFound.isEmpty )
     })
 
   }

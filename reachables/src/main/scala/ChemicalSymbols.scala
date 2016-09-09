@@ -130,26 +130,27 @@ object ChemicalSymbols {
 
     val atomOrderInFormula = List(C, H, N, O, S, P)
     def computeFormulaFromElements(elems: Map[Atom, Int]) = {
-      // for each pair such as (C, 2) and (N, 5) specified in the elemental composition of an AA, first
-      // convert it `C2` and `N5` (the `.map` below), and then concatenate them together (the `.reduce` below)
-      val elemnum: Map[Atom, String] = elems.map{
-        case (atom, 0) => (atom, "")
-        case (atom, 1) => (atom, atom.symbol.toString)
-        case (atom, num) => (atom, atom.symbol + num.toString)
+
+      // for a pair such as (C, 2) or (N, 5), this fn will convert it to `C2` or `N5`
+      def elemnum(in: (Atom, Int)) = in match {
+        case (_, 0) => ""
+        case (atom, 1) => atom.symbol.toString
+        case (atom, num) => atom.symbol + num.toString
       }
 
-      atomOrderInFormula.map{ case atom =>
-        elemnum.get(atom) match {
-          case Some(elemN) => elemN
-          case None => throw new Exception("formula does not have one of CHNOS specified")
-        }
-      }.reduce(_ + _)
+      // for each atom in the ordered list (arbitrarily, but consistently ordered) convert it 
+      // to tuples `(atom, val of atom in input map OR 0 if not specified)`, and then convert
+      // the tuple to string using the flattening function above.
+      val orderedAtomAndCounts = atomOrderInFormula.map(a => (a, elems.getOrElse(a, 0))).map(elemnum)
+
+      // return the concatenated string of all `C2` and `N5` to get the full formula.
+      orderedAtomAndCounts.reduce(_ + _)
     }
 
     def computeMassFromAtomicFormula(elems: Map[Atom, Int]): Double = {
       // for each pair such as (C, 2) specified in the elemental composition of an AA, first convert
       // it `massOf(C) * 2` (the `.map` below), and then add them together (the `.reduce` below)
-      elems.map{ case (atom, num) => atom.monoIsotopicMass * num }.reduce(_ + _)
+      elems.map{ case (atom, num) => atom.monoIsotopicMass * num }.sum
     }
   }
 }

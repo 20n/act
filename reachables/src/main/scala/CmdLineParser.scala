@@ -1,6 +1,5 @@
 package act.shared
 
-import java.lang.Class
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.logging.log4j.LogManager
 
@@ -29,18 +28,23 @@ class OptDesc(val param: String, val longParam: String, name: String, desc: Stri
 
 // TODO: rename this to CmdLine. But doing so requires us to nuke the current
 // `cmdline.scala` in the repo. Will do that in the next PR
-class CmdLineParser(parent: String, args: Array[String], optDescs: List[OptDesc]) {
+class CmdLineParser(parent: String, args: Array[String], optDescs: List[OptDesc], val helpMessage: String = "") {
 
-  val help_formatter: HelpFormatter = new HelpFormatter
-  val help_message = ""
-  help_formatter.setWidth(100)
+  private val helpFormatter = new HelpFormatter
+  helpFormatter.setWidth(100)
   private val logger = LogManager.getLogger(parent)
+
+  // disallow param `h` since that is auto populated
+  if (optDescs.exists(o => o.param.equals("h") || o.longParam.equals("help"))) {
+    logger.error(s"The help option is pre-populated in the command line processor. Double help not needed!")
+    throw new Exception("double help!")
+  }
 
   // store the option descriptions. allows us to retrieve cmd line params
   // using either the full opt object, the single char, or long name
-  val supportedOpts = optDescs
+  private val supportedOpts = optDescs
 
-  val cmdline: CommandLine = parseCommandLineOptions(args) 
+  private val cmdline: CommandLine = parseCommandLineOptions(args) 
 
   def get(opt: OptDesc): String = get(opt.param)
   def get(option: String): String = getHasHelper[String](option, cmdline.getOptionValue)
@@ -48,24 +52,22 @@ class CmdLineParser(parent: String, args: Array[String], optDescs: List[OptDesc]
   def has(opt: OptDesc): Boolean = has(opt.param)
   def has(option: String): Boolean = getHasHelper[Boolean](option, cmdline.hasOption)
   
-  def getHasHelper[T](option: String, outfn: String => T): T = {
-    option.length match {
-      case 1 => {
-        // short arg, look it up directly
-        outfn(option)
-      }
-      case _ => {
-        // if long opt given then look up the corresponding single char param
-        supportedOpts.find(_.longParam.equals(option)) match {
-          case Some(o) => outfn(o.param)
-          case None => throw new Exception("You asked for a multiple-param that is not present " + 
-                                            "in the option descriptions. Code failure. Please fix!")
-        }
-      }
-    } 
+  private def getHasHelper[T](option: String, outfn: String => T): T = {
+    val whichOpt: Option[OptDesc] = option.length match {
+      case 1 => supportedOpts.find(_.param.equals(option))
+      case _ => supportedOpts.find(_.longParam.equals(option))
+    }
+
+    val optStr = whichOpt match {
+      case Some(o) => o.param
+      case None => throw new Exception("You asked for a longparam that is not present " + 
+                                       "in the option descriptions. Code failure. Please fix!")
+    }
+
+    outfn(optStr)
   }
 
-  def parseCommandLineOptions(args: Array[String]): CommandLine = {
+  private def parseCommandLineOptions(args: Array[String]): CommandLine = {
     val opts = getCommandLineOptions
 
     var cl: Option[CommandLine] = None
@@ -74,7 +76,7 @@ class CmdLineParser(parent: String, args: Array[String], optDescs: List[OptDesc]
       cl = Option(parser.parse(opts, args))
     } catch {
       case e: ParseException =>
-        logger.error(s"Argument parsing failed: ${e.getMessage}\n")
+        logger.error(s"Argument parsing failed: ${e.getMessage}")
         exitWithHelp(opts)
     }
 
@@ -89,7 +91,7 @@ class CmdLineParser(parent: String, args: Array[String], optDescs: List[OptDesc]
     cl.get
   }
 
-  def getCommandLineOptions: Options = {
+  private def getCommandLineOptions: Options = {
     val helpOpt = new OptDesc(
                     param = "h",
                     longParam = "help",
@@ -105,7 +107,7 @@ class CmdLineParser(parent: String, args: Array[String], optDescs: List[OptDesc]
   }
 
   def exitWithHelp(opts: Options): Unit = {
-    help_formatter.printHelp(parent, help_message, opts, null, true)
+    helpFormatter.printHelp(parent, helpMessage, opts, null, true)
     System.exit(1)
   }
 }
