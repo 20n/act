@@ -3,8 +3,10 @@ package com.act.biointerpretation.rsmiles
 import java.io.Serializable
 
 import act.server.MongoDB
+import chemaxon.calculations.clean.Cleaner
 import chemaxon.formats.MolFormatException
-import com.act.analysis.chemicals.molecules.{MoleculeFormat, MoleculeImporter}
+import chemaxon.struc.MoleculeGraph
+import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities}
 import com.mongodb.DBObject
 import org.apache.log4j.LogManager
@@ -53,7 +55,12 @@ object AbstractChemicals {
     try {
       // Chemaxon technically uses smarts when we say Smiles, so we just make it explicit here.
       val mol = MoleculeImporter.importMolecule(replacedSmarts, MoleculeFormat.smarts)
-      Option((chemicalId, new ChemicalInformation(chemicalId.toInt, replacedSmarts)))
+
+      Cleaner.clean(mol, 2)
+      mol.aromatize(MoleculeGraph.AROM_BASIC)
+      
+      // Convert to inchi to standardize format moving forward.
+      Option((chemicalId, new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportAsInchi(mol))))
     } catch {
       case e: MolFormatException => None
     }

@@ -19,12 +19,12 @@ object SparkWrapper extends ToolWrapper {
     constructJob("Spark Submit", Option("spark-submit"), args = fullArgs)
   }
 
-  def sbtAssembly(useCached: Boolean =true): ShellJob = {
+  def sbtAssembly(useCached: Boolean = false): ShellJob = {
     if (useCached && assembledJar.exists()){
       return new ShellJob("assembled JAR.", List(""))
     }
 
     // Assemble JAR, don't run tests
-    constructJob("Creating JAR for spark use.", Option("sbt"), args = List("\"set test in assembly := {}\"", "clean", "assembly"))
+    constructJob("Creating JAR for spark use.", Option("sbt"), args = List("assembly"))
   }
 }

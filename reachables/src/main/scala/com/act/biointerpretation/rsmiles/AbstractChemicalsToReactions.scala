@@ -54,10 +54,10 @@ object AbstractChemicalsToReactions {
     val projectedProducts: List[(Int, Molecule)] = eros.flatMap(ro => project(ro)).flatten
 
     for (products <- reactionInformation.getProducts) {
-      val productSmart = MoleculeExporter.exportAsSmarts(MoleculeImporter.importMolecule(products.getString))
+      val productInchi = MoleculeExporter.exportAsInchi(MoleculeImporter.importMolecule(products.getString))
       for ((ro, molecule) <- projectedProducts) {
-        val moleculeSmart = MoleculeExporter.exportAsSmarts(molecule)
-        if (productSmart.equals(moleculeSmart)) {
+        val moleculeInchi = MoleculeExporter.exportAsInchi(molecule)
+        if (productInchi.equals(moleculeInchi)) {
           return Option(ro)
         }
       }

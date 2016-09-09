@@ -102,9 +102,6 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
 
       val appliedFunction: () => Unit = individualSubstrateFunction(substrateListOutputFile, reactionListOutputFile, count)
 
-      if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && substrateListOutputFile.exists()) {
-
-      }
       val abstractChemicalsToSubstrateListJob = if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && substrateListOutputFile.exists()) {
         LOGGER.info(s"Using cached file ${substrateListOutputFile.getAbsolutePath}")
         new ScalaJob("Using cached substrate list", () => Unit)
@@ -113,8 +110,10 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       }
 
       // Step 2: Spark submit substrate list => RO projection
-      val roProjectionsOutputFileDirectory = new File(outputDirectory,
-        s"Substrates_${count}_db_${database}_AbstractReactionRoProjections")
+      val projectionDir = new File(outputDirectory, "ProjectionResults")
+      if (!projectionDir.exists()) projectionDir.mkdirs()
+
+      val roProjectionsOutputFileDirectory = new File(projectionDir, s"Substrates_${count}_db_${database}_AbstractReactionRoProjections")
 
       val roProjectionArgs = List(
         "--substrates-list", substrateListOutputFile.getAbsolutePath,
