@@ -74,7 +74,7 @@ object MoleculeExporter {
   def exportMoleculesAsFormatsJava(mols: List[Molecule]): java.util.List[String] = {
     mols.map(exportMoleculeAsFormats(_, _globalFormat)).asJava
   }
-  
+
   object ChemicalSetting extends Enumeration {
     type MoleculeType = String
     val Inchi = "inchi:SAbs,AuxNone,Woff"
