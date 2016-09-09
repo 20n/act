@@ -1,8 +1,9 @@
 package com.act.biointerpretation.rsmiles
 
+import java.io.Serializable
+
 import act.server.MongoDB
 import chemaxon.formats.MolFormatException
-import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeFormat, MoleculeImporter}
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities}
 import com.mongodb.DBObject
@@ -52,20 +53,16 @@ object AbstractChemicals {
     try {
       // Chemaxon technically uses smarts when we say Smiles, so we just make it explicit here.
       val mol = MoleculeImporter.importMolecule(replacedSmarts, MoleculeFormat.smarts)
-      Option((chemicalId, new ChemicalInformation(chemicalId.toInt, mol, replacedSmarts)))
+      Option((chemicalId, new ChemicalInformation(chemicalId.toInt, replacedSmarts)))
     } catch {
       case e: MolFormatException => None
     }
   }
 
-  class ChemicalInformation(chemicalId: Int, molecule: Molecule, stringVersion: String) {
+  case class ChemicalInformation(chemicalId: Int, chemicalAsString: String) extends Serializable {
     def getChemicalId: Int = chemicalId
-
-    def getMolecule: Molecule = molecule
-
-    def getString: String = stringVersion
+    def getString: String = chemicalAsString
   }
 
   object Mongo extends MongoWorkflowUtilities {}
-
 }
