@@ -225,11 +225,7 @@ class MzToFormula(numDigitsOfPrecision: Int = 2, elements: Set[Atom] = Set(C,H,N
 
   def atomToVar(a: Atom) = Var(a.symbol.toString)
   def prettyEq(a: Double, b: Double) = Math.abs(a - b) < math.pow(10, -numDigitsOfPrecision)
-  def computedMass(formula: Map[Atom, Int]) = {
-    val mass = formula.map{ case (a, i) => i * a.monoIsotopicMass }.reduce(_+_)
-    println(s"${buildChemFormulaA(formula)} -> $mass")
-    mass
-  }
+  def computedMass(formula: Map[Atom, Int]) = formula.map{ case (a, i) => i * a.monoIsotopicMass }.reduce(_+_)
   def toChemicalFormula(x: (Var, Int)) = (atomsForVars(x._1), x._2)
 
   // we can formulate an (under-determined) equation using integer variables c, h, o, n, s..
