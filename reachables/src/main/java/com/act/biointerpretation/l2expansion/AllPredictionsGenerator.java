@@ -57,7 +57,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
       StringBuilder builder = new StringBuilder();
       builder.append(e.getMessage()).
               append(": substrates, reactor: ").
-              append(MoleculeExporter.exportMoleculesAsFormatsJava(
+              append(MoleculeExporter.exportMoleculesGlobalFormatJava(
                       JavaConversions.asScalaBuffer(Arrays.asList(substratesArray)).toList())).
               append(",").append(reactor.getReactorSmarts());
       throw new ReactionException(builder.toString());
@@ -84,7 +84,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
 
       List<L2PredictionChemical> predictedSubstrates =
               L2PredictionChemical.getPredictionChemicals(
-                      MoleculeExporter.exportMoleculesAsFormatsJava(scalafiedSubstrate));
+                      MoleculeExporter.exportMoleculesGlobalFormatJava(scalafiedSubstrate));
 
       // Products
       for (Molecule[] products : projectionMap.get(substrates)) {
@@ -93,7 +93,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
 
         List<L2PredictionChemical> predictedProducts =
             L2PredictionChemical.getPredictionChemicals(
-                    MoleculeExporter.exportMoleculesAsFormatsJava(scalafiedProducts));
+                    MoleculeExporter.exportMoleculesGlobalFormatJava(scalafiedProducts));
 
         L2Prediction prediction = new L2Prediction(nextUid, predictedSubstrates, name, predictedProducts);
 
