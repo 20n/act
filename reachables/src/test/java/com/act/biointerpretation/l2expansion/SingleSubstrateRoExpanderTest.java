@@ -1,8 +1,11 @@
 package com.act.biointerpretation.l2expansion;
 
+import com.act.analysis.chemicals.molecules.MoleculeExporter;
+import com.act.analysis.chemicals.molecules.MoleculeFormat;
 import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -37,6 +40,7 @@ public class SingleSubstrateRoExpanderTest {
 
   @Before
   public void setup() {
+    MoleculeExporter.setGlobalFormat(MoleculeFormat.stdInchi());
     //Set up valid RO corpus for testing
     Ero validTestEro = new Ero();
     validTestEro.setRo(RO_STRING);
@@ -62,6 +66,11 @@ public class SingleSubstrateRoExpanderTest {
     invalidMetaboliteCorpus = new L2InchiCorpus(invalidMetaboliteList);
 
     generator = new AllPredictionsGenerator(new ReactionProjector());
+  }
+
+  @After
+  public void takedown(){
+    MoleculeExporter.setGlobalFormat(MoleculeFormat.stdInchi());
   }
 
   @Test
