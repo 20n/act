@@ -53,7 +53,9 @@ object Solver {
   val ctx: Context = new Context(config)
 
   def newSolver(): Solver = ctx mkSolver
-  val bvSz = 32
+  // we multiply two numbers and need the product to be within bounds
+  // so we have to allow fot twice what might be in each. 
+  val bvSz = 24
   val bv_type: Sort = ctx mkBitVecSort bvSz
 
   type SMTExprVars = (BitVecExpr, Map[FuncDecl, Var])
@@ -167,7 +169,7 @@ object Solver {
     // extract the solved variables from the model and return the map
     m match {
       case Some(model) => {
-        val kvs = for (v <- model.getDecls) yield {
+        val kvs = for (v <- model.getDecls if vars(v) != Var("v=1")) yield {
           val cnst = model getConstInterp v
           val num = solved(cnst, model)
           vars(v) -> num
@@ -245,19 +247,19 @@ class MzToFormula(numDigitsOfPrecision: Int = 5, elements: Set[Atom] = Set(C,H,N
   // all of those solutions!
 
   def formulaeForMz(mz: Double): Set[ChemicalFormula] = {
-    val RHSints = (-1 to 1).map(delta => (math round mz).toInt + delta).toSet
+    val delta = 1
+    val RHSints = (-delta to delta).map(d => (math round mz).toInt + d).toSet
 
     val candidateFormulae: Set[ChemicalFormula] = RHSints.map( intMz => {
       val constraints = buildConstraintOverInts(intMz)
       val sat = Solver.solveMany(constraints)
       val formulae = sat.map(soln => soln.map{ case (v, value) => (atomsForVars(v), value) })
       val allSatFormulae = sat.map{ soln => s"${buildChemFormula(soln)}" }
-      println(s"Candidate solutions for the int with +-2 delta: $allSatFormulae")
+      println(s"Candidate solutions for the int with +-1 delta: $allSatFormulae")
       formulae
     }).flatten
 
-
-    // candidateFormulae has all formulae for deltas (-+2) to the closest int mz
+    // candidateFormulae has all formulae for deltas to the closest int mz
     // For each formula that we get, we need to calculate whether this is truly the right
     // mz when computed at the precise mass. If it is then we filter it out to the final
     // formulae as as true solution
@@ -283,6 +285,8 @@ class MzToFormula(numDigitsOfPrecision: Int = 5, elements: Set[Atom] = Set(C,H,N
     val lhse = LinExpr(linExprTerms)
     val rhse = Const(closeMz)
     val ineq = LinIneq(lhse, Eq, rhse)
+    val one  = Var("v=1")
+    val onec = LinIneq(one, Eq, Const(1))
 
     // instantiate upper and lower bounds on each variable
     // sat solvers, when asked to enumerate will absolutely find all solutions
@@ -290,7 +294,8 @@ class MzToFormula(numDigitsOfPrecision: Int = 5, elements: Set[Atom] = Set(C,H,N
     // then the two complement representation might allow for values that are 
     // negative. So bounds help in ensuring we are looking in the right places.
     val boundLists = elements.map(a => {
-        val min = 0
+        val lowerBound = LinIneq(varsForAtoms(a), Ge, Const(0))
+
         // TODO: check performance of the sat solving with these intricate bounds
         // This precise a bound may be making life difficult for the solver.
         // Alternatives are: 
@@ -299,8 +304,20 @@ class MzToFormula(numDigitsOfPrecision: Int = 5, elements: Set[Atom] = Set(C,H,N
         // `#2` is a bit vector with only a single highest significant bit set
         // that translates to a very easy comparison boolean circuit.
         val max = (math ceil (closeMz.toDouble / a.monoIsotopicMass)).toInt
-        val lowerBound = LinIneq(varsForAtoms(a), Ge, Const(0))
-        val upperBound = LinIneq(varsForAtoms(a), Le, Const(max))
+        val upper = a match {
+          case H => {
+            // there cannot be more than (valence * others) - count(others)
+            // coz there are at max valenc*other bonds to make, and max available for H
+            // are in cases where all others are in a single line, e.g., alcohols
+            val others = elements.filter(!_.equals(H))
+            val ts = others.map( a => Term(Const(a.maxValency), varsForAtoms(a)) )
+            val lineBonds = Term(Const(-others.size), one)
+            LinExpr(ts + lineBonds)
+          }
+          case _ => Const(max)
+        }
+        val upperBound = LinIneq(varsForAtoms(a), Le, upper)
+
         (lowerBound, upperBound)
       }
     ).toList.unzip
@@ -310,7 +327,7 @@ class MzToFormula(numDigitsOfPrecision: Int = 5, elements: Set[Atom] = Set(C,H,N
       case (la, lb) => la ++ lb 
     }
 
-    ineq :: bounds
+    ineq :: onec :: bounds
   }
 }
 

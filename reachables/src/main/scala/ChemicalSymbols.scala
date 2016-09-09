@@ -2,13 +2,13 @@ package act.shared
 
 object ChemicalSymbols {
 
-  sealed trait Atom { def symbol: Char; def mass: MonoIsotopicMass }
-  case object C extends Atom { val symbol = 'C'; val mass = new MonoIsotopicMass(12.000000) }
-  case object H extends Atom { val symbol = 'H'; val mass = new MonoIsotopicMass( 1.007825) }
-  case object O extends Atom { val symbol = 'O'; val mass = new MonoIsotopicMass(15.994915) }
-  case object N extends Atom { val symbol = 'N'; val mass = new MonoIsotopicMass(14.003074) }
-  case object P extends Atom { val symbol = 'P'; val mass = new MonoIsotopicMass(30.973761) }
-  case object S extends Atom { val symbol = 'S'; val mass = new MonoIsotopicMass(31.972071) }
+  sealed trait Atom { def symbol: Char; def mass: MonoIsotopicMass; def maxValency: Int }
+  case object C extends Atom { val symbol = 'C'; val mass = new MonoIsotopicMass(12.000000); val maxValency = 4  }
+  case object H extends Atom { val symbol = 'H'; val mass = new MonoIsotopicMass( 1.007825); val maxValency = 1  }
+  case object O extends Atom { val symbol = 'O'; val mass = new MonoIsotopicMass(15.994915); val maxValency = 2  }
+  case object N extends Atom { val symbol = 'N'; val mass = new MonoIsotopicMass(14.003074); val maxValency = 4  }
+  case object P extends Atom { val symbol = 'P'; val mass = new MonoIsotopicMass(30.973761); val maxValency = 2  }
+  case object S extends Atom { val symbol = 'S'; val mass = new MonoIsotopicMass(31.972071); val maxValency = 6  }
   
   abstract class AminoAcid {
     def name: String
