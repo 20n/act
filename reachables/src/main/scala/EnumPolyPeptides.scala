@@ -6,6 +6,7 @@ import act.shared.{CmdLineParser, OptDesc}
 import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, AminoAcid, AllAminoAcids}
 import act.shared.ChemicalSymbols.{Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser} 
 import act.shared.ChemicalSymbols.{Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg}
+import act.shared.ChemicalSymbols.MonoIsotopicMass
 import act.shared.ChemicalSymbols.Helpers.{fromSymbol, computeMassFromAtomicFormula, computeFormulaFromElements}
 
 object EnumPolyPeptides {
@@ -23,19 +24,22 @@ object EnumPolyPeptides {
   // such as `M+H` `M+Na` by calling into the MS1.MetlinIonMass and this `row` of data
   // is held in PeptideMass. That is what we write to the output file.
 
-  class Peptide(val len: Int, val composition: Map[AminoAcid, Int], val formula: Map[Atom, Int], val mass: Double)
+  class Peptide(val len: Int, 
+    val composition: Map[AminoAcid, Int], 
+    val formula: Map[Atom, Int], 
+    val mass: MonoIsotopicMass)
 
   class PeptideMass(val representative: List[AminoAcid],
-                    val mass: Double,
-                    val ionMasses: List[(MetlinIonMass, Double)]) {
+                    val mass: MonoIsotopicMass,
+                    val ionMasses: List[(MetlinIonMass, MonoIsotopicMass)]) {
     override def toString() = {
       // convert the representative to a string, DPPSAT
       val reprSymbol = representative.map(_.symbol.toString).reduce(_ + _)
 
       // note that here we assume that the list stays ordered the same way the header was computed for `tsvHdrs`
       // both are computed from ionDeltas and so there should be no reordering of the lists
-      val ionMzs = ionMasses.map{ case (ion, mz) => truncateTo6Decimals(mz).toString }
-      val together = List(reprSymbol, truncateTo6Decimals(mass).toString) ++ ionMzs
+      val ionMzs = ionMasses.map{ case (ion, mz) => mz.toString }
+      val together = List(reprSymbol, mass.toString) ++ ionMzs
       together.mkString("\t")
     }
   }
@@ -46,23 +50,30 @@ object EnumPolyPeptides {
     aminoAcidsInaRow.sortWith(_.symbol < _.symbol)
   }
 
-  def computeMonoIsotopicMass(formula: Map[AminoAcid, Int]): Double = {
+  def computeMonoIsotopicMass(formula: Map[AminoAcid, Int]): MonoIsotopicMass = {
     val numPeptides = formula.values.sum
 
     // This is where the actual algorithm from #419 is being implemented
+    // What this does is compute the mass of the "chain of amino acids"
+    // One water is removed to connect two amino acids, therefore to form
+    // a chain of len N, we need to remove N-1 waters. 
     val numWatersToRemove = numPeptides - 1
-    val massOfWater = List(H, O, H).map(_.monoIsotopicMass).reduce(_ + _)
-    val massToRemove = numWatersToRemove * massOfWater
-    val combinedMass = formulaToListAAs(formula).map(_.monoIsotopicMass).reduce(_ + _)
+    val massOfWater = List(H, O, H).map(_.mass).reduce(_ + _)
+    val massToRemove = massOfWater * numWatersToRemove
+    val combinedMass = formulaToListAAs(formula).map(_.mass).reduce(_ + _)
     val finalMass = combinedMass - massToRemove
 
     finalMass
   }
 
+  // PeptideMass is the data that gets written to the output. It contains: 
+  // a) the mass of the peptide
+  // b) a representative amino acid with that peptide mass
+  // c) masses of metlin ions corresponding to that peptide mass 
   def toPeptideMassRow(formula: Map[AminoAcid, Int], ions: Option[List[String]]): PeptideMass = {
-    val monoIsotopicMass = computeMonoIsotopicMass(formula)
+    val mass = computeMonoIsotopicMass(formula)
 
-    new PeptideMass(formulaToListAAs(formula), monoIsotopicMass, computeMetlinIonMasses(monoIsotopicMass, ions))
+    new PeptideMass(formulaToListAAs(formula), mass, computeMetlinIonMasses(mass, ions))
   }
 
   def getAminoAcidCombinations(maxLen: Int): Iterator[List[AminoAcid]] = {
@@ -84,17 +95,22 @@ object EnumPolyPeptides {
     pickSetNonDistinctElems.combinations(maxLen)
   }
 
-  def toFormula(aas: List[AminoAcid]): Map[AminoAcid, Int] = {
+  implicit def toFormula(aas: List[AminoAcid]): Map[AminoAcid, Int] = {
     // convert List[AminoAcids] to formula Map[AminoAcids -> count]
     aas.groupBy(identity).mapValues(_.size)
   }
 
+  // This function enumerators all combinations of multi-sets that might compose a polypeptide chain
+  // Then we calculate its monoisotopic mass and hold that representative polypeptide for reference
+  // The second option allows selection of a subset of ions to output e.g., "M+H,M+Na". If None
+  // specified, it will write all metlin ion masses to the output.
   def getPeptideEnumerator(maxLen: Int, ions: Option[List[String]]): Iterator[PeptideMass] = {
     // we first get an iterator over all combinations with repetition of aminoacid sets
     val aminoAcidGroups = getAminoAcidCombinations(maxLen)
 
-    // now convert each List[AminoAcids] to formula Map[AminoAcids -> count] and then to PeptideMass row
-    val peptideMasses = aminoAcidGroups.map(l => toPeptideMassRow(toFormula(l), ions))
+    // convert each List[AminoAcids] to Map[AminoAcids -> count]
+    // (using toFormula implicitly), and then to PeptideMass row
+    val peptideMasses = aminoAcidGroups.map(l => toPeptideMassRow(l, ions))
 
     peptideMasses
   }
@@ -104,13 +120,14 @@ object EnumPolyPeptides {
     case Some(ions) => MS1.ionDeltas.filter(i => ions.contains(i.getName)).toList
   }
 
-  def computeMetlinIonMasses(m: Double, ions: Option[List[String]]): List[(MetlinIonMass, Double)] = {
+  def computeMetlinIonMasses(m: MonoIsotopicMass, 
+    ions: Option[List[String]]): List[(MetlinIonMass, MonoIsotopicMass)] = {
     // we could have called `MS1.java:queryMetlin`, but that creates a completely new List(MetlinIonMass)
     // My guess is that by using the `public static final ionDeltas` as the key the scala compiler
     // should be clever enough to not create copies of the key. The only extra memory we will use here
     // should be the computed mass values for the ions (the values of the map).
-    def ionMassTuple(ion: MetlinIonMass): (MetlinIonMass, Double) = (ion -> MS1.computeIonMz(m, ion))
-    val ionMasses: List[(MetlinIonMass, Double)] = getMetlinIons(ions).map(ionMassTuple).toList
+    def ionMassTuple(ion: MetlinIonMass) = (ion -> new MonoIsotopicMass(MS1.computeIonMz(m.initMass, ion)))
+    val ionMasses: List[(MetlinIonMass, MonoIsotopicMass)] = getMetlinIons(ions).map(ionMassTuple).toList
     ionMasses
   }
 
@@ -121,23 +138,36 @@ object EnumPolyPeptides {
   }
 
   class Stats {
+    // we are going to log data in histogram buckets. the window size is as below
     val window = 1.0 // Da
+    // the histogram will be stored as Map(bucketid -> numelements)
     var histogram = Map[Int, Int]()
 
-    def log(mz: Double) {
-      val n: Int = (math floor (mz / window)).toInt
+    def log(mz: MonoIsotopicMass) {
+      // TODO: we should not be inspecting the actual initialization mass in general, but
+      // for the sake of non-granular histograming, and window bucketing, we let it pass
+      val n: Int = (math floor (mz.initMass / window)).toInt
       val curr: Int = histogram.get(n) match { case None => 0; case Some(c) => c }
       histogram = histogram + (n -> (curr + 1))
     }
 
     def log(row: PeptideMass) {
-      val masses = List(row.mass) ++ row.ionMasses.map{ case (_, mz) => mz }
+      val masses: List[MonoIsotopicMass] = List(row.mass) ++ row.ionMasses.map{ case (_, mz) => mz }
       masses foreach log
     }
 
     def mkString(kvDelim: String = "\t", entryDelim: String = "\n") = {
+      // we want to output the histogram such that it can be easily slurped into a plotter, e.g., gnuplot
+      // for that ideally, we would like to output two columns, the first column being bucket's start_mz
+      // and the second column being num element in the window [start_mz, start_mz + window)
+
+      // We first construct a column graph that converts the (bucketid, num) map to (start_mz, num)
       val columnGraph = histogram.map{ case (bucket, c) => (bucket * window, c) }.toList.sorted
+
+      // Then we collapse the (start_mz, num) to a delimited row, e.g., "start_mz TAB num"
       val columns = columnGraph.map{ case (w, c) => w + kvDelim + c }
+
+      // Output each row of "start_mz TAB num" separated by delimiter, default = newline
       columns.mkString(entryDelim)
     }
   }
@@ -223,17 +253,6 @@ object EnumPolyPeptides {
     checkAllAminoAcidMasses
   }
 
-  val sixDecimals = math pow (10, 6)
-  def truncateTo6Decimals(n: Double): Double = (math floor n * sixDecimals) / sixDecimals
-
-  // tolerate differences in the last decimal place at which monoIsotopicMasses specified
-  // i.e., we consider masses upto 0.00001 away from each other to be identical
-  // note that the mass of an electron is 5.5e-4 Da, so this is 1/50th of that. Basically
-  // imprecision in arithmetic, not physics.
-  val tolerance = 1e-5
-
-  def equalUptoTolerance(a: Double, b: Double) = Math.abs(a - b) < tolerance
-
   // as discussed in https://github.com/20n/act/issues/419#issuecomment-244655526
   // the size of the enumerated set has to be C(n+r-1, r) where n=20 and r=length of peptides
 
@@ -281,7 +300,7 @@ object EnumPolyPeptides {
         len = 6,
         composition = aa,
         formula = Map(C->24, H->38, O->11, N->6, S->0),
-        mass = 586.259859
+        mass = new MonoIsotopicMass(586.259859)
       )
     }
 
@@ -294,7 +313,7 @@ object EnumPolyPeptides {
         len = 2,
         composition = aa,
         formula = Map(C->11, H->20, O->3, N->2, S->0),
-        mass = 228.147393
+        mass = new MonoIsotopicMass(228.147393)
       )
     }
 
@@ -320,7 +339,7 @@ object EnumPolyPeptides {
         len = 3,
         composition = Map(Gln -> 1, Trp -> 1, Met -> 1),
         formula = Map(C->21, H->29, N->5, O->5, S->1),
-        mass = 463.188942
+        mass = new MonoIsotopicMass(463.188942)
       )
     }
 
@@ -330,7 +349,7 @@ object EnumPolyPeptides {
         len = 4,
         composition = Map(Ala->1, Gly->1, Trp->1, Met->1),
         formula = Map(C->21, H->29, N->5, O->5, S->1),
-        mass = 463.188942
+        mass = new MonoIsotopicMass(463.188942)
       )
     }
      
@@ -340,7 +359,7 @@ object EnumPolyPeptides {
         len = 4,
         composition = Map(Ala->1, Arg->1, Cys->1, Asp->1),
         formula = Map(C->16, H->29, N->7, O->7, S->1),
-        mass = 463.184917007
+        mass = new MonoIsotopicMass(463.184917007)
       )
     }
 
@@ -357,10 +376,12 @@ object EnumPolyPeptides {
     specificPeptidesToCheck.foreach( pp => {
       // check "a)"
       val fromAminoAcids = computeMonoIsotopicMass(pp.composition)
-      assert( equalUptoTolerance(fromAminoAcids, pp.mass) )
+      if (!fromAminoAcids.equals(pp.mass)) 
+        println(s"Assertion failure: ${pp.mass} != ${fromAminoAcids.initMass}")
+      assert( fromAminoAcids.equals(pp.mass) )
       // check "b)"
       val fromAtoms = computeMassFromAtomicFormula(pp.formula)
-      assert( equalUptoTolerance(fromAtoms, pp.mass) )
+      assert( fromAtoms.equals(pp.mass) )
     } )
 
     // Second check: For each specific polypeptide, we validate that its mass shows up in the
@@ -380,7 +401,7 @@ object EnumPolyPeptides {
       // get the set of masses that the enumerator creates
       val masses = generator.toList
       // check if any peptide's mass is not generated
-      def massListHasPeptideMass(pmass: Double) = masses.find(m => equalUptoTolerance(pmass, m.mass)) match {
+      def massListHasPeptideMass(pmass: MonoIsotopicMass) = masses.find(m => pmass.equals(m.mass)) match {
         case Some(_) => true
         case None => false
       }
@@ -396,11 +417,11 @@ object EnumPolyPeptides {
   def checkAllAminoAcidMasses() {
     // check that each amino acid is specified precisely
     AllAminoAcids.foreach(aa => {
-      val massFromElements: Double = computeMassFromAtomicFormula(aa.elems)
+      val massFromElements = computeMassFromAtomicFormula(aa.elems)
       val formulaFromElements: String = computeFormulaFromElements(aa.elems)
 
       // check that the pre-specified mass matches what we might compute from its atomic composition
-      assert(equalUptoTolerance(aa.monoIsotopicMass, massFromElements))
+      assert( massFromElements.equals(aa.mass) )
 
       // check that the chemical formula specified matches what we might compute from its atomic composition
       assert(aa.formula.equals(formulaFromElements))
