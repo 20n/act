@@ -1,5 +1,6 @@
 package com.act.biointerpretation.rsmiles
 
+
 import java.util.concurrent.atomic.AtomicInteger
 
 import act.server.MongoDB
@@ -9,14 +10,14 @@ import com.act.biointerpretation.rsmiles.AbstractChemicals.ChemicalInformation
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities, ReactionKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.log4j.LogManager
+import spray.json
 
 import scala.collection.JavaConversions._
-import scala.collection.concurrent.TrieMap
 import scala.collection.parallel.immutable.{ParMap, ParSeq}
+
 
 object AbstractReactions {
   val logger = LogManager.getLogger(getClass)
-  private val knownSubstrateCount = TrieMap[DBObject, Int]()
 
   def getAbstractReactions(mongoDb: MongoDB)(abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int): ParSeq[ReactionInformation] = {
     require(substrateCountFilter > 0, s"A reaction must have at least one substrate.  " +
@@ -74,12 +75,6 @@ object AbstractReactions {
   }
 
   private def constructDbReaction(mongoDb: MongoDB)(abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int = -1)(ob: DBObject): Option[ReactionInformation] = {
-    val prior = knownSubstrateCount.get(ob)
-    // Another reaction has already looked at this one and decided that the substrate count isn't correct.
-    if (prior.isDefined && prior.get != substrateCountFilter) {
-      return None
-    }
-
     val substrates = ob.get(s"${ReactionKeywords.ENZ_SUMMARY}").asInstanceOf[BasicDBObject].get(s"${ReactionKeywords.SUBSTRATES}").asInstanceOf[BasicDBList]
     val products = ob.get(s"${ReactionKeywords.ENZ_SUMMARY}").asInstanceOf[BasicDBObject].get(s"${ReactionKeywords.PRODUCTS}").asInstanceOf[BasicDBList]
 
@@ -89,7 +84,6 @@ object AbstractReactions {
 
     val substrateList = substrates.toList
     if (substrateCountFilter > 0 && substrateList.length != substrateCountFilter) {
-      knownSubstrateCount.put(ob, substrateList.length)
       return None
     }
 
@@ -122,14 +116,12 @@ object AbstractReactions {
     val query = Mongo.createDbObject(ChemicalKeywords.ID, chemicalId)
     val inchi = Mongo.mongoQueryChemicals(mongoDb)(query, null).next().get(ChemicalKeywords.INCHI.toString).asInstanceOf[String]
     val molecule = MoleculeImporter.importMolecule(inchi)
-    List.fill(coefficient)(new ChemicalInformation(chemicalId.toInt, molecule, inchi))
+    List.fill(coefficient)(new ChemicalInformation(chemicalId.toInt, inchi))
   }
 
-  class ReactionInformation(reactionId: Int, substrates: List[ChemicalInformation], products: List[ChemicalInformation]) {
+  case class ReactionInformation(reactionId: Int, substrates: List[ChemicalInformation], products: List[ChemicalInformation]) {
     def getReactionId: Int = reactionId
-
     def getSubstrates: List[ChemicalInformation] = substrates
-
     def getProducts: List[ChemicalInformation] = products
   }
 

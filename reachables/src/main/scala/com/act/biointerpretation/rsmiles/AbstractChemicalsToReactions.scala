@@ -1,10 +1,10 @@
 package com.act.biointerpretation.rsmiles
 
-import java.io.File
+import java.io.{BufferedWriter, File, FileWriter}
 
 import act.server.MongoDB
 import chemaxon.struc.Molecule
-import com.act.analysis.chemicals.molecules.MoleculeExporter
+import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.l2expansion.L2InchiCorpus
 import com.act.biointerpretation.mechanisminspection.Ero
@@ -12,22 +12,28 @@ import com.act.biointerpretation.rsmiles.AbstractReactions.ReactionInformation
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
 import org.apache.log4j.LogManager
 
-import scala.collection.JavaConversions._
-import scala.collection.parallel.immutable.ParRange
+import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
+import spray.json._
 
+import scala.collection.JavaConversions._
 
 object AbstractChemicalsToReactions {
   val logger = LogManager.getLogger(getClass)
 
-  def main(args: Array[String]) {
+  def calculateAbstractSubstrates(db: String = "marvin" , host: String = "localhost", port: Int = 27017)
+                                 (outputSubstrateFile: File, outputReactionCorpus: File, substrateCount: Int)
+                                 (): Unit = {
     val db = Mongo.connectToMongoDatabase()
     val abstractChemicals = AbstractChemicals.getAbstractChemicals(db)
-    ParRange(1, 6, step = 1, inclusive = true).foreach(subCount => {
-      val abstractReactions = AbstractReactions.getAbstractReactions(db)(abstractChemicals, subCount)
+    val abstractReactions = AbstractReactions.getAbstractReactions(db)(abstractChemicals, substrateCount)
+    writeSubstrateStringsForSubstrateCount(db)(abstractReactions.seq.toList, outputSubstrateFile)
+    writeAbstractReactionsToJsonCorpus(abstractReactions.seq.toList, outputReactionCorpus)
+  }
 
-      writeSubstrateStringsForSubstrateCount(db)(abstractReactions.seq.toList,
-        new File("/Volumes/shared-data/Michael/Rsmiles", s"AbstractReactions$subCount.Substrates"))
-    })
+  def writeAbstractReactionsToJsonCorpus(abstractReactions: List[ReactionInformation], outputReactionsLocation: File): Unit ={
+    val outputFile = new BufferedWriter(new FileWriter(outputReactionsLocation))
+    outputFile.write(abstractReactions.toJson.prettyPrint)
+    outputFile.close()
   }
 
   // Keeps track of other concurrent jobs that have previously determined the number of substrates in a reaction.
@@ -40,13 +46,15 @@ object AbstractChemicalsToReactions {
   }
 
   def projectReactionToDetermineRo(projector: ReactionProjector, eros: List[Ero])(reactionInformation: ReactionInformation): Option[Int] = {
-    val project = projectionArray(projector, reactionInformation.getSubstrates.map(_.getMolecule)) _
+    val project = projectionArray(projector, reactionInformation.getSubstrates.map(
+      chemical =>
+      MoleculeImporter.importMolecule(chemical.getString, MoleculeFormat.smarts))) _
 
     // Full projection for RO
     val projectedProducts: List[(Int, Molecule)] = eros.flatMap(ro => project(ro)).flatten
 
     for (products <- reactionInformation.getProducts) {
-      val productSmart = MoleculeExporter.exportAsSmarts(products.getMolecule)
+      val productSmart = MoleculeExporter.exportAsSmarts(MoleculeImporter.importMolecule(products.getString))
       for ((ro, molecule) <- projectedProducts) {
         val moleculeSmart = MoleculeExporter.exportAsSmarts(molecule)
         if (productSmart.equals(moleculeSmart)) {
