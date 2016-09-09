@@ -5,7 +5,7 @@ import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.MoleculeGraph;
-import com.act.analysis.chemicals.MoleculeExporter;
+import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.sars.Sar;
 import com.act.biointerpretation.sars.SerializableReactor;

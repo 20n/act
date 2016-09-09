@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import act.server.MongoDB
 import chemaxon.formats.MolFormatException
-import com.act.analysis.chemicals.MoleculeImporter
+import com.act.analysis.chemicals.molecules.MoleculeImporter
 import com.act.biointerpretation.rsmiles.AbstractChemicals.ChemicalInformation
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities, ReactionKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
