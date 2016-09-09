@@ -4,7 +4,7 @@ import java.io.File
 
 import chemaxon.license.LicenseManager
 import chemaxon.struc.Molecule
-import com.act.analysis.chemicals.MoleculeImporter
+import com.act.analysis.chemicals.{MoleculeExporter, MoleculeImporter}
 import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -202,6 +202,8 @@ object SparkSingleSubstrateROProjector {
       cl.getOptionValues(OPTION_VALID_CHEMICAL_TYPES).toList
     else
       List(MoleculeImporter.ChemicalFormat.Inchi)
+
+    MoleculeExporter.setGlobalFormat(chemicalFormats)
 
     val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)
     val inchiCorpus = new L2InchiCorpus()
