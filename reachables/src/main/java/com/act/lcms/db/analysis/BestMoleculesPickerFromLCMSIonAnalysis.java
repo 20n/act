@@ -136,16 +136,13 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
     List<String> positiveReplicateResults = new ArrayList<>();
 
-    // Lauren
-    positiveReplicateResults.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis_copy/lr_min");
-
-    // Saurabh
-    positiveReplicateResults.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis_copy/ss_min");
-
-    // Chris
-    positiveReplicateResults.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis_copy/cr_min");
-
-    positiveReplicateResults.add("/Volumes/shared-data/Vijay/jaffna/issue_371_analysis_copy/min_all_replicates");
+    positiveReplicateResults.add("/mnt/shared-data/Vijay/karaman/karaman_2151.json");
+    positiveReplicateResults.add("/mnt/shared-data/Vijay/karaman/karaman_2152.json");
+    positiveReplicateResults.add("/mnt/shared-data/Vijay/karaman/karaman_2153.json");
+    positiveReplicateResults.add("/mnt/shared-data/Vijay/karaman/karaman_2154.json");
+    positiveReplicateResults.add("/mnt/shared-data/Vijay/karaman/karaman_2155.json");
+    positiveReplicateResults.add("/mnt/shared-data/Vijay/karaman/karaman_2156.json");
+    positiveReplicateResults.add("/mnt/shared-data/Vijay/karaman/karaman_2157.json");
 
     Map<String, Set<String>> filePathToVals =
         IonAnalysisInterchangeModel.getMoleculeHitsForEachInputFile(positiveReplicateResults,
@@ -159,8 +156,8 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
     writeToFile(filePathToVals2);
 
-    minIntensityThreshold = 1000000.0;
-    minSnrThreshold = 10000000.0;
+    minIntensityThreshold = 10000.0;
+    minSnrThreshold = 1000.0;
 
     Map<String, Set<String>> filePathToVals3 =
         IonAnalysisInterchangeModel.getMoleculeHitsForEachInputFile(positiveReplicateResults,
