@@ -1,4 +1,4 @@
-kModes <- c("M", "M+H", "M+Na", "M+Li", "M+H+H2O")
+kModes <- c("M", "M+H", "M-H", "M+Na", "M+Li", "M+H-H2O")
 
 shinyUI(fluidPage(
   fluidRow(

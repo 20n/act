@@ -28,7 +28,7 @@ shinyServer(function(input, output, session) {
   # Recomputed only when filename changes
   full.data <- reactive({
     filepath <- paste0('/mnt/data-level1/lcms-ms1/', input$filename)
-    msfile <- openMSfile(filepath, backend="netCDF")
+    msfile <- openMSfile(filepath, backend = "netCDF")
     hd <- header(msfile)
     ms1 <- which(hd$msLevel == 1)
     ms1.scans <- peaks(msfile, ms1) # list of num matrix
@@ -78,9 +78,10 @@ shinyServer(function(input, output, session) {
     switch(input$mode,
            "M" = target.mass,
            "M+H" = target.mass + kHMass,
+           "M-H" = target.mass - kHMass,
            "M+Na" = target.mass + kNaMass,
            "M+Li" = target.mass + kLiMass,
-           "M+H+H2O" = target.mass + 3 * kHMass + kOMass)
+           "M+H-H2O" = target.mass - kHMass - kOMass)
   })
   
   output$plot <- renderPlot({
@@ -94,15 +95,17 @@ shinyServer(function(input, output, session) {
       zlim.up <- max(intensity) * kLabelFactor
       scatter3D(retention.time, mz, intensity, pch = 16, cex = 1.5, type = "h",
                 colkey = list(side = 1, length = 0.5, width = 0.5, cex.clab = 0.75), expand = 0.5,
-                cex.lab=kChartLabelSizeFactor, cex.axis=kChartLabelSizeFactor,
-                cex.main=kChartLabelSizeFactor, cex.sub=kChartLabelSizeFactor,
+                cex.lab = kChartLabelSizeFactor, cex.axis = kChartLabelSizeFactor,
+                cex.main = kChartLabelSizeFactor, cex.sub = kChartLabelSizeFactor,
                 zlab = "Intensity", xlab = "Retention time (sec)", ylab = "m/z (Da)",
-                theta = input$angle.theta, phi = input$angle.phi, ticktype = "detailed", ylim = c(min.ionic.mass, max.ionic.mass), zlim = c(0, zlim.up))
+                theta = input$angle.theta, phi = input$angle.phi, ticktype = "detailed", 
+                ylim = c(min.ionic.mass, max.ionic.mass), zlim = c(0, zlim.up))
       top.points <- data %>% top_n(1, intensity)
       
       if (input$top.value) {
         # Display additional layer with top peak label
-        with(top.points, text3D(retention.time, mz, intensity * kLabelFactor, add = TRUE, labels = round(mz, 6)))
+        with(top.points, text3D(retention.time, mz, intensity * kLabelFactor, 
+                                add = TRUE, labels = round(mz, 6)))
       }
     })
   })
