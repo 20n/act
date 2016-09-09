@@ -35,7 +35,7 @@ object MoleculeExporter {
   }
 
   @throws[MolExportException]
-  def exportMoleculesAsFormats(mols: List[Molecule]): List[String] = {
+  def exportMoleculesGlobalFormat(mols: List[Molecule]): List[String] = {
     mols.map(exportMoleculeAsFormats(_, _globalFormat))
   }
 
@@ -76,7 +76,7 @@ object MoleculeExporter {
   }
 
   @throws[MolExportException]
-  def exportMoleculesAsFormatsJava(mols: List[Molecule]): java.util.List[String] = {
+  def exportMoleculesGlobalFormatJava(mols: List[Molecule]): java.util.List[String] = {
     mols.map(exportMoleculeAsFormats(_, _globalFormat)).asJava
   }
 }
