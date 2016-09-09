@@ -9,7 +9,7 @@ import scala.collection.concurrent.TrieMap
 
 object MoleculeExporter {
   private val moleculeCache = TrieMap[ChemicalSetting.MoleculeType, TrieMap[Molecule, String]]()
-  private var _globalFormat = List(ChemicalSetting.Inchi)
+  private var _globalFormat = List(ChemicalSetting.inchi)
 
   def setGlobalFormat(formats: List[ChemicalSetting.MoleculeType]) = {
     _globalFormat = formats
@@ -17,11 +17,11 @@ object MoleculeExporter {
 
   @throws[MolExportException]
   def exportAsSmarts(mol: Molecule): String = {
-    exportMolecule(mol, ChemicalSetting.Smarts)
+    exportMolecule(mol, ChemicalSetting.smarts)
   }
 
   def exportAsInchi(mol: Molecule): String = {
-    exportMolecule(mol, ChemicalSetting.Inchi)
+    exportMolecule(mol, ChemicalSetting.inchi)
   }
 
   @throws[MolExportException]
@@ -77,9 +77,9 @@ object MoleculeExporter {
 
   object ChemicalSetting extends Enumeration {
     type MoleculeType = String
-    val Inchi = "inchi:SAbs,AuxNone,Woff"
-    val Smiles = "smiles"
-    val Smarts = "smarts"
+    val inchi = "inchi:SAbs,AuxNone,Woff"
+    val smiles = "smiles"
+    val smarts = "smarts"
   }
 
 }

@@ -118,7 +118,7 @@ object SparkSingleSubstrateROProjector {
       CliOption.builder(OPTION_VALID_CHEMICAL_TYPES).
         longOpt("valid-chemical-types").
         hasArgs.
-        valueSeparator('#').
+        valueSeparator(',').
         desc("A comma divided list of valid chemical types to import the substrate list as.  " +
           "If your file is mixed, multiple can be provided." +
           "Currently valid types are inchi, smiles, and smarts.  " +
@@ -198,11 +198,16 @@ object SparkSingleSubstrateROProjector {
     LOGGER.info(s"Reduction in ERO list size: ${fullErosList.size} -> ${erosList.size}")
 
     // Allow for multiple chemical types
-    if (cl.hasOption(OPTION_VALID_CHEMICAL_TYPES)) {
-      // Set non-standard chemical formats.  Standard is Inchi w/ some options turned off.
-      MoleculeExporter.setGlobalFormat(cl.getOptionValues(OPTION_VALID_CHEMICAL_TYPES).toList)
+    val chemicalFormats: List[MoleculeImporter.ChemicalFormat.MoleculeType] = if (cl.hasOption(OPTION_VALID_CHEMICAL_TYPES)) {
+      val options = cl.getOptionValues(OPTION_VALID_CHEMICAL_TYPES).toList
+      options.map(x => MoleculeImporter.ChemicalFormat.withName(x).toString)
+    } else {
+      List(MoleculeImporter.ChemicalFormat.Inchi)
     }
 
+    val molExporterFormat = chemicalFormats.map(x => MoleculeExporter.ChemicalSetting.withName(x).toString)
+    MoleculeExporter.setGlobalFormat(molExporterFormat)
+    LOGGER.info(s"Molecule exporter status set to $molExporterFormat")
 
     val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)
     val inchiCorpus = new L2InchiCorpus()
