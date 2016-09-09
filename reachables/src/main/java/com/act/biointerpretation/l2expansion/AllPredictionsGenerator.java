@@ -1,31 +1,27 @@
 package com.act.biointerpretation.l2expansion;
 
 import chemaxon.calculations.clean.Cleaner;
-import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.MoleculeGraph;
+import com.act.analysis.chemicals.MoleculeExporter;
 import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.sars.Sar;
 import com.act.biointerpretation.sars.SerializableReactor;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import scala.collection.JavaConversions;
 
 /**
  * Generates all predictions for a given PredictionSeed.
  */
 public class AllPredictionsGenerator implements PredictionGenerator {
-
-  private static final String INCHI_SETTINGS = new StringBuilder("inchi:").
-      append("SAbs").append(','). // Force absolute stereo to ensure standard InChIs are produced.
-      append("AuxNone").append(','). // Don't write the AuxInfo block.
-      append("Woff"). // Disable warnings.
-      toString();
 
   private static final Integer CLEAN_DIMENSION = 2;
 
@@ -59,9 +55,11 @@ public class AllPredictionsGenerator implements PredictionGenerator {
       return getAllPredictions(projectionMap, seed.getProjectorName());
     } catch (ReactionException e) {
       StringBuilder builder = new StringBuilder();
-      builder.append(e.getMessage())
-          .append(": substrates, reactor: ").append(getInchis(substratesArray))
-          .append(",").append(reactor.getReactorSmarts());
+      builder.append(e.getMessage()).
+              append(": substrates, reactor: ").
+              append(MoleculeExporter.exportMoleculesAsFormatsJava(
+                      JavaConversions.asScalaBuffer(Arrays.asList(substratesArray)).toList())).
+              append(",").append(reactor.getReactorSmarts());
       throw new ReactionException(builder.toString());
     }
   }
@@ -79,12 +77,23 @@ public class AllPredictionsGenerator implements PredictionGenerator {
     List<L2Prediction> result = new ArrayList<>();
 
     for (Molecule[] substrates : projectionMap.keySet()) {
-      List<L2PredictionChemical> predictedSubstrates =
-          L2PredictionChemical.getPredictionChemicals(getInchis(substrates));
 
+      // Substrates
+      scala.collection.immutable.List<Molecule> scalafiedSubstrate =
+              JavaConversions.asScalaBuffer(Arrays.asList(substrates)).toList();
+
+      List<L2PredictionChemical> predictedSubstrates =
+              L2PredictionChemical.getPredictionChemicals(
+                      MoleculeExporter.exportMoleculesAsFormatsJava(scalafiedSubstrate));
+
+      // Products
       for (Molecule[] products : projectionMap.get(substrates)) {
+        scala.collection.immutable.List<Molecule> scalafiedProducts =
+                JavaConversions.asScalaBuffer(Arrays.asList(products)).toList();
+
         List<L2PredictionChemical> predictedProducts =
-            L2PredictionChemical.getPredictionChemicals(getInchis(products));
+            L2PredictionChemical.getPredictionChemicals(
+                    MoleculeExporter.exportMoleculesAsFormatsJava(scalafiedProducts));
 
         L2Prediction prediction = new L2Prediction(nextUid, predictedSubstrates, name, predictedProducts);
 
@@ -93,21 +102,6 @@ public class AllPredictionsGenerator implements PredictionGenerator {
       }
     }
     return result;
-  }
-
-
-  /**
-   * Translate an array of chemaxon Molecules into a List of their String inchi representations
-   *
-   * @param mols An array of molecules.
-   * @return An array of inchis corresponding to the supplied molecules.
-   */
-  private List<String> getInchis(Molecule[] mols) throws IOException {
-    List<String> inchis = new ArrayList<>();
-    for (Molecule mol : mols) {
-      inchis.add(MolExporter.exportToFormat(mol, INCHI_SETTINGS));
-    }
-    return inchis;
   }
 
   /**
