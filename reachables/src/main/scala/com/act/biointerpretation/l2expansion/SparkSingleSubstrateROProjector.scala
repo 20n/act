@@ -4,7 +4,7 @@ import java.io.File
 
 import chemaxon.license.LicenseManager
 import chemaxon.struc.Molecule
-import com.act.analysis.chemicals.{MoleculeExporter, MoleculeImporter}
+import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -197,17 +197,16 @@ object SparkSingleSubstrateROProjector {
     val erosList = eros.getRos.asScala
     LOGGER.info(s"Reduction in ERO list size: ${fullErosList.size} -> ${erosList.size}")
 
-    // Allow for multiple chemical types
-    val chemicalFormats: List[MoleculeImporter.ChemicalFormat.MoleculeType] = if (cl.hasOption(OPTION_VALID_CHEMICAL_TYPES)) {
+    // Determine which formats are being used.
+    val chemicalFormats: List[MoleculeFormat.Value] = if (cl.hasOption(OPTION_VALID_CHEMICAL_TYPES)) {
       val options = cl.getOptionValues(OPTION_VALID_CHEMICAL_TYPES).toList
-      options.map(x => MoleculeImporter.ChemicalFormat.withName(x).toString)
+      options.map(x => MoleculeFormat.withName(x))
     } else {
-      List(MoleculeImporter.ChemicalFormat.Inchi)
+      List(MoleculeFormat.inchi)
     }
 
-    val molExporterFormat = chemicalFormats.map(x => MoleculeExporter.ChemicalSetting.withName(x).toString)
-    MoleculeExporter.setGlobalFormat(molExporterFormat)
-    LOGGER.info(s"Molecule exporter status set to $molExporterFormat")
+    // We set the global state for the exporter so we don't need to pass the format all the way down here.
+    MoleculeExporter.setGlobalFormat(chemicalFormats)
 
     val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)
     val inchiCorpus = new L2InchiCorpus()

@@ -2,7 +2,8 @@ package com.act.biointerpretation.l2expansion;
 
 import chemaxon.formats.MolFormatException;
 import chemaxon.struc.Molecule;
-import com.act.analysis.chemicals.MoleculeImporter;
+import com.act.analysis.chemicals.molecules.MoleculeFormat$;
+import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import com.act.jobs.FileChecker;
 import com.act.jobs.JavaRunnable;
 import org.apache.logging.log4j.LogManager;
@@ -19,6 +20,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+
 
 /**
  * Represents a set of inchis.
@@ -57,15 +59,21 @@ public class L2InchiCorpus {
 
   public List<Molecule> getMolecules() {
     List<String> wrappedInchi = new ArrayList<>();
-    wrappedInchi.add(MoleculeImporter.ChemicalFormat$.MODULE$.Inchi());
+    wrappedInchi.add(MoleculeFormat$.MODULE$.stdInchi().toString());
     return getMolecules(wrappedInchi);
   }
 
   public List<Molecule> getMolecules(List<String> formats) {
+    // We take in a string list here because java won't load in the scala enumeration type...
+    List<MoleculeFormat$.Value> formatList = new ArrayList<>();
+    for (String format : formats){
+      formatList.add(MoleculeFormat$.MODULE$.withName(format));
+    }
+
     List<Molecule> results = new ArrayList<>(getInchiList().size());
     for (String inchi : getInchiList()) {
       try {
-        results.add(MoleculeImporter.importMolecule(inchi, formats));
+        results.add(MoleculeImporter.importMolecule(inchi, formatList));
       } catch (MolFormatException e) {
         LOGGER.error("MolFormatException on metabolite %s. %s", inchi, e.getMessage());
       }

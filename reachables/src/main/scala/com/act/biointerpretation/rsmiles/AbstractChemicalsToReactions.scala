@@ -4,7 +4,7 @@ import java.io.File
 
 import act.server.MongoDB
 import chemaxon.struc.Molecule
-import com.act.analysis.chemicals.MoleculeExporter
+import com.act.analysis.chemicals.molecules.MoleculeExporter
 import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.l2expansion.L2InchiCorpus
 import com.act.biointerpretation.mechanisminspection.Ero
