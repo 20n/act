@@ -214,15 +214,23 @@ object Solver {
   }
 }
   
-class MzToFormula(numDigitsOfPrecision: Int = 5, elements: Set[Atom] = Set(C,H,N,O,P,S)) {
+class MzToFormula(numDigitsOfPrecision: Int = 2, elements: Set[Atom] = Set(C,H,N,O,P,S)) {
   type ChemicalFormula = Map[Atom, Int]
   val intMassesForAtoms = elements.map(a => { 
       val integralMass = (math round a.monoIsotopicMass).toInt
       (a, integralMass) 
     }).toMap
-  def atomToVar(a: Atom) = Var(a.symbol.toString)
   val varsForAtoms = elements.map(a => (a, atomToVar(a))).toMap
   val atomsForVars = elements.map(a => (atomToVar(a), a)).toMap
+
+  def atomToVar(a: Atom) = Var(a.symbol.toString)
+  def prettyEq(a: Double, b: Double) = Math.abs(a - b) < math.pow(10, -numDigitsOfPrecision)
+  def computedMass(formula: Map[Atom, Int]) = {
+    val mass = formula.map{ case (a, i) => i * a.monoIsotopicMass }.reduce(_+_)
+    println(s"${buildChemFormulaA(formula)} -> $mass")
+    mass
+  }
+  def toChemicalFormula(x: (Var, Int)) = (atomsForVars(x._1), x._2)
 
   // we can formulate an (under-determined) equation using integer variables c, h, o, n, s..
   // that define the final formula of the composition of the molecule:
@@ -253,12 +261,16 @@ class MzToFormula(numDigitsOfPrecision: Int = 5, elements: Set[Atom] = Set(C,H,N
     val candidateFormulae: Set[ChemicalFormula] = RHSints.map( intMz => {
       val constraints = buildConstraintOverInts(intMz)
       val sat = Solver.solveMany(constraints)
-      val formulae = sat.map(soln => soln.map{ case (v, value) => (atomsForVars(v), value) })
-      val allSatFormulae = sat.map{ soln => s"${buildChemFormula(soln)}" }
-      println(s"Candidate solutions for the int with +-1 delta: $allSatFormulae")
+      val formulae = sat.map(soln => soln.map(toChemicalFormula))
       formulae
     }).flatten
 
+    val approxMassSat = candidateFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
+    println(s"Candidate solutions for the int with +-1 delta: $approxMassSat")
+
+    val matchingFormulae = candidateFormulae.filter( formula => prettyEq(computedMass(formula), mz) )
+    val preciseMassSat = matchingFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
+    println(s"Candidates that match on precise formula: $preciseMassSat")
     // candidateFormulae has all formulae for deltas to the closest int mz
     // For each formula that we get, we need to calculate whether this is truly the right
     // mz when computed at the precise mass. If it is then we filter it out to the final
@@ -267,12 +279,18 @@ class MzToFormula(numDigitsOfPrecision: Int = 5, elements: Set[Atom] = Set(C,H,N
     Set()
   }
 
-  def buildChemFormula(soln: Map[Var, Int]) = {
+  def buildChemFormulaA(soln: Map[Atom, Int]) = {
     elements.map(a => {
-        val v = atomToVar(a)
-        if (soln(v) != 0) a.symbol.toString + soln(v) else ""
+        if (soln(a) != 0) 
+          a.symbol.toString + soln(a) 
+        else
+          ""
       }
     ).reduce(_+_)
+  }
+
+  def buildChemFormulaV(soln: Map[Var, Int]) = {
+    buildChemFormulaA(soln map toChemicalFormula)
   }
 
   def buildConstraintOverInts(closeMz: Int) = {
@@ -338,7 +356,8 @@ object MzToFormula {
     val opts = List()
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
-    (new MzToFormula(elements = Set(C, H, N, O))).formulaeForMz(151.163)
+    val acetaminophenMz = 151.063324
+    (new MzToFormula(elements = Set(C, H, N, O))).formulaeForMz(acetaminophenMz)
 
     // This is a case where the type parameter is needed or else the compiler fails to infer 
     // the right type for the tuple elements. we can specify it as a type on the variable,
@@ -381,7 +400,7 @@ object MzToFormula {
           assert(false) // found a solution when none should have existed
       }
       case (Some(soln), _) => {
-        println(s"Test find one: ${f.buildChemFormula(soln)} found with mass ~${intMz}")
+        println(s"Test find one: ${f.buildChemFormulaV(soln)} found with mass ~${intMz}")
         assert( expected contains soln )
       }
       case _ => {
@@ -397,7 +416,7 @@ object MzToFormula {
     val vars = constraints.map(Solver.getVars).flatten
     val sat = Solver.solveMany(constraints)
 
-    val descs = sat.map{ soln => s"${f.buildChemFormula(soln)}" }
+    val descs = sat.map{ soln => s"${f.buildChemFormulaV(soln)}" }
     println(s"Test enumerate all: Found ${descs.size} formulae with mass ~${intMz}: $descs")
     if (!(sat equals expected)) {
       println(s"satisfying solution - expected = ${sat -- expected}")
