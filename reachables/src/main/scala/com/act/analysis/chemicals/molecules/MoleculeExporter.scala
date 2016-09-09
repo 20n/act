@@ -24,6 +24,7 @@ object MoleculeExporter {
     exportMolecule(mol, MoleculeFormat.smarts)
   }
 
+  @throws[MolExportException]
   def exportAsInchi(mol: Molecule): String = {
     exportMolecule(mol, MoleculeFormat.inchi)
   }
