@@ -11,8 +11,12 @@ object MoleculeExporter {
   private val moleculeCache = TrieMap[MoleculeFormat.Value, TrieMap[Molecule, String]]()
   private var _globalFormat = List(MoleculeFormat.inchi)
 
-  def setGlobalFormat(formats: List[MoleculeFormat.Value]) = {
+  def setGlobalFormat(formats: List[MoleculeFormat.Value]): Unit = {
     _globalFormat = formats
+  }
+
+  def setGlobalFormat(format: MoleculeFormat.Value): Unit = {
+    setGlobalFormat(List(format))
   }
 
   @throws[MolExportException]
