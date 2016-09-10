@@ -21,7 +21,8 @@ object SparkWrapper extends ToolWrapper {
 
   def sbtAssembly(useCached: Boolean = false): ShellJob = {
     if (useCached && assembledJar.exists()){
-      return new ShellJob("assembled JAR.", List(""))
+      // Placeholder
+      return constructJob("Assembled JAR", None, args=List(""))
     }
 
     // Assemble JAR, don't run tests

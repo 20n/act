@@ -17,6 +17,11 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
   private var errorMethod: Option[(String) => Unit] = None
 
   def asyncJob() {
+    if (commands.flatten.isEmpty) {
+      markAsSuccess()
+      return
+    }
+
     // Run the call in the future
     val (future, cancel) = CanceleableFuture.create[Process](future => commands.run(setupProcessIO()))
     addCancelFunction(cancel)

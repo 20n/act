@@ -29,6 +29,10 @@ object MoleculeImporter {
   def importMolecule(mol: String, formats: List[MoleculeFormat.Value]): Molecule = {
     val resultingInchis: List[Molecule] = formats.flatMap(format => {
       try {
+        // Inchis must start with "InChI="
+        if (format.equals(MoleculeFormat.stdInchi) || format.equals(MoleculeFormat.inchi)){
+          if (!mol.startsWith("InChI=")) throw new MolFormatException()
+        }
         val importedMolecule = Option(importMolecule(mol, format))
         importedMolecule
       } catch {
