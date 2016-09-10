@@ -56,8 +56,8 @@ object AbstractChemicals {
       // Chemaxon technically uses smarts when we say Smiles, so we just make it explicit here.
       val mol = MoleculeImporter.importMolecule(replacedSmarts, MoleculeFormat.smarts)
       
-      // Convert to inchi to standardize format moving forward.
-      Option((chemicalId, new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportMoleculeAsFormats(mol, List(MoleculeFormat.stdInchi, MoleculeFormat.smarts)))))
+      // Convert to inchi to standardize format moving forward as much as we can.  Only they shall pass.
+      Option((chemicalId, new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportMoleculeAsFormats(mol, List(MoleculeFormat.stdInchi)))))
     } catch {
       case e: MolFormatException => None
     }
