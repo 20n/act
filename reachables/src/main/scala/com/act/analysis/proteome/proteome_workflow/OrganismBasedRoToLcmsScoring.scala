@@ -9,6 +9,7 @@ import com.act.workflow.tool_manager.workflow.Workflow
 import com.act.workflow.tool_manager.workflow.workflow_mixins.base.WorkingDirectoryUtility
 import com.act.workflow.tool_manager.workflow.workflow_mixins.composite.{RoToSequences, SarTreeConstructor}
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
+import org.dmg.pmml.Tanimoto
 
 class OrganismBasedRoToLcmsScoring extends Workflow with RoToSequences with SarTreeConstructor with WorkingDirectoryUtility {
 
@@ -84,7 +85,11 @@ class OrganismBasedRoToLcmsScoring extends Workflow with RoToSequences with SarT
         longOpt("similarity-method").
         hasArg.
         desc("A string which is provided to Chemaxon's chemical " +
-          "SimilarityCalculatorFactory which creates calculators for molecule comparison."),
+          "SimilarityCalculatorFactory which creates calculators for molecule comparison.  " +
+          "A complete documentation can be found at https://docs.chemaxon.com/display/docs/Similarity+search. " +
+          "However, the basic options are Tanimoto,Tversky,Substructure,Superstructure, and Euclidean.  " +
+          "Different parameters can be tuned and also provided as the input string, " +
+          "which can be found at the previously mentioned web link."),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )

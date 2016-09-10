@@ -12,7 +12,7 @@ object MoleculeImporter {
   // For java
   @throws[MolFormatException]
   def importMolecule(chemical: Chemical): Molecule = {
-    importMolecule(toMolecule(chemical))
+    importMolecule(chemical.getInChI)
   }
 
   // Overload for easy java interop.
@@ -33,8 +33,6 @@ object MoleculeImporter {
 
     molecule.get
   }
-
-  private implicit def toMolecule(chemical: Chemical): String = chemical.getInChI
 
   object ChemicalSetting extends Enumeration {
     type MoleculeType = String

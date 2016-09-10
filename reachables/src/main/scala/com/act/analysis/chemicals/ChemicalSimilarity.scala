@@ -4,9 +4,6 @@ import chemaxon.descriptors.{SimilarityCalculator, SimilarityCalculatorFactory}
 import chemaxon.struc.Molecule
 import org.apache.log4j.LogManager
 
-/**
-  * Concurrency safe cached molecule
-  */
 object ChemicalSimilarity {
   private val logger = LogManager.getLogger(getClass)
 

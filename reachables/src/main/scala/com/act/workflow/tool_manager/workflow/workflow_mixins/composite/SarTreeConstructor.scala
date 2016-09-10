@@ -112,7 +112,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
 
     // Score inchis by the clusters
     val inchisCorpus = new L2InchiCorpus(inchis)
-    val results = scoreInchiList(clusteredSars, inchisCorpus)
+    val results = scoreInchiCorpus(clusteredSars, inchisCorpus)
 
     sortInDescendingOrderAndWriteToTsv(results, outputFile)
   }
@@ -178,7 +178,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     *
     * @return A map of Inchi -> Score, where the score is a single Double.
     */
-  def scoreInchiList(sarTreeClusters: Map[Int, SarTree], inchiCorpus: L2InchiCorpus): Map[String, Double] = {
+  def scoreInchiCorpus(sarTreeClusters: Map[Int, SarTree], inchiCorpus: L2InchiCorpus): Map[String, Double] = {
     // Score each cluster and reduce the scoring down into the sum of all the clusters
     val combinedInchiScore: ParSeq[ParMap[String, Double]] = sarTreeClusters.par.map({ case (key, value) =>
       logger.info(s"Started scoring corpus $key.")
@@ -225,69 +225,37 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     *
     * @param sarTree          The input SarTree to check against
     * @param currentLevelList The remaining SarTreeNodes that haven't been invalidated.
-    * @param queryMolecule    Which molecule to check against the Sar Tree
+    * @param molecule         Which molecule to check against the Sar Tree
     *
     * @return
     */
-  def scoreInchiAgainstSarTree(sarTree: SarTree, currentLevelList: Seq[SarTreeNode])(queryMolecule: Molecule): Double = {
+  def scoreInchiAgainstSarTree(sarTree: SarTree, currentLevelList: List[SarTreeNode], molecule: Molecule): Double = {
+    val nodesMatchingSar = currentLevelList filter (_.getSar.test(List[Molecule](molecule)))
+
     // Arbitrary score value
-    val baseAdd = 2.0
+    val baseAdd = 10.0
 
-    /**
-      * Scoring function for a SAR hit.
-      *
-      * @param sarTreeNode Tree node that has been determined to be a SAR hit.
-      *
-      * @return
-      */
-    def scoreHit(sarTreeNode: SarTreeNode): Double = {
-      val similarity = ChemicalSimilarity.calculateSimilarity(queryMolecule, sarTreeNode.getSubstructure)
-
-      /**
-        * Value if a molecule exactly matches another
-        *
-        */
-      def scoreExactMatch(): Double = {
-        baseAdd * baseAdd
-      }
-
-      /**
-        * When the leaf node is a substructure of the input molecule.
-        *
-        * For limited test cases around acetaminophen,
-        * we've found this better distinguishes known vs unknown metabolites.
-        *
-        * @return
-        */
-      def scoreSubstrateIsSubstructureOfQuery(): Double = {
-        -(1 - similarity)
-      }
-
-      // If a tree node doesn't have children, it is a leaf and therefore a chemical used to construct the SAR tree.
-      val sarTreeChildren: Seq[SarTreeNode] = sarTree.getChildren(sarTreeNode).toList
-      val isLeafNode = sarTreeChildren.isEmpty
-
-      if (isLeafNode) {
-        // Similarity of 1 means exact match.
-        return if (similarity >= 1) scoreExactMatch() else scoreSubstrateIsSubstructureOfQuery()
-      }
-
-      // Adding one adds a bit of weight to traversal (Deeper -> more score)
-      1 + scoreInchiAgainstSarTree(sarTree, sarTreeChildren)(queryMolecule)
+    // No matches
+    nodesMatchingSar.isEmpty match {
+      case true => baseAdd
+      case false =>
+        // See how any remaining nodes score upon further traversal.
+        val deeperScores: List[Double] = nodesMatchingSar map (node =>
+          // Leaf Node
+          if (sarTree.getChildren(node).isEmpty) {
+            // Get really excited if we see an exact match
+            if (node.getSubstructure.equals(molecule)) {
+              baseAdd * baseAdd * baseAdd
+            } else {
+              // TODO Add a heuristic in to filter out REALLY REALLY large and general substrates.
+              // Slightly penalize if overshoot substrate
+              -baseAdd
+            }
+          } else {
+            // Nodes still remain, see how deep prior to hitting a nothing
+            scoreInchiAgainstSarTree(sarTree, sarTree.getChildren(node).toList, molecule)
+          })
+        baseAdd + deeperScores.sum
     }
-
-    // Score if SAR tree node is a miss
-    def scoreMiss(sarTreeNode: SarTreeNode): Double = {
-      ChemicalSimilarity.calculateSimilarity(queryMolecule, sarTreeNode.getSubstructure)
-    }
-
-    // Figure out where to put the SAR tree node.
-    def scoreMolecule(sarTreeNode: SarTreeNode): Double = {
-      val matchesSar = sarTreeNode.getSar.test(List[Molecule](queryMolecule))
-      baseAdd * (if (matchesSar) scoreHit(sarTreeNode) else scoreMiss(sarTreeNode))
-    }
-
-    // Score every molecule and return the sum of their scores.
-    currentLevelList.map(scoreMolecule).sum
   }
 }
