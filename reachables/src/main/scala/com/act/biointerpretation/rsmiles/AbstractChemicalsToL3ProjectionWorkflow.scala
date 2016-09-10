@@ -4,9 +4,8 @@ import java.io.File
 
 import com.act.workflow.tool_manager.jobs.{Job, ScalaJob}
 import com.act.workflow.tool_manager.tool_wrappers.SparkWrapper
-import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import com.act.workflow.tool_manager.workflow.Workflow
-import com.ibm.db2.jcc.am.up
+import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.log4j.LogManager
 
 
@@ -75,7 +74,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
   override def defineWorkflow(cl: CommandLine): Job = {
     // Make sure we have an assembled JAR available.
     val sparkMaster = cl.getOptionValue(OPTION_SPARK_MASTER, "spark://10.0.20.19:7077")
-    headerJob.thenRun(SparkWrapper.sbtAssembly(useCached = true))
+    headerJob.thenRun(SparkWrapper.sbtAssembly(useCached = false))
 
     val chemaxonLicense = new File(cl.getOptionValue(OPTION_CHEMAXON_LICENSE))
     require(chemaxonLicense.exists(), s"Chemaxon license does not exist as the supplied location.  " +
@@ -118,8 +117,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       val roProjectionArgs = List(
         "--substrates-list", substrateListOutputFile.getAbsolutePath,
         "-o", roProjectionsOutputFileDirectory.getAbsolutePath,
-        "-l", chemaxonLicense.getAbsolutePath,
-        "-c", "stdInchi,smarts"
+        "-l", chemaxonLicense.getAbsolutePath
       )
 
       val singleSubstrateRoProjectorClassPath = "com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector"
