@@ -215,9 +215,17 @@ object Solver {
 }
   
 class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
+  // this is critical correctness parameter. The solver searches the integral space 
+  // int(mz) + { -delta .. +delta} for candidate solutions. it then validates each
+  // solution in the continuous domain (but up to the precision as dictated by mass
+  // mass equality of MonoIsotopicMass. If the solver fails to find valid formulae
+  // for some test cases we would need to expand this delta to ensure the right space
+  // is being searched. APAP for instance gets solved even with delta = 0.
+  val delta = 0
+
   type ChemicalFormula = Map[Atom, Int]
-  val intMassesForAtoms = elements.map(a => { 
-      val integralMass = (math round a.initMass).toInt
+  val intMassesForAtoms: Map[Atom, Int] = elements.map(a => { 
+      val integralMass = a.mass.rounded(0).toInt // (math round a.initMass).toInt
       (a, integralMass) 
     }).toMap
   val varsForAtoms = elements.map(a => (a, atomToVar(a))).toMap
@@ -250,8 +258,8 @@ class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
   // all of those solutions!
 
   def formulaeForMz(mz: MonoIsotopicMass): Set[ChemicalFormula] = {
-    val delta = 1
-    val RHSints = (-delta to delta).map(d => (math round mz).toInt + d).toSet
+    // val RHSints = (-delta to delta).map(d => (math round mz).toInt + d).toSet
+    val RHSints = (-delta to delta).map(d => (mz rounded 0).toInt + d).toSet
 
     val candidateFormulae: Set[ChemicalFormula] = RHSints.map( intMz => {
       val constraints = buildConstraintOverInts(intMz)
@@ -261,17 +269,17 @@ class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
     }).flatten
 
     val approxMassSat = candidateFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
-    println(s"Candidate solutions for the int with +-1 delta: $approxMassSat")
+    println(s"Num candidate solutions for the int with +-${delta} delta: ${approxMassSat.size}")
 
-    val matchingFormulae = candidateFormulae.filter( computedMass(_).equals(mz) )
-    val preciseMassSat = matchingFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
-    println(s"Candidates that match on precise formula: $preciseMassSat")
     // candidateFormulae has all formulae for deltas to the closest int mz
     // For each formula that we get, we need to calculate whether this is truly the right
     // mz when computed at the precise mass. If it is then we filter it out to the final
     // formulae as as true solution
+    val matchingFormulae: Set[ChemicalFormula] = candidateFormulae.filter( computedMass(_).equals(mz) )
+    val preciseMassSatFormulae = matchingFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
+    println(s"Candidates that match on precise formula: $preciseMassSatFormulae")
 
-    Set()
+    matchingFormulae
   }
 
   def buildChemFormulaA(soln: Map[Atom, Int]) = {
@@ -309,6 +317,9 @@ class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
     val boundLists = elements.map(a => {
         val lowerBound = LinIneq(varsForAtoms(a), Ge, Const(0))
 
+        // default rounding gets to 3 decimal places, so basically accurate mass
+        val atomMass = a.mass.rounded() 
+
         // TODO: check performance of the sat solving with these intricate bounds
         // This precise a bound may be making life difficult for the solver.
         // Alternatives are: 
@@ -316,7 +327,8 @@ class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
         //  #2) lowest x, such that 2^x > closeMz
         // `#2` is a bit vector with only a single highest significant bit set
         // that translates to a very easy comparison boolean circuit.
-        val max = (math ceil (closeMz.toDouble / a.mass)).toInt
+        val max = (math ceil (closeMz.toDouble / atomMass)).toInt
+
         val upper = a match {
           case H => {
             // there cannot be more than (valence * others) - count(others)

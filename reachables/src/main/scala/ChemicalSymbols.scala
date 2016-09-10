@@ -126,8 +126,13 @@ object ChemicalSymbols {
     // tolerate differences in the last decimal place at which monoIsotopicMasses specified
     // i.e., we consider masses upto 0.001 away from each other to be identical
     // note that the mass of an electron is 5.5e-4 Da, so we allow upto around an electron mass
-    private val tolerance = 1e3
-    private val truncated = (math round (initMass * tolerance)) / tolerance
+    private val defaultNumPlaces = 3
+    private val truncated = rounded()
+
+    def rounded(numDecimalPlaces: Int = defaultNumPlaces) = {
+      val tolerance = math.pow(10,-numDecimalPlaces) // 1e-3
+      (math round (initMass / tolerance)) * tolerance
+    }
 
     override def equals(that: Any) = that match { 
       case that: MonoIsotopicMass => this.truncated == that.truncated
