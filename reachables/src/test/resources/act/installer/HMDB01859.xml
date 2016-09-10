@@ -1,0 +1,1065 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metabolite>
+  <version>3.5</version>
+  <creation_date>2006-02-22 03:57:58 -0700</creation_date>
+  <update_date>2013-05-30 13:45:12 -0600</update_date>
+  <accession>HMDB01859</accession>
+  <secondary_accessions>
+  </secondary_accessions>
+  <name>Acetaminophen</name>
+  <description>The excellent tolerability of therapeutic doses of paracetamol (acetaminophen) is a major factor in the very wide use of the drug. The major problem in the use of paracetamol is its hepatotoxicity after an overdose. Hepatotoxicity has also been reported after therapeutic doses, but critical analysis indicates that most patients with alleged toxicity from therapeutic doses have taken overdoses. Importantly, prospective studies indicate that therapeutic doses of paracetamol are an unlikely cause of hepatotoxicity in patients who ingest moderate to large amounts of alcohol. (PMID 15733027). Single doses of paracetamol are effective analgesics for acute postoperative pain and give rise to few adverse effects. (PMID 14974073). Acetaminophen (AAP) overdose and the resulting hepatotoxicity is an important clinical problem. In addition, AAP is widely used as a prototype hepatotoxin to study mechanisms of chemical-induced cell injury and to test the hepatoprotective potential of new drugs and herbal medicines. Because of its importance, the mechanisms of AAP-induced liver cell injury have been extensively investigated and controversially discussed for many years. (PMID 16863451).</description>
+  <synonyms>
+    <synonym>4'-Hydroxyacetanilide</synonym>
+    <synonym>4-(Acetylamino)phenol</synonym>
+    <synonym>4-Acetamidophenol</synonym>
+    <synonym>4-Acetaminophenol</synonym>
+    <synonym>4-Hydroxyacetanilide</synonym>
+    <synonym>4-Hydroxyanilid kyseliny octove</synonym>
+    <synonym>A-Per</synonym>
+    <synonym>A.F. Anacin</synonym>
+    <synonym>Abenol</synonym>
+    <synonym>Abensanil</synonym>
+    <synonym>Abrol</synonym>
+    <synonym>Abrolet</synonym>
+    <synonym>Acamol</synonym>
+    <synonym>Accu-Tap</synonym>
+    <synonym>Acenol</synonym>
+    <synonym>Acephen</synonym>
+    <synonym>Acertol</synonym>
+    <synonym>Aceta Elixir</synonym>
+    <synonym>Aceta Tablets</synonym>
+    <synonym>Acetagesic</synonym>
+    <synonym>Acetalgin</synonym>
+    <synonym>Acetaminofen</synonym>
+    <synonym>Acetaminophen</synonym>
+    <synonym>Acetaminophen Uniserts</synonym>
+    <synonym>Acetamol</synonym>
+    <synonym>Acetofen</synonym>
+    <synonym>Actamin</synonym>
+    <synonym>Actamin Extra</synonym>
+    <synonym>Actamin Super</synonym>
+    <synonym>Actifed Plus</synonym>
+    <synonym>Actimol Chewable Tablets</synonym>
+    <synonym>Actimol Children'S Suspension</synonym>
+    <synonym>Actimol Infants' Suspension</synonym>
+    <synonym>Actimol Junior Strength Caplets</synonym>
+    <synonym>Actron</synonym>
+    <synonym>Afebrin</synonym>
+    <synonym>Afebryl</synonym>
+    <synonym>Aferadol</synonym>
+    <synonym>Algesidal</synonym>
+    <synonym>Algina</synonym>
+    <synonym>Algomol</synonym>
+    <synonym>Algotropyl</synonym>
+    <synonym>Allay</synonym>
+    <synonym>alpha-Per</synonym>
+    <synonym>Alpiny</synonym>
+    <synonym>Alpinyl</synonym>
+    <synonym>Alvedon</synonym>
+    <synonym>Amadil</synonym>
+    <synonym>Aminofen</synonym>
+    <synonym>Aminofen Max</synonym>
+    <synonym>Anacin-3</synonym>
+    <synonym>Anacin-3 Extra Strength</synonym>
+    <synonym>Anadin dla dzieci</synonym>
+    <synonym>Anaflon</synonym>
+    <synonym>Analter</synonym>
+    <synonym>Anapap</synonym>
+    <synonym>Andox</synonym>
+    <synonym>Anelix</synonym>
+    <synonym>Anexsia</synonym>
+    <synonym>Anexsia 10/660</synonym>
+    <synonym>Anexsia 5/325</synonym>
+    <synonym>Anexsia 7.5/325</synonym>
+    <synonym>Anexsia 7.5/650</synonym>
+    <synonym>Anhiba</synonym>
+    <synonym>Anoquan</synonym>
+    <synonym>Anti-Algos</synonym>
+    <synonym>Antidol</synonym>
+    <synonym>Apacet</synonym>
+    <synonym>Apacet Capsules</synonym>
+    <synonym>Apacet Elixir</synonym>
+    <synonym>Apacet Extra Strength Caplets</synonym>
+    <synonym>Apacet Extra Strength Tablets</synonym>
+    <synonym>Apacet Regular Strength Tablets</synonym>
+    <synonym>Apadon</synonym>
+    <synonym>Apamid</synonym>
+    <synonym>Apamide</synonym>
+    <synonym>APAP</synonym>
+    <synonym>Apitrelal</synonym>
+    <synonym>Apo-Acetaminophen</synonym>
+    <synonym>Arfen</synonym>
+    <synonym>Asetam</synonym>
+    <synonym>Asomal</synonym>
+    <synonym>Aspac</synonym>
+    <synonym>Aspirin Free Anacin Maximum Strength Caplets</synonym>
+    <synonym>Aspirin Free Anacin Maximum Strength Gel Caplets</synonym>
+    <synonym>Aspirin Free Anacin Maximum Strength Tablets</synonym>
+    <synonym>Aspirin-Free Anacin</synonym>
+    <synonym>Aspirin-Free Excedrin Caplets</synonym>
+    <synonym>Asplin</synonym>
+    <synonym>Atasol Caplets</synonym>
+    <synonym>Atasol Drops</synonym>
+    <synonym>Atasol Forte Caplets</synonym>
+    <synonym>Atasol Forte Tablets</synonym>
+    <synonym>Atasol Oral Solution</synonym>
+    <synonym>Atasol Tablets</synonym>
+    <synonym>Atralidon</synonym>
+    <synonym>Babikan</synonym>
+    <synonym>Bacetamol</synonym>
+    <synonym>Bancap</synonym>
+    <synonym>Bancap Hc</synonym>
+    <synonym>Banesin</synonym>
+    <synonym>Bayer Select Allergy-Sinus</synonym>
+    <synonym>Bayer Select Head Cold</synonym>
+    <synonym>Bayer Select Headache Pain</synonym>
+    <synonym>Bayer Select Maximum Strength Headache Pain Relief Formula</synonym>
+    <synonym>Bayer Select Menstrual Multi-Symptom</synonym>
+    <synonym>Bayer Select Sinus Pain Relief</synonym>
+    <synonym>Ben-u-ron</synonym>
+    <synonym>Benmyo</synonym>
+    <synonym>Bickie-mol</synonym>
+    <synonym>Biocetamol</synonym>
+    <synonym>Bucet</synonym>
+    <synonym>Butalbital</synonym>
+    <synonym>Butapap</synonym>
+    <synonym>Cadafen</synonym>
+    <synonym>Calapol</synonym>
+    <synonym>Calmanticold</synonym>
+    <synonym>Calpol</synonym>
+    <synonym>Capital with Codeine</synonym>
+    <synonym>Captin</synonym>
+    <synonym>Causalon</synonym>
+    <synonym>Cefalex</synonym>
+    <synonym>Cetadol</synonym>
+    <synonym>Children'S Acetaminophen Elixir Drops</synonym>
+    <synonym>Children'S Acetaminophen Oral Solution</synonym>
+    <synonym>Children'S Tylenol Chewable</synonym>
+    <synonym>Claradol Codeine</synonym>
+    <synonym>Clixodyne</synonym>
+    <synonym>Co-Gesic</synonym>
+    <synonym>Cod-Acamol Forte</synonym>
+    <synonym>Codabrol</synonym>
+    <synonym>Codalgin</synonym>
+    <synonym>Codapane</synonym>
+    <synonym>Codicet</synonym>
+    <synonym>Codisal</synonym>
+    <synonym>Codisal Forte</synonym>
+    <synonym>Codoliprane</synonym>
+    <synonym>Codral Pain Relief</synonym>
+    <synonym>Cofamol</synonym>
+    <synonym>Conacetol</synonym>
+    <synonym>Contac Cough &amp; Sore Throat Formula</synonym>
+    <synonym>Contra-Schmerz P</synonym>
+    <synonym>Coricidin</synonym>
+    <synonym>Coricidin D</synonym>
+    <synonym>Coricidin Sinus</synonym>
+    <synonym>Cosutone</synonym>
+    <synonym>Croix Blanche</synonym>
+    <synonym>Cuponol</synonym>
+    <synonym>Curadon</synonym>
+    <synonym>Curpol</synonym>
+    <synonym>Custodial</synonym>
+    <synonym>Dapa X-S</synonym>
+    <synonym>Darocet</synonym>
+    <synonym>Darvocet</synonym>
+    <synonym>Darvocet-N 50</synonym>
+    <synonym>Datril</synonym>
+    <synonym>Datril Extra-Strength</synonym>
+    <synonym>Daygrip</synonym>
+    <synonym>Demilets</synonym>
+    <synonym>Deminofen</synonym>
+    <synonym>Democyl</synonym>
+    <synonym>Demogripal</synonym>
+    <synonym>Desfebre</synonym>
+    <synonym>Dhamol</synonym>
+    <synonym>Dhc Plus</synonym>
+    <synonym>Dial-a-gesic</synonym>
+    <synonym>Dial-alpha-gesic</synonym>
+    <synonym>Dimindol</synonym>
+    <synonym>Dirox</synonym>
+    <synonym>Disprol</synonym>
+    <synonym>Dol-Stop</synonym>
+    <synonym>Dolcor</synonym>
+    <synonym>Dolefin</synonym>
+    <synonym>Dolegrippin</synonym>
+    <synonym>Dolene Ap-65</synonym>
+    <synonym>Dolgesic</synonym>
+    <synonym>Doliprane</synonym>
+    <synonym>Dolko</synonym>
+    <synonym>Dolofugin</synonym>
+    <synonym>Doloreduct</synonym>
+    <synonym>Dolorfug</synonym>
+    <synonym>Dolorol Forte</synonym>
+    <synonym>Dolorstop</synonym>
+    <synonym>Dolotec</synonym>
+    <synonym>Dolprone</synonym>
+    <synonym>Dorocoff</synonym>
+    <synonym>Dresan</synonym>
+    <synonym>Dristan Cold No Drowsiness</synonym>
+    <synonym>Dristancito</synonym>
+    <synonym>Duracetamol</synonym>
+    <synonym>Duradyne Dhc</synonym>
+    <synonym>Durapan</synonym>
+    <synonym>Dymadon</synonym>
+    <synonym>Dymadon Co</synonym>
+    <synonym>Dymadon Forte</synonym>
+    <synonym>Dypap</synonym>
+    <synonym>Ecosetol</synonym>
+    <synonym>Elixodyne</synonym>
+    <synonym>Empracet</synonym>
+    <synonym>Endecon</synonym>
+    <synonym>Enelfa</synonym>
+    <synonym>Eneril</synonym>
+    <synonym>Esgic</synonym>
+    <synonym>Esgic-Plus</synonym>
+    <synonym>Eu-Med</synonym>
+    <synonym>Excedrin</synonym>
+    <synonym>Excedrin Caplets</synonym>
+    <synonym>Excedrin Extra Strength Caplets</synonym>
+    <synonym>Excipain</synonym>
+    <synonym>Exdol</synonym>
+    <synonym>Exdol Strong</synonym>
+    <synonym>Fanalgic</synonym>
+    <synonym>Farmadol</synonym>
+    <synonym>Febranine</synonym>
+    <synonym>Febrectal</synonym>
+    <synonym>Febrectol</synonym>
+    <synonym>Febrex</synonym>
+    <synonym>Febricet</synonym>
+    <synonym>Febridol</synonym>
+    <synonym>Febrilix</synonym>
+    <synonym>Febrin</synonym>
+    <synonym>Febrinol</synonym>
+    <synonym>Febro-Gesic</synonym>
+    <synonym>Febrolin</synonym>
+    <synonym>Femcet</synonym>
+    <synonym>Fendon</synonym>
+    <synonym>Fensum</synonym>
+    <synonym>Fepanil</synonym>
+    <synonym>Feverall Junior Strength</synonym>
+    <synonym>Feverall Sprinkle Caps Junior Strength</synonym>
+    <synonym>Fevor</synonym>
+    <synonym>Finimal</synonym>
+    <synonym>Finiweh</synonym>
+    <synonym>Fioricet</synonym>
+    <synonym>Fluparmol</synonym>
+    <synonym>Fortalidon P</synonym>
+    <synonym>Freka-cetamol</synonym>
+    <synonym>Gattaphen T</synonym>
+    <synonym>Gelocatil</synonym>
+    <synonym>Geluprane</synonym>
+    <synonym>Genapap Children'S Elixir</synonym>
+    <synonym>Genapap Children'S Tablets</synonym>
+    <synonym>Genapap Extra Strength Caplets</synonym>
+    <synonym>Genapap Extra Strength Tablets</synonym>
+    <synonym>Genapap Regular Strength Tablets</synonym>
+    <synonym>Genebs Extra Strength Caplets</synonym>
+    <synonym>Genebs Regular Strength Tablets</synonym>
+    <synonym>Genebs X-Tra</synonym>
+    <synonym>Geralgine-P</synonym>
+    <synonym>Gripin Bebe</synonym>
+    <synonym>Grippostad</synonym>
+    <synonym>Gynospasmine</synonym>
+    <synonym>Hedex</synonym>
+    <synonym>Helon N</synonym>
+    <synonym>Homoolan</synonym>
+    <synonym>Hy-Phen</synonym>
+    <synonym>Hycomine Compound</synonym>
+    <synonym>Hydrocet</synonym>
+    <synonym>Ildamol</synonym>
+    <synonym>Inalgex</synonym>
+    <synonym>Infadrops</synonym>
+    <synonym>Infants' Feverall</synonym>
+    <synonym>Influbene N</synonym>
+    <synonym>Injectapap</synonym>
+    <synonym>Intensin</synonym>
+    <synonym>Janupap</synonym>
+    <synonym>Junior Disprol</synonym>
+    <synonym>Kataprin</synonym>
+    <synonym>Kinder Finimal</synonym>
+    <synonym>Korum</synonym>
+    <synonym>Kratofin simplex</synonym>
+    <synonym>Labamol</synonym>
+    <synonym>Lekadol</synonym>
+    <synonym>Lemgrip</synonym>
+    <synonym>Lemsip</synonym>
+    <synonym>Lestemp</synonym>
+    <synonym>Liquagesic</synonym>
+    <synonym>Liquigesic Co</synonym>
+    <synonym>Liquiprin</synonym>
+    <synonym>Liquiprin Children'S Elixir</synonym>
+    <synonym>Liquiprin Infants" Drops</synonym>
+    <synonym>Lonarid</synonym>
+    <synonym>Lonarid Mono</synonym>
+    <synonym>Lorcet-Hd</synonym>
+    <synonym>Lortab</synonym>
+    <synonym>Lupocet</synonym>
+    <synonym>Lyteca</synonym>
+    <synonym>Lyteca Syrup</synonym>
+    <synonym>Magnidol</synonym>
+    <synonym>Malex N</synonym>
+    <synonym>Malgis</synonym>
+    <synonym>Malidens</synonym>
+    <synonym>Maxadol</synonym>
+    <synonym>Medigesic Plus</synonym>
+    <synonym>Medinol Paediatric</synonym>
+    <synonym>Medocodene</synonym>
+    <synonym>Melabon Infantil</synonym>
+    <synonym>Mexalen</synonym>
+    <synonym>Midol Maximum Strength</synonym>
+    <synonym>Midol PM Night Time Formula</synonym>
+    <synonym>Midol Regular Strength</synonym>
+    <synonym>Midol Teen Formula</synonym>
+    <synonym>Migraleve Yellow</synonym>
+    <synonym>Minafen</synonym>
+    <synonym>Minoset</synonym>
+    <synonym>Miralgin</synonym>
+    <synonym>Momentum</synonym>
+    <synonym>Mono Praecimed</synonym>
+    <synonym>Multin</synonym>
+    <synonym>N-(4-Hydroxyphenyl)acetamide</synonym>
+    <synonym>N-Acetyl-4-aminophenol</synonym>
+    <synonym>N-Acetyl-p-aminophenol</synonym>
+    <synonym>Naldegesic</synonym>
+    <synonym>NAPA</synonym>
+    <synonym>Napafen</synonym>
+    <synonym>Napap</synonym>
+    <synonym>Naprinol</synonym>
+    <synonym>Nealgyl</synonym>
+    <synonym>Nebs</synonym>
+    <synonym>Neo-Fepramol</synonym>
+    <synonym>NeoCitran</synonym>
+    <synonym>Neodol</synonym>
+    <synonym>Neodolito</synonym>
+    <synonym>Neopap</synonym>
+    <synonym>Neotrend</synonym>
+    <synonym>Neuridon</synonym>
+    <synonym>New Cortal for Children</synonym>
+    <synonym>NilnOcen</synonym>
+    <synonym>Nina</synonym>
+    <synonym>No-Febril</synonym>
+    <synonym>Nobedon</synonym>
+    <synonym>Nodolex</synonym>
+    <synonym>Noral</synonym>
+    <synonym>Norcet</synonym>
+    <synonym>Norco</synonym>
+    <synonym>O-Acetaminophenol</synonym>
+    <synonym>Oltyl</synonym>
+    <synonym>Oralgan</synonym>
+    <synonym>Oraphen-PD</synonym>
+    <synonym>Ortensan</synonym>
+    <synonym>Oxycet</synonym>
+    <synonym>Oxycocet</synonym>
+    <synonym>Oxycodone 2.5/Apap 500</synonym>
+    <synonym>Oxycodone 5/Apap 500</synonym>
+    <synonym>p-(Acetylamino)phenol</synonym>
+    <synonym>p-Acetamidophenol</synonym>
+    <synonym>p-Acetaminophenol</synonym>
+    <synonym>p-Acetylaminophenol</synonym>
+    <synonym>p-Hydroxyacetanilide</synonym>
+    <synonym>p-Hydroxyphenolacetamide</synonym>
+    <synonym>Paceco</synonym>
+    <synonym>Pacemo</synonym>
+    <synonym>Pacemol</synonym>
+    <synonym>Pacet</synonym>
+    <synonym>Pacimol</synonym>
+    <synonym>Paedialgon</synonym>
+    <synonym>Paedol</synonym>
+    <synonym>Painex</synonym>
+    <synonym>Paldesic</synonym>
+    <synonym>Pamol</synonym>
+    <synonym>Panacete</synonym>
+    <synonym>Panadeine</synonym>
+    <synonym>Panadeine Co</synonym>
+    <synonym>Panadiene</synonym>
+    <synonym>Panado-Co</synonym>
+    <synonym>Panado-Co Caplets</synonym>
+    <synonym>Panadol</synonym>
+    <synonym>Panadol Extra Strength</synonym>
+    <synonym>Panadol Junior Strength Caplets</synonym>
+    <synonym>Panadol Maximum Strength Caplets</synonym>
+    <synonym>Panadol Maximum Strength Tablets</synonym>
+    <synonym>Panaleve</synonym>
+    <synonym>Panamax</synonym>
+    <synonym>Panasorb</synonym>
+    <synonym>Panasorbe</synonym>
+    <synonym>Panets</synonym>
+    <synonym>Panex</synonym>
+    <synonym>Panodil</synonym>
+    <synonym>Panofen</synonym>
+    <synonym>Pantalgin</synonym>
+    <synonym>Papa-Deine #3</synonym>
+    <synonym>Papa-Deine #4</synonym>
+    <synonym>Para-Suppo</synonym>
+    <synonym>Para-Tabs</synonym>
+    <synonym>Paracemol</synonym>
+    <synonym>Paracenol</synonym>
+    <synonym>Paracet</synonym>
+    <synonym>Paracetamol</synonym>
+    <synonym>Paracetamol AL</synonym>
+    <synonym>Paracetamol Antipanin P</synonym>
+    <synonym>Paracetamol Basics</synonym>
+    <synonym>Paracetamol BC</synonym>
+    <synonym>Paracetamol DC</synonym>
+    <synonym>Paracetamol Dr. Schmidgall</synonym>
+    <synonym>Paracetamol Fecofar</synonym>
+    <synonym>Paracetamol Genericon</synonym>
+    <synonym>Paracetamol Hanseler</synonym>
+    <synonym>Paracetamol Harkley</synonym>
+    <synonym>Paracetamol Heumann</synonym>
+    <synonym>Paracetamol Hexal</synonym>
+    <synonym>Paracetamol Italfarmaco</synonym>
+    <synonym>Paracetamol Nycomed</synonym>
+    <synonym>Paracetamol PB</synonym>
+    <synonym>Paracetamol Raffo</synonym>
+    <synonym>Paracetamol Ratiopharm</synonym>
+    <synonym>Paracetamol Rosch</synonym>
+    <synonym>Paracetamol Saar</synonym>
+    <synonym>Paracetamol SmithKline Beecham</synonym>
+    <synonym>Paracetamol Stada</synonym>
+    <synonym>Paracetamol von ct</synonym>
+    <synonym>Paracetamol Winthrop</synonym>
+    <synonym>Paracetamole</synonym>
+    <synonym>Paracetamolo</synonym>
+    <synonym>Paracetamolum</synonym>
+    <synonym>Paracetanol</synonym>
+    <synonym>Paracetol</synonym>
+    <synonym>Paracin</synonym>
+    <synonym>Paracod</synonym>
+    <synonym>Paracodol</synonym>
+    <synonym>Parador</synonym>
+    <synonym>Paradrops</synonym>
+    <synonym>Parakapton</synonym>
+    <synonym>Parake</synonym>
+    <synonym>Paralen</synonym>
+    <synonym>Paralief</synonym>
+    <synonym>Paralink</synonym>
+    <synonym>Paralyoc</synonym>
+    <synonym>Paramol</synonym>
+    <synonym>Paramolan</synonym>
+    <synonym>Paranox</synonym>
+    <synonym>Parapan</synonym>
+    <synonym>Parasedol</synonym>
+    <synonym>Parasin</synonym>
+    <synonym>Paraspen</synonym>
+    <synonym>Parcetol</synonym>
+    <synonym>Parelan</synonym>
+    <synonym>Parmol</synonym>
+    <synonym>Parogal</synonym>
+    <synonym>Paroma</synonym>
+    <synonym>Pasolind</synonym>
+    <synonym>Pasolind N</synonym>
+    <synonym>PCM Paracetamol Lichtenstein</synonym>
+    <synonym>Pe-Tam</synonym>
+    <synonym>Pediapirin</synonym>
+    <synonym>Pediatrix</synonym>
+    <synonym>Pedric</synonym>
+    <synonym>Percocet</synonym>
+    <synonym>Percocet-5</synonym>
+    <synonym>Percocet-Demi</synonym>
+    <synonym>Percogesic with Codeine</synonym>
+    <synonym>Perdolan Mono</synonym>
+    <synonym>Phenaphen</synonym>
+    <synonym>Phenaphen Caplets</synonym>
+    <synonym>Phenaphen W/Codeine</synonym>
+    <synonym>Phendon</synonym>
+    <synonym>Phenipirin</synonym>
+    <synonym>Phogoglandin</synonym>
+    <synonym>Phrenilin</synonym>
+    <synonym>Phrenilin Forte</synonym>
+    <synonym>Pinex</synonym>
+    <synonym>Piramin</synonym>
+    <synonym>Pirinasol</synonym>
+    <synonym>Plicet</synonym>
+    <synonym>Polmofen</synonym>
+    <synonym>Predimol</synonym>
+    <synonym>Predualito</synonym>
+    <synonym>Prestwick_13</synonym>
+    <synonym>Prodol</synonym>
+    <synonym>Prompt</synonym>
+    <synonym>Prontina</synonym>
+    <synonym>Propacet</synonym>
+    <synonym>Propacet 100</synonym>
+    <synonym>Proval #3</synonym>
+    <synonym>Puernol</synonym>
+    <synonym>Pulmofen</synonym>
+    <synonym>Pyregesic-C</synonym>
+    <synonym>Pyrigesic</synonym>
+    <synonym>Pyrinazine</synonym>
+    <synonym>Pyromed</synonym>
+    <synonym>Quiet World</synonym>
+    <synonym>Redutemp</synonym>
+    <synonym>Reliv</synonym>
+    <synonym>Remedol</synonym>
+    <synonym>Rhinex D-Lay Tablets</synonym>
+    <synonym>Rivalgyl</synonym>
+    <synonym>Robigesic</synonym>
+    <synonym>Robitussin Night Relief</synonym>
+    <synonym>Rockamol Plus</synonym>
+    <synonym>Rounox</synonym>
+    <synonym>Roxicet</synonym>
+    <synonym>Roxicet 5/500</synonym>
+    <synonym>Roxilox</synonym>
+    <synonym>RubieMol</synonym>
+    <synonym>Rubophen</synonym>
+    <synonym>Rupemol</synonym>
+    <synonym>Salzone</synonym>
+    <synonym>Sanicet</synonym>
+    <synonym>Sanicopyrine</synonym>
+    <synonym>Scanol</synonym>
+    <synonym>Scentalgyl</synonym>
+    <synonym>Scherzatabletten Rezeptur 534</synonym>
+    <synonym>Schmerzex</synonym>
+    <synonym>Sedalito</synonym>
+    <synonym>Sedapap</synonym>
+    <synonym>Semolacin</synonym>
+    <synonym>Servigesic</synonym>
+    <synonym>Seskamol</synonym>
+    <synonym>Setakop</synonym>
+    <synonym>Setamol</synonym>
+    <synonym>Setol</synonym>
+    <synonym>Sifenol</synonym>
+    <synonym>Sinaspril</synonym>
+    <synonym>Sine-Off Sinus Medicine Caplets</synonym>
+    <synonym>Sinedol</synonym>
+    <synonym>Sinmol</synonym>
+    <synonym>Sinubid</synonym>
+    <synonym>SK-Apap</synonym>
+    <synonym>Snaplets-FR</synonym>
+    <synonym>Spalt fur die nacht</synonym>
+    <synonym>Spalt N</synonym>
+    <synonym>St Joseph Aspirin-Free</synonym>
+    <synonym>St Joseph Aspirin-Free for Children</synonym>
+    <synonym>St. Joseph Cold Tablets for Children</synonym>
+    <synonym>St. Joseph Fever Reducer</synonym>
+    <synonym>Stanback</synonym>
+    <synonym>Stopain</synonym>
+    <synonym>Sudafed Severe Cold Formula</synonym>
+    <synonym>Sudafed Sinus</synonym>
+    <synonym>Sunetheton</synonym>
+    <synonym>Supac</synonym>
+    <synonym>Supadol mono</synonym>
+    <synonym>Supofen</synonym>
+    <synonym>Suppap</synonym>
+    <synonym>Suppap-120</synonym>
+    <synonym>Suppap-325</synonym>
+    <synonym>Suppap-650</synonym>
+    <synonym>Supramol-M</synonym>
+    <synonym>Synalgos-Dc-A</synonym>
+    <synonym>Tabalgin</synonym>
+    <synonym>Tachiprina</synonym>
+    <synonym>Talacen</synonym>
+    <synonym>Tapanol Extra Strength Caplets</synonym>
+    <synonym>Tapanol Extra Strength Tablets</synonym>
+    <synonym>Tapar</synonym>
+    <synonym>Tavist Allergy/Sinus/Headache</synonym>
+    <synonym>Tazamol</synonym>
+    <synonym>Temlo</synonym>
+    <synonym>Tempanal</synonym>
+    <synonym>Tempra</synonym>
+    <synonym>Tempra Caplets</synonym>
+    <synonym>Tempra Chewable Tablets</synonym>
+    <synonym>Tempra D.S</synonym>
+    <synonym>Tempra Drops</synonym>
+    <synonym>Tempra Syrup</synonym>
+    <synonym>Tencon</synonym>
+    <synonym>Termacet</synonym>
+    <synonym>Termalgin</synonym>
+    <synonym>Termalgine</synonym>
+    <synonym>Termofren</synonym>
+    <synonym>TheraFlu</synonym>
+    <synonym>Tibinide</synonym>
+    <synonym>Tibizide</synonym>
+    <synonym>Tiffy</synonym>
+    <synonym>Tisin</synonym>
+    <synonym>Tisiodrazida</synonym>
+    <synonym>Titralgan</synonym>
+    <synonym>Tizide</synonym>
+    <synonym>Tocris-1706</synonym>
+    <synonym>Toximer P</synonym>
+    <synonym>Tralgon</synonym>
+    <synonym>Treupel mon</synonym>
+    <synonym>Treupel N</synonym>
+    <synonym>Treuphadol</synonym>
+    <synonym>Triad</synonym>
+    <synonym>Triaminic Sore Throat Formula</synonym>
+    <synonym>Triaprin</synonym>
+    <synonym>Tricoton</synonym>
+    <synonym>Tussapap</synonym>
+    <synonym>Tycolet</synonym>
+    <synonym>TYL</synonym>
+    <synonym>Tylenol</synonym>
+    <synonym>Tylenol Allergy Sinus</synonym>
+    <synonym>Tylenol Arthritis Extended Relief</synonym>
+    <synonym>Tylenol Caplets</synonym>
+    <synonym>Tylenol Children'S Chewable Tablets</synonym>
+    <synonym>Tylenol Children'S Elixir</synonym>
+    <synonym>Tylenol Children'S Suspension Liquid</synonym>
+    <synonym>Tylenol Drops</synonym>
+    <synonym>Tylenol Elixir</synonym>
+    <synonym>Tylenol Extra Strength Adult Liquid Pain Reliever</synonym>
+    <synonym>Tylenol Extra Strength Caplets</synonym>
+    <synonym>Tylenol Extra Strength Gelcaps</synonym>
+    <synonym>Tylenol Extra Strength Tablets</synonym>
+    <synonym>Tylenol Gelcaps</synonym>
+    <synonym>Tylenol Infants Drops</synonym>
+    <synonym>Tylenol Infants" Suspension Drops</synonym>
+    <synonym>Tylenol Junior Strength Caplets</synonym>
+    <synonym>Tylenol Junior Strength Chewable Tablets</synonym>
+    <synonym>Tylenol Regular Strength Caplets</synonym>
+    <synonym>Tylenol Regular Strength Tablets</synonym>
+    <synonym>Tylenol Tablets</synonym>
+    <synonym>Tylex</synonym>
+    <synonym>Tylex CD</synonym>
+    <synonym>Tylol</synonym>
+    <synonym>Tylox</synonym>
+    <synonym>Tylox-325</synonym>
+    <synonym>Tymol</synonym>
+    <synonym>Ultracet</synonym>
+    <synonym>Upsanol</synonym>
+    <synonym>Utragin</synonym>
+    <synonym>Valadol</synonym>
+    <synonym>Valgesic</synonym>
+    <synonym>Valorin</synonym>
+    <synonym>Valorin Extra</synonym>
+    <synonym>Vanquish</synonym>
+    <synonym>Veralgina</synonym>
+    <synonym>Vermidon</synonym>
+    <synonym>Verpol</synonym>
+    <synonym>Viclor Richet</synonym>
+    <synonym>Vicodin</synonym>
+    <synonym>Vicodin Es</synonym>
+    <synonym>Vicodin Hp</synonym>
+    <synonym>Vips</synonym>
+    <synonym>Viruflu</synonym>
+    <synonym>Vivimed</synonym>
+    <synonym>Volpan</synonym>
+    <synonym>Wygesic</synonym>
+    <synonym>Zatinol</synonym>
+    <synonym>Zolben</synonym>
+  </synonyms>
+  <chemical_formula>C8H9NO2</chemical_formula>
+  <average_molecular_weight>151.1626</average_molecular_weight>
+  <monisotopic_moleculate_weight>151.063328537</monisotopic_moleculate_weight>
+  <iupac_name>N-(4-hydroxyphenyl)acetamide</iupac_name>
+  <traditional_iupac>acetaminophen</traditional_iupac>
+  <cas_registry_number>103-90-2</cas_registry_number>
+  <smiles>CC(=O)NC1=CC=C(O)C=C1</smiles>
+  <inchi>InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)</inchi>
+  <inchikey>InChIKey=RZVAJINKPMORJF-UHFFFAOYSA-N</inchikey>
+  <taxonomy>
+    <kingdom>Organic Compounds</kingdom>
+    <super_class>Aromatic Homomonocyclic Compounds</super_class>
+    <class>Anilides</class>
+    <other_descriptors>
+      <descriptor>Organic Compounds</descriptor>
+      <descriptor>a small molecule(Cyc)</descriptor>
+      <descriptor>acetamides(ChEBI)</descriptor>
+      <descriptor>phenols(ChEBI)</descriptor>
+    </other_descriptors>
+    <substituents>
+      <substituent>aminophenol derivative</substituent>
+      <substituent>carboxamide_group</substituent>
+      <substituent>phenol</substituent>
+      <substituent>phenol derivative</substituent>
+      <substituent>secondary carboxylic acid amide</substituent>
+    </substituents>
+    <direct_parent>Anilides</direct_parent>
+  </taxonomy>
+  <ontology>
+    <status>Detected and Quantified</status>
+    <origins>
+      <origin>Drug</origin>
+      <origin>Drug metabolite</origin>
+    </origins>
+    <biofunctions>
+      <biofunction>Enzyme cofactor</biofunction>
+      <biofunction>Waste products</biofunction>
+    </biofunctions>
+    <applications>
+    </applications>
+    <cellular_locations>
+      <cellular_location>Cytoplasm</cellular_location>
+    </cellular_locations>
+  </ontology>
+  <state>Solid</state>
+  <experimental_properties>
+    <property>
+      <kind>water_solubility</kind>
+      <value>14 mg/mL at 25 °C</value>
+      <source></source>
+    </property>
+    <property>
+      <kind>logp</kind>
+      <value>0.46</value>
+      <source>SANGSTER (1994)</source>
+    </property>
+    <property>
+      <kind>melting_point</kind>
+      <value>170 °C</value>
+      <source></source>
+    </property>
+  </experimental_properties>
+  <predicted_properties>
+    <property>
+      <kind>logp</kind>
+      <value>0.51</value>
+      <source>ALOGPS</source>
+    </property>
+    <property>
+      <kind>logs</kind>
+      <value>-1.56</value>
+      <source>ALOGPS</source>
+    </property>
+    <property>
+      <kind>solubility</kind>
+      <value>4.15 g/L</value>
+      <source>ALOGPS</source>
+    </property>
+    <property>
+      <kind>logp</kind>
+      <value>0.91</value>
+      <source>ChemAxon</source>
+    </property>
+    <property>
+      <kind>pka_strongest_acidic</kind>
+      <value>9.46</value>
+      <source>ChemAxon</source>
+    </property>
+    <property>
+      <kind>pka_strongest_basic</kind>
+      <value>-4.4</value>
+      <source>ChemAxon</source>
+    </property>
+    <property>
+      <kind>iupac</kind>
+      <value>N-(4-hydroxyphenyl)acetamide</value>
+      <source>ChemAxon</source>
+    </property>
+    <property>
+      <kind>average_mass</kind>
+      <value>151.1626</value>
+      <source>ChemAxon</source>
+    </property>
+    <property>
+      <kind>mono_mass</kind>
+      <value>151.063328537</value>
+      <source>ChemAxon</source>
+    </property>
+    <property>
+      <kind>smiles</kind>
+      <value>CC(=O)NC1=CC=C(O)C=C1</value>
+      <source>ChemAxon</source>
+    </property>
+    <property>
+      <kind>formula</kind>
+      <value>C8H9NO2</value>
+      <source>ChemAxon</source>
+    </property>
+    <property>
+      <kind>inchi</kind>
+      <value>InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)</value>
+      <source>ChemAxon</source>
+    </property>
+    <property>
+      <kind>inchikey</kind>
+      <value>InChIKey=RZVAJINKPMORJF-UHFFFAOYSA-N</value>
+      <source>ChemAxon</source>
+    </property>
+    <property>
+      <kind>polar_surface_area</kind>
+      <value>49.33</value>
+      <source>ChemAxon</source>
+    </property>
+    <property>
+      <kind>refractivity</kind>
+      <value>42.9</value>
+      <source>ChemAxon</source>
+    </property>
+    <property>
+      <kind>polarizability</kind>
+      <value>15.53</value>
+      <source>ChemAxon</source>
+    </property>
+    <property>
+      <kind>rotatable_bond_count</kind>
+      <value>1</value>
+      <source>ChemAxon</source>
+    </property>
+    <property>
+      <kind>acceptor_count</kind>
+      <value>2</value>
+      <source>ChemAxon</source>
+    </property>
+    <property>
+      <kind>donor_count</kind>
+      <value>2</value>
+      <source>ChemAxon</source>
+    </property>
+    <property>
+      <kind>physiological_charge</kind>
+      <value>0</value>
+      <source>ChemAxon</source>
+    </property>
+    <property>
+      <kind>formal_charge</kind>
+      <value>0</value>
+      <source>ChemAxon</source>
+    </property>
+  </predicted_properties>
+  <spectra>
+    <spectrum>
+      <type>Specdb::CMs</type>
+      <spectrum_id>87</spectrum_id>
+    </spectrum>
+    <spectrum>
+      <type>Specdb::NmrOneD</type>
+      <spectrum_id>1761</spectrum_id>
+    </spectrum>
+    <spectrum>
+      <type>Specdb::MsMs</type>
+      <spectrum_id>1732</spectrum_id>
+    </spectrum>
+    <spectrum>
+      <type>Specdb::MsMs</type>
+      <spectrum_id>1733</spectrum_id>
+    </spectrum>
+    <spectrum>
+      <type>Specdb::MsMs</type>
+      <spectrum_id>1734</spectrum_id>
+    </spectrum>
+    <spectrum>
+      <type>Specdb::MsMs</type>
+      <spectrum_id>5497</spectrum_id>
+    </spectrum>
+    <spectrum>
+      <type>Specdb::MsMs</type>
+      <spectrum_id>5498</spectrum_id>
+    </spectrum>
+    <spectrum>
+      <type>Specdb::MsMs</type>
+      <spectrum_id>5499</spectrum_id>
+    </spectrum>
+    <spectrum>
+      <type>Specdb::MsMs</type>
+      <spectrum_id>6915</spectrum_id>
+    </spectrum>
+    <spectrum>
+      <type>Specdb::NmrTwoD</type>
+      <spectrum_id>1701</spectrum_id>
+    </spectrum>
+  </spectra>
+  <biofluid_locations>
+    <biofluid>Blood</biofluid>
+    <biofluid>Cerebrospinal Fluid (CSF)</biofluid>
+    <biofluid>Urine</biofluid>
+  </biofluid_locations>
+  <tissue_locations>
+    <tissue>All Tissues</tissue>
+  </tissue_locations>
+  <pathways>
+  </pathways>
+  <normal_concentrations>
+    <concentration>
+      <biofluid>Cerebrospinal Fluid (CSF)</biofluid>
+      <concentration_value>11 +/- 6</concentration_value>
+      <concentration_units>uM</concentration_units>
+      <subject_age>Not Specified</subject_age>
+      <subject_sex>Both</subject_sex>
+      <subject_condition>Normal</subject_condition>
+      <references>
+        <reference>
+          <reference_text>Wishart DS, Lewis MJ, Morrissey JA, Flegel MD, Jeroncic K, Xiong Y, Cheng D, Eisner R, Gautam B, Tzur D, Sawhney S, Bamforth F, Greiner R, Li L: The human cerebrospinal fluid metabolome.  J Chromatogr B Analyt Technol Biomed Life Sci. 2008 Aug 15;871(2):164-173.       Epub 2008 May 8.</reference_text>
+          <pubmed_id>18502700</pubmed_id>
+        </reference>
+      </references>
+    </concentration>
+    <concentration>
+      <biofluid>Urine</biofluid>
+      <concentration_value>5.3</concentration_value>
+      <concentration_units>umol/mmol creatinine</concentration_units>
+      <subject_age>Adult (&gt;18 years old)</subject_age>
+      <subject_sex>Both</subject_sex>
+      <subject_condition>Normal</subject_condition>
+      <references>
+        <reference>
+          <reference_text>Guo K, Li L: Differential (12)C-/(13)C-Isotope Dansylation Labeling and Fast Liquid Chromatography/Mass Spectrometry for Absolute and Relative Quantification of the Metabolome. Anal Chem. 2009 Mar 23.</reference_text>
+          <pubmed_id>19309105</pubmed_id>
+        </reference>
+      </references>
+    </concentration>
+    <concentration>
+      <biofluid>Urine</biofluid>
+      <concentration_value/>
+      <concentration_units/>
+      <subject_age>Adult (&gt;18 years old)</subject_age>
+      <subject_sex>Male</subject_sex>
+      <subject_condition>Normal</subject_condition>
+      <references>
+        <reference>
+          <reference_text>Bales JR, Sadler PJ, Nicholson JK, Timbrell JA: Urinary excretion of acetaminophen and its metabolites as studied by proton NMR spectroscopy. Clin Chem. 1984 Oct;30(10):1631-6.</reference_text>
+          <pubmed_id>6206966</pubmed_id>
+        </reference>
+      </references>
+    </concentration>
+    <concentration>
+      <biofluid>Urine</biofluid>
+      <concentration_value>11.1</concentration_value>
+      <concentration_units>umol/mmol creatinine</concentration_units>
+      <subject_age>Adult (&gt;18 years old)</subject_age>
+      <subject_sex>Both</subject_sex>
+      <subject_condition>Normal</subject_condition>
+      <references>
+        <reference>
+          <reference_text>Bouatra S, Aziat F, Mandal R, Guo AC, Wilson MR, Knox C, Bjorndahl TC, Krishnamurthy R, Saleem F, Liu P, Dame ZT, Poelzer J, Huynh J, Yallou FS, Psychogios N, Dong E, Bogumil R, Roehring C, Wishart DS: The human urine metabolome. PLoS One. 2013 Sep 4;8(9):e73076. doi: 10.1371/journal.pone.0073076.</reference_text>
+          <pubmed_id>24023812</pubmed_id>
+        </reference>
+      </references>
+    </concentration>
+  </normal_concentrations>
+  <abnormal_concentrations>
+    <concentration>
+      <biofluid>Blood</biofluid>
+      <concentration_value>33.5 +/- 22.3</concentration_value>
+      <concentration_units>uM</concentration_units>
+      <patient_age>Adult (&gt;18 years old)</patient_age>
+      <patient_sex>Not Specified</patient_sex>
+      <patient_information>Heart Transplant</patient_information>
+      <references>
+        <reference>
+          <reference_text>Psychogios N, Hau DD, Peng J, Guo AC, Mandal R, Bouatra S, Sinelnikov I, Krishnamurthy R, Eisner R, Gautam B, Young N, Xia J, Knox C, Dong E, Huang P, Hollander Z, Pedersen TL, Smith SR, Bamforth F, Greiner R, McManus B, Newman JW, Goodfriend T, Wishart DS: The human serum metabolome.  PLoS One. 2011 Feb 16;6(2):e16957.</reference_text>
+          <pubmed_id>21359215</pubmed_id>
+        </reference>
+      </references>
+    </concentration>
+  </abnormal_concentrations>
+  <diseases>
+  </diseases>
+  <drugbank_id>DB00316</drugbank_id>
+  <drugbank_metabolite_id>DBMET00266</drugbank_metabolite_id>
+  <phenol_explorer_compound_id/>
+  <phenol_explorer_metabolite_id/>
+  <foodb_id>FDB022713</foodb_id>
+  <knapsack_id></knapsack_id>
+  <chemspider_id>1906</chemspider_id>
+  <kegg_id/>
+  <biocyc_id></biocyc_id>
+  <bigg_id></bigg_id>
+  <wikipidia>Acetaminophen</wikipidia>
+  <nugowiki>1450</nugowiki>
+  <metagene></metagene>
+  <metlin_id>6353</metlin_id>
+  <pubchem_compound_id>1983</pubchem_compound_id>
+  <het_id>TYL</het_id>
+  <chebi_id>46195</chebi_id>
+  <synthesis_reference></synthesis_reference>
+  <general_references>
+    <reference>
+      <reference_text>Muldrew KL, James LP, Coop L, McCullough SS, Hendrickson HP, Hinson JA, Mayeux PR: Determination of acetaminophen-protein adducts in mouse liver and serum and human serum after hepatotoxic doses of acetaminophen using high-performance liquid chromatography with electrochemical detection. Drug Metab Dispos. 2002 Apr;30(4):446-51.</reference_text>
+      <pubmed_id>11901099</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>Bales JR, Nicholson JK, Sadler PJ: Two-dimensional proton nuclear magnetic resonance &amp;quot;maps&amp;quot; of acetaminophen metabolites in human urine. Clin Chem. 1985 May;31(5):757-62.</reference_text>
+      <pubmed_id>3987005</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>van der Marel CD, Anderson BJ, Pluim MA, de Jong TH, Gonzalez A, Tibboel D: Acetaminophen in cerebrospinal fluid in children.  Eur J Clin Pharmacol. 2003 Aug;59(4):297-302. Epub 2003 Jul 4.</reference_text>
+      <pubmed_id>12845506</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>Watari N, Iwai M, Kaneniwa N: Pharmacokinetic study of the fate of acetaminophen and its conjugates in rats. J Pharmacokinet Biopharm. 1983 Jun;11(3):245-72.</reference_text>
+      <pubmed_id>6644552</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>Kunkel A, Watzig H: Micellar electrokinetic capillary chromatography as a powerful tool for pharmacological investigations without sample pretreatment: a precise technique providing cost advantages and limits of detection to the low nanomolar range. Electrophoresis. 1999 Sep;20(12):2379-89.</reference_text>
+      <pubmed_id>10499329</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>Vanbinst R, Koenig J, Di Fazio V, Hassoun A: Bile analysis of drugs in postmortem cases.  Forensic Sci Int. 2002 Aug 14;128(1-2):35-40.</reference_text>
+      <pubmed_id>12208019</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>Quattrone AJ, Putnam RS: A single liquid-chromatographic procedure for therapeutic monitoring of theophylline, acetaminophen, or ethosuximide. Clin Chem. 1981 Jan;27(1):129-32.</reference_text>
+      <pubmed_id>7004665</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>Smilgin Z, Drozdzik M, Gawronska-Szklarz B, Wojcicki J, Tustanowski S, Gornik W: [Pharmacokinetics of acetaminophen in individuals occupationally exposed to polyvinyl chloride modified with plasticizers] Med Pr. 1993;44(5):423-9.</reference_text>
+      <pubmed_id>8107555</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>Griener JC, Msall ME, Cooke RE, Corcoran GB: Noninvasive determination of acetaminophen disposition in Down's syndrome.  Clin Pharmacol Ther. 1990 Nov;48(5):520-8.</reference_text>
+      <pubmed_id>2146059</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>Mohammadi M, Mohebbi MR, Naderi F: CSF Glucose Concentrations in Infants with Febrile Convulsions and the Possible Effect of Acetaminophen. Indian Pediatr. 2003 Dec;40(12):1183-6.</reference_text>
+      <pubmed_id>14722369</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>Munsterhjelm E, Munsterhjelm NM, Niemi TT, Ylikorkala O, Neuvonen PJ, Rosenberg PH: Dose-dependent inhibition of platelet function by acetaminophen in healthy volunteers. Anesthesiology. 2005 Oct;103(4):712-7.</reference_text>
+      <pubmed_id>16192763</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>de Morais SM, Uetrecht JP, Wells PG: Decreased glucuronidation and increased bioactivation of acetaminophen in Gilbert's syndrome. Gastroenterology. 1992 Feb;102(2):577-86.</reference_text>
+      <pubmed_id>1732127</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>Findlay JW, DeAngelis RL, Kearney MF, Welch RM, Findlay JM: Analgesic drugs in breast milk and plasma.  Clin Pharmacol Ther. 1981 May;29(5):625-33.</reference_text>
+      <pubmed_id>7214793</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>Lifshitz M, Weinstein O, Gavrilov V, Rosenthal G, Lifshitz T: Acetaminophen (paracetamol) levels in human tears.  Ther Drug Monit. 1999 Oct;21(5):544-6.</reference_text>
+      <pubmed_id>10519453</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>Bailey DN: Relative binding of acetaminophen, lidocaine, phenobarbital, phenytoin, quinidine, and theophylline to human tissues in vitro. J Anal Toxicol. 1997 Jan-Feb;21(1):1-4.</reference_text>
+      <pubmed_id>9013284</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>Gandia P, Bareille MP, Saivin S, Le-Traon AP, Lavit M, Guell A, Houin G: Influence of simulated weightlessness on the oral pharmacokinetics of acetaminophen as a gastric emptying probe in man: a plasma and a saliva study. J Clin Pharmacol. 2003 Nov;43(11):1235-43.</reference_text>
+      <pubmed_id>14551178</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>Graham GG, Scott KF, Day RO: Tolerability of paracetamol. Drug Saf. 2005;28(3):227-40.</reference_text>
+      <pubmed_id>15733027</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>Barden J, Edwards J, Moore A, McQuay H: Single dose oral paracetamol (acetaminophen) for postoperative pain. Cochrane Database Syst Rev. 2004;(1):CD004602.</reference_text>
+      <pubmed_id>14974073</pubmed_id>
+    </reference>
+    <reference>
+      <reference_text>Jaeschke H: Role of inflammation in the mechanism of acetaminophen-induced hepatotoxicity. Expert Opin Drug Metab Toxicol. 2005 Oct;1(3):389-97.</reference_text>
+      <pubmed_id>16863451</pubmed_id>
+    </reference>
+  </general_references>
+  <protein_associations>
+    <protein>
+      <protein_accession>HMDBP01560</protein_accession>
+      <name>Cytochrome P450 1A2</name>
+      <uniprot_id>P05177</uniprot_id>
+      <gene_name>CYP1A2</gene_name>
+      <protein_type>Unknown</protein_type>
+    </protein>
+    <protein>
+      <protein_accession>HMDBP01544</protein_accession>
+      <name>Cytochrome P450 2E1</name>
+      <uniprot_id>P05181</uniprot_id>
+      <gene_name>CYP2E1</gene_name>
+      <protein_type>Unknown</protein_type>
+    </protein>
+    <protein>
+      <protein_accession>HMDBP00976</protein_accession>
+      <name>Prostaglandin G/H synthase 1</name>
+      <uniprot_id>P23219</uniprot_id>
+      <gene_name>PTGS1</gene_name>
+      <protein_type>Unknown</protein_type>
+    </protein>
+    <protein>
+      <protein_accession>HMDBP00975</protein_accession>
+      <name>Prostaglandin G/H synthase 2</name>
+      <uniprot_id>P35354</uniprot_id>
+      <gene_name>PTGS2</gene_name>
+      <protein_type>Unknown</protein_type>
+    </protein>
+  </protein_associations>
+</metabolite>
