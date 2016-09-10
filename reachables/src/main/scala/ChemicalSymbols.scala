@@ -136,8 +136,11 @@ object ChemicalSymbols {
     override def hashCode() = truncated.hashCode
     override def toString(): String = this.truncated.toString
 
+    // case when we might want to add: set of atoms together in a formula. need its full mass
     def +(that: MonoIsotopicMass) = new MonoIsotopicMass(this.initMass + that.initMass)
+    // case when we might need to sub: when a moeity gets removed from the mol. need remaining mass
     def -(that: MonoIsotopicMass) = new MonoIsotopicMass(this.initMass - that.initMass)
+    // case when we might need to multiply by an integer: k molecules together. need combined mass
     def *(num: Int) = new MonoIsotopicMass(this.initMass * num)
   }
 
@@ -151,7 +154,7 @@ object ChemicalSymbols {
     def computeFormulaFromElements(elems: Map[Atom, Int]) = {
 
       // for a pair such as (C, 2) or (N, 5), this fn will convert it to `C2` or `N5`
-      def elemnum(in: (Atom, Int)) = in match {
+      def elemnum(atom: Atom, num: Int) = (atom, num) match {
         case (_, 0) => ""
         case (atom, 1) => atom.symbol.toString
         case (atom, num) => atom.symbol + num.toString
@@ -160,7 +163,7 @@ object ChemicalSymbols {
       // for each atom in the ordered list (arbitrarily, but consistently ordered) convert it 
       // to tuples `(atom, val of atom in input map OR 0 if not specified)`, and then convert
       // the tuple to string using the flattening function above.
-      val orderedAtomAndCounts = atomOrderInFormula.map(a => (a, elems.getOrElse(a, 0))).map(elemnum)
+      val orderedAtomAndCounts = atomOrderInFormula.map(a => elemnum(a, (elems.getOrElse(a, 0))))
 
       // return the concatenated string of all `C2` and `N5` to get the full formula.
       orderedAtomAndCounts.reduce(_ + _)

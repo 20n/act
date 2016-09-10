@@ -1,7 +1,7 @@
 package com.act.lcms
 
 import java.io.PrintWriter
-import com.act.lcms.MS1.{MetlinIonMass}
+import com.act.lcms.MS1.MetlinIonMass
 import act.shared.{CmdLineParser, OptDesc}
 import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, AminoAcid, AllAminoAcids}
 import act.shared.ChemicalSymbols.{Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser} 
@@ -143,7 +143,7 @@ object EnumPolyPeptides {
     // the histogram will be stored as Map(bucketid -> numelements)
     var histogram = Map[Int, Int]()
 
-    def log(mz: MonoIsotopicMass) {
+    def log(mz: MonoIsotopicMass): Unit = {
       // TODO: we should not be inspecting the actual initialization mass in general, but
       // for the sake of non-granular histograming, and window bucketing, we let it pass
       val n: Int = (math floor (mz.initMass / window)).toInt
@@ -151,7 +151,7 @@ object EnumPolyPeptides {
       histogram = histogram + (n -> (curr + 1))
     }
 
-    def log(row: PeptideMass) {
+    def log(row: PeptideMass): Unit = {
       val masses: List[MonoIsotopicMass] = List(row.mass) ++ row.ionMasses.map{ case (_, mz) => mz }
       masses foreach log
     }

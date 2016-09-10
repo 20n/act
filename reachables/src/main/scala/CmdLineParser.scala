@@ -4,7 +4,7 @@ import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Option
 import org.apache.logging.log4j.LogManager
 
 class OptDesc(val param: String, val longParam: String, name: String, desc: String, 
-              isReqd: Boolean = false, hasArg: Boolean = false) {
+              isReqd: Boolean = false, hasArg: Boolean = false, hasArgs: Boolean = false, sep: Char = ',') {
   // This class holds POSIX style short argument (single character, e.g., `-f brilliant.txt`)
   // And also GNU-style long argument (multiple character, e.g., `--output-file=brilliant.txt`
   // http://www.gnu.org/software/libc/manual/html_node/Argument-Syntax.html
@@ -17,12 +17,20 @@ class OptDesc(val param: String, val longParam: String, name: String, desc: Stri
     // GNU style arguments cannot have any spaces in them
     assert ((longParam indexOf ' ') == -1)
 
-    CliOption.builder(param).
+    val built = CliOption.builder(param).
       required(isReqd).
       longOpt(longParam).
       desc(desc).
       argName(name).
       hasArg(hasArg)
+
+    // if this arg accepts multiple values, we add hasArgs.valueSeparator
+    if (hasArgs)
+      built.
+      hasArgs.
+      valueSeparator(sep)
+    else
+      built
   }
 }
 
