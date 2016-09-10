@@ -362,12 +362,9 @@ class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
 }
 
 object MzToFormula {
-  def reportFail(s: String) = { print(Console.RED); println(s) }
-  def reportPass(s: String) = { print(Console.GREEN); println(s) }
-
-  def solveMzs(mzs: Set[Double], outf: Option[PrintWriter]): Unit = {
-    // writes to output file.
+  def solveMz(mz: Double): Map[Atom, Int] = {
     assert(false)
+    Map()
   }
 
   def main(args: Array[String]) {
@@ -375,27 +372,36 @@ object MzToFormula {
     val opts = List(optMz, optMassFile, optOutFailedTests, optRunTests)
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
-    val mzs: Set[Double] = {
+    val mzs: List[Double] = {
       if ((cmdLine has optMz) && (cmdLine has optMassFile)) {
         println(s"You specified both a single mass and a mass file as input. Is one or the other? Aborting.")
         System.exit(-1)
       }
       if (cmdLine has optMz) {
-        Set((cmdLine get optMz).toDouble)
+        List((cmdLine get optMz).toDouble)
       } else {
         if (cmdLine has optMassFile) {
           val source = scala.io.Source.fromFile(cmdLine get optMassFile)
-          val mzStrs = try source.getLines.toSet finally source.close()
+          val mzStrs = try source.getLines.toList finally source.close()
           mzStrs.map(s => s.toDouble)
-        } else Set()
+        } else List()
       }
     }
 
-    val outfile = if (cmdLine has optOutFile) {
-      Some(new PrintWriter(cmdLine get optOutFile))
-    } else None
+    val solns: List[Map[Atom, Int]] = mzs map solveMz
 
-    solveMzs(mzs, outfile)
+    val outstream: PrintWriter = {
+      if (cmdLine has optOutFile) {
+        new PrintWriter(cmdLine get optOutFile)
+      } else {
+        new PrintWriter(System.out)
+      }
+    }
+
+    solns.foreach( soln => {
+      val formula: String = soln.toString // buildChemFormulaA(soln)
+      outstream.write(formula)
+    })
 
     // TODO: move to scalatest. 
     // run unit test to make sure code is still sane
@@ -415,7 +421,12 @@ object MzToFormula {
                     param = "i",
                     longParam = "file-of-masses",
                     name = "file of monoIsotopic masses to solve",
-                    desc = """Input file with one monoisotopic mass per line.""",
+                    desc = """Input file with one line per mass. It can have other metadata
+                              associated with that mass in TSV form after the mass. Just ensure
+                              that the monoIsotopic mass is the first column. This goes hand in
+                              hand with the output of err-logfile. We can feed the output failed
+                              solvings back as input and iteratively improve the algorithm until
+                              it can solve all masses.""",
                     isReqd = false, hasArg = true)
 
   val optOutputFile = new OptDesc(
@@ -428,12 +439,12 @@ object MzToFormula {
 
   val optOutFailedTests = new OptDesc(
                     param = "l",
-                    longParam = "errlog-file",
+                    longParam = "err-logfile",
                     name = "file in which to log test error cases",
                     desc = """There are a few knobs in solving (delta, atoms, decimal),
                               We also run tests by pulling from the DB. So we log cases
                               where the solving fails to compute the candidate formula.
-                              We log the knobs(delta, atomset..) and the (inchi, mass).""",
+                              We log `mass inchi delta atomset otherknobs..` in TSV form.""",
                     isReqd = false, hasArg = true)
 
   val optRunTests = new OptDesc(
@@ -461,6 +472,9 @@ object MzToFormula {
       reportFail(s"FAIL: Test case $test")
     }
   }
+
+  def reportFail(s: String) = { print(Console.RED); println(s) }
+  def reportPass(s: String) = { print(Console.GREEN); println(s) }
 
   def testAcetaminophen() {
     val apapCases = Set[(Double, Set[Atom], Map[Atom, Int])](
