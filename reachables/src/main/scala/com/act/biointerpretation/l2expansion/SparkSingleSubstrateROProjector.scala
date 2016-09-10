@@ -188,9 +188,9 @@ object SparkSingleSubstrateROProjector {
     val erosList = eros.getRos.asScala
     LOGGER.info(s"Reduction in ERO list size: ${fullErosList.size} -> ${erosList.size}")
 
-
     // We set the global state for the exporter so we don't need to pass the format all the way down here.
-    MoleculeExporter.setGlobalFormat(List(MoleculeFormat.stdInchi))
+    val validMoleculeFormats: List[MoleculeFormat.Value] = List(MoleculeFormat.stdInchi, MoleculeFormat.smarts)
+    MoleculeExporter.setGlobalFormat(validMoleculeFormats)
 
     val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)
     val inchiCorpus = new L2InchiCorpus()
@@ -204,10 +204,10 @@ object SparkSingleSubstrateROProjector {
     }
 
     val validMolecules: List[String] = Source.fromFile(substratesListFile).getLines().
-      filter(x => try { MoleculeImporter.importMolecule(x); true } catch { case e : Exception => false }).toList
+      filter(x => try { MoleculeImporter.importMolecule(x, validMoleculeFormats); true } catch { case e : Exception => false }).toList
     LOGGER.info(s"Loaded and validated ${validMolecules.size} InChIs from source file at $substratesListFile")
 
-    val validatedMolecules = validMolecules.map(MoleculeImporter.importMolecule)
+    val validatedMolecules = validMolecules.map(MoleculeImporter.importMolecule(_, validMoleculeFormats))
 
     // Don't set a master here, spark-submit will do that for us.
     val conf = new SparkConf().setAppName("Spark RO Projection")

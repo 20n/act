@@ -3,9 +3,8 @@ package com.act.biointerpretation.rsmiles
 import java.io.Serializable
 
 import act.server.MongoDB
-import chemaxon.calculations.clean.Cleaner
 import chemaxon.formats.MolFormatException
-import chemaxon.struc.MoleculeGraph
+import chemaxon.marvin.io.MolExportException
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities}
 import com.mongodb.DBObject
@@ -57,9 +56,14 @@ object AbstractChemicals {
       val mol = MoleculeImporter.importMolecule(replacedSmarts, MoleculeFormat.smarts)
       
       // Convert to inchi to standardize format moving forward as much as we can.  Only they shall pass.
-      Option((chemicalId, new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportMoleculeAsFormats(mol, List(MoleculeFormat.stdInchi)))))
+      Option((chemicalId, new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportMoleculeAsFormats(mol, List(MoleculeFormat.stdInchi, MoleculeFormat.smiles)))))
     } catch {
-      case e: MolFormatException => None
+      case e: MolExportException =>
+        logger.debug(s"Tried converting molecule to either smiles or InChI, but failed.  Molecule's chemical ID is ${chemicalId.toInt}.")
+        None
+      case e: MolFormatException =>
+        logger.debug(s"Tried to import SMARTS value $replacedSmarts, but failed.")
+        None
     }
   }
 
