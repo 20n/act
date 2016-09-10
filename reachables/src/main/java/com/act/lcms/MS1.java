@@ -348,6 +348,13 @@ public class MS1 {
     VALID_MS1_IONS = Collections.unmodifiableSet(names);
   }
 
+  public static Double computeIonMz(Double mz, MetlinIonMass delta) {
+    // this delta specifies how to calculate the ionMz; except we need
+    // to take care of the charge this ion acquires/looses
+    Double ionMz = mz/delta.charge - delta.mz;
+    return ionMz;
+  }
+
   /**
    * This function takes a mass charge and mode as input and returns a list of metlin ion masses
    * @param mz Mass charge
@@ -363,10 +370,7 @@ public class MS1 {
       if (delta.mode != ionMode)
         continue;
 
-      // this delta specifies how to calculate the ionMz; except we need
-      // to take care of the charge this ion acquires/looses
-      Double ionMz = mz/delta.charge - delta.mz;
-      rows.add(new MetlinIonMass(delta.mode, delta.name, delta.charge, ionMz));
+      rows.add(new MetlinIonMass(delta.mode, delta.name, delta.charge, computeIonMz(mz, delta)));
     }
     return rows;
   }
