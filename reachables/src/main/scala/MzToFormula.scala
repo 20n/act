@@ -12,7 +12,10 @@ import com.act.lcms.MassCalculator.calculateMass
 
 // SMT solver
 import com.microsoft.z3._
+
+// scala/java stuff
 import collection.JavaConversions._
+import java.io.PrintWriter
 
 //
 // We might want to move these ADTs to a file of their own.
@@ -362,10 +365,37 @@ object MzToFormula {
   def reportFail(s: String) = { print(Console.RED); println(s) }
   def reportPass(s: String) = { print(Console.GREEN); println(s) }
 
+  def solveMzs(mzs: Set[Double], outf: Option[PrintWriter]): Unit = {
+    // writes to output file.
+    assert(false)
+  }
+
   def main(args: Array[String]) {
     val className = this.getClass.getCanonicalName
-    val opts = List(optRunTests)
+    val opts = List(optMz, optMassFile, optOutFailedTests, optRunTests)
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
+
+    val mzs: Set[Double] = {
+      if ((cmdLine has optMz) && (cmdLine has optMassFile)) {
+        println(s"You specified both a single mass and a mass file as input. Is one or the other? Aborting.")
+        System.exit(-1)
+      }
+      if (cmdLine has optMz) {
+        Set((cmdLine get optMz).toDouble)
+      } else {
+        if (cmdLine has optMassFile) {
+          val source = scala.io.Source.fromFile(cmdLine get optMassFile)
+          val mzStrs = try source.getLines.toSet finally source.close()
+          mzStrs.map(s => s.toDouble)
+        } else Set()
+      }
+    }
+
+    val outfile = if (cmdLine has optOutFile) {
+      Some(new PrintWriter(cmdLine get optOutFile))
+    } else None
+
+    solveMzs(mzs, outfile)
 
     // TODO: move to scalatest. 
     // run unit test to make sure code is still sane
@@ -373,6 +403,38 @@ object MzToFormula {
       runAllUnitTests
     }
   }
+
+  val optMz = new OptDesc(
+                    param = "m",
+                    longParam = "mass",
+                    name = "monoIsotopic mass to solve",
+                    desc = """Given a single monoisotopic mass, compute possible chemical formulae.""",
+                    isReqd = false, hasArg = true)
+
+  val optMassFile = new OptDesc(
+                    param = "i",
+                    longParam = "file-of-masses",
+                    name = "file of monoIsotopic masses to solve",
+                    desc = """Input file with one monoisotopic mass per line.""",
+                    isReqd = false, hasArg = true)
+
+  val optOutputFile = new OptDesc(
+                    param = "o",
+                    longParam = "formulae-outfiles",
+                    name = "output file for computed formulae (same order as input file)",
+                    desc = """Output file with one line for each input monoIsotopic mass,
+                              Each line is tab separated list of formulas for that mass.""",
+                    isReqd = false, hasArg = true)
+
+  val optOutFailedTests = new OptDesc(
+                    param = "l",
+                    longParam = "errlog-file",
+                    name = "file in which to log test error cases",
+                    desc = """There are a few knobs in solving (delta, atoms, decimal),
+                              We also run tests by pulling from the DB. So we log cases
+                              where the solving fails to compute the candidate formula.
+                              We log the knobs(delta, atomset..) and the (inchi, mass).""",
+                    isReqd = false, hasArg = true)
 
   val optRunTests = new OptDesc(
                     param = "t",
@@ -408,8 +470,8 @@ object MzToFormula {
       // e.g., 151.06 instead of 151.063 for apap, a valid solution will not be found
       (151.063324, Set(C, H, N, O), Map(C->8, H->9, N->1, O->2)),
       (151.063,    Set(C, H, N, O), Map(C->8, H->9, N->1, O->2)),
-      (151.063324, Set(C, H, N, O, P, S), Map(C->8, H->9, N->1, O->2, S->0, P->0)),
-      (151.063,    Set(C, H, N, O, P, S), Map(C->8, H->9, N->1, O->2, S->0, P->0))
+      (151.063324, AllAtoms.toSet, Map(C->8, H->9, N->1, O->2, S->0, P->0)),
+      (151.063,    AllAtoms.toSet, Map(C->8, H->9, N->1, O->2, S->0, P->0))
     )
 
     apapCases foreach check
