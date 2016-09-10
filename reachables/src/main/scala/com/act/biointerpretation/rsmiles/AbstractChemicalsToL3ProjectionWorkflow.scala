@@ -75,7 +75,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
   override def defineWorkflow(cl: CommandLine): Job = {
     // Make sure we have an assembled JAR available.
     val sparkMaster = cl.getOptionValue(OPTION_SPARK_MASTER, "spark://10.0.20.19:7077")
-    headerJob.thenRun(SparkWrapper.sbtAssembly())
+    headerJob.thenRun(SparkWrapper.sbtAssembly(useCached = true))
 
     val chemaxonLicense = new File(cl.getOptionValue(OPTION_CHEMAXON_LICENSE))
     require(chemaxonLicense.exists(), s"Chemaxon license does not exist as the supplied location.  " +
