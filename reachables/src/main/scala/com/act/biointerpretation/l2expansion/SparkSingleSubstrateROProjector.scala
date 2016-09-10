@@ -115,15 +115,6 @@ object SparkSingleSubstrateROProjector {
         longOpt("only-named-eros").
         desc("Only apply EROs from the validation corpus that have assigned names"),
 
-      CliOption.builder(OPTION_VALID_CHEMICAL_TYPES).
-        longOpt("valid-chemical-types").
-        hasArgs.
-        valueSeparator(',').
-        desc("A comma divided list of valid chemical types to import the substrate list as.  " +
-          "If your file is mixed, multiple can be provided." +
-          "Currently valid types are inchi, smiles, and smarts.  " +
-          "By default, only imports inchi."),
-
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
 
@@ -197,16 +188,8 @@ object SparkSingleSubstrateROProjector {
     val erosList = eros.getRos.asScala
     LOGGER.info(s"Reduction in ERO list size: ${fullErosList.size} -> ${erosList.size}")
 
-    // Determine which formats are being used.
-    val chemicalFormats: List[MoleculeFormat.Value] = if (cl.hasOption(OPTION_VALID_CHEMICAL_TYPES)) {
-      val options = cl.getOptionValues(OPTION_VALID_CHEMICAL_TYPES).toList
-      options.map(x => MoleculeFormat.withName(x))
-    } else {
-      List(MoleculeFormat.inchi)
-    }
-
     // We set the global state for the exporter so we don't need to pass the format all the way down here.
-    MoleculeExporter.setGlobalFormat(chemicalFormats)
+    MoleculeExporter.setGlobalFormat(MoleculeFormat.stdInchi)
 
     val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)
     val inchiCorpus = new L2InchiCorpus()
@@ -220,10 +203,10 @@ object SparkSingleSubstrateROProjector {
     }
 
     val validMolecules: List[String] = Source.fromFile(substratesListFile).getLines().
-      filter(x => try { MoleculeImporter.importMolecule(x, chemicalFormats); true } catch { case e : Exception => false }).toList
+      filter(x => try { MoleculeImporter.importMolecule(x); true } catch { case e : Exception => false }).toList
     LOGGER.info(s"Loaded and validated ${validMolecules.size} InChIs from source file at $substratesListFile")
 
-    val validatedMolecules = validMolecules.map(MoleculeImporter.importMolecule(_, chemicalFormats))
+    val validatedMolecules = validMolecules.map(MoleculeImporter.importMolecule)
 
     // Don't set a master here, spark-submit will do that for us.
     val conf = new SparkConf().setAppName("Spark RO Projection")
