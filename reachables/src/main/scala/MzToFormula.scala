@@ -368,8 +368,8 @@ object MzToFormula {
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
     unitTestIntegralSolns()
-    testDBChemicals(100)
-    // testAcetaminophen()
+    testDBChemicals(n = 300, maxMz = 200.00)
+    testAcetaminophen()
   }
 
   def check(test: (Double, Set[Atom], Map[Atom, Int])) {
@@ -452,7 +452,7 @@ object MzToFormula {
     }
   }
 
-  def testDBChemicals(n: Int) {
+  def testDBChemicals(n: Int, maxMz: Double) {
     val db = new MongoDB("localhost", 27017, "actv01")
     val dbCur = db.getIteratorOverChemicals
     val formulaSet = for(i <- 0 until n) yield {
@@ -471,7 +471,7 @@ object MzToFormula {
         val isComplex = formula.indexOf('.') != -1
         val mzOk = mz match {
           case None => false
-          case Some(mass) => mass < 200.00
+          case Some(mass) => mass < maxMz
         }
         // only test over formulae that: 1) have CHO, and no 
         allMainAtomsPresent && noUnrecognizedAtoms && !isComplex && mzOk
