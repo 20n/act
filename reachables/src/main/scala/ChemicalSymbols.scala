@@ -9,6 +9,8 @@ object ChemicalSymbols {
   case object N extends Atom { val symbol = 'N'; val mass = new MonoIsotopicMass(14.003074); val maxValency = 4  }
   case object P extends Atom { val symbol = 'P'; val mass = new MonoIsotopicMass(30.973761); val maxValency = 2  }
   case object S extends Atom { val symbol = 'S'; val mass = new MonoIsotopicMass(31.972071); val maxValency = 6  }
+
+  val AllAtoms = List(C, H, O, N, P, S)
   
   abstract class AminoAcid {
     def name: String

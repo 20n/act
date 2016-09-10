@@ -1,10 +1,14 @@
 package act.shared
 
 import act.shared.{CmdLineParser, OptDesc}
-import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, AminoAcid, AllAminoAcids, MonoIsotopicMass}
+import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, AllAtoms, AminoAcid, AllAminoAcids, MonoIsotopicMass}
 import act.shared.ChemicalSymbols.{Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser} 
 import act.shared.ChemicalSymbols.{Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg}
 import act.shared.ChemicalSymbols.Helpers.{fromSymbol, computeMassFromAtomicFormula, computeFormulaFromElements}
+
+// testing chemicals from the DB
+import act.server.MongoDB
+import com.act.lcms.MassCalculator.calculateMass
 
 // SMT solver
 import com.microsoft.z3._
@@ -191,7 +195,6 @@ object Solver {
       case None => solns
       case Some(s) => {
         val blockingClause = exclusionClause(s)
-        // println(blockingClause)
         solveManyAux(blockingClause :: eqns, solns + s)
       }
     }
@@ -209,7 +212,6 @@ object Solver {
     // https://github.com/Z3Prover/z3/blob/master/src/api/java/BitVecNum.java
     val bv: BitVecExpr = e.asInstanceOf[BitVecExpr]
     val num: BitVecNum = bv.asInstanceOf[BitVecNum]
-    // println(s"num = $num")
     num.getInt
   }
 }
@@ -366,7 +368,20 @@ object MzToFormula {
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
     unitTestIntegralSolns()
-    testAcetaminophen()
+    testDBChemicals(100)
+    // testAcetaminophen()
+  }
+
+  def check(test: (Double, Set[Atom], Map[Atom, Int])) {
+    println(s"CHECKING: ${test}")
+    val (mz, atoms, soln) = test
+    val formulator = new MzToFormula(elements = atoms)
+    val solnsFound = formulator formulaeForMz new MonoIsotopicMass(mz)
+    if (solnsFound.contains(soln)) {
+      reportPass(s"PASS: Test case $test")
+    } else {
+      reportFail(s"FAIL: Test case $test")
+    }
   }
 
   def testAcetaminophen() {
@@ -380,18 +395,102 @@ object MzToFormula {
       (151.063324, Set(C, H, N, O, P, S), Map(C->8, H->9, N->1, O->2, S->0, P->0)),
       (151.063,    Set(C, H, N, O, P, S), Map(C->8, H->9, N->1, O->2, S->0, P->0))
     )
-    apapCases.foreach{ test => 
-      {
-        val (mz, atoms, soln) = test
-        val formulator = new MzToFormula(elements = atoms)
-        val solnsFound = formulator formulaeForMz new MonoIsotopicMass(mz)
-        if (solnsFound.contains(soln)) {
-          reportPass(s"PASS: Test case $test")
-        } else {
-          reportFail(s"FAIL: Test case $test")
+
+    apapCases foreach check
+  }
+
+  def formulaFromInChI(i: String) = {
+    i.split("/")(1)
+  }
+
+  def getAtomAtHead(f: String): (Atom, String) = {
+    def doMove(hd: String, c: Char) = {
+      val isHeadAlreadyAtom = AllAtoms.exists(_.symbol.toString.equals(hd))
+      !isHeadAlreadyAtom && c.isLetter
+    }
+    val (nStr, tail) = headExtractHelper("", f, doMove)
+    val maybeAtom = AllAtoms.find(_.symbol.toString.equals(nStr))
+    maybeAtom match {
+      case Some(atom) => (atom, tail)
+      case None => throw new Exception(s"${nStr} not recognized as atom")
+    }
+  }
+
+  def getNumAtHead(f: String): (Int, String) = {
+    val (nStr, tail) = headExtractHelper("", f, (s, c) => c.isDigit)
+    (nStr.toInt, tail)
+  }
+
+  def headExtractHelper(head: String, tail: String, doMove: (String, Char) => Boolean): (String, String) = {
+    val stop = tail.isEmpty || doMove(head, tail(0)) == false
+    if (stop) {
+      (head, tail)
+    } else {
+      headExtractHelper(head + tail(0), tail.substring(1), doMove)
+    }
+  }
+
+  def getFormulaMap(f: String): Map[Atom, Int] = getFormulaMapStep(f, Map())
+  def getFormulaMapStep(f: String, curr: Map[Atom, Int]): Map[Atom, Int] = {
+    if (f.isEmpty) {
+      // base case of recursion, i.e., at end of formula
+      curr
+    } else {
+      // recursive case, we pull chars in front to get atom string
+      // and pull digits next if 
+      val (atom, rest1) = getAtomAtHead(f)
+      val (num, rest2) = if (rest1.isEmpty || rest1(0).isLetter) {
+        // in the case when there is a single atom, then there wont 
+        // be a number for us to extract, so we just return (1, rest)
+        (1, rest1)
+      } else {
+        // there is a number to extract, return that
+        getNumAtHead(rest1)
+      }
+      val map = curr + (atom -> num)
+      getFormulaMapStep(rest2, map)
+    }
+  }
+
+  def testDBChemicals(n: Int) {
+    val db = new MongoDB("localhost", 27017, "actv01")
+    val dbCur = db.getIteratorOverChemicals
+    val formulaSet = for(i <- 0 until n) yield {
+      val chem = db.getNextChemical(dbCur)
+      val formula = formulaFromInChI(chem.getInChI)
+      (formula, chem)
+    }
+
+    val testformulae = for {
+      (formula, c) <- formulaSet;
+      mz = try { Some(calculateMass(c.getInChI).doubleValue)  } catch { case e: Exception => None };
+      if {
+        val allMainAtomsPresent = List(C, H, O).forall(a => formula.indexOf(a.symbol) != -1)
+        val allRecognizedAtomsRegex = s"[${AllAtoms.map(_.symbol.toString).reduce(_+_)}]"
+        val noUnrecognizedAtoms = formula.replaceAll("[0-9]","").replaceAll(allRecognizedAtomsRegex, "").isEmpty
+        val isComplex = formula.indexOf('.') != -1
+        val mzOk = mz match {
+          case None => false
+          case Some(mass) => mass < 200.00
         }
+        // only test over formulae that: 1) have CHO, and no 
+        allMainAtomsPresent && noUnrecognizedAtoms && !isComplex && mzOk
+      }
+    } yield {
+      mz match { case Some(mz) => formula -> mz } 
+    }
+
+    val tests = testformulae.toMap
+
+    def makeTest(kv: (String, Double)): (Double, Set[Atom], Map[Atom, Int]) = kv match {
+      case (formula, mz) => {
+        val formulaMap = getFormulaMap(formula)
+        (mz, formulaMap.keys.toSet, formulaMap)
       }
     }
+
+    val dbCases = tests.map(makeTest).toSet
+    dbCases foreach check
   }
 
   def unitTestIntegralSolns() {
