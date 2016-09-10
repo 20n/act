@@ -259,6 +259,7 @@ object EnumPolyPeptides {
 
   // TODO: move this into the tests directory
   def runAllUnitTests() {
+    println(s"${Console.BLUE}Running all tests!")
     checkNChooseK
     checkEnumerationSizeCorrect
     checkSpecificPeptides

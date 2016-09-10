@@ -382,6 +382,7 @@ object MzToFormula {
                     isReqd = false, hasArg = false)
 
   def runAllUnitTests() {
+    println(s"${Console.BLUE}Running all tests!")
     unitTestIntegralSolns()
     testDBChemicals(n = 300, maxMz = 200.00)
     testAcetaminophen()
