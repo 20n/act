@@ -269,7 +269,7 @@ class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
     }).flatten
 
     val approxMassSat = candidateFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
-    println(s"Num candidate solutions for the int with +-${delta} delta: ${approxMassSat.size}")
+    println(s"\t Num candidate solutions for the int with +-${delta} delta: ${approxMassSat.size}")
 
     // candidateFormulae has all formulae for deltas to the closest int mz
     // For each formula that we get, we need to calculate whether this is truly the right
@@ -277,7 +277,7 @@ class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
     // formulae as as true solution
     val matchingFormulae: Set[ChemicalFormula] = candidateFormulae.filter( computedMass(_).equals(mz) )
     val preciseMassSatFormulae = matchingFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
-    println(s"Candidates that match on precise formula: $preciseMassSatFormulae")
+    println(s"\t Candidates that match on precise formula: $preciseMassSatFormulae")
 
     matchingFormulae
   }
@@ -363,16 +363,36 @@ object MzToFormula {
     val opts = List()
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
-    val acetaminophenMz = new MonoIsotopicMass(151.063324)
-    (new MzToFormula(elements = Set(C, H, N, O))).formulaeForMz(acetaminophenMz)
+    unitTestIntegralSolns()
+    testAcetaminophen()
+  }
 
-    // This is a case where the type parameter is needed or else the compiler fails to infer 
+  def testAcetaminophen() {
+    val apapCases = Set[(Double, Set[Atom], Map[Atom, Int])](
+      (151.063324, Set(C, H, N, O), Map(C->8, H->9, N->1, O->2))
+    )
+    apapCases.foreach{ test => 
+      {
+        val (mz, atoms, soln) = test
+        val formulator = new MzToFormula(elements = atoms)
+        val solnsFound = formulator formulaeForMz new MonoIsotopicMass(mz)
+        if (solnsFound.contains(soln)) {
+          println(s"PASS: Test case $test")
+        } else {
+          println(s"FAIL: Test case $test")
+        }
+      }
+    }
+  }
+
+  def unitTestIntegralSolns() {
+    // The type parameter is needed or else the compiler fails to infer 
     // the right type for the tuple elements. we can specify it as a type on the variable,
     // or parameter to the constructor. The latter looks more readable.
-    val testcases = Set[(Set[Atom], Int, Set[Map[Atom, Int]])](
+    val testcases = Set[(Int, Set[Atom], Set[Map[Atom, Int]])](
       (
-        Set(C, N, O),  // atoms to derive formulae over
         104,           // atomic mass aiming for
+        Set(C, N, O),  // atoms to derive formulae over
         Set(Map(C->6, N->0, O->2), // sets of valid formulae
           Map(C->5, N->2, O->1), 
           Map(C->1, N->2, O->4), 
@@ -384,7 +404,7 @@ object MzToFormula {
 
     testcases.foreach{ test => 
       {
-        val (elems, intMz, validAtomicFormulae) = test
+        val (intMz, elems, validAtomicFormulae) = test
         val formulator = new MzToFormula(elements = elems) // Hah! The "formulator"
         val constraints = formulator.buildConstraintOverInts(intMz)
         val validSolns = validAtomicFormulae.map(_.map(kv => (formulator.atomToVar(kv._1), kv._2)))
@@ -399,20 +419,22 @@ object MzToFormula {
     val vars = constraints.map(Solver.getVars).flatten
     val sat = Solver.solveOne(constraints)
 
-    (sat, expected) match {
-      case (None, s) => {
-        if (s.size == 0)
-          println(s"No formula over CNO has approx mass ${intMz}. As expected. Solver proved correctly.")
-        else
+    sat match {
+      case None => {
+        if (expected.size == 0) {
+          println(s"PASS: No formula over CNO has approx mass ${intMz}, as required.")
+        } else {
+          println(s"FAIL: Did not find a solution for ${intMz}, when expected ${expected}")
           assert(false) // found a solution when none should have existed
+        }
       }
-      case (Some(soln), _) => {
-        println(s"Test find one: ${f.buildChemFormulaV(soln)} found with mass ~${intMz}")
-        assert( expected contains soln )
-      }
-      case _ => {
-        // unexpected outcome from the sat solver
-        assert (false)
+      case Some(soln) => {
+        if (expected contains soln) {
+          println(s"PASS: ${f.buildChemFormulaV(soln)} found with mass ~${intMz}")
+        } else {
+          println(s"FAIL: Solver found ${sat.size} solutions but ${expected} was not in it")
+          assert( false )
+        }
       }
     }
 
@@ -424,10 +446,10 @@ object MzToFormula {
     val sat = Solver.solveMany(constraints)
 
     val descs = sat.map{ soln => s"${f.buildChemFormulaV(soln)}" }
-    println(s"Test enumerate all: Found ${descs.size} formulae with mass ~${intMz}: $descs")
     if (!(sat equals expected)) {
-      println(s"satisfying solution - expected = ${sat -- expected}")
-      println(s"expected - satisfying solution = ${expected -- sat}")
+      println(s"FAIL: Enumerate: Found ${descs.size} formulae with mass ~${intMz}: $descs but expected $expected")
+      println(s"FAIL DEBUG: satisfying solution - expected = ${sat -- expected}")
+      println(s"FAIL DEBUG: expected - satisfying solution = ${expected -- sat}")
       assert( false )
     }
   }
