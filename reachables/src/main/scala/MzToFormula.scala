@@ -357,6 +357,8 @@ class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
 }
 
 object MzToFormula {
+  def reportFail(s: String) = { print(Console.RED); println(s) }
+  def reportPass(s: String) = { print(Console.GREEN); println(s) }
 
   def main(args: Array[String]) {
     val className = this.getClass.getCanonicalName
@@ -369,7 +371,14 @@ object MzToFormula {
 
   def testAcetaminophen() {
     val apapCases = Set[(Double, Set[Atom], Map[Atom, Int])](
-      (151.063324, Set(C, H, N, O), Map(C->8, H->9, N->1, O->2))
+      // the formula has to be specified to at least a certain # digits of precision
+      // the number of digits of precision required is specified under MonoIsotopicMass
+      // One case that is well used is 3 digits of precision. If you specify less,
+      // e.g., 151.06 instead of 151.063 for apap, a valid solution will not be found
+      (151.063324, Set(C, H, N, O), Map(C->8, H->9, N->1, O->2)),
+      (151.063,    Set(C, H, N, O), Map(C->8, H->9, N->1, O->2)),
+      (151.063324, Set(C, H, N, O, P, S), Map(C->8, H->9, N->1, O->2, S->0, P->0)),
+      (151.063,    Set(C, H, N, O, P, S), Map(C->8, H->9, N->1, O->2, S->0, P->0))
     )
     apapCases.foreach{ test => 
       {
@@ -377,9 +386,9 @@ object MzToFormula {
         val formulator = new MzToFormula(elements = atoms)
         val solnsFound = formulator formulaeForMz new MonoIsotopicMass(mz)
         if (solnsFound.contains(soln)) {
-          println(s"PASS: Test case $test")
+          reportPass(s"PASS: Test case $test")
         } else {
-          println(s"FAIL: Test case $test")
+          reportFail(s"FAIL: Test case $test")
         }
       }
     }
@@ -422,18 +431,17 @@ object MzToFormula {
     sat match {
       case None => {
         if (expected.size == 0) {
-          println(s"PASS: No formula over CNO has approx mass ${intMz}, as required.")
+          reportPass(s"PASS: No formula over CNO has approx mass ${intMz}, as required.")
         } else {
-          println(s"FAIL: Did not find a solution for ${intMz}, when expected ${expected}")
-          assert(false) // found a solution when none should have existed
+          // found a solution when none should have existed
+          reportFail(s"FAIL: Did not find a solution for ${intMz}, when expected ${expected}")
         }
       }
       case Some(soln) => {
         if (expected contains soln) {
-          println(s"PASS: ${f.buildChemFormulaV(soln)} found with mass ~${intMz}")
+          reportPass(s"PASS: ${f.buildChemFormulaV(soln)} found with mass ~${intMz}")
         } else {
-          println(s"FAIL: Solver found ${sat.size} solutions but ${expected} was not in it")
-          assert( false )
+          reportFail(s"FAIL: Solver found ${sat.size} solutions but ${expected} was not in it")
         }
       }
     }
@@ -447,10 +455,9 @@ object MzToFormula {
 
     val descs = sat.map{ soln => s"${f.buildChemFormulaV(soln)}" }
     if (!(sat equals expected)) {
-      println(s"FAIL: Enumerate: Found ${descs.size} formulae with mass ~${intMz}: $descs but expected $expected")
-      println(s"FAIL DEBUG: satisfying solution - expected = ${sat -- expected}")
-      println(s"FAIL DEBUG: expected - satisfying solution = ${expected -- sat}")
-      assert( false )
+      reportFail(s"FAIL: Enumerate: Found ${descs.size} formulae for ~${intMz}: $descs but expected $expected")
+      reportFail(s"FAIL DEBUG: satisfying solution - expected = ${sat -- expected}")
+      reportFail(s"FAIL DEBUG: expected - satisfying solution = ${expected -- sat}")
     }
   }
 
