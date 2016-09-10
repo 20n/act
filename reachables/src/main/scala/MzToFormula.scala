@@ -1,7 +1,7 @@
 package act.shared
 
 import act.shared.{CmdLineParser, OptDesc}
-import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, AminoAcid, AllAminoAcids}
+import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, AminoAcid, AllAminoAcids, MonoIsotopicMass}
 import act.shared.ChemicalSymbols.{Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser} 
 import act.shared.ChemicalSymbols.{Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg}
 import act.shared.ChemicalSymbols.Helpers.{fromSymbol, computeMassFromAtomicFormula, computeFormulaFromElements}
@@ -214,18 +214,17 @@ object Solver {
   }
 }
   
-class MzToFormula(numDigitsOfPrecision: Int = 2, elements: Set[Atom] = Set(C,H,N,O,P,S)) {
+class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
   type ChemicalFormula = Map[Atom, Int]
   val intMassesForAtoms = elements.map(a => { 
-      val integralMass = (math round a.monoIsotopicMass).toInt
+      val integralMass = (math round a.initMass).toInt
       (a, integralMass) 
     }).toMap
   val varsForAtoms = elements.map(a => (a, atomToVar(a))).toMap
   val atomsForVars = elements.map(a => (atomToVar(a), a)).toMap
 
   def atomToVar(a: Atom) = Var(a.symbol.toString)
-  def prettyEq(a: Double, b: Double) = Math.abs(a - b) < math.pow(10, -numDigitsOfPrecision)
-  def computedMass(formula: Map[Atom, Int]) = formula.map{ case (a, i) => i * a.monoIsotopicMass }.reduce(_+_)
+  def computedMass(formula: Map[Atom, Int]) = formula.map{ case (a, i) => a.mass * i }.reduce(_+_)
   def toChemicalFormula(x: (Var, Int)) = (atomsForVars(x._1), x._2)
 
   // we can formulate an (under-determined) equation using integer variables c, h, o, n, s..
@@ -250,7 +249,7 @@ class MzToFormula(numDigitsOfPrecision: Int = 2, elements: Set[Atom] = Set(C,H,N
   // Then we find the satisfying solution, which also makes `LHS_precise = RHS_precise`. Output
   // all of those solutions!
 
-  def formulaeForMz(mz: Double): Set[ChemicalFormula] = {
+  def formulaeForMz(mz: MonoIsotopicMass): Set[ChemicalFormula] = {
     val delta = 1
     val RHSints = (-delta to delta).map(d => (math round mz).toInt + d).toSet
 
@@ -264,7 +263,7 @@ class MzToFormula(numDigitsOfPrecision: Int = 2, elements: Set[Atom] = Set(C,H,N
     val approxMassSat = candidateFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
     println(s"Candidate solutions for the int with +-1 delta: $approxMassSat")
 
-    val matchingFormulae = candidateFormulae.filter( formula => prettyEq(computedMass(formula), mz) )
+    val matchingFormulae = candidateFormulae.filter( computedMass(_).equals(mz) )
     val preciseMassSat = matchingFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
     println(s"Candidates that match on precise formula: $preciseMassSat")
     // candidateFormulae has all formulae for deltas to the closest int mz
@@ -317,7 +316,7 @@ class MzToFormula(numDigitsOfPrecision: Int = 2, elements: Set[Atom] = Set(C,H,N
         //  #2) lowest x, such that 2^x > closeMz
         // `#2` is a bit vector with only a single highest significant bit set
         // that translates to a very easy comparison boolean circuit.
-        val max = (math ceil (closeMz.toDouble / a.monoIsotopicMass)).toInt
+        val max = (math ceil (closeMz.toDouble / a.mass)).toInt
         val upper = a match {
           case H => {
             // there cannot be more than (valence * others) - count(others)
@@ -352,7 +351,7 @@ object MzToFormula {
     val opts = List()
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
-    val acetaminophenMz = 151.063324
+    val acetaminophenMz = new MonoIsotopicMass(151.063324)
     (new MzToFormula(elements = Set(C, H, N, O))).formulaeForMz(acetaminophenMz)
 
     // This is a case where the type parameter is needed or else the compiler fails to infer 
