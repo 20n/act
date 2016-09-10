@@ -364,9 +364,24 @@ object MzToFormula {
 
   def main(args: Array[String]) {
     val className = this.getClass.getCanonicalName
-    val opts = List()
+    val opts = List(optRunTests)
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
+    // TODO: move to scalatest. 
+    // run unit test to make sure code is still sane
+    if (cmdLine has optRunTests) {
+      runAllUnitTests
+    }
+  }
+
+  val optRunTests = new OptDesc(
+                    param = "t",
+                    longParam = "run-tests",
+                    name = "run regression tests",
+                    desc = """Run regression tests. This will take some time.""",
+                    isReqd = false, hasArg = false)
+
+  def runAllUnitTests() {
     unitTestIntegralSolns()
     testDBChemicals(n = 300, maxMz = 200.00)
     testAcetaminophen()
