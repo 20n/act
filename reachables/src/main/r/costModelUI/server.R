@@ -8,13 +8,13 @@
 
 # Finally, this assumes that a fat jar of the reachables project has been created with the command `sbt assembly`
 # and is located at
-kFatJarLocation <- "../../../../target/scala-2.10/reachables-assembly-0.1.jar"
+kFatJarLocation <- "reachables-assembly-0.1.jar"
 
 # Constants
 kImportBingPackageCommand <- 'import act.installer.bing'
 kScalaCommand <- 'bing.ExploreRange.getOutcomeVsYieldTable(%s, %s, "CMOS", "%s")'
 
-k20nLogoLocation <- "../../resources/20n.png"
+k20nLogoLocation <- "resources/20n.png"
 kChartLabelSizeFactor <- 1.3
 
 library(shiny)
