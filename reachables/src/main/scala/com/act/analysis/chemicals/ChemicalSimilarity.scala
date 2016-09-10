@@ -14,10 +14,10 @@ object ChemicalSimilarity {
   var _calculatorSettings: Option[String] = None
 
   /**
-  * @param userCalculatorSettings The settings with which to apply the similarity calculation with
+    * @param userCalculatorSettings The settings with which to apply the similarity calculation with
     *                             The current default value was chosen as Tanimoto
     *                             gives no favor to the query vs target molecule.
-  */
+    */
   def init(userCalculatorSettings: String = "TANIMOTO"): Unit = {
     require(calculatorSettings.isEmpty, "Chemical similarity calculator was already initialized.")
     calculatorSettings = userCalculatorSettings
