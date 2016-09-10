@@ -188,8 +188,9 @@ object SparkSingleSubstrateROProjector {
     val erosList = eros.getRos.asScala
     LOGGER.info(s"Reduction in ERO list size: ${fullErosList.size} -> ${erosList.size}")
 
+
     // We set the global state for the exporter so we don't need to pass the format all the way down here.
-    MoleculeExporter.setGlobalFormat(MoleculeFormat.stdInchi)
+    MoleculeExporter.setGlobalFormat(List(MoleculeFormat.stdInchi))
 
     val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)
     val inchiCorpus = new L2InchiCorpus()
