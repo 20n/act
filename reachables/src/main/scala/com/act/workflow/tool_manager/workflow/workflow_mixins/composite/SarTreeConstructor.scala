@@ -229,7 +229,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     *
     * @return
     */
-  def scoreInchiAgainstSarTree(sarTree: SarTree, currentLevelList: List[SarTreeNode], molecule: Molecule): Double = {
+  def scoreInchiAgainstSarTree(sarTree: SarTree, currentLevelList: List[SarTreeNode])(molecule: Molecule): Double = {
     val nodesMatchingSar = currentLevelList filter (_.getSar.test(List[Molecule](molecule)))
 
     // Arbitrary score value
@@ -253,7 +253,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
             }
           } else {
             // Nodes still remain, see how deep prior to hitting a nothing
-            scoreInchiAgainstSarTree(sarTree, sarTree.getChildren(node).toList, molecule)
+            scoreInchiAgainstSarTree(sarTree, sarTree.getChildren(node).toList)(molecule)
           })
         baseAdd + deeperScores.sum
     }
