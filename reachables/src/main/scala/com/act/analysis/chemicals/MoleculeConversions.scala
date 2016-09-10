@@ -16,10 +16,64 @@ object MoleculeConversions {
   private val chemicalCache = TrieMap[Molecule, Array[Int]]()
   private def fingerPrintParams: CFParameters = _cfp
 
+  // These parameters were found after consulting the two sources below.
+  //
+  // Tune these values are your peril, both in terms of how long you wait and what your results are.
+  //
+  // Resources:
+  // General Docs: https://docs.chemaxon.com/display/docs/Chemical+Hashed+Fingerprint
+  // Algorithm Related: http://www.daylight.com/dayhtml/doc/theory/theory.finger.html
   private val _cfp = new CFParameters()
-  _cfp.setLength(2048)
-  _cfp.setBondCount(15)
-  _cfp.setBitCount(4)
+
+  /*
+    We pick 1024 because it is recommended by chemaxon docs.
+
+    The effects are:
+      Longer and more patterns hold more information on the molecule.
+
+      Due to the higher number of patterns to be explored, structure import will be slower.
+
+      Increases the number of patterns considered. As a result of that, the fingerprint darkness rises (up to a limit).
+      The number of bit collisions increase.
+
+      While the number of bit collisions is not too high,
+      the stored information increases, which is beneficial for the efficiency of screening.
+   */
+  _cfp.setLength(1024)
+
+  /*
+    The maximum length of atoms in the linear paths that are considered during the fragmentation of the molecule.
+    (The length of cyclic patterns is limited to a fixed ring size.)
+
+    We pick 8 because it is > benzene and recommended by chemaxon docs cited above.
+
+    The effects are:
+      The fingerprint darkness rises.
+
+      The coded information derived from a pattern increases.
+
+      The effect on darkness is similar to the case of the maximum pattern length:
+      it also increases. And also, while the bit collision number is not too high,
+      the stored information increases, which is beneficial for the efficiency of the screening.
+   */
+  _cfp.setBondCount(8)
+
+  /*
+    After detecting a pattern,some bits of the bit string are set to "1".
+    The number of bits used to code patterns is constant
+
+    Two is recommended by the chemaxon docs.
+
+    The effects are:
+      The fingerprint darkness rises.
+
+      The coded information derived from a pattern increases.
+
+      The effect on darkness is similar to the case of the maximum pattern length:
+      it also increases. And also, while the bit collision number is not too high,
+      the stored information increases, which is beneficial for the efficiency of the screening.
+   */
+  _cfp.setBitCount(2)
 
   def toIntArray(mol: String): Array[Int] = helperToIntArray(mol)
   def toIntArray(mol: Molecule): Array[Int] = helperToIntArray(mol)
