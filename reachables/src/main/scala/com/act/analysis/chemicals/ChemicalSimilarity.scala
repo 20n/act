@@ -8,8 +8,12 @@ import org.apache.log4j.LogManager
   * Concurrency safe cached molecule
   */
 object ChemicalSimilarity {
-  private val logger = LogManager.getLogger(getClass.getName)
+  private val logger = LogManager.getLogger(getClass)
 
+  private implicit def stringToMolecule(s: String): Molecule = MoleculeConversions.stringToMolecule(s)
+
+  def calculatorSettings: Option[String] = _calculatorSettings
+  private def calculatorSettings_=(value: String): Unit = _calculatorSettings = Option(value)
   var _calculatorSettings: Option[String] = None
 
   /**
@@ -29,6 +33,8 @@ object ChemicalSimilarity {
 
   def calculateSimilarity(query: Molecule, target: String): Double = helperCalculateSimilarity(query, target)
 
+  def calculateSimilarity(query: String, target: String): Double = helperCalculateSimilarity(query, target)
+
   /**
     * For two molecules, use a calculator to determine their closeness.
     *
@@ -42,9 +48,6 @@ object ChemicalSimilarity {
     simCalc.getSimilarity(MoleculeConversions.toIntArray(target))
   }
 
-  def calculateSimilarity(query: String, target: String): Double = helperCalculateSimilarity(query, target)
-
-  def calculateDissimilarity(query: Molecule, target: Molecule): Double = helperCalculateDissimilarity(query, target)
 
   /**
     * For two molecules, use a calculator to determine how far away they are
@@ -78,9 +81,7 @@ object ChemicalSimilarity {
     simCalc
   }
 
-  def calculatorSettings: Option[String] = _calculatorSettings
-
-  private def calculatorSettings_=(value: String): Unit = _calculatorSettings = Option(value)
+  def calculateDissimilarity(query: Molecule, target: Molecule): Double = helperCalculateDissimilarity(query, target)
 
   def calculateDissimilarity(query: String, target: Molecule): Double = helperCalculateDissimilarity(query, target)
 
@@ -88,5 +89,4 @@ object ChemicalSimilarity {
 
   def calculateDissimilarity(query: String, target: String): Double = helperCalculateDissimilarity(query, target)
 
-  private implicit def stringToMolecule(s: String): Molecule = MoleculeConversions.stringToMolecule(s)
 }

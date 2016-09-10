@@ -40,6 +40,7 @@ public class L2InchiCorpus {
             inchi ->
             {
               try {
+                // Defaults to "inchi"
                 Molecule mol = MoleculeImporter.importMolecule(inchi);
                 if (mol.getMass() > massCutoff) {
                   LOGGER.warn("Throwing out molecule %s because of mass %f and %d atoms.",
