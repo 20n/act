@@ -2,7 +2,7 @@ package act.shared
 
 import act.shared.{CmdLineParser, OptDesc}
 import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, AllAtoms, AminoAcid, AllAminoAcids, MonoIsotopicMass}
-import act.shared.ChemicalSymbols.{Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser} 
+import act.shared.ChemicalSymbols.{Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser}
 import act.shared.ChemicalSymbols.{Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg}
 import act.shared.ChemicalSymbols.Helpers.{fromSymbol, computeMassFromAtomicFormula, computeFormulaFromElements}
 
@@ -17,19 +17,14 @@ import com.microsoft.z3._
 import collection.JavaConversions._
 import java.io.PrintWriter
 
-//
-// We might want to move these ADTs to a file of their own.
-//
-
 sealed trait Expr
 case class Const(c: Int) extends Expr
 case class Var(val id: String) extends Expr
 case class Term(val c: Const, val v: Var) extends Expr
 case class LinExpr(val terms: List[Term]) extends Expr
 
-// The below is not the right way to structure this.
-// There should be case classes for And, Or, Not, Lt, Gt that extend BooleanExpr
-// TODO: fix this before mainlining this code
+// The structure below is not right. Done correctly, there should be case
+// classes for And, Or, Not, Lt, Gt that extend BooleanExpr: TODO: fix in later PR
 sealed trait CompareOp
 case object Lt extends CompareOp
 case object Gt extends CompareOp
@@ -61,12 +56,15 @@ object Solver {
 
   def newSolver(): Solver = ctx mkSolver
   // we multiply two numbers and need the product to be within bounds
-  // so we have to allow fot twice what might be in each. 
+  // so we have to allow for twice what might be in each.
+  // The solver over bit vectors solves the circuit (so agnostic to sign),
+  // and (I think) returns two's complement representations when `getInt` is
+  // called on the bit vector.
   val bvSz = 24
   val bv_type: Sort = ctx mkBitVecSort bvSz
 
   type SMTExprVars = (BitVecExpr, Map[FuncDecl, Var])
-  type SMTBoolExprVars = (BoolExpr, Map[FuncDecl, Var]) 
+  type SMTBoolExprVars = (BoolExpr, Map[FuncDecl, Var])
 
   def mkExpr(e: Expr): SMTExprVars = e match {
     case Const(c)         => {
@@ -86,8 +84,8 @@ object Solver {
     case LinExpr(ts)      => {
       // we need to write this separately so that we can specify the type of the anonymous function
       // otherwise the reduce below is unable to infer the type and defaults to `Any` causing compile failure
-      val fn: (SMTExprVars, SMTExprVars) => SMTExprVars = { 
-        case ((bv1, vars1), (bv2, vars2)) => (ctx.mkBVAdd(bv1, bv2), vars1 ++ vars2) 
+      val fn: (SMTExprVars, SMTExprVars) => SMTExprVars = {
+        case ((bv1, vars1), (bv2, vars2)) => (ctx.mkBVAdd(bv1, bv2), vars1 ++ vars2)
       }
       val terms = ts.map(mkExpr)
       terms.reduce(fn)
@@ -158,7 +156,7 @@ object Solver {
   }
 
   def solveOne(eqns: List[BooleanExpr]): Option[Map[Var, Int]] = {
-    
+
     val (constraints, varsInEq) = eqns.map(mkClause).unzip
 
     val vars = varsInEq.reduce(_++_)
@@ -218,21 +216,21 @@ object Solver {
     num.getInt
   }
 }
-  
+
 class MzToFormula(elements: List[Atom] = AllAtoms) {
-  // this is critical correctness parameter. The solver searches the integral space 
+  // this is critical correctness parameter. The solver searches the integral space
   // int(mz) + { -delta .. +delta} for candidate solutions. it then validates each
   // solution in the continuous domain (but up to the precision as dictated by mass
   // mass equality of MonoIsotopicMass. If the solver fails to find valid formulae
   // for some test cases we would need to expand this delta to ensure the right space
-  // is being searched. APAP for instance gets solved even with delta = 0.
+  // is being searched. APAP (and 2k other DB chems) get solved with delta = 0!
   val delta = 0
 
   type ChemicalFormula = Map[Atom, Int]
 
-  val intMassesForAtoms: ChemicalFormula = elements.map(a => { 
-      val integralMass = a.mass.rounded(0).toInt // (math round a.initMass).toInt
-      (a, integralMass) 
+  val intMassesForAtoms: ChemicalFormula = elements.map(a => {
+      val integralMass = a.mass.rounded(0).toInt
+      (a, integralMass)
     }).toMap
   val varsForAtoms = elements.map(a => (a, atomToVar(a))).toMap
   val atomsForVars = elements.map(a => (atomToVar(a), a)).toMap
@@ -248,15 +246,19 @@ class MzToFormula(elements: List[Atom] = AllAtoms) {
   // We are looking for satisfying variable assignments that make `LHS_precise = RHS_precise`
   //
   // As a starting point, we solve a simpler equation by rounding the monoisotopic masses of
-  // the component atoms. Then we can formulate an integer LHS_int and see if we can get a 
+  // the component atoms. Then we can formulate an integer LHS_int and see if we can get a
   // mass "close to" the precise mz:
   // LHS_int := `12c + h + 16o + 14n + 32s`
-  // RHS_int := `floor(mz) + {0, +-1, +-2, .. +-K}`
-  // Note that K cannot be arbitrarily high if we restrict attention to `mz` values that
+  // RHS_int := `floor(mz) + {0, +-1, +-2, .. +-delta}`
+  // Note that `delta` cannot be arbitrarily high if we restrict attention to `mz` values that
   // are bounded, e.g., by `950Da` (in the case where the molecules are to LCMS detected)
   // This is because each atom's monoisotopic mass deviates from their integral values in the 2nd-3rd
   // decimal place, and which means a whole lot of atoms would have to be accumulated (consistently
-  // in one direction, that too) to get a full 1Da deviation from integral values. `K=2` probably suffices.
+  // in one direction, that too) to get a full 1Da deviation from integral values.
+  // Funnily, in our testing we found that `delta = 0` suffices, at least over CHNOPS. Maybe if we
+  // included many more low molecular weight atoms (so that *many* of them could be in the formula)
+  // and their mass difference from integral weights was substantial, we'd need to go to `delta = 1`.
+  // For now `delta = 0` it is!
   //
   // We use an SMT solver to enumerate all satisfying solutions to this integral formula.
   //
@@ -289,8 +291,8 @@ class MzToFormula(elements: List[Atom] = AllAtoms) {
 
   def buildChemFormulaA(soln: ChemicalFormula) = {
     elements.map(a => {
-        if (soln(a) != 0) 
-          a.symbol.toString + soln(a) 
+        if (soln(a) != 0)
+          a.symbol.toString + soln(a)
         else
           ""
       }
@@ -317,18 +319,18 @@ class MzToFormula(elements: List[Atom] = AllAtoms) {
     // instantiate upper and lower bounds on each variable
     // sat solvers, when asked to enumerate will absolutely find all solutions
     // which means if we search over the domain of 32 length bitvectors (bv32)
-    // then the two complement representation might allow for values that are 
+    // then the two complement representation might allow for values that are
     // negative. So bounds help in ensuring we are looking in the right places.
-    val boundLists = elements.map(a => 
+    val boundLists = elements.map(a =>
       {
         val lowerBound = LinIneq(varsForAtoms(a), Ge, Const(0))
 
         // default rounding gets to 3 decimal places, so basically accurate mass
-        val atomMass = a.mass.rounded() 
+        val atomMass = a.mass.rounded()
 
         // TODO: check performance of the sat solving with these intricate bounds
         // This precise a bound may be making life difficult for the solver.
-        // Alternatives are: 
+        // Alternatives are:
         //  #1) `closeMz`
         //  #2) lowest x, such that 2^x > closeMz
         // `#2` is a bit vector with only a single highest significant bit set
@@ -355,7 +357,7 @@ class MzToFormula(elements: List[Atom] = AllAtoms) {
 
     // combine all bounds
     val bounds = boundLists match {
-      case (la, lb) => la ++ lb 
+      case (la, lb) => la ++ lb
     }
 
     ineq :: onec :: bounds
@@ -409,8 +411,7 @@ object MzToFormula {
 
     solve(mzs, new MzToFormula)
 
-    // TODO: move to scalatest. 
-    // run unit test to make sure code is still sane
+    // TODO: Eventually, move to scalatest.
     if (cmdLine has optRunTests) {
       runAllUnitTests
     }
@@ -431,7 +432,7 @@ object MzToFormula {
 
     val atomsInt = atoms.map(a => a.mass.rounded(0) * expected(a)).sum
     val mzRounded = math round mz
-    val log = List(s"$mz", 
+    val log = List(s"$mz",
                       s"$atoms",
                       s"${formulator.buildChemFormulaA(expected)}",
                       s"rounded(mz)=$mzRounded",
@@ -447,7 +448,7 @@ object MzToFormula {
     }
   }
 
-  def reportFail(s: String) = reportHelper(s, errStream, Console.RED) 
+  def reportFail(s: String) = reportHelper(s, errStream, Console.RED)
   def reportPass(s: String) = reportHelper(s, outStream, Console.GREEN)
 
   def reportHelper(s: String, stream: PrintWriter, color: String): Unit = {
@@ -526,7 +527,7 @@ object MzToFormula {
   }
 
   def formulaFromInChI(i: String) = {
-    // TODO: this is not the accurate formula for inchis that have p+1 and p-1 
+    // TODO: this is not the accurate formula for inchis that have p+1 and p-1
     // It ends up +1, or -1 away because of the added/missing H+
     i.split("/")(1)
   }
@@ -565,10 +566,10 @@ object MzToFormula {
       curr
     } else {
       // recursive case, we pull chars in front to get atom string
-      // and pull digits next if 
+      // and pull digits next if
       val (atom, rest1) = getAtomAtHead(f)
       val (num, rest2) = if (rest1.isEmpty || rest1(0).isLetter) {
-        // in the case when there is a single atom, then there wont 
+        // in the case when there is a single atom, then there wont
         // be a number for us to extract, so we just return (1, rest)
         (1, rest1)
       } else {
@@ -596,16 +597,25 @@ object MzToFormula {
         val allMainAtomsPresent = List(C, H, O).forall(a => formula.indexOf(a.symbol) != -1)
         val allRecognizedAtomsRegex = s"[${AllAtoms.map(_.symbol.toString).reduce(_+_)}]"
         val noUnrecognizedAtoms = formula.replaceAll("[0-9]","").replaceAll(allRecognizedAtomsRegex, "").isEmpty
-        val isComplex = formula.indexOf('.') != -1
+        val isSaltComplex = formula.indexOf('.') != -1
         val mzOk = mz match {
           case None => false
           case Some(mass) => mass < maxMz
         }
-        // only test over formulae that: 1) have CHO, and no 
-        allMainAtomsPresent && noUnrecognizedAtoms && !isComplex && mzOk
+        // only test over formulae that:
+        //    1) have at least all of CHO in them
+        //    2) no atoms outside of `AllAtoms` (CHNOPS for now)
+        //    3) is not a salt
+        //    4)  a) inchi can be loaded, and mass calculated by `MassCalculator`
+        //        b) mz < 200Da (most of our standards were <200Da. Can go higher but solving takes long then!)
+        allMainAtomsPresent && noUnrecognizedAtoms && !isSaltComplex && mzOk
       }
     } yield {
-      mz match { case Some(mz) => formula -> (mz, c.getInChI) } 
+      mz match {
+        // map each formula to its mass and inchi, e.g.,
+        // C6H5N1O4 -> (155.021859, "InChI=1S/C6H5NO4/c8-4-2-1-3(6(10)11)5(9)7-4/h1-2H,(H,10,11)(H2,7,8,9)")
+        case Some(mz) => formula -> (mz, c.getInChI)
+      }
     }
 
     def makeTest(kv: (String, (Double, String))): (Double, List[Atom], Map[Atom, Int], String) = kv match {
@@ -620,23 +630,23 @@ object MzToFormula {
   }
 
   def unitTestIntegralSolns() {
-    // The type parameter is needed or else the compiler fails to infer 
+    // The type parameter is needed or else the compiler fails to infer
     // the right type for the tuple elements. we can specify it as a type on the variable,
     // or parameter to the constructor. The latter looks more readable.
     val testcases = Set[(Int, List[Atom], Set[Map[Atom, Int]])](
       (
-        104,           // atomic mass aiming for
-        List(C, N, O),  // atoms to derive formulae over
-        Set(Map(C->6, N->0, O->2), // sets of valid formulae
-          Map(C->5, N->2, O->1), 
-          Map(C->1, N->2, O->4), 
-          Map(C->2, N->0, O->5), 
-          Map(C->4, N->4, O->0), 
+        104,                        // atomic mass aiming for
+        List(C, N, O),              // atomic space to search
+        Set(Map(C->6, N->0, O->2),  // sets of valid formulae
+          Map(C->5, N->2, O->1),
+          Map(C->1, N->2, O->4),
+          Map(C->2, N->0, O->5),
+          Map(C->4, N->4, O->0),
           Map(C->0, N->4, O->3))
       )
     )
 
-    testcases.foreach{ test => 
+    testcases.foreach{ test =>
       {
         val (intMz, elems, validAtomicFormulae) = test
         val formulator = new MzToFormula(elements = elems) // Hah! The "formulator"
