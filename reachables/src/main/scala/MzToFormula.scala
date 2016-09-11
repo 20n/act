@@ -25,7 +25,7 @@ sealed trait Expr
 case class Const(c: Int) extends Expr
 case class Var(val id: String) extends Expr
 case class Term(val c: Const, val v: Var) extends Expr
-case class LinExpr(val terms: Set[Term]) extends Expr
+case class LinExpr(val terms: List[Term]) extends Expr
 
 // The below is not the right way to structure this.
 // There should be case classes for And, Or, Not, Lt, Gt that extend BooleanExpr
@@ -219,7 +219,7 @@ object Solver {
   }
 }
   
-class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
+class MzToFormula(elements: List[Atom] = AllAtoms) {
   // this is critical correctness parameter. The solver searches the integral space 
   // int(mz) + { -delta .. +delta} for candidate solutions. it then validates each
   // solution in the continuous domain (but up to the precision as dictated by mass
@@ -229,7 +229,8 @@ class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
   val delta = 0
 
   type ChemicalFormula = Map[Atom, Int]
-  val intMassesForAtoms: Map[Atom, Int] = elements.map(a => { 
+
+  val intMassesForAtoms: ChemicalFormula = elements.map(a => { 
       val integralMass = a.mass.rounded(0).toInt // (math round a.initMass).toInt
       (a, integralMass) 
     }).toMap
@@ -237,7 +238,7 @@ class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
   val atomsForVars = elements.map(a => (atomToVar(a), a)).toMap
 
   def atomToVar(a: Atom) = Var(a.symbol.toString)
-  def computedMass(formula: Map[Atom, Int]) = formula.map{ case (a, i) => a.mass * i }.reduce(_+_)
+  def computedMass(formula: ChemicalFormula) = formula.map{ case (a, i) => a.mass * i }.reduce(_+_)
   def toChemicalFormula(x: (Var, Int)) = (atomsForVars(x._1), x._2)
 
   // we can formulate an (under-determined) equation using integer variables c, h, o, n, s..
@@ -262,11 +263,10 @@ class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
   // Then we find the satisfying solution, which also makes `LHS_precise = RHS_precise`. Output
   // all of those solutions!
 
-  def formulaeForMz(mz: MonoIsotopicMass): Set[ChemicalFormula] = {
-    // val RHSints = (-delta to delta).map(d => (math round mz).toInt + d).toSet
-    val RHSints = (-delta to delta).map(d => (mz rounded 0).toInt + d).toSet
+  def solve(mz: MonoIsotopicMass): List[ChemicalFormula] = {
+    val RHSints = (-delta to delta).map(d => (mz rounded 0).toInt + d).toList
 
-    val candidateFormulae: Set[ChemicalFormula] = RHSints.map( intMz => {
+    val candidateFormulae = RHSints.map( intMz => {
       val constraints = buildConstraintOverInts(intMz)
       val sat = Solver.solveMany(constraints)
       val formulae = sat.map(soln => soln.map(toChemicalFormula))
@@ -280,14 +280,14 @@ class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
     // For each formula that we get, we need to calculate whether this is truly the right
     // mz when computed at the precise mass. If it is then we filter it out to the final
     // formulae as as true solution
-    val matchingFormulae: Set[ChemicalFormula] = candidateFormulae.filter( computedMass(_).equals(mz) )
+    val matchingFormulae = candidateFormulae.filter( computedMass(_).equals(mz) )
     val preciseMassSatFormulae = matchingFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
     println(s"\t Candidates that match on precise formula: $preciseMassSatFormulae")
 
     matchingFormulae
   }
 
-  def buildChemFormulaA(soln: Map[Atom, Int]) = {
+  def buildChemFormulaA(soln: ChemicalFormula) = {
     elements.map(a => {
         if (soln(a) != 0) 
           a.symbol.toString + soln(a) 
@@ -302,7 +302,7 @@ class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
   }
 
   def buildConstraintOverInts(closeMz: Int) = {
-    val linExprTerms: Set[Term] = elements.map(a => {
+    val linExprTerms: List[Term] = elements.map(a => {
         val coefficient = Const(intMassesForAtoms(a))
         val variable = varsForAtoms(a)
         Term(coefficient, variable)
@@ -319,7 +319,8 @@ class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
     // which means if we search over the domain of 32 length bitvectors (bv32)
     // then the two complement representation might allow for values that are 
     // negative. So bounds help in ensuring we are looking in the right places.
-    val boundLists = elements.map(a => {
+    val boundLists = elements.map(a => 
+      {
         val lowerBound = LinIneq(varsForAtoms(a), Ge, Const(0))
 
         // default rounding gets to 3 decimal places, so basically accurate mass
@@ -342,7 +343,7 @@ class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
             val others = elements.filter(!_.equals(H))
             val ts = others.map( a => Term(Const(a.maxValency), varsForAtoms(a)) )
             val lineBonds = Term(Const(-others.size), one)
-            LinExpr(ts + lineBonds)
+            LinExpr(lineBonds :: ts)
           }
           case _ => Const(max)
         }
@@ -362,14 +363,16 @@ class MzToFormula(elements: Set[Atom] = Set(C,H,N,O,P,S)) {
 }
 
 object MzToFormula {
-  def solveMz(mz: Double): Map[Atom, Int] = {
-    assert(false)
-    Map()
-  }
+
+  // These can be overwritten by command line arguments to specific files
+  // We can pass them around as arguments, but it was getting very painful.
+  // So we chicken-ed out and used `var`s
+  var outStream = new PrintWriter(System.out)
+  var errStream = new PrintWriter(System.err)
 
   def main(args: Array[String]) {
     val className = this.getClass.getCanonicalName
-    val opts = List(optMz, optMassFile, optOutFailedTests, optRunTests)
+    val opts = List(optMz, optMassFile, optOutputFile, optOutFailedTests, optRunTests)
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
     val mzs: List[Double] = {
@@ -388,9 +391,7 @@ object MzToFormula {
       }
     }
 
-    val solns: List[Map[Atom, Int]] = mzs map solveMz
-
-    val outstream: PrintWriter = {
+    outStream = {
       if (cmdLine has optOutFile) {
         new PrintWriter(cmdLine get optOutFile)
       } else {
@@ -398,10 +399,15 @@ object MzToFormula {
       }
     }
 
-    solns.foreach( soln => {
-      val formula: String = soln.toString // buildChemFormulaA(soln)
-      outstream.write(formula)
-    })
+    errStream = {
+      if (cmdLine has optOutFailedTests) {
+        new PrintWriter(cmdLine get optOutFailedTests)
+      } else {
+        new PrintWriter(System.err)
+      }
+    }
+
+    solve(mzs, new MzToFormula)
 
     // TODO: move to scalatest. 
     // run unit test to make sure code is still sane
@@ -410,41 +416,65 @@ object MzToFormula {
     }
   }
 
+  def solve(mzs: List[Double], f: MzToFormula): Unit = {
+    mzs.foreach( m => {
+      val solns = f.solve(new MonoIsotopicMass(m))
+      val allChemicalFormulae = solns.map(f.buildChemFormulaA)
+      outStream.write(allChemicalFormulae.mkString("\t") + "\n")
+      outStream.flush
+    })
+  }
+
+  def solveNCheck(test: (Double, List[Atom], Map[Atom, Int])) {
+    println(s"CHECKING: ${test}")
+    val (mz, atoms, expected) = test
+    val formulator = new MzToFormula(elements = atoms)
+    val solnsFound = formulator.solve(new MonoIsotopicMass(mz))
+    if (solnsFound.contains(expected)) {
+      reportPass(s"PASS: Test case $test")
+    } else {
+      reportFail(s"FAIL: Test case $test")
+    }
+  }
+
+  def reportFail(s: String) = { errStream.write(Console.RED); errStream.write(s); errStream.println; errStream.flush }
+  def reportPass(s: String) = { outStream.write(Console.GREEN); outStream.write(s); outStream.println; outStream.flush }
+
   val optMz = new OptDesc(
                     param = "m",
                     longParam = "mass",
-                    name = "monoIsotopic mass to solve",
+                    name = "monoIsotopic value",
                     desc = """Given a single monoisotopic mass, compute possible chemical formulae.""",
                     isReqd = false, hasArg = true)
 
   val optMassFile = new OptDesc(
                     param = "i",
                     longParam = "file-of-masses",
-                    name = "file of monoIsotopic masses to solve",
+                    name = "filename",
                     desc = """Input file with one line per mass. It can have other metadata
-                              associated with that mass in TSV form after the mass. Just ensure
-                              that the monoIsotopic mass is the first column. This goes hand in
-                              hand with the output of err-logfile. We can feed the output failed
-                              solvings back as input and iteratively improve the algorithm until
-                              it can solve all masses.""",
+                             |associated with that mass in TSV form after the mass. Just ensure
+                             |that the monoIsotopic mass is the first column. This goes hand in
+                             |hand with the output of err-logfile. We can feed the output failed
+                             |solvings back as input and iteratively improve the algorithm until
+                             |it can solve all masses.""".stripMargin,
                     isReqd = false, hasArg = true)
 
   val optOutputFile = new OptDesc(
                     param = "o",
                     longParam = "formulae-outfiles",
-                    name = "output file for computed formulae (same order as input file)",
+                    name = "filename",
                     desc = """Output file with one line for each input monoIsotopic mass,
-                              Each line is tab separated list of formulas for that mass.""",
+                             |Each line is tab separated list of formulas for that mass.""".stripMargin,
                     isReqd = false, hasArg = true)
 
   val optOutFailedTests = new OptDesc(
                     param = "l",
                     longParam = "err-logfile",
-                    name = "file in which to log test error cases",
+                    name = "filename",
                     desc = """There are a few knobs in solving (delta, atoms, decimal),
-                              We also run tests by pulling from the DB. So we log cases
-                              where the solving fails to compute the candidate formula.
-                              We log `mass inchi delta atomset otherknobs..` in TSV form.""",
+                             |We also run tests by pulling from the DB. So we log cases
+                             |where the solving fails to compute the candidate formula.
+                             |We log `mass inchi delta atomset otherknobs..` in TSV form.""".stripMargin,
                     isReqd = false, hasArg = true)
 
   val optRunTests = new OptDesc(
@@ -458,37 +488,22 @@ object MzToFormula {
     println(s"${Console.BLUE}Running all tests!")
     unitTestIntegralSolns()
     testDBChemicals(n = 300, maxMz = 200.00)
-    testAcetaminophen()
+    testAcetaminophen
   }
-
-  def check(test: (Double, Set[Atom], Map[Atom, Int])) {
-    println(s"CHECKING: ${test}")
-    val (mz, atoms, soln) = test
-    val formulator = new MzToFormula(elements = atoms)
-    val solnsFound = formulator formulaeForMz new MonoIsotopicMass(mz)
-    if (solnsFound.contains(soln)) {
-      reportPass(s"PASS: Test case $test")
-    } else {
-      reportFail(s"FAIL: Test case $test")
-    }
-  }
-
-  def reportFail(s: String) = { print(Console.RED); println(s) }
-  def reportPass(s: String) = { print(Console.GREEN); println(s) }
 
   def testAcetaminophen() {
-    val apapCases = Set[(Double, Set[Atom], Map[Atom, Int])](
+    val apapCases = Set[(Double, List[Atom], Map[Atom, Int])](
       // the formula has to be specified to at least a certain # digits of precision
       // the number of digits of precision required is specified under MonoIsotopicMass
       // One case that is well used is 3 digits of precision. If you specify less,
       // e.g., 151.06 instead of 151.063 for apap, a valid solution will not be found
-      (151.063324, Set(C, H, N, O), Map(C->8, H->9, N->1, O->2)),
-      (151.063,    Set(C, H, N, O), Map(C->8, H->9, N->1, O->2)),
-      (151.063324, AllAtoms.toSet, Map(C->8, H->9, N->1, O->2, S->0, P->0)),
-      (151.063,    AllAtoms.toSet, Map(C->8, H->9, N->1, O->2, S->0, P->0))
+      (151.063324, List(C, H, N, O), Map(C->8, H->9, N->1, O->2)),
+      (151.063,    List(C, H, N, O), Map(C->8, H->9, N->1, O->2)),
+      (151.063324, AllAtoms, Map(C->8, H->9, N->1, O->2, S->0, P->0)),
+      (151.063,    AllAtoms, Map(C->8, H->9, N->1, O->2, S->0, P->0))
     )
 
-    apapCases foreach check
+    apapCases foreach solveNCheck
   }
 
   def formulaFromInChI(i: String) = {
@@ -574,25 +589,25 @@ object MzToFormula {
 
     val tests = testformulae.toMap
 
-    def makeTest(kv: (String, Double)): (Double, Set[Atom], Map[Atom, Int]) = kv match {
+    def makeTest(kv: (String, Double)): (Double, List[Atom], Map[Atom, Int]) = kv match {
       case (formula, mz) => {
         val formulaMap = getFormulaMap(formula)
-        (mz, formulaMap.keys.toSet, formulaMap)
+        (mz, formulaMap.keys.toList, formulaMap)
       }
     }
 
     val dbCases = tests.map(makeTest).toSet
-    dbCases foreach check
+    dbCases foreach solveNCheck
   }
 
   def unitTestIntegralSolns() {
     // The type parameter is needed or else the compiler fails to infer 
     // the right type for the tuple elements. we can specify it as a type on the variable,
     // or parameter to the constructor. The latter looks more readable.
-    val testcases = Set[(Int, Set[Atom], Set[Map[Atom, Int]])](
+    val testcases = Set[(Int, List[Atom], Set[Map[Atom, Int]])](
       (
         104,           // atomic mass aiming for
-        Set(C, N, O),  // atoms to derive formulae over
+        List(C, N, O),  // atoms to derive formulae over
         Set(Map(C->6, N->0, O->2), // sets of valid formulae
           Map(C->5, N->2, O->1), 
           Map(C->1, N->2, O->4), 

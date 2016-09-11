@@ -20,7 +20,7 @@ class OptDesc(val param: String, val longParam: String, name: String, desc: Stri
     val built = CliOption.builder(param).
       required(isReqd).
       longOpt(longParam).
-      desc(desc).
+      desc(desc.replaceAll("\n", " ")).
       argName(name).
       hasArg(hasArg)
 
