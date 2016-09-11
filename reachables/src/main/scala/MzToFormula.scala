@@ -274,7 +274,7 @@ class MzToFormula(elements: List[Atom] = AllAtoms) {
     }).flatten
 
     val approxMassSat = candidateFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
-    println(s"\t Num candidate solutions for the int with +-${delta} delta: ${approxMassSat.size}")
+    MzToFormula.reportPass(s"\t Int match soln with +-${delta}: ${approxMassSat.size}")
 
     // candidateFormulae has all formulae for deltas to the closest int mz
     // For each formula that we get, we need to calculate whether this is truly the right
@@ -282,7 +282,7 @@ class MzToFormula(elements: List[Atom] = AllAtoms) {
     // formulae as as true solution
     val matchingFormulae = candidateFormulae.filter( computedMass(_).equals(mz) )
     val preciseMassSatFormulae = matchingFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
-    println(s"\t Candidates that match on precise formula: $preciseMassSatFormulae")
+    MzToFormula.reportPass(s"\t Precise match soln: $preciseMassSatFormulae")
 
     matchingFormulae
   }
@@ -425,20 +425,37 @@ object MzToFormula {
     })
   }
 
-  def solveNCheck(test: (Double, List[Atom], Map[Atom, Int])) {
-    println(s"CHECKING: ${test}")
-    val (mz, atoms, expected) = test
+  def solveNCheck(test: (Double, List[Atom], Map[Atom, Int], String)) {
+    val (mz, atoms, expected, inchi) = test
     val formulator = new MzToFormula(elements = atoms)
+
+    val atomsInt = atoms.map(a => a.mass.rounded(0) * expected(a)).sum
+    val mzRounded = math round mz
+    val log = List(s"$mz", 
+                      s"$atoms",
+                      s"${formulator.buildChemFormulaA(expected)}",
+                      s"rounded(mz)=$mzRounded",
+                      s"rounded(atoms)=$atomsInt",
+                      s"$inchi").mkString("\t")
+
     val solnsFound = formulator.solve(new MonoIsotopicMass(mz))
+
     if (solnsFound.contains(expected)) {
-      reportPass(s"PASS: Test case $test")
+      reportPass(s"PASS: $log")
     } else {
-      reportFail(s"FAIL: Test case $test")
+      reportFail(s"FAIL: $log")
     }
   }
 
-  def reportFail(s: String) = { errStream.write(Console.RED); errStream.write(s); errStream.println; errStream.flush }
-  def reportPass(s: String) = { outStream.write(Console.GREEN); outStream.write(s); outStream.println; outStream.flush }
+  def reportFail(s: String) = reportHelper(s, errStream, Console.RED) 
+  def reportPass(s: String) = reportHelper(s, outStream, Console.GREEN)
+
+  def reportHelper(s: String, stream: PrintWriter, color: String): Unit = {
+    stream.write(color)
+    stream.write(s)
+    stream.println()
+    stream.flush
+  }
 
   val optMz = new OptDesc(
                     param = "m",
@@ -487,26 +504,30 @@ object MzToFormula {
   def runAllUnitTests() {
     println(s"${Console.BLUE}Running all tests!")
     unitTestIntegralSolns()
-    testDBChemicals(n = 300, maxMz = 200.00)
+    testDBChemicals(n = 10000, maxMz = 200.00)
     testAcetaminophen
   }
 
   def testAcetaminophen() {
-    val apapCases = Set[(Double, List[Atom], Map[Atom, Int])](
+    val apapSoln: Map[Atom, Int] = Map(C->8, H->9, N->1, O->2, S->0, P->0)
+    val inchi = "InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)"
+    val apapCases = Set[(Double, List[Atom], Map[Atom, Int], String)](
       // the formula has to be specified to at least a certain # digits of precision
       // the number of digits of precision required is specified under MonoIsotopicMass
       // One case that is well used is 3 digits of precision. If you specify less,
       // e.g., 151.06 instead of 151.063 for apap, a valid solution will not be found
-      (151.063324, List(C, H, N, O), Map(C->8, H->9, N->1, O->2)),
-      (151.063,    List(C, H, N, O), Map(C->8, H->9, N->1, O->2)),
-      (151.063324, AllAtoms, Map(C->8, H->9, N->1, O->2, S->0, P->0)),
-      (151.063,    AllAtoms, Map(C->8, H->9, N->1, O->2, S->0, P->0))
+      (151.063324, List(C, H, N, O), apapSoln - (S, P), inchi),
+      (151.063,    List(C, H, N, O), apapSoln - (S, P), inchi),
+      (151.063324, AllAtoms, apapSoln, inchi),
+      (151.063,    AllAtoms, apapSoln, inchi)
     )
 
     apapCases foreach solveNCheck
   }
 
   def formulaFromInChI(i: String) = {
+    // TODO: this is not the accurate formula for inchis that have p+1 and p-1 
+    // It ends up +1, or -1 away because of the added/missing H+
     i.split("/")(1)
   }
 
@@ -584,19 +605,17 @@ object MzToFormula {
         allMainAtomsPresent && noUnrecognizedAtoms && !isComplex && mzOk
       }
     } yield {
-      mz match { case Some(mz) => formula -> mz } 
+      mz match { case Some(mz) => formula -> (mz, c.getInChI) } 
     }
 
-    val tests = testformulae.toMap
-
-    def makeTest(kv: (String, Double)): (Double, List[Atom], Map[Atom, Int]) = kv match {
-      case (formula, mz) => {
+    def makeTest(kv: (String, (Double, String))): (Double, List[Atom], Map[Atom, Int], String) = kv match {
+      case (formula, (mz, inchi)) => {
         val formulaMap = getFormulaMap(formula)
-        (mz, formulaMap.keys.toList, formulaMap)
+        (mz, formulaMap.keys.toList, formulaMap, inchi)
       }
     }
 
-    val dbCases = tests.map(makeTest).toSet
+    val dbCases = testformulae.map(makeTest).toSet
     dbCases foreach solveNCheck
   }
 
