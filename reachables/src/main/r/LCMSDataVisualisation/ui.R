@@ -25,6 +25,7 @@ shinyUI(fluidPage(
       checkboxInput("top.value", label = "Display m/z value for highest peak", value = FALSE)
     ),
     mainPanel(
+      em("Disclaimer: the peak detection will only detect peaks of intensity more than 1e5 and can't (by design) detect more than 2 peaks."),
       h4("Target m/z value"),
       textOutput("target.mz"),
       h4("Detected peaks"),
