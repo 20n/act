@@ -31,7 +31,7 @@ object AbstractChemicals {
        Convert from DB Object => Smarts and return that.
        Flatmap as Parse Db object returns None if an error occurs (Just filter out the junk)
     */
-    val goodChemicalIds: ParMap[Long, ChemicalInformation] = result.flatMap(parseDbObjectForSmiles(_)).toMap
+    val goodChemicalIds: ParMap[Long, ChemicalInformation] = result.flatMap(parseDbObjectForSmiles).toMap
 
     logger.info(s"Finished finding abstract chemicals. Found ${goodChemicalIds.size}")
 
@@ -54,9 +54,9 @@ object AbstractChemicals {
     try {
       // Chemaxon technically uses smarts when we say Smiles, so we just make it explicit here.
       val mol = MoleculeImporter.importMolecule(replacedSmarts, MoleculeFormat.smarts)
-      
-      // Convert to inchi to standardize format moving forward as much as we can.  Only they shall pass.
-      Option((chemicalId, new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportMoleculeAsFormats(mol, List(MoleculeFormat.stdInchi, MoleculeFormat.smiles)))))
+
+      // Convert to smarts so everything is standard
+      Option((chemicalId, new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportAsSmarts(mol))))
     } catch {
       case e: MolExportException =>
         logger.debug(s"Tried converting molecule to either smiles or InChI, but failed.  Molecule's chemical ID is ${chemicalId.toInt}.")

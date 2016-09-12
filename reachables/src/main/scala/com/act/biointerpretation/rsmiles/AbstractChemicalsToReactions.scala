@@ -3,11 +3,7 @@ package com.act.biointerpretation.rsmiles
 import java.io.{BufferedWriter, File, FileWriter}
 
 import act.server.MongoDB
-import chemaxon.struc.Molecule
-import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
-import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.l2expansion.L2InchiCorpus
-import com.act.biointerpretation.mechanisminspection.Ero
 import com.act.biointerpretation.rsmiles.AbstractReactions.ReactionInformation
 import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
@@ -25,7 +21,7 @@ object AbstractChemicalsToReactions {
     val db = Mongo.connectToMongoDatabase()
     val abstractChemicals = AbstractChemicals.getAbstractChemicals(db)
     val abstractReactions = AbstractReactions.getAbstractReactions(db)(abstractChemicals, substrateCount)
-    logger.info(s"Found ${abstractReactions.size} matching reactions. Writing them to disk.")
+    logger.info(s"Found ${abstractReactions.size} matching reactions with $substrateCount substrates. Writing them to disk.")
     writeSubstrateStringsForSubstrateCount(db)(abstractReactions.seq.toList, outputSubstrateFile)
     writeAbstractReactionsToJsonCorpus(abstractReactions.seq.toList, outputReactionCorpus)
   }
@@ -43,36 +39,6 @@ object AbstractChemicalsToReactions {
       "to is a directory and therefore is not a valid path.")
     val substrates: Seq[String] = reactions.flatMap(_.getSubstrates.map(_.getString)).seq
     new L2InchiCorpus(substrates).writeToFile(outputFile)
-  }
-
-  def projectReactionToDetermineRo(projector: ReactionProjector, eros: List[Ero])(reactionInformation: ReactionInformation): Option[Int] = {
-    val project = projectionArray(projector, reactionInformation.getSubstrates.map(
-      chemical =>
-      MoleculeImporter.importMolecule(chemical.getString, MoleculeFormat.smarts))) _
-
-    // Full projection for RO
-    val projectedProducts: List[(Int, Molecule)] = eros.flatMap(ro => project(ro)).flatten
-
-    for (products <- reactionInformation.getProducts) {
-      val productInchi = MoleculeExporter.exportAsInchi(MoleculeImporter.importMolecule(products.getString))
-      for ((ro, molecule) <- projectedProducts) {
-        val moleculeInchi = MoleculeExporter.exportAsInchi(molecule)
-        if (productInchi.equals(moleculeInchi)) {
-          return Option(ro)
-        }
-      }
-    }
-
-    None
-  }
-
-  private def projectionArray(projector: ReactionProjector, substrates: List[Molecule])(ro: Ero): Option[List[(Int, Molecule)]] = {
-    val projection = projector.getAllProjectedProductSets(substrates.toArray, ro.getReactor).toList.flatten
-    if (projection.nonEmpty) {
-      return Option(List.fill(projection.length)(ro.getId.intValue()) zip projection)
-    }
-
-    None
   }
 
   object Mongo extends MongoWorkflowUtilities {}

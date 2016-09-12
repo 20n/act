@@ -22,10 +22,14 @@ object SparkWrapper extends ToolWrapper {
   def sbtAssembly(useCached: Boolean = false): ShellJob = {
     if (useCached && assembledJar.exists()){
       // Placeholder
-      return constructJob("Assembled JAR", None, args=List(""))
+      val job = constructJob("Assembled JAR in Cache", None, args = List(""))
+      job.doNotWriteOutputStream()
+      return job
     }
 
     // Assemble JAR, don't run tests
-    constructJob("Creating JAR for spark use.", Option("sbt"), args = List("assembly"))
+    val job = constructJob("Creating JAR for spark use", Option("sbt"), args = List("assembly"))
+    job.doNotWriteOutputStream()
+    job
   }
 }

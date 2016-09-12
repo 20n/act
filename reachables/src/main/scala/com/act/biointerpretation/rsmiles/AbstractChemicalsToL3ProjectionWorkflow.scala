@@ -2,8 +2,9 @@ package com.act.biointerpretation.rsmiles
 
 import java.io.File
 
-import com.act.workflow.tool_manager.jobs.{Job, ScalaJob}
-import com.act.workflow.tool_manager.tool_wrappers.SparkWrapper
+import com.act.analysis.chemicals.molecules.MoleculeFormat
+import com.act.workflow.tool_manager.jobs.Job
+import com.act.workflow.tool_manager.tool_wrappers.{ScalaJobWrapper, SparkWrapper}
 import com.act.workflow.tool_manager.workflow.Workflow
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.log4j.LogManager
@@ -11,14 +12,13 @@ import org.apache.log4j.LogManager
 
 class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
 
-  private val LOGGER = LogManager.getLogger(getClass)
-
   val OPTION_DATABASE = "d"
   val OPTION_WORKING_DIRECTORY = "w"
   val OPTION_SUBSTRATE_COUNTS = "s"
   val OPTION_USE_CACHED_RESULTS = "c"
   val OPTION_SPARK_MASTER = "m"
   val OPTION_CHEMAXON_LICENSE = "l"
+  private val LOGGER = LogManager.getLogger(getClass)
 
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -74,6 +74,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
   override def defineWorkflow(cl: CommandLine): Job = {
     // Make sure we have an assembled JAR available.
     val sparkMaster = cl.getOptionValue(OPTION_SPARK_MASTER, "spark://10.0.20.19:7077")
+
     headerJob.thenRun(SparkWrapper.sbtAssembly(useCached = false))
 
     val chemaxonLicense = new File(cl.getOptionValue(OPTION_CHEMAXON_LICENSE))
@@ -103,9 +104,9 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
 
       val abstractChemicalsToSubstrateListJob = if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && substrateListOutputFile.exists()) {
         LOGGER.info(s"Using cached file ${substrateListOutputFile.getAbsolutePath}")
-        new ScalaJob("Using cached substrate list", () => Unit)
+        ScalaJobWrapper.wrapScalaFunction("Using cached substrate list", () => Unit)
       } else {
-        new ScalaJob("Abstract chemicals to substrate list", appliedFunction)
+        ScalaJobWrapper.wrapScalaFunction("Abstract chemicals to substrate list", appliedFunction)
       }
 
       // Step 2: Spark submit substrate list => RO projection
@@ -117,7 +118,8 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       val roProjectionArgs = List(
         "--substrates-list", substrateListOutputFile.getAbsolutePath,
         "-o", roProjectionsOutputFileDirectory.getAbsolutePath,
-        "-l", chemaxonLicense.getAbsolutePath
+        "-l", chemaxonLicense.getAbsolutePath,
+        "-c", MoleculeFormat.smarts.toString
       )
 
       val singleSubstrateRoProjectorClassPath = "com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector"
@@ -127,7 +129,8 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       val sparkRoProjection = SparkWrapper.runClassPath(
         singleSubstrateRoProjectorClassPath,
         sparkMaster,
-        roProjectionArgs
+        roProjectionArgs,
+        memory = "12G"
       )
 
       abstractChemicalsToSubstrateListJob.thenRun(sparkRoProjection)
