@@ -42,7 +42,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_INPUT_FILES)
         .argName("input file")
-        .desc("The input lcms containing molecular hit results in the IonAnalysisInterchangeModel serialized object " +
+        .desc("The input files containing molecular hit results in the IonAnalysisInterchangeModel serialized object " +
             "format for every positive replicate well from the same lcms mining run.")
         .hasArgs()
         .valueSeparator(',')
@@ -75,7 +75,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     );
     add(Option.builder(OPTION_GET_IONS_SUPERSET)
         .argName("ions superset")
-        .desc("A run option on all the ionic variant lcms on a single replicate run")
+        .desc("A run option on all the ionic variant files on a single replicate run")
         .longOpt("ions-superset")
     );
     add(Option.builder(OPTION_JSON_FORMAT)
@@ -95,7 +95,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     );
     add(Option.builder(OPTION_FILTER_BY_IONS)
         .argName("filter by ions")
-        .desc("Filter lcms by ion")
+        .desc("Filter files by ion")
         .hasArgs()
         .valueSeparator(',')
         .longOpt("filter-by-ions")
@@ -103,7 +103,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
   }};
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[] {
-      "This module takes as inputs LCMS analysis results in the form of IonAnalysisInterchangeModel serialized object lcms ",
+      "This module takes as inputs LCMS analysis results in the form of IonAnalysisInterchangeModel serialized object files ",
           "for every positive replicate vs negative controls. Based on these, it identifies inchis that are hits on all the ",
           "replicates and writes them to an output file."
   }, "");

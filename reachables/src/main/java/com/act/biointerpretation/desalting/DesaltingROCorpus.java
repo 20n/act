@@ -53,7 +53,7 @@ public class DesaltingROCorpus {
   }
 
   /**
-   * This function returns a reader file handle to the list of ROs lcms
+   * This function returns a reader file handle to the list of ROs files
    * @return BufferedReader reader
    * @throws FileNotFoundException
    */

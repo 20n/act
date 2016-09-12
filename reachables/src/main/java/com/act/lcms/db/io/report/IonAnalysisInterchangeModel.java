@@ -234,7 +234,7 @@ public class IonAnalysisInterchangeModel {
    * @param hitOrMissFilterAndTransformer This filter function takes in single/multiple HitOrMiss objects from replicates and
    *                                   performs a transformation operation on them to produce one HitOrMiss object
    *                                   and a boolean to keep the transformed molecule in the resulting model.
-   * @return A list of inchis that are valid molecule hits in all the input lcms and pass all the thresholds.
+   * @return A list of inchis that are valid molecule hits in all the input files and pass all the thresholds.
    * @throws IOException
    */
   public static IonAnalysisInterchangeModel filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
@@ -264,7 +264,7 @@ public class IonAnalysisInterchangeModel {
       ResultForMZ resultForMZ = new ResultForMZ(representativeMassCharge);
       resultForMZ.setId(representativeMZ.getId());
 
-      // TODO: Take out the isValid field since it does not convey useful information for such post processing lcms.
+      // TODO: Take out the isValid field since it does not convey useful information for such post processing files.
       resultForMZ.setIsValid(representativeMZ.getIsValid());
 
       // For each mass charge, iterate through each molecule under the mass charge
@@ -286,7 +286,7 @@ public class IonAnalysisInterchangeModel {
           for (int k = 0; k < replicateModels.size(); k++) {
             ResultForMZ sampleRepresentativeMz = replicateModels.get(k).getResults().get(i);
 
-            // Since we are comparing across replicate lcms, we expect each ResultForMZ element in the each replicate's
+            // Since we are comparing across replicate files, we expect each ResultForMZ element in the each replicate's
             // IonAnalysisInterchangeModel to be in the same order as other replicates. We check if the mass charges are the
             // same across the samples to make sure the replicates aligned correctly.
             if (!sampleRepresentativeMz.getMz().equals(representativeMassCharge)) {
@@ -317,7 +317,7 @@ public class IonAnalysisInterchangeModel {
   /**
    * This function loads in multiple serialized IonAnalysisInterchangeModels and deserializes them
    * @param filepaths File paths to the serialized IonAnalysisInterchangeModels
-   * @return A list of IonAnalysisInterchangeModels corresponding to the lcms.
+   * @return A list of IonAnalysisInterchangeModels corresponding to the files.
    * @throws IOException
    */
   public static List<IonAnalysisInterchangeModel> loadMultipleIonAnalysisInterchangeModelsFromFiles(List<String> filepaths)

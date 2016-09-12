@@ -10,8 +10,8 @@ class ExampleWorkflow extends Workflow {
     // Print working directory
     val job1 = ShellWrapper.shellCommand("Print Working Directory", List("pwd"))
 
-    // See which lcms are available
-    val job2 = ShellWrapper.shellCommand("List lcms", List("ls"))
+    // See which files are available
+    val job2 = ShellWrapper.shellCommand("List files", List("ls"))
 
     // Get today's date
     val job3 = ShellWrapper.shellCommand("Vanilla date", List("date"))

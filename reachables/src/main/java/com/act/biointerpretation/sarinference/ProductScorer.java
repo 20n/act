@@ -130,7 +130,7 @@ public class ProductScorer {
     return new JavaRunnable() {
       @Override
       public void run() throws IOException {
-        // Verify lcms
+        // Verify files
         FileChecker.verifyInputFile(predictionCorpus);
         FileChecker.verifyInputFile(scoredSars);
         FileChecker.verifyInputFile(lcmsFile);

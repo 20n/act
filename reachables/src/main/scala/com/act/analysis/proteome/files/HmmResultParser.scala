@@ -8,7 +8,7 @@ import org.apache.logging.log4j.LogManager
   * Takes in a HMM result
   *
   *
-  * These lcms look like this:
+  * These files look like this:
   * <Header information>
   * <Lines of results that are good>
   * <Everything after, marked by the inclusion threshold>

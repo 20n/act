@@ -120,7 +120,7 @@ public class PubchemTTLMergerTest {
     Pair<RocksDB, Map<PubchemTTLMerger.COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles =
         PubchemTTLMerger.createNewRocksDB(tempDirPath.toFile());
 
-    // Alas, we can't swap this with a JAR-safe stream as we must list the lcms.
+    // Alas, we can't swap this with a JAR-safe stream as we must list the files.
     File testSynonymFileDir = new File(this.getClass().getResource(TEST_RDF_PATH).getFile());
     List<File> testFiles = Arrays.asList(testSynonymFileDir.listFiles());
     Collections.sort(testFiles);
@@ -193,7 +193,7 @@ public class PubchemTTLMergerTest {
     Pair<RocksDB, Map<PubchemTTLMerger.COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles =
         PubchemTTLMerger.createNewRocksDB(tempDirPath.toFile());
 
-    // Alas, we can't swap this with a JAR-safe stream as we must list the lcms.
+    // Alas, we can't swap this with a JAR-safe stream as we must list the files.
     File testSynonymFileDir = new File(this.getClass().getResource(TEST_RDF_PATH).getFile());
     List<File> testFiles = Arrays.asList(testSynonymFileDir.listFiles());
     Collections.sort(testFiles);

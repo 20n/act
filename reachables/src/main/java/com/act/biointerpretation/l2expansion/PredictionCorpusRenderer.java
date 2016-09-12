@@ -39,11 +39,11 @@ public class PredictionCorpusRenderer {
    * an image of each reactor used in the corpus, and prints the corpus itself to a json file.
    *
    * @param predictionCorpus The corpus to render.
-   * @param imageDirectory The directory in which to put the lcms.
+   * @param imageDirectory The directory in which to put the files.
    */
   public void renderCorpus(L2PredictionCorpus predictionCorpus, File imageDirectory) throws IOException {
 
-    // Build lcms for images and corpus
+    // Build files for images and corpus
     Map<Integer, File> predictionFileMap = getPredictionFileMap(predictionCorpus, imageDirectory);
 
     File outCorpusFile = new File(imageDirectory, PREDICTION_CORPUS_FILE_NAME);
@@ -74,10 +74,10 @@ public class PredictionCorpusRenderer {
   }
 
   /**
-   * Create a file for each prediction drawing,and return a map from prediction ids to those lcms.
+   * Create a file for each prediction drawing,and return a map from prediction ids to those files.
    *
    * @param predictionCorpus The prediction corpus.
-   * @param imageDir The directory in which the lcms should be located.
+   * @param imageDir The directory in which the files should be located.
    * @return A map from prediction id to the corresponding prediction's file.
    */
   private Map<Integer, File> getPredictionFileMap(L2PredictionCorpus predictionCorpus, File imageDir) {

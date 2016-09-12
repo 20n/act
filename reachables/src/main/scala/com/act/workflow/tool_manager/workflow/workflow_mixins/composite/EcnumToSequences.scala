@@ -8,7 +8,7 @@ import org.apache.logging.log4j.LogManager
 
 trait EcnumToSequences extends QueryByEcNumber with QueryByReactionId {
   /**
-    * Takes in a ecnum and translates them into FASTA lcms with all the enzymes that do that Ecnum
+    * Takes in a ecnum and translates them into FASTA files with all the enzymes that do that Ecnum
     */
   def writeFastaFileFromEnzymesMatchingEcnums(roughEcnum: String, outputFastaFile: File, database: String)(): Unit = {
     val methodLogger = LogManager.getLogger("writeFastaFileFromEnzymesMatchingEcnums")

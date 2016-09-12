@@ -43,7 +43,7 @@ public class PubchemSynonymFinder {
   public static final String OPTION_OUTPUT = "o";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class finds and prints Pubchem synonym data from a RocksDB index created from Pubchem RDF lcms. ",
+      "This class finds and prints Pubchem synonym data from a RocksDB index created from Pubchem RDF files. ",
       "Specify one or more Pubchem compound ids to find."
   }, "");
 

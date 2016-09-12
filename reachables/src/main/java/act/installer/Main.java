@@ -289,7 +289,7 @@ public class Main {
       String vendors_file = System.getProperty("user.dir")+"/"+args[4];
       Set<String> priority_chems_files = new HashSet<String>();
       // assume the rest of the args are priority chem
-      // lcms, i.e., list of inchis, e.g., reachables etc.
+      // files, i.e., list of inchis, e.g., reachables etc.
       for (int i=5; i<args.length; i++)
         priority_chems_files.add(args[i]);
       MongoDB db = new MongoDB(server, dbPort, dbname);
@@ -300,7 +300,7 @@ public class Main {
       String vendors_file = System.getProperty("user.dir")+"/"+args[4];
       Set<String> priority_chems_files = new HashSet<String>();
       // assume the rest of the args are priority chem
-      // lcms, i.e., list of inchis, e.g., reachables etc.
+      // files, i.e., list of inchis, e.g., reachables etc.
       for (int i=5; i<args.length; i++)
         priority_chems_files.add(args[i]);
       MongoDB db = new MongoDB(server, dbPort, dbname);
@@ -313,21 +313,21 @@ public class Main {
       int end = Integer.parseInt(args[6]);
 
       // http://biocyc.org/biocyc-pgdb-list.shtml
-      // Note: by default, we process all Tier 1, 2, and 3 biopax lcms
-      // from metacyc. 38 of them are Tier 1 and 2 lcms. If you
+      // Note: by default, we process all Tier 1, 2, and 3 biopax files
+      // from metacyc. 38 of them are Tier 1 and 2 files. If you
       // need to restrict the processing to those set
       // call m.loadOnlyTier12(true) in the loop below (and when
-      // looking up the number of lcms to-be-processed.
+      // looking up the number of files to-be-processed.
 
-      System.out.println("Looking for biopax lcms at " + path);
-      // Initialize so we can pass the owl lcms around later.
+      System.out.println("Looking for biopax files at " + path);
+      // Initialize so we can pass the owl files around later.
       MetaCyc init = new MetaCyc(path);
       int nfiles = init.getNumFilesToBeProcessed();
 
-      System.out.println("Total: " + nfiles + " level3 biopax lcms found.");
+      System.out.println("Total: " + nfiles + " level3 biopax files found.");
       System.out.println("Range: [" + start + ", " + end + ")");
       int chunk = 1; // you can go up to a max of about 20 chunks (mem:3gb)
-      // see "Performance" section below for a run over 100 lcms
+      // see "Performance" section below for a run over 100 files
       MongoDB db = new MongoDB(server, dbPort, dbname);
       for (int i=start; i<nfiles && i<end; i+=chunk) {
         long startTime = System.currentTimeMillis();
@@ -335,8 +335,8 @@ public class Main {
         // Now create a new MetaCyc object for each chunk. Holds the entire
         // processed information in a HashMap of OrganismCompositions.
         //
-        // By default, metacyc will load all Tier 1,2, and 3 lcms.
-        // If you need it to load only 38 Tier 1,2 lcms call m.loadOnlyTier12(true)
+        // By default, metacyc will load all Tier 1,2, and 3 files.
+        // If you need it to load only 38 Tier 1,2 files call m.loadOnlyTier12(true)
         //
         // Give metacyc the precomputed owls so we don't need to do that again.
         MetaCyc m = new MetaCyc(path, init.getOWLs());

@@ -68,7 +68,7 @@ import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 /**
- * This class implements a parser for Pubchem's TTL (turtle) lcms.  These contain both the features available in the
+ * This class implements a parser for Pubchem's TTL (turtle) files.  These contain both the features available in the
  * full Pubchem compound corpus, as well as other features not available in that dataset.
  */
 public class PubchemTTLMerger {
@@ -106,7 +106,7 @@ public class PubchemTTLMerger {
   public static final String OPTION_OPEN_EXISTING_OKAY = "e";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class extracts Pubchem synonym data from RDF lcms into an on-disk index, then uses that index to join ",
+      "This class extracts Pubchem synonym data from RDF files into an on-disk index, then uses that index to join ",
       "the synonyms and MeSH ids with their corresponding pubchem ids."
   }, "");
 
@@ -119,22 +119,22 @@ public class PubchemTTLMerger {
     );
     add(Option.builder(OPTION_RDF_DIRECTORY)
         .argName("RDF directory")
-        .desc("A path to the directory of Pubchem RDF lcms")
+        .desc("A path to the directory of Pubchem RDF files")
         .hasArg()
         .longOpt("dir")
     );
     add(Option.builder(OPTION_ONLY_SYNONYMS)
-        .desc(String.format("If set, only '%s' lcms will be processed, useful for debugging",
+        .desc(String.format("If set, only '%s' files will be processed, useful for debugging",
             PC_RDF_DATA_FILE_CONFIG.HASH_TO_SYNONYM.filePrefix))
         .longOpt("only-synonyms")
     );
     add(Option.builder(OPTION_ONLY_MESH)
-        .desc(String.format("If set, only '%s' lcms will be processed, useful for debugging",
+        .desc(String.format("If set, only '%s' files will be processed, useful for debugging",
             PC_RDF_DATA_FILE_CONFIG.HASH_TO_MESH.filePrefix))
         .longOpt("only-mesh")
     );
     add(Option.builder(OPTION_ONLY_PUBCHEM_IDS)
-        .desc(String.format("If set, only '%s' lcms will be processed, useful for debugging",
+        .desc(String.format("If set, only '%s' files will be processed, useful for debugging",
             PC_RDF_DATA_FILE_CONFIG.HASH_TO_CID.filePrefix))
         .longOpt("only-pubchem-id")
     );
@@ -223,9 +223,9 @@ public class PubchemTTLMerger {
   }
 
   /**
-   * Each triple in the RDF lcms takes the form:
+   * Each triple in the RDF files takes the form:
    * <pre>[subject namespace]:[subject value] predicate namespace]:[predicate value] [object namespace]:[object value] .</pre>
-   * Some of the lcms contain multiple types of values, only some of which we want to store.  For example, the
+   * Some of the files contain multiple types of values, only some of which we want to store.  For example, the
    * `topics` file contains both MeSH ids and "concepts" (I'm not sure what the latter actually represents).  We can
    * identify the MeSH ids based on their namespace and throw everything else away.
    *
@@ -236,7 +236,7 @@ public class PubchemTTLMerger {
    *
    * This enum is a map of the useful namespaces and associated rdf4j model types to the parts of the synonym corpus
    * we want to extract.  Check out their use in PC_RDF_DATA_FILE_CONFIG to see how these are mapped to the
-   * subjects and objects of different lcms in the synonym corpus.
+   * subjects and objects of different files in the synonym corpus.
    */
   private enum PC_RDF_DATA_TYPES {
     SYNONYM("http://rdf.ncbi.nlm.nih.gov/pubchem/synonym/", PCRDFHandler.OBJECT_TYPE.IRI),
@@ -581,7 +581,7 @@ public class PubchemTTLMerger {
 
     File rdfDir = new File(cl.getOptionValue(OPTION_RDF_DIRECTORY));
     if (!rdfDir.isDirectory()) {
-      System.err.format("Must specify a directory of RDF lcms to be parsed.\n");
+      System.err.format("Must specify a directory of RDF files to be parsed.\n");
       HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
@@ -595,12 +595,12 @@ public class PubchemTTLMerger {
     });
 
     if (filesInDirectoryArray == null || filesInDirectoryArray.length == 0) {
-      System.err.format("Found zero compressed TTL lcms in directory at '%s'.\n", rdfDir.getAbsolutePath());
+      System.err.format("Found zero compressed TTL files in directory at '%s'.\n", rdfDir.getAbsolutePath());
       HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
-    // Sort lcms for stability/sanity.
+    // Sort files for stability/sanity.
     List<File> filesInDirectory = Arrays.asList(filesInDirectoryArray);
     Collections.sort(filesInDirectory);
 
@@ -617,7 +617,7 @@ public class PubchemTTLMerger {
     }
 
     if (filesInDirectory.size() == 0) {
-      System.err.format("Arrived at index initialization with no lcms to process.  " +
+      System.err.format("Arrived at index initialization with no files to process.  " +
               "Maybe too many filters were specified?  synonyms: %s, MeSH: %s, Pubchem ids: %s\n",
           cl.hasOption(OPTION_ONLY_SYNONYMS), cl.hasOption(OPTION_ONLY_MESH), cl.hasOption(OPTION_ONLY_PUBCHEM_IDS));
       HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
@@ -761,7 +761,7 @@ public class PubchemTTLMerger {
        * cid to synonym and cid to MeSH). */
       for (String hash : hashes) {
         /* Note: these ids are not proper MeSH topic ids, but are internal MeSH ids found in the RDF and TTL
-         * representations of the MeSH corpus.  You can find them in the MeSH .nt or .xml lcms, but they won't turn up
+         * representations of the MeSH corpus.  You can find them in the MeSH .nt or .xml files, but they won't turn up
          * anything on the MeSH website. */
         List<String> meshIds = getValueAsObject(db, meshCFH, hash);
         if (meshIds != null) {
@@ -834,10 +834,10 @@ public class PubchemTTLMerger {
 
   protected void buildIndex(Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles, List<File> rdfFiles)
       throws RocksDBException, ClassNotFoundException, IOException {
-    LOGGER.info("Building RocksDB index of data in RDF lcms");
+    LOGGER.info("Building RocksDB index of data in RDF files");
     RDFParser parser = Rio.createParser(RDFFormat.TURTLE);
 
-    LOGGER.info("Processing %d RDF lcms", rdfFiles.size());
+    LOGGER.info("Processing %d RDF files", rdfFiles.size());
     for (File rdfFile : rdfFiles) {
       LOGGER.info("Processing file %s", rdfFile.getAbsolutePath());
       AbstractRDFHandler handler = PC_RDF_DATA_FILE_CONFIG.makeHandlerForDataFile(dbAndHandles, rdfFile);
@@ -850,7 +850,7 @@ public class PubchemTTLMerger {
       parser.parse(new GZIPInputStream(new FileInputStream(rdfFile)), "");
       LOGGER.info("Successfully parsed file at %s", rdfFile.getAbsolutePath());
     }
-    LOGGER.info("Done processing RDF lcms");
+    LOGGER.info("Done processing RDF files");
   }
 
   protected void finish(Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles) {

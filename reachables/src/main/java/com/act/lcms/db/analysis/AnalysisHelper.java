@@ -91,7 +91,7 @@ public class AnalysisHelper {
       List<ScanFile> scanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
           db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
       if (scanFiles == null || scanFiles.size() == 0) {
-        LOGGER.error("WARNING: No scan lcms available for %s %s",
+        LOGGER.error("WARNING: No scan files available for %s %s",
             plate.getBarcode(), well.getCoordinatesString());
         continue;
       }
@@ -146,8 +146,8 @@ public class AnalysisHelper {
   /**
    * This function gets the intensity-time values for each mass charge in a scan file and packages that up into a mapping
    * * between the mass charge pair and ScanData.
-   * @param db The db to query scan lcms from
-   * @param lcmsDir The lcms dir where the lcms lcms are found
+   * @param db The db to query scan files from
+   * @param lcmsDir The lcms dir where the lcms files are found
    * @param searchMZs The pair of chemical and mass charge pairs
    * @param kind The kind of plate the lcms was run over
    * @param plateCache The plate cache
@@ -358,7 +358,7 @@ public class AnalysisHelper {
   /**
    * This function picks the best scan file based on two critereon: a) The scan file has to be a positive scan file
    * b) The scan file has to be of the latest lcms run for the well.
-   * @param db The db to query scan lcms from
+   * @param db The db to query scan files from
    * @param well The well being used for the analysis
    * @param <T> The platewell type abstraction
    * @return The best ScanFile
@@ -368,7 +368,7 @@ public class AnalysisHelper {
     List<ScanFile> scanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
         db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
 
-    // TODO: We only analyze positive scan lcms for now since we are not confident with the negative scan file results.
+    // TODO: We only analyze positive scan files for now since we are not confident with the negative scan file results.
     // Since we perform multiple scans on the same well, we need to categorize the data based on date.
     ScanFile latestScanFiles = null;
     LocalDateTime latestDateTime = null;
@@ -377,7 +377,7 @@ public class AnalysisHelper {
       if (!scanFile.isNegativeScanFile()) {
         LocalDateTime scanDate = scanFile.getDateFromScanFileTitle();
 
-        // Pick the newest scan lcms
+        // Pick the newest scan files
         if (latestDateTime == null || scanDate.isAfter(latestDateTime)) {
           latestScanFiles = scanFile;
           latestDateTime = scanDate;
@@ -416,7 +416,7 @@ public class AnalysisHelper {
       String plotName = constructChemicalAndScanTypeName(chemicalName, kind);
 
       // Read intensity and time data for each metlin mass. We only expect one mass charge pair per ms1ScanResults
-      // since we are extracting traces from the scan lcms via getMultipleMS1s.
+      // since we are extracting traces from the scan files via getMultipleMS1s.
       for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
         String ion = ms1ForIon.getKey();
         List<XZ> ms1 = ms1ForIon.getValue();
@@ -458,7 +458,7 @@ public class AnalysisHelper {
       return null;
     }
 
-    // TODO: We only analyze positive scan lcms for now since we are not confident with the negative scan file results.
+    // TODO: We only analyze positive scan files for now since we are not confident with the negative scan file results.
     // Since we can perform multiple scans on the same well, we need to categorize the data based on date.
     Map<LocalDateTime, List<ScanData<StandardWell>>> filteredScansCategorizedByDate = new HashMap<>();
     Map<LocalDateTime, List<ScanData<StandardWell>>> postFilteredScansCategorizedByDate = new HashMap<>();
@@ -578,7 +578,7 @@ public class AnalysisHelper {
    * score = positional_score * (1 - SNR(i)/maxSNR). We have to do the (1 - rel_snr) since we choose the lowest score,
    * so if the rel_snr is huge (ie a good signal), the overall magnitude of score will reduce, which makes that a better
    * ranking for the ion. We then do a post filtering on these scores based on if we have only positive/negative scans
-   * from the scan lcms which exist in the context of the caller.
+   * from the scan files which exist in the context of the caller.
    * @param standardIonResults The list of standard ion results
    * @param curatedMetlinIons A map from standard ion result to the best curated ion that was manual inputted.
    * @param areOtherPositiveModeScansAvailable This boolean is used to post filter and pick a positive metlin ion if and
@@ -667,11 +667,11 @@ public class AnalysisHelper {
   }
 
   /**
-   * This function takes a well as input, finds all the scan lcms associated with that well, then picks a representative
+   * This function takes a well as input, finds all the scan files associated with that well, then picks a representative
    * scan file, in this case, the first scan file which has the NC file format. It then extracts the ms1 scan results
    * corresponding to that scan file and packages it up into a ScanData container.
    * @param db - The db from which the data is extracteds
-   * @param lcmsDir - The dir were scan lcms are present
+   * @param lcmsDir - The dir were scan files are present
    * @param well - The well based on which the scan file is founds
    * @param chemicalForMZValue - This is chemical from which the mz values that are needed from the ms1 analysis is extracted.
    * @param targetChemical - This is the target chemical for the analysis, ie find all chemicalForMZValue's mz variates
@@ -697,7 +697,7 @@ public class AnalysisHelper {
     }
 
     if (representativeScanFile == null) {
-      throw new RuntimeException("None of the scan lcms are of the NC format");
+      throw new RuntimeException("None of the scan files are of the NC format");
     }
 
     File localScanFile = new File(lcmsDir, representativeScanFile.getFilename());

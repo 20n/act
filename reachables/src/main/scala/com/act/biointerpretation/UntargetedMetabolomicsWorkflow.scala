@@ -44,7 +44,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
       CliOption.builder(OPTION_WORKING_DIRECTORY).
         hasArg.
         longOpt("working-directory").
-        desc("The directory in which to run and create all intermediate lcms. This directory will be created if it " +
+        desc("The directory in which to run and create all intermediate files. This directory will be created if it " +
           "does not already exist."),
 
       CliOption.builder(OPTION_SUBSTRATES).
@@ -118,7 +118,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
   override def defineWorkflow(cl: CommandLine): Job = {
 
     /**
-      * Handle command line args and create lcms
+      * Handle command line args and create files
       */
     val workingDir = cl.getOptionValue(OPTION_WORKING_DIRECTORY, null)
     val directory: File = new File(workingDir)
@@ -328,12 +328,12 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
 
 
   /**
-    * Defines a job that meshes the results from the sar scoring and product scoring into single lcms,
+    * Defines a job that meshes the results from the sar scoring and product scoring into single files,
     * containing sars/products ranked over all ROs.
     * TODO: sort the summary product file. Annoying because the scores are hidden in the predictions' names.
     *
-    * @param scoredSarFiles     Input sars lcms.
-    * @param scoredProductFiles Input product lcms.
+    * @param scoredSarFiles     Input sars files.
+    * @param scoredProductFiles Input product files.
     * @param sarOut             Output summary sar file, sorted.
     * @param productOut         Output summary product file, unsorted.
     */
@@ -356,9 +356,9 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
   /**
     * Build a file for each RO, with the RO id as a suffix
     *
-    * @param workingDir The directory in which to create the lcms.
+    * @param workingDir The directory in which to create the files.
     * @param fileName   The prefix of the file name.
-    * @param roIds      The ROs to create lcms for.
+    * @param roIds      The ROs to create files for.
     * @return A map from RO id to the corresponding file.
     */
   def buildFilesForRos(workingDir: String, fileName: String, roIds: List[Integer]): Map[Integer, File] = {

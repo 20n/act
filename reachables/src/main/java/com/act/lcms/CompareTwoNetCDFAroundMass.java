@@ -105,7 +105,7 @@ public class CompareTwoNetCDFAroundMass {
           "(1) mass value, e.g., 132.0772 for debugging, \n" +
           "(2) how many timepoints to process (-1 for all), \n" +
           "(3) prefix for .data and rendered .pdf \n" +
-          "(4,5..) 2 or more NetCDF .nc lcms"
+          "(4,5..) 2 or more NetCDF .nc files"
           );
     }
 

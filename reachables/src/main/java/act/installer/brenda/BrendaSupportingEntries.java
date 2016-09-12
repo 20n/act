@@ -271,7 +271,7 @@ public class BrendaSupportingEntries {
 
   /* ******************************
    * Result classes for BRENDA data types linked to Substrates_Products entries.
-   * TODO: move these to their own class lcms if they seem unwieldy. */
+   * TODO: move these to their own class files if they seem unwieldy. */
 
   /* BRENDA likes to pack lists of literature ids into comma-delimited lists within a single DB field.  We need to
    * ensure that a given row actually references a literature id, so we split the list and search for an exact match
@@ -1216,7 +1216,7 @@ public class BrendaSupportingEntries {
    * ~30x speedup of reaction processing.
    *
    * @param pathToIndex The local path where the index should be built.  This will become a directory containing
-   *                    RocksDB lcms.
+   *                    RocksDB files.
    * @param conn A connection to the BRENDA MySQL DB (`brenda` database) from which data will be read.
    * @throws IOException
    * @throws ClassNotFoundException

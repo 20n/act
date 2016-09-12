@@ -59,7 +59,7 @@ public class GenbankInstaller {
 
   //  http://www.ncbi.nlm.nih.gov/Sequin/acc.html
   public static final Pattern PROTEIN_ACCESSION_PATTERN = Pattern.compile("[a-zA-Z]{3}\\d{5}");
-  // matches WGS and MGA sequence accession patterns since they appear in Nucleotide lcms as well
+  // matches WGS and MGA sequence accession patterns since they appear in Nucleotide files as well
   public static final Pattern NUCLEOTIDE_ACCESSION_PATTERN =
       Pattern.compile("[a-zA-Z]\\d{5}|[a-zA-Z]{2}\\d{6}|[a-zA-Z]{4}\\d{8,10}|[a-zA-Z]{5}\\d{7}");
 

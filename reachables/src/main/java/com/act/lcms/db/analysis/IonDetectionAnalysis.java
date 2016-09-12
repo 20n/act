@@ -97,7 +97,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     );
     add(Option.builder(OPTION_OUTPUT_PREFIX)
         .argName("output prefix")
-        .desc("A prefix for the output data/pdf lcms")
+        .desc("A prefix for the output data/pdf files")
         .hasArg().required()
         .longOpt("output-prefix")
     );
@@ -509,7 +509,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
       IonAnalysisInterchangeModel ionAnalysisInterchangeModel = new IonAnalysisInterchangeModel(experimentalResults);
 
       // If there is only one positive replicate, the output file path is simply the prefix name. If there are multiple
-      // replicates, we need to do more post processing to combine the results, so generate result lcms per replicate
+      // replicates, we need to do more post processing to combine the results, so generate result files per replicate
       // and name the combined analysis file with the output prefix. This makes it easier for a workflow program to know
       // which output file to look at for downstream processing.
       String outAnalysis = positiveWells.size() == 1 ? outputPrefix :

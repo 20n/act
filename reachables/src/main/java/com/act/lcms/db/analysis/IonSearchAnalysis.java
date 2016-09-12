@@ -70,7 +70,7 @@ public class IonSearchAnalysis {
     );
     add(Option.builder(OPTION_OUTPUT_PREFIX)
             .argName("output prefix")
-            .desc("A prefix for the output data/pdf lcms")
+            .desc("A prefix for the output data/pdf files")
             .hasArg().required()
             .longOpt("output-prefix")
     );
@@ -250,7 +250,7 @@ public class IonSearchAnalysis {
         // Allow filtering on barcode even if we couldn't find any in the DB.
       }
 
-      System.out.format("Loading/updating LCMS scan lcms into DB\n");
+      System.out.format("Loading/updating LCMS scan files into DB\n");
       ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
       System.out.format("Processing LCMS scans\n");

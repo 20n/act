@@ -65,7 +65,7 @@ public class TraceIndexExtractor {
   public static final String OPTION_TARGET_MASSES = "m";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class extracts traces from an LCMS scan lcms for a list of target m/z values, ",
+      "This class extracts traces from an LCMS scan files for a list of target m/z values, ",
       "and writes them to an on-disk index for later processing."
   }, "");
 

@@ -64,7 +64,7 @@ public class FeedingAnalysis {
     );
     add(Option.builder(OPTION_OUTPUT_PREFIX)
             .argName("output prefix")
-            .desc("A prefix for the output data/pdf lcms")
+            .desc("A prefix for the output data/pdf files")
             .hasArg().required()
             .longOpt("output-prefix")
     );
@@ -158,18 +158,18 @@ public class FeedingAnalysis {
       List<ScanFile> scanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
           db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
       if (scanFiles == null || scanFiles.size() == 0) {
-        System.err.format("WARNING: no scan lcms for well at %s %s\n", p.getBarcode(), well.getCoordinatesString());
+        System.err.format("WARNING: no scan files for well at %s %s\n", p.getBarcode(), well.getCoordinatesString());
         continue;
       }
       if (scanFiles.size() > 1) {
-        System.err.format("WARNING: found multiple scan lcms for %s %s, using first\n",
+        System.err.format("WARNING: found multiple scan files for %s %s, using first\n",
             p.getBarcode(), well.getCoordinatesString());
       }
       while (scanFiles.size() > 0 && scanFiles.get(0).getFileType() != ScanFile.SCAN_FILE_TYPE.NC) {
         scanFiles.remove(0);
       }
       if (scanFiles.size() == 0) {
-        System.err.format("WARNING: no scan lcms with valid format for %s %s\n",
+        System.err.format("WARNING: no scan files with valid format for %s %s\n",
             p.getBarcode(), well.getCoordinatesString());
         continue;
       }
@@ -266,7 +266,7 @@ public class FeedingAnalysis {
     }
 
     try (DB db = DB.openDBFromCLI(cl)) {
-      System.out.format("Loading/updating LCMS scan lcms into DB\n");
+      System.out.format("Loading/updating LCMS scan files into DB\n");
       ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
       System.out.format("Running feeding analysis\n");

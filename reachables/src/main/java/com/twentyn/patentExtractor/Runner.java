@@ -82,7 +82,7 @@ public class Runner {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(SerializationFeature.INDENT_OUTPUT);
 
-    LOGGER.info("Processing " + toProcess.size() + " lcms.");
+    LOGGER.info("Processing " + toProcess.size() + " files.");
 
     final AtomicInteger processed = new AtomicInteger(0);
     final int toProcessSize = toProcess.size();

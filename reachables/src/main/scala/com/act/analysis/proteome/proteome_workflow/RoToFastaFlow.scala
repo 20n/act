@@ -40,7 +40,7 @@ class RoToFastaFlow
       CliOption.builder(OPTION_WORKING_DIRECTORY).
         hasArg.
         longOpt("working-directory").
-        desc("Run and create all lcms from a working directory you designate."),
+        desc("Run and create all files from a working directory you designate."),
 
       CliOption.builder(OPTION_DATABASE).
         longOpt("database").

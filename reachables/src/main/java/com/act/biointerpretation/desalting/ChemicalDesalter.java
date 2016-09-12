@@ -40,7 +40,7 @@ public class ChemicalDesalter {
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_OUTPUT_PREFIX)
         .argName("output prefix")
-        .desc("A prefix for the output data/pdf lcms")
+        .desc("A prefix for the output data/pdf files")
         .hasArg().required()
         .longOpt("output-prefix")
     );
@@ -117,11 +117,11 @@ public class ChemicalDesalter {
   }
 
   /**
-   * This function bins each reaction into modified, unchanged, errors and complex lcms based on
+   * This function bins each reaction into modified, unchanged, errors and complex files based on
    * processing them through the desalter module.
    *
    * @param salties      A list of reactions
-   * @param outputPrefix The output prefix for the generated lcms
+   * @param outputPrefix The output prefix for the generated files
    */
   private void generateAnalysisOfDesaltingSaltyChemicals(List<String> salties, String outputPrefix) {
     try (

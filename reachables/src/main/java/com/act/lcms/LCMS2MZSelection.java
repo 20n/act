@@ -58,8 +58,8 @@ public class LCMS2MZSelection {
    * same as {@link #getIndex()} if the input file contains only standard mass/charge+intensity data; if there are
    * other kinds of scan data avilable, this will represent the offset of this time point in its respective scan type.
    *
-   * Note that mzXML lcms will usually have this defined and distinct from {@link #getIndex()}, whereas those values
-   * will be the same in NetCDF lcms.
+   * Note that mzXML files will usually have this defined and distinct from {@link #getIndex()}, whereas those values
+   * will be the same in NetCDF files.
    * @return An integer representing this time points offset within its particular scan.
    */
   public Integer getScan() {

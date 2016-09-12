@@ -194,7 +194,7 @@ public class OrganismCompositionMongoWriter {
       rdfID2MongoID.put(cic.c.getID().getLocal(), dbId);
     }
 
-    /* It appears that Catalysis objects can appear outside of BiochemicalPathwaySteps in biopax lcms.  Record which
+    /* It appears that Catalysis objects can appear outside of BiochemicalPathwaySteps in biopax files.  Record which
      * catalyses we've installed from BiochemicalPathwaySteps so that we can ensure full coverage without duplicating
      * reactions in the DB. */
     Set<Resource> seenCatalyses = new HashSet<>(this.enzyme_catalysis.size());

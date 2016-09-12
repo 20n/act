@@ -160,7 +160,7 @@ public class LibMcsClustering {
     return new JavaRunnable() {
       @Override
       public void run() throws IOException {
-        // Verify input and output lcms
+        // Verify input and output files
         FileChecker.verifyInputFile(predictionCorpusInput);
         FileChecker.verifyAndCreateOutputFile(sarTreeNodesOutput);
 
@@ -256,7 +256,7 @@ public class LibMcsClustering {
     return new JavaRunnable() {
       @Override
       public void run() throws IOException {
-        // Verify input and output lcms
+        // Verify input and output files
         FileChecker.verifyInputFile(predictionsFile);
         FileChecker.verifyInputFile(lcmsInput);
         FileChecker.verifyInputFile(sarTreeInput);

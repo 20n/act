@@ -83,7 +83,7 @@ public class StandardIonAnalysis {
     );
     add(Option.builder(OPTION_OUTPUT_PREFIX)
         .argName("output prefix")
-        .desc("A prefix for the output data/pdf lcms")
+        .desc("A prefix for the output data/pdf files")
         .hasArg().required()
         .longOpt("output-prefix")
     );
@@ -205,7 +205,7 @@ public class StandardIonAnalysis {
       throws SQLException, IOException, ClassNotFoundException {
     List<StandardWell> wellsFromSamePlate = StandardWell.getInstance().getByPlateId(db, baseStandard.getPlateId());
 
-    // TODO: take availability of scan lcms into account here?
+    // TODO: take availability of scan files into account here?
     List<StandardWell> candidates = new ArrayList<>();
     for (StandardWell well : wellsFromSamePlate) {
       if (well.getChemical().equals(baseStandard.getChemical())) {
@@ -229,14 +229,14 @@ public class StandardIonAnalysis {
 
   /**
    * Given a standard well and viable negative control candidates, returns a map of mapping of all specified standard
-   * wells to scan lcms sharing the ion modes available for the specified standard well.  For example, if the specified
-   * standard well has only positive ion mode scan lcms available, the map will contain only positive ion mode scan
-   * lcms for that well and all specified negativeCandidate wells.  If both positive and negative ion mode scan lcms
-   * are available for the specified well, then, both positive and negative mode scan lcms will be included in the map.
+   * wells to scan files sharing the ion modes available for the specified standard well.  For example, if the specified
+   * standard well has only positive ion mode scan files available, the map will contain only positive ion mode scan
+   * files for that well and all specified negativeCandidate wells.  If both positive and negative ion mode scan files
+   * are available for the specified well, then, both positive and negative mode scan files will be included in the map.
    * @param db The DB connection to query.
    * @param primaryStandard The primary standard well being analysed.
    * @param negativeCandidates A list of standard wells that could be used as negative controls in the analysis.
-   * @return A map from all specified standard wells (primary and negative controls) to a list of scan lcms.
+   * @return A map from all specified standard wells (primary and negative controls) to a list of scan files.
    * @throws SQLException
    */
   public Map<StandardWell, List<ScanFile>> getViableScanFilesForStandardWells(
@@ -557,7 +557,7 @@ public class StandardIonAnalysis {
                 wellToAnalyze.getChemical(),
                 wellToAnalyze.getMedia() == null ? "" : String.format(" in %s", wellToAnalyze.getMedia()),
                 wellToAnalyze.getConcentration() == null ? "" : String.format(" @ %s", wellToAnalyze.getConcentration()));
-            System.out.format("      Scan lcms: %s\n", StringUtils.join(primaryStandardScanFileNames, ", "));
+            System.out.format("      Scan files: %s\n", StringUtils.join(primaryStandardScanFileNames, ", "));
 
             for (StandardWell negCtrlWell : negativeControls) {
               plate = plateCache.get(negCtrlWell.getPlateId());
@@ -575,8 +575,8 @@ public class StandardIonAnalysis {
                   negCtrlWell.getChemical(),
                   negCtrlWell.getMedia() == null ? "" : String.format(" in %s", negCtrlWell.getMedia()),
                   negCtrlWell.getConcentration() == null ? "" : String.format(" @ %s", negCtrlWell.getConcentration()));
-              System.out.format("        Scan lcms: %s\n", StringUtils.join(negativeControlScanFileNames, ", "));
-              // TODO: do something useful with the standard wells and their scan lcms, and then stop all the printing.
+              System.out.format("        Scan files: %s\n", StringUtils.join(negativeControlScanFileNames, ", "));
+              // TODO: do something useful with the standard wells and their scan files, and then stop all the printing.
             }
           }
         }

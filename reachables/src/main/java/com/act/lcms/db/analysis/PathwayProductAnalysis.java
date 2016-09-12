@@ -81,7 +81,7 @@ public class PathwayProductAnalysis {
     );
     add(Option.builder(OPTION_OUTPUT_PREFIX)
         .argName("output prefix")
-        .desc("A prefix for the output data/pdf lcms")
+        .desc("A prefix for the output data/pdf files")
         .hasArg().required()
         .longOpt("output-prefix")
     );
@@ -258,7 +258,7 @@ public class PathwayProductAnalysis {
         // Allow filtering on barcode even if we couldn't find any in the DB.
       }
 
-      System.out.format("Loading/updating LCMS scan lcms into DB\n");
+      System.out.format("Loading/updating LCMS scan files into DB\n");
       ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
       System.out.format("Processing LCMS scans\n");
@@ -358,8 +358,8 @@ public class PathwayProductAnalysis {
          * but it'll be clearer to read. */
       } else {
         // We need to make sure that the standard metlin ion we choose is consistent with the ion modes of
-        // the given positive, negative and standard scan lcms. For example, we should not pick a negative
-        // metlin ion if all our available positive control scan lcms are in the positive ion mode.
+        // the given positive, negative and standard scan files. For example, we should not pick a negative
+        // metlin ion if all our available positive control scan files are in the positive ion mode.
         Map<Integer, Pair<Boolean, Boolean>> ionModes = new HashMap<>();
         for (ChemicalAssociatedWithPathway chemical : pathwayChems) {
           boolean isPositiveScanPresent = false;
