@@ -1,7 +1,5 @@
 package com.act.biointerpretation.Utils;
 
-import chemaxon.formats.MolExporter;
-import chemaxon.marvin.io.MolExportException;
 import chemaxon.reaction.ConcurrentReactorProcessor;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
@@ -37,7 +35,7 @@ public class ReactionProjector {
   private static final MolSearchOptions LAX_SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
   private static final MolSearch DEFAULT_SEARCHER = new MolSearch();
 
-  private static final String defaultMoleculeFormat = MoleculeFormat.stdInchi().toString();
+  private static final String DEFAULT_MOLECULE_FORMAT = MoleculeFormat.stdInchi().toString();
   private final String moleculeFormat;
 
   /**
@@ -54,11 +52,11 @@ public class ReactionProjector {
   private Map<Molecule, String> molToStringMap;
 
   public ReactionProjector() {
-    this(DEFAULT_SEARCHER, defaultMoleculeFormat);
+    this(DEFAULT_SEARCHER, DEFAULT_MOLECULE_FORMAT);
   }
 
   public ReactionProjector(MolSearch searcher) {
-    this(searcher, defaultMoleculeFormat);
+    this(searcher, DEFAULT_MOLECULE_FORMAT);
   }
 
   public ReactionProjector(String moleculeFormat) {
