@@ -9,14 +9,14 @@ import scala.collection.concurrent.TrieMap
 
 object MoleculeExporter {
   private val moleculeCache = TrieMap[MoleculeFormat.Value, TrieMap[Molecule, String]]()
-  private var _globalFormat = List(MoleculeFormat.inchi)
+  private var defaultFormat = List(MoleculeFormat.inchi)
 
-  def setGlobalFormat(formats: List[MoleculeFormat.Value]): Unit = {
-    _globalFormat = formats
+  def setDefaultFormat(format: MoleculeFormat.Value): Unit = {
+    setDefaultFormat(List(format))
   }
 
-  def setGlobalFormat(format: MoleculeFormat.Value): Unit = {
-    setGlobalFormat(List(format))
+  def setDefaultFormat(formats: List[MoleculeFormat.Value]): Unit = {
+    defaultFormat = formats
   }
 
   @throws[MolExportException]
@@ -35,8 +35,13 @@ object MoleculeExporter {
   }
 
   @throws[MolExportException]
-  def exportMoleculesGlobalFormat(mols: List[Molecule]): List[String] = {
-    mols.map(exportMoleculeAsFormats(_, _globalFormat))
+  def exportMoleculesDefaultFormat(mols: List[Molecule]): List[String] = {
+    mols.map(exportMoleculeDefaultFormat)
+  }
+
+  @throws[MolExportException]
+  def exportMoleculesAsFormatsJava(mols: List[Molecule], formats: List[MoleculeFormat.Value]): java.util.List[String] = {
+    mols.map(exportMoleculeAsFormats(_, formats)).asJava
   }
 
   @throws[MolExportException]
@@ -52,7 +57,7 @@ object MoleculeExporter {
     throw new MolExportException("Could not convert molecules into any valid formats.")
   }
 
-  private def exportMolecule(mol: Molecule, format: MoleculeFormat.Value): String = {
+  def exportMolecule(mol: Molecule, format: MoleculeFormat.Value): String = {
     val formatCache = moleculeCache.get(format)
 
     if (formatCache.isEmpty) {
@@ -71,13 +76,14 @@ object MoleculeExporter {
   }
 
   @throws[MolExportException]
-  def exportMoleculesAsFormatsJava(mols: List[Molecule], formats: List[MoleculeFormat.Value]): java.util.List[String] = {
-    mols.map(exportMoleculeAsFormats(_, formats)).asJava
+  def exportMoleculesDefaultFormatJava(mols: List[Molecule]): java.util.List[String] = {
+    mols.map(exportMoleculeDefaultFormat).asJava
   }
 
   @throws[MolExportException]
-  def exportMoleculesGlobalFormatJava(mols: List[Molecule]): java.util.List[String] = {
-    mols.map(exportMoleculeAsFormats(_, _globalFormat)).asJava
+  def exportMoleculeDefaultFormat(mol: Molecule): String = {
+    exportMoleculeAsFormats(mol, defaultFormat)
   }
+
 }
 

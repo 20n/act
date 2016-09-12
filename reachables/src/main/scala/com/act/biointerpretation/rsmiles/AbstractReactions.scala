@@ -5,12 +5,11 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import act.server.MongoDB
 import chemaxon.formats.MolFormatException
-import com.act.analysis.chemicals.molecules.MoleculeImporter
+import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeImporter}
 import com.act.biointerpretation.rsmiles.AbstractChemicals.ChemicalInformation
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities, ReactionKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.log4j.LogManager
-import spray.json
 
 import scala.collection.JavaConversions._
 import scala.collection.parallel.immutable.{ParMap, ParSeq}
@@ -116,7 +115,7 @@ object AbstractReactions {
     val query = Mongo.createDbObject(ChemicalKeywords.ID, chemicalId)
     val inchi = Mongo.mongoQueryChemicals(mongoDb)(query, null).next().get(ChemicalKeywords.INCHI.toString).asInstanceOf[String]
     val molecule = MoleculeImporter.importMolecule(inchi)
-    List.fill(coefficient)(new ChemicalInformation(chemicalId.toInt, inchi))
+    List.fill(coefficient)(new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportAsSmarts(molecule)))
   }
 
   case class ReactionInformation(reactionId: Int, substrates: List[ChemicalInformation], products: List[ChemicalInformation]) {
