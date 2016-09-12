@@ -2,6 +2,7 @@ library(shiny)
 library(plot3D)
 library(mzR)
 library(dplyr)
+library(classInt)
 
 kHMass <- 1.007276
 kNaMass <- 22.989771
