@@ -187,9 +187,13 @@ object SparkSingleSubstrateROProjector {
     val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)
     val inchiCorpus = new L2InchiCorpus()
     inchiCorpus.loadCorpus(new File(substratesListFile))
-    LOGGER.info(s"Substrate list size before mass filtering: ${inchiCorpus.getInchiList.size}")
-    inchiCorpus.filterByMass(950)
-    LOGGER.info(s"Substrate list size after filtering: ${inchiCorpus.getInchiList.size}")
+
+    if (cl.hasOption(OPTION_FILTER_FOR_SPECTROMETERY)) {
+      LOGGER.info(s"Substrate list size before mass filtering: ${inchiCorpus.getInchiList.size}")
+      inchiCorpus.filterByMass(950)
+      LOGGER.info(s"Substrate list size after filtering: ${inchiCorpus.getInchiList.size}")
+    }
+
     val molecules = inchiCorpus.getMolecules.asScala.toList
 
     val validInchis = Source.fromFile(substratesListFile).getLines().
