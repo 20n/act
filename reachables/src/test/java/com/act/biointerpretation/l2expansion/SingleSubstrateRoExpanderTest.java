@@ -1,11 +1,8 @@
 package com.act.biointerpretation.l2expansion;
 
-import com.act.analysis.chemicals.molecules.MoleculeExporter;
-import com.act.analysis.chemicals.molecules.MoleculeFormat;
 import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
