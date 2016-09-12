@@ -6,22 +6,23 @@ import chemaxon.reaction.ReactionException;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.MoleculeGraph;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
+import com.act.analysis.chemicals.molecules.MoleculeFormat$;
 import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.sars.Sar;
 import com.act.biointerpretation.sars.SerializableReactor;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import scala.collection.JavaConversions;
 
 /**
  * Generates all predictions for a given PredictionSeed.
  */
 public class AllPredictionsGenerator implements PredictionGenerator {
+
+  private String moleculeFormat;
 
   private static final Integer CLEAN_DIMENSION = 2;
 
@@ -30,6 +31,13 @@ public class AllPredictionsGenerator implements PredictionGenerator {
 
   public AllPredictionsGenerator(ReactionProjector projector) {
     this.projector = projector;
+    this.moleculeFormat = MoleculeFormat$.MODULE$.stdInchi().toString();
+  }
+
+  // Allow for the caller to change the format.
+  public AllPredictionsGenerator(ReactionProjector projector, String format) {
+    this.projector = projector;
+    moleculeFormat = format;
   }
 
   @Override
@@ -51,15 +59,13 @@ public class AllPredictionsGenerator implements PredictionGenerator {
 
     try {
       Map<Molecule[], List<Molecule[]>> projectionMap =
-          projector.getRoProjectionMap(substratesArray, reactor.getReactor());
+              projector.getRoProjectionMap(substratesArray, reactor.getReactor());
       return getAllPredictions(projectionMap, seed.getProjectorName());
     } catch (ReactionException e) {
       StringBuilder builder = new StringBuilder();
-      builder.append(e.getMessage()).
-              append(": substrates, reactor: ").
-              append(MoleculeExporter.exportMoleculesGlobalFormatJava(
-                      JavaConversions.asScalaBuffer(Arrays.asList(substratesArray)).toList())).
-              append(",").append(reactor.getReactorSmarts());
+      builder.append(e.getMessage())
+              .append(": substrates, reactor: ").append(getMoleculeStrings(substratesArray))
+              .append(",").append(reactor.getReactorSmarts());
       throw new ReactionException(builder.toString());
     }
   }
@@ -77,23 +83,12 @@ public class AllPredictionsGenerator implements PredictionGenerator {
     List<L2Prediction> result = new ArrayList<>();
 
     for (Molecule[] substrates : projectionMap.keySet()) {
-
-      // Substrates
-      scala.collection.immutable.List<Molecule> scalafiedSubstrate =
-              JavaConversions.asScalaBuffer(Arrays.asList(substrates)).toList();
-
       List<L2PredictionChemical> predictedSubstrates =
-              L2PredictionChemical.getPredictionChemicals(
-                      MoleculeExporter.exportMoleculesGlobalFormatJava(scalafiedSubstrate));
+              L2PredictionChemical.getPredictionChemicals(getMoleculeStrings(substrates));
 
-      // Products
       for (Molecule[] products : projectionMap.get(substrates)) {
-        scala.collection.immutable.List<Molecule> scalafiedProducts =
-                JavaConversions.asScalaBuffer(Arrays.asList(products)).toList();
-
         List<L2PredictionChemical> predictedProducts =
-            L2PredictionChemical.getPredictionChemicals(
-                    MoleculeExporter.exportMoleculesGlobalFormatJava(scalafiedProducts));
+                L2PredictionChemical.getPredictionChemicals(getMoleculeStrings(products));
 
         L2Prediction prediction = new L2Prediction(nextUid, predictedSubstrates, name, predictedProducts);
 
@@ -102,6 +97,22 @@ public class AllPredictionsGenerator implements PredictionGenerator {
       }
     }
     return result;
+  }
+
+
+  /**
+   * Translate an array of chemaxon Molecules into a List of their String inchi representations
+   *
+   * @param mols An array of molecules.
+   * @return An array of inchis corresponding to the supplied molecules.
+   */
+  private List<String> getMoleculeStrings(Molecule[] mols) throws IOException {
+    ArrayList<String> moleculeStrings = new ArrayList<>();
+    for (Molecule mol : mols) {
+      // Grabs the string through the exporter.  Default is InChI w/o
+      moleculeStrings.add(MoleculeExporter.exportMolecule(mol, MoleculeFormat$.MODULE$.withName(this.moleculeFormat)));
+    }
+    return moleculeStrings;
   }
 
   /**

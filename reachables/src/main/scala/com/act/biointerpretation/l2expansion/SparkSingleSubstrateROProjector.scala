@@ -4,7 +4,7 @@ import java.io.File
 
 import chemaxon.license.LicenseManager
 import chemaxon.struc.Molecule
-import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
+import com.act.analysis.chemicals.molecules.{MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -51,7 +51,7 @@ object compute {
    *
    * TODO: try out other partitioning schemes and/or pre-compile and cache ERO Reactors for improved performance.
    */
-  def run(licenseFileName: String, ero: Ero, molecules: List[Molecule]): (Double, L2PredictionCorpus) = {
+  def run(licenseFileName: String, ero: Ero, molecules: List[Molecule], moleculeFormat: MoleculeFormat.Value): (Double, L2PredictionCorpus) = {
     val startTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val localLicenseFile = SparkFiles.get(licenseFileName)
 
@@ -59,7 +59,7 @@ object compute {
     LicenseManager.setLicenseFile(localLicenseFile)
 
     val expander = new SingleSubstrateRoExpander(new ErosCorpus(List(ero).asJava), molecules.asJava,
-      new AllPredictionsGenerator(new ReactionProjector()))
+      new AllPredictionsGenerator(new ReactionProjector(), moleculeFormat.toString))
 
     val results = expander.getPredictions()
 
@@ -85,7 +85,7 @@ object SparkSingleSubstrateROProjector {
   val OPTION_OUTPUT_DIRECTORY = "o"
   val OPTION_FILTER_FOR_SPECTROMETERY = "s"
   val OPTION_FILTER_REQUIRE_RO_NAMES = "n"
-  val OPTION_VALID_CHEMICAL_TYPES = "c"
+  val OPTION_VALID_CHEMICAL_TYPE = "c"
 
   def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -114,6 +114,13 @@ object SparkSingleSubstrateROProjector {
       CliOption.builder(OPTION_FILTER_REQUIRE_RO_NAMES).
         longOpt("only-named-eros").
         desc("Only apply EROs from the validation corpus that have assigned names"),
+
+      CliOption.builder(OPTION_VALID_CHEMICAL_TYPE).
+        longOpt("valid-chemical-types").
+        hasArg.
+        desc("A molecule string format. Currently valid types are inchi, stdInchi, smiles, and smarts.  " +
+          "By default, uses stdInchi which is a normal inchi, " +
+          "but with the settings \":SAbs,AuxNone,Woff\" also appended to clean up the inchi."),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -189,8 +196,12 @@ object SparkSingleSubstrateROProjector {
     LOGGER.info(s"Reduction in ERO list size: ${fullErosList.size} -> ${erosList.size}")
 
     // We set the global state for the exporter so we don't need to pass the format all the way down here.
-    val validMoleculeFormats: List[MoleculeFormat.Value] = List(MoleculeFormat.stdInchi, MoleculeFormat.smarts)
-    MoleculeExporter.setGlobalFormat(validMoleculeFormats)
+    // Determine which formats are being used.
+    val moleculeFormat: MoleculeFormat.Value = if (cl.hasOption(OPTION_VALID_CHEMICAL_TYPE)) {
+      MoleculeFormat.withName(cl.getOptionValue(OPTION_VALID_CHEMICAL_TYPE))
+    } else {
+      MoleculeFormat.stdInchi
+    }
 
     val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)
     val inchiCorpus = new L2InchiCorpus()
@@ -204,10 +215,10 @@ object SparkSingleSubstrateROProjector {
     }
 
     val validMolecules: List[String] = Source.fromFile(substratesListFile).getLines().
-      filter(x => try { MoleculeImporter.importMolecule(x, validMoleculeFormats); true } catch { case e : Exception => false }).toList
+      filter(x => try { MoleculeImporter.importMolecule(x, moleculeFormat); true } catch { case e : Exception => false }).toList
     LOGGER.info(s"Loaded and validated ${validMolecules.size} InChIs from source file at $substratesListFile")
 
-    val validatedMolecules = validMolecules.map(MoleculeImporter.importMolecule(_, validMoleculeFormats))
+    val validatedMolecules = validMolecules.map(MoleculeImporter.importMolecule(_, moleculeFormat))
 
     // Don't set a master here, spark-submit will do that for us.
     val conf = new SparkConf().setAppName("Spark RO Projection")
@@ -228,7 +239,7 @@ object SparkSingleSubstrateROProjector {
     // PROJECT!  Run ERO projection over all InChIs.
     val resultsRDD: RDD[(Ero, Double, L2PredictionCorpus)] =
       eroRDD.map(ero => {
-        val results = compute.run(licenseFileName, ero, validatedMolecules)
+        val results = compute.run(licenseFileName, ero, validatedMolecules, moleculeFormat)
         (ero, results._1, results._2)
       })
 
