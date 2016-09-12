@@ -6,8 +6,9 @@
 # install.packages(c("shiny", "rscala"))
 # scalaInstall()
 
-# Finally, this assumes that a fat jar of the reachables project has been created with the command `sbt assembly`
-# and is located at
+# Finally, this assumes that two symlinks have been created and are located in the app directory:
+# reachables-assembly-0.1.jar -> symlink to a "fat jar" created through sbt assembly
+# resources -> symlink to the resources directory
 kFatJarLocation <- "reachables-assembly-0.1.jar"
 
 # Constants
