@@ -217,9 +217,9 @@ object Solver {
   }
 }
 
-class MzToFormula(elements: List[Atom] = AllAtoms) {
+class MassToFormula(elements: List[Atom] = AllAtoms) {
   // this is critical correctness parameter. The solver searches the integral space
-  // int(mz) + { -delta .. +delta} for candidate solutions. it then validates each
+  // int(mass) + { -delta .. +delta} for candidate solutions. it then validates each
   // solution in the continuous domain (but up to the precision as dictated by mass
   // mass equality of MonoIsotopicMass. If the solver fails to find valid formulae
   // for some test cases we would need to expand this delta to ensure the right space
@@ -242,15 +242,15 @@ class MzToFormula(elements: List[Atom] = AllAtoms) {
   // we can formulate an (under-determined) equation using integer variables c, h, o, n, s..
   // that define the final formula of the composition of the molecule:
   // LHS_precise := `c * 12.000000 + h * 1.007825 + o * 15.994915 + n * 14.003074 + s * 31.972071`
-  // RHS_precise := `mz`
+  // RHS_precise := `mass`
   // We are looking for satisfying variable assignments that make `LHS_precise = RHS_precise`
   //
   // As a starting point, we solve a simpler equation by rounding the monoisotopic masses of
   // the component atoms. Then we can formulate an integer LHS_int and see if we can get a
-  // mass "close to" the precise mz:
+  // mass "close to" the precise mass:
   // LHS_int := `12c + h + 16o + 14n + 32s`
-  // RHS_int := `floor(mz) + {0, +-1, +-2, .. +-delta}`
-  // Note that `delta` cannot be arbitrarily high if we restrict attention to `mz` values that
+  // RHS_int := `floor(mass) + {0, +-1, +-2, .. +-delta}`
+  // Note that `delta` cannot be arbitrarily high if we restrict attention to `mass` values that
   // are bounded, e.g., by `950Da` (in the case where the molecules are to LCMS detected)
   // This is because each atom's monoisotopic mass deviates from their integral values in the 2nd-3rd
   // decimal place, and which means a whole lot of atoms would have to be accumulated (consistently
@@ -265,8 +265,8 @@ class MzToFormula(elements: List[Atom] = AllAtoms) {
   // Then we find the satisfying solution, which also makes `LHS_precise = RHS_precise`. Output
   // all of those solutions!
 
-  def solve(mz: MonoIsotopicMass): List[ChemicalFormula] = {
-    val RHSints = (-delta to delta).map(d => (mz rounded 0).toInt + d).toList
+  def solve(mass: MonoIsotopicMass): List[ChemicalFormula] = {
+    val RHSints = (-delta to delta).map(d => (mass rounded 0).toInt + d).toList
 
     val candidateFormulae = RHSints.map( intMz => {
       val constraints = buildConstraintOverInts(intMz)
@@ -276,15 +276,15 @@ class MzToFormula(elements: List[Atom] = AllAtoms) {
     }).flatten
 
     val approxMassSat = candidateFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
-    MzToFormula.reportPass(s"\t Int match soln with +-${delta}: ${approxMassSat.size}")
+    MassToFormula.reportPass(s"\t Int match soln with +-${delta}: ${approxMassSat.size}")
 
-    // candidateFormulae has all formulae for deltas to the closest int mz
+    // candidateFormulae has all formulae for deltas to the closest int mass
     // For each formula that we get, we need to calculate whether this is truly the right
-    // mz when computed at the precise mass. If it is then we filter it out to the final
+    // mass when computed at the precise mass. If it is then we filter it out to the final
     // formulae as as true solution
-    val matchingFormulae = candidateFormulae.filter( computedMass(_).equals(mz) )
+    val matchingFormulae = candidateFormulae.filter( computedMass(_).equals(mass) )
     val preciseMassSatFormulae = matchingFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
-    MzToFormula.reportPass(s"\t Precise match soln: $preciseMassSatFormulae")
+    MassToFormula.reportPass(s"\t Precise match soln: $preciseMassSatFormulae")
 
     matchingFormulae
   }
@@ -364,7 +364,7 @@ class MzToFormula(elements: List[Atom] = AllAtoms) {
   }
 }
 
-object MzToFormula {
+object MassToFormula {
 
   // These can be overwritten by command line arguments to specific files
   // We can pass them around as arguments, but it was getting very painful.
@@ -377,7 +377,7 @@ object MzToFormula {
     val opts = List(optMz, optMassFile, optOutputFile, optOutFailedTests, optRunTests)
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
-    val mzs: List[Double] = {
+    val masses: List[Double] = {
       if ((cmdLine has optMz) && (cmdLine has optMassFile)) {
         println(s"You specified both a single mass and a mass file as input. Is one or the other? Aborting.")
         System.exit(-1)
@@ -387,8 +387,11 @@ object MzToFormula {
       } else {
         if (cmdLine has optMassFile) {
           val source = scala.io.Source.fromFile(cmdLine get optMassFile)
-          val mzStrs = try source.getLines.toList finally source.close()
-          mzStrs.map(s => s.toDouble)
+          val massStrs = try source.getLines.toList finally source.close()
+          // expect input lines to be tab separated with the first column the mass
+          // and the rest can have meta data with them (e.g., the err output file)
+          // we split by tabs and then pick the first element to convert to double
+          massStrs.map(_.split("\t")(0).toDouble)
         } else List()
       }
     }
@@ -409,7 +412,7 @@ object MzToFormula {
       }
     }
 
-    solve(mzs, new MzToFormula)
+    solve(masses, new MassToFormula)
 
     // TODO: Eventually, move to scalatest.
     if (cmdLine has optRunTests) {
@@ -417,8 +420,8 @@ object MzToFormula {
     }
   }
 
-  def solve(mzs: List[Double], f: MzToFormula): Unit = {
-    mzs.foreach( m => {
+  def solve(masses: List[Double], f: MassToFormula): Unit = {
+    masses.foreach( m => {
       val solns = f.solve(new MonoIsotopicMass(m))
       val allChemicalFormulae = solns.map(f.buildChemFormulaA)
       outStream.write(allChemicalFormulae.mkString("\t") + "\n")
@@ -427,32 +430,38 @@ object MzToFormula {
   }
 
   def solveNCheck(test: (Double, List[Atom], Map[Atom, Int], String)) {
-    val (mz, atoms, expected, inchi) = test
-    val formulator = new MzToFormula(elements = atoms)
+    val (mass, atoms, expected, inchi) = test
+    val formulator = new MassToFormula(elements = atoms)
 
     val atomsInt = atoms.map(a => a.mass.rounded(0) * expected(a)).sum
-    val mzRounded = math round mz
-    val log = List(s"$mz",
+    val massRounded = math round mass
+    val solnsFound = formulator.solve(new MonoIsotopicMass(mass))
+    val isPass = solnsFound.contains(expected)
+    val passFail = if (isPass) "PASS" else"FAIL"
+
+    val log = List(s"$mass",
                       s"$atoms",
                       s"${formulator.buildChemFormulaA(expected)}",
-                      s"rounded(mz)=$mzRounded",
+                      s"rounded(mass)=$massRounded",
                       s"rounded(atoms)=$atomsInt",
-                      s"$inchi").mkString("\t")
+                      s"$inchi",
+                      s"$passFail").mkString("\t")
 
-    val solnsFound = formulator.solve(new MonoIsotopicMass(mz))
-
-    if (solnsFound.contains(expected)) {
-      reportPass(s"PASS: $log")
-    } else {
-      reportFail(s"FAIL: $log")
-    }
+    if (isPass)
+      reportPass(s"$log")
+    else
+      reportFail(s"$log")
   }
 
   def reportFail(s: String) = reportHelper(s, errStream, Console.RED)
   def reportPass(s: String) = reportHelper(s, outStream, Console.GREEN)
 
   def reportHelper(s: String, stream: PrintWriter, color: String): Unit = {
-    stream.write(color)
+    // Do not write color codes if we are writing to files
+    // But when writing to screen it is good to see visual indicators
+    if (stream == System.out || stream == System.err)
+      stream.write(color)
+
     stream.write(s)
     stream.println()
     stream.flush
@@ -527,9 +536,34 @@ object MzToFormula {
   }
 
   def formulaFromInChI(i: String) = {
-    // TODO: this is not the accurate formula for inchis that have p+1 and p-1
-    // It ends up +1, or -1 away because of the added/missing H+
-    i.split("/")(1)
+    try {
+      // This extracts the formula string specified in the InChI.
+      // In the cases where a `/p` layer is specified the `H` number is inaccurate.
+      // It needs to be adjusted for the num protons specified, as in examples below
+      //
+      // Examples we need to handle:
+      // InChI=1S/C7H5NO4/c9-6(10)4-1-2-8-3-5(4)7(11)12/h1-3H,(H,9,10)(H,11,12)/p-2   -> C7H3NO4, -2 adjusted
+      // InChI=1S/C6H12O3/c1-4(2)3-5(7)6(8)9/h4-5,7H,3H2,1-2H3,(H,8,9)/p-1/t5-/m0/s1  -> C6H11O3, -1 adjusted
+      // InChI=1S/C6H13NO2S/c1-10(2)4-3-5(7)6(8)9/h5H,3-4,7H2,1-2H3/p+1/t5-/m0/s1     -> C6H14NO2S, +1 adjusted
+
+      val layers = i.split("/")
+
+      // layer 1 is where the chemical formula string is. also, we remove all salt delimiters
+      val formula = layers(1).replaceAllLiterally(".","") 
+
+      // find the proton layer
+      val pLayer = layers.find(l => l(0) == 'p')
+      val protonAdjust = pLayer match { 
+        case None => 0
+        case Some(l) => (l substring 1).toInt
+      }
+
+      val formulaMap = getFormulaMap(formula)
+      val protonAdjFormula = formulaMap + (H -> (formulaMap(H) + protonAdjust))
+      Some((formula, protonAdjFormula))
+    } catch {
+      case e: Exception => None
+    }
   }
 
   def getAtomAtHead(f: String): (Atom, String) = {
@@ -560,6 +594,7 @@ object MzToFormula {
   }
 
   def getFormulaMap(f: String): Map[Atom, Int] = getFormulaMapStep(f, Map())
+
   def getFormulaMapStep(f: String, curr: Map[Atom, Int]): Map[Atom, Int] = {
     if (f.isEmpty) {
       // base case of recursion, i.e., at end of formula
@@ -584,48 +619,63 @@ object MzToFormula {
   def testDBChemicals(n: Int, maxMz: Double) {
     val db = new MongoDB("localhost", 27017, "actv01")
     val dbCur = db.getIteratorOverChemicals
-    val formulaSet = for(i <- 0 until n) yield {
-      val chem = db.getNextChemical(dbCur)
-      val formula = formulaFromInChI(chem.getInChI)
-      (formula, chem)
-    }
+    val chems = for(i <- 0 until n) yield db.getNextChemical(dbCur)
 
     val testformulae = for {
-      (formula, c) <- formulaSet;
-      mz = try { Some(calculateMass(c.getInChI).doubleValue)  } catch { case e: Exception => None };
+
+      chem <- chems
+      inchi = chem.getInChI
+      mass = try { 
+        Some(calculateMass(inchi).doubleValue)
+      } catch { 
+        case e: Exception => None
+      }
+      (formulaStr, formulaMap) = formulaFromInChI(inchi) match {
+        case None => ("", Map[Atom, Int]())
+        case Some(f) => f
+      }
+
       if {
-        val allMainAtomsPresent = List(C, H, O).forall(a => formula.indexOf(a.symbol) != -1)
-        val allRecognizedAtomsRegex = s"[${AllAtoms.map(_.symbol.toString).reduce(_+_)}]"
-        val noUnrecognizedAtoms = formula.replaceAll("[0-9]","").replaceAll(allRecognizedAtomsRegex, "").isEmpty
-        val isSaltComplex = formula.indexOf('.') != -1
-        val mzOk = mz match {
-          case None => false
-          case Some(mass) => mass < maxMz
-        }
-        // only test over formulae that:
+        // We only test over formulae that:
         //    1) have at least all of CHO in them
         //    2) no atoms outside of `AllAtoms` (CHNOPS for now)
         //    3) is not a salt
         //    4)  a) inchi can be loaded, and mass calculated by `MassCalculator`
-        //        b) mz < 200Da (most of our standards were <200Da. Can go higher but solving takes long then!)
-        allMainAtomsPresent && noUnrecognizedAtoms && !isSaltComplex && mzOk
+        //        b) mass < 200Da (most of our standards were <200Da. Can go higher but solving takes long then!)
+        // below we construct booleans for each of these four tests.
+
+        // Condition "1)"
+        val allMainAtomsPresent = List(C, H, O).forall(formulaMap.contains)
+
+        // Condition "2)"
+        // We need to check if all atom symbols present in the string are ones we know about.
+        val noUnrecognizedAtoms = formulaMap.keys.forall(AllAtoms.contains)
+
+        // Condition "3)"
+        val isSaltComplex = formulaStr.indexOf('.') != -1
+
+        // Condition "4)"
+        val massOk = mass match {
+          case None => false
+          case Some(mass) => mass < maxMz
+        }
+        
+        // Check if all conditions 1)..4) hold
+        allMainAtomsPresent && noUnrecognizedAtoms && !isSaltComplex && massOk
       }
     } yield {
-      mz match {
-        // map each formula to its mass and inchi, e.g.,
-        // C6H5N1O4 -> (155.021859, "InChI=1S/C6H5NO4/c8-4-2-1-3(6(10)11)5(9)7-4/h1-2H,(H,10,11)(H2,7,8,9)")
-        case Some(mz) => formula -> (mz, c.getInChI)
+      mass match { 
+        case Some(mass) => {
+          // map each formula to its mass and inchi, e.g.,
+          // C6H5N1O4 -> (155.021859, "InChI=1S/C6H5NO4/c8-4-2-1-3(6(10)11)5(9)7-4/h1-2H,(H,10,11)(H2,7,8,9)")
+          // C7H3N1O4 -> (165.006209, "InChI=1S/C7H5NO4/c9-6(10)4-1-2-8-3-5(4)7(11)12/h1-3H,(H,9,10)(H,11,12)/p-2")
+          // Note the last case above, where the mass has to be adjusted for the `-2` protons
+          (mass, formulaMap.keys.toList, formulaMap, inchi)
+        }
       }
     }
 
-    def makeTest(kv: (String, (Double, String))): (Double, List[Atom], Map[Atom, Int], String) = kv match {
-      case (formula, (mz, inchi)) => {
-        val formulaMap = getFormulaMap(formula)
-        (mz, formulaMap.keys.toList, formulaMap, inchi)
-      }
-    }
-
-    val dbCases = testformulae.map(makeTest).toSet
+    val dbCases = testformulae.toSet
     dbCases foreach solveNCheck
   }
 
@@ -649,7 +699,7 @@ object MzToFormula {
     testcases.foreach{ test =>
       {
         val (intMz, elems, validAtomicFormulae) = test
-        val formulator = new MzToFormula(elements = elems) // Hah! The "formulator"
+        val formulator = new MassToFormula(elements = elems) // Hah! The "formulator"
         val constraints = formulator.buildConstraintOverInts(intMz)
         val validSolns = validAtomicFormulae.map(_.map(kv => (formulator.atomToVar(kv._1), kv._2)))
         testOneSolnOverCNO(constraints, intMz, validSolns, formulator)
@@ -658,7 +708,7 @@ object MzToFormula {
     }
   }
 
-  def testOneSolnOverCNO(constraints: List[BooleanExpr], intMz: Int, expected: Set[Map[Var, Int]], f: MzToFormula) {
+  def testOneSolnOverCNO(constraints: List[BooleanExpr], intMz: Int, expected: Set[Map[Var, Int]], f: MassToFormula) {
 
     val vars = constraints.map(Solver.getVars).flatten
     val sat = Solver.solveOne(constraints)
@@ -683,7 +733,7 @@ object MzToFormula {
 
   }
 
-  def testAllSolnOverCNO(constraints: List[BooleanExpr], intMz: Int, expected: Set[Map[Var, Int]], f: MzToFormula) {
+  def testAllSolnOverCNO(constraints: List[BooleanExpr], intMz: Int, expected: Set[Map[Var, Int]], f: MassToFormula) {
 
     val vars = constraints.map(Solver.getVars).flatten
     val sat = Solver.solveMany(constraints)
