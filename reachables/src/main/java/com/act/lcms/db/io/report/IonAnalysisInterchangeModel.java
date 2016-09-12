@@ -273,8 +273,11 @@ public class IonAnalysisInterchangeModel {
         Pair<HitOrMiss, Boolean> transformedAndIsRetainedMolecule;
 
         if (replicateModels.size() == 1) {
-          transformedAndIsRetainedMolecule =
-              hitOrMissFilterAndTransformer.apply(replicateModels.get(0).getResults().get(i).getMolecules().get(j));
+
+          // If there is only one replicate, get the molecule corresponding to that mass charge and index in the molecules
+          // list for that mass charge.
+          HitOrMiss molecule = replicateModels.get(0).getResults().get(i).getMolecules().get(j);
+          transformedAndIsRetainedMolecule = hitOrMissFilterAndTransformer.apply(molecule);
         } else {
           List<HitOrMiss> moleculesFromReplicates = new ArrayList<>();
 
