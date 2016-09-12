@@ -38,6 +38,9 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
   public static final String HEADER_MASS = "Monoisotopic Mass";
   public static final String HEADER_MZ = "MZ";
   public static final String HEADER_ION = "Ion";
+  public static final String HEADER_RETENSION_TIME = "Time";
+  public static final String HEADER_INTENSITY = "Intensity";
+  public static final String HEADER_CROSS_SAMPLE_RATIO = "Pos/Neg ratio";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_INPUT_FILES)
@@ -104,8 +107,8 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[] {
       "This module takes as inputs LCMS analysis results in the form of IonAnalysisInterchangeModel serialized object files ",
-          "for every positive replicate vs negative controls. Based on these, it identifies inchis that are hits on all the ",
-          "replicates and writes them to an output file."
+      "for every positive replicate vs negative controls. Based on these, it identifies inchis that are hits on all the ",
+      "replicates and writes them to an output file."
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
@@ -118,6 +121,9 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     add(HEADER_ION);
     add(HEADER_MASS);
     add(HEADER_MZ);
+    add(HEADER_RETENSION_TIME);
+    add(HEADER_INTENSITY);
+    add(HEADER_CROSS_SAMPLE_RATIO);
   }};
 
   /**
@@ -127,7 +133,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
    * @param model The model that is being written
    * @throws IOException
    */
-  public static void printInchisAndIonsToFile(IonAnalysisInterchangeModel model, String fileName, Boolean jsonFormat) throws IOException {
+  public static void printInchisAndCorrespondingResultsToFile(IonAnalysisInterchangeModel model, String fileName, Boolean jsonFormat) throws IOException {
     if (jsonFormat) {
       model.writeToJsonFile(new File(fileName));
     } else {
@@ -144,6 +150,9 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
           row.put(HEADER_ION, molecule.getIon());
           row.put(HEADER_MASS, MassCalculator.calculateMass(molecule.getInchi()).toString());
           row.put(HEADER_MZ, resultForMZ.getMz().toString());
+          row.put(HEADER_RETENSION_TIME, molecule.getTime().toString());
+          row.put(HEADER_INTENSITY, molecule.getIntensity().toString());
+          row.put(HEADER_CROSS_SAMPLE_RATIO, molecule.getSnr().toString());
           writer.append(row);
           writer.flush();
         }
@@ -181,7 +190,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
       IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
           IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults), transformer);
 
-      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
+      printInchisAndCorrespondingResultsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
       return;
     }
 
@@ -196,7 +205,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
           minIntensityThreshold,
           minTimeThreshold);
 
-      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
+      printInchisAndCorrespondingResultsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
       return;
     }
 
@@ -215,7 +224,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
           IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
           hitOrMissSingleSampleTransformer);
 
-      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
+      printInchisAndCorrespondingResultsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
     }
   }
 }
