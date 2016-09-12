@@ -13,7 +13,7 @@ kOMass <- 15.994915
 kChartLabelSizeFactor <- 1.3
 kLabelFactor <- 1.2
 
-kIntensityThreshold <- 100000
+kIntensityThreshold <- 10000
 kSSRatio <- 20
 
 shinyServer(function(input, output, session) {
