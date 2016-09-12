@@ -40,7 +40,6 @@ public class SingleSubstrateRoExpanderTest {
 
   @Before
   public void setup() {
-    MoleculeExporter.setGlobalFormat(MoleculeFormat.stdInchi());
     //Set up valid RO corpus for testing
     Ero validTestEro = new Ero();
     validTestEro.setRo(RO_STRING);
@@ -66,11 +65,6 @@ public class SingleSubstrateRoExpanderTest {
     invalidMetaboliteCorpus = new L2InchiCorpus(invalidMetaboliteList);
 
     generator = new AllPredictionsGenerator(new ReactionProjector());
-  }
-
-  @After
-  public void takedown(){
-    MoleculeExporter.setGlobalFormat(MoleculeFormat.stdInchi());
   }
 
   @Test
