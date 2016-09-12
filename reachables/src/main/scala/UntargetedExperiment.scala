@@ -1,6 +1,9 @@
 package com.act.lcms
 
 import java.io.PrintWriter
+import act.shared.{CmdLineParser, OptDesc}
+
+class LCMSExperiment(val name: String, val peaks: UntargetedPeakSpectra)
 
 class UntargetedExperiment(val controls: Set[LCMSExperiment], val hypotheses: Set[LCMSExperiment]) {
 }
@@ -20,19 +23,32 @@ object UntargetedExperiment {
     }
   }
 
+  val optControls = new OptDesc(
+                    param = "c",
+                    longParam = "controls",
+                    name = "filenames",
+                    desc = """Experimental controls""".stripMargin,
+                    isReqd = false, hasArgs = true)
+
+  val optHypotheses = new OptDesc(
+                    param = "e",
+                    longParam = "experiments",
+                    name = "filenames",
+                    desc = """Experiments""".stripMargin,
+                    isReqd = false, hasArgs = true)
+
   val optOutFile = new OptDesc(
                     param = "o",
-                    longParam = "output",
+                    longParam = "outfile",
                     name = "filename",
-                    desc = """Output file with ....
-                             |Each line is tab separated list of ....""".stripMargin,
-                    isReqd = false, hasArg = true)
+                    desc = "The file to which ...",
+                    isReqd = true, hasArg = true)
 
   val optRunTests = new OptDesc(
                     param = "t",
                     longParam = "run-tests",
                     name = "run regression tests",
-                    desc = """Run regression tests. This will take some time.""",
+                    desc = """Run regression tests.""",
                     isReqd = false, hasArg = false)
 
 }
