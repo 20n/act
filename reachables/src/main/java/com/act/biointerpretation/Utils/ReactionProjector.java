@@ -49,7 +49,6 @@ public class ReactionProjector {
   }
 
   private MolSearch searcher;
-  private Map<Molecule, String> molToStringMap;
 
   public ReactionProjector() {
     this(DEFAULT_SEARCHER, DEFAULT_MOLECULE_FORMAT);
@@ -65,7 +64,6 @@ public class ReactionProjector {
 
   public ReactionProjector(MolSearch searcher, String moleculeFormat) {
     this.searcher = searcher;
-    this.molToStringMap = new HashMap<>();
     this.moleculeFormat = moleculeFormat;
   }
 
@@ -76,7 +74,7 @@ public class ReactionProjector {
    * with their inchis.
    */
   public void clearInchiCache() {
-    molToStringMap = new HashMap<>();
+    MoleculeExporter.clearCache();
   }
 
   /**
@@ -315,20 +313,13 @@ public class ReactionProjector {
   }
 
   /**
-   * Gets an inchi from a molecule, either by looking it up in the map or calculating it directly.
-   * This ensures that no inchi is calculated twice over the lifetime of a single ReactionProjector instance.
+   * Gets a a string of the molecule.  The exporter takes care of all caching so we don't need to worry about it
    *
    * @param molecule The molecule.
-   * @return The molecule's inchi.
+   * @return The molecule's string presentation in the format that this class declares..
    * @throws IOException
    */
   private String getMoleculeString(Molecule molecule) throws IOException {
-    String moleculeString = molToStringMap.getOrDefault(molecule, MOL_NOT_FOUND);
-
-    if (!moleculeString.equals(MOL_NOT_FOUND)) {
-      return moleculeString;
-    }
-
     return MoleculeExporter.exportMolecule(molecule, MoleculeFormat$.MODULE$.withName(this.moleculeFormat));
   }
 }

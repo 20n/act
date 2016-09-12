@@ -11,6 +11,10 @@ object MoleculeExporter {
   private val moleculeCache = TrieMap[MoleculeFormat.Value, TrieMap[Molecule, String]]()
   private var defaultFormat = List(MoleculeFormat.inchi)
 
+  def clearCache(): Unit ={
+    moleculeCache.keySet.foreach(key => moleculeCache.put(key, new TrieMap[Molecule, String]))
+  }
+
   def setDefaultFormat(format: MoleculeFormat.Value): Unit = {
     setDefaultFormat(List(format))
   }
