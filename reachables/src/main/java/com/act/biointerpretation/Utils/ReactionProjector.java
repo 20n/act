@@ -325,10 +325,10 @@ public class ReactionProjector {
    * @throws IOException
    */
   private String getMoleculeString(Molecule molecule) throws IOException {
-    String inchi = molToStringMap.getOrDefault(molecule, MOL_NOT_FOUND);
+    String moleculeString = molToStringMap.getOrDefault(molecule, MOL_NOT_FOUND);
 
-    if (!inchi.equals(MOL_NOT_FOUND)) {
-      return inchi;
+    if (!moleculeString.equals(MOL_NOT_FOUND)) {
+      return moleculeString;
     }
 
     return MoleculeExporter.exportMolecule(molecule, MoleculeFormat$.MODULE$.withName(this.moleculeFormat));
