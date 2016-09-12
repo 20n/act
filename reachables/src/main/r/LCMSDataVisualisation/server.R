@@ -12,6 +12,9 @@ kOMass <- 15.994915
 kChartLabelSizeFactor <- 1.3
 kLabelFactor <- 1.2
 
+kIntensityThreshold <- 100000
+kSSRatio <- 20
+
 shinyServer(function(input, output, session) {
   
   output$logo <- renderImage({
@@ -84,6 +87,29 @@ shinyServer(function(input, output, session) {
            "M+H-H2O" = target.mass - kHMass - kOMass)
   })
   
+  detected.peaks <- reactive({
+    data <- data.long()
+    data <- data %>%
+      filter(intensity > kIntensityThreshold)
+    set.seed(2016)
+    fit <- kmeans(data$mz, centers = 2)
+    if (fit$betweenss / fit$tot.withinss > kSSRatio) {
+      intervals <- classIntervals(data$mz, n = 2, style = "kmeans")  
+      mean.mz.break <- intervals$brks[2]
+      peak1 <- data %>%
+        filter(mz < mean.mz.break) %>%
+        top_n(1, intensity)
+      peak2 <- data %>%
+        filter(mz >= mean.mz.break) %>%
+        top_n(1, intensity)
+      rbind(peak1, peak2)
+    } else {
+      peak1 <- data %>%
+        top_n(1, intensity)
+      peak1
+    }
+  })
+  
   output$plot <- renderPlot({
     data <- data.long()
     with(data, {
@@ -111,6 +137,10 @@ shinyServer(function(input, output, session) {
   })
 
   output$target.mz <- renderText({
-    paste0("Corresponding m/z value is ", target.mz())
+    sprintf("Target m/z value (computed from input mass and mode): %s", target.mz())
   })
+  
+  output$detected.peaks <- renderTable({
+    detected.peaks()
+  }, digits = c(0, 6, 2, 0))
 })

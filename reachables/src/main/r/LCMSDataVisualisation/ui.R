@@ -25,7 +25,11 @@ shinyUI(fluidPage(
       checkboxInput("top.value", label = "Display m/z value for highest peak", value = FALSE)
     ),
     mainPanel(
+      h4("Target m/z value"),
       textOutput("target.mz"),
+      h4("Detected peaks"),
+      tableOutput("detected.peaks"),
+      h4("3D scatterplot of the raw data"),
       plotOutput("plot", height = "700px")
     )
   )
