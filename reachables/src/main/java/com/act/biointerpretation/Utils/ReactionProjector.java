@@ -37,7 +37,7 @@ public class ReactionProjector {
   private static final MolSearchOptions LAX_SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
   private static final MolSearch DEFAULT_SEARCHER = new MolSearch();
 
-  // Default is inchi w/o aux data.
+  private static final String defaultMoleculeFormat = MoleculeFormat.stdInchi().toString();
   private final String moleculeFormat;
 
   /**
@@ -54,11 +54,11 @@ public class ReactionProjector {
   private Map<Molecule, String> molToStringMap;
 
   public ReactionProjector() {
-    this(DEFAULT_SEARCHER, MoleculeFormat.stdInchi().toString());
+    this(DEFAULT_SEARCHER, defaultMoleculeFormat);
   }
 
   public ReactionProjector(MolSearch searcher) {
-    this(searcher, MoleculeFormat.stdInchi().toString());
+    this(searcher, defaultMoleculeFormat);
   }
 
   public ReactionProjector(String moleculeFormat) {
