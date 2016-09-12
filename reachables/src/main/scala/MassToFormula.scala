@@ -549,7 +549,8 @@ object MassToFormula {
       val layers = i.split("/")
 
       // layer 1 is where the chemical formula string is. also, we remove all salt delimiters
-      val formula = layers(1).replaceAllLiterally(".","") 
+      val formula = layers(1)
+      val formulaToDeconstruct = .replaceAllLiterally(".","") 
 
       // find the proton layer
       val pLayer = layers.find(l => l(0) == 'p')
@@ -558,7 +559,7 @@ object MassToFormula {
         case Some(l) => (l substring 1).toInt
       }
 
-      val formulaMap = getFormulaMap(formula)
+      val formulaMap = getFormulaMap(formulaToDeconstruct)
       val protonAdjFormula = formulaMap + (H -> (formulaMap(H) + protonAdjust))
       Some((formula, protonAdjFormula))
     } catch {
