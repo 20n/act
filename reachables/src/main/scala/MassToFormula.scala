@@ -155,7 +155,7 @@ object Solver {
     }
   }
 
-  def solveOne(eqns: List[BooleanExpr]): Option[Map[Var, Int]] = {
+  def solveOne(eqns: List[BooleanExpr]): Option[Map[Var, Int]] = time {
 
     val (constraints, varsInEq) = eqns.map(mkClause).unzip
 
@@ -189,7 +189,7 @@ object Solver {
     }
   }
 
-  def solveMany(eqns: List[BooleanExpr]): Set[Map[Var, Int]] = solveManyAux(eqns, Set())
+  def solveMany(eqns: List[BooleanExpr]): Set[Map[Var, Int]] = time { solveManyAux(eqns, Set()) }
 
   def solveManyAux(eqns: List[BooleanExpr], solns: Set[Map[Var, Int]]): Set[Map[Var, Int]] = {
     solveOne(eqns) match {
@@ -215,6 +215,22 @@ object Solver {
     val num: BitVecNum = bv.asInstanceOf[BitVecNum]
     num.getInt
   }
+
+  // The stats below are updated after each solve call. 
+  var _lastSolveTimeTaken = 0L
+  def updateLastSolveTimeTaken(ns: Long): Unit = {
+    _lastSolveTimeTaken = ns
+  }
+
+  def getLastSolveTimeTaken() = _lastSolveTimeTaken
+   
+  def time[T](blk: => T): T = {
+    val start = System.nanoTime()
+    val rslt = blk
+    val end = System.nanoTime()
+    updateLastSolveTimeTaken(end - start)
+    rslt
+  } 
 }
 
 class MassToFormula(elements: List[Atom] = AllAtoms) {
@@ -397,8 +413,8 @@ object MassToFormula {
     }
 
     outStream = {
-      if (cmdLine has optOutFile) {
-        new PrintWriter(cmdLine get optOutFile)
+      if (cmdLine has optOutputFile) {
+        new PrintWriter(cmdLine get optOutputFile)
       } else {
         new PrintWriter(System.out)
       }
@@ -436,6 +452,7 @@ object MassToFormula {
     val atomsInt = atoms.map(a => a.mass.rounded(0) * expected(a)).sum
     val massRounded = math round mass
     val solnsFound = formulator.solve(new MonoIsotopicMass(mass))
+    val timeTaken = Solver.getLastSolveTimeTaken / 1000000.0 // ns to milliseconds
     val isPass = solnsFound.contains(expected)
     val passFail = if (isPass) "PASS" else"FAIL"
 
@@ -445,7 +462,8 @@ object MassToFormula {
                       s"rounded(mass)=$massRounded",
                       s"rounded(atoms)=$atomsInt",
                       s"$inchi",
-                      s"$passFail").mkString("\t")
+                      s"$passFail",
+                      s"$timeTaken").mkString("\t")
 
     if (isPass)
       reportPass(s"$log")
@@ -550,7 +568,7 @@ object MassToFormula {
 
       // layer 1 is where the chemical formula string is. also, we remove all salt delimiters
       val formula = layers(1)
-      val formulaToDeconstruct = .replaceAllLiterally(".","") 
+      val formulaToDeconstruct = formula.replaceAll("\\.","") 
 
       // find the proton layer
       val pLayer = layers.find(l => l(0) == 'p')
@@ -612,7 +630,12 @@ object MassToFormula {
         // there is a number to extract, return that
         getNumAtHead(rest1)
       }
-      val map = curr + (atom -> num)
+
+      // in the case of salts, there might be that we see the same atom more than once
+      // e.g., in C6H6N2O2.H3N we will be processing the string C6H6N2O2H3N here
+      // and so we will see H twice, once with num=6 and once with num=3; similarly N=2 and N=1
+      val atomCnt = num + (if (curr contains atom) curr(atom) else 0)
+      val map = curr + (atom -> atomCnt)
       getFormulaMapStep(rest2, map)
     }
   }
@@ -746,12 +769,5 @@ object MassToFormula {
       reportFail(s"FAIL DEBUG: expected - satisfying solution = ${expected -- sat}")
     }
   }
-
-  val optOutFile = new OptDesc(
-                    param = "o",
-                    longParam = "output-file",
-                    name = "output TSV file",
-                    desc = "The output file for the computed values! Magic!",
-                    isReqd = false, hasArg = false)
 
 }
