@@ -45,8 +45,8 @@ object AbstractChemicals {
     val chemicalId: Long = ob.get(ChemicalKeywords.ID.toString).asInstanceOf[Long]
     val smiles: String = ob.get(ChemicalKeywords.SMILES.toString).asInstanceOf[String]
 
-    // Replace R groups for C currently.
-    val replacedSmarts = smiles.replaceAll("R[0-9]?", "C")
+    // Replace R groups for C currently.  There can be multiple R groups, where they are listed as characters.  We want to grab any of the numbers assigned there.
+    val replacedSmarts = smiles.replaceAll("R[0-9]*", "C")
 
     /*
       Try to import the SMILES field as a Smarts representation of the molecule.
@@ -59,7 +59,7 @@ object AbstractChemicals {
       Option((chemicalId, new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportAsSmarts(mol))))
     } catch {
       case e: MolExportException =>
-        logger.debug(s"Tried converting molecule to either smiles or InChI, but failed.  Molecule's chemical ID is ${chemicalId.toInt}.")
+        logger.debug(s"Tried converting molecule to smarts, but failed.  Molecule's chemical ID is ${chemicalId.toInt}.")
         None
       case e: MolFormatException =>
         logger.debug(s"Tried to import SMARTS value $replacedSmarts, but failed.")
