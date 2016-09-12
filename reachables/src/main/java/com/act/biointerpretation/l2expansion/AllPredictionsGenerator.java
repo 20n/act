@@ -59,13 +59,13 @@ public class AllPredictionsGenerator implements PredictionGenerator {
 
     try {
       Map<Molecule[], List<Molecule[]>> projectionMap =
-              projector.getRoProjectionMap(substratesArray, reactor.getReactor());
+          projector.getRoProjectionMap(substratesArray, reactor.getReactor());
       return getAllPredictions(projectionMap, seed.getProjectorName());
     } catch (ReactionException e) {
       StringBuilder builder = new StringBuilder();
       builder.append(e.getMessage())
-              .append(": substrates, reactor: ").append(getMoleculeStrings(substratesArray))
-              .append(",").append(reactor.getReactorSmarts());
+          .append(": substrates, reactor: ").append(getMoleculeStrings(substratesArray))
+          .append(",").append(reactor.getReactorSmarts());
       throw new ReactionException(builder.toString());
     }
   }
@@ -84,11 +84,11 @@ public class AllPredictionsGenerator implements PredictionGenerator {
 
     for (Molecule[] substrates : projectionMap.keySet()) {
       List<L2PredictionChemical> predictedSubstrates =
-              L2PredictionChemical.getPredictionChemicals(getMoleculeStrings(substrates));
+          L2PredictionChemical.getPredictionChemicals(getMoleculeStrings(substrates));
 
       for (Molecule[] products : projectionMap.get(substrates)) {
         List<L2PredictionChemical> predictedProducts =
-                L2PredictionChemical.getPredictionChemicals(getMoleculeStrings(products));
+            L2PredictionChemical.getPredictionChemicals(getMoleculeStrings(products));
 
         L2Prediction prediction = new L2Prediction(nextUid, predictedSubstrates, name, predictedProducts);
 
@@ -101,13 +101,13 @@ public class AllPredictionsGenerator implements PredictionGenerator {
 
 
   /**
-   * Translate an array of chemaxon Molecules into a List of their String inchi representations
+   * Translate an array of Chemaxon Molecules into a List of their string representations
    *
    * @param mols An array of molecules.
    * @return An array of inchis corresponding to the supplied molecules.
    */
   private List<String> getMoleculeStrings(Molecule[] mols) throws IOException {
-    ArrayList<String> moleculeStrings = new ArrayList<>();
+    List<String> moleculeStrings = new ArrayList<>();
     for (Molecule mol : mols) {
       // Grabs the string through the exporter.  Default is InChI w/o
       moleculeStrings.add(MoleculeExporter.exportMolecule(mol, MoleculeFormat$.MODULE$.withName(this.moleculeFormat)));
