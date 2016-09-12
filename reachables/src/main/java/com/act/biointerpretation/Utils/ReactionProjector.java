@@ -12,6 +12,9 @@ import chemaxon.sss.search.SearchException;
 import chemaxon.struc.Molecule;
 import chemaxon.util.iterator.MoleculeIterator;
 import chemaxon.util.iterator.MoleculeIteratorFactory;
+import com.act.analysis.chemicals.molecules.MoleculeExporter;
+import com.act.analysis.chemicals.molecules.MoleculeFormat;
+import com.act.analysis.chemicals.molecules.MoleculeFormat$;
 import org.apache.commons.collections4.Bag;
 import org.apache.commons.collections4.bag.HashBag;
 import org.apache.logging.log4j.LogManager;
@@ -29,12 +32,13 @@ import java.util.Set;
 public class ReactionProjector {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionProjector.class);
-  private static final String INCHI_FORMAT = "inchi:AuxNone";
-  private static final String SMARTS_FORMAT = "smarts";
   private static final String MOL_NOT_FOUND = "NOT_FOUND";
 
   private static final MolSearchOptions LAX_SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
   private static final MolSearch DEFAULT_SEARCHER = new MolSearch();
+
+  // Default is inchi w/o aux data.
+  private final String moleculeFormat;
 
   /**
    * Set searcher to ignore stereo and bond type.  This will allow us to optimistically match products so that we don't
@@ -50,13 +54,23 @@ public class ReactionProjector {
   private Map<Molecule, String> molToStringMap;
 
   public ReactionProjector() {
-    this(DEFAULT_SEARCHER);
+    this(DEFAULT_SEARCHER, MoleculeFormat.stdInchi().toString());
   }
 
   public ReactionProjector(MolSearch searcher) {
+    this(searcher, MoleculeFormat.stdInchi().toString());
+  }
+
+  public ReactionProjector(String moleculeFormat) {
+    this(DEFAULT_SEARCHER, moleculeFormat);
+  }
+
+  public ReactionProjector(MolSearch searcher, String moleculeFormat) {
     this.searcher = searcher;
     this.molToStringMap = new HashMap<>();
+    this.moleculeFormat = moleculeFormat;
   }
+
 
   /**
    * This method should be called if projecting on more chemicals than should be stored in memory
@@ -317,16 +331,6 @@ public class ReactionProjector {
       return inchi;
     }
 
-    try {
-      // First try inchi format
-      inchi = MolExporter.exportToFormat(molecule, INCHI_FORMAT);
-      molToStringMap.put(molecule, inchi);
-      return inchi;
-    } catch (MolExportException e){
-      // Then try SMARTs format if inchi doesn't work.
-      String smiles = MolExporter.exportToFormat(molecule, SMARTS_FORMAT);
-      molToStringMap.put(molecule, smiles);
-      return smiles;
-    }
+    return MoleculeExporter.exportMolecule(molecule, MoleculeFormat$.MODULE$.withName(this.moleculeFormat));
   }
 }
