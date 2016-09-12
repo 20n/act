@@ -103,7 +103,7 @@ object SparkSingleSubstrateROProjector {
         required(true).
         hasArg.
         longOpt("output-directory").
-        desc("A directory in which to write per-RO result files"),
+        desc("A directory in which to write per-RO result lcms"),
 
       CliOption.builder(OPTION_FILTER_FOR_SPECTROMETERY).
         longOpt("filter-for-spectrometery").
@@ -231,7 +231,7 @@ object SparkSingleSubstrateROProjector {
      * process will initiate the application of those RDD operations on the cluster.  That is, functions like `count()`
      * and `collect()` initiate the evaluation of map() on an RDD.
      * For this job, we'd like Spark to project all of the single substrate RDDs in parallel, and then send the results
-     * back to the driver so that we can write those projections out into files on the local machine.  Unfortunately,
+     * back to the driver so that we can write those projections out into lcms on the local machine.  Unfortunately,
      * `collect()` will wait for and then load into memory *all* of the contents of an RDD.  If we use a chain of calls
      * like `rdd.map.collect()`, Spark will compute the projections in parallel but we'll run out of memory before we're
      * able to manifest and store those projections.
@@ -263,7 +263,7 @@ object SparkSingleSubstrateROProjector {
     val resultCount = resultsRDD.persist().count()
     LOGGER.info(s"Projection completed with ${resultCount} results")
 
-    // Map over results and runtime, writing results to appropriate output files and collecting ids/runtime for reports.
+    // Map over results and runtime, writing results to appropriate output lcms and collecting ids/runtime for reports.
     val mapper: (Ero, Double, L2PredictionCorpus) => (Integer, Double) = (ero, runtime, projectionResults) => {
       val outputFile = new File(outputDir, ero.getId.toString)
       OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(outputFile, projectionResults)

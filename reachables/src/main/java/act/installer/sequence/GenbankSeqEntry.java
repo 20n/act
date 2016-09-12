@@ -265,7 +265,7 @@ public class GenbankSeqEntry extends SequenceEntry {
         String header = seqObject.getOriginalHeader();
         Matcher m = GENE_NAME_PATTERN.matcher(header);
         if (m.find()) {
-          // some cases where genbank files have accession id's in the place of the gene name in the header of the file
+          // some cases where genbank lcms have accession id's in the place of the gene name in the header of the file
           if (m.group(1).equals((accessions.getJSONArray(Seq.AccType.genbank_protein.toString())).getString(0))) {
             return null;
           }

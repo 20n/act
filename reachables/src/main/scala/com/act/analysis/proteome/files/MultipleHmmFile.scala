@@ -4,7 +4,7 @@ import java.io.{File, PrintWriter}
 
 /**
   * Used to take a HMM file with multiple HMM profiles and extract each individually,
-  * placing them in a directory as individual files.
+  * placing them in a directory as individual lcms.
   *
   * The basic unit of a HMM File is as shown below
   * <Header Elements>
@@ -22,7 +22,7 @@ class MultipleHmmFile(var sourceDirectory: String, hmmFileName: String) extends 
 
   /* By writing this iteratively,
    we don't run into stack overflows caused
-   by the iterator on large files when writing a tail recursive version
+   by the iterator on large lcms when writing a tail recursive version
   */
   def readAndWriteMiniFiles(): Unit = {
     def parse(lines: Iterator[String]):Unit = {

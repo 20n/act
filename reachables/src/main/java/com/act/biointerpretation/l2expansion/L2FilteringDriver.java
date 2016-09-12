@@ -92,7 +92,7 @@ public class L2FilteringDriver {
     add(Option.builder(OPTION_SPLIT_BY_RO)
         .argName("split by ro")
         .desc("If this argument is selected, the input corpus is read in, split up by ro, and written out into a " +
-            "different output file for each ro found in the corpus. The files have the ro id appended to the end of " +
+            "different output file for each ro found in the corpus. The lcms have the ro id appended to the end of " +
             "their names to distinguish them.")
         .longOpt("split-by-ro"));
     add(Option.builder(OPTION_FILTER_SUBSTRATES)
@@ -147,7 +147,7 @@ public class L2FilteringDriver {
     checkFilterOptionIsValid(OPTION_CHEMICAL_FILTER, cl);
     checkFilterOptionIsValid(OPTION_REACTION_FILTER, cl);
 
-    // Get corpus files.
+    // Get corpus lcms.
     File corpusFile = new File(cl.getOptionValue(OPTION_INPUT_CORPUS));
     if (!corpusFile.exists()) {
       LOGGER.error("Input corpus file does not exist.");

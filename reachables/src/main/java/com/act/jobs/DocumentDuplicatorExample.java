@@ -44,7 +44,7 @@ public class DocumentDuplicatorExample {
   /**
    * This method encapsulates the functionality of duplicateText in a way that can be used in a workflow.
    * You provide the input file and output file through this method interface, and a parameterless JavaRunnable
-   * that uses those files is returned.
+   * that uses those lcms is returned.
    *
    * @param inputFile The file from which to read the input.
    * @param outputFile The file to which to write the output.
@@ -55,7 +55,7 @@ public class DocumentDuplicatorExample {
     // Since JavaRunnable is a one-method interface, we can use lambdas to write this very succinctly!
     // The returned lambda will call the below code from its run() method.
     return () -> {
-      // Check validity of input and output files
+      // Check validity of input and output lcms
       if (!inputFile.exists() || inputFile.isDirectory()) {
         throw new IOException("Input file does not exist, or is a directory!.");
       }

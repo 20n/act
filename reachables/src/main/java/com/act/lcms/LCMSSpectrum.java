@@ -9,7 +9,7 @@ import java.util.List;
  * A class representing a particular time point in an LCMS scan.  Contains mass/charge and intensity data for a
  * specific time.
  *
- * This object should be constructed from data parsed from mzXML or NetCDF files produced by an LCM apparatus.
+ * This object should be constructed from data parsed from mzXML or NetCDF lcms produced by an LCM apparatus.
  */
 public class LCMSSpectrum implements Serializable {
   private static final long serialVersionUID = -1329555801774532940L;
@@ -86,7 +86,7 @@ public class LCMSSpectrum implements Serializable {
    * input file.
    *
    * Note that this has been found to be available (and the corressponding value missing from the spectrum) in mzXML
-   * files, but not available in NetCDF files.
+   * lcms, but not available in NetCDF lcms.
    *
    * @return The mass/charge of maximal intensity if one is available; null otherwise.
    */
@@ -122,8 +122,8 @@ public class LCMSSpectrum implements Serializable {
    * same as {@link #getIndex()} if the input file contains only standard mass/charge+intensity data; if there are
    * other kinds of scan data avilable, this will represent the offset of this time point in its respective scan type.
    *
-   * Note that mzXML files will usually have this defined and distinct from {@link #getIndex()}, whereas those values
-   * will be the same in NetCDF files.
+   * Note that mzXML lcms will usually have this defined and distinct from {@link #getIndex()}, whereas those values
+   * will be the same in NetCDF lcms.
    * @return An integer representing this time points offset within its particular scan (see {@link #getFunction()}.
    */
   public Integer getScan() {
@@ -133,7 +133,7 @@ public class LCMSSpectrum implements Serializable {
   /**
    * (Optional) Returns the total intensity at this time point if available.
    *
-   * Note that this will probably not be available in mzXML files, but should be available in NetCDF files.
+   * Note that this will probably not be available in mzXML lcms, but should be available in NetCDF lcms.
    * @return The total intensity at this time point.
    */
   public Double getTotalIntensity() {

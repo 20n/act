@@ -35,7 +35,7 @@ public class TraceIndexAnalyzer {
   private static final String OPTION_OUTPUT_PATH = "o";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class consumes windowed traces from an LCMS scan files, searching each window for peaks and writing the ",
+      "This class consumes windowed traces from an LCMS scan lcms, searching each window for peaks and writing the ",
       "results of its analysis in a large JSON document."
   }, "");
 

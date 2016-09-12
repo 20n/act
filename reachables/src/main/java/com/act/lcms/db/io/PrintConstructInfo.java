@@ -96,7 +96,7 @@ public class PrintConstructInfo {
     }
 
     try (DB db = DB.openDBFromCLI(cl)) {
-      System.out.print("Loading/updating LCMS scan files into DB\n");
+      System.out.print("Loading/updating LCMS scan lcms into DB\n");
       ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
       String construct = cl.getOptionValue(OPTION_CONSTRUCT);

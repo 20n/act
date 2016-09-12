@@ -162,7 +162,7 @@ public class AnimateNetCDFAroundMass {
           "(3) minimum Mz Precision, 0.04 \n" +
           "(4) max z axis, e.g., 20000 \n" +
           "(5) prefix for .data and rendered .pdf \n" +
-          "(6..) 2 or more NetCDF .nc files"
+          "(6..) 2 or more NetCDF .nc lcms"
           );
     }
 
@@ -237,7 +237,7 @@ public class AnimateNetCDFAroundMass {
 
     String outImgs = outPrefix + "*." + fmt;
     plotter.makeAnimatedGIF(outImgs, outPrefix + ".gif");
-    // all the frames are now in the animated gif, remove the intermediate files
+    // all the frames are now in the animated gif, remove the intermediate lcms
     for (String f: outDataFiles) 
       new File(f).delete();
     for (String f: outImgFiles) 

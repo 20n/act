@@ -41,7 +41,7 @@ public class GenbankInterpreter {
   private static final String DNA = "DNA";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class parses Genbank Protein sequence files. It can be used on the command line with ",
+      "This class parses Genbank Protein sequence lcms. It can be used on the command line with ",
       "a file path as a parameter."}, "");
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{

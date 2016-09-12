@@ -80,7 +80,7 @@ public class PatentModel {
   }
 
   private void initModel() {
-    // check that there are training files in the positive, negative datasets
+    // check that there are training lcms in the positive, negative datasets
     if (!Utils.filesPresentIn(_PosDataSet) || !Utils.filesPresentIn(_NegDataSet)) {
       System.err.println("First time initialization. Downloading training set.");
       DownloadTrainingDataSets();

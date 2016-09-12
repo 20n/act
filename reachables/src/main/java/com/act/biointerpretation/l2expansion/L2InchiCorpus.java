@@ -131,7 +131,7 @@ public class L2InchiCorpus {
 
       @Override
       public void run() throws IOException {
-        // Verify files
+        // Verify lcms
         FileChecker.verifyInputFile(inputSubstrates);
         FileChecker.verifyAndCreateOutputFile(outputFile);
 

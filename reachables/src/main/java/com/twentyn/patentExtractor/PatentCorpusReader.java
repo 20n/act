@@ -71,7 +71,7 @@ public class PatentCorpusReader {
     } else {
       toProcess = Collections.singletonList(inputFileOrDir);
     }
-    LOGGER.info("Processing " + toProcess.size() + " files");
+    LOGGER.info("Processing " + toProcess.size() + " lcms");
 
     ObjectMapper objectMapper = new ObjectMapper();
     objectMapper.enable(SerializationFeature.INDENT_OUTPUT);

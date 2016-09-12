@@ -48,7 +48,7 @@ class OrganismBasedRoToLcmsScoring extends Workflow with RoToSequences with SarT
       CliOption.builder(OPTION_WORKING_DIRECTORY).
         hasArg.
         longOpt("working-directory").
-        desc("Run and create all files from a working directory you designate."),
+        desc("Run and create all lcms from a working directory you designate."),
 
       CliOption.builder(OPTION_DATABASE).
         longOpt("database").
@@ -69,7 +69,7 @@ class OrganismBasedRoToLcmsScoring extends Workflow with RoToSequences with SarT
 
       CliOption.builder(OPTION_FORCE).
         longOpt("force").
-        desc("Overwrite any previous files.  Disables use of previously created files."),
+        desc("Overwrite any previous lcms.  Disables use of previously created lcms."),
 
       CliOption.builder(OPTION_OUTPUT_TSV).
         longOpt("output-tsv").

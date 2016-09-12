@@ -15,11 +15,11 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * Parses NetCDF files produced by an LCMS apparatus, converting the time points contained therein into
+ * Parses NetCDF lcms produced by an LCMS apparatus, converting the time points contained therein into
  * {@link com.act.lcms.LCMSSpectrum} objects.
  *
  * <a href="http://www.unidata.ucar.edu/software/netcdf/">NetCDF</a> is a generic data format for storing array-oriented
- * data.  The Waters LCMS apparatus produces NetCDF files that are structured as follows:
+ * data.  The Waters LCMS apparatus produces NetCDF lcms that are structured as follows:
  * <ul>
  *   <li>
  *     The mass/charge and intensity values are stored as two long parallel arrays of values.  The mass/charges

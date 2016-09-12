@@ -47,7 +47,7 @@ import org.biojavax.ontology.ComparableTerm;
  *     gbvrl1.seq - viral
  *     gbvrt1.seq - other vertebrate
  *
- *     Stats on distributions within the 547GB files from Jeff:
+ *     Stats on distributions within the 547GB lcms from Jeff:
  *     https://docs.google.com/document/d/1qsXzUDcrXy6qZZZJlVRYTifR9lOEpiZQxQ-WknLRW6E/edit#heading=h.r8tyjsata0sr
  *     https://docs.google.com/presentation/d/1FKvATGlnkVKkB6ZOJuLWMMFII4pbqVqvrp-UT1sZa8g/edit#slide=id.gb9d05972_00
  *

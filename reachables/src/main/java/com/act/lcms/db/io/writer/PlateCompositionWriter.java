@@ -89,7 +89,7 @@ public class PlateCompositionWriter {
     switch (plate.getPlateType()) {
       case PLATE_TYPE_96_WELLS:
       case PLATE_TYPE_96_WELLS_BLOCK:
-        // Strain files don't use normal plate tables.
+        // Strain lcms don't use normal plate tables.
         w.println(">>wells\tmsid\tcomposition");
         for (DeliveredStrainWell well : wells) {
           w.println(StringUtils.join(new String[] {

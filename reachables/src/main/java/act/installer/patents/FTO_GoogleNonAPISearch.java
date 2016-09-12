@@ -409,7 +409,7 @@ class FTO_PatentScorer_TrainedModel {
   }
 
   private void initModel() {
-    // check that there are training files in the positive, negative datasets
+    // check that there are training lcms in the positive, negative datasets
     if (!FTO_Utils.filesPresentIn(_PosDataSet) || !FTO_Utils.filesPresentIn(_NegDataSet)) {
       System.err.println("First time initialization. Downloading training set.");
       DownloadTrainingDataSets();

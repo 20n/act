@@ -41,7 +41,7 @@ public class ReactionCountProvenance {
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_OUTPUT_PREFIX)
         .argName("output prefix")
-        .desc("A prefix for the output data/pdf files")
+        .desc("A prefix for the output data/pdf lcms")
         .hasArg()
         .longOpt("output-prefix")
     );

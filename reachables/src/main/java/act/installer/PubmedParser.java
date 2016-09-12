@@ -77,7 +77,7 @@ public class PubmedParser extends IterativeParser {
       }
 
       if (this.xml == null) {
-        // if done with all data from all files
+        // if done with all data from all lcms
         return null;
       }
 

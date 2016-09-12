@@ -45,7 +45,7 @@ public class MS2Simple {
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_OUTPUT_PREFIX)
         .argName("output prefix")
-        .desc("A prefix for the output data/pdf files")
+        .desc("A prefix for the output data/pdf lcms")
         .hasArg().required()
         .longOpt("output-prefix")
     );
@@ -164,7 +164,7 @@ public class MS2Simple {
   }
 
   /* This is a helper function to `findPeaksTriggeredByMZ`. It translates the selected trigger times
-   * from the mzML files into scans extracted from the NetCDF files. Trigger times from mzML come
+   * from the mzML lcms into scans extracted from the NetCDF lcms. Trigger times from mzML come
    * in as `minute`s that we convert to seconds, and then look for a scan in the NetCDF file that is
    * infinitely close (TIME_TOLERANCE) to that trigger time. */
   List<MS2Collected> getSpectraForMatchingScans(

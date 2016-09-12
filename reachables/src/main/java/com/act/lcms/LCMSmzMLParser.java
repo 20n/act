@@ -31,7 +31,7 @@ import java.util.regex.Pattern;
 import java.io.IOException;
 
 /**
- * Parses mzXML files, converting the time points contained therein into {@link com.act.lcms.LCMSSpectrum} objects.
+ * Parses mzXML lcms, converting the time points contained therein into {@link com.act.lcms.LCMSSpectrum} objects.
  *
  * mzXML has a few quirks that the user ought to be aware of:
  * <ul>

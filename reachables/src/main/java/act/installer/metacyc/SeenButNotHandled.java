@@ -20,7 +20,7 @@ public class SeenButNotHandled {
     // metacyc references a portion of it,
     // we handle most of metacyc, but there might be features that we intend
     // to handle later, and are annotations we have understood where they
-    // appear in the level3 files (and we ret = true for them).
+    // appear in the level3 lcms (and we ret = true for them).
     //
     // Once things are handled specifically, we remove them from this function
 

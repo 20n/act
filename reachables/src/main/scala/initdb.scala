@@ -28,14 +28,14 @@ object initdb {
   // also InChIKey for chemicals for instance
   var default_indexfield = "_id" 
 
-  // location where KEGG data files can be found
+  // location where KEGG data lcms can be found
   var kegg_loc = "data/kegg"
 
-  // location where METACYC data files can be found
+  // location where METACYC data lcms can be found
   // var metacyc_loc="data/biocyc-flatfiles" // the full set exists here
   var metacyc_loc = "data/biocyc-flatfiles-20150909"
 
-  // location of SwissProt (the "reviewed" part of UniProt) data files
+  // location of SwissProt (the "reviewed" part of UniProt) data lcms
   var swissprot_loc = "data/swissprot"
 
   // location of priority chemicals, e.g., reachables, 
@@ -127,7 +127,7 @@ object initdb {
     println("install omit_X omit_Y: installs all, but omits some datasets; omit_kegg, omit_metacyc, omit_swissprot, omit_infer_ops valid options")
     println("checkmongod <collection> <ref:port> [<idx_field e.g., _id> [<bool: lists are sets>]]")
     println("infer_ops [<rxnid | rxnid_l-rxnid_h>] : if range omitted then all inferred")
-    println("metacyc [range] : installs all data/biocyc-flatfiles/*/biopax-level3.owl files,")
+    println("metacyc [range] : installs all data/biocyc-flatfiles/*/biopax-level3.owl lcms,")
     println("                : range='start-end', the indices are ls order #, you may omit any.")
     hr
   }
@@ -200,7 +200,7 @@ object initdb {
     }
 
     if (!cargs.contains("omit_metacyc")) {
-      // empty array input => all files installed
+      // empty array input => all lcms installed
       installer_metacyc(new Array[String](0)) 
     }
 
@@ -270,7 +270,7 @@ object initdb {
   def installer_metacyc(cargs: Array[String]) {
     var params = Seq[String]("METACYC", port, host, dbs, metacyc_loc)
 
-    // there are 3528 files in the current download, so 
+    // there are 3528 lcms in the current download, so
     // 4000 should suffice for sometime in the future
     val default_range = Seq[String]("0", "4000") 
 
@@ -288,7 +288,7 @@ object initdb {
   def installer_kegg() {
     /* Original script source (unused-scripts/install-kegg.sh)
         if [ $# -ne 2 ]; then
-        	echo "----> Aborting(installer-kegg.sh). Need <port> <directory with kegg files> as arguments!"
+        	echo "----> Aborting(installer-kegg.sh). Need <port> <directory with kegg lcms> as arguments!"
         	exit -1
         fi
         port=$1

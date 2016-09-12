@@ -177,7 +177,7 @@ public class L2ExpansionDriver {
       return;
     }
 
-    // Get output files.
+    // Get output lcms.
     String outputPath = cl.getOptionValue(OPTION_OUTPUT_PATH);
     File outputFile = new File(outputPath);
     if (outputFile.isDirectory() || outputFile.exists()) {
@@ -351,7 +351,7 @@ public class L2ExpansionDriver {
     return new JavaRunnable() {
       @Override
       public void run() throws IOException {
-        // Verify files
+        // Verify lcms
         FileChecker.verifyInputFile(substrateListFile);
         FileChecker.verifyAndCreateOutputFile(outputFile);
 

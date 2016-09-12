@@ -33,7 +33,7 @@ public class UniprotInterpreter {
   private static final String OPTION_UNIPROT_PATH = "p";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class parses Uniprot Protein sequence files. It can be used on the command line with ",
+      "This class parses Uniprot Protein sequence lcms. It can be used on the command line with ",
       "a file path as a parameter."}, "");
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{

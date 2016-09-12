@@ -25,11 +25,11 @@ public class MetaCyc {
   String sourceDir;
   private List<String> owlFiles;
 
-  // if onlyTier12 is set, then only the 38 main files are processed
+  // if onlyTier12 is set, then only the 38 main lcms are processed
   // we identify them as not having names that contain one of
   // ("hmpcyc", "wgscyc", more than three successive digits)
   // See http://biocyc.org/biocyc-pgdb-list.shtml and the descriptions of Tier1 and Tier2
-  // Outside of these 38, there are 3487 Tier3 files that have not received manual
+  // Outside of these 38, there are 3487 Tier3 lcms that have not received manual
   // curation and are just the dump output of their PathLogic program.
   boolean onlyTier12;
 
@@ -42,9 +42,9 @@ public class MetaCyc {
     this.sourceDir = dirWithL3Files;
     this.owlFiles = owlFiles;
 
-    // by default, we process of level3 biopax files found in the directory
+    // by default, we process of level3 biopax lcms found in the directory
     // so we set the flag that restricts to Tier 1 and 2 as false.
-    // Use loadOnlyTier12 if a restriction to those files is needed.
+    // Use loadOnlyTier12 if a restriction to those lcms is needed.
     this.onlyTier12 = false;
   }
 
@@ -52,15 +52,15 @@ public class MetaCyc {
     this.onlyTier12 = flag;
   }
 
-  // processes num files in source directory (num = -1 for all)
+  // processes num lcms in source directory (num = -1 for all)
   public void process(int num) {
     if (num > 15)
       warnAboutMem(num);
 
     if (num > 0)
-      process(0, num); // process only num files
+      process(0, num); // process only num lcms
     else
-      process(getOWLs()); // process all files
+      process(getOWLs()); // process all lcms
   }
 
   public void process(int start, int end) {
@@ -75,8 +75,8 @@ public class MetaCyc {
   }
 
   private void warnAboutMem(int num_asked) {
-    System.out.println("You asked to process more than 15 files: " + num_asked);
-    System.out.println("You can process about 10 files in 4GB of runtime memory");
+    System.out.println("You asked to process more than 15 lcms: " + num_asked);
+    System.out.println("You can process about 10 lcms in 4GB of runtime memory");
   }
 
   // process only the source file whose names are passed
@@ -136,8 +136,8 @@ public class MetaCyc {
     try (
         BufferedReader reader = new BufferedReader(new FileReader(compoundFile));
     ) {
-      // Hacky stateful parser for Metacyc's compounds.dat files.
-      // TODO: it'd be easier to read compound-links.dat, but those files don't always exist.  Why not?
+      // Hacky stateful parser for Metacyc's compounds.dat lcms.
+      // TODO: it'd be easier to read compound-links.dat, but those lcms don't always exist.  Why not?
       METACYC_COMPOUNDS_LAST_FIELD lastField = METACYC_COMPOUNDS_LAST_FIELD.OTHER;
       String uniqueId = null;
       String inchi = null;
@@ -163,7 +163,7 @@ public class MetaCyc {
                 "ERROR: Found malformed entity line at %s L%d: unique-id='%s' inchi='%s' non-standard-inchi=%s\n",
                 compoundFile.getAbsolutePath(), lineNum, uniqueId, inchi, nonstandardInchi);
           } else {
-            /* The counts of InChIs and entities in some of the compoounds files don't line up.  Note those for
+            /* The counts of InChIs and entities in some of the compoounds lcms don't line up.  Note those for
              * further investigation. */
             if (inchi == null && nonstandardInchi.startsWith("InChI=")) {
               System.err.format("WARNING: Found only non-standard inchi for %s: %s\n", uniqueId, nonstandardInchi);
@@ -304,7 +304,7 @@ public class MetaCyc {
     // which is a lisp format raw dump of the db in their own custom
     // format. (http://bioinformatics.ai.sri.com/ptools/flatfile-format.html)
     // It does not make sense for us to write a custom parser for these
-    // three files
+    // three lcms
     "clossaccyc",     // Clostridium saccharoperbutylacetonicum
                       // http://biocyc.org/CLOSSAC/organism-summary?object=CLOSSAC
     "mtbcdc1551cyc",  // Mycobacterium tuberculosis
@@ -316,13 +316,13 @@ public class MetaCyc {
     // http://biocyc.org/CALBI/organism-summary?object=CALBI
     // NCBI Taxonomy ID: 237561
     // The above URL suggests it should be called calbicyc (this is how we derived
-    // the names of all valid 37 files above), but we cannot find that dir
+    // the names of all valid 37 lcms above), but we cannot find that dir
     "calbicyc",       // Candida albicans
                       // http://biocyc.org/CALBI/organism-summary?object=CALBI
   };
 
   public List<String> getOWLs() {
-    // If this was called previously we will have a list of all the cached files.
+    // If this was called previously we will have a list of all the cached lcms.
     if (owlFiles != null) return owlFiles;
 
     String dir = this.sourceDir;
@@ -335,13 +335,13 @@ public class MetaCyc {
         if (!new File(dir, sd).isDirectory())
           return false;
         if (onlyTier12Files) {
-          // additional checks if only looking for tier1,2 files
+          // additional checks if only looking for tier1,2 lcms
           // Tier1,2 are the important ones because they are the
           // only ones that have received manual curation:
           // http://biocyc.org/biocyc-pgdb-list.shtml
 
           return tier12files.contains(sd);
-          // -- The below is an old heuristic that eliminates 7 valid files.
+          // -- The below is an old heuristic that eliminates 7 valid lcms.
           // -- Instead we do a direct check as above from a static list of filenames
           // -- // It is a Tier1,2 file if its name does not contain one of
           // -- // ("hmpcyc", "wgscyc", more than three successive digits)

@@ -38,7 +38,7 @@ object HmmerWrapper extends ToolWrapper {
   /**
     * Scans
     *
-    * @param hmmDatabase  A database of protein files (Big fasta, indexed via hmmpress)
+    * @param hmmDatabase  A database of protein lcms (Big fasta, indexed via hmmpress)
     * @param sequenceFile A single sequence
     * @param outputFile   Where to place output file
     */
@@ -47,18 +47,18 @@ object HmmerWrapper extends ToolWrapper {
       List("-o", outputFile.getAbsolutePath, hmmDatabase, sequenceFile.getAbsolutePath))
 
     // Set a retry job of press if something goes wrong
-    // If you want a laugh, read the documentation for this function with option -f , it will overwrite bad files
+    // If you want a laugh, read the documentation for this function with option -f , it will overwrite bad lcms
     job.setJobToRunPriorToRetrying(constructJob(HmmCommands.HmmPress.get, HmmCommands.HmmPress,
       List("-f", hmmDatabase), retryJob = true))
     job
   }
 
   /**
-    * This writes to the directory where HMM file is currently and creates four files
+    * This writes to the directory where HMM file is currently and creates four lcms
     * hmmFile.{h3f, h3i, h3m, h3p}
     * *
     * We sometimes may want to do this in a blocking fashion
-    * (For example, prior to hmmscan which requires the above 4 files first),
+    * (For example, prior to hmmscan which requires the above 4 lcms first),
     * so that is also available, but turned off by default
     *
     * @param hmmFile  File containing multiple HMM profiles

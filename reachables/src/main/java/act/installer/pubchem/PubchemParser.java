@@ -59,12 +59,12 @@ public class PubchemParser {
     HELP_FORMATTER.setWidth(100);
   }
 
-  public static final String HELP_MESSAGE = "This class is used for parsing xml files and storing them in a db";
+  public static final String HELP_MESSAGE = "This class is used for parsing xml lcms and storing them in a db";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_DATA_DIRECTORY)
         .argName("OPTION_DATA_DIRECTORY")
-        .desc("The data directory where the pubchem files live")
+        .desc("The data directory where the pubchem lcms live")
         .hasArg()
         .required()
         .type(String.class)
@@ -379,7 +379,7 @@ public class PubchemParser {
   }
 
   /**
-   * This function is the main driver of the class, which processes all the xml files of the pubchem dump.
+   * This function is the main driver of the class, which processes all the xml lcms of the pubchem dump.
    * @throws XMLStreamException
    * @throws IOException
    */
@@ -394,9 +394,9 @@ public class PubchemParser {
   }
 
   /**
-   * This function extracts gzipped xml files from a file directory.
+   * This function extracts gzipped xml lcms from a file directory.
    * @param dataDirectory The directory of interest.
-   * @return A list of files of gzipped xml files.
+   * @return A list of lcms of gzipped xml lcms.
    * @throws XMLStreamException
    * @throws IOException
    */
@@ -412,7 +412,7 @@ public class PubchemParser {
     List<File> result = Arrays.stream(folder.listFiles()).
         filter(f -> f.getName().endsWith(GZIP_FILE_EXT)).collect(Collectors.toList());
 
-    // Sort files lexicographically for installer stability.
+    // Sort lcms lexicographically for installer stability.
     Collections.sort(result);
 
     return result;

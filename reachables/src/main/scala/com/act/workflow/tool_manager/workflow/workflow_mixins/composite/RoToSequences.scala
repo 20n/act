@@ -8,7 +8,7 @@ import org.apache.logging.log4j.LogManager
 
 trait RoToSequences extends QueryByRo with QueryByReactionId {
   /**
-    * Takes in a set of ROs and translates them into FASTA files with all the enzymes that do that RO
+    * Takes in a set of ROs and translates them into FASTA lcms with all the enzymes that do that RO
     */
   def writeFastaFileFromEnzymesMatchingRos(roValues: List[String], outputFastaFile: File,
                                            database: String, organism: Option[String] = None)(): Unit = {

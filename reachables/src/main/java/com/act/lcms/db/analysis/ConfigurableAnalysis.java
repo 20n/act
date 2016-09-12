@@ -74,7 +74,7 @@ public class ConfigurableAnalysis {
     );
     add(Option.builder(OPTION_OUTPUT_PREFIX)
             .argName("output prefix")
-            .desc("A prefix for the output data/pdf files")
+            .desc("A prefix for the output data/pdf lcms")
             .hasArg().required()
             .longOpt("output-prefix")
     );
@@ -335,7 +335,7 @@ public class ConfigurableAnalysis {
           case LCMS:
             Pair<List<ScanData<LCMSWell>>, Double> lcmsPair = lcmsResults.get(step.getIndex());
             if (lcmsPair.getLeft().size() > 1) {
-              System.err.format("Found multiple scan files for LCMW well %s @ %s, using first\n",
+              System.err.format("Found multiple scan lcms for LCMW well %s @ %s, using first\n",
                   step.getPlateBarcode(), step.getPlateCoords());
             }
             AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity,
@@ -344,7 +344,7 @@ public class ConfigurableAnalysis {
           case STANDARD:
             Pair<List<ScanData<StandardWell>>, Double> stdPair = standardResults.get(step.getIndex());
             if (stdPair.getLeft().size() > 1) {
-              System.err.format("Found multiple scan files for standard well %s @ %s, using first\n",
+              System.err.format("Found multiple scan lcms for standard well %s @ %s, using first\n",
                   step.getPlateBarcode(), step.getPlateCoords());
             }
             AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity,
@@ -423,7 +423,7 @@ public class ConfigurableAnalysis {
     parser.parse(configFile);
 
     try (DB db = DB.openDBFromCLI(cl)) {
-      System.out.format("Loading/updating LCMS scan files into DB\n");
+      System.out.format("Loading/updating LCMS scan lcms into DB\n");
       ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
       List<AnalysisStep> steps = new ArrayList<>(parser.getResults().size());

@@ -289,7 +289,7 @@ public class ScanFile {
     COLUMN,        // Required
     DATE,          // Required
     MODE,          // Optional, default is POSITIVE
-    SCAN_PART,     // Optional, default is 1 (primary component); mzML files are assumed to contain all components
+    SCAN_PART,     // Optional, default is 1 (primary component); mzML lcms are assumed to contain all components
     FILE_TYPE,     // Required
   }
   protected static final List<Pair<Pattern, Map<SCAN_NAME_COMPONENT, Integer>>> NAME_EXTRACTION_PATTERNS =
@@ -348,7 +348,7 @@ public class ScanFile {
       throws SQLException, IOException {
     if (directory == null || !directory.isDirectory()) {
       throw new RuntimeException(
-          String.format("Scan files directory at %s is not a directory",
+          String.format("Scan lcms directory at %s is not a directory",
               directory == null ? null : directory.getAbsolutePath()));
     }
 
@@ -357,7 +357,7 @@ public class ScanFile {
     File[] contentsArr = directory.listFiles();
 
     if (contentsArr == null || contentsArr.length == 0) {
-      System.err.format("WARNING: no files found in directory %s", directory.getAbsolutePath());
+      System.err.format("WARNING: no lcms found in directory %s", directory.getAbsolutePath());
       return null;
     }
     List<File> contents = Arrays.asList(contentsArr);

@@ -9,7 +9,7 @@ trait HmmerResultSetOperations {
   private val UNION_SET = "union.set"
   private val INTERSECTION_SET = "intersection.set"
   /**
-    * On a list of hmmer result files, creates a file containing all the proteins available in those files.
+    * On a list of hmmer result lcms, creates a file containing all the proteins available in those lcms.
     */
   def setUnionHmmerSearchResults(resultFile: List[File], setFileDirectory: String, roArg: String)(): Unit = {
 
@@ -25,11 +25,11 @@ trait HmmerResultSetOperations {
   }
 
   /**
-    * On a list of HMMer result files,
-    * creates a file containing the intersection between all the proteins in those files.
+    * On a list of HMMer result lcms,
+    * creates a file containing the intersection between all the proteins in those lcms.
     */
   def setIntersectHmmerSearchResults(resultFile: List[File], setFileDirectory: String, roArg: String)(): Unit = {
-    // Given a set of result files, create a set of all proteins contained within, either disjoint or union
+    // Given a set of result lcms, create a set of all proteins contained within, either disjoint or union
     val setList = createSetFromHmmerResults(resultFile)
 
     // Sequentially apply sets
@@ -42,12 +42,12 @@ trait HmmerResultSetOperations {
   }
 
   /**
-    * Given a set of hmmer files, creates sets from their top-ranked sequences.
+    * Given a set of hmmer lcms, creates sets from their top-ranked sequences.
     */
   private def createSetFromHmmerResults(resultFileNames: List[File]): List[Set[String]] = {
     /*
       This is a List[List[HmmResultLines]]
-      Given a set of result files, create a set of all proteins contained within, either disjoint or union
+      Given a set of result lcms, create a set of all proteins contained within, either disjoint or union
 
       Create list of sets
       Each member of the first list is a unique file, and the List[HmmResultLines] are all the lines from that file.
@@ -56,7 +56,7 @@ trait HmmerResultSetOperations {
     val resultFileLinesForEachFile = resultFileNames.map(HmmResultParser.parseFile)
 
     /*
-      For each file in our list, as defined above, we map all the lines in that files to
+      For each file in our list, as defined above, we map all the lines in that lcms to
       a list of their sequence names, and then turn that list of names into a set.
       Therefore, we get a List[Set[String]] where each member of
       List is a unique Set of Sequence Names found in that result file.

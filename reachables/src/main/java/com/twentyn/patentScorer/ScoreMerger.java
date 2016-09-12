@@ -67,12 +67,12 @@ public class ScoreMerger {
     }
     File scoresDirectory = new File(cmdLine.getOptionValue("scores"));
     if (cmdLine.getOptionValue("scores") == null || !scoresDirectory.isDirectory()) {
-      LOGGER.error("Not a directory of score files: " + cmdLine.getOptionValue("scores"));
+      LOGGER.error("Not a directory of score lcms: " + cmdLine.getOptionValue("scores"));
     }
 
     File resultsDirectory = new File(cmdLine.getOptionValue("results"));
     if (cmdLine.getOptionValue("results") == null || !resultsDirectory.isDirectory()) {
-      LOGGER.error("Not a directory of results files: " + cmdLine.getOptionValue("results"));
+      LOGGER.error("Not a directory of results lcms: " + cmdLine.getOptionValue("results"));
     }
 
     FileWriter outputWriter = new FileWriter(cmdLine.getOptionValue("output"));
