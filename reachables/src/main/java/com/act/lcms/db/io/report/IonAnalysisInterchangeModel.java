@@ -269,31 +269,38 @@ public class IonAnalysisInterchangeModel {
 
       // For each mass charge, iterate through each molecule under the mass charge
       for (int j = 0; j < totalNumberOfMoleculesInMassChargeResult; j++) {
-        List<HitOrMiss> moleculesFromReplicates = new ArrayList<>();
 
-        // For each molecule, make sure it passes the threshold we set across every elem in deserializedResultsForPositiveReplicates,
-        // ie across each positive replicate + neg control experiment results
-        for (int k = 0; k < replicateModels.size(); k++) {
-          ResultForMZ sampleRepresentativeMz = replicateModels.get(k).getResults().get(i);
+        Pair<HitOrMiss, Boolean> transformedAndIsRetainedMolecule;
 
-          // Since we are comparing across replicate files, we expect each ResultForMZ element in the each replicate's
-          // IonAnalysisInterchangeModel to be in the same order as other replicates. We check if the mass charges are the
-          // same across the samples to make sure the replicates aligned correctly.
-          if (!sampleRepresentativeMz.getMz().equals(representativeMassCharge)) {
-            throw new RuntimeException("The replicates are not ordered similarly. Please verify if the correct replicates are being used.");
+        if (replicateModels.size() == 1) {
+          transformedAndIsRetainedMolecule =
+              hitOrMissFilterAndTransformer.apply(replicateModels.get(0).getResults().get(i).getMolecules().get(j));
+        } else {
+          List<HitOrMiss> moleculesFromReplicates = new ArrayList<>();
+
+          // For each molecule, make sure it passes the threshold we set across every elem in deserializedResultsForPositiveReplicates,
+          // ie across each positive replicate + neg control experiment results
+          for (int k = 0; k < replicateModels.size(); k++) {
+            ResultForMZ sampleRepresentativeMz = replicateModels.get(k).getResults().get(i);
+
+            // Since we are comparing across replicate files, we expect each ResultForMZ element in the each replicate's
+            // IonAnalysisInterchangeModel to be in the same order as other replicates. We check if the mass charges are the
+            // same across the samples to make sure the replicates aligned correctly.
+            if (!sampleRepresentativeMz.getMz().equals(representativeMassCharge)) {
+              throw new RuntimeException("The replicates are not ordered similarly. Please verify if the correct " +
+                  "replicates are being used.");
+            }
+
+            HitOrMiss molecule = sampleRepresentativeMz.getMolecules().get(j);
+            moleculesFromReplicates.add(molecule);
           }
 
-          HitOrMiss molecule = sampleRepresentativeMz.getMolecules().get(j);
-          moleculesFromReplicates.add(molecule);
+          transformedAndIsRetainedMolecule = hitOrMissFilterAndTransformer.apply(moleculesFromReplicates);
         }
 
-        Pair<HitOrMiss, Boolean> transformedMoleculeAndShouldRetainMolecule =
-            hitOrMissFilterAndTransformer.apply(moleculesFromReplicates.size() == 1 ?
-                moleculesFromReplicates.get(0) : moleculesFromReplicates);
-
         // Check if the filter function  wants to throw out the molecule. If not, then add the molecule to the final result.
-        if (transformedMoleculeAndShouldRetainMolecule.getRight()) {
-          resultForMZ.addMolecule(transformedMoleculeAndShouldRetainMolecule.getLeft());
+        if (transformedAndIsRetainedMolecule.getRight()) {
+          resultForMZ.addMolecule(transformedAndIsRetainedMolecule.getLeft());
         }
       }
 
