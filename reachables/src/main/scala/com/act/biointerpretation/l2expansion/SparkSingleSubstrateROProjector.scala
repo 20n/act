@@ -59,7 +59,7 @@ object compute {
     LicenseManager.setLicenseFile(localLicenseFile)
 
     val expander = new SingleSubstrateRoExpander(new ErosCorpus(List(ero).asJava), molecules.asJava,
-      new AllPredictionsGenerator(new ReactionProjector(), moleculeFormat.toString))
+      new AllPredictionsGenerator(new ReactionProjector(moleculeFormat.toString), moleculeFormat.toString))
 
     val results = expander.getPredictions()
 
