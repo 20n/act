@@ -159,9 +159,13 @@ public class AnalysisHelper {
    * @throws Exception
    */
   public static <T extends PlateWell<T>> Map<Pair<String, Double>, ScanData<T>> getIntensityTimeValuesForEachMassChargeInScanFile(
-      File lcmsDir, Set<Pair<String, Double>> searchMZs, ScanData.KIND kind, ScanFile scanFile, T well,
+      File lcmsDir, Set<Pair<String, Double>> searchMZs, ScanData.KIND kind, ScanFile scanFile, T well, Plate plate,
       boolean useFineGrainedMZTolerance, boolean useSNRForPeakIdentification)
       throws ParserConfigurationException, IOException, XMLStreamException, SQLException {
+
+    if (plate == null) {
+      LOGGER.info("Plate information has not been provided. This means the caller does not access to a DB.");
+    }
 
     if (scanFile.getFileType() != ScanFile.SCAN_FILE_TYPE.NC) {
       LOGGER.error("Skipping scan file with non-NetCDF format: %s", scanFile.getFilename());
@@ -186,7 +190,7 @@ public class AnalysisHelper {
       MS1ScanForWellAndMassCharge ms1ScanForWellAndMassCharge = entry.getValue();
 
       Map<String, Double> singletonMass = Collections.singletonMap(chemicalName, massCharge);
-      result.put(entry.getKey(), new ScanData<T>(kind, null, well, scanFile, chemicalName, singletonMass, ms1ScanForWellAndMassCharge));
+      result.put(entry.getKey(), new ScanData<T>(kind, plate, well, scanFile, chemicalName, singletonMass, ms1ScanForWellAndMassCharge));
     }
 
     return result;

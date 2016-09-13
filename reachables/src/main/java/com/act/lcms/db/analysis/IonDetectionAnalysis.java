@@ -382,17 +382,19 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
       T well, ScanData.KIND kindOfWell) throws Exception {
 
     ScanFile bestScanFile = this.wellToScanFile.get(well);
-    if (bestScanFile == null) {
-      bestScanFile = AnalysisHelper.pickBestScanFileForWell(db, well);
-    }
+    bestScanFile = (bestScanFile == null) ? AnalysisHelper.pickBestScanFileForWell(db, well) : bestScanFile;
+
+    // If the db is available, we return the plate object, else we pass a null variable through. We never use
+    // the plate information in the resulting ScanData object, so setting the plate object to null is OK in this case.
+    Plate plate = (this.db == null) ? null : Plate.getPlateById(db, well.getPlateId());
 
     if (bestScanFile == null) {
-      throw new RuntimeException(String.format("Could not find scan file for well id %d", well.getId()));
+      throw new RuntimeException(String.format("Could not find scan file for well id %d in db or in experiment config file", well.getId()));
     }
 
     Map<Pair<String, Double>, ScanData<T>> massChargePairToScanDataResult =
         AnalysisHelper.getIntensityTimeValuesForEachMassChargeInScanFile(lcmsDir, setOfMassCharges, kindOfWell,
-            bestScanFile, well, USE_FINE_GRAINED_TOLERANCE, USE_SNR_FOR_LCMS_ANALYSIS);
+            bestScanFile, well, plate, USE_FINE_GRAINED_TOLERANCE, USE_SNR_FOR_LCMS_ANALYSIS);
 
     ChemicalToMapOfMetlinIonsToIntensityTimeValues signalProfile =
         AnalysisHelper.constructChemicalToMapOfMetlinIonsToIntensityTimeValuesFromMassChargeData(
@@ -758,13 +760,11 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
       LOGGER.info("Number of positive wells is: %d", positiveWells.size());
       LOGGER.info("Number of negative wells is: %d", negativeWells.size());
 
-      String outputPrefix = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
-
       IonDetectionAnalysis<LCMSWell> ionDetectionAnalysis = new IonDetectionAnalysis<>(lcmsDir, positiveWells,
           negativeWells, plottingDirectory, searchMZs, db);
 
       ionDetectionAnalysis.runLCMSMiningAnalysisAndPlotResults(chemIDToMassCharge, massChargeToChemicalAndIon,
-          outputPrefix, cl.hasOption(OPTION_NON_REPLICATE_ANALYSIS));
+          cl.getOptionValue(OPTION_OUTPUT_PREFIX), cl.hasOption(OPTION_NON_REPLICATE_ANALYSIS));
     }
   }
 }
