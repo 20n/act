@@ -41,7 +41,7 @@ public class HitOrMissSingleSampleFilterAndTransformer extends HitOrMissFilterAn
 
     // If the intensity, snr and time pass the thresholds set AND the ion of the peak molecule is within the set of
     // ions we want extracted, we keep the molecule. Else, we throw it away.
-    if (intensity > minIntensityThreshold && snr < minSnrThreshold && time > minTimeThreshold &&
+    if (intensity > minIntensityThreshold && snr > minSnrThreshold && time > minTimeThreshold &&
         (ions.size() == 0 || ions.contains(ion))) {
       return Pair.of(molecule, DO_NOT_THROW_OUT_MOLECULE);
     } else {
