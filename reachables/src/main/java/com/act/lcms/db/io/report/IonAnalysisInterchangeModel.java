@@ -512,6 +512,18 @@ public class IonAnalysisInterchangeModel {
     @JsonProperty("intensity")
     private Double intensity;
 
+    @JsonProperty("average_intensity")
+    private Double averageIntensity;
+
+    @JsonProperty("max_intensity")
+    private Double maxIntensity;
+
+    @JsonProperty("min_intensity")
+    private Double minIntensity;
+
+    @JsonProperty("std_intensity")
+    private Double stdIntensity;
+
     // For deserialization.
     public HitOrMiss() {
 
@@ -524,6 +536,42 @@ public class IonAnalysisInterchangeModel {
       this.time = time;
       this.intensity = intensity;
       this.plot = plot;
+      this.averageIntensity = 0.0;
+      this.maxIntensity = 0.0;
+      this.minIntensity = 0.0;
+      this.stdIntensity = 0.0;
+    }
+
+    public Double getStdIntensity() {
+      return stdIntensity;
+    }
+
+    public void setStdIntensity(Double stdIntensity) {
+      this.stdIntensity = stdIntensity;
+    }
+
+    public Double getAverageIntensity() {
+      return averageIntensity;
+    }
+
+    public void setAverageIntensity(Double averageIntensity) {
+      this.averageIntensity = averageIntensity;
+    }
+
+    public Double getMaxIntensity() {
+      return maxIntensity;
+    }
+
+    public void setMaxIntensity(Double maxIntensity) {
+      this.maxIntensity = maxIntensity;
+    }
+
+    public Double getMinIntensity() {
+      return minIntensity;
+    }
+
+    public void setMinIntensity(Double minIntensity) {
+      this.minIntensity = minIntensity;
     }
 
     public String getInchi() {

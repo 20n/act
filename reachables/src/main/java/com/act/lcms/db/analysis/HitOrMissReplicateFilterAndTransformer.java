@@ -14,6 +14,15 @@ public class HitOrMissReplicateFilterAndTransformer extends HitOrMissFilterAndTr
   public static String NIL_PLOT = "NIL_PLOT";
   public static final Integer REPRESENTATIVE_INDEX = 0;
 
+  private Double sd(List<Double> a, Double mean){
+    int sum = 0;
+
+    for (Double i : a)
+      sum += Math.pow((i - mean), 2);
+
+    return Math.sqrt( sum / ( a.size() - 1 ) ); // sample
+  }
+
   /**
    * This function takes in a list of molecules from multiple replicates over the same time and alignes the peaks across
    * these replicates. If the peaks can be aligned, the function reports the min statistic across those peaks, else it
@@ -39,6 +48,9 @@ public class HitOrMissReplicateFilterAndTransformer extends HitOrMissFilterAndTr
 
     if (maxTime - minTime < TIME_TOLERANCE_IN_SECONDS) {
       Double minIntensity = intensityValues.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal));
+      Double averageIntensity = intensityValues.stream().reduce(0.0, (accum, newVal) -> accum + newVal) / intensityValues.size();
+      Double maxIntensity = intensityValues.stream().reduce(Double.MIN_VALUE, (accum, newVal) -> Math.max(accum, newVal));
+      Double standardDeviation = sd(intensityValues, averageIntensity);
 
       Integer indexOfMinIntensityReplicate = intensityValues.indexOf(minIntensity);
 
@@ -46,6 +58,9 @@ public class HitOrMissReplicateFilterAndTransformer extends HitOrMissFilterAndTr
       result.setSnr(snrValues.get(indexOfMinIntensityReplicate));
       result.setIntensity(minIntensity);
       result.setTime(timeValues.get(indexOfMinIntensityReplicate));
+      result.setAverageIntensity(averageIntensity);
+      result.setMaxIntensity(maxIntensity);
+      result.setStdIntensity(standardDeviation);
 
       return Pair.of(result, DO_NOT_THROW_OUT_MOLECULE);
     } else {

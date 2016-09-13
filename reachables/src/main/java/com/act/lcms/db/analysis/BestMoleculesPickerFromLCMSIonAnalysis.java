@@ -2,6 +2,7 @@ package com.act.lcms.db.analysis;
 
 import com.act.lcms.MassCalculator;
 import com.act.lcms.db.io.report.IonAnalysisInterchangeModel;
+import com.act.utils.TSVParser;
 import com.act.utils.TSVWriter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -38,6 +39,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
   public static final String HEADER_MASS = "Monoisotopic Mass";
   public static final String HEADER_MZ = "MZ";
   public static final String HEADER_ION = "Ion";
+  public static final String OPTION_STATISTICAL_ANALYSIS = "x";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_INPUT_FILES)
@@ -99,6 +101,11 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
         .hasArgs()
         .valueSeparator(',')
         .longOpt("filter-by-ions")
+    );
+    add(Option.builder(OPTION_STATISTICAL_ANALYSIS)
+        .argName("statistical analysis")
+        .desc("statistical analysis")
+        .longOpt("statistical-analysis")
     );
   }};
 
@@ -188,6 +195,33 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     Double minSnrThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_SNR_THRESHOLD));
     Double minIntensityThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_INTENSITY_THRESHOLD));
     Double minTimeThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_TIME_THRESHOLD));
+
+    if (cl.hasOption(OPTION_STATISTICAL_ANALYSIS)) {
+
+      TSVParser parserGM18453 = new TSVParser();
+      parserGM18453.parse(new File("/Volumes/shared-data/Vijay/perlstein_azure_run/GM18453_i10000_s10.tsv"));
+
+      TSVParser parserGM03123 = new TSVParser();
+      parserGM03123.parse(new File("/Volumes/shared-data/Vijay/perlstein_azure_run/GM03123_i10000_s10.tsv"));
+
+      for (Map<String, String> row : parserGM18453.getResults()) {
+
+
+
+      }
+
+
+      for (Map<String, String> row : parserGM03123.getResults()) {
+
+
+
+      }
+
+
+
+
+      return;
+    }
 
     if (cl.hasOption(OPTION_GET_IONS_SUPERSET)) {
       IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.getSupersetOfIonicVariants(
