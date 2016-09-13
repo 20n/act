@@ -80,7 +80,11 @@ shinyServer(function(input, output, session) {
   
   target.mz <- reactive({
     target.mass <- input$target.monoisotopic.mass
-    getIonMz(target.mass, input$mode)
+    if (input$mode == "M (use mass as target mz value)") {
+      target.mass
+    } else {
+      getIonMz(target.mass, input$mode)
+    }
   })
   
   output$plot <- renderPlot({

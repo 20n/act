@@ -1,4 +1,4 @@
-kModes <- c("M", "M+H", "M-H", "M+Na", "M+Li", "M+H-H2O")
+kModes <- c("M (use mass as target mz value)", "M+H", "M-H", "M+Na", "M+Li", "M+H-H2O")
 
 shinyUI(fluidPage(
   fluidRow(
@@ -20,7 +20,7 @@ shinyUI(fluidPage(
       h3("Plot parameters"),
       sliderInput("angle.theta", label = "Azimuthal Angle (left <-> right)", 
                   min = 0, max = 360, value = 90, step = 5),
-      sliderInput("angle.phi", label = "Colatitude Angle (up <-> down)",
+      sliderInput("angle.phi", label = "Colatitude Angle (down <-> up)",
                   min = 0, max = 90, value = 20, step = 5),
       checkboxInput("top.value", label = "Display m/z value for highest peak", value = FALSE)
     ),
