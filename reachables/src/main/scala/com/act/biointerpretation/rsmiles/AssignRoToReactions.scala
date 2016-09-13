@@ -10,6 +10,7 @@ import spray.json._
 import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
 
 import scala.collection.JavaConverters._
+import scala.collection.parallel.immutable.ParSeq
 
 object AssignRoToReactions {
   val LOGGER = LogManager.getLogger(getClass)
@@ -38,7 +39,7 @@ object AssignRoToReactions {
     })
 
     // Prefilter so only matching substrates are looked at
-    val possibleReactions = roPredictions.map(roPrediction => {
+    val possibleReactions: ParSeq[(Int, List[ReactionInformation])]= roPredictions.par.map(roPrediction => {
       // Multiple predictions for a given RO
       val substrateInchis: List[Set[String]] = roPrediction._2.getCorpus.asScala.map(prediction => prediction.getSubstrateInchis.asScala.toSet).toList
 
@@ -51,32 +52,32 @@ object AssignRoToReactions {
       }
       else {
         // Do same thing with products
-        val productInchis: List[Set[String]] = roPrediction._2.getCorpus.asScala.map(prediction => prediction.getProductInchis.asScala.toSet).toList
+        val productInchis: List[Set[String]] =
+          roPrediction._2.getCorpus.asScala.map(prediction => prediction.getProductInchis.asScala.toSet).toList
 
-        val total = validSubstrateReactions.filter(
+        val reactionsThatMatchThisRo = validSubstrateReactions.filter(
           // For each reaction
           reaction =>
-            // There exists a reaction that is fully contained within a predictedProduct set
-            productInchis.exists(
-              predictedProduct =>
-                containsAllElements(predictedProduct, reaction.getProducts))
+            // There exists a reaction that is fully contained within a predictedProduct set.
+            productInchis.exists(predictedProduct => containsAllElements(predictedProduct, reaction.getProducts))
         )
-        LOGGER.info(s"Found ${total.length} matching reactions")
-        total
+        LOGGER.info(s"Found ${reactionsThatMatchThisRo.length} matching reaction ${roPredictions._1}")
+        (roPrediction._1, reactionsThatMatchThisRo)
       }
     })
 
-
-
+    println(possibleReactions)
   }
 
   def containsAllElements(elementA: Set[String], elementB: List[ChemicalInformation]): Boolean = {
+    // Forall will return true if elements are empty, but that isn't what we want.
     if (elementB.isEmpty) return false
     // Ensure that all of chemicalB is in a single elementA
     elementB.forall(chemical => elementA(chemical.getString))
   }
 
   def equalSets(elementA: Set[String], elementB: List[ChemicalInformation]): Boolean = {
+    // Conver to string then create a set out of that to check equality.
     elementA.equals(elementB.map(chemical => chemical.getString).toSet)
   }
 }
