@@ -110,6 +110,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       }
 
       // Step 2: Spark submit substrate list => RO projection
+      val moleculeFormat = MoleculeFormat.smarts
       val projectionDir = new File(outputDirectory, "ProjectionResults")
       if (!projectionDir.exists()) projectionDir.mkdirs()
 
@@ -119,7 +120,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
         "--substrates-list", substrateListOutputFile.getAbsolutePath,
         "-o", roProjectionsOutputFileDirectory.getAbsolutePath,
         "-l", chemaxonLicense.getAbsolutePath,
-        "-c", MoleculeFormat.smarts.toString
+        "-c", moleculeFormat.toString
       )
 
       val singleSubstrateRoProjectorClassPath = "com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector"
@@ -139,9 +140,15 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       val roAssignmentOutputFileName = new File(outputDirectory, s"FromDatabase$database.AbstractReactions$count.RoAssignments.json")
       val reactionAssigner =
         ReactionRoAssignment.assignRoToReactions(roProjectionsOutputFileDirectory, reactionListOutputFile, roAssignmentOutputFileName)_
+
       abstractChemicalsToSubstrateListJob.thenRun(ScalaJobWrapper.wrapScalaFunction("Ro Assignment to Reactions", reactionAssigner))
 
       // Step 4: Construct SARs from matching reactions
+      val sarCorpusOutputFileName = "output.json"
+      val sarCorpusOutputFile = new File(outputDirectory, sarCorpusOutputFileName)
+      val constructSars = ConstructSarsFromAbstractReactions.sarConstructor(roAssignmentOutputFileName, sarCorpusOutputFile, moleculeFormat) _
+
+      abstractChemicalsToSubstrateListJob.thenRun(ScalaJobWrapper.wrapScalaFunction("Sar Constructor", constructSars))
 
       // Step 5: Project RO + SAR over L3
 
