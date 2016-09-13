@@ -41,6 +41,7 @@ object SparkWrapper extends ToolWrapper {
     // Assemble JAR, don't run tests
     val job = constructJob("Creating JAR for spark use", Option("sbt"), args = List("assembly"))
     job.doNotWriteOutputStream()
+    job.doNotWriteErrorStream()
     job
   }
 }
