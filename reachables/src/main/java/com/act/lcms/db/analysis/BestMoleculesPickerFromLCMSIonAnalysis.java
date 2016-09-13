@@ -205,33 +205,6 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     Double minIntensityThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_INTENSITY_THRESHOLD));
     Double minTimeThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_TIME_THRESHOLD));
 
-    if (cl.hasOption(OPTION_STATISTICAL_ANALYSIS)) {
-
-      TSVParser parserGM18453 = new TSVParser();
-      parserGM18453.parse(new File("/Volumes/shared-data/Vijay/perlstein_azure_run/GM18453_i10000_s10.tsv"));
-
-      TSVParser parserGM03123 = new TSVParser();
-      parserGM03123.parse(new File("/Volumes/shared-data/Vijay/perlstein_azure_run/GM03123_i10000_s10.tsv"));
-
-      for (Map<String, String> row : parserGM18453.getResults()) {
-
-
-
-      }
-
-
-      for (Map<String, String> row : parserGM03123.getResults()) {
-
-
-
-      }
-
-
-
-
-      return;
-    }
-
     if (cl.hasOption(OPTION_GET_IONS_SUPERSET)) {
       IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.getSupersetOfIonicVariants(
           IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),

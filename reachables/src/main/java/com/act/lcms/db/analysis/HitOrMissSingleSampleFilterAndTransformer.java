@@ -34,6 +34,11 @@ public class HitOrMissSingleSampleFilterAndTransformer extends HitOrMissFilterAn
     IonAnalysisInterchangeModel.HitOrMiss molecule = new IonAnalysisInterchangeModel.HitOrMiss(
         replicate.getInchi(), ion, snr, time, intensity, replicate.getPlot());
 
+    molecule.setAverageIntensity(replicate.getAverageIntensity());
+    molecule.setMaxIntensity(replicate.getMaxIntensity());
+    molecule.setMinIntensity(replicate.getMinIntensity());
+    molecule.setStdIntensity(replicate.getStdIntensity());
+
     // If the intensity, snr and time pass the thresholds set AND the ion of the peak molecule is within the set of
     // ions we want extracted, we keep the molecule. Else, we throw it away.
     if (intensity > minIntensityThreshold && snr > minSnrThreshold && time > minTimeThreshold &&
