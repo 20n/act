@@ -8,14 +8,14 @@
 
 # Finally, this assumes that two symlinks have been created and are located in the app directory:
 # reachables-assembly-0.1.jar -> symlink to a "fat jar" created through sbt assembly
-# resources -> symlink to the resources directory
+# 20nlogo -> symlink to the 20n logo in the resources directory
 kFatJarLocation <- "reachables-assembly-0.1.jar"
 
 # Constants
 kImportBingPackageCommand <- 'import act.installer.bing'
 kScalaCommand <- 'bing.ExploreRange.getOutcomeVsYieldTable(%s, %s, "CMOS", "%s")'
 
-k20nLogoLocation <- "resources/20n.png"
+k20nLogoLocation <- "20nlogo"
 kChartLabelSizeFactor <- 1.3
 
 library(shiny)
