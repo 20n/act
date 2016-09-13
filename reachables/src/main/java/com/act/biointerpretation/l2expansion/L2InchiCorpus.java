@@ -1,8 +1,8 @@
 package com.act.biointerpretation.l2expansion;
 
 import chemaxon.formats.MolFormatException;
-import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
+import com.act.analysis.chemicals.MoleculeImporter;
 import com.act.jobs.FileChecker;
 import com.act.jobs.JavaRunnable;
 import org.apache.logging.log4j.LogManager;
@@ -26,9 +26,6 @@ import java.util.List;
 public class L2InchiCorpus {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2InchiCorpus.class);
-
-  private static final String INCHI_IMPORT_SETTINGS = "inchi";
-
   private List<String> corpus = new ArrayList<>();
 
   public L2InchiCorpus() {
@@ -40,21 +37,22 @@ public class L2InchiCorpus {
 
   public void filterByMass(Integer massCutoff) {
     corpus.removeIf(
-        inchi ->
-        {
-          try {
-            Molecule mol = importMolecule(inchi);
-            if (mol.getMass() > massCutoff) {
-              LOGGER.warn("Throwing out molecule %s because of mass %f and %d atoms.",
-                  inchi, mol.getMass(), mol.getAtomCount());
-              return true;
+            inchi ->
+            {
+              try {
+                // Defaults to "inchi"
+                Molecule mol = MoleculeImporter.importMolecule(inchi);
+                if (mol.getMass() > massCutoff) {
+                  LOGGER.warn("Throwing out molecule %s because of mass %f and %d atoms.",
+                          inchi, mol.getMass(), mol.getAtomCount());
+                  return true;
+                }
+                return false;
+              } catch (MolFormatException e) {
+                LOGGER.error("MolFormatException on metabolite %s. %s", inchi, e.getMessage());
+                return true;
+              }
             }
-            return false;
-          } catch (MolFormatException e) {
-            LOGGER.error("MolFormatException on metabolite %s. %s", inchi, e.getMessage());
-            return true;
-          }
-        }
     );
   }
 
@@ -62,7 +60,7 @@ public class L2InchiCorpus {
     List<Molecule> results = new ArrayList<>(getInchiList().size());
     for (String inchi : getInchiList()) {
       try {
-        results.add(importMolecule(inchi));
+        results.add(MoleculeImporter.importMolecule(inchi));
       } catch (MolFormatException e) {
         LOGGER.error("MolFormatException on metabolite %s. %s", inchi, e.getMessage());
       }
@@ -117,24 +115,13 @@ public class L2InchiCorpus {
     return corpus;
   }
 
-  /**
-   * This function imports a given inchi to a Molecule.
-   * TODO: Add a cache map from inchis -> molecules to this class to avoid redoing import
-   *
-   * @param inchi Input inchi.
-   * @return The resulting Molecule.
-   * @throws MolFormatException
-   */
-  public static Molecule importMolecule(String inchi) throws MolFormatException {
-    return MolImporter.importMol(inchi, INCHI_IMPORT_SETTINGS);
-  }
 
   /**
    * Wraps mass filtering so that it can be used as a step in a workflow
    *
    * @param inputSubstrates The initial list of substrates.
-   * @param outputFile The file to which to write the output.
-   * @param massThreshold The maximum mass to allow, in Daltons.
+   * @param outputFile      The file to which to write the output.
+   * @param massThreshold   The maximum mass to allow, in Daltons.
    * @return A JavaRunnable that can be used in a workflow.
    */
   public static JavaRunnable getRunnableSubstrateFilterer(File inputSubstrates,
