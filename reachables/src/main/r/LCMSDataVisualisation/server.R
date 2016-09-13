@@ -119,6 +119,8 @@ shinyServer(function(input, output, session) {
                 zlab = "Intensity", xlab = "Retention time (sec)", ylab = "m/z (Da)",
                 theta = input$angle.theta, phi = input$angle.phi, ticktype = "detailed", 
                 ylim = c(min.ionic.mass, max.ionic.mass), zlim = c(0, zlim.up))
+      # top_n selects the top N data points with respect to a specific variable
+      # The following line gets the top intensity data point.
       top.points <- data %>% top_n(1, intensity)
       
       if (input$top.value) {
