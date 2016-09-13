@@ -1,7 +1,5 @@
 package com.act.analysis.chemicals.molecules
 
-import akka.actor.FSM.->
-
 object MoleculeFormat extends Enumeration {
   private val inchiString = "inchi"
   private val stdInchiString = "stdInchi"
@@ -17,7 +15,7 @@ object MoleculeFormat extends Enumeration {
 
   private val exportMap: Map[Value, String] = Map(
     inchi -> inchiString,
-    stdInchi -> "inchi:SAbs,AuxNone,Woff",
+    stdInchi -> s"$inchiString:SAbs,AuxNone,Woff",
     noAuxInchi -> s"$inchiString:AuxNone",
     smiles -> smilesString,
     smarts -> smartsString
