@@ -129,19 +129,25 @@ object ChemicalSymbols {
     // i.e., we consider masses upto 0.001 away from each other to be identical
     // note that the mass of an electron is 5.5e-4 Da, so we allow upto around an electron mass
     private val defaultNumPlaces = 3
-    private val truncated = rounded()
 
-    def rounded(numDecimalPlaces: Int = defaultNumPlaces) = {
-      val tolerance = math.pow(10,-numDecimalPlaces) // 1e-3
-      (math round (initMass / tolerance)) * tolerance
-    }
+    // `` holds the value of initMass rounded to integers and scaled by 10^defaultNumPlaces
+    // Reason we keep the scaling (and not just the truncated double value) is that allows us to
+    // get away from floating point rounding errors. With the scaled value, we also get to keep
+    // the type as `Long`. With all of that `hashCode` and `equals` are proper and don't introduce
+    // errors. We were seeing values such as 5.944444444444445 and 100.07600000000001 in the output
+    // when `truncated` was typed as `Double` instead of `Long`. 
+    private val truncated = roundedAndScaled()
+
+    def rounded(numDecimals: Int = defaultNumPlaces): Double = roundedAndScaled() * tolerance(numDecimals)
+    def roundedAndScaled(numDecimals: Int = defaultNumPlaces): Long = math round (initMass/tolerance(numDecimals))
+    def tolerance(numDecimals: Int): Double = math.pow(10, -numDecimals)
 
     override def equals(that: Any) = that match { 
       case that: MonoIsotopicMass => this.truncated == that.truncated
       case _ => false
     }
     override def hashCode() = truncated.hashCode
-    override def toString(): String = this.truncated.toString
+    override def toString(): String = this.rounded().toString
 
     // case when we might want to add: set of atoms together in a formula. need its full mass
     def +(that: MonoIsotopicMass) = new MonoIsotopicMass(this.initMass + that.initMass)
