@@ -287,7 +287,10 @@ public class IonAnalysisInterchangeModel {
           moleculesFromReplicates.add(molecule);
         }
 
-        Pair<HitOrMiss, Boolean> transformedMoleculeAndShouldRetainMolecule = hitOrMissFilterAndTransformer.apply(moleculesFromReplicates.size() == 1 ? moleculesFromReplicates.get(0) : moleculesFromReplicates);
+        System.out.println(String.format("Size of models %d", moleculesFromReplicates.size()));
+
+        Pair<HitOrMiss, Boolean> transformedMoleculeAndShouldRetainMolecule =
+            hitOrMissFilterAndTransformer.apply(moleculesFromReplicates.size() == 1 ? moleculesFromReplicates.get(0) : moleculesFromReplicates);
 
         // Check if the filter function  wants to throw out the molecule. If not, then add the molecule to the final result.
         if (transformedMoleculeAndShouldRetainMolecule.getRight()) {
