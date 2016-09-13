@@ -7,6 +7,11 @@ import chemaxon.struc.Molecule
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 
+/**
+  * The goal of this object is to have a consistent access point for importing molecules that handles
+  * cache consistency and concurrency.
+  * Additionally, small options such as check if an InChi starts with "InChi prior to trying to import are made here.
+  */
 object MoleculeImporter {
   // Have a cache for each format.
   private val moleculeCache = TrieMap[MoleculeFormat.Value, TrieMap[String, Molecule]]()

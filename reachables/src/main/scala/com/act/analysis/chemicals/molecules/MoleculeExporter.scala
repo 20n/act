@@ -7,6 +7,10 @@ import chemaxon.struc.Molecule
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 
+/**
+  * Provides a consistent place to handle molecule exportation
+  * in all the various formats we experience in a cache friendly manner.
+  */
 object MoleculeExporter {
   // By hashing also on the format we can support a molecule being converted to multiple formats in a given JVM
   private val moleculeCache = TrieMap[MoleculeFormat.Value, TrieMap[Molecule, String]]()

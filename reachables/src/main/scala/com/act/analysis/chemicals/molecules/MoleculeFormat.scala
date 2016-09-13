@@ -1,5 +1,8 @@
 package com.act.analysis.chemicals.molecules
 
+/**
+  * Enumerates possible import and export formats in such a way that they ca nbe readily converted back and forth.
+  */
 object MoleculeFormat extends Enumeration {
   private val inchiString = "inchi"
   private val stdInchiString = "stdInchi"
