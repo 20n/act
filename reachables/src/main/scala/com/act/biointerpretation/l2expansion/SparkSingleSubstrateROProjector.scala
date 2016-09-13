@@ -9,6 +9,7 @@ import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.act.biointerpretation.sars.{CharacterizedGroup, SarCorpus}
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.ibm.db2.jcc.am.id
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.logging.log4j.LogManager
 import org.apache.spark.rdd.RDD
@@ -143,7 +144,9 @@ object SparkSingleSubstrateROProjector {
         longOpt("valid-chemical-types").
         hasArg.
         desc("A molecule string format. Currently valid types are inchi, stdInchi, smiles, and smarts.  " +
-          s"By default, uses stdInchi which is the format \"${MoleculeFormat.getExportString(MoleculeFormat.stdInchi)}\"."),
+          s"By default, uses stdInChI which " +
+          s"is the format '${MoleculeFormat.getExportString(MoleculeFormat.stdInchi)}'.  " +
+          s"Possible values are: \n${MoleculeFormat.listPossibleFormats().mkString("\n")}"),
 
       CliOption.builder(OPTION_SAR_CORPUS_FILE).
         longOpt("sar-corpus").
@@ -351,7 +354,7 @@ object SparkSingleSubstrateROProjector {
       val outputFile = new File(outputDir, sparkPredictionCorpus.id)
 
       OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(outputFile, sparkPredictionCorpus.prediction)
-      LOGGER.info(s"Wrote results for ERO $id (${outputFile.getTotalSpace}.)")
+      LOGGER.info(s"Wrote results ${sparkPredictionCorpus.id} (${outputFile.getTotalSpace}.)")
 
       (sparkPredictionCorpus.id, sparkPredictionCorpus.time)
     }
@@ -359,7 +362,7 @@ object SparkSingleSubstrateROProjector {
     // DO THE THING!  Run the mapper on all the executors over the projection results, and collect timing info.
 
     // Output results one at a time and collect timing info.
-    val timingPairs: List[(String, Double)] = resultsRDD.toLocalIterator.map(t => mapper(SparkPredictionCorpus)).toList
+    val timingPairs: List[(String, Double)] = resultsRDD.toLocalIterator.map(t => mapper(t)).toList
 
     // Release the RDD now that we're done reading it.
     resultsRDD.unpersist()

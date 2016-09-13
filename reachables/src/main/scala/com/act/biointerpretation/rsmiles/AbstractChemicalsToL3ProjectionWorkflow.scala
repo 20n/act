@@ -18,6 +18,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
   val OPTION_CHEMAXON_LICENSE =   "l"
   val OPTION_SPARK_MASTER =       "m"
   val OPTION_SUBSTRATE_COUNTS =   "s"
+  val OPTION_VALID_CHEMICAL_TYPE = "v"
   val OPTION_WORKING_DIRECTORY =  "w"
 
   private val LOGGER = LogManager.getLogger(getClass)
@@ -69,8 +70,13 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
         desc("If this flag is enabled, we will check if the file that would be " +
           "made currently exists and use that file wherever possible."),
 
-
-
+      CliOption.builder(OPTION_VALID_CHEMICAL_TYPE).
+        longOpt("valid-chemical-types").
+        hasArg.
+        desc("A molecule string format. Currently valid types are inchi, stdInchi, smiles, and smarts.  " +
+          s"By default, uses noStereoAromatizedSmarts which " +
+          s"is the format '${MoleculeFormat.getExportString(MoleculeFormat.noStereoAromatizedSmarts)}'.  " +
+          s"Possible values are: \n${MoleculeFormat.listPossibleFormats().mkString("\n")}"),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -113,13 +119,19 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
     // Tries to assemble JAR for spark export.  Step 1 towards Skynet is self-assembly of jar files.
     headerJob.thenRun(SparkWrapper.sbtAssembly(useCached = cl.hasOption(OPTION_USE_CACHED_RESULTS)))
 
+    /*
+      Format currently used for the molecular transitions
+     */
+    val moleculeFormatString =
+      cl.getOptionValue(OPTION_VALID_CHEMICAL_TYPE, MoleculeFormat.noStereoAromatizedSmarts.toString)
+    val moleculeFormat = MoleculeFormat.withName(moleculeFormatString)
 
     /*
       Setup the options for which substrate counts
       we'll be looking at and partially applies the abstract reaction function.
      */
     val substrateCounts: List[Int] = cl.getOptionValues(OPTION_SUBSTRATE_COUNTS).map(_.toInt).toList
-    val individualSubstrateFunction = AbstractChemicalsToReactions.calculateAbstractSubstrates(database)_
+    val individualSubstrateFunction = AbstractChemicalsToReactions.calculateAbstractSubstrates(moleculeFormat)(database)_
 
     // Create all the jobs for all the substrates
     val jobs = substrateCounts.map(count => {
@@ -144,7 +156,6 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       /*
         Step 2: Spark submit substrate list => RO projection
        */
-      val moleculeFormat = MoleculeFormat.smarts
       val projectionDir = new File(outputDirectory, "ProjectionResults")
       if (!projectionDir.exists()) projectionDir.mkdirs()
 

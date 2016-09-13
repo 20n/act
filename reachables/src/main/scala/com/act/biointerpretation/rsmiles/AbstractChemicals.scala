@@ -15,7 +15,7 @@ import scala.collection.parallel.immutable.{ParMap, ParSeq}
 object AbstractChemicals {
   val logger = LogManager.getLogger(getClass)
 
-  def getAbstractChemicals(mongoDb: MongoDB): ParMap[Long, ChemicalInformation] = {
+  def getAbstractChemicals(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.Value): ParMap[Long, ChemicalInformation] = {
     logger.info("Finding abstract chemicals.")
     /*
       Mongo DB Query
@@ -31,14 +31,16 @@ object AbstractChemicals {
        Convert from DB Object => Smarts and return that.
        Flatmap as Parse Db object returns None if an error occurs (Just filter out the junk)
     */
-    val goodChemicalIds: ParMap[Long, ChemicalInformation] = result.flatMap(parseDbObjectForSmiles).toMap
+    val parseDbObjectInFormat: (DBObject) => Option[(Long, ChemicalInformation)] = parseDbObject(moleculeFormat)_
+    val goodChemicalIds: ParMap[Long, ChemicalInformation] = result.flatMap(
+      dbResponse => parseDbObjectInFormat(dbResponse)).toMap
 
     logger.info(s"Finished finding abstract chemicals. Found ${goodChemicalIds.size}")
 
     goodChemicalIds
   }
 
-  private def parseDbObjectForSmiles(ob: DBObject): Option[(Long, ChemicalInformation)] = {
+  private def parseDbObject(moleculeFormat: MoleculeFormat.Value)(ob: DBObject): Option[(Long, ChemicalInformation)] = {
     /*
       Type conversions from DB objects
      */
@@ -56,7 +58,7 @@ object AbstractChemicals {
       val mol = MoleculeImporter.importMolecule(replacedSmarts, MoleculeFormat.smarts)
 
       // Convert to smarts so everything is standard
-      Option((chemicalId, new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportAsSmarts(mol))))
+      Option((chemicalId, new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportMolecule(mol, moleculeFormat))))
     } catch {
       case e: MolExportException =>
         logger.debug(s"Tried converting molecule to smarts, but failed.  Molecule's chemical ID is ${chemicalId.toInt}.")

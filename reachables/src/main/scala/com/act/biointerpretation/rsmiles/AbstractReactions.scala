@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import act.server.MongoDB
 import chemaxon.formats.MolFormatException
-import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeImporter}
+import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.rsmiles.AbstractChemicals.ChemicalInformation
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities, ReactionKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
@@ -18,7 +18,8 @@ import scala.collection.parallel.immutable.{ParMap, ParSeq}
 object AbstractReactions {
   val logger = LogManager.getLogger(getClass)
 
-  def getAbstractReactions(mongoDb: MongoDB)(abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int): ParSeq[ReactionInformation] = {
+  def getAbstractReactions(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.Value)
+                          (abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int): ParSeq[ReactionInformation] = {
     require(substrateCountFilter > 0, s"A reaction must have at least one substrate.  " +
       s"You are looking for reactions with $substrateCountFilter substrates.")
 
@@ -57,7 +58,7 @@ object AbstractReactions {
     logger.info(s"Finished finding reactions that contain abstract chemicals. Found ${abstractReactions.length}.")
 
     val reactionConstructor: (DBObject) => Option[ReactionInformation] =
-      constructDbReaction(mongoDb)(abstractChemicals, substrateCountFilter) _
+      constructDbReaction(mongoDb, moleculeFormat)(abstractChemicals, substrateCountFilter) _
 
     val processCounter = new AtomicInteger()
 
@@ -73,7 +74,9 @@ object AbstractReactions {
     singleSubstrateReactions
   }
 
-  private def constructDbReaction(mongoDb: MongoDB)(abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int = -1)(ob: DBObject): Option[ReactionInformation] = {
+  private def constructDbReaction(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.Value)
+                                 (abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int = -1)
+                                 (ob: DBObject): Option[ReactionInformation] = {
     val substrates = ob.get(s"${ReactionKeywords.ENZ_SUMMARY}").asInstanceOf[BasicDBObject].get(s"${ReactionKeywords.SUBSTRATES}").asInstanceOf[BasicDBList]
     val products = ob.get(s"${ReactionKeywords.ENZ_SUMMARY}").asInstanceOf[BasicDBObject].get(s"${ReactionKeywords.PRODUCTS}").asInstanceOf[BasicDBList]
 
@@ -89,7 +92,7 @@ object AbstractReactions {
     val productList = products.toList
 
     // Make sure we load everything in.
-    val moleculeLoader = loadMolecule(mongoDb)(abstractChemicals) _
+    val moleculeLoader = loadMolecule(mongoDb, moleculeFormat)(abstractChemicals) _
 
     try {
       val substrateMoleculeList: List[ChemicalInformation] = substrateList.flatMap(x => moleculeLoader(x.asInstanceOf[DBObject]))
@@ -102,7 +105,8 @@ object AbstractReactions {
     }
   }
 
-  private def loadMolecule(mongoDb: MongoDB)(abstractChemicals: ParMap[Long, ChemicalInformation])(dbObj: DBObject): List[ChemicalInformation] = {
+  private def loadMolecule(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.Value)
+                          (abstractChemicals: ParMap[Long, ChemicalInformation])(dbObj: DBObject): List[ChemicalInformation] = {
     val hitGoodChem: Option[ChemicalInformation] = abstractChemicals.get(dbObj.get(ReactionKeywords.PUBCHEM.toString).asInstanceOf[Long])
     val coefficient = dbObj.get(ReactionKeywords.COEFFICIENT.toString).asInstanceOf[Int]
 
@@ -115,7 +119,7 @@ object AbstractReactions {
     val query = Mongo.createDbObject(ChemicalKeywords.ID, chemicalId)
     val inchi = Mongo.mongoQueryChemicals(mongoDb)(query, null).next().get(ChemicalKeywords.INCHI.toString).asInstanceOf[String]
     val molecule = MoleculeImporter.importMolecule(inchi)
-    List.fill(coefficient)(new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportAsSmarts(molecule)))
+    List.fill(coefficient)(new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportMolecule(molecule, moleculeFormat)))
   }
 
   case class ReactionInformation(reactionId: Int, substrates: List[ChemicalInformation], products: List[ChemicalInformation]) {
