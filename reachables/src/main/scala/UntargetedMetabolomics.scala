@@ -65,6 +65,7 @@ class ComputedData(val sources: List[Provenance]) extends Provenance
 class LCMSExperiment(val origin: Provenance, val peakSpectra: UntargetedPeakSpectra) {
   override def toString = peakSpectra.toString
   def toStats = peakSpectra.toStats
+  def toStatsStr = peakSpectra.toStatsStr
 }
 
 class UntargetedPeak(
@@ -83,15 +84,21 @@ class UntargetedPeakSpectra(val peaks: Set[UntargetedPeak]) {
   override def toString = peaks.toString
 
   def toStats = {
-    val topk = 40
+    val topk = 10
     val lowPks = peaks.toList.filter(p => p.rt.isIn(20, 200) && p.mz.isIn(50, 500))
-    val stats = Map(
+    Map(
       "num peaks" -> peaks.size,
-      "top10 by snr" -> lowPks.sortWith(_.snr > _.snr).map(p => List(p.mz, p.rt, p.snr).mkString("\t")).take(topk).mkString("\n"),
-      "top10 by maxInt" -> lowPks.sortWith(_.maxInt > _.maxInt).map(p => List(p.mz, p.rt, p.maxInt).mkString("\t")).take(topk).mkString("\n"),
-      "top10 by integratedInt" -> lowPks.sortWith(_.integratedInt > _.integratedInt).map(p => List(p.mz, p.rt, p.integratedInt).mkString("\t")).take(topk).mkString("\n")
+      "topK by snr with mz:[50,500] rt:[20,200]" -> lowPks.sortWith(_.snr > _.snr).map(p => List(p.mz, p.rt, p.snr)).take(topk),
+      "topK by maxInt with mz:[50,500] rt:[20,200]" -> lowPks.sortWith(_.maxInt > _.maxInt).map(p => List(p.mz, p.rt, p.maxInt)).take(topk),
+      "topK by integratedInt with mz:[50,500] rt:[20,200]" -> lowPks.sortWith(_.integratedInt > _.integratedInt).map(p => List(p.mz, p.rt, p.integratedInt)).take(topk)
     )
-    stats
+  }
+
+  def toStatsStr = {
+    toStats.toList.map{ 
+      case (k: String, i: Int) => k + ":\t" + i
+      case (k: String, vl: List[List[Double]]) => k + "\n" + vl.map(_.mkString("\t")).mkString("\n")
+    }.mkString("\n\n")
   }
 }
 
@@ -303,18 +310,10 @@ object UntargetedMetabolomics {
     val opts = List(optOutFile, optControls, optHypotheses, optRunTests)
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
-    def mkLCMSExpr(kv: String) = {
-      val spl = kv.split("=")
-      val (name, file) = (spl(0), spl(1))
-      val srcOrigin = new RawData(source = name)
-      new LCMSExperiment(srcOrigin, UntargetedPeakSpectra.fromXCMSCentwave(file))
-    }
-
     // read the command line options
     val runTests = cmdLine has optRunTests
-    val controls = (cmdLine getMany optControls).map(mkLCMSExpr)
-    val hypotheses = (cmdLine getMany optHypotheses).map(mkLCMSExpr)
-    val experiment = new UntargetedMetabolomics(controls = controls, hypotheses = hypotheses)
+    val controls = cmdLine getMany optControls
+    val hypotheses = cmdLine getMany optHypotheses
 
     val out: PrintWriter = {
       if (cmdLine has optOutFile) 
@@ -326,12 +325,27 @@ object UntargetedMetabolomics {
     if (runTests)
       runUnitTests()
 
-    // do the thing!
-    val analysisRslt = experiment.analyze()
+    def mkLCMSExpr(kv: String) = {
+      val spl = kv.split("=")
+      val (name, file) = (spl(0), spl(1))
+      val srcOrigin = new RawData(source = name)
+      new LCMSExperiment(srcOrigin, UntargetedPeakSpectra.fromXCMSCentwave(file))
+    }
 
-    val stats = analysisRslt.toStats
-    val statsStr = stats.toList.mkString("\n\n")
-    println(s"stats = $statsStr")
+    // do the thing!
+    (controls, hypotheses) match {
+      case (null, _) => println(s"No controls!")
+      case (_, null) => println(s"No hypotheses!")
+      case (cnt, hyp) => {
+        val controls = cnt.map(mkLCMSExpr).toList
+        val hypotheses = hyp.map(mkLCMSExpr).toList
+        val experiment = new UntargetedMetabolomics(controls = controls, hypotheses = hypotheses)
+        val analysisRslt = experiment.analyze()
+
+        val statsStr = analysisRslt.toStatsStr
+        println(s"stats = $statsStr")
+      }
+    }
   }
 
   val optControls = new OptDesc(
@@ -339,14 +353,14 @@ object UntargetedMetabolomics {
                     longParam = "controls",
                     name = "{name=file}*",
                     desc = """Controls: Comma separated list of name=file pairs""".stripMargin,
-                    isReqd = true, hasArgs = true)
+                    isReqd = false, hasArgs = true)
 
   val optHypotheses = new OptDesc(
                     param = "e",
                     longParam = "experiments",
                     name = "{name=file}*",
                     desc = """Experiments: Comma separated list of name=file pairs""".stripMargin,
-                    isReqd = true, hasArgs = true)
+                    isReqd = false, hasArgs = true)
 
   val optOutFile = new OptDesc(
                     param = "o",
@@ -363,6 +377,76 @@ object UntargetedMetabolomics {
                     isReqd = false, hasArg = false)
 
   def runUnitTests() {
+    // this data was collected with XCMS Centwave "optimzed" parameters: peak width 1-50 and ppm 20 (@vijay-20n?)
+    def dataForWell(dataset: String)(repl: Int) = s"Plate_plate2016_09_08_${dataset}${repl}_0908201601.tsv"
+    val pLabXCMSLoc = "/mnt/shared-data/Vijay/perlstein_xcms_centwave_optimized_output/"
+    def fullLoc(well: String) = pLabXCMSLoc + well
+    def readSpectra(f: String) = {
+      val src = new RawData(source = f)
+      new LCMSExperiment(src, UntargetedPeakSpectra.fromXCMSCentwave(f))
+    }
+
+    val wt = (1 to 3).toList.map(dataForWell("B")).map(fullLoc)
+    val df = (1 to 3).toList.map(dataForWell("A")).map(fullLoc)
+    val dm = (1 to 3).toList.map(dataForWell("C")).map(fullLoc)
+
+    val (wt1, wt2, wt3) = (wt(0), wt(1), wt(2))
+    val (df1, df2, df3) = (df(0), df(1), df(2))
+    val (dm1, dm2, dm3) = (dm(0), dm(1), dm(2))
+
+    // wt{1,2,3} = wildtype replicates 1, 2, 3
+    // d{M,F}{1,2,3} = disease line {M,F} replicates 1, 2, 3
+    // each test is specified as (controls, hypothesis, num_peaks_min, num_peaks_max) inclusive both
+    val cases = List(
+      
+      // consistency check: hypothesis same as control => no peaks should be differentially identified
+      ("wt1-wt1", List(wt1), List(wt1), 0, 0),
+      ("dm1-dm1", List(dm1), List(dm1), 0, 0),
+      ("df1-df1", List(df1), List(df1), 0, 0),
+      
+      // ensure that replicate aggregation (i.e., min) works as expected. 
+      // we already know from the above test that differential calling works 
+      // to eliminate all peaks if given the same samples. so now if replicate
+      // aggregation gives non-zero sets of peaks, it has to be the min algorithm.
+      ("wt-wt", wt, wt, 0, 0),
+      ("dm-dm", dm, dm, 0, 0),
+      ("df-df", df, df, 0, 0),
+      
+      // how well does the differential calling work over a single sample of hypothesis and control
+      ("wt1-df1", List(wt1), List(df1), 0, 500),
+      ("wt1-df1", List(wt1), List(dm1), 0, 500),
+      
+      // peaks that are differentially expressed in diseased samples compared to the wild type
+      ("wt-dm", wt, dm, 0, 200),
+      ("wt-df", wt, df, 0, 200),
+      
+      // next two: what is in one diseases samples and not in the other?
+      ("dm-df", dm, df, 0, 200),
+      ("df-dm", df, dm, 0, 200)
+    )
+
+    val verbose = true
+    cases.foreach{ case (testID, controlsF, hypothesesF, peakMinCnt, peakMaxCnt) => {
+
+      println(s"Testing $testID")
+      controlsF.foreach{   c => println(s"Cntrl: $c") }
+      hypothesesF.foreach{ c => println(s"Hypth: $c") }
+
+      val controls = controlsF.map(readSpectra)
+      val hypotheses = hypothesesF.map(readSpectra)
+      val experiment = new UntargetedMetabolomics(controls = controls, hypotheses = hypotheses)
+      val analysisRslt = experiment.analyze()
+      if (verbose) {
+        val statsStr = analysisRslt.toStatsStr
+        println(s"stats = $statsStr")
+      }
+      val numPeaks = analysisRslt.toStats("num peaks").asInstanceOf[Int]
+      if (!(numPeaks > peakMinCnt && numPeaks <= peakMaxCnt)) {
+        println(s"Failed test ${testID}, unexpected peak count: $numPeaks != [$peakMinCnt, $peakMaxCnt]")
+        assert(false)
+      }
+
+    }}
   }
 
 }
