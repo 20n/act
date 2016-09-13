@@ -61,6 +61,7 @@ public class HitOrMissReplicateFilterAndTransformer extends HitOrMissFilterAndTr
       result.setAverageIntensity(averageIntensity);
       result.setMaxIntensity(maxIntensity);
       result.setStdIntensity(standardDeviation);
+      result.setMinIntensity(minIntensity);
 
       return Pair.of(result, DO_NOT_THROW_OUT_MOLECULE);
     } else {
@@ -68,6 +69,10 @@ public class HitOrMissReplicateFilterAndTransformer extends HitOrMissFilterAndTr
       result.setSnr(LOWEST_POSSIBLE_VALUE_FOR_PEAK_STATISTIC);
       result.setIntensity(LOWEST_POSSIBLE_VALUE_FOR_PEAK_STATISTIC);
       result.setTime(LOWEST_POSSIBLE_VALUE_FOR_PEAK_STATISTIC);
+      result.setAverageIntensity(0.0);
+      result.setMaxIntensity(0.0);
+      result.setStdIntensity(0.0);
+      result.setMinIntensity(0.0);
 
       return Pair.of(result, DO_NOT_THROW_OUT_MOLECULE);
     }
