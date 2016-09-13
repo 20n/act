@@ -153,6 +153,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     }
     writer.close()
   }
+
   /**
     * Takes in a set of sequence IDs and creates a Sar Tree from the
     *
@@ -208,7 +209,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
   def scoreCorpusAgainstSarTree(sarTree: SarTree, inchiCorpus: L2InchiCorpus): ParMap[String, Double] = {
     val inchiToMoleculeMap: Map[String, Molecule] = (inchiCorpus.getInchiList zip inchiCorpus.getMolecules) toMap
 
-    val inchiScorer: Molecule => Double = scoreInchiAgainstSarTree(sarTree, sarTree.getRootNodes.toList)_
+    val inchiScorer: Molecule => Double = scoreInchiAgainstSarTree(sarTree, sarTree.getRootNodes.toList) _
 
     val scoredInchis: ParMap[String, Double] = inchiToMoleculeMap.par.map {
       case (key, value) => (key, inchiScorer(value))
@@ -218,44 +219,4 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
   }
 
 
-  /**
-    * Score individual inchi between 0 and 100.
-    * 100 means it is a substrate, 0 means it didn't match anything.
-    * Numbers between this indicate different levels of depth achieved.
-    *
-    * @param sarTree          The input SarTree to check against
-    * @param currentLevelList The remaining SarTreeNodes that haven't been invalidated.
-    * @param molecule         Which molecule to check against the Sar Tree
-    *
-    * @return
-    */
-  def scoreInchiAgainstSarTree(sarTree: SarTree, currentLevelList: List[SarTreeNode])(molecule: Molecule): Double = {
-    val nodesMatchingSar = currentLevelList filter (_.getSar.test(List[Molecule](molecule)))
-
-    // Arbitrary score value
-    val baseAdd = 10.0
-
-    // No matches
-    nodesMatchingSar.isEmpty match {
-      case true => baseAdd
-      case false =>
-        // See how any remaining nodes score upon further traversal.
-        val deeperScores: List[Double] = nodesMatchingSar map (node =>
-          // Leaf Node
-          if (sarTree.getChildren(node).isEmpty) {
-            // Get really excited if we see an exact match
-            if (node.getSubstructure.equals(molecule)) {
-              baseAdd * baseAdd * baseAdd
-            } else {
-              // TODO Add a heuristic in to filter out REALLY REALLY large and general substrates.
-              // Slightly penalize if overshoot substrate
-              -baseAdd
-            }
-          } else {
-            // Nodes still remain, see how deep prior to hitting a nothing
-            scoreInchiAgainstSarTree(sarTree, sarTree.getChildren(node).toList)(molecule)
-          })
-        baseAdd + deeperScores.sum
-    }
-  }
 }
