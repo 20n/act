@@ -44,4 +44,88 @@ Host twentyn-worker-*
 Note that if the bastion host's public IP changes, this will need to
 be updated.
 
-## Starting and stopping VMs.
+## Basic VM organization
+
+Azure VMs are organized into resource groups, which are arbitrary
+collections of machines.  We currently use only one resource group:
+`twentyn-azure-central-us`.  Each resource group is confined to a
+location; our resource group lives in `centralus`.  Locations
+determine the cost of VM time, as well as the size of the
+pool of available hardware resources.
+
+To see the set of available locations, run
+```
+$ azure location list
+```
+
+To see what VM sizes are available within a region and what are
+resource quotas for that region are, run:
+```
+$ azure vm sizes --location centralus
+$ azure quotas show centralus
+```
+
+Note that quotas are per region and can be increased (assuming
+resources are available) within ~24 hours by contacting Azure support
+through the web panel.
+
+## Starting and stopping existing VMs
+
+Azure VMs have a number of operational states representing different
+levels of activity and different overheads in preparing the VM for
+service:
+
+State | Description | Availability | Billed for time
+--- | --- | --- | ---
+Running | Host is operating. | Immediate | Yes
+Stopped | Host is shutdown at the software layer | After boot cycle (somewhat fast) | Yes
+Deallocated | Host has been shutdown and its resources returned to the pool | After allocation and boot (very slow) | No
+
+The Azure CLI tools can be used to report and set these states:
+```
+$ azure vm list
+$ azure vm start twentyn-azure-central-us twentyn-worker-2
+$ azure vm stop twentyn-azure-central-us twentyn-worker-2
+$ azure vm deallocate twentyn-azure-central-us twentyn-worker-2
+```
+
+**Important**: stopping or deallocating a VM will wipe its ephemeral
+drive, which lives at `/mnt`.  *Data lost on an ephemeral drive is
+absolutely non-recoverable.* Use `/mnt` only for genuinely temporary
+data (like Spark work dirs).  Additional disks can be created and
+attached if the instance's default storage capacity is insufficient.
+
+The boot disk for a host, however, will survive so long as the VM is
+not deleted.  (We may be charged for that storage, but the boot disks
+are only a few GB so the cost will be small.)  When a host is not in
+use, it should be deallocated to halt billing; starting the host will
+attempt to acquire the necessary resources and start the machine.
+
+## Resizing an existing VM
+
+Assuming capacity is available and quotas are not exceeded, a VM can
+be resized, giving it more or less CPU and memory capacity as needed.
+
+**Important**: a VM must be stopped before it can be resized.
+Resizing a running host will cause it to stop, erasing all data on
+`/mnt`.
+
+The Azure CLI tools can be used to resize a VM:
+```
+azure vm show twentyn-azure-central-us twentyn-worker-2
+azure vm stop twentyn-azure-central-us twentyn-worker-2
+azure vm set -g twentyn-azure-central-us --vm-size Standard_DS12_v2 -n twentyn-worker-2
+azure vm start twentyn-azure-central-us twentyn-worker-2
+```
+
+Note that these commands explicitly stop and then start the VM being
+resized to make it clear what the `set` command will do implicitly.
+It also seems to be slightly faster to run the commands separately
+(particularly if they are to be run on many machines in parallel), but
+YMMV.
+
+## Creating and setting up VMs
+
+TODO
+
+For now, ask Mark for assistance.  There may already be machines available for you.
