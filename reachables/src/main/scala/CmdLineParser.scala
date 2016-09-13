@@ -57,6 +57,9 @@ class CmdLineParser(parent: String, args: Array[String], optDescs: List[OptDesc]
   def get(opt: OptDesc): String = get(opt.param)
   def get(option: String): String = getHasHelper[String](option, cmdline.getOptionValue)
 
+  def getMany(opt: OptDesc): List[String] = getMany(opt.param)
+  def getMany(option: String): List[String] = getHasHelper[Array[String]](option, cmdline.getOptionValues).toList
+
   def has(opt: OptDesc): Boolean = has(opt.param)
   def has(option: String): Boolean = getHasHelper[Boolean](option, cmdline.hasOption)
   
