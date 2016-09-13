@@ -155,6 +155,8 @@ object ChemicalSymbols {
     def -(that: MonoIsotopicMass) = new MonoIsotopicMass(this.initMass - that.initMass)
     // case when we might need to multiply by an integer: k molecules together. need combined mass
     def *(num: Int) = new MonoIsotopicMass(this.initMass * num)
+
+    def isIn(low: Double, high: Double): Boolean = truncated >= low && truncated <= high
   }
 
   object Helpers {

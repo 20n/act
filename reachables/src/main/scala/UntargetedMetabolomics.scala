@@ -50,7 +50,12 @@ class RetentionTime(private val time: Double) {
   // note that this will deliberately create collisions. as explained in `alignToBoundary` comment
   override def hashCode() = alignToBoundary().hashCode
 
-  override def toString(): String = this.time.toString
+  override def toString(): String = {
+    val timeToTwoDecimal = (math round (time * 100.0)) / 100.0
+    timeToTwoDecimal.toString
+  }
+
+  def isIn(low: Double, high: Double): Boolean = time >= low && time <= high
 }
 
 sealed trait Provenance
@@ -59,6 +64,7 @@ class ComputedData(val sources: List[Provenance]) extends Provenance
 
 class LCMSExperiment(val origin: Provenance, val peakSpectra: UntargetedPeakSpectra) {
   override def toString = peakSpectra.toString
+  def toStats = peakSpectra.toStats
 }
 
 class UntargetedPeak(
@@ -75,9 +81,23 @@ class UntargetedPeak(
 
 class UntargetedPeakSpectra(val peaks: Set[UntargetedPeak]) {
   override def toString = peaks.toString
+
+  def toStats = {
+    val topk = 40
+    val lowPks = peaks.toList.filter(p => p.rt.isIn(20, 200) && p.mz.isIn(50, 500))
+    val stats = Map(
+      "num peaks" -> peaks.size,
+      "top10 by snr" -> lowPks.sortWith(_.snr > _.snr).map(p => List(p.mz, p.rt, p.snr).mkString("\t")).take(topk).mkString("\n"),
+      "top10 by maxInt" -> lowPks.sortWith(_.maxInt > _.maxInt).map(p => List(p.mz, p.rt, p.maxInt).mkString("\t")).take(topk).mkString("\n"),
+      "top10 by integratedInt" -> lowPks.sortWith(_.integratedInt > _.integratedInt).map(p => List(p.mz, p.rt, p.integratedInt).mkString("\t")).take(topk).mkString("\n")
+    )
+    stats
+  }
 }
 
-sealed class XCMSCol(val id: String)
+sealed class XCMSCol(val id: String) {
+  override def toString = id
+}
 object MZ extends XCMSCol("mz")
 object RT extends XCMSCol("rt")
 object IntIntensity extends XCMSCol("into")
@@ -163,10 +183,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     // the lists coming in for the inputs are if for this `peak @ mz, rt` there are *many* peaks in the
     // original data in the aggregated hypothesis trace! This is slightly crazy case and will only happen
     // when the peak structure is very zagged. We average the values
-    def together(closeBy: List[Double]) = {
-      println(s"Woah! Multiple peaks close by: $closeBy")
-      closeBy.sum / closeBy.size
-    }
+    def together(closeBy: List[Double]) = closeBy.sum / closeBy.size
 
     val aggregateIntegratedInts = aggFn(together(hyp.map(_.integratedInt)), together(ctrl.map(_.integratedInt)))
     val aggregateMaxInts = aggFn(together(hyp.map(_.maxInt)), together(ctrl.map(_.maxInt)))
@@ -312,7 +329,9 @@ object UntargetedMetabolomics {
     // do the thing!
     val analysisRslt = experiment.analyze()
 
-    out.write(analysisRslt.toString)
+    val stats = analysisRslt.toStats
+    val statsStr = stats.toList.mkString("\n\n")
+    println(s"stats = $statsStr")
   }
 
   val optControls = new OptDesc(
