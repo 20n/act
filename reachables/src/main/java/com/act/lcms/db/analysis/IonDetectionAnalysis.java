@@ -22,7 +22,6 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.derby.impl.store.access.sort.Scan;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -163,6 +162,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
   private DB db;
   private Double progress;
 
+  // This constructor is for the coupled db use case
   public IonDetectionAnalysis(File lcmsDir, List<T> positiveWells, List<T> negativeWells, String plottingDirPath,
                               Set<Pair<String, Double>> setOfMassCharges, DB db) {
     this.lcmsDir = lcmsDir;
@@ -175,6 +175,7 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
     this.wellToScanFile = new HashMap<>();
   }
 
+  // This constructor is for the decoupled db use case
   public IonDetectionAnalysis(File lcmsDir, List<T> positiveWells, List<T> negativeWells, String plottingDirPath,
                               Set<Pair<String, Double>> setOfMassCharges, Map<LCMSWell, ScanFile> wellToScanFile) {
     this.lcmsDir = lcmsDir;

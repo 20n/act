@@ -151,6 +151,7 @@ public class AnalysisHelper {
    * @param kind The kind of plate the lcms was run over
    * @param scanFile The scan file being examined
    * @param well The well being analyzed
+   * @param plate The plate from which the well is being analyzed
    * @param useFineGrainedMZTolerance boolean for MZ tolerance
    * @param useSNRForPeakIdentification If true, signal-to-noise ratio will be used for peak identification.  If not, 
    *                                    peaks will be identified by intensity. 
@@ -164,7 +165,7 @@ public class AnalysisHelper {
       throws ParserConfigurationException, IOException, XMLStreamException, SQLException {
 
     if (plate == null) {
-      LOGGER.info("Plate information has not been provided. This means the caller does not access to a DB.");
+      LOGGER.warn("Plate information has not been provided.");
     }
 
     if (scanFile.getFileType() != ScanFile.SCAN_FILE_TYPE.NC) {
