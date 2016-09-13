@@ -14,6 +14,7 @@ import scala.collection.parallel.immutable.ParSeq
 
 object AssignRoToReactions {
   val LOGGER = LogManager.getLogger(getClass)
+
   def main(args: Array[String]) {
     //val chemaxonLicenseFile: String = args(0)
 
@@ -26,10 +27,12 @@ object AssignRoToReactions {
 
     //chemaxonLicenseFile: String)(predictionFiles: List[File])(reactionsFile: File
 
+    LOGGER.info("Loading in previous reaction information")
     val reactionInputFile = scala.io.Source.fromFile(reactionsFile)
     val reactions: List[ReactionInformation] = reactionInputFile.getLines().mkString.parseJson.convertTo[List[ReactionInformation]]
 
 
+    LOGGER.info(s"Loading all predictions in.  Total of ${predictionFiles.length}")
     val roPredictions: List[(Int, L2PredictionCorpus)] = predictionFiles.map(file => {
 
       val corpy = L2PredictionCorpus.readPredictionsFromJsonFile(file)
@@ -39,12 +42,13 @@ object AssignRoToReactions {
     })
 
     // Prefilter so only matching substrates are looked at
+    LOGGER.info("Starting to parse predictions for reactions that matched the projected RO.")
     val possibleReactions: ParSeq[(Int, List[ReactionInformation])]= roPredictions.par.map(roPrediction => {
       // Multiple predictions for a given RO
       val substrateInchis: List[Set[String]] = roPrediction._2.getCorpus.asScala.map(prediction => prediction.getSubstrateInchis.asScala.toSet).toList
 
 
-      // Only get reactions with matching substrates.  Each substrate => the same nubmer
+      // Only get reactions with matching input substrates.  We use a set so that order doesn't matter.
       val validSubstrateReactions = reactions.filter(reaction => substrateInchis.exists(s => equalSets(s, reaction.getSubstrates)))
 
       if (validSubstrateReactions.isEmpty) {
@@ -61,7 +65,9 @@ object AssignRoToReactions {
             // There exists a reaction that is fully contained within a predictedProduct set.
             productInchis.exists(predictedProduct => containsAllElements(predictedProduct, reaction.getProducts))
         )
-        LOGGER.info(s"Found ${reactionsThatMatchThisRo.length} matching reaction ${roPredictions._1}")
+        LOGGER.info(s"Found ${reactionsThatMatchThisRo.length} matching " +
+          s"reaction${if (reactionsThatMatchThisRo.length == 1) "" else "s"} for RO ${roPrediction._1}")
+
         (roPrediction._1, reactionsThatMatchThisRo)
       }
     })
