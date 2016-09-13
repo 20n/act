@@ -138,12 +138,12 @@ object ChemicalSymbols {
     // when `truncated` was typed as `Double` instead of `Long`. 
     private val truncated = roundedAndScaled()
 
-    def rounded(numDecimals: Int = defaultNumPlaces): Double = roundedAndScaled() * tolerance(numDecimals)
-    def roundedAndScaled(numDecimals: Int = defaultNumPlaces): Long = math round (initMass/tolerance(numDecimals))
-    def tolerance(numDecimals: Int): Double = math.pow(10, -numDecimals)
+    def rounded(numDec: Int = defaultNumPlaces): Double = roundedAndScaled(numDec) * tolerance(numDec)
+    def roundedAndScaled(numDec: Int = defaultNumPlaces): Long = math round (initMass/tolerance(numDec))
+    def tolerance(numDec: Int): Double = math.pow(10, -numDec)
 
     override def equals(that: Any) = that match { 
-      case that: MonoIsotopicMass => this.truncated == that.truncated
+      case that: MonoIsotopicMass => this.truncated.equals(that.truncated)
       case _ => false
     }
     override def hashCode() = truncated.hashCode
