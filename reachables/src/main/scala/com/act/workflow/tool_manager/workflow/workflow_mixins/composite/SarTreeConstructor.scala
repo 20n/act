@@ -218,5 +218,47 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     scoredInchis
   }
 
+  /**
+    * Score molecule based on SAR tree traversal.
+    *
+    * @param sarTree          The input SarTree to check against
+    * @param currentLevelList The remaining SarTreeNodes that haven't been invalidated.
+    * @param queryMolecule    Which molecule to check against the Sar Tree
+    *
+    * @return
+    */
+  def scoreInchiAgainstSarTree(sarTree: SarTree, currentLevelList: Seq[SarTreeNode])(queryMolecule: Molecule): Double = {
+    // Arbitrary score value
+    val baseAdd = 10.0
 
+    // Score every molecule and return the sum of their scores.
+    currentLevelList.map(scoreMolecule).sum
+
+    // Step 1: Figure out if a given node is a hit or a miss
+    def scoreMolecule(sarTreeNode: SarTreeNode): Double = {
+      val matchesSar = sarTreeNode.getSar.test(List[Molecule](queryMolecule))
+      baseAdd * (if (matchesSar) scoreHit(sarTreeNode) else scoreMiss(sarTreeNode))
+    }
+
+    def scoreHit(sarTreeNode: SarTreeNode): Double = {
+      val similarity = ChemicalSimilarity.calculateSimilarity(queryMolecule, sarTreeNode.getSubstructure)
+
+      // If a tree node doesn't have children, it is a leaf and therefore a chemical used to construct the SAR tree.
+      val sarTreeChildren: Seq[SarTreeNode] = sarTree.getChildren(sarTreeNode).toList
+
+      // Handle the leaf node uniquely.  Leaf node occurs when the children are empty.
+      if (sarTreeChildren.isEmpty) {
+        // Similarity of 1 means likely exact match (Hashing function not unique)
+        if (similarity >= 1) baseAdd else -(1 - similarity)
+      } else {
+        // Adding one adds a bit of weight to traversal (Deeper -> more score)
+        1 + scoreInchiAgainstSarTree(sarTree, sarTreeChildren)(queryMolecule)
+      }
+    }
+
+    // Score if SAR tree node is a miss
+    def scoreMiss(sarTreeNode: SarTreeNode): Double = {
+      ChemicalSimilarity.calculateSimilarity(queryMolecule, sarTreeNode.getSubstructure)
+    }
+  }
 }
