@@ -11,6 +11,10 @@ object MoleculeImporter {
   // Have a cache for each format.
   private val moleculeCache = TrieMap[MoleculeFormat.Value, TrieMap[String, Molecule]]()
 
+  def clearCache(): Unit = {
+    moleculeCache.keySet.foreach(key => moleculeCache.put(key, new TrieMap[String, Molecule]))
+  }
+
   // For java
   @throws[MolFormatException]
   def importMolecule(chemical: Chemical): Molecule = {
