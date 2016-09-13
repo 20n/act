@@ -44,6 +44,10 @@ object MoleculeFormat extends Enumeration {
     noStereoAromatizedSmarts -> smartsString
   )
 
+  def listPossibleFormats(): List[String] = {
+    values.map(_.toString).toList
+  }
+
   def getExportString(chemicalFormat: MoleculeFormat.Value): String = {
     exportMap(chemicalFormat)
   }

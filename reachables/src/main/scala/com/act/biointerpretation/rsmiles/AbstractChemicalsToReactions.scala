@@ -3,6 +3,7 @@ package com.act.biointerpretation.rsmiles
 import java.io.{BufferedWriter, File, FileWriter}
 
 import act.server.MongoDB
+import com.act.analysis.chemicals.molecules.MoleculeFormat
 import com.act.biointerpretation.l2expansion.L2InchiCorpus
 import com.act.biointerpretation.rsmiles.AbstractReactions.ReactionInformation
 import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
@@ -15,12 +16,13 @@ import scala.collection.JavaConversions._
 object AbstractChemicalsToReactions {
   val logger = LogManager.getLogger(getClass)
 
-  def calculateAbstractSubstrates(db: String = "marvin" , host: String = "localhost", port: Int = 27017)
+  def calculateAbstractSubstrates(moleculeFormat: MoleculeFormat.Value)
+                                 (db: String = "marvin" , host: String = "localhost", port: Int = 27017)
                                  (outputSubstrateFile: File, outputReactionCorpus: File, substrateCount: Int)
                                  (): Unit = {
     val db = Mongo.connectToMongoDatabase()
-    val abstractChemicals = AbstractChemicals.getAbstractChemicals(db)
-    val abstractReactions = AbstractReactions.getAbstractReactions(db)(abstractChemicals, substrateCount)
+    val abstractChemicals = AbstractChemicals.getAbstractChemicals(db, moleculeFormat)
+    val abstractReactions = AbstractReactions.getAbstractReactions(db, moleculeFormat)(abstractChemicals, substrateCount)
     logger.info(s"Found ${abstractReactions.size} matching reactions with $substrateCount substrates. " +
       s"Writing both the substrates and reactions to disk.")
     writeSubstrateStringsForSubstrateCount(db)(abstractReactions.seq.toList, outputSubstrateFile)
