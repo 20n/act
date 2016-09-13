@@ -12,12 +12,15 @@ kOMass <- 15.994915
 kChartLabelSizeFactor <- 1.3
 kLabelFactor <- 1.2
 
+k20logoLocation <- "20nlogo"
+kLCMSDataLocation <- "/Volumes/data-level1/lcms-ms1/"
+
 shinyServer(function(input, output, session) {
   
   output$logo <- renderImage({
     # Return a list containing the filename
-    list(src = "../../resources/20n.png",
-         contentType = 'image/png',
+    list(src = k20logoLocation,
+         contentType = "image/png",
          width = "200",
          height = "120",
          alt = "20n Logo")
@@ -27,7 +30,7 @@ shinyServer(function(input, output, session) {
   # Reactive value, loading all the scans in memory.
   # Recomputed only when filename changes
   full.data <- reactive({
-    filepath <- paste0('/mnt/data-level1/lcms-ms1/', input$filename)
+    filepath <- paste0(kLCMSDataLocation, input$filename)
     msfile <- openMSfile(filepath, backend = "netCDF")
     hd <- header(msfile)
     ms1 <- which(hd$msLevel == 1)
