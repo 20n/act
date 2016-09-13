@@ -3,20 +3,22 @@ library(plot3D)
 library(mzR)
 library(dplyr)
 
-kHMass <- 1.007276
-kNaMass <- 22.989771
-kLiMass <- 7.016004
-kKMass <- 38.963707
-kOMass <- 15.994915
-
 kChartLabelSizeFactor <- 1.3
 kLabelFactor <- 1.2
 
 k20logoLocation <- "20nlogo"
+kFatJarLocation <- "reachables-assembly-0.1.jar"
+
 kLCMSDataLocation <- "/Volumes/data-level1/lcms-ms1/"
 
 shinyServer(function(input, output, session) {
-  
+
+  sc=scalaInterpreter(kFatJarLocation)
+  kImportMS1 <- 'import com.act.lcms.MS1'
+  sc%~%kImportMS1
+  getIonMzFunctionDef <- 'MS1.computeIonMz(mass, MS1.ionDeltas.filter(i => i.getName.equals(mode)).head)'
+  getIonMz <- intpDef(sc, 'mass: Double, mode: String', getIonMzFunctionDef)
+    
   output$logo <- renderImage({
     # Return a list containing the filename
     list(src = k20logoLocation,
@@ -78,13 +80,7 @@ shinyServer(function(input, output, session) {
   
   target.mz <- reactive({
     target.mass <- input$target.monoisotopic.mass
-    switch(input$mode,
-           "M" = target.mass,
-           "M+H" = target.mass + kHMass,
-           "M-H" = target.mass - kHMass,
-           "M+Na" = target.mass + kNaMass,
-           "M+Li" = target.mass + kLiMass,
-           "M+H-H2O" = target.mass - kHMass - kOMass)
+    getIonMz(target.mass, input$mode)
   })
   
   output$plot <- renderPlot({
