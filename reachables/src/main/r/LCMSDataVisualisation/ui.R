@@ -1,3 +1,9 @@
+# ui.R defines the layout and display of the different app components.
+
+# The UI can render outputs computed by the server
+# (ex: plotOutput("plot", height = "700px") plots the output "plot" computed by server.R)
+# or define inputs that will be communicated with the server (ex: sliderInput("retention.time.range", ...))
+
 kModes <- c("M (use mass as target mz value)", "M+H", "M-H", "M+Na", "M+Li", "M+H-H2O")
 
 shinyUI(fluidPage(

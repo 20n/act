@@ -1,15 +1,31 @@
+# server.R performs the computations behind the scenes
+# It collects a list of inputs from ui.R and produces a list of output
+
+# Note that the R libraries "shiny" and "rscala" well as Scala should be installed on the machine.
+# To perform these tasks, please run in R:
+# install.packages(c("shiny", "rscala", "dplyr", "plot3D", "mzR"))
+# scalaInstall()
+
+# If package `mzR` fails to install, please follow the steps below:
+# source("https://bioconductor.org/biocLite.R") # try http:// if https:// URLs are not supported
+# biocLite("mzR")
+
 library(shiny)
 library(plot3D)
 library(mzR)
 library(dplyr)
+library(rscala)
 
 kChartLabelSizeFactor <- 1.3
 kLabelFactor <- 1.2
 
+# Finally, this assumes that two symlinks have been created and are located in the app directory:
+# reachables-assembly-0.1.jar -> symlink to a "fat jar" created through sbt assembly
+# 20nlogo -> symlink to the 20n logo in the resources directory
 k20logoLocation <- "20nlogo"
 kFatJarLocation <- "reachables-assembly-0.1.jar"
 
-kLCMSDataLocation <- "/Volumes/data-level1/lcms-ms1/"
+kLCMSDataLocation <- "/mnt/data-level1/lcms-ms1/"
 
 shinyServer(function(input, output, session) {
 
