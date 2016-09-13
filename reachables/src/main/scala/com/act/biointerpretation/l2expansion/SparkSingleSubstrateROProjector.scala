@@ -7,6 +7,7 @@ import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
+import com.act.biointerpretation.sars.{CharacterizedGroup, SarCorpus}
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.logging.log4j.LogManager
@@ -71,6 +72,28 @@ object compute {
     }
     (deltaTS, results)
   }
+
+  def run(licenseFileName: String, sar: CharacterizedGroup, molecules: List[Molecule], moleculeFormat: MoleculeFormat.Value): (Double, L2PredictionCorpus) = {
+    val startTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
+    val localLicenseFile = SparkFiles.get(licenseFileName)
+
+    LOGGER.info(s"Using license file at $localLicenseFile (file exists: ${new File(localLicenseFile).exists()})")
+    LicenseManager.setLicenseFile(localLicenseFile)
+
+    val singleGroupCorpus = new SarCorpus()
+    singleGroupCorpus.addCharacterizedGroup(sar)
+
+    val expander = new SingleSubstrateSarExpander(singleGroupCorpus, molecules.asJava,
+      new AllPredictionsGenerator(new ReactionProjector(moleculeFormat.toString), moleculeFormat.toString))
+
+    val results = expander.getPredictions()
+
+    val endTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
+    val deltaTS = (endTime.getMillis - startTime.getMillis).toDouble / MS_PER_S
+    (deltaTS, results)
+  }
+
+
 }
 
 object SparkSingleSubstrateROProjector {
@@ -85,7 +108,8 @@ object SparkSingleSubstrateROProjector {
   val OPTION_OUTPUT_DIRECTORY = "o"
   val OPTION_FILTER_FOR_SPECTROMETERY = "s"
   val OPTION_FILTER_REQUIRE_RO_NAMES = "n"
-  val OPTION_VALID_CHEMICAL_TYPE = "c"
+  val OPTION_VALID_CHEMICAL_TYPE = "v"
+  val OPTION_SAR_CORPUS_FILE = "c"
 
   def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -119,8 +143,13 @@ object SparkSingleSubstrateROProjector {
         longOpt("valid-chemical-types").
         hasArg.
         desc("A molecule string format. Currently valid types are inchi, stdInchi, smiles, and smarts.  " +
-          "By default, uses stdInchi which is a normal inchi, " +
-          "but with the settings \":SAbs,AuxNone,Woff\" also appended to clean up the inchi."),
+          s"By default, uses stdInchi which is the format \"${MoleculeFormat.getExportString(MoleculeFormat.stdInchi)}\"."),
+
+      CliOption.builder(OPTION_SAR_CORPUS_FILE).
+        longOpt("sar-corpus").
+        hasArg.
+        desc("A supplied file that contains a list of SARs.  " +
+          "These SARs will be used to project the input substrate list with the ROs associated to them."),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -182,19 +211,6 @@ object SparkSingleSubstrateROProjector {
       outputDir.mkdirs()
     }
 
-    val eros = new ErosCorpus()
-    eros.loadValidationCorpus()
-    val fullErosList = eros.getRos
-
-    LOGGER.info("Filtering down to only one substrate ROs.")
-    if (cl.hasOption(OPTION_FILTER_REQUIRE_RO_NAMES)) {
-      LOGGER.info("Filtering down to only ROs with names.")
-      eros.retainNamedRos()
-    }
-
-    val erosList = eros.getRos.asScala
-    LOGGER.info(s"Reduction in ERO list size: ${fullErosList.size} -> ${erosList.size}")
-
     // We set the global state for the exporter so we don't need to pass the format all the way down here.
     // Determine which formats are being used.
     val moleculeFormat: MoleculeFormat.Value = if (cl.hasOption(OPTION_VALID_CHEMICAL_TYPE)) {
@@ -215,7 +231,11 @@ object SparkSingleSubstrateROProjector {
     }
 
     val validMolecules: List[String] = Source.fromFile(substratesListFile).getLines().
-      filter(x => try { MoleculeImporter.importMolecule(x, moleculeFormat); true } catch { case e : Exception => false }).toList
+      filter(x => try {
+        MoleculeImporter.importMolecule(x, moleculeFormat); true
+      } catch {
+        case e: Exception => false
+      }).toList
     LOGGER.info(s"Loaded and validated ${validMolecules.size} InChIs from source file at $substratesListFile")
 
     val validatedMolecules = validMolecules.map(MoleculeImporter.importMolecule(_, moleculeFormat))
@@ -232,17 +252,59 @@ object SparkSingleSubstrateROProjector {
     spark.addFile(licenseFile)
     val licenseFileName = new File(licenseFile).getName
 
-    LOGGER.info("Building ERO RDD")
-    val eroRDD: RDD[Ero] = spark.makeRDD(erosList, erosList.size)
 
-    LOGGER.info("Starting execution")
-    // PROJECT!  Run ERO projection over all InChIs.
-    val resultsRDD: RDD[(Ero, Double, L2PredictionCorpus)] =
-      eroRDD.map(ero => {
-        val results = compute.run(licenseFileName, ero, validatedMolecules, moleculeFormat)
-        (ero, results._1, results._2)
-      })
+    /*
+      Do either projection over ROs or over RO + SARs that have been supplied.
+     */
+    val resultsRDD: RDD[SparkPredictionCorpus] = if (cl.hasOption(OPTION_SAR_CORPUS_FILE)) {
+      val sarFile = cl.getOptionValue(OPTION_SAR_CORPUS_FILE)
 
+      val sarCorpus = SarCorpus.readCorpusFromJsonFile(new File(sarFile))
+
+      val groupList: List[CharacterizedGroup] = sarCorpus.iterator().asScala.toList
+
+      val sarRDD: RDD[CharacterizedGroup] = spark.makeRDD(groupList, groupList.size)
+
+      val resultsRDD: RDD[SparkPredictionCorpus] =
+        sarRDD.map(sar => {
+          val results = compute.run(licenseFileName, sar, validatedMolecules, moleculeFormat)
+          new SparkPredictionCorpus(sar.getGroupName, results._1, results._2)
+        })
+      resultsRDD
+
+    } else {
+      val eros = new ErosCorpus()
+      eros.loadValidationCorpus()
+      val fullErosList = eros.getRos
+
+      LOGGER.info("Filtering down to only one substrate ROs.")
+      if (cl.hasOption(OPTION_FILTER_REQUIRE_RO_NAMES)) {
+        LOGGER.info("Filtering down to only ROs with names.")
+        eros.retainNamedRos()
+      }
+
+      val erosList = eros.getRos.asScala
+      LOGGER.info(s"Reduction in ERO list size: ${fullErosList.size} -> ${erosList.size}")
+
+      LOGGER.info("Building ERO RDD")
+      val eroRDD: RDD[Ero] = spark.makeRDD(erosList, erosList.size)
+
+      LOGGER.info("Starting execution")
+
+      // PROJECT!  Run ERO projection over all InChIs.
+      val resultsRDD: RDD[SparkPredictionCorpus] =
+        eroRDD.map(ero => {
+          val results = compute.run(licenseFileName, ero, validatedMolecules, moleculeFormat)
+          new SparkPredictionCorpus(s"Ero ${ero.getId}", results._1, results._2)
+        })
+
+      resultsRDD
+    }
+
+    handleProjectionTermination(resultsRDD, outputDir)
+  }
+
+  def handleProjectionTermination(resultsRDD: RDD[SparkPredictionCorpus], outputDir: File): Unit ={
     /* This next part represents us jumping through some hoops (that are possibly on fire) in order to make Spark do
      * the thing we want it to do: project in parallel but stream results back for storage partitioned by RO.
      *
@@ -278,28 +340,34 @@ object SparkSingleSubstrateROProjector {
      * had to call `collect()`.
      *
      * See http://stackoverflow.com/questions/31383904/how-can-i-force-spark-to-execute-code/31384084#31384084
-     * for more context on Spark's laziness. */
+     * for more context on Spark's laziness.
+     */
     val resultCount = resultsRDD.persist().count()
     LOGGER.info(s"Projection completed with $resultCount results")
 
     // Map over results and runtime, writing results to appropriate output files and collecting ids/runtime for reports.
-    val mapper: (Ero, Double, L2PredictionCorpus) => (Integer, Double) = (ero, runtime, projectionResults) => {
-      val outputFile = new File(outputDir, ero.getId.toString)
-      OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(outputFile, projectionResults)
-      LOGGER.info(s"Wrote results for ERO ${ero.getId} (${outputFile.getTotalSpace}B)")
-      (ero.getId, runtime)
+    val mapper: (SparkPredictionCorpus) => (String, Double) = (sparkPredictionCorpus: SparkPredictionCorpus) => {
+
+      val outputFile = new File(outputDir, sparkPredictionCorpus.id)
+
+      OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(outputFile, sparkPredictionCorpus.prediction)
+      LOGGER.info(s"Wrote results for ERO $id (${outputFile.getTotalSpace}.)")
+
+      (sparkPredictionCorpus.id, sparkPredictionCorpus.time)
     }
 
     // DO THE THING!  Run the mapper on all the executors over the projection results, and collect timing info.
 
     // Output results one at a time and collect timing info.
-    val timingPairs: List[(Integer, Double)] = resultsRDD.toLocalIterator.map(t => mapper(t._1, t._2, t._3)).toList
+    val timingPairs: List[(String, Double)] = resultsRDD.toLocalIterator.map(t => mapper(SparkPredictionCorpus)).toList
 
     // Release the RDD now that we're done reading it.
     resultsRDD.unpersist()
 
     LOGGER.info("Projection execution time report:")
-    timingPairs.sortWith((a, b) => b._2 < a._2).foreach(pair => LOGGER.info(f"ERO ${pair._1}%4d: ${pair._2}%.3fs"))
+    timingPairs.sortWith((a, b) => b._2 < a._2).foreach(pair => LOGGER.info(f"Sample ${pair._1}: ${pair._2}%.3fs"))
     LOGGER.info("Done")
   }
+
+  case class SparkPredictionCorpus(id: String, time: Double, prediction: L2PredictionCorpus)
 }

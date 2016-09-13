@@ -12,12 +12,14 @@ import org.apache.log4j.LogManager
 
 class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
 
-  val OPTION_DATABASE = "d"
-  val OPTION_WORKING_DIRECTORY = "w"
-  val OPTION_SUBSTRATE_COUNTS = "s"
   val OPTION_USE_CACHED_RESULTS = "c"
-  val OPTION_SPARK_MASTER = "m"
-  val OPTION_CHEMAXON_LICENSE = "l"
+  val OPTION_DATABASE =           "d"
+  val OPTION_METABOLITE_FILE =    "f"
+  val OPTION_CHEMAXON_LICENSE =   "l"
+  val OPTION_SPARK_MASTER =       "m"
+  val OPTION_SUBSTRATE_COUNTS =   "s"
+  val OPTION_WORKING_DIRECTORY =  "w"
+
   private val LOGGER = LogManager.getLogger(getClass)
 
   override def getCommandLineOptions: Options = {
@@ -45,6 +47,18 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
           "filtering the reactions by substrate.  For example, \"1,2\" would mean that 1 and 2 " +
           "substrate reactions will be written to a file."),
 
+      CliOption.builder(OPTION_CHEMAXON_LICENSE).
+        longOpt("chemaxon-license-file").
+        hasArg.
+        required.
+        desc("Location of the \"license_Start-up.cxl\" file."),
+
+      CliOption.builder(OPTION_METABOLITE_FILE)
+        .hasArg
+        .longOpt("metabolite-file")
+        .required
+        .desc("The absolute path to the metabolites file."),
+
       CliOption.builder(OPTION_SPARK_MASTER).
         longOpt("spark-master").
         desc("Where to look for the spark master connection. " +
@@ -55,11 +69,8 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
         desc("If this flag is enabled, we will check if the file that would be " +
           "made currently exists and use that file wherever possible."),
 
-      CliOption.builder(OPTION_CHEMAXON_LICENSE).
-        longOpt("chemaxon-license-file").
-        hasArg.
-        required.
-        desc("Location of the \"license_Start-up.cxl\" file."),
+
+
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -72,28 +83,49 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
   }
 
   override def defineWorkflow(cl: CommandLine): Job = {
-    // Make sure we have an assembled JAR available.
-    val sparkMaster = cl.getOptionValue(OPTION_SPARK_MASTER, "spark://10.0.20.19:7077")
-
-    headerJob.thenRun(SparkWrapper.sbtAssembly(useCached = false))
-
+    /*
+      Setup Files
+     */
     val chemaxonLicense = new File(cl.getOptionValue(OPTION_CHEMAXON_LICENSE))
-    require(chemaxonLicense.exists(), s"Chemaxon license does not exist as the supplied location.  " +
-      s"File path supplied was ${chemaxonLicense.getAbsolutePath}")
+    require(chemaxonLicense.exists() && chemaxonLicense.isFile,
+      s"Chemaxon license does not exist as the supplied location. " +
+        s"File path supplied was ${chemaxonLicense.getAbsolutePath}")
 
     val outputDirectory = new File(cl.getOptionValue(OPTION_WORKING_DIRECTORY))
     require(!outputDirectory.isFile, "Working directory must be a directory, not a file.")
     if (!outputDirectory.exists()) outputDirectory.mkdirs()
 
-    // Default marvin
+    val metaboliteFile = new File(cl.getOptionValue(OPTION_METABOLITE_FILE))
+    require(metaboliteFile.exists() && metaboliteFile.isFile,
+      s"Metabolite file must exist. File path supplied was ${metaboliteFile.getAbsolutePath}")
+
+    /*
+     Setup database
+     */
     val database = cl.getOptionValue(OPTION_DATABASE, "marvin")
 
+
+    /*
+     Setup Spark
+     */
+    val singleSubstrateRoProjectorClassPath = "com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector"
+    val sparkMaster = cl.getOptionValue(OPTION_SPARK_MASTER, "spark://10.0.20.19:7077")
+    // Tries to assemble JAR for spark export.  Step 1 towards Skynet is self-assembly of jar files.
+    headerJob.thenRun(SparkWrapper.sbtAssembly(useCached = cl.hasOption(OPTION_USE_CACHED_RESULTS)))
+
+
+    /*
+      Setup the options for which substrate counts
+      we'll be looking at and partially applies the abstract reaction function.
+     */
+    val substrateCounts: List[Int] = cl.getOptionValues(OPTION_SUBSTRATE_COUNTS).map(_.toInt).toList
     val individualSubstrateFunction = AbstractChemicalsToReactions.calculateAbstractSubstrates(database)_
 
-    val substrateCounts: List[Int] = cl.getOptionValues(OPTION_SUBSTRATE_COUNTS).map(_.toInt).toList
+    // Create all the jobs for all the substrates
     val jobs = substrateCounts.map(count => {
-
-      // Step 1: Abstract chemicals => Abstract reactions substrate list
+      /*
+        Step 1: Abstract chemicals => Abstract reactions substrate list
+       */
       val substratesOutputFileName = s"FromDatabase$database.AbstractReactions$count.Substrates.txt"
       val reactionsOutputFileName = s"FromDatabase$database.AbstractReactions$count.txt"
 
@@ -109,7 +141,9 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
         ScalaJobWrapper.wrapScalaFunction("Abstract chemicals to substrate list", appliedFunction)
       }
 
-      // Step 2: Spark submit substrate list => RO projection
+      /*
+        Step 2: Spark submit substrate list => RO projection
+       */
       val moleculeFormat = MoleculeFormat.smarts
       val projectionDir = new File(outputDirectory, "ProjectionResults")
       if (!projectionDir.exists()) projectionDir.mkdirs()
@@ -120,42 +154,64 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
         "--substrates-list", substrateListOutputFile.getAbsolutePath,
         "-o", roProjectionsOutputFileDirectory.getAbsolutePath,
         "-l", chemaxonLicense.getAbsolutePath,
-        "-c", moleculeFormat.toString
+        "-v", moleculeFormat.toString
       )
 
-      val singleSubstrateRoProjectorClassPath = "com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector"
-      // Check if class path exists.
-      Class.forName(singleSubstrateRoProjectorClassPath)
 
       val sparkRoProjection = SparkWrapper.runClassPath(
         singleSubstrateRoProjectorClassPath,
         sparkMaster,
         roProjectionArgs,
-        memory = "12G"
+        memory = "8G",
+        cores = 1
       )
 
       abstractChemicalsToSubstrateListJob.thenRun(sparkRoProjection)
 
-      // Step 3: Spark submit match projections to input reactions
-      val roAssignmentOutputFileName = new File(outputDirectory, s"FromDatabase$database.AbstractReactions$count.RoAssignments.json")
+      /*
+        Step 3: Spark submit match projections to input reactions
+       */
+      val roAssignmentDirectory = new File(outputDirectory, "RoAssignment")
+      if (!roAssignmentDirectory.exists()) roAssignmentDirectory.mkdirs()
+      val roAssignmentOutputFileName = new File(roAssignmentDirectory, s"FromDatabase$database.AbstractReactions$count.RoAssignments.json")
       val reactionAssigner =
         ReactionRoAssignment.assignRoToReactions(roProjectionsOutputFileDirectory, reactionListOutputFile, roAssignmentOutputFileName)_
 
       abstractChemicalsToSubstrateListJob.thenRun(ScalaJobWrapper.wrapScalaFunction("Ro Assignment to Reactions", reactionAssigner))
 
-      // Step 4: Construct SARs from matching reactions
-      val sarCorpusOutputFileName = "output.json"
-      val sarCorpusOutputFile = new File(outputDirectory, sarCorpusOutputFileName)
-      val constructSars = ConstructSarsFromAbstractReactions.sarConstructor(roAssignmentOutputFileName, sarCorpusOutputFile, moleculeFormat) _
+      /*
+        Step 4: Construct SARs from matching reactions
+       */
+      val sarCorpusDirectory = new File(outputDirectory, "SarCorpus")
+      if (!sarCorpusDirectory.exists()) sarCorpusDirectory.mkdirs()
+      val sarCorpusOutputFileName = "sarCorpusOutput.json"
+      val sarCorpusOutputFile = new File(sarCorpusDirectory, sarCorpusOutputFileName)
+      val constructSars =
+        ConstructSarsFromAbstractReactions.sarConstructor(roAssignmentOutputFileName, sarCorpusOutputFile, moleculeFormat) _
 
       abstractChemicalsToSubstrateListJob.thenRun(ScalaJobWrapper.wrapScalaFunction("Sar Constructor", constructSars))
 
-      // Step 5: Project RO + SAR over L3
+      /*
+        Step 5: Project RO + SAR over L3
+       */
+      val l3ProjectionOutputDirectory = new File(outputDirectory, "L3Projections")
+      if (!l3ProjectionOutputDirectory.exists()) l3ProjectionOutputDirectory.mkdirs()
+      val l3ProjectionArgs = List(
+        "--substrates-list", metaboliteFile.getAbsolutePath,
+        "-o", l3ProjectionOutputDirectory.getAbsolutePath,
+        "-l", chemaxonLicense.getAbsolutePath,
+        "-v", moleculeFormat.toString,
+        "-c", sarCorpusOutputFile.getAbsolutePath
+      )
 
-
-
-
-
+      val l3RoPlusSarProjection = SparkWrapper.runClassPath(
+        singleSubstrateRoProjectorClassPath,
+        sparkMaster,
+        l3ProjectionArgs,
+        memory = "4G",
+        cores = 1
+      )
+      abstractChemicalsToSubstrateListJob.thenRun(l3RoPlusSarProjection)
 
 
       abstractChemicalsToSubstrateListJob
