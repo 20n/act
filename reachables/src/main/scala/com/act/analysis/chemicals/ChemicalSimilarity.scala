@@ -2,6 +2,7 @@ package com.act.analysis.chemicals
 
 import chemaxon.descriptors.{SimilarityCalculator, SimilarityCalculatorFactory}
 import chemaxon.struc.Molecule
+import com.act.analysis.chemicals.molecules.MoleculeConversions
 import org.apache.log4j.LogManager
 
 object ChemicalSimilarity {
