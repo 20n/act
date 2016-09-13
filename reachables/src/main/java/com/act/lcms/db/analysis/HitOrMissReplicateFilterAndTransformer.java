@@ -51,11 +51,12 @@ public class HitOrMissReplicateFilterAndTransformer extends HitOrMissFilterAndTr
       Double averageIntensity = intensityValues.stream().reduce(0.0, (accum, newVal) -> accum + newVal) / intensityValues.size();
       Double maxIntensity = intensityValues.stream().reduce(Double.MIN_VALUE, (accum, newVal) -> Math.max(accum, newVal));
       Double standardDeviation = sd(intensityValues, averageIntensity);
+      Double minSnr = snrValues.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal));
 
       Integer indexOfMinIntensityReplicate = intensityValues.indexOf(minIntensity);
 
       // The SNR and Time values will be the copy of the replicate with the lowest intensity value.
-      result.setSnr(snrValues.get(indexOfMinIntensityReplicate));
+      result.setSnr(minSnr);
       result.setIntensity(minIntensity);
       result.setTime(timeValues.get(indexOfMinIntensityReplicate));
       result.setAverageIntensity(averageIntensity);
