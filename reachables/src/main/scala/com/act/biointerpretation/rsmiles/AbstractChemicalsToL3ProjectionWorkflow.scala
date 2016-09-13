@@ -136,7 +136,10 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       abstractChemicalsToSubstrateListJob.thenRun(sparkRoProjection)
 
       // Step 3: Spark submit match projections to input reactions
-
+      val roAssignmentOutputFileName = new File(outputDirectory, s"FromDatabase$database.AbstractReactions$count.RoAssignments.json")
+      val reactionAssigner =
+        ReactionRoAssignment.assignRoToReactions(roProjectionsOutputFileDirectory, reactionListOutputFile, roAssignmentOutputFileName)_
+      abstractChemicalsToSubstrateListJob.thenRun(ScalaJobWrapper.wrapScalaFunction("Ro Assignment to Reactions", reactionAssigner))
 
       // Step 4: Construct SARs from matching reactions
 
