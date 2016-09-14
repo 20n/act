@@ -4,6 +4,7 @@ import chemaxon.struc.Molecule;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -16,7 +17,7 @@ import java.util.function.Predicate;
     @JsonSubTypes.Type(value = OneSubstrateCarbonCountSar.class, name = "CarbonCount"),
     @JsonSubTypes.Type(value = NoSar.class, name = "NoSar"),
 })
-public interface Sar extends Predicate<List<Molecule>> {
+public interface Sar extends Predicate<List<Molecule>>, Serializable {
 
   /**
    * Test a given list of substrates to see whether this SAR will accept them.
