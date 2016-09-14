@@ -10,7 +10,7 @@ import scala.collection.parallel.immutable.ParMap
 // Format information be found at https://docs.chemaxon.com/display/docs/Molecule+Formats
 object MoleculeFormat extends Enumeration {
 
-  private val cleaningSeparator = ">"
+  private val cleaningSeparator = "."
   private val LOGGER = LogManager.getLogger(getClass)
 
   private val inchiString = "inchi"
