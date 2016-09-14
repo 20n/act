@@ -84,10 +84,13 @@ object MoleculeFormat extends Enumeration {
           try {
             Option(CleaningOptions.withName(cleaningSetting))
           } catch {
-            case e: NoSuchElementException =>
-              LOGGER.warn(s"The setting '$cleaningSetting' was not available as a cleaning format.  " +
-                s"Continuing the run with only the valid settings.")
-              None
+            case e: NoSuchElementException => {
+              val message = "The setting '$cleaningSetting' was not available as a cleaning format.  " +
+                s"Continuing the run with only the valid settings."
+
+              LOGGER.error(message)
+              throw new NoSuchElementException (message)
+            }
           }
         })
 
