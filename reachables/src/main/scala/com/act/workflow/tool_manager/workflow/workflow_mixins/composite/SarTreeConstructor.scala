@@ -231,9 +231,6 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     // Arbitrary score value
     val baseAdd = 10.0
 
-    // Score every molecule and return the sum of their scores.
-    currentLevelList.map(scoreMolecule).sum
-
     // Step 1: Figure out if a given node is a hit or a miss
     def scoreMolecule(sarTreeNode: SarTreeNode): Double = {
       val matchesSar = sarTreeNode.getSar.test(List[Molecule](queryMolecule))
@@ -261,5 +258,8 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     def scoreMiss(sarTreeNode: SarTreeNode): Double = {
       ChemicalSimilarity.calculateSimilarity(queryMolecule, sarTreeNode.getSubstructure)
     }
+
+    // Score every molecule and return the sum of their scores.
+    currentLevelList.map(scoreMolecule).sum
   }
 }
