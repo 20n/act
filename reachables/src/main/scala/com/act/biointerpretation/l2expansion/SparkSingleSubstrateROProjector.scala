@@ -261,15 +261,20 @@ object SparkSingleSubstrateROProjector {
     val resultsRDD: RDD[SparkPredictionCorpus] = if (cl.hasOption(OPTION_SAR_CORPUS_FILE)) {
       val sarFile = cl.getOptionValue(OPTION_SAR_CORPUS_FILE)
 
-      val sarCorpus = SarCorpus.readCorpusFromJsonFile(new File(sarFile))
+      // Add the corpus file to spark so it can distribute and we can read in at each node.
+      spark.addFile(sarFile)
 
+      // Get the individual groups
+      val sarCorpus = SarCorpus.readCorpusFromJsonFile(new File(sarFile))
       val groupList: List[CharacterizedGroup] = sarCorpus.iterator().asScala.toList
 
-      val sarRDD: RDD[CharacterizedGroup] = spark.makeRDD(groupList, groupList.size)
+      // We map the indices because the CharacterizedGroup isn't serializable.
+      val sarRDD: RDD[Int] = spark.makeRDD(groupList.indices, groupList.size)
 
 
       val resultsRDD: RDD[SparkPredictionCorpus] =
-        sarRDD.map(sar => {
+        sarRDD.map(sarIndex => {
+          val sar: CharacterizedGroup = SarCorpus.readCorpusFromJsonFile(new File(sarFile)).iterator().asScala.toList(sarIndex)
           val results = compute.run(licenseFileName, sar, validatedMolecules, moleculeFormat)
           new SparkPredictionCorpus(sar.getGroupName, results._1, results._2)
         })
