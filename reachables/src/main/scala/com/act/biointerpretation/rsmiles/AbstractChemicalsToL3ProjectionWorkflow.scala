@@ -74,8 +74,8 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
         longOpt("valid-chemical-types").
         hasArg.
         desc("A molecule string format. Currently valid types are inchi, stdInchi, smiles, and smarts.  " +
-          s"By default, uses noStereoAromatizedSmarts which " +
-          s"is the format '${MoleculeFormat.getExportString(MoleculeFormat.noStereoAromatizedSmarts.value)}'.  " +
+          s"By default uses the format '${MoleculeFormat.getExportString(MoleculeFormat.strictNoStereoInchi.value)}'.  " +
+          s"Only InChI based formats are allowed for this workflow." +
           s"Possible values are: \n${MoleculeFormat.listPossibleFormats().mkString("\n")}"),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
@@ -122,7 +122,8 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
     /*
       Format currently used for the molecular transitions
      */
-    val moleculeFormatString = cl.getOptionValue(OPTION_VALID_CHEMICAL_TYPE, MoleculeFormat.noStereoAromatizedSmarts.toString)
+    val moleculeFormatString = cl.getOptionValue(OPTION_VALID_CHEMICAL_TYPE, MoleculeFormat.strictNoStereoInchi.toString)
+    require(moleculeFormatString.toLowerCase.contains("inchi"), "Format type for this is required to be InChI.")
 
     val moleculeFormat = MoleculeFormat.getName(moleculeFormatString)
 
