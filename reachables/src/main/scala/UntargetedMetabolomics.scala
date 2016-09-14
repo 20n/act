@@ -13,7 +13,7 @@ class RetentionTime(private val time: Double) {
   // Equality: We check for time differences within drift
 
   // Default drift allowed is emperically picked based on observations over experimental data
-  private val driftTolerated = 3.0 // seconds
+  private val driftTolerated = 5.0 // seconds
 
   // This function is a helper to `equals`
   // It tests whether two values are within the range of experimental drift we allow
@@ -59,7 +59,7 @@ class UntargetedPeakSpectra(val peaks: Set[UntargetedPeak]) {
   override def toString = peaks.toString
 
   def toStats = {
-    val topk = 100
+    val topk = 50
     val filterMzRt = false
     def mzRtInRange(p: UntargetedPeak) = {
       if (filterMzRt)
@@ -152,7 +152,6 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
         judgedPeaks match {
           case None => None
           case Some((integr, max, snr)) => {
-            println(s"peak: $peak")
             Some(new UntargetedPeak(mz, rt, integr, max, snr))
           }
         }
@@ -198,7 +197,6 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     // signal in control identical to hypothesis: aggFn = 1.0 => valleyShape = 0
     // signal in hypothesis much lower or much higher than control: aggFn < 0.8 || aggFn > 1.2 => valleyShape > 1.0
     if (valleyShape(aggregateIntegratedInts) > 1.0) {
-      println(s"Calculating outlying chars:\nhypo = $hyp\nctrl = $ctrl")
       Some((aggregateIntegratedInts, aggregateMaxInts, aggregateSnrs))
     } else {
       None
@@ -239,22 +237,30 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
 
   type PeakAt = (MonoIsotopicMass, RetentionTime)
 
-  def intersect(peaksA: Set[PeakAt], peaksB: Set[PeakAt]) = {
-    // We have MonoIsotopicMass and RetentionTime defined such
-    // that they define equals and hashCode properly to equate 
-    // elements that should look identical. 
-    // * Equals:
-    //    MonoIsotopicMass answers equals to values if they match 
+  def intersect(peaksA: Set[PeakAt], peaksB: Set[PeakAt]) = timer {
+    // We have MonoIsotopicMass and RetentionTime with equals properly defined
+    // MonoIsotopicMass has both equals and hashCode. RetentionTime only has
+    // equals that finds things in the tolerated drigs
+    // *  MonoIsotopicMass answers equals to values if they match 
     //      upto a certain decimal position.
-    //    RetentionTime answers equals to values if they are
+    // *  RetentionTime answers equals to values if they are
     //      within a certain drift apart.
-    // * HashCode:
-    //    MonoIsotopicMass hashes values to the same if they match
-    //      upto a certain decimal position.
-    //    RetentionTime hashes values to the same if they are "approximately"
-    //      drift apart. This may cause collisions on values that are
-    //      not exactly equal, but equality will diambiguate.
-    peaksA.intersect(peaksB)
+
+    val mzsInA = peaksA.map(_._1)
+    val mzsInB = peaksB.map(_._1)
+    // set'intersect over MonoIsotopicMass will be fine, we have hashCode defined for it
+    val mzsInBoth = mzsInA.intersect(mzsInB)
+
+    // given an mz, get lists of peaks in both sets that have ~equal mz, and then
+    // n^2 compare each of the pulled peaks to see if they also ~match on retention time
+    def pullPeaksInBoth(mz: MonoIsotopicMass): Set[PeakAt] = {
+      val a = peaksA.filter(_._1.equals(mz))
+      val b = peaksB.filter(_._1.equals(mz))
+      val common = for (pa <- a; pb <- b if pa.equals(pb)) yield pa
+      common
+    }
+
+    mzsInBoth.flatMap(pullPeaksInBoth)
   }
 
   def getAlignedPeaks(traces: List[LCMSExperiment]) = {
@@ -289,6 +295,13 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
 
   def peakKv(peak: UntargetedPeak): (UntargetedPeak, PeakAt) = peak -> (peak.mz, peak.rt)
 
+  def timer[T](blk: => T): T = {
+    val start = System.nanoTime()
+    val rslt = blk
+    val end = System.nanoTime()
+    println(s"Timed: ${(end - start)/1000000000.0} seconds")
+    rslt
+  } 
 
 }
 
@@ -382,6 +395,7 @@ object UntargetedMetabolomics {
     val wt = (1 to 3).toList.map(dataForWell("B")).map(fullLoc)
     val df = (1 to 3).toList.map(dataForWell("A")).map(fullLoc)
     val dm = (1 to 3).toList.map(dataForWell("C")).map(fullLoc)
+    val dmdf = df ++ dm
 
     val (wt1, wt2, wt3) = (wt(0), wt(1), wt(2))
     val (df1, df2, df3) = (df(0), df(1), df(2))
@@ -391,6 +405,10 @@ object UntargetedMetabolomics {
     // d{M,F}{1,2,3} = disease line {M,F} replicates 1, 2, 3
     // each test is specified as (controls, hypothesis, num_peaks_min, num_peaks_max) inclusive both
     val cases = List(
+
+      // Check what is commonly over/under expressed in diseased samples
+      // Woa! This is not really a test case. This is the final analysis!
+      ("wt-dmdf", wt, dmdf, 100, 130), // 115 RT=3.0, 123 RT=5.0 
       
       // consistency check: hypothesis same as control => no peaks should be differentially identified
       ("wt1-wt1", List(wt1), List(wt1), 0, 0),
@@ -406,16 +424,17 @@ object UntargetedMetabolomics {
       ("df-df", df, df, 0, 0),
       
       // how well does the differential calling work over a single sample of hypothesis and control
-      ("wt1-df1", List(wt1), List(df1), 1, 500),
-      ("wt1-df1", List(wt1), List(dm1), 1, 500),
+      ("wt1-df1", List(wt1), List(df1), 500, 520), // 515
+      ("wt1-dm1", List(wt1), List(dm1), 450, 500), // 461
       
       // peaks that are differentially expressed in diseased samples compared to the wild type
-      ("wt-dm", wt, dm, 1, 200),
-      ("wt-df", wt, df, 1, 200),
+      ("wt-dm", wt, dm, 1, 200), // 152
+      ("wt-df", wt, df, 1, 200), // 181
       
       // next two: what is in one diseases samples and not in the other?
-      ("dm-df", dm, df, 1, 200),
-      ("df-dm", df, dm, 1, 200)
+      ("dm-df", dm, df, 1, 200), // 146
+      ("df-dm", df, dm, 1, 200)  // 151
+
     )
 
     val verbose = true
