@@ -135,11 +135,13 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
 
     // Create all the jobs for all the substrates
     val jobs = substrateCounts.map(count => {
+      val uniqueId = s"db.$database.subCount.$count.format.$moleculeFormatString"
+
       /*
         Step 1: Abstract chemicals => Abstract reactions substrate list
        */
-      val substratesOutputFileName = s"FromDatabase$database.AbstractReactions$count.Substrates.txt"
-      val reactionsOutputFileName = s"FromDatabase$database.AbstractReactions$count.txt"
+      val substratesOutputFileName = s"$uniqueId.Substrates.txt"
+      val reactionsOutputFileName = s"$uniqueId.txt"
 
       val substrateListOutputFile = new File(outputDirectory, substratesOutputFileName)
       val reactionListOutputFile = new File(outputDirectory, reactionsOutputFileName)
@@ -159,7 +161,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       val projectionDir = new File(outputDirectory, "ProjectionResults")
       if (!projectionDir.exists()) projectionDir.mkdirs()
 
-      val roProjectionsOutputFileDirectory = new File(projectionDir, s"Substrates_${count}_db_${database}_AbstractReactionRoProjections")
+      val roProjectionsOutputFileDirectory = new File(projectionDir, s"$uniqueId.AbstractReactionRoProjections")
 
       val roProjectionArgs = List(
         "--substrates-list", substrateListOutputFile.getAbsolutePath,
@@ -168,14 +170,19 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
         "-v", moleculeFormat.toString
       )
 
-
-      val sparkRoProjection = SparkWrapper.runClassPath(
-        singleSubstrateRoProjectorClassPath,
-        sparkMaster,
-        roProjectionArgs,
-        memory = "8G",
-        cores = 1
-      )
+      // We assume files in = previous run
+      val hasCachedResultsAbstractRoProjection = roProjectionsOutputFileDirectory.listFiles().length > 0
+      val sparkRoProjection = if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && hasCachedResultsAbstractRoProjection) {
+        ScalaJobWrapper.wrapScalaFunction("Using cached spark abstract reaction RO projections", () => Unit)
+      } else {
+        SparkWrapper.runClassPath(
+          singleSubstrateRoProjectorClassPath,
+          sparkMaster,
+          roProjectionArgs,
+          memory = "8G",
+          cores = 1
+        )
+      }
 
       abstractChemicalsToSubstrateListJob.thenRun(sparkRoProjection)
 
@@ -184,26 +191,40 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
        */
       val roAssignmentDirectory = new File(outputDirectory, "RoAssignment")
       if (!roAssignmentDirectory.exists()) roAssignmentDirectory.mkdirs()
-      val roAssignmentOutputFileName = new File(roAssignmentDirectory, s"FromDatabase$database.AbstractReactions$count.RoAssignments.json")
-      val reactionAssigner =
-        ReactionRoAssignment.assignRoToReactions(roProjectionsOutputFileDirectory, reactionListOutputFile, roAssignmentOutputFileName)_
 
-      abstractChemicalsToSubstrateListJob.thenRun(ScalaJobWrapper.wrapScalaFunction("Ro Assignment to Reactions", reactionAssigner))
+      val roAssignmentOutputFileName = new File(roAssignmentDirectory, s"$uniqueId.RoAssignments.json")
 
+      val reactionAssigner = if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && roAssignmentOutputFileName.exists()) {
+        ScalaJobWrapper.wrapScalaFunction("Using cached ro assignments", () => Unit)
+      } else {
+        ReactionRoAssignment.assignRoToReactions(roProjectionsOutputFileDirectory, reactionListOutputFile, roAssignmentOutputFileName) _
+        abstractChemicalsToSubstrateListJob.thenRun(ScalaJobWrapper.wrapScalaFunction("Ro Assignment to Reactions", reactionAssigner))
+      }
       /*
         Step 4: Construct SARs from matching reactions
        */
       val sarCorpusDirectory = new File(outputDirectory, "SarCorpus")
       if (!sarCorpusDirectory.exists()) sarCorpusDirectory.mkdirs()
-      val sarCorpusOutputFileName = "sarCorpusOutput.json"
+      val sarCorpusOutputFileName = s"$uniqueId.sarCorpusOutput.json"
       val sarCorpusOutputFile = new File(sarCorpusDirectory, sarCorpusOutputFileName)
-      val constructSars =
-        ConstructSarsFromAbstractReactions.sarConstructor(roAssignmentOutputFileName, sarCorpusOutputFile, moleculeFormat) _
+      val constructSars = ConstructSarsFromAbstractReactions.sarConstructor(
+        roAssignmentOutputFileName, sarCorpusOutputFile, moleculeFormat) _
 
-      abstractChemicalsToSubstrateListJob.thenRun(ScalaJobWrapper.wrapScalaFunction("Sar Constructor", constructSars))
+
+
+      val constructedSarJob =
+        if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && sarCorpusOutputFile.exists()) {
+          ScalaJobWrapper.wrapScalaFunction("Using cached SAR corpus.", () => Unit)
+      } else {
+        ScalaJobWrapper.wrapScalaFunction("Sar Constructor", constructSars)
+      }
+
+      abstractChemicalsToSubstrateListJob.thenRun(constructedSarJob)
 
       /*
         Step 5: Project RO + SAR over L3
+
+        Don't cache this step as it is the last one and would make everything pointless otherwise.
        */
       val l3ProjectionOutputDirectory = new File(outputDirectory, "L3Projections")
       if (!l3ProjectionOutputDirectory.exists()) l3ProjectionOutputDirectory.mkdirs()
