@@ -248,9 +248,9 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
 
       // Handle the leaf node uniquely.  Leaf node occurs when the children are empty.
       if (sarTreeChildren.isEmpty) {
-        // Similarity of 1 means likely exact match (Hashing function not unique)
-        // We take a number close to 1 to allow for some imprecision
-        if (similarity >= 0.999) baseAdd else similarity
+        // Similarity 1 means we give full points, otherwise we give a quickly 
+        // decreasing amount as the molecules increase in distance from each other.
+        baseAdd * Math.pow(similarity, 2.0)
       } else {
         // Adding one adds a bit of weight to traversal (Deeper -> more score)
         1 + scoreInchiAgainstSarSubtree(sarTree, sarTreeChildren)(queryMolecule)
