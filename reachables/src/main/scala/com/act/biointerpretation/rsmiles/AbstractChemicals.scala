@@ -5,6 +5,7 @@ import java.io.Serializable
 import act.server.MongoDB
 import chemaxon.formats.MolFormatException
 import chemaxon.marvin.io.MolExportException
+import com.act.analysis.chemicals.molecules.MoleculeFormat.CleaningOptions
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities}
 import com.mongodb.DBObject
@@ -14,6 +15,10 @@ import scala.collection.parallel.immutable.{ParMap, ParSeq}
 
 object AbstractChemicals {
   val logger = LogManager.getLogger(getClass)
+
+  // Chemaxon technically uses smarts when we say Smiles, so we just make it explicit here.
+  val cleanSmartsFormat = new MoleculeFormat.MoleculeFormatType(MoleculeFormat.smarts.value,
+    List(CleaningOptions.neutralize, CleaningOptions.clean2d, CleaningOptions.aromatize))
 
   def getAbstractChemicals(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.MoleculeFormatType): ParMap[Long, ChemicalInformation] = {
     logger.info("Finding abstract chemicals.")
@@ -60,9 +65,7 @@ object AbstractChemicals {
       Try to import the SMILES field as a Smarts representation of the molecule.
      */
     try {
-      // Chemaxon technically uses smarts when we say Smiles, so we just make it explicit here.
-      val mol = MoleculeImporter.importMolecule(replacedSmarts, MoleculeFormat.smarts)
-
+      val mol = MoleculeImporter.importMolecule(replacedSmarts, cleanSmartsFormat)
       // Convert to smarts so everything is standard
       Option((chemicalId, new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportMolecule(mol, moleculeFormat))))
     } catch {
