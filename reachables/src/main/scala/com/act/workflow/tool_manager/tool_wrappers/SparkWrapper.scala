@@ -8,7 +8,7 @@ import org.apache.log4j.LogManager
 object SparkWrapper extends ToolWrapper {
   private val assembledJar = new File("target/scala-2.10/reachables-assembly-0.1.jar")
   private val LOGGER = LogManager.getLogger(getClass)
-  def runClassPath(classPath: String, sparkMaster: String, classArgs: List[String], memory: String = "4G", cores:Int = 1): ShellJob = {
+  def runClassPath(classPath: String, sparkMaster: String, classArgs: List[String], memory: String = "4G"): ShellJob = {
 
     // Check if class path exists.
     try {
@@ -24,7 +24,6 @@ object SparkWrapper extends ToolWrapper {
       "--master", sparkMaster,
       "--deploy-mode", "client",
       "--executor-memory", memory,
-      "--driver-cores", cores.toString,
       assembledJar.getAbsolutePath) ::: classArgs
 
     constructJob("Spark Submit", Option("spark-submit"), args = fullArgs)

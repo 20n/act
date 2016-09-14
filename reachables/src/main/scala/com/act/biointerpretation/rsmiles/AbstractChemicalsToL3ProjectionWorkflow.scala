@@ -185,8 +185,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
           singleSubstrateRoProjectorClassPath,
           sparkMaster,
           roProjectionArgs,
-          memory = "8G",
-          cores = 1
+          memory = "4G"
         )
       }
 
@@ -248,8 +247,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
         singleSubstrateRoProjectorClassPath,
         sparkMaster,
         l3ProjectionArgs,
-        memory = "4G",
-        cores = 1
+        memory = "4G"
       )
       abstractChemicalsToSubstrateListJob.thenRun(l3RoPlusSarProjection)
 
