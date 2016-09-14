@@ -2,12 +2,13 @@ package com.act.biointerpretation.sars;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
  * Represents a group of sequences and reactions characterized by the same SAR.
  */
-public class CharacterizedGroup {
+public class CharacterizedGroup implements Serializable {
 
   @JsonProperty("reaction_group_name")
   private String groupName;
