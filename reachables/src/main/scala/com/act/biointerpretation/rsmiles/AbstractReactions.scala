@@ -61,7 +61,6 @@ object AbstractReactions {
       constructDbReaction(mongoDb, moleculeFormat)(abstractChemicals, substrateCountFilter) _
 
     val processCounter = new AtomicInteger()
-
     val singleSubstrateReactions: ParSeq[ReactionInformation] = abstractReactions.flatMap(rxn => {
       if (processCounter.incrementAndGet() % 10000 == 0) {
         logger.info(s"Total of ${processCounter.get} reactions have started processing " +
@@ -110,9 +109,7 @@ object AbstractReactions {
     val hitGoodChem: Option[ChemicalInformation] = abstractChemicals.get(dbObj.get(ReactionKeywords.PUBCHEM.toString).asInstanceOf[Long])
     val coefficient = dbObj.get(ReactionKeywords.COEFFICIENT.toString).asInstanceOf[Int]
 
-    if (hitGoodChem.isDefined) {
-      return List.fill(coefficient)(hitGoodChem.get)
-    }
+    if (hitGoodChem.isDefined) return List.fill(coefficient)(hitGoodChem.get)
 
     // Try to look for real molecules if we can't find it in our abstract stack.
     val chemicalId = dbObj.get(ReactionKeywords.PUBCHEM.toString).asInstanceOf[Long]
