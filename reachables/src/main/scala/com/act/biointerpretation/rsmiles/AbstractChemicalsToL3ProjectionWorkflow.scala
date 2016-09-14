@@ -162,7 +162,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       if (!projectionDir.exists()) projectionDir.mkdirs()
 
       val roProjectionsOutputFileDirectory = new File(projectionDir, s"$uniqueId.AbstractReactionRoProjections")
-      if (roProjectionsOutputFileDirectory.exists()) roProjectionsOutputFileDirectory.mkdirs()
+      if (!roProjectionsOutputFileDirectory.exists()) roProjectionsOutputFileDirectory.mkdirs()
 
       val roProjectionArgs = List(
         "--substrates-list", substrateListOutputFile.getAbsolutePath,
