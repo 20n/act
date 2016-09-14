@@ -209,7 +209,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
   def scoreCorpusAgainstSarTree(sarTree: SarTree, inchiCorpus: L2InchiCorpus): ParMap[String, Double] = {
     val inchiToMoleculeMap: Map[String, Molecule] = (inchiCorpus.getInchiList zip inchiCorpus.getMolecules) toMap
 
-    val inchiScorer: Molecule => Double = scoreInchiAgainstSarTree(sarTree, sarTree.getRootNodes.toList) _
+    val inchiScorer: Molecule => Double = scoreInchiAgainstSarSubtree(sarTree, sarTree.getRootNodes.toList) _
 
     val scoredInchis: ParMap[String, Double] = inchiToMoleculeMap.par.map {
       case (key, value) => (key, inchiScorer(value))
@@ -227,7 +227,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     *
     * @return
     */
-  def scoreInchiAgainstSarTree(sarTree: SarTree, currentLevelList: Seq[SarTreeNode])(queryMolecule: Molecule): Double = {
+  def scoreInchiAgainstSarSubtree(sarTree: SarTree, currentLevelList: Seq[SarTreeNode])(queryMolecule: Molecule): Double = {
     // Arbitrary score value
     val baseAdd = 10.0
 
@@ -249,10 +249,11 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
       // Handle the leaf node uniquely.  Leaf node occurs when the children are empty.
       if (sarTreeChildren.isEmpty) {
         // Similarity of 1 means likely exact match (Hashing function not unique)
-        if (similarity >= 1) baseAdd else -(1 - similarity)
+        // We take a number close to 1 to allow for some imprecision
+        if (similarity >= 0.999) baseAdd else similarity
       } else {
         // Adding one adds a bit of weight to traversal (Deeper -> more score)
-        1 + scoreInchiAgainstSarTree(sarTree, sarTreeChildren)(queryMolecule)
+        1 + scoreInchiAgainstSarSubtree(sarTree, sarTreeChildren)(queryMolecule)
       }
     }
 
