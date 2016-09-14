@@ -3,12 +3,12 @@ package com.act.analysis.chemicals.molecules
 import chemaxon.calculations.clean.Cleaner
 import chemaxon.standardizer.Standardizer
 import chemaxon.struc.{Molecule, MoleculeGraph}
-import org.apache.log4j.LogManager
+import org.apache.logging.log4j.LogManager
 
 import scala.collection.parallel.immutable.ParMap
 
 // Format information be found at https://docs.chemaxon.com/display/docs/Molecule+Formats
-object MoleculeFormat extends Enumeration {
+object MoleculeFormat extends Enumeration with Serializable {
 
   private val cleaningSeparator = ">"
   private val LOGGER = LogManager.getLogger(getClass)
@@ -104,13 +104,13 @@ object MoleculeFormat extends Enumeration {
     }
   }
 
-  case class MoleculeFormatType(value: Value, cleaningOptions: List[CleaningOptions.Value]) {
+  case class MoleculeFormatType(value: Value, cleaningOptions: List[CleaningOptions.Value]) extends Serializable{
     override def toString: String = {
       s"${value.toString}$cleaningSeparator${cleaningOptions.mkString(",")}"
     }
   }
 
-  object CleaningOptions extends Enumeration {
+  object CleaningOptions extends Enumeration with Serializable {
     private val neutralizeString = "neutralize"
     private val clean2dString = "clean2d"
     private val clean3dString = "clean3d"
