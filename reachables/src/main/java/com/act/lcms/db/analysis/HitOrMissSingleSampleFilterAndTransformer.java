@@ -41,7 +41,7 @@ public class HitOrMissSingleSampleFilterAndTransformer extends HitOrMissFilterAn
     molecule.setMaxCrossSample(replicate.getMaxCrossSample());
     molecule.setMinCrossSample(replicate.getMinCrossSample());
 
-    if (snr < 1) {
+    if (minSnrThreshold < 1) {
       // If the intensity, snr and time pass the thresholds set AND the ion of the peak molecule is within the set of
       // ions we want extracted, we keep the molecule. Else, we throw it away.
       if (intensity > minIntensityThreshold && replicate.getMaxCrossSample() < minSnrThreshold && time > minTimeThreshold &&
