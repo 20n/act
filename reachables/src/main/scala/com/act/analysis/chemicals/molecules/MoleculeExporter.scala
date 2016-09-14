@@ -9,7 +9,7 @@ import scala.collection.concurrent.TrieMap
 
 object MoleculeExporter {
   // By hashing also on the format we can support a molecule being converted to multiple formats in a given JVM
-  private val moleculeCache = TrieMap[MoleculeFormat.Value, TrieMap[Molecule, String]]()
+  private val moleculeCache = TrieMap[MoleculeFormat.MoleculeFormatType, TrieMap[Molecule, String]]()
 
   // Defaults to inchi which has aux information.
   private var defaultFormat = List(MoleculeFormat.inchi)
@@ -18,11 +18,11 @@ object MoleculeExporter {
     moleculeCache.keySet.foreach(key => moleculeCache.put(key, new TrieMap[Molecule, String]))
   }
 
-  def setDefaultFormat(format: MoleculeFormat.Value): Unit = {
+  def setDefaultFormat(format: MoleculeFormat.MoleculeFormatType): Unit = {
     setDefaultFormat(List(format))
   }
 
-  def setDefaultFormat(formats: List[MoleculeFormat.Value]): Unit = {
+  def setDefaultFormat(formats: List[MoleculeFormat.MoleculeFormatType]): Unit = {
     defaultFormat = formats
   }
 
@@ -45,7 +45,7 @@ object MoleculeExporter {
   }
 
   // The basic format
-  def exportMolecule(mol: Molecule, format: MoleculeFormat.Value): String = {
+  def exportMolecule(mol: Molecule, format: MoleculeFormat.MoleculeFormatType): String = {
     val formatCache = moleculeCache.get(format)
 
     if (formatCache.isEmpty) {
@@ -55,7 +55,7 @@ object MoleculeExporter {
     val moleculeString = moleculeCache(format).get(mol)
 
     if (moleculeString.isEmpty) {
-      val newFormat = MolExporter.exportToFormat(mol, MoleculeFormat.getExportString(format))
+      val newFormat = MolExporter.exportToFormat(mol, MoleculeFormat.getExportString(format.value))
       moleculeCache(format).put(mol, newFormat)
       return newFormat
     }
@@ -79,7 +79,7 @@ object MoleculeExporter {
     These methods try to convert a molecule into one of a set of formats.
    */
   @throws[MolExportException]
-  def exportMoleculeAsFormats(mol: Molecule, formats: List[MoleculeFormat.Value]): String = {
+  def exportMoleculeAsFormats(mol: Molecule, formats: List[MoleculeFormat.MoleculeFormatType]): String = {
     formats.foreach(format => {
       try {
         return exportMolecule(mol, format)
@@ -92,12 +92,12 @@ object MoleculeExporter {
   }
 
   @throws[MolExportException]
-  def exportMoleculesAsFormats(mols: List[Molecule], formats: List[MoleculeFormat.Value]): List[String] = {
+  def exportMoleculesAsFormats(mols: List[Molecule], formats: List[MoleculeFormat.MoleculeFormatType]): List[String] = {
     mols.map(exportMoleculeAsFormats(_, formats))
   }
 
   @throws[MolExportException]
-  def exportMoleculesAsFormatsJava(mols: List[Molecule], formats: List[MoleculeFormat.Value]): java.util.List[String] = {
+  def exportMoleculesAsFormatsJava(mols: List[Molecule], formats: List[MoleculeFormat.MoleculeFormatType]): java.util.List[String] = {
     mols.map(exportMoleculeAsFormats(_, formats)).asJava
   }
 }

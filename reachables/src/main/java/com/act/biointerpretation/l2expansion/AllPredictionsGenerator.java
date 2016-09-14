@@ -110,7 +110,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
     List<String> moleculeStrings = new ArrayList<>();
     for (Molecule mol : mols) {
       // Grabs the string through the exporter.  Default is InChI w/o
-      moleculeStrings.add(MoleculeExporter.exportMolecule(mol, MoleculeFormat$.MODULE$.withName(this.moleculeFormat)));
+      moleculeStrings.add(MoleculeExporter.exportMolecule(mol, MoleculeFormat$.MODULE$.getName(this.moleculeFormat)));
     }
     return moleculeStrings;
   }

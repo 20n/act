@@ -320,6 +320,6 @@ public class ReactionProjector {
    * @throws IOException
    */
   private String getMoleculeString(Molecule molecule) throws IOException {
-    return MoleculeExporter.exportMolecule(molecule, MoleculeFormat$.MODULE$.withName(this.moleculeFormat));
+    return MoleculeExporter.exportMolecule(molecule, MoleculeFormat$.MODULE$.getName(this.moleculeFormat));
   }
 }

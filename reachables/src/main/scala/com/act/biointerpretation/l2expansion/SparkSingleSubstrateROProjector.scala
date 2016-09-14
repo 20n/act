@@ -52,7 +52,7 @@ object compute {
    *
    * TODO: try out other partitioning schemes and/or pre-compile and cache ERO Reactors for improved performance.
    */
-  def run(licenseFileName: String, ero: Ero, molecules: List[Molecule], moleculeFormat: MoleculeFormat.Value): (Double, L2PredictionCorpus) = {
+  def run(licenseFileName: String, ero: Ero, molecules: List[Molecule], moleculeFormat: MoleculeFormat.MoleculeFormatType): (Double, L2PredictionCorpus) = {
     val startTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val localLicenseFile = SparkFiles.get(licenseFileName)
 
@@ -73,7 +73,7 @@ object compute {
     (deltaTS, results)
   }
 
-  def run(licenseFileName: String, sarFile: String, sarFileIndex: Int, molecules: List[Molecule], moleculeFormat: MoleculeFormat.Value): (String, Double, L2PredictionCorpus) = {
+  def run(licenseFileName: String, sarFile: String, sarFileIndex: Int, molecules: List[Molecule], moleculeFormat: MoleculeFormat.MoleculeFormatType): (String, Double, L2PredictionCorpus) = {
     val startTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val localLicenseFile = SparkFiles.get(licenseFileName)
 
@@ -147,7 +147,7 @@ object SparkSingleSubstrateROProjector {
         hasArg.
         desc("A molecule string format. Currently valid types are inchi, stdInchi, smiles, and smarts.  " +
           s"By default, uses stdInChI which " +
-          s"is the format '${MoleculeFormat.getExportString(MoleculeFormat.stdInchi)}'.  " +
+          s"is the format '${MoleculeFormat.getExportString(MoleculeFormat.stdInchi.value)}'.  " +
           s"Possible values are: \n${MoleculeFormat.listPossibleFormats().mkString("\n")}"),
 
       CliOption.builder(OPTION_SAR_CORPUS_FILE).
@@ -218,8 +218,8 @@ object SparkSingleSubstrateROProjector {
 
     // We set the global state for the exporter so we don't need to pass the format all the way down here.
     // Determine which formats are being used.
-    val moleculeFormat: MoleculeFormat.Value = if (cl.hasOption(OPTION_VALID_CHEMICAL_TYPE)) {
-      MoleculeFormat.withName(cl.getOptionValue(OPTION_VALID_CHEMICAL_TYPE))
+    val moleculeFormat: MoleculeFormat.MoleculeFormatType = if (cl.hasOption(OPTION_VALID_CHEMICAL_TYPE)) {
+      MoleculeFormat.getName(cl.getOptionValue(OPTION_VALID_CHEMICAL_TYPE))
     } else {
       MoleculeFormat.stdInchi
     }

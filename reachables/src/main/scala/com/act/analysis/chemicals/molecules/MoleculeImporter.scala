@@ -1,15 +1,17 @@
 package com.act.analysis.chemicals.molecules
 
 import act.shared.Chemical
+import chemaxon.calculations.clean.Cleaner
 import chemaxon.formats.{MolFormatException, MolImporter}
-import chemaxon.struc.Molecule
+import chemaxon.standardizer.Standardizer
+import chemaxon.struc.{Molecule, MoleculeGraph}
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 
 object MoleculeImporter {
   // Have a cache for each format.
-  private val moleculeCache = TrieMap[MoleculeFormat.Value, TrieMap[String, Molecule]]()
+  private val moleculeCache = TrieMap[MoleculeFormat.MoleculeFormatType, TrieMap[String, Molecule]]()
 
   def clearCache(): Unit = {
     moleculeCache.keySet.foreach(key => moleculeCache.put(key, new TrieMap[String, Molecule]))
@@ -30,7 +32,7 @@ object MoleculeImporter {
   private implicit def toMolecule(chemical: Chemical): String = chemical.getInChI
 
   @throws[MolFormatException]
-  def importMolecule(mol: String, formats: List[MoleculeFormat.Value]): Molecule = {
+  def importMolecule(mol: String, formats: List[MoleculeFormat.MoleculeFormatType]): Molecule = {
     val resultingInchis: List[Molecule] = formats.flatMap(format => {
       try {
         // Inchis must start with "InChI="
@@ -57,7 +59,7 @@ object MoleculeImporter {
   }
 
   @throws[MolFormatException]
-  def importMolecule(mol: String, format: MoleculeFormat.Value): Molecule = {
+  def importMolecule(mol: String, format: MoleculeFormat.MoleculeFormatType): Molecule = {
     val formatCache = moleculeCache.get(format)
     if (formatCache.isEmpty){
       moleculeCache.put(format, new TrieMap[String, Molecule])
@@ -66,7 +68,12 @@ object MoleculeImporter {
     val molecule = moleculeCache(format).get(mol)
 
     if (molecule.isEmpty) {
-      val newMolecule = MolImporter.importMol(mol, MoleculeFormat.getImportString(format))
+      val newMolecule = MolImporter.importMol(mol, MoleculeFormat.getImportString(format.value))
+
+      // Do cleaning here if request.... All these functions work inplace on the molecule...
+      val cleaningApplyFunction = MoleculeFormat.CleaningOptions.applyCleaningOnMolecule(newMolecule)_
+      format.cleaningOptions.foreach(cleaningApplyFunction)
+
       moleculeCache(format).put(mol, newMolecule)
       return newMolecule
     }
@@ -75,7 +82,7 @@ object MoleculeImporter {
   }
 
   @throws[MolFormatException]
-  def importMolecule(mol: String, format: java.util.List[MoleculeFormat.Value]): Molecule = {
+  def importMolecule(mol: String, format: java.util.List[MoleculeFormat.MoleculeFormatType]): Molecule = {
     importMolecule(mol, format.asScala.toList)
   }
 }
