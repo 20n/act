@@ -70,7 +70,7 @@ object MoleculeImporter {
     if (molecule.isEmpty) {
       val newMolecule = MolImporter.importMol(mol, MoleculeFormat.getImportString(format.value))
 
-      // Do cleaning here if request.... All these functions work inplace on the molecule...
+      // Do cleaning here if requested.... All these functions work inplace on the molecule...
       val cleaningApplyFunction = MoleculeFormat.CleaningOptions.applyCleaningOnMolecule(newMolecule)_
       format.cleaningOptions.foreach(cleaningApplyFunction)
 

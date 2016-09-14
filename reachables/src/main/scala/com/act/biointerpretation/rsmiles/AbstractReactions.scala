@@ -128,7 +128,9 @@ object AbstractReactions {
     val chemicalId = dbObj.get(ReactionKeywords.PUBCHEM.toString).asInstanceOf[Long]
     val query = Mongo.createDbObject(ChemicalKeywords.ID, chemicalId)
     val inchi = Mongo.mongoQueryChemicals(mongoDb)(query, null).next().get(ChemicalKeywords.INCHI.toString).asInstanceOf[String]
-    val molecule = MoleculeImporter.importMolecule(inchi)
+
+    if (!moleculeFormat.toString.toLowerCase.contains("inchi")) logger.warn("Trying to import InChIs with a non InChI setting.")
+    val molecule = MoleculeImporter.importMolecule(inchi, moleculeFormat)
     List.fill(coefficient)(new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportMolecule(molecule, moleculeFormat)))
   }
 
