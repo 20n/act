@@ -62,7 +62,7 @@ object MoleculeImporter {
   @throws[MolFormatException]
   def importMolecule(mol: String, format: MoleculeFormat.Value): Molecule = {
     val formatCache = moleculeCache.get(format)
-    if (formatCache.isEmpty){
+    if (formatCache.isEmpty) {
       moleculeCache.put(format, new TrieMap[String, Molecule])
     }
 
