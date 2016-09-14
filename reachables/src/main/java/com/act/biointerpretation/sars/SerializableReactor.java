@@ -7,8 +7,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.IOException;
+import java.io.Serializable;
 
-public class SerializableReactor {
+public class SerializableReactor implements Serializable {
   private static String SERIALIZATION_FORMAT = "smarts";
 
   @JsonProperty("ro_id")
