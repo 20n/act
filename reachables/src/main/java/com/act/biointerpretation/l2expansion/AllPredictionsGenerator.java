@@ -31,7 +31,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
 
   public AllPredictionsGenerator(ReactionProjector projector) {
     this.projector = projector;
-    this.moleculeFormat = MoleculeFormat$.MODULE$.stdInchi().toString();
+    this.moleculeFormat = MoleculeFormat$.MODULE$.stdInchi().value().toString();
   }
 
   // Allow for the caller to change the format.
