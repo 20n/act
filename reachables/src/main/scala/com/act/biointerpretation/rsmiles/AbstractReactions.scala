@@ -83,13 +83,15 @@ object AbstractReactions {
     if (substrates == null | products == null) {
       return None
     }
-
+    val productList = products.toList
     val substrateList = substrates.toList
+
+    // Not really a reaction if nothing is happening.
+    if (substrateList.isEmpty || productList.isEmpty) return None
+
     if (substrateCountFilter > 0 && substrateList.length != substrateCountFilter) {
       return None
     }
-
-    val productList = products.toList
 
     // Make sure we load everything in.
     val moleculeLoader = loadMolecule(mongoDb, moleculeFormat)(abstractChemicals) _
@@ -99,13 +101,14 @@ object AbstractReactions {
       val productMoleculeList: List[ChemicalInformation] = productList.flatMap(x => moleculeLoader(x.asInstanceOf[DBObject]))
 
       /*
-        Check if the Substrates = Reactants.
+        Check if the Substrates == Products.
         This probably means a stereo change is happening that we don't really care about.
        */
       val uniqueSubstrates = substrateMoleculeList.map(_.getString).toSet
       val uniqueProducts = productMoleculeList.map(_.getString).toSet
       if (uniqueSubstrates.equals(uniqueProducts)) {
-        logger.debug(s"Reaction with ID $reactionId")
+        logger.debug(s"Reaction with ID $reactionId has the same substrates as products. " +
+          s"Likely is a stereo change. Skipping.")
         return None
       }
 

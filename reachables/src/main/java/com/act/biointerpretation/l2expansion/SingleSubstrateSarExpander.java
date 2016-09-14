@@ -32,6 +32,8 @@ public class SingleSubstrateSarExpander extends L2Expander {
     List<PredictionSeed> result = new ArrayList<>();
 
     for (CharacterizedGroup sarGroup : sarGroups) {
+      if (sarGroup == null) continue;
+      
       List<Sar> sars = sarGroup.getSars();
       SerializableReactor reactor = sarGroup.getReactor();
 

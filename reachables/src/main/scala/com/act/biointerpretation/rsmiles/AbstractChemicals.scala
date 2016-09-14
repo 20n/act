@@ -17,6 +17,7 @@ object AbstractChemicals {
   val logger = LogManager.getLogger(getClass)
 
   // Chemaxon technically uses smarts when we say Smiles, so we just make it explicit here.
+  // We do the cleaning so that we can get rid of a lot of the junk that would make down-stream processing hard.
   val cleanSmartsFormat = new MoleculeFormat.MoleculeFormatType(MoleculeFormat.smarts.value,
     List(CleaningOptions.neutralize, CleaningOptions.clean2d, CleaningOptions.aromatize))
 
@@ -52,10 +53,11 @@ object AbstractChemicals {
     val chemicalId: Long = ob.get(ChemicalKeywords.ID.toString).asInstanceOf[Long]
     val smiles: String = ob.get(ChemicalKeywords.SMILES.toString).asInstanceOf[String]
 
-    if (smiles.contains("rRNA")) return None
-    if (smiles.contains("tRNA")) return None
-
-    if (smiles.contains("Protein")) return None
+    // All these mean that there is likely too much unrepresented complexity.
+    if (smiles.toLowerCase.contains("rrna")) return None
+    if (smiles.toLowerCase.contains("trna")) return None
+    if (smiles.toLowerCase.contains("protein")) return None
+    if (smiles.toLowerCase.contains("nucleobase")) return None
 
     // Replace R groups for C currently.
     // There can be multiple R groups, where they are listed as characters.  We want to grab any of the numbers assigned there.
