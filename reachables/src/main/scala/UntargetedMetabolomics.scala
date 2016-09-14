@@ -406,16 +406,16 @@ object UntargetedMetabolomics {
       ("df-df", df, df, 0, 0),
       
       // how well does the differential calling work over a single sample of hypothesis and control
-      ("wt1-df1", List(wt1), List(df1), 0, 500),
-      ("wt1-df1", List(wt1), List(dm1), 0, 500),
+      ("wt1-df1", List(wt1), List(df1), 1, 500),
+      ("wt1-df1", List(wt1), List(dm1), 1, 500),
       
       // peaks that are differentially expressed in diseased samples compared to the wild type
-      ("wt-dm", wt, dm, 0, 200),
-      ("wt-df", wt, df, 0, 200),
+      ("wt-dm", wt, dm, 1, 200),
+      ("wt-df", wt, df, 1, 200),
       
       // next two: what is in one diseases samples and not in the other?
-      ("dm-df", dm, df, 0, 200),
-      ("df-dm", df, dm, 0, 200)
+      ("dm-df", dm, df, 1, 200),
+      ("df-dm", df, dm, 1, 200)
     )
 
     val verbose = true
