@@ -135,7 +135,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
 
     // Create all the jobs for all the substrates
     val jobs = substrateCounts.map(count => {
-      val runId = s"db.$database.subCount.$count.format"
+      val runId = s"db.$database.subCount.$count"
 
       /*
         Step 1: Abstract chemicals => Abstract reactions substrate list
