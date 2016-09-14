@@ -298,7 +298,7 @@ object SparkSingleSubstrateROProjector {
       val resultsRDD: RDD[SparkPredictionCorpus] =
         eroRDD.map(ero => {
           val results = compute.run(licenseFileName, ero, validatedMolecules, moleculeFormat)
-          new SparkPredictionCorpus(s"Ero ${ero.getId}", results._1, results._2)
+          new SparkPredictionCorpus(ero.getId.toString, results._1, results._2)
         })
 
       resultsRDD

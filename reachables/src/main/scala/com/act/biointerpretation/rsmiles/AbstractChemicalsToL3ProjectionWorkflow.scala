@@ -18,7 +18,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
   val OPTION_CHEMAXON_LICENSE =   "l"
   val OPTION_SPARK_MASTER =       "m"
   val OPTION_SUBSTRATE_COUNTS =   "s"
-  val OPTION_VALID_CHEMICAL_TYPE = "v"
+  val OPTION_VALID_CHEMICAL_TYPE ="v"
   val OPTION_WORKING_DIRECTORY =  "w"
 
   private val LOGGER = LogManager.getLogger(getClass)
