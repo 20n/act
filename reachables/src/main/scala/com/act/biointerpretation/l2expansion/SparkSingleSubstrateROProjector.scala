@@ -52,7 +52,7 @@ object compute {
    *
    * TODO: try out other partitioning schemes and/or pre-compile and cache ERO Reactors for improved performance.
    */
-  def run(licenseFileName: String, ero: Ero, molecules: List[Molecule], moleculeFormat: MoleculeFormat.MoleculeFormatType): (Double, L2PredictionCorpus) = {
+  def run(licenseFileName: String, ero: Ero, molecules: List[Molecule], moleculeFormat: String): (Double, L2PredictionCorpus) = {
     val startTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val localLicenseFile = SparkFiles.get(licenseFileName)
 
@@ -60,7 +60,7 @@ object compute {
     LicenseManager.setLicenseFile(localLicenseFile)
 
     val expander = new SingleSubstrateRoExpander(new ErosCorpus(List(ero).asJava), molecules.asJava,
-      new AllPredictionsGenerator(new ReactionProjector(moleculeFormat.toString), moleculeFormat.toString))
+      new AllPredictionsGenerator(new ReactionProjector(moleculeFormat), moleculeFormat))
 
     val results = expander.getPredictions()
 
@@ -73,7 +73,7 @@ object compute {
     (deltaTS, results)
   }
 
-  def run(licenseFileName: String, sarFile: String, sarFileIndex: Int, molecules: List[Molecule], moleculeFormat: MoleculeFormat.MoleculeFormatType): (String, Double, L2PredictionCorpus) = {
+  def run(licenseFileName: String, sarFile: String, sarFileIndex: Int, molecules: List[Molecule], moleculeFormat: String): (String, Double, L2PredictionCorpus) = {
     val startTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val localLicenseFile = SparkFiles.get(licenseFileName)
 
@@ -87,7 +87,7 @@ object compute {
     singleGroupCorpus.addCharacterizedGroup(sar)
 
     val expander = new SingleSubstrateSarExpander(singleGroupCorpus, molecules.asJava,
-      new AllPredictionsGenerator(new ReactionProjector(moleculeFormat.toString), moleculeFormat.toString))
+      new AllPredictionsGenerator(new ReactionProjector(moleculeFormat), moleculeFormat))
 
     val results = expander.getPredictions()
 
@@ -258,6 +258,7 @@ object SparkSingleSubstrateROProjector {
     val licenseFileName = new File(licenseFile).getName
 
 
+    val formatString = moleculeFormat.toString
     /*
       Do either projection over ROs or over RO + SARs that have been supplied.
      */
@@ -280,7 +281,7 @@ object SparkSingleSubstrateROProjector {
 
       val resultsRDD: RDD[SparkPredictionCorpus] =
         sarRDD.map(sarIndex => {
-          val results = compute.run(licenseFileName, sarFileName, sarIndex, validatedMolecules, moleculeFormat)
+          val results = compute.run(licenseFileName, sarFileName, sarIndex, validatedMolecules, formatString)
           new SparkPredictionCorpus(results._1, results._2, results._3)
         })
       resultsRDD
@@ -307,7 +308,7 @@ object SparkSingleSubstrateROProjector {
       // PROJECT!  Run ERO projection over all InChIs.
       val resultsRDD: RDD[SparkPredictionCorpus] =
         eroRDD.map(ero => {
-          val results = compute.run(licenseFileName, ero, validatedMolecules, moleculeFormat)
+          val results = compute.run(licenseFileName, ero, validatedMolecules, formatString)
           new SparkPredictionCorpus(ero.getId.toString, results._1, results._2)
         })
 

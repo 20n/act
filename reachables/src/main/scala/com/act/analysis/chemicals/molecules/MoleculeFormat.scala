@@ -8,7 +8,7 @@ import org.apache.logging.log4j.LogManager
 import scala.collection.parallel.immutable.ParMap
 
 // Format information be found at https://docs.chemaxon.com/display/docs/Molecule+Formats
-object MoleculeFormat extends Enumeration with Serializable {
+object MoleculeFormat extends Enumeration {
 
   private val cleaningSeparator = ">"
   private val LOGGER = LogManager.getLogger(getClass)
@@ -104,13 +104,13 @@ object MoleculeFormat extends Enumeration with Serializable {
     }
   }
 
-  case class MoleculeFormatType(value: Value, cleaningOptions: List[CleaningOptions.Value]) extends Serializable{
+  case class MoleculeFormatType(value: Value, cleaningOptions: List[CleaningOptions.Value]) {
     override def toString: String = {
       s"${value.toString}$cleaningSeparator${cleaningOptions.mkString(",")}"
     }
   }
 
-  object CleaningOptions extends Enumeration with Serializable {
+  object CleaningOptions extends Enumeration {
     private val neutralizeString = "neutralize"
     private val clean2dString = "clean2d"
     private val clean3dString = "clean3d"
