@@ -10,7 +10,7 @@ import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.act.biointerpretation.sars.{CharacterizedGroup, SarCorpus}
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
-import org.apache.logging.log4j.LogManager
+import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
 import org.joda.time.{DateTime, DateTimeZone}
