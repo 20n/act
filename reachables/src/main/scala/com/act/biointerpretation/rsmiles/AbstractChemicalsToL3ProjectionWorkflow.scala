@@ -122,8 +122,8 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
     /*
       Format currently used for the molecular transitions
      */
-    val moleculeFormatString =
-      cl.getOptionValue(OPTION_VALID_CHEMICAL_TYPE, MoleculeFormat.noStereoAromatizedSmarts.toString)
+    val moleculeFormatString = cl.getOptionValue(OPTION_VALID_CHEMICAL_TYPE, MoleculeFormat.noStereoAromatizedSmarts.toString)
+
     val moleculeFormat = MoleculeFormat.getName(moleculeFormatString)
 
     /*
@@ -135,13 +135,13 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
 
     // Create all the jobs for all the substrates
     val jobs = substrateCounts.map(count => {
-      val uniqueId = s"db.$database.subCount.$count.format.$moleculeFormatString"
+      val runId = s"db.$database.subCount.$count.format"
 
       /*
         Step 1: Abstract chemicals => Abstract reactions substrate list
        */
-      val substratesOutputFileName = s"$uniqueId.Substrates.txt"
-      val reactionsOutputFileName = s"$uniqueId.txt"
+      val substratesOutputFileName = s"$runId.Substrates.txt"
+      val reactionsOutputFileName = s"$runId.txt"
 
       val substrateListOutputFile = new File(outputDirectory, substratesOutputFileName)
       val reactionListOutputFile = new File(outputDirectory, reactionsOutputFileName)
@@ -161,7 +161,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       val projectionDir = new File(outputDirectory, "ProjectionResults")
       if (!projectionDir.exists()) projectionDir.mkdirs()
 
-      val roProjectionsOutputFileDirectory = new File(projectionDir, s"$uniqueId.AbstractReactionRoProjections")
+      val roProjectionsOutputFileDirectory = new File(projectionDir, s"$runId.AbstractReactionRoProjections")
       if (!roProjectionsOutputFileDirectory.exists()) roProjectionsOutputFileDirectory.mkdirs()
 
       val roProjectionArgs = List(
@@ -197,7 +197,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       val roAssignmentDirectory = new File(outputDirectory, "RoAssignment")
       if (!roAssignmentDirectory.exists()) roAssignmentDirectory.mkdirs()
 
-      val roAssignmentOutputFileName = new File(roAssignmentDirectory, s"$uniqueId.RoAssignments.json")
+      val roAssignmentOutputFileName = new File(roAssignmentDirectory, s"$runId.RoAssignments.json")
 
       val reactionAssignJob = if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && roAssignmentOutputFileName.exists()) {
         ScalaJobWrapper.wrapScalaFunction("Using cached ro assignments", () => Unit)
@@ -212,7 +212,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
        */
       val sarCorpusDirectory = new File(outputDirectory, "SarCorpus")
       if (!sarCorpusDirectory.exists()) sarCorpusDirectory.mkdirs()
-      val sarCorpusOutputFileName = s"$uniqueId.sarCorpusOutput.json"
+      val sarCorpusOutputFileName = s"$runId.sarCorpusOutput.json"
       val sarCorpusOutputFile = new File(sarCorpusDirectory, sarCorpusOutputFileName)
       val constructSars = ConstructSarsFromAbstractReactions.sarConstructor(
         roAssignmentOutputFileName, sarCorpusOutputFile, moleculeFormat) _
