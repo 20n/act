@@ -73,12 +73,15 @@ object compute {
     (deltaTS, results)
   }
 
-  def run(licenseFileName: String, sar: CharacterizedGroup, molecules: List[Molecule], moleculeFormat: MoleculeFormat.Value): (Double, L2PredictionCorpus) = {
+  def run(licenseFileName: String, sarFile: String, sarFileIndex: Int, molecules: List[Molecule], moleculeFormat: MoleculeFormat.Value): (String, Double, L2PredictionCorpus) = {
     val startTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val localLicenseFile = SparkFiles.get(licenseFileName)
 
     LOGGER.info(s"Using license file at $localLicenseFile (file exists: ${new File(localLicenseFile).exists()})")
     LicenseManager.setLicenseFile(localLicenseFile)
+
+    LOGGER.info(s"Using SAR Corpus file at $sarFile (file exists: ${new File(sarFile).exists()})")
+    val sar: CharacterizedGroup = SarCorpus.readCorpusFromJsonFile(new File(sarFile)).iterator().asScala.toList(sarFileIndex)
 
     val singleGroupCorpus = new SarCorpus()
     singleGroupCorpus.addCharacterizedGroup(sar)
@@ -90,7 +93,7 @@ object compute {
 
     val endTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val deltaTS = (endTime.getMillis - startTime.getMillis).toDouble / MS_PER_S
-    (deltaTS, results)
+    (sar.getGroupName, deltaTS, results)
   }
 
 
@@ -264,6 +267,8 @@ object SparkSingleSubstrateROProjector {
       // Add the corpus file to spark so it can distribute and we can read in at each node.
       spark.addFile(sarFile)
 
+      val sarFileName = new File(sarFile).getName
+
       // Get the individual groups
       val sarCorpus = SarCorpus.readCorpusFromJsonFile(new File(sarFile))
       val groupList: List[CharacterizedGroup] = sarCorpus.iterator().asScala.toList
@@ -274,9 +279,8 @@ object SparkSingleSubstrateROProjector {
 
       val resultsRDD: RDD[SparkPredictionCorpus] =
         sarRDD.map(sarIndex => {
-          val sar: CharacterizedGroup = SarCorpus.readCorpusFromJsonFile(new File(sarFile)).iterator().asScala.toList(sarIndex)
-          val results = compute.run(licenseFileName, sar, validatedMolecules, moleculeFormat)
-          new SparkPredictionCorpus(sar.getGroupName, results._1, results._2)
+          val results = compute.run(licenseFileName, sarFileName, sarIndex, validatedMolecules, moleculeFormat)
+          new SparkPredictionCorpus(results._1, results._2, results._3)
         })
       resultsRDD
 
