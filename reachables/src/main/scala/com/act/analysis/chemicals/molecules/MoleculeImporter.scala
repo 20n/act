@@ -34,7 +34,7 @@ object MoleculeImporter {
     val resultingInchis: List[Molecule] = formats.flatMap(format => {
       try {
         // Inchis must start with "InChI="
-        if (format.equals(MoleculeFormat.stdInchi) || format.equals(MoleculeFormat.inchi)){
+        if (format.toString.toLowerCase.contains("inchi")){
           if (!mol.startsWith("InChI=")) throw new MolFormatException()
         }
         val importedMolecule = Option(importMolecule(mol, format))
