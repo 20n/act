@@ -172,7 +172,11 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       )
 
       // We assume files in = previous run
-      val hasCachedResultsAbstractRoProjection = roProjectionsOutputFileDirectory.list().length > 0
+      val hasCachedResultsAbstractRoProjection =
+        roProjectionsOutputFileDirectory.isDirectory &&
+        roProjectionsOutputFileDirectory.list() != null &&
+          roProjectionsOutputFileDirectory.list().length > 0
+
       val sparkRoProjection = if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && hasCachedResultsAbstractRoProjection) {
         ScalaJobWrapper.wrapScalaFunction("Using cached spark abstract reaction RO projections", () => Unit)
       } else {
