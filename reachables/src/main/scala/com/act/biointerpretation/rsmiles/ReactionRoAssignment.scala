@@ -17,10 +17,6 @@ object ReactionRoAssignment {
   val LOGGER = LogManager.getLogger(getClass)
 
   def assignRoToReactions(predictionDirectory: File, reactionsFile: File, outputFile: File)() {
-//    val predictionFiles: List[File] = new File("/Volumes/shared-data/Michael/Rsmiles/TTT/ProjectionResults/").listFiles().filter(_.isFile).toList
-//    val reactionsFile = new File("/Volumes/shared-data/Michael/Rsmiles/TTT/FromDatabasemarvin.AbstractReactions1.txt")
-//    val outputFile = new File("/Users/michaellampe/Desktop/outputpredictions.json")
-
     // All files in this directory will be called prediction files.
     val predictionFiles: List[File] = predictionDirectory.listFiles().filter(_.isFile).toList
 
