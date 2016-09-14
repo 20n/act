@@ -265,6 +265,7 @@ object SparkSingleSubstrateROProjector {
       val sarFile = cl.getOptionValue(OPTION_SAR_CORPUS_FILE)
 
       // Add the corpus file to spark so it can distribute and we can read in at each node.
+      LOGGER.info("Distributing SAR corpus to spark workers")
       spark.addFile(sarFile)
 
       val sarFileName = new File(sarFile).getName
