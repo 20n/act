@@ -78,6 +78,7 @@ object AbstractReactions {
                                  (ob: DBObject): Option[ReactionInformation] = {
     val substrates = ob.get(s"${ReactionKeywords.ENZ_SUMMARY}").asInstanceOf[BasicDBObject].get(s"${ReactionKeywords.SUBSTRATES}").asInstanceOf[BasicDBList]
     val products = ob.get(s"${ReactionKeywords.ENZ_SUMMARY}").asInstanceOf[BasicDBObject].get(s"${ReactionKeywords.PRODUCTS}").asInstanceOf[BasicDBList]
+    val reactionId = ob.get(ReactionKeywords.ID.toString).asInstanceOf[Int]
 
     if (substrates == null | products == null) {
       return None
@@ -97,7 +98,19 @@ object AbstractReactions {
       val substrateMoleculeList: List[ChemicalInformation] = substrateList.flatMap(x => moleculeLoader(x.asInstanceOf[DBObject]))
       val productMoleculeList: List[ChemicalInformation] = productList.flatMap(x => moleculeLoader(x.asInstanceOf[DBObject]))
 
-      val rxnInfo = new ReactionInformation(ob.get(ReactionKeywords.ID.toString).asInstanceOf[Int], substrateMoleculeList, productMoleculeList)
+      /*
+        Check if the Substrates = Reactants.
+        This probably means a stereo change is happening that we don't really care about.
+       */
+      val uniqueSubstrates = substrateMoleculeList.map(_.getString).toSet
+      val uniqueProducts = productMoleculeList.map(_.getString).toSet
+      if (uniqueSubstrates.equals(uniqueProducts)) {
+        logger.debug(s"Reaction with ID $reactionId had the same substrates as products.")
+        return None
+      }
+
+
+      val rxnInfo = new ReactionInformation(reactionId, substrateMoleculeList, productMoleculeList)
       Option(rxnInfo)
     } catch {
       case e: MolFormatException => None
