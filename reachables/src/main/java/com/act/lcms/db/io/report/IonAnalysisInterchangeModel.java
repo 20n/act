@@ -524,6 +524,12 @@ public class IonAnalysisInterchangeModel {
     @JsonProperty("std_intensity")
     private Double stdIntensity;
 
+    @JsonProperty("min_cross_sample")
+    private Double minCrossSample;
+
+    @JsonProperty("max_cross_sample")
+    private Double maxCrossSample;
+
     // For deserialization.
     public HitOrMiss() {
 
@@ -540,6 +546,24 @@ public class IonAnalysisInterchangeModel {
       this.maxIntensity = 0.0;
       this.minIntensity = 0.0;
       this.stdIntensity = 0.0;
+      this.minCrossSample = 0.0;
+      this.maxCrossSample = 0.0;
+    }
+
+    public Double getMinCrossSample() {
+      return minCrossSample;
+    }
+
+    public void setMinCrossSample(Double minCrossSample) {
+      this.minCrossSample = minCrossSample;
+    }
+
+    public Double getMaxCrossSample() {
+      return maxCrossSample;
+    }
+
+    public void setMaxCrossSample(Double maxCrossSample) {
+      this.maxCrossSample = maxCrossSample;
     }
 
     public Double getStdIntensity() {

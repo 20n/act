@@ -51,6 +51,8 @@ public class HitOrMissReplicateFilterAndTransformer extends HitOrMissFilterAndTr
       Double averageIntensity = intensityValues.stream().reduce(0.0, (accum, newVal) -> accum + newVal) / intensityValues.size();
       Double maxIntensity = intensityValues.stream().reduce(Double.MIN_VALUE, (accum, newVal) -> Math.max(accum, newVal));
       Double standardDeviation = sd(intensityValues, averageIntensity);
+
+      Double maxSnr = snrValues.stream().reduce(Double.MIN_VALUE, (accum, newVal) -> Math.max(accum, newVal));
       Double minSnr = snrValues.stream().reduce(Double.MAX_VALUE, (accum, newVal) -> Math.min(accum, newVal));
 
       Integer indexOfMinIntensityReplicate = intensityValues.indexOf(minIntensity);
@@ -63,6 +65,8 @@ public class HitOrMissReplicateFilterAndTransformer extends HitOrMissFilterAndTr
       result.setMaxIntensity(maxIntensity);
       result.setStdIntensity(standardDeviation);
       result.setMinIntensity(minIntensity);
+      result.setMinCrossSample(minSnr);
+      result.setMaxCrossSample(maxSnr);
 
       return Pair.of(result, DO_NOT_THROW_OUT_MOLECULE);
     } else {
@@ -74,6 +78,8 @@ public class HitOrMissReplicateFilterAndTransformer extends HitOrMissFilterAndTr
       result.setMaxIntensity(0.0);
       result.setStdIntensity(0.0);
       result.setMinIntensity(0.0);
+      result.setMinCrossSample(0.0);
+      result.setMaxCrossSample(0.0);
 
       return Pair.of(result, DO_NOT_THROW_OUT_MOLECULE);
     }
