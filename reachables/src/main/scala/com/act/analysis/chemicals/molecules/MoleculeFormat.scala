@@ -22,10 +22,10 @@ object MoleculeFormat extends Enumeration {
   val noStereoAromatizedSmarts = Value(noStereoAromatizedSmartsString)
 
   private val exportMap: Map[Value, String] = Map(
-    inchi -> inchiString,
-    noAuxInchi -> s"$inchiString:AuxNone",
-    stdInchi -> s"$inchiString:AuxNon,SAbs,Woff",
-    strictInchi -> s"$inchiString:AuxNon,SAbs,Woff,DoNotAddH",
+    inchi -> "inchi",
+    noAuxInchi -> s"inchi:AuxNone",
+    stdInchi -> s"inchi:AuxNone,SAbs,Woff",
+    strictInchi -> s"inchi:AuxNone,SAbs,Woff,DoNotAddH",
     smiles -> smilesString,
     smarts -> smartsString,
     noStereoSmarts -> s"$smartsString:0",
