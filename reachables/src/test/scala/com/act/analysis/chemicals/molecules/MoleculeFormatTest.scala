@@ -1,5 +1,6 @@
 package com.act.analysis.chemicals.molecules
 
+import com.act.analysis.chemicals.molecules
 import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
 
 class MoleculeFormatTest extends FlatSpec with Matchers with BeforeAndAfterEach {
@@ -19,12 +20,12 @@ class MoleculeFormatTest extends FlatSpec with Matchers with BeforeAndAfterEach 
     val testInchiTrimethylBorane = "InChI=1S/C3H9B/c1-4(2)3/h1-3H3"
 
     // check all options with "inchi" in their name
-    val inchiFormats = MoleculeFormat.values.filter(_.toString.contains("inchi"))
+    val inchiFormats= MoleculeFormat.values.filter(_.toString.contains("inchi"))
 
     // Prevent test from passing if someone refactors the names
     inchiFormats.nonEmpty should be(true)
     inchiFormats.foreach(format => {
-      noException should be thrownBy MoleculeImporter.importMolecule(testInchiTrimethylBorane, format)
+      noException should be thrownBy MoleculeImporter.importMolecule(testInchiTrimethylBorane, MoleculeFormat.getName(format.toString))
     })
   }
 
@@ -37,7 +38,7 @@ class MoleculeFormatTest extends FlatSpec with Matchers with BeforeAndAfterEach 
     // Prevent test from passing if someone refactors the names
     smartsFormats.nonEmpty should be(true)
     smartsFormats.foreach(format => {
-      noException should be thrownBy MoleculeImporter.importMolecule(testSmarts, format)
+      noException should be thrownBy MoleculeImporter.importMolecule(testSmarts, MoleculeFormat.getName(format.toString))
     })
   }
 
@@ -51,7 +52,7 @@ class MoleculeFormatTest extends FlatSpec with Matchers with BeforeAndAfterEach 
     // Prevent test from passing if someone refactors the names
     inchiFormats.nonEmpty should be(true)
     inchiFormats.foreach(format => {
-      noException should be thrownBy MoleculeExporter.exportMolecule(testMolecule, format)
+      noException should be thrownBy MoleculeExporter.exportMolecule(testMolecule, MoleculeFormat.getName(format.toString))
     })
   }
 
@@ -65,7 +66,7 @@ class MoleculeFormatTest extends FlatSpec with Matchers with BeforeAndAfterEach 
     // Prevent test from passing if someone refactors the names
     smartsFormats.nonEmpty should be(true)
     smartsFormats.foreach(format => {
-      noException should be thrownBy MoleculeExporter.exportMolecule(testMolecule, format)
+      noException should be thrownBy MoleculeExporter.exportMolecule(testMolecule, MoleculeFormat.getName(format.toString))
     })
   }
 }

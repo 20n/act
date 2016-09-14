@@ -15,7 +15,7 @@ import scala.collection.parallel.immutable.{ParMap, ParSeq}
 object AbstractChemicals {
   val logger = LogManager.getLogger(getClass)
 
-  def getAbstractChemicals(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.Value): ParMap[Long, ChemicalInformation] = {
+  def getAbstractChemicals(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.MoleculeFormatType): ParMap[Long, ChemicalInformation] = {
     logger.info("Finding abstract chemicals.")
     /*
       Mongo DB Query
@@ -40,7 +40,7 @@ object AbstractChemicals {
     goodChemicalIds
   }
 
-  private def parseDbObject(moleculeFormat: MoleculeFormat.Value)(ob: DBObject): Option[(Long, ChemicalInformation)] = {
+  private def parseDbObject(moleculeFormat: MoleculeFormat.MoleculeFormatType)(ob: DBObject): Option[(Long, ChemicalInformation)] = {
     /*
       Type conversions from DB objects
      */

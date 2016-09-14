@@ -1,7 +1,19 @@
 package com.act.analysis.chemicals.molecules
 
+import akka.actor.FSM.->
+import breeze.linalg.split
+import chemaxon.calculations.clean.Cleaner
+import chemaxon.standardizer.Standardizer
+import chemaxon.struc.{Molecule, MoleculeGraph}
+import org.apache.logging.log4j.LogManager
+
+import scala.collection.parallel.immutable.ParMap
+
 // Format information be found at https://docs.chemaxon.com/display/docs/Molecule+Formats
 object MoleculeFormat extends Enumeration {
+
+  private val LOGGER = LogManager.getLogger(getClass)
+
   private val inchiString = "inchi"
   private val stdInchiString = "stdInchi"
   private val noAuxInchiString = "noAuxInchi"
@@ -12,39 +24,39 @@ object MoleculeFormat extends Enumeration {
   private val noStereoSmartsString = "noStereoSmarts"
   private val noStereoAromatizedSmartsString = "noStereoAromatizedSmarts"
 
-  val inchi = Value(inchiString)
-  val stdInchi = Value(stdInchiString)
-  val noAuxInchi = Value(noAuxInchiString)
-  val strictInchi = Value(strictInchiString)
-  val strictNoStereoInchi = Value(strictNoStereoInchiString)
-  val smiles = Value(smilesString)
-  val smarts = Value(smartsString)
-  val noStereoSmarts = Value(noStereoSmartsString)
-  val noStereoAromatizedSmarts = Value(noStereoAromatizedSmartsString)
+  val inchi = MoleculeFormatType(Value(inchiString), List())
+  val stdInchi = MoleculeFormatType(Value(stdInchiString), List())
+  val noAuxInchi = MoleculeFormatType(Value(noAuxInchiString), List())
+  val strictInchi = MoleculeFormatType(Value(strictInchiString), List())
+  val strictNoStereoInchi = MoleculeFormatType(Value(strictNoStereoInchiString), List())
+  val smiles = MoleculeFormatType(Value(smilesString), List())
+  val smarts = MoleculeFormatType(Value(smartsString), List())
+  val noStereoSmarts = MoleculeFormatType(Value(noStereoSmartsString), List())
+  val noStereoAromatizedSmarts = MoleculeFormatType(Value(noStereoAromatizedSmartsString), List())
 
-  private val exportMap: Map[Value, String] = Map(
-    inchi -> "inchi",
-    noAuxInchi -> s"inchi:AuxNone",
-    stdInchi -> s"inchi:AuxNone,SAbs,Woff",
-    strictInchi -> s"inchi:AuxNone,SAbs,Woff,DoNotAddH",
-    strictNoStereoInchi -> s"inchi:AuxNone,SNon,Woff,DoNotAddH",
-    smiles -> smilesString,
-    smarts -> smartsString,
-    noStereoSmarts -> s"$smartsString:0",
-    noStereoAromatizedSmarts -> s"$smartsString:a0"
+  private val exportMap: Map[String, String] = Map(
+    inchiString -> "inchi",
+    noAuxInchiString -> s"inchi:AuxNone",
+    stdInchiString -> s"inchi:AuxNone,SAbs,Woff",
+    strictInchiString -> s"inchi:AuxNone,SAbs,Woff,DoNotAddH",
+    strictNoStereoInchiString -> s"inchi:AuxNone,SNon,Woff,DoNotAddH",
+    smilesString -> smilesString,
+    smartsString -> smartsString,
+    noStereoSmartsString -> s"$smartsString:0",
+    noStereoAromatizedSmartsString -> s"$smartsString:a0"
   )
 
   // Don't add H according to usual valences: all H are explicit
-  private val importMap: Map[Value, String] = Map(
-    inchi -> inchiString,
-    stdInchi -> inchiString,
-    noAuxInchi -> inchiString,
-    strictInchi -> inchiString,
-    strictNoStereoInchi -> inchiString,
-    smiles -> smilesString,
-    smarts -> smartsString,
-    noStereoSmarts -> smartsString,
-    noStereoAromatizedSmarts -> smartsString
+  private val importMap: Map[String, String] = Map(
+    inchiString -> inchiString,
+    stdInchiString -> inchiString,
+    noAuxInchiString -> inchiString,
+    strictInchiString -> inchiString,
+    strictNoStereoInchiString -> inchiString,
+    smilesString -> smilesString,
+    smartsString -> smartsString,
+    noStereoSmartsString -> smartsString,
+    noStereoAromatizedSmartsString -> smartsString
   )
 
   def listPossibleFormats(): List[String] = {
@@ -52,10 +64,59 @@ object MoleculeFormat extends Enumeration {
   }
 
   def getExportString(chemicalFormat: MoleculeFormat.Value): String = {
-    exportMap(chemicalFormat)
+    exportMap(chemicalFormat.toString)
   }
 
   def getImportString(chemicalFormat: MoleculeFormat.Value): String = {
-    importMap(chemicalFormat)
+    importMap(chemicalFormat.toString)
+  }
+
+  def getName(s: String): MoleculeFormatType = {
+    require(!s.isEmpty)
+
+    val splitString = s.split(">", 2).toList
+
+    val cleaningOptions: List[CleaningOptions.Value] =
+      if (splitString.length == 1)
+        List()
+      else
+        splitString(1).split(",").toList.flatMap(cleaningSetting => {
+          try {
+            Option(CleaningOptions.withName(cleaningSetting))
+          } catch {
+            case e: NoSuchElementException =>
+              LOGGER.warn(s"The setting '$cleaningSetting' was not available as a cleaning format.  " +
+                s"Continuing the run with only the valid settings.")
+              None
+          }
+        })
+
+    new MoleculeFormatType(withName(splitString.head), cleaningOptions)
+  }
+
+  case class MoleculeFormatType(value: Value, cleaningOptions: List[CleaningOptions.Value])
+
+  object CleaningOptions extends Enumeration {
+    private val neutralizeString = "neutralize"
+    private val clean2dString = "clean2d"
+    private val clean3dString = "clean3d"
+    private val aromatizeString = "aromatize"
+
+    val neutralize = Value(neutralizeString)
+    val clean2d = Value(clean2dString)
+    val clean3d = Value(clean3dString)
+    val aromatize = Value(aromatizeString)
+
+    private val cleaningFunctions = ParMap[String, (Molecule) => Unit](
+      neutralizeString -> ((molecule: Molecule) => {new Standardizer("neutralize").standardize(molecule)}),
+      clean2dString -> ((molecule: Molecule) => {Cleaner.clean(molecule, 2)}),
+      clean3dString -> ((molecule: Molecule) => {Cleaner.clean(molecule, 3)}),
+      aromatizeString -> ((molecule: Molecule) => {molecule.aromatize(MoleculeGraph.AROM_BASIC)})
+    )
+
+    def applyCleaningOnMolecule(molecule: Molecule)(cleaningOption: CleaningOptions.Value): Unit = {
+      // Get the correct option and apply it
+      cleaningFunctions(cleaningOption.toString)(molecule)
+    }
   }
 }

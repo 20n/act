@@ -18,7 +18,7 @@ import scala.collection.parallel.immutable.{ParMap, ParSeq}
 object AbstractReactions {
   val logger = LogManager.getLogger(getClass)
 
-  def getAbstractReactions(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.Value)
+  def getAbstractReactions(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.MoleculeFormatType)
                           (abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int): ParSeq[ReactionInformation] = {
     require(substrateCountFilter > 0, s"A reaction must have at least one substrate.  " +
       s"You are looking for reactions with $substrateCountFilter substrates.")
@@ -73,7 +73,7 @@ object AbstractReactions {
     singleSubstrateReactions
   }
 
-  private def constructDbReaction(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.Value)
+  private def constructDbReaction(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.MoleculeFormatType)
                                  (abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int = -1)
                                  (ob: DBObject): Option[ReactionInformation] = {
     val substrates = ob.get(s"${ReactionKeywords.ENZ_SUMMARY}").asInstanceOf[BasicDBObject].get(s"${ReactionKeywords.SUBSTRATES}").asInstanceOf[BasicDBList]
@@ -105,7 +105,7 @@ object AbstractReactions {
       val uniqueSubstrates = substrateMoleculeList.map(_.getString).toSet
       val uniqueProducts = productMoleculeList.map(_.getString).toSet
       if (uniqueSubstrates.equals(uniqueProducts)) {
-        logger.debug(s"Reaction with ID $reactionId had the same substrates as products.")
+        logger.debug(s"Reaction with ID $reactionId")
         return None
       }
 
@@ -117,7 +117,7 @@ object AbstractReactions {
     }
   }
 
-  private def loadMolecule(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.Value)
+  private def loadMolecule(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.MoleculeFormatType)
                           (abstractChemicals: ParMap[Long, ChemicalInformation])(dbObj: DBObject): List[ChemicalInformation] = {
     val hitGoodChem: Option[ChemicalInformation] = abstractChemicals.get(dbObj.get(ReactionKeywords.PUBCHEM.toString).asInstanceOf[Long])
     val coefficient = dbObj.get(ReactionKeywords.COEFFICIENT.toString).asInstanceOf[Int]

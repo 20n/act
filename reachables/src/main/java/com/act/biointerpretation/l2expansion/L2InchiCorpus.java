@@ -2,6 +2,7 @@ package com.act.biointerpretation.l2expansion;
 
 import chemaxon.formats.MolFormatException;
 import chemaxon.struc.Molecule;
+import com.act.analysis.chemicals.molecules.MoleculeFormat.MoleculeFormatType;
 import com.act.analysis.chemicals.molecules.MoleculeFormat$;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import com.act.jobs.FileChecker;
@@ -64,9 +65,9 @@ public class L2InchiCorpus {
 
   public List<Molecule> getMolecules(List<String> formats) {
     // We take in a string list here because java won't load in the scala enumeration type...
-    List<MoleculeFormat$.Value> formatList = new ArrayList<>();
+    List<MoleculeFormatType> formatList = new ArrayList<>();
     for (String format : formats){
-      formatList.add(MoleculeFormat$.MODULE$.withName(format));
+      formatList.add(MoleculeFormat$.MODULE$.getName(format));
     }
 
     List<Molecule> results = new ArrayList<>(getInchiList().size());

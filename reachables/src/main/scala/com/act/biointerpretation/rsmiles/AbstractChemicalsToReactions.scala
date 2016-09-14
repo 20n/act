@@ -16,7 +16,7 @@ import scala.collection.JavaConversions._
 object AbstractChemicalsToReactions {
   val logger = LogManager.getLogger(getClass)
 
-  def calculateAbstractSubstrates(moleculeFormat: MoleculeFormat.Value)
+  def calculateAbstractSubstrates(moleculeFormat: MoleculeFormat.MoleculeFormatType)
                                  (db: String = "marvin" , host: String = "localhost", port: Int = 27017)
                                  (outputSubstrateFile: File, outputReactionCorpus: File, substrateCount: Int)
                                  (): Unit = {

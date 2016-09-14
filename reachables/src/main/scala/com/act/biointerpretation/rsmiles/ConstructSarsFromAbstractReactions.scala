@@ -20,11 +20,11 @@ object ConstructSarsFromAbstractReactions {
 
   private val LOGGER = LogManager.getLogger(getClass)
 
-  def sarConstructor(roAssignmentFile: File, outputFile: File, moleculeFormat: MoleculeFormat.Value)(): Unit = {
+  def sarConstructor(roAssignmentFile: File, outputFile: File, moleculeFormat: MoleculeFormat.MoleculeFormatType)(): Unit = {
     sarConstructor(roAssignmentFile, outputFile, List(moleculeFormat))
   }
 
-  def sarConstructor(roAssignmentFile: File, outputFile: File, moleculeFormats: List[MoleculeFormat.Value])() {
+  def sarConstructor(roAssignmentFile: File, outputFile: File, moleculeFormats: List[MoleculeFormat.MoleculeFormatType])() {
     val roAssignments: List[ReactionRoAssignment.RoAssignments] =
       scala.io.Source.fromFile(roAssignmentFile).getLines().mkString.parseJson.convertTo[List[RoAssignments]]
 
@@ -46,7 +46,7 @@ object ConstructSarsFromAbstractReactions {
     sarCorpus.printToJsonFile(outputFile)
   }
 
-  def assignCharacterizedGroupForRo(moleculeFormats: List[MoleculeFormat.Value], roCorpus: ErosCorpus)
+  def assignCharacterizedGroupForRo(moleculeFormats: List[MoleculeFormat.MoleculeFormatType], roCorpus: ErosCorpus)
                                    (assignment: ReactionRoAssignment.RoAssignments): Option[CharacterizedGroup] = {
     val ro = assignment.ro
 
