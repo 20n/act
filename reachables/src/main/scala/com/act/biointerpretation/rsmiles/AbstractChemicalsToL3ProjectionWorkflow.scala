@@ -162,6 +162,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       if (!projectionDir.exists()) projectionDir.mkdirs()
 
       val roProjectionsOutputFileDirectory = new File(projectionDir, s"$uniqueId.AbstractReactionRoProjections")
+      if (roProjectionsOutputFileDirectory.exists()) roProjectionsOutputFileDirectory.mkdir()
 
       val roProjectionArgs = List(
         "--substrates-list", substrateListOutputFile.getAbsolutePath,
@@ -171,7 +172,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       )
 
       // We assume files in = previous run
-      val hasCachedResultsAbstractRoProjection = roProjectionsOutputFileDirectory.listFiles().length > 0
+      val hasCachedResultsAbstractRoProjection = roProjectionsOutputFileDirectory.list().length > 0
       val sparkRoProjection = if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && hasCachedResultsAbstractRoProjection) {
         ScalaJobWrapper.wrapScalaFunction("Using cached spark abstract reaction RO projections", () => Unit)
       } else {
