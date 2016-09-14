@@ -222,9 +222,8 @@ class InternalState(job: Job) {
         job.getFlags.contains(JobFlag.ShouldNotFailChildrenJobs) match {
           case true => runManager.runNextJob(dependencyManager)
           case false =>
-            if (runManager.hasReturnJob) {
+            if (runManager.hasReturnJob)
               runManager.getReturnJobDependencyManager.markRemainingDependenciesAsFailure()
-            }
             // Map this job's buffer as a failure
             dependencyManager.markRemainingDependenciesAsFailure()
         }
