@@ -32,7 +32,6 @@ public class SingleSubstrateRoExpander extends L2Expander {
     super(generator);
     this.roCorpus = roCorpus;
     this.substrates = substrates;
-    LOGGER.info("Created ssroExpander substrate count is " + substrates.size() + " ro count is " + roCorpus.getRos());
   }
 
   @Override

@@ -6,11 +6,9 @@ import chemaxon.license.LicenseManager
 import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.Utils.ReactionProjector
-import com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector.SerializationWrapper
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.act.biointerpretation.sars.{CharacterizedGroup, SarCorpus}
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.ibm.db2.jcc.am.id
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.logging.log4j.LogManager
 import org.apache.spark.rdd.RDD
@@ -75,7 +73,7 @@ object compute {
     (deltaTS, results)
   }
 
-  def run(licenseFileName: String, wrapper: SerializationWrapper[CharacterizedGroup], molecules: List[Molecule], moleculeFormat: MoleculeFormat.Value): (Double, L2PredictionCorpus) = {
+  def run(licenseFileName: String, sar: CharacterizedGroup, molecules: List[Molecule], moleculeFormat: MoleculeFormat.Value): (Double, L2PredictionCorpus) = {
     val startTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
     val localLicenseFile = SparkFiles.get(licenseFileName)
 
@@ -83,7 +81,7 @@ object compute {
     LicenseManager.setLicenseFile(localLicenseFile)
 
     val singleGroupCorpus = new SarCorpus()
-    singleGroupCorpus.addCharacterizedGroup(wrapper.value)
+    singleGroupCorpus.addCharacterizedGroup(sar)
 
     val expander = new SingleSubstrateSarExpander(singleGroupCorpus, molecules.asJava,
       new AllPredictionsGenerator(new ReactionProjector(moleculeFormat.toString), moleculeFormat.toString))
@@ -269,9 +267,10 @@ object SparkSingleSubstrateROProjector {
 
       val sarRDD: RDD[CharacterizedGroup] = spark.makeRDD(groupList, groupList.size)
 
+
       val resultsRDD: RDD[SparkPredictionCorpus] =
         sarRDD.map(sar => {
-          val results = compute.run(licenseFileName, new SerializationWrapper[CharacterizedGroup](sar), validatedMolecules, moleculeFormat)
+          val results = compute.run(licenseFileName, sar, validatedMolecules, moleculeFormat)
           new SparkPredictionCorpus(sar.getGroupName, results._1, results._2)
         })
       resultsRDD
@@ -374,5 +373,4 @@ object SparkSingleSubstrateROProjector {
   }
 
   case class SparkPredictionCorpus(id: String, time: Double, prediction: L2PredictionCorpus)
-  case class SerializationWrapper[A](value: A)
 }
