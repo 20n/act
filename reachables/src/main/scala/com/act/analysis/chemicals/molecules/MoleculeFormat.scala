@@ -12,6 +12,7 @@ import scala.collection.parallel.immutable.ParMap
 // Format information be found at https://docs.chemaxon.com/display/docs/Molecule+Formats
 object MoleculeFormat extends Enumeration {
 
+  private val cleaningSeparator = ">"
   private val LOGGER = LogManager.getLogger(getClass)
 
   private val inchiString = "inchi"
@@ -74,7 +75,7 @@ object MoleculeFormat extends Enumeration {
   def getName(s: String): MoleculeFormatType = {
     require(!s.isEmpty)
 
-    val splitString = s.split(">", 2).toList
+    val splitString = s.split(cleaningSeparator, 2).toList
 
     val cleaningOptions: List[CleaningOptions.Value] =
       if (splitString.length == 1)
@@ -94,10 +95,22 @@ object MoleculeFormat extends Enumeration {
           }
         })
 
-    new MoleculeFormatType(withName(splitString.head), cleaningOptions)
+    try {
+      new MoleculeFormatType(withName(splitString.head), cleaningOptions)
+    } catch {
+      case e: NoSuchElementException => {
+        val message = s"Unable to find format value ${splitString.head}."
+        LOGGER.error(message, e)
+        throw new NoSuchElementException(message)
+      }
+    }
   }
 
-  case class MoleculeFormatType(value: Value, cleaningOptions: List[CleaningOptions.Value])
+  case class MoleculeFormatType(value: Value, cleaningOptions: List[CleaningOptions.Value]) {
+    override def toString: String = {
+      s"${value.toString}$cleaningSeparator${cleaningOptions.mkString(",")}"
+    }
+  }
 
   object CleaningOptions extends Enumeration {
     private val neutralizeString = "neutralize"
