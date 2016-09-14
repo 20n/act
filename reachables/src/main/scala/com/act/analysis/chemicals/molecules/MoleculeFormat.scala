@@ -1,11 +1,9 @@
 package com.act.analysis.chemicals.molecules
 
-import akka.actor.FSM.->
-import breeze.linalg.split
 import chemaxon.calculations.clean.Cleaner
 import chemaxon.standardizer.Standardizer
 import chemaxon.struc.{Molecule, MoleculeGraph}
-import org.apache.logging.log4j.LogManager
+import org.apache.log4j.LogManager
 
 import scala.collection.parallel.immutable.ParMap
 
