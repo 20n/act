@@ -42,8 +42,8 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
   // Setup output process
   private def setupProcessIO(): ProcessIO = {
     val jobIO = ProcessLogger(
-      (output: String) => if (outputMethod.isDefined) outputMethod.get(s"[stdout] $output"),
-      (error: String) => if (errorMethod.isDefined) errorMethod.get(s"[stderr] $error")
+      (output: String) => if (outputMethod.isDefined) outputMethod.get(s"${Console.GREEN}[stdout] $output"),
+      (error: String) => if (errorMethod.isDefined) errorMethod.get(s"${Console.RED}[stderr] $error")
     )
 
     BasicIO.apply(withIn = false, jobIO)
