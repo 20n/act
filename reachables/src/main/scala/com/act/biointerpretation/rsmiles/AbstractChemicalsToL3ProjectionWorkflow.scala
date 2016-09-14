@@ -194,12 +194,14 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
 
       val roAssignmentOutputFileName = new File(roAssignmentDirectory, s"$uniqueId.RoAssignments.json")
 
-      val reactionAssigner = if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && roAssignmentOutputFileName.exists()) {
+      val reactionAssignJob = if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && roAssignmentOutputFileName.exists()) {
         ScalaJobWrapper.wrapScalaFunction("Using cached ro assignments", () => Unit)
       } else {
-        ReactionRoAssignment.assignRoToReactions(roProjectionsOutputFileDirectory, reactionListOutputFile, roAssignmentOutputFileName) _
-        abstractChemicalsToSubstrateListJob.thenRun(ScalaJobWrapper.wrapScalaFunction("Ro Assignment to Reactions", reactionAssigner))
+        val reactionAssigner = ReactionRoAssignment.assignRoToReactions(roProjectionsOutputFileDirectory, reactionListOutputFile, roAssignmentOutputFileName) _
+        ScalaJobWrapper.wrapScalaFunction("Ro Assignment to Reactions", reactionAssigner)
       }
+
+      abstractChemicalsToSubstrateListJob.thenRun(reactionAssignJob)
       /*
         Step 4: Construct SARs from matching reactions
        */
