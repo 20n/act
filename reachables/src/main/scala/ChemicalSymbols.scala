@@ -130,23 +130,23 @@ object ChemicalSymbols {
     // note that the mass of an electron is 5.5e-4 Da, so we allow upto around an electron mass
     private val defaultNumPlaces = 3
 
-    // `` holds the value of initMass rounded to integers and scaled by 10^defaultNumPlaces
+    // `scaled` holds the value of initMass rounded to integers and scaled by 10^defaultNumPlaces
     // Reason we keep the scaling (and not just the truncated double value) is that allows us to
     // get away from floating point rounding errors. With the scaled value, we also get to keep
     // the type as `Long`. With all of that `hashCode` and `equals` are proper and don't introduce
     // errors. We were seeing values such as 5.944444444444445 and 100.07600000000001 in the output
-    // when `truncated` was typed as `Double` instead of `Long`. 
-    private val truncated = roundedAndScaled()
+    // when `scaled` was typed as `Double` instead of `Long`. 
+    private val scaled = roundedAndScaled()
 
     def rounded(numDec: Int = defaultNumPlaces): Double = roundedAndScaled(numDec) * tolerance(numDec)
     def roundedAndScaled(numDec: Int = defaultNumPlaces): Long = math round (initMass/tolerance(numDec))
     def tolerance(numDec: Int): Double = math.pow(10, -numDec)
 
     override def equals(that: Any) = that match { 
-      case that: MonoIsotopicMass => this.truncated.equals(that.truncated)
+      case that: MonoIsotopicMass => this.scaled.equals(that.scaled)
       case _ => false
     }
-    override def hashCode() = truncated.hashCode
+    override def hashCode() = scaled.hashCode
     override def toString(): String = this.rounded().toString
 
     // case when we might want to add: set of atoms together in a formula. need its full mass
@@ -156,7 +156,7 @@ object ChemicalSymbols {
     // case when we might need to multiply by an integer: k molecules together. need combined mass
     def *(num: Int) = new MonoIsotopicMass(this.initMass * num)
 
-    def isIn(low: Double, high: Double): Boolean = truncated >= low && truncated <= high
+    def isIn(low: Double, high: Double): Boolean = rounded() >= low && rounded() <= high
   }
 
   object Helpers {

@@ -1,6 +1,6 @@
 package com.act.lcms
 
-import java.io.PrintWriter
+import java.io.{PrintWriter, File}
 import act.shared.{CmdLineParser, OptDesc}
 import scala.io.Source
 import act.shared.ChemicalSymbols.MonoIsotopicMass
@@ -13,42 +13,17 @@ class RetentionTime(private val time: Double) {
   // Equality: We check for time differences within drift
 
   // Default drift allowed is emperically picked based on observations over experimental data
-  private val driftTolerated = 5.0 // seconds
+  private val driftTolerated = 3.0 // seconds
 
   // This function is a helper to `equals`
   // It tests whether two values are within the range of experimental drift we allow
-  def withinDriftWindow(a: Double, b: Double) = {
-    (math abs (a - b)) < driftTolerated
-  }
+  private def withinDriftWindow(a: Double, b: Double) = (math abs (a - b)) < driftTolerated
 
   // we allow for times to drift by driftTolerated, and so equals matches times that only that apart
   override def equals(that: Any) = that match { 
     case that: RetentionTime => withinDriftWindow(this.time, that.time)
     case _ => false
   }
-
-  // This function is the helper to hashcode. It aligns time values to boundaries, and will
-  // deliberately create collisions that when the fallback to `equals` kicks in, will resolve
-  // The way to understand is through example. Suppose as e.g., `driftTolerated = 5.0 seconds`, and:
-  //    Case 1) `timeA = 23.4 seconds` and `timeB = 13.5 seconds` -- 9.9 seconds apart
-  //    Case 2) `timeA = 23.4 seconds` and `timeB = 18.5 seconds` -- 4.9 seconds apart
-  //    Case 3) `timeA = 23.4 seconds` and `timeB = 28.1 seconds` -- 5.1 seconds apart
-  //    Case 4) `timeA = 23.4 seconds` and `timeB = 33.5 seconds` -- 10.1 seconds apart
-  // The function below will align to `10.0` in this case, i.e., will round to nearest 10s.
-  // Examining the cases above, we will see rounded values to be `timeA = 2.0` in all cases
-  // And Case {1, 2, 3, 4} will be rounded to `timeB = {1.0, 2.0, 3.0, 3.0}` respectively
-  // Which means only "Case 2)" will map both timeA and timeB together. This is exactly what
-  // we'd want to happen.
-  // Now for the "deliberate collisions". Note that in the case `timeA = 23.4 and timeB = 16.2`
-  // both would align to `2.0` and we would have a hash collision. But that's ok since
-  // equals will disambiguate these as they are `7.2` apart which greater than the `5.0` drift allowed.
-  def alignToBoundary() = {
-    val boundaryStep: Double = 2.0 * driftTolerated
-    (math round (time / boundaryStep)) * boundaryStep
-  }
-
-  // note that this will deliberately create collisions. as explained in `alignToBoundary` comment
-  override def hashCode() = alignToBoundary().hashCode
 
   override def toString(): String = {
     val timeToTwoDecimal = (math round (time * 100.0)) / 100.0
@@ -84,8 +59,15 @@ class UntargetedPeakSpectra(val peaks: Set[UntargetedPeak]) {
   override def toString = peaks.toString
 
   def toStats = {
-    val topk = 10
-    val lowPks = peaks.toList.filter(p => p.rt.isIn(20, 200) && p.mz.isIn(50, 500))
+    val topk = 100
+    val filterMzRt = false
+    def mzRtInRange(p: UntargetedPeak) = {
+      if (filterMzRt)
+        p.rt.isIn(20, 200) && p.mz.isIn(50, 500)
+      else
+        true
+    }
+    val lowPks = peaks.toList.filter(mzRtInRange)
     Map(
       "num peaks" -> peaks.size,
       "topK by snr with mz:[50,500] rt:[20,200]" -> lowPks.sortWith(_.snr > _.snr).map(p => List(p.mz, p.rt, p.snr)).take(topk),
@@ -169,7 +151,10 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
         val judgedPeaks = outlierCharacteristics(originalPeaks(0), originalPeaks(1))
         judgedPeaks match {
           case None => None
-          case Some((integr,max,snr)) => Some(new UntargetedPeak(mz, rt, integr, max, snr))
+          case Some((integr, max, snr)) => {
+            println(s"peak: $peak")
+            Some(new UntargetedPeak(mz, rt, integr, max, snr))
+          }
         }
       }
     }
@@ -190,7 +175,8 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     // the lists coming in for the inputs are if for this `peak @ mz, rt` there are *many* peaks in the
     // original data in the aggregated hypothesis trace! This is slightly crazy case and will only happen
     // when the peak structure is very zagged. We average the values
-    def together(closeBy: List[Double]) = closeBy.sum / closeBy.size
+    def average(closeBy: List[Double]) = closeBy.sum / closeBy.size
+    val together = average _
 
     val aggregateIntegratedInts = aggFn(together(hyp.map(_.integratedInt)), together(ctrl.map(_.integratedInt)))
     val aggregateMaxInts = aggFn(together(hyp.map(_.maxInt)), together(ctrl.map(_.maxInt)))
@@ -211,10 +197,12 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     // check:
     // signal in control identical to hypothesis: aggFn = 1.0 => valleyShape = 0
     // signal in hypothesis much lower or much higher than control: aggFn < 0.8 || aggFn > 1.2 => valleyShape > 1.0
-    if (valleyShape(aggregateIntegratedInts) > 1.0)
+    if (valleyShape(aggregateIntegratedInts) > 1.0) {
+      println(s"Calculating outlying chars:\nhypo = $hyp\nctrl = $ctrl")
       Some((aggregateIntegratedInts, aggregateMaxInts, aggregateSnrs))
-    else
+    } else {
       None
+    }
   }
 
   def unifyReplicates(replicates: List[LCMSExperiment]): LCMSExperiment = {
@@ -281,20 +269,21 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     // would need to "match" for the peaks to stay. And "match"ing
     // is defined up to the semantic tolerances as encoded in
     // MonoIsotopicMass and RetentionTime
-    val alignedPeaks: Set[PeakAt] = peaks.map(_.values.toSet).reduce(intersect)
-
-    def getOriginalPeaks(mzRt: PeakAt): List[List[UntargetedPeak]] = {
-      peaksAs2D.map(peaksInSingleExpr => getPeaksAtThisMzRt(mzRt, peaksInSingleExpr))
+    val alignedPeaks: Set[PeakAt] = {
+      val uniquePeaksInEachSet = peaks.map(_.values.toSet)
+      val uniquePeaksAcrossSets = uniquePeaksInEachSet.reduce(intersect)
+      println(s"unique peaks in each set: ${uniquePeaksInEachSet.map(_.size)} and intersected across: ${uniquePeaksAcrossSets.size} as compared to total peaks: ${peaks.map(_.keys.toSet).map(_.size)}")
+      uniquePeaksAcrossSets
     }
 
     val alignedToOriginalPeaks: Map[PeakAt, List[List[UntargetedPeak]]] = alignedPeaks.map(
-      peak => peak -> getOriginalPeaks(peak)
+      mzRt => mzRt -> peaksAs2D.map(filterToPeaksAtThisMzRT(mzRt))
     ).toMap
 
     (alignedPeaks, alignedToOriginalPeaks)
   }
 
-  def getPeaksAtThisMzRt(mzRt: PeakAt, originalPeaks: List[(UntargetedPeak, PeakAt)]): List[UntargetedPeak] = {
+  def filterToPeaksAtThisMzRT(mzRt: PeakAt)(originalPeaks: List[(UntargetedPeak, PeakAt)]): List[UntargetedPeak] = {
     for ((origPeak, origMzRt) <- originalPeaks if origMzRt.equals(mzRt)) yield origPeak
   }
 
@@ -311,7 +300,7 @@ object UntargetedMetabolomics {
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
     // read the command line options
-    val runTests = cmdLine has optRunTests
+    val runTests = cmdLine get optRunTests
     val controls = cmdLine getMany optControls
     val hypotheses = cmdLine getMany optHypotheses
 
@@ -322,8 +311,10 @@ object UntargetedMetabolomics {
         new PrintWriter(System.out)
     }
 
-    if (runTests)
-      runUnitTests()
+    if (cmdLine has optRunTests) {
+      val nasSharedDir = cmdLine get optRunTests
+      runPerlsteinLabTests(new File(nasSharedDir))
+    }
 
     def mkLCMSExpr(kv: String) = {
       val spl = kv.split("=")
@@ -371,15 +362,17 @@ object UntargetedMetabolomics {
 
   val optRunTests = new OptDesc(
                     param = "t",
-                    longParam = "run-tests",
-                    name = "run regression tests",
-                    desc = """Run regression tests.""",
-                    isReqd = false, hasArg = false)
+                    longParam = "run-tests-from",
+                    name = "dir path",
+                    desc = """Run regression tests. It needs the path of the shared dir on the NAS,
+                             |e.g., /mnt/shared-data/ because it pulls some sample data from there
+                             |to test over.""".stripMargin,
+                    isReqd = false, hasArg = true)
 
-  def runUnitTests() {
+  def runPerlsteinLabTests(sharedDirLoc: File) {
     // this data was collected with XCMS Centwave "optimzed" parameters: peak width 1-50 and ppm 20 (@vijay-20n?)
     def dataForWell(dataset: String)(repl: Int) = s"Plate_plate2016_09_08_${dataset}${repl}_0908201601.tsv"
-    val pLabXCMSLoc = "/mnt/shared-data/Vijay/perlstein_xcms_centwave_optimized_output/"
+    val pLabXCMSLoc = s"${sharedDirLoc.getPath}/Vijay/perlstein_xcms_centwave_optimized_output/"
     def fullLoc(well: String) = pLabXCMSLoc + well
     def readSpectra(f: String) = {
       val src = new RawData(source = f)
@@ -441,7 +434,7 @@ object UntargetedMetabolomics {
         println(s"stats = $statsStr")
       }
       val numPeaks = analysisRslt.toStats("num peaks").asInstanceOf[Int]
-      if (!(numPeaks > peakMinCnt && numPeaks <= peakMaxCnt)) {
+      if (!(numPeaks >= peakMinCnt && numPeaks <= peakMaxCnt)) {
         println(s"Failed test ${testID}, unexpected peak count: $numPeaks != [$peakMinCnt, $peakMaxCnt]")
         assert(false)
       }
