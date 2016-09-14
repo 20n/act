@@ -47,7 +47,13 @@ object AbstractChemicals {
     val chemicalId: Long = ob.get(ChemicalKeywords.ID.toString).asInstanceOf[Long]
     val smiles: String = ob.get(ChemicalKeywords.SMILES.toString).asInstanceOf[String]
 
-    // Replace R groups for C currently.  There can be multiple R groups, where they are listed as characters.  We want to grab any of the numbers assigned there.
+    if (smiles.contains("rRNA")) return None
+    if (smiles.contains("tRNA")) return None
+
+    if (smiles.contains("Protein")) return None
+
+    // Replace R groups for C currently.
+    // There can be multiple R groups, where they are listed as characters.  We want to grab any of the numbers assigned there.
     val replacedSmarts = smiles.replaceAll("R[0-9]*", "C")
 
     /*
