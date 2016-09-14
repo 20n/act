@@ -1,12 +1,12 @@
 package com.act.analysis.chemicals.molecules
 
-
 // Format information be found at https://docs.chemaxon.com/display/docs/Molecule+Formats
 object MoleculeFormat extends Enumeration {
   private val inchiString = "inchi"
   private val stdInchiString = "stdInchi"
   private val noAuxInchiString = "noAuxInchi"
   private val strictInchiString = "strictInchi"
+  private val strictNoStereoInchiString = "strictNoStereoInchi"
   private val smilesString = "smiles"
   private val smartsString = "smarts"
   private val noStereoSmartsString = "noStereoSmarts"
@@ -16,6 +16,7 @@ object MoleculeFormat extends Enumeration {
   val stdInchi = Value(stdInchiString)
   val noAuxInchi = Value(noAuxInchiString)
   val strictInchi = Value(strictInchiString)
+  val strictNoStereoInchi = Value(strictNoStereoInchiString)
   val smiles = Value(smilesString)
   val smarts = Value(smartsString)
   val noStereoSmarts = Value(noStereoSmartsString)
@@ -26,6 +27,7 @@ object MoleculeFormat extends Enumeration {
     noAuxInchi -> s"inchi:AuxNone",
     stdInchi -> s"inchi:AuxNone,SAbs,Woff",
     strictInchi -> s"inchi:AuxNone,SAbs,Woff,DoNotAddH",
+    strictNoStereoInchi -> s"inchi:AuxNone,SNon,Woff,DoNotAddH",
     smiles -> smilesString,
     smarts -> smartsString,
     noStereoSmarts -> s"$smartsString:0",
@@ -38,6 +40,7 @@ object MoleculeFormat extends Enumeration {
     stdInchi -> inchiString,
     noAuxInchi -> inchiString,
     strictInchi -> inchiString,
+    strictNoStereoInchi -> inchiString,
     smiles -> smilesString,
     smarts -> smartsString,
     noStereoSmarts -> smartsString,
