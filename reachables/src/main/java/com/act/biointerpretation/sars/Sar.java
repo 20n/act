@@ -17,7 +17,7 @@ import java.util.function.Predicate;
     @JsonSubTypes.Type(value = OneSubstrateCarbonCountSar.class, name = "CarbonCount"),
     @JsonSubTypes.Type(value = NoSar.class, name = "NoSar"),
 })
-public interface Sar extends Predicate<List<Molecule>>, Serializable {
+public interface Sar extends Predicate<List<Molecule>> {
 
   /**
    * Test a given list of substrates to see whether this SAR will accept them.
