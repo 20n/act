@@ -1,4 +1,4 @@
-package com.act.biointerpretation.rsmiles
+package com.act.biointerpretation.rsmiles.abstract_chemicals
 
 import java.io.Serializable
 

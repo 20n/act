@@ -1,12 +1,11 @@
-package com.act.biointerpretation.rsmiles
-
+package com.act.biointerpretation.rsmiles.abstract_chemicals
 
 import java.util.concurrent.atomic.AtomicInteger
 
 import act.server.MongoDB
 import chemaxon.formats.MolFormatException
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
-import com.act.biointerpretation.rsmiles.AbstractChemicals.ChemicalInformation
+import com.act.biointerpretation.rsmiles.abstract_chemicals.AbstractChemicals.ChemicalInformation
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities, ReactionKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.log4j.LogManager
@@ -18,10 +17,22 @@ import scala.collection.parallel.immutable.{ParMap, ParSeq}
 object AbstractReactions {
   val logger = LogManager.getLogger(getClass)
 
-  def getAbstractReactions(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.MoleculeFormatType)
-                          (abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int): ParSeq[ReactionInformation] = {
-    require(substrateCountFilter > 0, s"A reaction must have at least one substrate.  " +
-      s"You are looking for reactions with $substrateCountFilter substrates.")
+  /**
+    * Grabs all the abstract reactions for a given substrate count from a given DB.
+    * Then converts them into ReactionInformations
+    *
+    * @param mongoDb           Database instance to use
+    * @param moleculeFormat    Format to convert the molecules to
+    * @param abstractChemicals A list of abstract chemicals previously constructed
+    * @param substrateCount    The number of substrates we should filter for
+    *
+    * @return A list containing reactions that
+    *         have been constructed into the reaction information format.
+    */
+  def getAbstractReactions(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.MoleculeFormatType, substrateCount: Int)
+                          (abstractChemicals: ParMap[Long, ChemicalInformation]): ParSeq[ReactionInformation] = {
+    require(substrateCount > 0, s"A reaction must have at least one substrate.  " +
+      s"You are looking for reactions with $substrateCount substrates.")
 
     logger.info("Finding reactions that contain abstract chemicals.")
 
@@ -50,24 +61,31 @@ object AbstractReactions {
       get all reactions that could be defined as abstract.
      */
     val query = Mongo.defineMongoOr(abstractSubstrateOrProduct)
+
     // Filter so we get both the substrates and products
     val filter = new BasicDBObject(s"${ReactionKeywords.ENZ_SUMMARY}.${ReactionKeywords.PRODUCTS}", 1)
     filter.append(s"${ReactionKeywords.ENZ_SUMMARY}.${ReactionKeywords.SUBSTRATES}", 1)
-    val abstractReactions: ParSeq[DBObject] = Mongo.mongoQueryReactions(mongoDb)(query, filter, notimeout = true).toList.par
+
+    // This will likely timeout if we don't indicate notimeout == true, so this is important.
+    // The timeout can be seen by getting variable length responses.
+    val abstractReactions: ParSeq[DBObject] =
+      Mongo.mongoQueryReactions(mongoDb)(query, filter, notimeout = true).toList.par
 
     logger.info(s"Finished finding reactions that contain abstract chemicals. Found ${abstractReactions.length}.")
 
     val reactionConstructor: (DBObject) => Option[ReactionInformation] =
-      constructDbReaction(mongoDb, moleculeFormat)(abstractChemicals, substrateCountFilter) _
+      constructDbReaction(mongoDb, moleculeFormat)(abstractChemicals, substrateCount)
 
     val processCounter = new AtomicInteger()
     val singleSubstrateReactions: ParSeq[ReactionInformation] = abstractReactions.flatMap(rxn => {
+      val reaction = reactionConstructor(rxn)
+
       if (processCounter.incrementAndGet() % 10000 == 0) {
-        logger.info(s"Total of ${processCounter.get} reactions have started processing " +
-          s"so far for $substrateCountFilter substrate${if (substrateCountFilter > 1) "s" else ""}.")
+        logger.info(s"Total of ${processCounter.get} reactions have finished processing " +
+          s"so far for $substrateCount substrate${if (substrateCount > 1) "s" else ""}.")
       }
 
-      reactionConstructor(rxn)
+      reaction
     })
 
     singleSubstrateReactions
@@ -76,25 +94,24 @@ object AbstractReactions {
   private def constructDbReaction(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.MoleculeFormatType)
                                  (abstractChemicals: ParMap[Long, ChemicalInformation], substrateCountFilter: Int = -1)
                                  (ob: DBObject): Option[ReactionInformation] = {
+    // Parse the objects from the database and ensure that they exist.
     val substrates = ob.get(s"${ReactionKeywords.ENZ_SUMMARY}").asInstanceOf[BasicDBObject].get(s"${ReactionKeywords.SUBSTRATES}").asInstanceOf[BasicDBList]
     val products = ob.get(s"${ReactionKeywords.ENZ_SUMMARY}").asInstanceOf[BasicDBObject].get(s"${ReactionKeywords.PRODUCTS}").asInstanceOf[BasicDBList]
     val reactionId = ob.get(ReactionKeywords.ID.toString).asInstanceOf[Int]
 
-    if (substrates == null | products == null) {
-      return None
-    }
+    if (substrates == null | products == null) return None
+
     val productList = products.toList
     val substrateList = substrates.toList
 
     // Not really a reaction if nothing is happening.
     if (substrateList.isEmpty || productList.isEmpty) return None
 
-    if (substrateCountFilter > 0 && substrateList.length != substrateCountFilter) {
-      return None
-    }
+    // Ensure that the substrate number is the same as the number of substrates we are looking for
+    if (substrateCountFilter > 0 && substrateList.length != substrateCountFilter) return None
 
-    // Make sure we load everything in.
-    val moleculeLoader = loadMolecule(mongoDb, moleculeFormat)(abstractChemicals) _
+    // Make sure we load everything in, we assign settings that carry over here.
+    val moleculeLoader: (DBObject) => List[ChemicalInformation] = loadMolecule(mongoDb, moleculeFormat)(abstractChemicals)
 
     try {
       val substrateMoleculeList: List[ChemicalInformation] = substrateList.flatMap(x => moleculeLoader(x.asInstanceOf[DBObject]))
@@ -102,7 +119,7 @@ object AbstractReactions {
 
       /*
         Check if the Substrates == Products.
-        This probably means a stereo change is happening that we don't really care about.
+        This probably means a stereo change is occurring that our import settings could strip off the original molecule.
        */
       val uniqueSubstrates = substrateMoleculeList.map(_.getString).toSet
       val uniqueProducts = productMoleculeList.map(_.getString).toSet
@@ -112,9 +129,7 @@ object AbstractReactions {
         return None
       }
 
-
-      val rxnInfo = new ReactionInformation(reactionId, substrateMoleculeList, productMoleculeList)
-      Option(rxnInfo)
+      Option(new ReactionInformation(reactionId, substrateMoleculeList, productMoleculeList))
     } catch {
       case e: MolFormatException => None
     }
@@ -132,7 +147,9 @@ object AbstractReactions {
     val query = Mongo.createDbObject(ChemicalKeywords.ID, chemicalId)
     val inchi = Mongo.mongoQueryChemicals(mongoDb)(query, null).next().get(ChemicalKeywords.INCHI.toString).asInstanceOf[String]
 
-    if (!moleculeFormat.toString.toLowerCase.contains("inchi")) logger.warn("Trying to import InChIs with a non InChI setting.")
+    if (!moleculeFormat.toString.toLowerCase.contains("inchi"))
+      logger.warn("Trying to import InChIs with a non InChI setting.")
+
     val molecule = MoleculeImporter.importMolecule(inchi, moleculeFormat)
     List.fill(coefficient)(new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportMolecule(molecule, moleculeFormat)))
   }
