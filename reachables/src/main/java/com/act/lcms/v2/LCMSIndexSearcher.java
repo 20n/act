@@ -139,22 +139,28 @@ public class LCMSIndexSearcher {
 
   public void init() throws RocksDBException, ClassNotFoundException, IOException {
     dbAndHandles = DBUtil.openExistingRocksDB(indexDir, LCMSIndexBuilder.COLUMN_FAMILIES.values());
+    LOGGER.info("Initializing DB");
 
     // TODO: hold onto the byte representation of the timepoints so we can use them as keys more easily.
     timepoints = LCMSIndexBuilder.byteArrayToFloatList(
         dbAndHandles.get(LCMSIndexBuilder.COLUMN_FAMILIES.TIMEPOINTS, LCMSIndexBuilder.TIMEPOINTS_KEY)
     );
+    LOGGER.info("Loaded %d timepoints", timepoints.size());
     // Assumes timepoints are sorted.  TODO: check!
 
     mzWindows = new ArrayList<>();
     RocksIterator mzIter = dbAndHandles.newIterator(LCMSIndexBuilder.COLUMN_FAMILIES.TARGET_TO_WINDOW);
     mzIter.seekToFirst();
     while (mzIter.isValid()) {
+      // The keys are the target m/z's, so we can ignore them.
       mzWindows.add(deserializeObject(mzIter.value()));
+      mzIter.next();
     }
 
     // Sort windows so we can easily search through them
     Collections.sort(mzWindows, (a, b) -> a.getTargetMZ().compareTo(b.getTargetMZ()));
+
+    LOGGER.info("Loaded %d m/z windows", mzWindows.size());
   }
 
   public List<LCMSIndexBuilder.TMzI> searchIndexInRange(
