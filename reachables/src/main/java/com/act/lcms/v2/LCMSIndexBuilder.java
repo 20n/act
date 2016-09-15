@@ -50,19 +50,18 @@ public class LCMSIndexBuilder {
    *   "timepoints" -> serialized array of time point doubles
    * and we use this key to write/read those time points.  Since time points are shared across all traces, we can
    * maintain this one copy in the index and reconstruct the XZ pairs as we read trace intensity arrays. */
-  private static final byte[] TIMEPOINTS_KEY = "timepoints".getBytes(UTF8);
+  static final byte[] TIMEPOINTS_KEY = "timepoints".getBytes(UTF8);
 
   private static final Double WINDOW_WIDTH_FROM_CENTER = MS1.MS1_MZ_TOLERANCE_DEFAULT;
   private static final Double MZ_STEP_SIZE = MS1.MS1_MZ_TOLERANCE_DEFAULT / 2.0;
   private static final Double MIN_MZ = 50.0;
   private static final Double MAX_MZ = 950.0;
 
-  // TODO: make this take a plate barcode and well coordinates instead of a scan file.
   public static final String OPTION_INDEX_PATH = "x";
   public static final String OPTION_SCAN_FILE = "i";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class extracts traces from an LCMS scan files for a list of target m/z values, ",
+      "This class extracts and indexes readings from an LCMS scan files, ",
       "and writes them to an on-disk index for later processing."
   }, "");
 
@@ -92,11 +91,12 @@ public class LCMSIndexBuilder {
     HELP_FORMATTER.setWidth(100);
   }
 
-  public enum COLUMN_FAMILIES implements ColumnFamilyEnumeration<COLUMN_FAMILIES> {
+  // Package private so the searcher can use this enum but nobody else.
+  enum COLUMN_FAMILIES implements ColumnFamilyEnumeration<COLUMN_FAMILIES> {
     TARGET_TO_WINDOW("target_mz_to_window_obj"),
     TIMEPOINTS("timepoints"),
     ID_TO_TRIPLE("id_to_triple"),
-    TIMEPOINT_ID_TO_TRIPLES("timepoints_to_triples"),
+    TIMEPOINT_TO_TRIPLES("timepoints_to_triples"),
     WINDOW_ID_TO_TRIPLES("windows_to_triples"),
     ;
 
@@ -149,7 +149,7 @@ public class LCMSIndexBuilder {
 
     // Not enough memory available?  We're gonna need a bigger heap.
     long maxMemory = Runtime.getRuntime().maxMemory();
-    if (maxMemory < 1 << 34) {  // 16GB
+    if (maxMemory < 1L << 34) {  // 16GB
       String msg = StringUtils.join(
           String.format("You have run this class with a maximum heap size of less than 16GB (%d to be exact). ",
               maxMemory),
@@ -274,7 +274,15 @@ public class LCMSIndexBuilder {
     return windows;
   }
 
-  public static class TMzI { // (time, mass/charge, intensity) triple
+  /**
+   * (time, mass/charge, intensity) triples.
+   *
+   * The three axes (XYZ) from MS1 are stored as binary triples in our index, so that we can recover the individual
+   * readings from the LCMS instrument in any m/z and time ranges.
+   *
+   * This could be called XYZ, but T(ime, )Mz(, and) I(ntensity) makes more sense to me.
+   */
+  public static class TMzI {
     /* Note: we are cheating here.  We usually throw around Doubles for time and intensity.  To save (a whole bunch of)
      * of bytes, we pare down our time intensity values to floats, knowing they were actually floats to begin with
      * in the NetCDF file but were promoted to doubles to be compatible with the LCMS parser API.  */
@@ -309,6 +317,7 @@ public class LCMSIndexBuilder {
       buffer.putFloat(intensity);
     }
 
+    // Write the fields without bothering to create an object.
     public static void writeToByteBuffer(ByteBuffer buffer, float time, double mz, float intensity) {
       buffer.putFloat(time);
       buffer.putDouble(mz);
@@ -407,6 +416,7 @@ public class LCMSIndexBuilder {
       ByteBuffer triplesForThisTime = ByteBuffer.allocate(Long.BYTES * spectrum.getIntensities().size());
 
       // Batch up all the triple writes to reduce the number of times we hit the disk in this loop.
+      // Note: huge success!
       RocksDBAndHandles.RocksDBWriteBatch<COLUMN_FAMILIES> writeBatch = dbAndHandles.makeWriteBatch();
 
       // Initialize the sweep line lists.  Windows go follow: tbd -> working -> done (nowhere).
@@ -473,7 +483,7 @@ public class LCMSIndexBuilder {
       ByteBuffer timeBuffer = ByteBuffer.allocate(Float.BYTES).putFloat(time);
       timeBuffer.flip(); // Prep both bufers for reading so they can be written to the DB.
       triplesForThisTime.flip();
-      dbAndHandles.put(COLUMN_FAMILIES.TIMEPOINT_ID_TO_TRIPLES,
+      dbAndHandles.put(COLUMN_FAMILIES.TIMEPOINT_TO_TRIPLES,
           toCompactArray(timeBuffer), toCompactArray(triplesForThisTime));
 
       timepoints.add(time);
@@ -601,7 +611,7 @@ public class LCMSIndexBuilder {
    * @param src
    * @return
    */
-  static byte[] toCompactArray(ByteBuffer src) {
+  public static byte[] toCompactArray(ByteBuffer src) {
     // Assume src is pre-flipped to avoid a double-flip.
     if (src.hasArray() && src.limit() >= src.capacity()) { // No need to compact if limit covers the full backing array.
       return src.array();
@@ -634,10 +644,19 @@ public class LCMSIndexBuilder {
     assert(b.position() == 0); // A non-zero position means either the buffer hasn't been flipped or has been read from.
   }
 
-  static byte[] floatListToByteArray(List<Float> vals) throws IOException {
+  static byte[] floatListToByteArray(List<Float> vals) {
     ByteBuffer buffer = ByteBuffer.allocate(vals.size() * Float.BYTES); // Don't waste any bits!
     vals.forEach(buffer::putFloat);
     buffer.flip(); // Prep for reading.
     return toCompactArray(buffer); // Compact just to be safe, check invariants.
+  }
+
+  static List<Float> byteArrayToFloatList(byte[] bytes) {
+    ByteBuffer buffer = ByteBuffer.wrap(bytes);
+    List<Float> vals = new ArrayList<>(bytes.length / Float.BYTES);
+    while (buffer.hasRemaining()) {
+      vals.add(buffer.getFloat());
+    }
+    return vals;
   }
 }
