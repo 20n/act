@@ -24,7 +24,7 @@ public class OneSubstrateSubstructureSar implements Sar {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(OneSubstrateSubstructureSar.class);
 
-  private static final String INCHI_SETTINGS = "inchi:AuxNone";
+  private static final String INCHI_SETTINGS = "inchi:AuxNone,SNon,Woff,DoNotAddH";
   private static final String PRINT_FAILURE = "FAILED_TO_PRINT_SAR";
 
   /**
