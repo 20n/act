@@ -37,7 +37,7 @@ object AbstractChemicals {
        Convert from DB Object => Smarts and return that.
        Flatmap as Parse Db object returns None if an error occurs (Just filter out the junk)
     */
-    val parseDbObjectInFormat: (DBObject) => Option[(Long, ChemicalInformation)] = parseDbObject(moleculeFormat)_
+    val parseDbObjectInFormat: (DBObject) => Option[(Long, ChemicalInformation)] = parseDbObject(moleculeFormat) _
     val goodChemicalIds: ParMap[Long, ChemicalInformation] = result.flatMap(
       dbResponse => parseDbObjectInFormat(dbResponse)).toMap
 
@@ -82,8 +82,10 @@ object AbstractChemicals {
 
   case class ChemicalInformation(chemicalId: Int, chemicalAsString: String) extends Serializable {
     def getChemicalId: Int = chemicalId
+
     def getString: String = chemicalAsString
   }
 
   object Mongo extends MongoWorkflowUtilities {}
+
 }

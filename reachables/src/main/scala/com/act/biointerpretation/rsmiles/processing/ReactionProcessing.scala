@@ -9,7 +9,6 @@ import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
 
 import scala.collection.JavaConversions._
-
 import scala.collection.parallel.immutable.ParMap
 
 object ReactionProcessing {
@@ -80,9 +79,12 @@ object ReactionProcessing {
 
   case class ReactionInformation(reactionId: Int, substrates: List[ChemicalInformation], products: List[ChemicalInformation]) {
     def getReactionId: Int = reactionId
+
     def getSubstrates: List[ChemicalInformation] = substrates
+
     def getProducts: List[ChemicalInformation] = products
   }
 
   object Mongo extends MongoWorkflowUtilities {}
+
 }

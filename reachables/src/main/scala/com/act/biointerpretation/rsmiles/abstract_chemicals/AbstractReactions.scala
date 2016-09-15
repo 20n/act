@@ -10,8 +10,8 @@ import com.act.biointerpretation.rsmiles.processing.ReactionProcessing.ReactionI
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoWorkflowUtilities, ReactionKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.log4j.LogManager
-import scala.collection.parallel.immutable.{ParMap, ParSeq}
 
+import scala.collection.parallel.immutable.{ParMap, ParSeq}
 
 
 object AbstractReactions {

@@ -5,18 +5,19 @@ import java.io.{BufferedWriter, File, FileWriter}
 import act.server.MongoDB
 import com.act.analysis.chemicals.molecules.MoleculeFormat
 import com.act.biointerpretation.l2expansion.L2InchiCorpus
+import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
 import com.act.biointerpretation.rsmiles.processing.ReactionProcessing.ReactionInformation
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
 import org.apache.log4j.LogManager
 import spray.json._
-import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
+
 import scala.collection.JavaConversions._
 
 object AbstractChemicalsToReactions {
   val logger = LogManager.getLogger(getClass)
 
   def calculateAbstractSubstrates(moleculeFormat: MoleculeFormat.MoleculeFormatType)
-                                 (db: String = "marvin" , host: String = "localhost", port: Int = 27017)
+                                 (db: String = "marvin", host: String = "localhost", port: Int = 27017)
                                  (outputSubstrateFile: File, outputReactionCorpus: File, substrateCount: Int)
                                  (): Unit = {
     val db = Mongo.connectToMongoDatabase()
@@ -29,7 +30,7 @@ object AbstractChemicalsToReactions {
   }
 
   def writeAbstractReactionsToJsonCorpus(abstractReactions: List[ReactionInformation],
-                                         outputReactionsLocation: File): Unit ={
+                                         outputReactionsLocation: File): Unit = {
     val outputFile = new BufferedWriter(new FileWriter(outputReactionsLocation))
     outputFile.write(abstractReactions.toJson.prettyPrint)
     outputFile.close()
@@ -48,4 +49,5 @@ object AbstractChemicalsToReactions {
   }
 
   object Mongo extends MongoWorkflowUtilities {}
+
 }

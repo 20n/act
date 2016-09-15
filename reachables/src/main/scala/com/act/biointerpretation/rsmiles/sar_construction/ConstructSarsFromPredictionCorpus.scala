@@ -7,12 +7,13 @@ import chemaxon.reaction.Reactor
 import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.mechanisminspection.ErosCorpus
+import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
 import com.act.biointerpretation.rsmiles.sar_construction.ReactionRoAssignment.RoAssignments
 import com.act.biointerpretation.sarinference.SarTree
 import com.act.biointerpretation.sars.{CharacterizedGroup, Sar, SarCorpus, SerializableReactor}
 import org.apache.log4j.LogManager
 import spray.json._
-import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
+
 import scala.collection.JavaConverters._
 import scala.collection.parallel.immutable.ParSeq
 
@@ -69,7 +70,7 @@ object ConstructSarsFromPredictionCorpus {
     * @return Either a characterized group or nothing, depending on if a characterized group could be constructed.
     */
   private def assignCharacterizedGroupForRo(moleculeFormats: List[MoleculeFormat.MoleculeFormatType], roCorpus: ErosCorpus)
-                                   (assignment: ReactionRoAssignment.RoAssignments): Option[CharacterizedGroup] = {
+                                           (assignment: ReactionRoAssignment.RoAssignments): Option[CharacterizedGroup] = {
     assume(moleculeFormats.nonEmpty, "No molecule format provided, please provide a format.")
 
     /*

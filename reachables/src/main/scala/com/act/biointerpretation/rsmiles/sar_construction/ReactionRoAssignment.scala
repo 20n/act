@@ -3,6 +3,7 @@ package com.act.biointerpretation.rsmiles.sar_construction
 import java.io.{BufferedWriter, File, FileWriter}
 
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus
+import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
 import com.act.biointerpretation.rsmiles.abstract_chemicals.AbstractChemicals.ChemicalInformation
 import com.act.biointerpretation.rsmiles.processing.ReactionProcessing.ReactionInformation
 import org.apache.log4j.LogManager
@@ -10,7 +11,6 @@ import spray.json._
 
 import scala.collection.JavaConverters._
 import scala.collection.parallel.immutable.ParSeq
-import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
 
 object ReactionRoAssignment {
   val LOGGER = LogManager.getLogger(getClass)
@@ -153,4 +153,5 @@ object ReactionRoAssignment {
   }
 
   case class RoAssignments(ro: Int, reactions: List[ReactionInformation]) {}
+
 }
