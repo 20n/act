@@ -1,6 +1,7 @@
 package com.act.biointerpretation.rsmiles.concrete_chemicals
 
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
 
 import act.server.MongoDB
 import com.act.analysis.chemicals.molecules.MoleculeFormat
@@ -35,10 +36,11 @@ object ConcreteReactions extends QueryByRo {
       getReactionInformationForSingleRo(mongoDb, moleculeFormat, substrateCount)
 
     logger.info("Getting previously defined RO assignments from database for each RO.")
+    val progressionCounter = new AtomicInteger()
     val assignments: List[RoAssignments] = roIds.par.map(roId => {
       logger.info(s"Started processing RO $roIds.")
       val reactionInformation = reactionInformationById(roId)
-      logger.info(s"Finished processing RO $roIds.")
+      logger.info(s"Finished processing RO $roIds.  Completed ${progressionCounter.incrementAndGet()} assignments out of ${roIds.length} total.")
       new RoAssignments(roId, reactionInformation)
     }).seq.toList
 
