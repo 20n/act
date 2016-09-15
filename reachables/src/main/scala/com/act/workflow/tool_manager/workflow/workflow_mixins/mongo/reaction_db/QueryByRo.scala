@@ -35,6 +35,11 @@ trait QueryByRo extends MongoWorkflowUtilities {
   def queryReactionsForValuesByRo(roValues: List[String],
                                   mongoConnection: MongoDB,
                                   returnFilterFields: List[String]): Map[Long, Map[String, AnyRef]] = {
+      val dbReactionIdsIterator = queryReactionsByRo(roValues, mongoConnection, returnFilterFields)
+      mongoReturnQueryToMap(dbReactionIdsIterator, returnFilterFields)
+  }
+
+  def queryReactionsByRo(roValues: List[String], mongoConnection: MongoDB, returnFilterFields: List[String]): Iterator[DBObject] = {
     val methodLogger = LogManager.getLogger("queryReactionsForValuesByRo")
     if (roValues.length <= 0) throw new RuntimeException("Number of RO values supplied was 0.")
 
@@ -60,6 +65,6 @@ trait QueryByRo extends MongoWorkflowUtilities {
     val dbReactionIdsIterator: Iterator[DBObject] =
       mongoQueryReactions(mongoConnection)(reactionIdQuery, reactionReturnFilter)
 
-    mongoReturnQueryToMap(dbReactionIdsIterator, returnFilterFields)
+    dbReactionIdsIterator
   }
 }

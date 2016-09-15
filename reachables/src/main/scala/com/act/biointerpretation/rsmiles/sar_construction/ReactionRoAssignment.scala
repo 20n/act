@@ -4,7 +4,7 @@ import java.io.{BufferedWriter, File, FileWriter}
 
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus
 import com.act.biointerpretation.rsmiles.abstract_chemicals.AbstractChemicals.ChemicalInformation
-import com.act.biointerpretation.rsmiles.abstract_chemicals.AbstractReactions.ReactionInformation
+import com.act.biointerpretation.rsmiles.processing.ReactionProcessing.ReactionInformation
 import org.apache.log4j.LogManager
 import spray.json._
 
@@ -146,7 +146,7 @@ object ReactionRoAssignment {
     * @param outputFile    File to output to
     * @param roAssignments The list of assignments to Jsonify
     */
-  private def writeRoAssignmentsToJson(outputFile: File, roAssignments: List[RoAssignments]): Unit = {
+  def writeRoAssignmentsToJson(outputFile: File, roAssignments: List[RoAssignments]): Unit = {
     val outputWriter = new BufferedWriter(new FileWriter(outputFile))
     outputWriter.write(roAssignments.toJson.prettyPrint)
     outputWriter.close()
