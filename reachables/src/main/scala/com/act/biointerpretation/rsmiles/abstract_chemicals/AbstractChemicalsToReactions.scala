@@ -1,12 +1,11 @@
-package com.act.biointerpretation.rsmiles
+package com.act.biointerpretation.rsmiles.abstract_chemicals
 
 import java.io.{BufferedWriter, File, FileWriter}
 
 import act.server.MongoDB
 import com.act.analysis.chemicals.molecules.MoleculeFormat
 import com.act.biointerpretation.l2expansion.L2InchiCorpus
-import com.act.biointerpretation.rsmiles.AbstractReactions.ReactionInformation
-import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
+import com.act.biointerpretation.rsmiles.abstract_chemicals.AbstractReactions.ReactionInformation
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
 import org.apache.log4j.LogManager
 import spray.json._
@@ -22,7 +21,7 @@ object AbstractChemicalsToReactions {
                                  (): Unit = {
     val db = Mongo.connectToMongoDatabase()
     val abstractChemicals = AbstractChemicals.getAbstractChemicals(db, moleculeFormat)
-    val abstractReactions = AbstractReactions.getAbstractReactions(db, moleculeFormat)(abstractChemicals, substrateCount)
+    val abstractReactions = AbstractReactions.getAbstractReactions(db, moleculeFormat, substrateCount)(abstractChemicals)
     logger.info(s"Found ${abstractReactions.size} matching reactions with $substrateCount substrates. " +
       s"Writing both the substrates and reactions to disk.")
     writeSubstrateStringsForSubstrateCount(db)(abstractReactions.seq.toList, outputSubstrateFile)

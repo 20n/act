@@ -1,5 +1,7 @@
 package com.act.biointerpretation.rsmiles
 
+import com.act.biointerpretation.rsmiles.abstract_chemicals.{AbstractChemicals, AbstractReactions}
+import com.act.biointerpretation.rsmiles.sar_construction.ReactionRoAssignment
 import spray.json
 
 object DataSerializationJsonProtocol extends json.DefaultJsonProtocol {
