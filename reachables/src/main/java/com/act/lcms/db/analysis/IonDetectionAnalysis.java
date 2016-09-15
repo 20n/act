@@ -279,13 +279,14 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
 
     Map<ScanData.KIND, List<Pair<LCMSWell, ScanFile>>> result = new HashMap<>();
 
+    int wellCounter = 0;
     for (Map<String, String> row : parser.getResults()) {
       String wellType = row.get(HEADER_WELL_TYPE);
       Integer rowCoordinate = Integer.parseInt(row.get(HEADER_WELL_ROW));
       Integer columnCoordinate = Integer.parseInt(row.get(HEADER_WELL_COLUMN));
       String scanFileLocation = row.get(HEADER_SCAN_FILE_LOCATION);
 
-      LCMSWell well = new LCMSWell(FAKE_ID, FAKE_ID, rowCoordinate, columnCoordinate, FAKE_STRING, FAKE_STRING, FAKE_STRING, FAKE_STRING);
+      LCMSWell well = new LCMSWell(wellCounter, wellCounter, rowCoordinate, columnCoordinate, FAKE_STRING, FAKE_STRING, FAKE_STRING, FAKE_STRING);
 
       if (well == null) {
         throw new RuntimeException(String.format("Well plate id %d, row %d and col %d does not exist", well.getId(),
@@ -311,6 +312,8 @@ public class IonDetectionAnalysis <T extends PlateWell<T>> {
         ScanFile scanFile = new ScanFile(FAKE_ID, scanFileLocation, ScanFile.SCAN_MODE.POS, ScanFile.SCAN_FILE_TYPE.NC, FAKE_ID, FAKE_ID, FAKE_ID);
         values.add(Pair.of(well, scanFile));
       }
+
+      wellCounter++;
     }
 
     return result;
