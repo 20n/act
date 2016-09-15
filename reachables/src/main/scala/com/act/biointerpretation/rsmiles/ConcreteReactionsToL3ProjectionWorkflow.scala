@@ -3,25 +3,24 @@ package com.act.biointerpretation.rsmiles
 import java.io.File
 
 import com.act.analysis.chemicals.molecules.MoleculeFormat
-import com.act.biointerpretation.rsmiles.abstract_chemicals.AbstractChemicalsToReactions
 import com.act.biointerpretation.rsmiles.concrete_chemicals.ConcreteReactions
-import com.act.biointerpretation.rsmiles.sar_construction.{ConstructSarsFromPredictionCorpus, ReactionRoAssignment}
+import com.act.biointerpretation.rsmiles.sar_construction.ConstructSarsFromPredictionCorpus
 import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.tool_wrappers.{ScalaJobWrapper, SparkWrapper}
 import com.act.workflow.tool_manager.workflow.Workflow
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.log4j.LogManager
 
-class ConcreteReactionsToL3ProjectionWorkflow extends Workflow{
+class ConcreteReactionsToL3ProjectionWorkflow extends Workflow {
 
   val OPTION_USE_CACHED_RESULTS = "c"
-  val OPTION_DATABASE =           "d"
-  val OPTION_METABOLITE_FILE =    "f"
-  val OPTION_CHEMAXON_LICENSE =   "l"
-  val OPTION_SPARK_MASTER =       "m"
-  val OPTION_SUBSTRATE_COUNTS =   "s"
-  val OPTION_VALID_CHEMICAL_TYPE ="v"
-  val OPTION_WORKING_DIRECTORY =  "w"
+  val OPTION_DATABASE = "d"
+  val OPTION_METABOLITE_FILE = "f"
+  val OPTION_CHEMAXON_LICENSE = "l"
+  val OPTION_SPARK_MASTER = "m"
+  val OPTION_SUBSTRATE_COUNTS = "s"
+  val OPTION_VALID_CHEMICAL_TYPE = "v"
+  val OPTION_WORKING_DIRECTORY = "w"
 
   private val LOGGER = LogManager.getLogger(getClass)
 
@@ -143,12 +142,13 @@ class ConcreteReactionsToL3ProjectionWorkflow extends Workflow{
       val runId = s"Concrete.db.$database.subCount.$count"
 
       /*
-        Step 1: Abstract chemicals => Abstract reactions substrate list
+        Step 1: Previously characterized concrete reactions => Ro
+        assignments format (This mainly standardizes the chemical format)
        */
 
       val roAssignmentOutputFileName = new File(roAssignmentDirectory, s"$runId.RoAssignments.json")
       val concreteReactionGrabber: () => Unit =
-        ConcreteReactions.getConcreteReactions(database)(moleculeFormat, count, roAssignmentOutputFileName)
+        ConcreteReactions.groupConcreteReactionsByRo(database)(moleculeFormat, count, roAssignmentOutputFileName)
       val convertReactionsToRoAssignmentFormat =
         ScalaJobWrapper.wrapScalaFunction("Concrete Reaction Grabber", concreteReactionGrabber)
 

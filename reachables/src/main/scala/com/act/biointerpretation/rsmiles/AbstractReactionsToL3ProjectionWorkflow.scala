@@ -12,16 +12,16 @@ import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.log4j.LogManager
 
 
-class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
+class AbstractReactionsToL3ProjectionWorkflow extends Workflow {
 
   val OPTION_USE_CACHED_RESULTS = "c"
-  val OPTION_DATABASE =           "d"
-  val OPTION_METABOLITE_FILE =    "f"
-  val OPTION_CHEMAXON_LICENSE =   "l"
-  val OPTION_SPARK_MASTER =       "m"
-  val OPTION_SUBSTRATE_COUNTS =   "s"
-  val OPTION_VALID_CHEMICAL_TYPE ="v"
-  val OPTION_WORKING_DIRECTORY =  "w"
+  val OPTION_DATABASE = "d"
+  val OPTION_METABOLITE_FILE = "f"
+  val OPTION_CHEMAXON_LICENSE = "l"
+  val OPTION_SPARK_MASTER = "m"
+  val OPTION_SUBSTRATE_COUNTS = "s"
+  val OPTION_VALID_CHEMICAL_TYPE = "v"
+  val OPTION_WORKING_DIRECTORY = "w"
 
   private val LOGGER = LogManager.getLogger(getClass)
 
@@ -134,7 +134,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       we'll be looking at and partially applies the abstract reaction function.
      */
     val substrateCounts: List[Int] = cl.getOptionValues(OPTION_SUBSTRATE_COUNTS).map(_.toInt).toList
-    val individualSubstrateFunction = AbstractChemicalsToReactions.calculateAbstractSubstrates(moleculeFormat)(database)_
+    val individualSubstrateFunction = AbstractChemicalsToReactions.calculateAbstractSubstrates(moleculeFormat)(database) _
 
     // Create all the jobs for all the substrates
     val jobs = substrateCounts.map(count => {
@@ -177,7 +177,7 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       // We assume files in = previous run
       val hasCachedResultsAbstractRoProjection =
         roProjectionsOutputFileDirectory.isDirectory &&
-        roProjectionsOutputFileDirectory.list() != null &&
+          roProjectionsOutputFileDirectory.list() != null &&
           roProjectionsOutputFileDirectory.list().length > 0
 
       val sparkRoProjection = if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && hasCachedResultsAbstractRoProjection) {
@@ -222,9 +222,9 @@ class AbstractChemicalsToL3ProjectionWorkflow extends Workflow {
       val constructedSarJob =
         if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && sarCorpusOutputFile.exists()) {
           ScalaJobWrapper.wrapScalaFunction("Using cached SAR corpus.", () => Unit)
-      } else {
-        ScalaJobWrapper.wrapScalaFunction("Sar Constructor", constructSars)
-      }
+        } else {
+          ScalaJobWrapper.wrapScalaFunction("Sar Constructor", constructSars)
+        }
 
       abstractChemicalsToSubstrateListJob.thenRun(constructedSarJob)
 
