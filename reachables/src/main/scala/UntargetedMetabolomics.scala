@@ -6,12 +6,6 @@ import scala.io.Source
 import act.shared.ChemicalSymbols.MonoIsotopicMass
 
 class RetentionTime(private val time: Double) {
-  // This class is modeled after MonoIsotopicMass and tolerates differences upto a certain drift
-  // i.e., makes peaks within `driftTolerated` look identical. Equality comparisons over doubles. :o !!
-  // To really accomplish that, we use a combination scheme of hashing and equality:
-  // HashCode: We deliberately create collisions by aligning to boundaries
-  // Equality: We check for time differences within drift
-
   // Default drift allowed is emperically picked based on observations over experimental data
   private val driftTolerated = 5.0 // seconds
 
@@ -83,8 +77,6 @@ class UntargetedPeakSpectra(val peaks: Set[UntargetedPeak]) {
     val rngCmt = if (filterMzRt) ", showing mz:[50, 500] rt:[20, 200]" else ""
     Map(
       "num peaks" -> peaks.size,
-      // s"topK by snr${rngCmt}" -> lowPks.sortWith(_.snr > _.snr).map(p => List(p.mz, p.rt, p.snr)).take(topk),
-      // s"topK by maxInt${rngCmt}" -> lowPks.sortWith(_.maxInt > _.maxInt).map(p => List(p.mz, p.rt, p.maxInt)).take(topk),
       s"topK by integratedInt${rngCmt}" -> lowPks.sortWith(_.integratedInt > _.integratedInt).map(p => List(p.mz, p.rt, p.integratedInt)).take(topk)
     )
   }
@@ -147,6 +139,70 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     extractOutliers(unifiedHypotheses, unifiedControls)
   }
 
+  // aggregate characteristic for peaks for the same molecule (eluting at the same mz, and time)
+  def uniformAcross(peaks: List[UntargetedPeak], mz: MonoIsotopicMass, rt: RetentionTime): UntargetedPeak = {
+
+    // all the peaks passed in here should have the same (mz, rt) upto tolerances
+    // all we have to do is aggregate their (integrated and max) intensity and snr
+
+    def pickMin(a: Double, b: Double) = math.min(a, b)
+    combinePeaks(peaks, mz, rt, pickMin)
+  }
+
+  // identify if the peaks in hyp are outliers compared to the controls
+  // we assume these peaks are for the same molecule (eluting at the same mz, and time)
+  def isOutlier(hyp: List[UntargetedPeak], ctrl: List[UntargetedPeak], mz: MonoIsotopicMass, rt: RetentionTime): Option[UntargetedPeak] = {
+
+    // all the peaks passed in here should have the same (mz, rt) upto tolerances
+    // all we have to do is aggregate their (integrated and max) intensity and snr
+    def ratio(a: Double, b: Double) = if (b == 0.0) Double.MaxValue else a/b
+
+    // the lists coming in for the inputs are if for this `peak @ mz, rt` there are *many* peaks in the
+    // original data in the aggregated hypothesis trace! This is slightly crazy case and will only happen
+    // when the peak structure is very zagged. We average the values
+    def sizedAvg(sz: Int)(a: Double, b: Double) = (a + b)/sz
+
+    val hypPeak = combinePeaks(hyp, mz, rt, sizedAvg(hyp.size))
+    val ctrlPeak = combinePeaks(ctrl, mz, rt, sizedAvg(ctrl.size))
+
+    val ratioedPeak = combinePeaks(List(hypPeak, ctrlPeak), mz, rt, ratio)
+    checkOutlier(ratioedPeak)
+  }
+
+  def combinePeaks(peaks: List[UntargetedPeak], 
+    mz: MonoIsotopicMass, rt: RetentionTime,
+    fn: (Double, Double) => Double) = {
+
+    val (integratedInts, maxInts, snrs) = peaks.map(p => (p.integratedInt, p.maxInt, p.snr)).unzip3
+    val aggIntegratedInts = integratedInts reduce fn
+    val aggMaxInts = maxInts reduce fn
+    val aggSnrs = snrs reduce fn
+
+    new UntargetedPeak(mz, rt, aggIntegratedInts, aggMaxInts, aggSnrs)
+  }
+
+  def checkOutlier(peak: UntargetedPeak): Option[UntargetedPeak] = {
+    // 10*(cosh(x-1) - 1) is a nice function that is has properties we would need:
+    // (x, y) 
+    //    = (1.0, 0)
+    //    = (0.5, 1.25)
+    //    = (1.5, 1.25)
+    //    = (2.0, 5.50)
+    // We could use any function that is hyperbolic and is 0 at 1 and rises sharply
+    // upwards on both sides of 1
+    def cosh(x: Double) = (math.exp(x) + math.exp(-x)) / 2.0
+    def valleyShape(x: Double) = 10.0 * (cosh(x - 1) - 1)
+
+    // signal in control identical to hypothesis: metric = 1.0 => valleyShape = 0
+    // signal in hypothesis lower or higher than control:  metric < 0.8 || metric > 1.2 => valleyShape > 1.0
+    val metric = peak.integratedInt
+    if (valleyShape(metric) > 1.0) { Some(peak) } else { None }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+
   def extractOutliers(hypothesis: LCMSExperiment, control: LCMSExperiment): LCMSExperiment = {
 
     val exprVsControl = List(hypothesis, control)
@@ -162,13 +218,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
         // of those back, both for the hypothesis case (originalPeaks(0)) and control case (originalPeak(1))
         val originalPeaks: List[List[UntargetedPeak]] = alignedToOriginalPeaks(peak)
         assert( originalPeaks.size == 2)
-        val judgedPeaks = outlierCharacteristics(originalPeaks(0), originalPeaks(1))
-        judgedPeaks match {
-          case None => None
-          case Some((integr, max, snr)) => {
-            Some(new UntargetedPeak(mz, rt, integr, max, snr))
-          }
-        }
+        isOutlier(originalPeaks(0), originalPeaks(1), mz, rt)
       }
     }.toSet
 
@@ -177,44 +227,6 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
 
     val provenance = new ComputedData(sources = exprVsControl.map(_.origin))
     new LCMSExperiment(provenance, new UntargetedPeakSpectra(outlierPeaks))
-  }
-
-  // aggregate characteristic for peaks for the same molecule (eluting at the same mz, and time)
-  def outlierCharacteristics(hyp: List[UntargetedPeak], ctrl: List[UntargetedPeak]): Option[(Double, Double, Double)] = {
-    // all the peaks passed in here should have the same (mz, rt) upto tolerances
-    // all we have to do is aggregate their (integrated and max) intensity and snr
-    def aggFn(a: Double, b: Double) = if (b == 0.0) Double.MaxValue else a/b
-
-    // the lists coming in for the inputs are if for this `peak @ mz, rt` there are *many* peaks in the
-    // original data in the aggregated hypothesis trace! This is slightly crazy case and will only happen
-    // when the peak structure is very zagged. We average the values
-    def average(closeBy: List[Double]) = closeBy.sum / closeBy.size
-    val together = average _
-
-    val aggregateIntegratedInts = aggFn(together(hyp.map(_.integratedInt)), together(ctrl.map(_.integratedInt)))
-    val aggregateMaxInts = aggFn(together(hyp.map(_.maxInt)), together(ctrl.map(_.maxInt)))
-    val aggregateSnrs = aggFn(together(hyp.map(_.snr)), together(ctrl.map(_.snr)))
-
-    def cosh(x: Double) = (math.exp(x) + math.exp(-x)) / 2.0
-
-    // 10*(cosh(x-1) - 1) is a nice function that is has properties we would need:
-    // (x, y) 
-    //    = (1.0, 0)
-    //    = (0.5, 1.25)
-    //    = (1.5, 1.25)
-    //    = (2.0, 5.50)
-    // We could use any function that is hyperbolic and is 0 at 1 and rises sharply
-    // upwards on both sides of 1
-    def valleyShape(x: Double) = 10.0 * (cosh(x - 1) - 1)
-
-    // check:
-    // signal in control identical to hypothesis: aggFn = 1.0 => valleyShape = 0
-    // signal in hypothesis much lower or much higher than control: aggFn < 0.8 || aggFn > 1.2 => valleyShape > 1.0
-    if (valleyShape(aggregateIntegratedInts) > 1.0) {
-      Some((aggregateIntegratedInts, aggregateMaxInts, aggregateSnrs))
-    } else {
-      None
-    }
   }
 
   def unifyReplicates(replicates: List[LCMSExperiment]): LCMSExperiment = {
@@ -226,29 +238,12 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
       peak => {
         val (mz, rt) = peak
         val originalPeaks: List[List[UntargetedPeak]] = alignedToOriginalPeaks(peak)
-        val (integratedIntensity, maxIntensity, snr) = aggregateCharacteristics(originalPeaks.flatten)
-        new UntargetedPeak(mz, rt, integratedIntensity, maxIntensity, snr)
+        uniformAcross(originalPeaks.flatten, mz, rt)
       }
     }.toSet
 
     val provenance = new ComputedData(sources = replicates.map(_.origin))
     new LCMSExperiment(provenance, new UntargetedPeakSpectra(sharedPeaksWithCharacteristics))
-  }
-
-  // aggregate characteristic for peaks for the same molecule (eluting at the same mz, and time)
-  def aggregateCharacteristics(peaks: List[UntargetedPeak]): (Double, Double, Double) = {
-    // all the peaks passed in here should have the same (mz, rt) upto tolerances
-    // all we have to do is aggregate their (integrated and max) intensity and snr
-    // println(s"aggregateCharacteristics: aggregated size, number of peaks: ${peaks.size}")
-
-    def aggFn(a: Double, b: Double) = math.min(a, b)
-
-    val (integratedInts, maxInts, snrs) = peaks.map(p => (p.integratedInt, p.maxInt, p.snr)).unzip3
-    val aggregateIntegratedInts = integratedInts.reduce(aggFn)
-    val aggregateMaxInts = maxInts.reduce(aggFn)
-    val aggregateSnrs = snrs.reduce(aggFn)
-
-    (aggregateIntegratedInts, aggregateMaxInts, aggregateSnrs)
   }
 
   type PeakAt = (MonoIsotopicMass, RetentionTime)
@@ -333,6 +328,10 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
   }
 
   def peakKv(peak: UntargetedPeak): (UntargetedPeak, PeakAt) = peak -> (peak.mz, peak.rt)
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////////////
 
   def timer[T](blk: => T): T = {
     val start = System.nanoTime()
