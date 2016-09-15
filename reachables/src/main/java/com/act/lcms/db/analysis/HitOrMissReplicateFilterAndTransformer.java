@@ -14,8 +14,8 @@ public class HitOrMissReplicateFilterAndTransformer extends HitOrMissFilterAndTr
   public static String NIL_PLOT = "NIL_PLOT";
   public static final Integer REPRESENTATIVE_INDEX = 0;
 
-  private Double sd(List<Double> a, Double mean){
-    int sum = 0;
+  public static Double sd(List<Double> a, Double mean) {
+    Double sum = 0.0;
 
     for (Double i : a)
       sum += Math.pow((i - mean), 2);

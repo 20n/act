@@ -178,16 +178,83 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     alignedPeaks.loadResultsFromFile(new File("/mnt/shared-data/Vijay/perlstein_azure_run/aligned_water"));
 
     // Analysis for GM03123
+    for (int j = 0; j < 3; j++) {
+      int startingIndex = j * 3;
+
+      Map<IonAnalysisInterchangeModel.ResultForMZ, Triple<Double, Double, Double>> GM03123infoTorTriples = new HashMap<>();
+
+      IonAnalysisInterchangeModel GM03123PeaksRepA = new IonAnalysisInterchangeModel();
+
+      GM03123PeaksRepA.loadResultsFromFile(new File(String.format("/mnt/shared-data/Vijay/perlstein_azure_run/amino_acid_results_water/perlstein_water.results_%d.json", startingIndex)));
+
+      IonAnalysisInterchangeModel GM03123PeaksRepB = new IonAnalysisInterchangeModel();
+      GM03123PeaksRepB.loadResultsFromFile(new File(String.format("/mnt/shared-data/Vijay/perlstein_azure_run/amino_acid_results_water/perlstein_water.results_%d.json", startingIndex + 1)));
+
+      IonAnalysisInterchangeModel GM03123PeaksRepC = new IonAnalysisInterchangeModel();
+      GM03123PeaksRepC.loadResultsFromFile(new File(String.format("/mnt/shared-data/Vijay/perlstein_azure_run/amino_acid_results_water/perlstein_water.results_%d.json", startingIndex + 2)));
+
+      for (int i = 0; i < GM03123PeaksRepA.getResults().size(); i++) {
+        IonAnalysisInterchangeModel.ResultForMZ alignedPeak = alignedPeaks.getResults().get(i);
+        IonAnalysisInterchangeModel.ResultForMZ GM03123PeakRepA = GM03123PeaksRepA.getResults().get(i);
+        IonAnalysisInterchangeModel.ResultForMZ GM03123PeakRepB = GM03123PeaksRepB.getResults().get(i);
+        IonAnalysisInterchangeModel.ResultForMZ GM03123PeakRepC = GM03123PeaksRepC.getResults().get(i);
+
+        if (alignedPeak.getMolecules().get(0).getIntensity() > 0.0) {
+          GM03123infoTorTriples.put(alignedPeak,
+              Triple.of(GM03123PeakRepA.getMolecules().get(0).getIntensity(), GM03123PeakRepB.getMolecules().get(0).getIntensity(), GM03123PeakRepC.getMolecules().get(0).getIntensity()));
+        }
+      }
+
+      List<Double> leftRatios = new ArrayList<>();
+      List<Double> middleRatios = new ArrayList<>();
+      List<Double> rightRatios = new ArrayList<>();
+
+      for (Map.Entry<IonAnalysisInterchangeModel.ResultForMZ, Triple<Double, Double, Double>> entry : GM03123infoTorTriples.entrySet()) {
+
+        if (entry.getKey().getMolecules().get(0).getTime() > 15.0 && entry.getKey().getMolecules().get(0).getIntensity() > 1000.0) {
+//          System.out.println(entry.getKey().getMolecules().get(0).getInchi());
+//          System.out.println(entry.getKey().getMolecules().get(0).getIon());
+
+          Double total = entry.getValue().getLeft() + entry.getValue().getMiddle() + entry.getValue().getRight();
+
+//          System.out.println(String.format("Rep A: %.2f", entry.getValue().getLeft()/total));
+//          System.out.println(String.format("Rep B: %.2f", entry.getValue().getMiddle()/total));
+//          System.out.println(String.format("Rep C: %.2f", entry.getValue().getRight()/total));
+//          System.out.println("-------");
+
+          leftRatios.add(entry.getValue().getLeft() / total);
+          middleRatios.add(entry.getValue().getMiddle() / total);
+          rightRatios.add(entry.getValue().getRight() / total);
+        }
+      }
+
+      System.out.println(String.format("Count is %d", leftRatios.size()));
+
+      Double averageA = leftRatios.stream().reduce(0.0, (accum, newVal) -> accum + newVal) / leftRatios.size();
+      Double stdA = HitOrMissReplicateFilterAndTransformer.sd(leftRatios, averageA);
+
+      Double averageB = middleRatios.stream().reduce(0.0, (accum, newVal) -> accum + newVal) / middleRatios.size();
+      Double stdB = HitOrMissReplicateFilterAndTransformer.sd(middleRatios, averageB);
+
+      Double averageC = rightRatios.stream().reduce(0.0, (accum, newVal) -> accum + newVal) / rightRatios.size();
+      Double stdC = HitOrMissReplicateFilterAndTransformer.sd(rightRatios, averageC);
+
+      System.out.println(String.format("Replicate A has mean: %.2f and std: %.3f", averageA, stdA));
+      System.out.println(String.format("Replicate B has mean: %.2f and std: %.3f", averageB, stdB));
+      System.out.println(String.format("Replicate C has mean: %.2f and std: %.3f", averageC, stdC));
+    }
+
+
     Map<IonAnalysisInterchangeModel.ResultForMZ, Triple<Double, Double, Double>> GM03123infoTorTriples = new HashMap<>();
 
     IonAnalysisInterchangeModel GM03123PeaksRepA = new IonAnalysisInterchangeModel();
-    GM03123PeaksRepA.loadResultsFromFile(new File("/mnt/shared-data/Vijay/perlstein_azure_run/amino_acid_results_water/perlstein_water.results_3.json"));
+    GM03123PeaksRepA.loadResultsFromFile(new File(String.format("/mnt/shared-data/Vijay/perlstein_azure_run/GM18453_combined_water")));
 
     IonAnalysisInterchangeModel GM03123PeaksRepB = new IonAnalysisInterchangeModel();
-    GM03123PeaksRepB.loadResultsFromFile(new File("/mnt/shared-data/Vijay/perlstein_azure_run/amino_acid_results_water/perlstein_water.results_4.json"));
+    GM03123PeaksRepB.loadResultsFromFile(new File(String.format("/mnt/shared-data/Vijay/perlstein_azure_run/GM03123_combined_water")));
 
     IonAnalysisInterchangeModel GM03123PeaksRepC = new IonAnalysisInterchangeModel();
-    GM03123PeaksRepC.loadResultsFromFile(new File("/mnt/shared-data/Vijay/perlstein_azure_run/amino_acid_results_water/perlstein_water.results_5.json"));
+    GM03123PeaksRepC.loadResultsFromFile(new File(String.format("/mnt/shared-data/Vijay/perlstein_azure_run/GM09503_combined_water")));
 
     for (int i = 0; i < GM03123PeaksRepA.getResults().size(); i++) {
       IonAnalysisInterchangeModel.ResultForMZ alignedPeak = alignedPeaks.getResults().get(i);
@@ -197,27 +264,50 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
       if (alignedPeak.getMolecules().get(0).getIntensity() > 0.0) {
         GM03123infoTorTriples.put(alignedPeak,
-            Triple.of(GM03123PeakRepA.getMolecules().get(0).getIntensity(), GM03123PeakRepB.getMolecules().get(0).getIntensity(), GM03123PeakRepC.getMolecules().get(0).getIntensity()));
+            Triple.of(GM03123PeakRepA.getMolecules().get(0).getAverageIntensity(), GM03123PeakRepB.getMolecules().get(0).getAverageIntensity(), GM03123PeakRepC.getMolecules().get(0).getAverageIntensity()));
       }
     }
 
+    List<Double> leftRatios = new ArrayList<>();
+    List<Double> middleRatios = new ArrayList<>();
+    List<Double> rightRatios = new ArrayList<>();
 
     for (Map.Entry<IonAnalysisInterchangeModel.ResultForMZ, Triple<Double, Double, Double>> entry : GM03123infoTorTriples.entrySet()) {
 
-      if (entry.getKey().getMolecules().get(0).getIntensity() > 1000) {
-        System.out.println(entry.getKey().getMolecules().get(0).getInchi());
-        System.out.println(entry.getKey().getMolecules().get(0).getIon());
+      if (entry.getKey().getMolecules().get(0).getTime() > 15.0 && entry.getKey().getMolecules().get(0).getIntensity() > 1000.0) {
+//          System.out.println(entry.getKey().getMolecules().get(0).getInchi());
+//          System.out.println(entry.getKey().getMolecules().get(0).getIon());
 
-        Double total = entry.getValue().getLeft() + entry.getValue().getMiddle() + entry.getValue().getRight();
+      Double total = entry.getValue().getLeft() + entry.getValue().getMiddle() + entry.getValue().getRight();
 
-        System.out.println(String.format("Rep A: %.2f", entry.getValue().getLeft()/total));
-        System.out.println(String.format("Rep B: %.2f", entry.getValue().getMiddle()/total));
-        System.out.println(String.format("Rep C: %.2f", entry.getValue().getRight()/total));
-        System.out.println("-------");
+          System.out.println(String.format("Rep A: %.2f", entry.getValue().getLeft()/total));
+          System.out.println(String.format("Rep B: %.2f", entry.getValue().getMiddle()/total));
+          System.out.println(String.format("Rep C: %.2f", entry.getValue().getRight()/total));
+          System.out.println("-------");
+
+      leftRatios.add(entry.getValue().getLeft() / total);
+      middleRatios.add(entry.getValue().getMiddle() / total);
+      rightRatios.add(entry.getValue().getRight() / total);
       }
     }
 
-//
+    System.out.println(String.format("Count is %d", leftRatios.size()));
+
+    Double averageA = leftRatios.stream().reduce(0.0, (accum, newVal) -> accum + newVal) / leftRatios.size();
+    Double stdA = HitOrMissReplicateFilterAndTransformer.sd(leftRatios, averageA);
+
+    Double averageB = middleRatios.stream().reduce(0.0, (accum, newVal) -> accum + newVal) / middleRatios.size();
+    Double stdB = HitOrMissReplicateFilterAndTransformer.sd(middleRatios, averageB);
+
+    Double averageC = rightRatios.stream().reduce(0.0, (accum, newVal) -> accum + newVal) / rightRatios.size();
+    Double stdC = HitOrMissReplicateFilterAndTransformer.sd(rightRatios, averageC);
+
+    System.out.println(String.format("GM18453 has mean: %.2f and std: %.3f", averageA, stdA));
+    System.out.println(String.format("GM03123 has mean: %.2f and std: %.3f", averageB, stdB));
+    System.out.println(String.format("GM09503 has mean: %.2f and std: %.3f", averageC, stdC));
+
+
+
 //
 //    Options opts = new Options();
 //    for (Option.Builder b : OPTION_BUILDERS) {
