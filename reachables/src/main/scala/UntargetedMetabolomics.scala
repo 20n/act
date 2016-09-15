@@ -36,7 +36,7 @@ object RetentionTime {
     xs.sorted.toList(xs.size/2)
   }
   def middle(times: List[RetentionTime]): RetentionTime = new RetentionTime(middle(times.map(_.time)))
-  def ascender(a: RetentionTime, b: RetentionTime) = a.time > b.time
+  def ascender(a: RetentionTime, b: RetentionTime) = a.time < b.time
 }
 
 sealed trait Provenance
@@ -142,16 +142,29 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     extractOutliers(unifiedHypotheses, unifiedControls)
   }
 
+  // we use the average to combine multiple signals at the same mz, rt
+  def sizedAvg(sz: Int)(a: Double, b: Double) = (a + b)/sz
+  // we use min to aggregate signals across replicates
+  def pickMin(a: Double, b: Double) = math.min(a, b)
+  // we use ratio to identify differentially expressed peaks
+  def ratio(a: Double, b: Double) = if (b == 0.0) Double.MaxValue else a/b
+
+  // the lists coming in for the inputs are if for this `peak @ mz, rt` there are *many* peaks in the
+  // original data in the aggregated hypothesis trace! This is slightly crazy case and will only happen
+  // when the peak structure is very zagged. We average the values
+  def peakClusterToOne(mz: MonoIsotopicMass, rt: RetentionTime)(s: Set[UntargetedPeak]) = {
+    combinePeaks(s.toList, mz, rt, sizedAvg(s.size))
+  }
+
   // aggregate characteristic for peaks for the same molecule (eluting at the same mz, and time)
-  def uniformAcross(peaks: List[UntargetedPeak],
+  def uniformAcross(peaks: List[Set[UntargetedPeak]],
     mz: MonoIsotopicMass,
     rt: RetentionTime): UntargetedPeak = {
 
     // all the peaks passed in here should have the same (mz, rt) upto tolerances
     // all we have to do is aggregate their (integrated and max) intensity and snr
-
-    def pickMin(a: Double, b: Double) = math.min(a, b)
-    combinePeaks(peaks, mz, rt, pickMin)
+    val handlePeakCluster = peakClusterToOne(mz, rt) _
+    combinePeaks(peaks.map(handlePeakCluster), mz, rt, pickMin)
   }
 
   // identify if the peaks in hyp are outliers compared to the controls
@@ -161,17 +174,9 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     mz: MonoIsotopicMass,
     rt: RetentionTime): Option[UntargetedPeak] = {
 
-    // all the peaks passed in here should have the same (mz, rt) upto tolerances
-    // all we have to do is aggregate their (integrated and max) intensity and snr
-    def ratio(a: Double, b: Double) = if (b == 0.0) Double.MaxValue else a/b
-
-    // the lists coming in for the inputs are if for this `peak @ mz, rt` there are *many* peaks in the
-    // original data in the aggregated hypothesis trace! This is slightly crazy case and will only happen
-    // when the peak structure is very zagged. We average the values
-    def sizedAvg(sz: Int)(a: Double, b: Double) = (a + b)/sz
-
-    val hypPeak = combinePeaks(hyp, mz, rt, sizedAvg(hyp.size))
-    val ctrlPeak = combinePeaks(ctrl, mz, rt, sizedAvg(ctrl.size))
+    val handlePeakCluster = peakClusterToOne(mz, rt) _
+    val hypPeak = handlePeakCluster(hyp.toSet)
+    val ctrlPeak = handlePeakCluster(ctrl.toSet)
 
     val ratioedPeak = combinePeaks(List(hypPeak, ctrlPeak), mz, rt, ratio)
     checkOutlier(ratioedPeak)
@@ -209,6 +214,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
 
   def extractOutliers(hypothesis: LCMSExperiment, control: LCMSExperiment): LCMSExperiment = {
     val exprVsControl = List(hypothesis, control)
+    assert(false) // not implemented yet!
     val peaksWithCharacteristics: Set[Option[UntargetedPeak]] = null
     // outliers are those that are not none
     val outlierPeaks = peaksWithCharacteristics.filter(_.isDefined).map{ case Some(p) => p }.toSet
@@ -216,10 +222,98 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     new LCMSExperiment(provenance, new UntargetedPeakSpectra(outlierPeaks))
   }
 
+  def unifyReplicatesForOneMzRt(mzRtPeaks: ((MonoIsotopicMass, RetentionTime), List[Set[UntargetedPeak]])):
+    UntargetedPeak = {
+    val ((mz, rt), peaks) = mzRtPeaks
+    uniformAcross(peaks, mz, rt)
+  }
+
   def unifyReplicates(replicates: List[LCMSExperiment]): LCMSExperiment = {
-    val sharedPeaksWithCharacteristics: Set[UntargetedPeak] = null
+    val peakSetsForAllReplicates = replicates.map{ expr => expr.peakSpectra.peaks }
+    val peaksKeyedByMzAndRt = findAlignedPeaks(peakSetsForAllReplicates)
+
+    val sharedPeaks: Set[UntargetedPeak] = peaksKeyedByMzAndRt.toSet.map(unifyReplicatesForOneMzRt)
     val provenance = new ComputedData(sources = replicates.map(_.origin))
-    new LCMSExperiment(provenance, new UntargetedPeakSpectra(sharedPeaksWithCharacteristics))
+    new LCMSExperiment(provenance, new UntargetedPeakSpectra(sharedPeaks))
+  }
+
+  // This does not serious boilerplating to move stuff around!
+  // Input: Type `List[Set[raw peaks]]` represents:
+  //    -- Each list element is an LCMS trace, and the set corresponds to all peaks found in that trace
+  // Output: Type `Map[ (mz, rt) -> List[Set[raw peaks]] ]`
+  //    -- For each unique mz, rt pair, it is a split of the original data (in the same expr order)
+  //       to those peaks in that experiment that have the corresponding (mz, rt).
+  //    -- If there are no peaks at that mz, rt in that experiment then it'll be an empty set at that list loc
+  def findAlignedPeaks(exprData: List[Set[UntargetedPeak]]): 
+    Map[(MonoIsotopicMass, RetentionTime), List[Set[UntargetedPeak]]] = {
+    
+    // first group each peakset in the list of exprs into a map(mz -> peakset)
+    val exprToMzPeaks: List[Map[MonoIsotopicMass, Set[UntargetedPeak]]] = exprData.map(_.groupBy(_.mz))
+    // then take the mz's out a layer and map each mz -> list(peakset)
+    val allMzs = exprToMzPeaks.flatMap(mp => mp.keys).distinct.sortBy(_.initMass)
+    val peaksAtMz: Map[MonoIsotopicMass, List[Set[UntargetedPeak]]] = {
+      // for each experiment, get the `mz` if it is there in that experiment, or else empty Set()
+      allMzs.map(mz => mz -> exprToMzPeaks.map(mzPeaks => mzPeaks.getOrElse(mz, Set())))
+    }.toMap
+    ///////////////// println(s"mzMap: $exprToMzPeaks")
+    ///////////////// println(s"mzMap: $allMzs")
+    ///////////////// println(s"peaksAtMz: $peaksAtMz")
+
+    // now for each mz, find all experiments and all retention times within them where this mz appears
+    val mzRtToPeaks = for (
+      mz <- peaksAtMz.keys;
+      // for each unique mz, find all peaks in each experiment at that mz
+      // and then pull up the optimal covering set of retention times for that mz
+      rt <- optimalRts(peaksAtMz(mz))
+    ) yield {
+      // now filter down to all peaks at that mz, rt
+      val peaksAtThisMz: List[Set[UntargetedPeak]] = peaksAtMz(mz)
+      ///////////////// println(s"mz, rt: ($mz, $rt), peaks to process: $peaksAtThisMz")
+      val peaksAtThisMzRt: List[Set[UntargetedPeak]] = peaksAtThisMz.map(s => s.filter(isAtMzRt(mz, rt)))
+      (mz, rt) -> peaksAtThisMzRt
+    }
+    val mzRtToPeaksStr = mzRtToPeaks.toMap.mkString("\n")
+
+    println(s"mapset: ${mzRtToPeaksStr}")
+
+    mzRtToPeaks.toMap
+  }
+
+  def isAtMzRt(mz: MonoIsotopicMass, rt: RetentionTime)(p: UntargetedPeak): Boolean = {
+    p.mz.equals(mz) && p.rt.equals(rt)
+  }
+
+  def optimalRts(peaksForThisMz: List[Set[UntargetedPeak]]): List[RetentionTime] = {
+    val peaksToRtForThisMz: List[List[RetentionTime]] = peaksForThisMz.map(_.toList.map(_.rt))
+
+    // we are most interested in keeping peaks that show up across experiments.
+    // so if there is a likelihood of a peak choice that maximizes presence across experiments
+    // then we pick that, as opposed to maximizing selections within the experiment
+
+    // to do that, we combine all retention times together in one list
+    val rtsAcrossAllExpr: List[RetentionTime] = peaksToRtForThisMz.flatten.sortWith(RetentionTime.ascender)
+    // for each element in the list, calculate the number of other elements it is equal to O(n^2)
+    val numElemsEqual: List[Int] = rtsAcrossAllExpr.map(t => rtsAcrossAllExpr.count(r => r.equals(t)))
+    // order the retention times according to how many elements before and after they cover
+    val rtsInMaxCoverOrder = rtsAcrossAllExpr.zip(numElemsEqual).sortWith(_._2 > _._2)
+    // now start from head and pick retention times eliminating candidates as you go down the list
+    def pickCoverElemsAux(remain: List[(RetentionTime, Int)], acc: List[RetentionTime]): List[RetentionTime] = { 
+      remain match {
+        case List() => acc
+        case hd :: tail => {
+          val elim = tail.filter(!_._1.equals(hd._1))
+          pickCoverElemsAux(elim, hd._1 :: acc)
+        }
+      }
+    }
+    def pickCoverElems(l: List[(RetentionTime, Int)]) = {
+      // call aux, but reverse the resulting list coz we append to head when moving to acc
+      pickCoverElemsAux(l, List()).reverse
+    }
+    val mostCoveringRTs: List[RetentionTime] = pickCoverElems(rtsInMaxCoverOrder)
+    ////////////// println(s"rt optimal: $mostCoveringRTs")
+    
+    mostCoveringRTs
   }
 
   def timer[T](blk: => T): T = {
@@ -333,37 +427,37 @@ object UntargetedMetabolomics {
     // d{M,F}{1,2,3} = disease line {M,F} replicates 1, 2, 3
     // each test is specified as (controls, hypothesis, num_peaks_min, num_peaks_max) inclusive both
     val cases = List(
-      ("wtmin-wtmin", wtmin, wtmin, 0, 0), // debugging this case!
-      ("wt-wt", wt, wt, 0, 0) // debugging this case!
+      ("wtmin-wtmin", wtmin, wtmin, 0, 0) // debugging this case!
+      // ,("wt-wt", wt, wt, 0, 0) // debugging this case!
 
       //      // consistency check: hypothesis same as control => no peaks should be differentially identified
-      //      ("wt1-wt1", List(wt1), List(wt1), 0, 0),
-      //      ("dm1-dm1", List(dm1), List(dm1), 0, 0),
-      //      ("df1-df1", List(df1), List(df1), 0, 0),
+      //      ,("wt1-wt1", List(wt1), List(wt1), 0, 0)
+      //      ,("dm1-dm1", List(dm1), List(dm1), 0, 0)
+      //      ,("df1-df1", List(df1), List(df1), 0, 0)
       //      
       //      // ensure that replicate aggregation (i.e., min) works as expected. 
       //      // we already know from the above test that differential calling works 
       //      // to eliminate all peaks if given the same samples. so now if replicate
       //      // aggregation gives non-zero sets of peaks, it has to be the min algorithm.
-      //      ("wt-wt", wt, wt, 0, 0),
-      //      ("dm-dm", dm, dm, 0, 0),
-      //      ("df-df", df, df, 0, 0),
+      //      ,("wt-wt", wt, wt, 0, 0)
+      //      ,("dm-dm", dm, dm, 0, 0)
+      //      ,("df-df", df, df, 0, 0)
       //      
       //      // how well does the differential calling work over a single sample of hypothesis and control
-      //      ("wt1-df1", List(wt1), List(df1), 500, 520), // 515
-      //      ("wt1-dm1", List(wt1), List(dm1), 450, 500), // 461
+      //      ,("wt1-df1", List(wt1), List(df1), 500, 520) // 515
+      //      ,("wt1-dm1", List(wt1), List(dm1), 450, 500) // 461
       //      
       //      // peaks that are differentially expressed in diseased samples compared to the wild type
-      //      ("wt-dm", wt, dm, 1, 200), // 152
-      //      ("wt-df", wt, df, 1, 200), // 181
+      //      ,("wt-dm", wt, dm, 1, 200) // 152
+      //      ,("wt-df", wt, df, 1, 200) // 181
       //      
       //      // next two: what is in one diseases samples and not in the other?
-      //      ("dm-df", dm, df, 1, 200), // 146
-      //      ("df-dm", df, dm, 1, 200),  // 151
+      //      ,("dm-df", dm, df, 1, 200) // 146
+      //      ,("df-dm", df, dm, 1, 200)  // 151
 
       //      // Check what is commonly over/under expressed in diseased samples
       //      // Woa! This is not really a test case. This is the final analysis!
-      //      ("wt-dmdf", wt, dmdf, 100, 130) // 115 RT=3.0, 123 RT=5.0 
+      //      ,("wt-dmdf", wt, dmdf, 100, 130) // 115 RT=3.0, 123 RT=5.0 
       
     )
 
