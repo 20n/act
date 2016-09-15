@@ -12,7 +12,7 @@ import com.act.biointerpretation.sarinference.SarTree
 import com.act.biointerpretation.sars.{CharacterizedGroup, Sar, SarCorpus, SerializableReactor}
 import org.apache.log4j.LogManager
 import spray.json._
-
+import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
 import scala.collection.JavaConverters._
 import scala.collection.parallel.immutable.ParSeq
 
