@@ -38,9 +38,9 @@ object ConcreteReactions extends QueryByRo {
     logger.info("Getting previously defined RO assignments from database for each RO.")
     val progressionCounter = new AtomicInteger()
     val assignments: List[RoAssignments] = roIds.par.map(roId => {
-      logger.info(s"Started processing RO $roIds.")
+      logger.info(s"Started processing RO $roId.")
       val reactionInformation = reactionInformationById(roId)
-      logger.info(s"Finished processing RO $roIds.  Completed ${progressionCounter.incrementAndGet()} assignments out of ${roIds.length} total.")
+      logger.info(s"Finished processing RO $roId.  Completed ${progressionCounter.incrementAndGet()} assignments out of ${roIds.length} total.")
       new RoAssignments(roId, reactionInformation)
     }).seq.toList
 
