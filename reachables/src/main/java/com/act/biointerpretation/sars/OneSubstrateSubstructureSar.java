@@ -81,6 +81,8 @@ public class OneSubstrateSubstructureSar implements Sar {
   @JsonProperty("substructure_inchi")
   private String getSubstructureInchi() {
     try {
+      // If imported was aromatized this can fail
+      substructure.dearomatize();
       return MolExporter.exportToFormat(substructure, INCHI_SETTINGS);
     } catch (IOException e) {
       LOGGER.error("IOException on exporting sar to inchi, %s", e.getMessage());
