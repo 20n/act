@@ -33,6 +33,18 @@ class RetentionTime(private val time: Double) {
   def isIn(low: Double, high: Double): Boolean = time >= low && time <= high
 }
 
+object RetentionTime {
+  def middle(xs: List[Double]): Double = {
+    // In the cases of odd sized xs this would correspond to median
+    // But in the case of even sized lists, we don't want to average since that 
+    // would give us a point that is not in the original retention times making
+    // provenance of that datapoint difficult to track from the original
+    xs.sorted.toList(xs.size/2)
+  }
+  def middle(times: List[RetentionTime]): RetentionTime = new RetentionTime(middle(times.map(_.time)))
+  def ascender(a: RetentionTime, b: RetentionTime) = a.time > b.time
+}
+
 sealed trait Provenance
 class RawData(val source: String) extends Provenance
 class ComputedData(val sources: List[Provenance]) extends Provenance
@@ -68,11 +80,12 @@ class UntargetedPeakSpectra(val peaks: Set[UntargetedPeak]) {
         true
     }
     val lowPks = peaks.toList.filter(mzRtInRange)
+    val rngCmt = if (filterMzRt) ", showing mz:[50, 500] rt:[20, 200]" else ""
     Map(
       "num peaks" -> peaks.size,
-      "topK by snr with mz:[50,500] rt:[20,200]" -> lowPks.sortWith(_.snr > _.snr).map(p => List(p.mz, p.rt, p.snr)).take(topk),
-      "topK by maxInt with mz:[50,500] rt:[20,200]" -> lowPks.sortWith(_.maxInt > _.maxInt).map(p => List(p.mz, p.rt, p.maxInt)).take(topk),
-      "topK by integratedInt with mz:[50,500] rt:[20,200]" -> lowPks.sortWith(_.integratedInt > _.integratedInt).map(p => List(p.mz, p.rt, p.integratedInt)).take(topk)
+      // s"topK by snr${rngCmt}" -> lowPks.sortWith(_.snr > _.snr).map(p => List(p.mz, p.rt, p.snr)).take(topk),
+      // s"topK by maxInt${rngCmt}" -> lowPks.sortWith(_.maxInt > _.maxInt).map(p => List(p.mz, p.rt, p.maxInt)).take(topk),
+      s"topK by integratedInt${rngCmt}" -> lowPks.sortWith(_.integratedInt > _.integratedInt).map(p => List(p.mz, p.rt, p.integratedInt)).take(topk)
     )
   }
 
@@ -138,6 +151,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
 
     val exprVsControl = List(hypothesis, control)
 
+    println(s"Identifying outlying peaks...")
     val (alignedPeaks, alignedToOriginalPeaks) = getAlignedPeaks(exprVsControl)
 
     val peaksWithCharacteristics: Set[Option[UntargetedPeak]] = alignedPeaks.map{
@@ -205,6 +219,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
 
   def unifyReplicates(replicates: List[LCMSExperiment]): LCMSExperiment = {
 
+    println(s"Unifying replicates...")
     val (alignedPeaks, alignedToOriginalPeaks) = getAlignedPeaks(replicates)
 
     val sharedPeaksWithCharacteristics: Set[UntargetedPeak] = alignedPeaks.map{
@@ -224,6 +239,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
   def aggregateCharacteristics(peaks: List[UntargetedPeak]): (Double, Double, Double) = {
     // all the peaks passed in here should have the same (mz, rt) upto tolerances
     // all we have to do is aggregate their (integrated and max) intensity and snr
+    // println(s"aggregateCharacteristics: aggregated size, number of peaks: ${peaks.size}")
 
     def aggFn(a: Double, b: Double) = math.min(a, b)
 
@@ -254,13 +270,46 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     // given an mz, get lists of peaks in both sets that have ~equal mz, and then
     // n^2 compare each of the pulled peaks to see if they also ~match on retention time
     def pullPeaksInBoth(mz: MonoIsotopicMass): Set[PeakAt] = {
-      val a = peaksA.filter(_._1.equals(mz))
-      val b = peaksB.filter(_._1.equals(mz))
-      val common = for (pa <- a; pb <- b if pa.equals(pb)) yield pa
+      val peaksAForMz = peaksA.filter(_._1.equals(mz))
+      val peaksBForMz = peaksB.filter(_._1.equals(mz))
+      val rtsInA = peaksAForMz.map(_._2).toList
+      val rtsInB = peaksBForMz.map(_._2).toList
+
+      // for each Rt in A map it to matches in B
+      // for each Rt in B map it to matches in A
+      // filter out those that do not have any match in the other set
+      // for each key -> set{others} get `middle(kv :: others)`
+      // of all the values that come out, output the unique ones 
+      def nonEmptyRhs(rtNMatch: (RetentionTime, List[RetentionTime])) = !rtNMatch._2.isEmpty
+      val rtsInAWithMatchInB = rtsInA.zip(rtsInA.map(rA => rtsInB.filter(_.equals(rA)))).filter(nonEmptyRhs)
+      val rtsInBWithMatchInA = rtsInB.zip(rtsInB.map(rB => rtsInA.filter(_.equals(rB)))).filter(nonEmptyRhs)
+      val rtsWithMatchesInOther = rtsInBWithMatchInA ++ rtsInAWithMatchInB
+      val rtsWithMatches = rtsWithMatchesInOther.map{ case (k, vs) => RetentionTime.middle(k :: vs) }
+      def uniq(rts: List[RetentionTime]): List[RetentionTime] = rtsWithMatches.distinct
+      val rtsWithMatchesUniq = uniq(rtsWithMatches)
+      val common = rtsWithMatchesUniq.map(rt => (mz, rt)).toSet
+
+      val equalsWayOfCommon = for (pa <- peaksAForMz; pb <- peaksBForMz if pa.equals(pb)) yield pa
+      // if (equalsWayOfCommon.size != common.size)
+      if (mz.equals(new MonoIsotopicMass(259.282)))
+         println(s"\n\nfor $mz all shared retention times: ${(rtsInA ++ rtsInB).toList.sortWith(RetentionTime.ascender)}\nmedian way: $common\nvs\nset on `equals`: ${equalsWayOfCommon}\nrtsInA: $rtsInA\nrtsInB: $rtsInB")
+
       common
+
+      //// // we convert to a flattened multiset. that preserves replicates of the same time if peaks
+      //// // show up there, which means we `middle` towards those replicates more than if just a set
+      //// val commonRts = (for (rtA <- rtsInA; rtB <- rtsInB if rtA.equals(rtB)) yield List(rtA, rtB)).toList.flatten
+      //// if (commonRts.size > 0) {
+      ////   val medianRt = RetentionTime.middle(commonRts)
+      ////   val common = Set((mz, medianRt))
+      ////   common
+      //// } else Set()
     }
 
-    mzsInBoth.flatMap(pullPeaksInBoth)
+    val inBoth = mzsInBoth.flatMap(pullPeaksInBoth)
+
+    println(s"${peaksA.size} /-\\ ${peaksB.size} = ${inBoth.size}")
+    inBoth
   }
 
   def getAlignedPeaks(traces: List[LCMSExperiment]) = {
@@ -405,11 +454,8 @@ object UntargetedMetabolomics {
     // d{M,F}{1,2,3} = disease line {M,F} replicates 1, 2, 3
     // each test is specified as (controls, hypothesis, num_peaks_min, num_peaks_max) inclusive both
     val cases = List(
+      ("wt-wt", wt, wt, 0, 0), // debugging this case!
 
-      // Check what is commonly over/under expressed in diseased samples
-      // Woa! This is not really a test case. This is the final analysis!
-      ("wt-dmdf", wt, dmdf, 100, 130), // 115 RT=3.0, 123 RT=5.0 
-      
       // consistency check: hypothesis same as control => no peaks should be differentially identified
       ("wt1-wt1", List(wt1), List(wt1), 0, 0),
       ("dm1-dm1", List(dm1), List(dm1), 0, 0),
@@ -433,8 +479,12 @@ object UntargetedMetabolomics {
       
       // next two: what is in one diseases samples and not in the other?
       ("dm-df", dm, df, 1, 200), // 146
-      ("df-dm", df, dm, 1, 200)  // 151
+      ("df-dm", df, dm, 1, 200),  // 151
 
+      // Check what is commonly over/under expressed in diseased samples
+      // Woa! This is not really a test case. This is the final analysis!
+      ("wt-dmdf", wt, dmdf, 100, 130) // 115 RT=3.0, 123 RT=5.0 
+      
     )
 
     val verbose = true
