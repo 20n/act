@@ -149,9 +149,14 @@ class ConcreteReactionsToL3ProjectionWorkflow extends Workflow {
       val roAssignmentOutputFileName = new File(roAssignmentDirectory, s"$runId.RoAssignments.json")
       val concreteReactionGrabber: () => Unit =
         ConcreteReactions.groupConcreteReactionsByRo(database)(moleculeFormat, count, roAssignmentOutputFileName)
-      val convertReactionsToRoAssignmentFormat =
-        ScalaJobWrapper.wrapScalaFunction("Concrete Reaction Grabber", concreteReactionGrabber)
 
+
+      val convertReactionsToRoAssignmentFormat =
+        if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && roAssignmentOutputFileName.exists()){
+          ScalaJobWrapper.wrapScalaFunction("Using cached Ro assignments.", () => Unit)
+        } else {
+          ScalaJobWrapper.wrapScalaFunction("Concrete Reaction Grabber", concreteReactionGrabber)
+        }
       /*
         Step 2: Construct SARs from matching reactions
        */
