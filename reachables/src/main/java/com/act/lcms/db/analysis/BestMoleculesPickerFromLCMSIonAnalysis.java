@@ -203,23 +203,19 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
 
     for (Map.Entry<IonAnalysisInterchangeModel.ResultForMZ, Triple<Double, Double, Double>> entry : GM03123infoTorTriples.entrySet()) {
-      System.out.println(entry.getKey().getMolecules().get(0).getInchi());
-      System.out.println(entry.getKey().getMolecules().get(0).getIon());
 
-      Double total = entry.getValue().getLeft() + entry.getValue().getMiddle() + entry.getValue().getRight();
+      if (entry.getKey().getMolecules().get(0).getIntensity() > 1000) {
+        System.out.println(entry.getKey().getMolecules().get(0).getInchi());
+        System.out.println(entry.getKey().getMolecules().get(0).getIon());
 
-      System.out.println(String.format("Rep A: %.2f", entry.getValue().getLeft()/total));
-      System.out.println(String.format("Rep B: %.2f", entry.getValue().getMiddle()/total));
-      System.out.println(String.format("Rep C: %.2f", entry.getValue().getRight()/total));
+        Double total = entry.getValue().getLeft() + entry.getValue().getMiddle() + entry.getValue().getRight();
 
-
-//      System.out.println(entry.getValue().getLeft());
-//      System.out.println(entry.getValue().getMiddle());
-//      System.out.println(entry.getValue().getRight());
+        System.out.println(String.format("Rep A: %.2f", entry.getValue().getLeft()/total));
+        System.out.println(String.format("Rep B: %.2f", entry.getValue().getMiddle()/total));
+        System.out.println(String.format("Rep C: %.2f", entry.getValue().getRight()/total));
+        System.out.println("-------");
+      }
     }
-
-
-
 
 //
 //
