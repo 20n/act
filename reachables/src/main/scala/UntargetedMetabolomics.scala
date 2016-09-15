@@ -262,6 +262,8 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     // *  RetentionTime answers equals to values if they are
     //      within a certain drift apart.
 
+    println(s"Intersecting: $peaksA /-\\ $peaksB")
+
     val mzsInA = peaksA.map(_._1)
     val mzsInB = peaksB.map(_._1)
     // set'intersect over MonoIsotopicMass will be fine, we have hashCode defined for it
@@ -320,12 +322,11 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     val peaksAs2D: List[List[(UntargetedPeak, PeakAt)]] = peaks.map(_.toList)
 
     // only find peaks that are common across all traces, so we do
-    // a pairwise intersect of the peaks. Note that both (mz, rt)
-    // would need to "match" for the peaks to stay. And "match"ing
-    // is defined up to the semantic tolerances as encoded in
-    // MonoIsotopicMass and RetentionTime
+    // a pairwise intersect of the peaks. 
     val alignedPeaks: Set[PeakAt] = {
+      println(s"Aligning peaks: " + peaks.map(_.values.toList).mkString("\n"))
       val uniquePeaksInEachSet = peaks.map(_.values.toSet)
+      println(s"Aligning peaks: " + uniquePeaksInEachSet.mkString("\n"))
       val uniquePeaksAcrossSets = uniquePeaksInEachSet.reduce(intersect)
       println(s"unique peaks in each set: ${uniquePeaksInEachSet.map(_.size)} and intersected across: ${uniquePeaksAcrossSets.size} as compared to total peaks: ${peaks.map(_.keys.toSet).map(_.size)}")
       uniquePeaksAcrossSets
@@ -441,6 +442,7 @@ object UntargetedMetabolomics {
       new LCMSExperiment(src, UntargetedPeakSpectra.fromXCMSCentwave(f))
     }
 
+    val wtmin = (1 to 3).toList.map(x => s"debugmin${x}.tsv")
     val wt = (1 to 3).toList.map(dataForWell("B")).map(fullLoc)
     val df = (1 to 3).toList.map(dataForWell("A")).map(fullLoc)
     val dm = (1 to 3).toList.map(dataForWell("C")).map(fullLoc)
@@ -454,36 +456,37 @@ object UntargetedMetabolomics {
     // d{M,F}{1,2,3} = disease line {M,F} replicates 1, 2, 3
     // each test is specified as (controls, hypothesis, num_peaks_min, num_peaks_max) inclusive both
     val cases = List(
-      ("wt-wt", wt, wt, 0, 0), // debugging this case!
+      ("wtmin-wtmin", wtmin, wtmin, 0, 0) // debugging this case!
+      //      ("wt-wt", wt, wt, 0, 0), // debugging this case!
 
-      // consistency check: hypothesis same as control => no peaks should be differentially identified
-      ("wt1-wt1", List(wt1), List(wt1), 0, 0),
-      ("dm1-dm1", List(dm1), List(dm1), 0, 0),
-      ("df1-df1", List(df1), List(df1), 0, 0),
-      
-      // ensure that replicate aggregation (i.e., min) works as expected. 
-      // we already know from the above test that differential calling works 
-      // to eliminate all peaks if given the same samples. so now if replicate
-      // aggregation gives non-zero sets of peaks, it has to be the min algorithm.
-      ("wt-wt", wt, wt, 0, 0),
-      ("dm-dm", dm, dm, 0, 0),
-      ("df-df", df, df, 0, 0),
-      
-      // how well does the differential calling work over a single sample of hypothesis and control
-      ("wt1-df1", List(wt1), List(df1), 500, 520), // 515
-      ("wt1-dm1", List(wt1), List(dm1), 450, 500), // 461
-      
-      // peaks that are differentially expressed in diseased samples compared to the wild type
-      ("wt-dm", wt, dm, 1, 200), // 152
-      ("wt-df", wt, df, 1, 200), // 181
-      
-      // next two: what is in one diseases samples and not in the other?
-      ("dm-df", dm, df, 1, 200), // 146
-      ("df-dm", df, dm, 1, 200),  // 151
+      //      // consistency check: hypothesis same as control => no peaks should be differentially identified
+      //      ("wt1-wt1", List(wt1), List(wt1), 0, 0),
+      //      ("dm1-dm1", List(dm1), List(dm1), 0, 0),
+      //      ("df1-df1", List(df1), List(df1), 0, 0),
+      //      
+      //      // ensure that replicate aggregation (i.e., min) works as expected. 
+      //      // we already know from the above test that differential calling works 
+      //      // to eliminate all peaks if given the same samples. so now if replicate
+      //      // aggregation gives non-zero sets of peaks, it has to be the min algorithm.
+      //      ("wt-wt", wt, wt, 0, 0),
+      //      ("dm-dm", dm, dm, 0, 0),
+      //      ("df-df", df, df, 0, 0),
+      //      
+      //      // how well does the differential calling work over a single sample of hypothesis and control
+      //      ("wt1-df1", List(wt1), List(df1), 500, 520), // 515
+      //      ("wt1-dm1", List(wt1), List(dm1), 450, 500), // 461
+      //      
+      //      // peaks that are differentially expressed in diseased samples compared to the wild type
+      //      ("wt-dm", wt, dm, 1, 200), // 152
+      //      ("wt-df", wt, df, 1, 200), // 181
+      //      
+      //      // next two: what is in one diseases samples and not in the other?
+      //      ("dm-df", dm, df, 1, 200), // 146
+      //      ("df-dm", df, dm, 1, 200),  // 151
 
-      // Check what is commonly over/under expressed in diseased samples
-      // Woa! This is not really a test case. This is the final analysis!
-      ("wt-dmdf", wt, dmdf, 100, 130) // 115 RT=3.0, 123 RT=5.0 
+      //      // Check what is commonly over/under expressed in diseased samples
+      //      // Woa! This is not really a test case. This is the final analysis!
+      //      ("wt-dmdf", wt, dmdf, 100, 130) // 115 RT=3.0, 123 RT=5.0 
       
     )
 
