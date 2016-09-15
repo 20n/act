@@ -265,15 +265,22 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     val mzsInA = peaksA.map(_._1)
     val mzsInB = peaksB.map(_._1)
     // set'intersect over MonoIsotopicMass will be fine, we have hashCode defined for it
-    val mzsInBoth = mzsInA.intersect(mzsInB)
+    val mzsInBoth = mzsInA.intersect(mzsInB).distinct
+
+    println(s"intersect: mzsInBoth = ${mzsInBoth.sortBy(_.initMass)}")
+    println(s"intersect: |mzsInBoth| = ${mzsInBoth.size}")
 
     // given an mz, get lists of peaks in both sets that have ~equal mz, and then
     // n^2 compare each of the pulled peaks to see if they also ~match on retention time
     def pullPeaksInBoth(mz: MonoIsotopicMass): Set[PeakAt] = {
+
       val peaksAForMz = peaksA.filter(_._1.equals(mz))
       val peaksBForMz = peaksB.filter(_._1.equals(mz))
       val rtsInA = peaksAForMz.map(_._2).toList
       val rtsInB = peaksBForMz.map(_._2).toList
+
+      if (peaksAForMz.size > 4 || peaksBForMz.size > 4)
+        println(s"|peaks{A,B}ForMz|=${peaksAForMz.size},${peaksBForMz.size} and |rtsIn{A,B}|=${rtsInA.size},${rtsInB.size}")      
 
       // for each Rt in A map it to matches in B
       // for each Rt in B map it to matches in A
