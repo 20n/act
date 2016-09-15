@@ -4,32 +4,54 @@ import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
+import org.rocksdb.WriteBatch;
+import org.rocksdb.WriteBatchWithIndex;
+import org.rocksdb.WriteOptions;
 
 import java.util.Map;
 
-public class RocksDBAndHandles<T extends ColumnFamilyEnumeration> {
+public class RocksDBAndHandles<T extends ColumnFamilyEnumeration<T>> {
   RocksDB db;
   Map<T, ColumnFamilyHandle> columnFamilyHandleMap;
+
+  WriteOptions writeOptions = null;
+
+  // Here to hijack the DB interface for easy testing or alternate implementations.
+  protected RocksDBAndHandles() {
+
+  }
 
   public RocksDBAndHandles(RocksDB db, Map<T, ColumnFamilyHandle> columnFamilyHandleMap) {
     this.db = db;
     this.columnFamilyHandleMap = columnFamilyHandleMap;
   }
 
+  public WriteOptions getWriteOptions() {
+    return writeOptions;
+  }
+
+  public void setWriteOptions(WriteOptions writeOptions) {
+    this.writeOptions = writeOptions;
+  }
+
   public RocksDB getDb() {
     return db;
   }
 
-  public Map<T, ColumnFamilyHandle> getColumnFamilyHandleMap() {
+  protected Map<T, ColumnFamilyHandle> getColumnFamilyHandleMap() {
     return columnFamilyHandleMap;
   }
 
-  public ColumnFamilyHandle getHandle(T columnFamilyLabel) {
+  protected ColumnFamilyHandle getHandle(T columnFamilyLabel) {
     return this.columnFamilyHandleMap.get(columnFamilyLabel);
   }
 
   public void put(T columnFamily, byte[] key, byte[] val) throws RocksDBException {
-    this.db.put(getHandle(columnFamily), key, val);
+    if (writeOptions != null) {
+      this.db.put(getHandle(columnFamily), writeOptions, key, val);
+    } else {
+      this.db.put(getHandle(columnFamily), key, val);
+    }
   }
 
   public boolean keyMayExist(T columnFamily, byte[] key) throws RocksDBException {
@@ -62,4 +84,26 @@ public class RocksDBAndHandles<T extends ColumnFamilyEnumeration> {
    * The workable alternative is to bubble the value all the way up to Java land, merge there, and then send the
    * resulting value back to the DB.  This tends to be incredibly slow, however, so just don't expose it at all.
    */
+
+  // Wrap write batches for easier testing.
+  public static class RocksDBWriteBatch<T extends ColumnFamilyEnumeration<T>> {
+    protected static final int RESERVED_BYTES = 1 << 18;
+    private static final WriteOptions DEFAULT_WRITE_OPTIONS = new WriteOptions();
+    WriteBatch batch;
+    RocksDBAndHandles<T> parent;
+
+    protected RocksDBWriteBatch(RocksDBAndHandles<T> parent, int reservedBytes) {
+      this.parent = parent;
+      this.batch = new WriteBatch(reservedBytes);
+    }
+
+    public void put(T columnFamily, byte[] key, byte[] val) throws RocksDBException {
+      batch.put(parent.getHandle(columnFamily), key, val);
+    }
+
+    public void write() throws RocksDBException {
+      WriteOptions writeOptions = parent.getWriteOptions() != null ? parent.getWriteOptions() : DEFAULT_WRITE_OPTIONS;
+      parent.getDb().write(writeOptions, batch);
+    }
+  }
 }

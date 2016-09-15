@@ -16,13 +16,14 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.rocksdb.FlushOptions;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
+import org.rocksdb.WriteBatch;
+import org.rocksdb.WriteOptions;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLStreamException;
@@ -103,8 +104,10 @@ public class TraceIndexExtractor {
 
   public enum COLUMN_FAMILIES implements ColumnFamilyEnumeration<COLUMN_FAMILIES> {
     TARGET_TO_WINDOW("target_mz_to_window_obj"),
-    ID_TO_TRACE("id_to_trace"),
     TIMEPOINTS("timepoints"),
+    ID_TO_TRIPLE("id_to_triple"),
+    TIMEPOINT_ID_TO_TRIPLES("timepoints_to_triples"),
+    WINDOW_ID_TO_TRIPLES("windows_to_triples"),
     ;
 
     private static final Map<String, COLUMN_FAMILIES> reverseNameMap =
@@ -206,16 +209,19 @@ public class TraceIndexExtractor {
       // TODO: add to existing DB instead of complaining if the DB already exists.  That'll enable one index per scan.
       dbAndHandles = DBUtil.createNewRocksDB(rocksDBFile, COLUMN_FAMILIES.values());
 
+      WriteOptions writeOptions = new WriteOptions();
+      writeOptions.setDisableWAL(true);
+      writeOptions.setSync(false);
+      dbAndHandles.setWriteOptions(writeOptions);
+
       // TODO: split targetMZs into batches of ~100k and extract incrementally to allow huge input sets.
 
       LOGGER.info("Extracting traces");
-      IndexedTraces windowsTimesAndTraces = runSweepLine(targetMZs, spectrumIterator);
+      List<MZWindow> windows = targetsToWindows(targetMZs);
+      extractTriples(dbAndHandles, spectrumIterator, windows);
 
       LOGGER.info("Writing search targets to on-disk index");
-      writeWindowsToDB(dbAndHandles, windowsTimesAndTraces.getWindows());
-
-      LOGGER.info("Writing trace data to on-disk index");
-      writeTracesToDB(dbAndHandles, windowsTimesAndTraces.getTimes(), windowsTimesAndTraces.getAllTraces());
+      writeWindowsToDB(dbAndHandles, windows);
     } finally {
       if (dbAndHandles != null) {
         dbAndHandles.getDb().close();
@@ -258,67 +264,7 @@ public class TraceIndexExtractor {
     }
   }
 
-  private static class IndexedTraces {
-    /* IndexedTraces is a 2D array of aggregated intensity values over some <mz window, time> domains.  The organization
-     * of this matrix works in conjunction with the list of windows and the list of times that we build in parallel.
-     *
-     * The three structures look like:
-     * windows:
-     *   <min_0, target_0, max_0>,
-     *   <min_1, target_1, max_1>,
-     *   <min_2, target_2, max_2>,
-     *   ...
-     *
-     * times:
-     *   t_0,
-     *   t_1,
-     *   t_2,
-     *   ...
-     *
-     * allTraces (as i_{window_idx}_{time_idx}):
-     *   i_0_0, i_0_1, i_0_2, ...
-     *   i_1_0, i_1_1, i_1_2, ...
-     *   i_2_0, i_2_1, i_2_2, ...
-     *   ...
-     *
-     * So the aggregate intensity for all m/z values in the window <min_1, max_1> at time point 2 is i_1_2.
-     *
-     * We keep the window and time values separate for 1) efficiency and 2) ordering (i.e. no window -> array maps).
-     *
-     * When we want to create an iterator over the <time, intensity> traces (i.e. List<XZ>) for each window, we knit the
-     * single time array together with the appropriate list of intensity values online, reducing the overhead of storing
-     * several hundred million XZ objects (which turns out to be fairly expensive). */
-    List<MZWindow> windows;
-    List<Double> times;
-    List<List<Double>> allTraces;
-
-    public IndexedTraces(List<MZWindow> windows, List<Double> times, List<List<Double>> allTraces) {
-      this.windows = windows;
-      this.times = times;
-      this.allTraces = allTraces;
-    }
-
-    public List<MZWindow> getWindows() {
-      return windows;
-    }
-
-    public List<Double> getTimes() {
-      return times;
-    }
-
-    public List<List<Double>> getAllTraces() {
-      return allTraces;
-    }
-  }
-
-  /**
-   * Initiate a data feast of all traces within some window allocation.  OM NOM NOM.
-   * @param iter An iterator over an LCMS data file.
-   * @return The windows, time points, and per-window traces.
-   */
-  private IndexedTraces runSweepLine(List<Double> targetMZs, Iterator<LCMSSpectrum> iter)
-      throws RocksDBException, IOException {
-    // Create windows for sweep-linin'.
+  private List<MZWindow> targetsToWindows(List<Double> targetMZs) {
     List<MZWindow> windows = new ArrayList<MZWindow>() {{
       int i = 0;
       for (Double targetMZ : targetMZs) {
@@ -333,49 +279,135 @@ public class TraceIndexExtractor {
      */
     Collections.sort(windows, (a, b) -> a.getTargetMZ().compareTo(b.getTargetMZ()));
 
-    List<Double> times = new ArrayList<>();
+    return windows;
+  }
 
-    List<List<Double>> allTraces = new ArrayList<List<Double>>(windows.size()) {{
-      for (int i = 0; i < windows.size(); i++) {
-        add(new ArrayList<>());
+  public static class TMzI { // (time, mass/charge, intensity) triple
+    /* Note: we are cheating here.  We usually throw around Doubles for time and intensity.  To save (a whole bunch of)
+     * of bytes, we pare down our time intensity values to floats, knowing they were actually floats to begin with
+     * in the NetCDF file but were promoted to doubles to be compatible with the LCMS parser API.  */
+    public static final int BYTES = Float.BYTES + Double.BYTES + Float.BYTES;
+
+    // TODO: we might get better compression out of using an index for time.
+    float time;
+    double mz;
+    float intensity;
+
+    public TMzI(float time, double mz, float intensity) {
+      this.time = time;
+      this.mz = mz;
+      this.intensity = intensity;
+    }
+
+    public float getTime() {
+      return time;
+    }
+
+    public double getMz() {
+      return mz;
+    }
+
+    public float getIntensity() {
+      return intensity;
+    }
+
+    public void writeToByteBuffer(ByteBuffer buffer) {
+      buffer.putFloat(time);
+      buffer.putDouble(mz);
+      buffer.putFloat(intensity);
+    }
+
+    public static void writeToByteBuffer(ByteBuffer buffer, float time, double mz, float intensity) {
+      buffer.putFloat(time);
+      buffer.putDouble(mz);
+      buffer.putFloat(intensity);
+    }
+
+    public static TMzI readNextFromByteBuffer(ByteBuffer buffer) {
+      float time = buffer.getFloat();
+      double mz = buffer.getDouble();
+      float intensity = buffer.getFloat();
+      return new TMzI(time, mz, intensity);
+    }
+  }
+
+  private static ByteBuffer appendOrResize(ByteBuffer dest, ByteBuffer toAppend) {
+    /* Before reading this function, review this excellent explanation of the behaviors of ByteBuffers:
+     * http://mindprod.com/jgloss/bytebuffer.html */
+
+    // Assume toAppend is pre-flipped to avoid a double flip, which would be Very Bad.
+    if (dest.capacity() - dest.position() < toAppend.limit()) {
+      // Whoops, we have to reallocate!
+
+      ByteBuffer newDest = ByteBuffer.allocate(dest.capacity() << 1); // TODO: make sure these are page-divisible sizes.
+      dest.flip(); // Switch dest to reading mode.
+      newDest.put(dest); // Write all of dest into the new buffer.
+      dest = newDest;
+    }
+    dest.put(toAppend);
+    return dest;
+  }
+
+  protected void extractTriples(
+      RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles,
+      Iterator<LCMSSpectrum> iter,
+      List<MZWindow> windows)
+      throws RocksDBException, IOException {
+
+    ByteBuffer[] mzWindowTripleBuffers = new ByteBuffer[windows.size()];
+    for (int i = 0; i < mzWindowTripleBuffers.length; i++) {
+      // Validate that the windows' indexes are zero-based and contiguous.
+      if (windows.get(i).getIndex() != i) {
+        String msg = String.format("Assumption violation: window indeces must be zero-based and contiguous, %d != %d",
+            i, windows.get(i).getIndex());
+        LOGGER.error(msg);
+        throw new RuntimeException(msg);
       }
-    }};
+      mzWindowTripleBuffers[i] = ByteBuffer.allocate(Long.BYTES * 4096); // Start with 4096 longs = 8 pages per window.
+    }
 
-    // Keep an array of accumulators around to reduce the overhead of accessing the trace matrix for accumulation.
-    double[] sumIntensitiesInEachWindow = new double[windows.size()];
+    // Note: we could also write to an mmapped file and just track pointers, but then we might lose out on compression.
+    long counter = -1; // We increment at the top of the loop.
+    // We allocate all the buffers strictly here, as we expect
+    ByteBuffer counterBuffer = ByteBuffer.allocate(Long.BYTES);
+    ByteBuffer valBuffer = ByteBuffer.allocate(TMzI.BYTES);
+    List<Float> timepoints = new ArrayList<>(2000); // We can be sloppy here, as the count is small.
 
-    int timepointCounter = 0;
+
+    /* We use a sweep-line approach to scanning through the m/z windows so that we can aggregate all intensities in
+     * one pass over the current LCMSSpectrum (this saves us one inner loop in our extraction process).  The m/z
+     * values in the LCMSSpectrum become our "critical" or "interesting points" over which we sweep our m/z ranges.
+     * The next window in m/z order is guaranteed to be the next one we want to consider since we address the points
+     * in m/z order as well.  As soon as we've passed out of the range of one of our windows, we discard it.  It is
+     * valid for a window to be added to and discarded from the working queue in one application of the work loop. */
+    LinkedList<MZWindow> tbdQueueTemplate = new LinkedList<>(windows);
+
+    int spectrumCounter = 0;
     while (iter.hasNext()) {
       LCMSSpectrum spectrum = iter.next();
-      Double time = spectrum.getTimeVal();
+      float time = spectrum.getTimeVal().floatValue();
 
-      // Store one list of the time values so we can knit times and intensity sums later to form XZs.
-      times.add(time);
+      // This will record all the m/z + intensity readings that correspond to this timepoint.
+      ByteBuffer triplesForThisTime = ByteBuffer.allocate(Long.BYTES * spectrum.getIntensities().size());
 
-      for (int i = 0; i < sumIntensitiesInEachWindow.length; i++) {
-        sumIntensitiesInEachWindow[i] = 0.0;
-      }
-
-      timepointCounter++;
-
-      if (timepointCounter % 100 == 0) {
-        LOGGER.info("Extracted %d timepoints (now at %.3fs)", timepointCounter, time);
-      }
-
-      /* We use a sweep-line approach to scanning through the m/z windows so that we can aggregate all intensities in
-       * one pass over the current LCMSSpectrum (this saves us one inner loop in our extraction process).  The m/z
-       * values in the LCMSSpectrum become our "critical" or "interesting points" over which we sweep our m/z ranges.
-       * The next window in m/z order is guaranteed to be the next one we want to consider since we address the points
-       * in m/z order as well.  As soon as we've passed out of the range of one of our windows, we discard it.  It is
-       * valid for a window to be added to and discarded from the working queue in one application of the work loop. */
       LinkedList<MZWindow> workingQueue = new LinkedList<>();
-      // TODO: can we reuse these instead of creating fresh?
-      LinkedList<MZWindow> tbdQueue = new LinkedList<>(windows);
-
-      // Assumption: these arrive in m/z order.
+      LinkedList<MZWindow> tbdQueue = (LinkedList<MZWindow>) tbdQueueTemplate.clone(); // clone is in the docs, so okay!
       for (Pair<Double, Double> mzIntensity : spectrum.getIntensities()) {
+        /* Very important: increment the counter for every triple.  It doesn't matter what the base value is so long
+         * as it's used and incremented consistently. */
+        counter++;
+
         Double mz = mzIntensity.getLeft();
         Double intensity = mzIntensity.getRight();
+
+        // Reset the buffers so we end up re-using the few bytes we've allocated.
+        counterBuffer.clear(); // Empty (virtually).
+        counterBuffer.putLong(counter);
+        counterBuffer.flip(); // Prep for reading.
+
+        valBuffer.clear(); // Empty (virtually).
+        TMzI.writeToByteBuffer(valBuffer, time, mz, intensity.floatValue());
+        valBuffer.flip(); // Prep for reading.
 
         // First, shift any applicable ranges onto the working queue based on their minimum mz.
         while (!tbdQueue.isEmpty() && tbdQueue.peekFirst().getMin() <= mz) {
@@ -384,40 +416,95 @@ public class TraceIndexExtractor {
 
         // Next, remove any ranges we've passed.
         while (!workingQueue.isEmpty() && workingQueue.peekFirst().getMax() < mz) {
-          workingQueue.pop();
+          workingQueue.pop(); // TODO: add() this to a recovery queue which can then become the tbdQueue.  Edge cases!
         }
-
-        if (workingQueue.isEmpty()) {
-          if (tbdQueue.isEmpty()) {
-            // If both queues are empty, there are no more windows to consider at all.  One to the next timepoint!
-            break;
-          }
-
-          // If there's nothing that happens to fit in this range, skip it!
-          continue;
-        }
+        /* In the old indexed trace extractor world, we could bail here if there were no target m/z's in our window set
+         * that matched with the m/z of our current mzIntensity.  However, since we're now also recording the links
+         * between timepoints and their (t, m/z, i) triples, we need to keep on keepin' on regardless of whether we have
+         * any m/z windows in the working set right now. */
 
         // The working queue should now hold only ranges that include this m/z value.  Sweep line swept!
 
-        /* Now add this intensity to accumulator value for each of the items in the working queue.
-         * By the end of the outer loop, trace(t) = Sum(intensity) | win_min <= m/z <= win_max @ time point # t */
+        /* Now add this intensity to the buffers of all the windows in the working queue.  Note that since we're only
+         * storing the *index* of the triple, these buffers are going to consume less space than they would if we
+         * stored everything together. */
         for (MZWindow window : workingQueue) {
           // TODO: count the number of times we add intensities to each window's accumulator for MS1-style warnings.
-          sumIntensitiesInEachWindow[window.getIndex()] += intensity;
+          counterBuffer.rewind(); // Already flipped.
+          mzWindowTripleBuffers[window.getIndex()] = // Must assign when calling appendOrResize.
+              appendOrResize(mzWindowTripleBuffers[window.getIndex()], counterBuffer);
         }
+
+        // We flipped after reading, so we should be good to rewind (to be safe) and write here.
+        counterBuffer.rewind();
+        valBuffer.rewind();
+        dbAndHandles.put(COLUMN_FAMILIES.ID_TO_TRIPLE, toCompactArray(counterBuffer), toCompactArray(valBuffer));
+
+        // Rewind again for another read.
+        counterBuffer.rewind();
+        triplesForThisTime.put(counterBuffer);
       }
 
-      /* Extend allTraces to add a row of accumulated intensity values for this time point.  We build this incrementally
-       * because the LCMSSpectrum iterator doesn't tell us how many time points to expect up front. */
-      for (int i = 0; i < sumIntensitiesInEachWindow.length; i++) {
-        allTraces.get(i).add(sumIntensitiesInEachWindow[i]);
+      // We should have used up every byte we had.  TODO: make this an assert() call.
+      if (triplesForThisTime.position() != triplesForThisTime.capacity()) {
+        String msg = String.format("Time to triples buffer was not filled to capacity: exp. %d vs act. %d",
+            triplesForThisTime.capacity(), triplesForThisTime.position());
+        LOGGER.error(msg);
+        throw new RuntimeException(msg);
       }
+
+      ByteBuffer timeBuffer = ByteBuffer.allocate(Float.BYTES).putFloat(time);
+      timeBuffer.flip(); // Prep both bufers for reading so they can be written to the DB.
+      triplesForThisTime.flip();
+      dbAndHandles.put(COLUMN_FAMILIES.TIMEPOINT_ID_TO_TRIPLES,
+          toCompactArray(timeBuffer), toCompactArray(triplesForThisTime));
+
+      timepoints.add(time);
+
+      spectrumCounter++;
+      LOGGER.info("Extracted %d time spectra", spectrumCounter);
     }
 
-    // Trace data has been devoured.  Might want to loosen the belt at this point...
-    LOGGER.info("Done extracting %d traces", allTraces.size());
+    // Now write all the mzWindow to triple indexes.
+    ByteBuffer idBuffer = ByteBuffer.allocate(Integer.BYTES);
+    for (int i = 0; i < mzWindowTripleBuffers.length; i++) {
+      idBuffer.clear();
+      idBuffer.putInt(windows.get(i).getIndex());
+      idBuffer.flip();
 
-    return new IndexedTraces(windows, times, allTraces);
+      ByteBuffer triplesBuffer = mzWindowTripleBuffers[i];
+      triplesBuffer.flip(); // Prep for read.
+
+      dbAndHandles.put(COLUMN_FAMILIES.WINDOW_ID_TO_TRIPLES, toCompactArray(idBuffer), toCompactArray(triplesBuffer));
+    }
+
+    dbAndHandles.put(COLUMN_FAMILIES.TIMEPOINTS, TIMEPOINTS_KEY, serializeFloatList(timepoints));
+  }
+
+  public static byte[] toCompactArray(ByteBuffer src) {
+    assertReadyForFreshRead(src);
+    if (src.limit() >= src.capacity()) { // No need to compact if limit covers the whole backing array.
+      return src.array();
+    }
+
+    // Otherwise, we need to allocate and copy into a new array of the correct size.
+
+    // TODO: is Arrays.copyOf any faster than this?  Ideally we want CoW semantics here...
+
+    // Assume src is pre-flipped to avoid a double-flip.
+    ByteBuffer dest = ByteBuffer.allocate(src.limit());
+    assert(dest.capacity() == src.limit());
+    dest.put(src);
+    dest.flip();
+    assert(dest.limit() == src.limit());
+    byte[] asArray = dest.array();
+    assert(asArray.length == src.limit());
+    return asArray;
+  }
+
+  protected static void assertReadyForFreshRead(ByteBuffer b) {
+    assert(b.limit() != 0); // A zero limit would cause an immediate buffer underflow.
+    assert(b.position() == 0); // A non-zero position means either the buffer hasn't been flipped or has been read from.
   }
 
   private void writeWindowsToDB(RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles, List<MZWindow> windows)
@@ -442,7 +529,7 @@ public class TraceIndexExtractor {
     for (int i = 0; i < allTraces.size(); i++) {
       byte[] keyBytes = serializeObject(i);
       byte[] valBytes = serializeDoubleList(allTraces.get(i));
-      dbAndHandles.put(COLUMN_FAMILIES.ID_TO_TRACE, keyBytes, valBytes);
+      //dbAndHandles.put(COLUMN_FAMILIES.ID_TO_TRACE, keyBytes, valBytes);
       if (i % 1000 == 0) {
         LOGGER.info("Finished writing %d traces", i);
       }
@@ -507,7 +594,7 @@ public class TraceIndexExtractor {
 
         List<Double> trace;
         try {
-          byte[] traceBytes = dbAndHandles.get(COLUMN_FAMILIES.ID_TO_TRACE, traceKeyBytes);
+          byte[] traceBytes = null; // dbAndHandles.get(COLUMN_FAMILIES.ID_TO_TRACE, traceKeyBytes);
           if (traceBytes == null) {
             String msg = String.format("Got null byte array back for trace key %d (target: %.6f)",
                 window.getIndex(), window.getTargetMZ());
@@ -515,10 +602,10 @@ public class TraceIndexExtractor {
             throw new RuntimeException(msg);
           }
           trace = deserializeDoubleList(traceBytes);
-        } catch (RocksDBException e) {
+        /*} catch (RocksDBException e) {
           LOGGER.error("Caught RocksDBException when trying to extract trace %d (%.6f): %s",
               window.getIndex(), window.getTargetMZ(), e.getMessage());
-          throw new RuntimeException(e);
+          throw new RuntimeException(e);*/
         } catch (IOException e) {
           LOGGER.error("Caught IOException when trying to extract trace %d (%.6f): %s",
               window.getIndex(), window.getTargetMZ(), e.getMessage());
@@ -569,6 +656,14 @@ public class TraceIndexExtractor {
       }
       return bos.toByteArray();
     }
+  }
+
+  private static byte[] serializeFloatList(List<Float> vals) throws IOException {
+    ByteBuffer buffer = ByteBuffer.allocate(vals.size() * Float.BYTES);
+    for (Float val : vals) {
+      buffer.putFloat(val);
+    }
+    return buffer.array();
   }
 
   private static List<Double> deserializeDoubleList(byte[] byteStream) throws IOException {
