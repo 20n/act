@@ -170,7 +170,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
           }
         }
       }
-    }
+    }.toSet
 
     // outliers are those that are not none
     val outlierPeaks = peaksWithCharacteristics.filter(_.isDefined).map{ case Some(p) => p }.toSet
@@ -229,7 +229,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
         val (integratedIntensity, maxIntensity, snr) = aggregateCharacteristics(originalPeaks.flatten)
         new UntargetedPeak(mz, rt, integratedIntensity, maxIntensity, snr)
       }
-    }
+    }.toSet
 
     val provenance = new ComputedData(sources = replicates.map(_.origin))
     new LCMSExperiment(provenance, new UntargetedPeakSpectra(sharedPeaksWithCharacteristics))
@@ -253,7 +253,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
 
   type PeakAt = (MonoIsotopicMass, RetentionTime)
 
-  def intersect(peaksA: Set[PeakAt], peaksB: Set[PeakAt]) = timer {
+  def intersect(peaksA: List[PeakAt], peaksB: List[PeakAt]) = timer {
     // We have MonoIsotopicMass and RetentionTime with equals properly defined
     // MonoIsotopicMass has both equals and hashCode. RetentionTime only has
     // equals that finds things in the tolerated drigs
@@ -323,9 +323,9 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
 
     // only find peaks that are common across all traces, so we do
     // a pairwise intersect of the peaks. 
-    val alignedPeaks: Set[PeakAt] = {
+    val alignedPeaks: List[PeakAt] = {
       println(s"Aligning peaks: " + peaks.map(_.values.toList).mkString("\n"))
-      val uniquePeaksInEachSet = peaks.map(_.values.toSet)
+      val uniquePeaksInEachSet = peaks.map(_.values.toList)
       println(s"Aligning peaks: " + uniquePeaksInEachSet.mkString("\n"))
       val uniquePeaksAcrossSets = uniquePeaksInEachSet.reduce(intersect)
       println(s"unique peaks in each set: ${uniquePeaksInEachSet.map(_.size)} and intersected across: ${uniquePeaksAcrossSets.size} as compared to total peaks: ${peaks.map(_.keys.toSet).map(_.size)}")
