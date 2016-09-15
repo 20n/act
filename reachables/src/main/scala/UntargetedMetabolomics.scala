@@ -262,8 +262,6 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     // *  RetentionTime answers equals to values if they are
     //      within a certain drift apart.
 
-    println(s"Intersecting: $peaksA /-\\ $peaksB")
-
     val mzsInA = peaksA.map(_._1)
     val mzsInB = peaksB.map(_._1)
     // set'intersect over MonoIsotopicMass will be fine, we have hashCode defined for it
@@ -291,21 +289,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
       val rtsWithMatchesUniq = uniq(rtsWithMatches)
       val common = rtsWithMatchesUniq.map(rt => (mz, rt)).toSet
 
-      val equalsWayOfCommon = for (pa <- peaksAForMz; pb <- peaksBForMz if pa.equals(pb)) yield pa
-      // if (equalsWayOfCommon.size != common.size)
-      if (mz.equals(new MonoIsotopicMass(259.282)))
-         println(s"\n\nfor $mz all shared retention times: ${(rtsInA ++ rtsInB).toList.sortWith(RetentionTime.ascender)}\nmedian way: $common\nvs\nset on `equals`: ${equalsWayOfCommon}\nrtsInA: $rtsInA\nrtsInB: $rtsInB")
-
       common
-
-      //// // we convert to a flattened multiset. that preserves replicates of the same time if peaks
-      //// // show up there, which means we `middle` towards those replicates more than if just a set
-      //// val commonRts = (for (rtA <- rtsInA; rtB <- rtsInB if rtA.equals(rtB)) yield List(rtA, rtB)).toList.flatten
-      //// if (commonRts.size > 0) {
-      ////   val medianRt = RetentionTime.middle(commonRts)
-      ////   val common = Set((mz, medianRt))
-      ////   common
-      //// } else Set()
     }
 
     val inBoth = mzsInBoth.flatMap(pullPeaksInBoth)
@@ -324,9 +308,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     // only find peaks that are common across all traces, so we do
     // a pairwise intersect of the peaks. 
     val alignedPeaks: List[PeakAt] = {
-      println(s"Aligning peaks: " + peaks.map(_.values.toList).mkString("\n"))
       val uniquePeaksInEachSet = peaks.map(_.values.toList)
-      println(s"Aligning peaks: " + uniquePeaksInEachSet.mkString("\n"))
       val uniquePeaksAcrossSets = uniquePeaksInEachSet.reduce(intersect)
       println(s"unique peaks in each set: ${uniquePeaksInEachSet.map(_.size)} and intersected across: ${uniquePeaksAcrossSets.size} as compared to total peaks: ${peaks.map(_.keys.toSet).map(_.size)}")
       uniquePeaksAcrossSets
@@ -456,8 +438,8 @@ object UntargetedMetabolomics {
     // d{M,F}{1,2,3} = disease line {M,F} replicates 1, 2, 3
     // each test is specified as (controls, hypothesis, num_peaks_min, num_peaks_max) inclusive both
     val cases = List(
-      ("wtmin-wtmin", wtmin, wtmin, 0, 0) // debugging this case!
-      //      ("wt-wt", wt, wt, 0, 0), // debugging this case!
+      ("wtmin-wtmin", wtmin, wtmin, 0, 0), // debugging this case!
+      ("wt-wt", wt, wt, 0, 0) // debugging this case!
 
       //      // consistency check: hypothesis same as control => no peaks should be differentially identified
       //      ("wt1-wt1", List(wt1), List(wt1), 0, 0),
