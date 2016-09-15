@@ -77,8 +77,12 @@ object ConstructSarsFromPredictionCorpus {
       Get the unique molecule strings
      */
     val moleculeStrings: List[String] = assignment.reactions.map(reaction => {
-      LOGGER.error("Currently only single substrate SARs can be created.")
-      return None
+      if (reaction.getSubstrates.length > 1) {
+        LOGGER.error("Currently only single substrate SARs can be created.")
+        return None
+      }
+      val onlySubstrate = reaction.getSubstrates.head
+      onlySubstrate.getString
     })
     val uniqueMoleculeStrings = moleculeStrings.toSet
 
