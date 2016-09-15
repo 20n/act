@@ -82,12 +82,7 @@ object compute {
 
     LOGGER.info(s"Using SAR Corpus file at $sarFile (file exists: ${new File(sarFile).exists()})")
 
-    val sar: CharacterizedGroup = {
-      this.synchronized {
-        val sar: CharacterizedGroup = SarCorpus.readCorpusFromJsonFile(new File(sarFile)).iterator().asScala.toList(sarFileIndex)
-        sar
-      }
-    }
+    val sar: CharacterizedGroup = SarCorpus.readCorpusFromJsonFile(new File(sarFile)).iterator().asScala.toList(sarFileIndex)
 
     val singleGroupCorpus = new SarCorpus()
     singleGroupCorpus.addCharacterizedGroup(sar)

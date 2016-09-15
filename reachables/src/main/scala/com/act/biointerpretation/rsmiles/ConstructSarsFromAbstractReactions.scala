@@ -40,6 +40,7 @@ object ConstructSarsFromAbstractReactions {
 
     // Place the characterized groups into the corpus
     val sarCorpus = new SarCorpus()
+
     characterizedGroups.foreach(group => sarCorpus.addCharacterizedGroup(group))
 
     LOGGER.info(s"Writing Sar Corpus to ${outputFile.getAbsolutePath}.")
@@ -61,17 +62,18 @@ object ConstructSarsFromAbstractReactions {
 
     val molecules: List[Molecule] = moleculeStrings.par.map(MoleculeImporter.importMolecule(_, moleculeFormats)).seq.toList
 
-    // One molecule does not make a sar, or so we say.
-    if (molecules.length <= 1) {
-      None
-    } else {
-      // Build all pieces of SAR generator
-      val clusterSarTree = new SarTree()
-      clusterSarTree.buildByClustering(new LibraryMCS(), molecules.asJava)
-      val sarNodes = clusterSarTree.getRootNodes.asScala.map(node => node.getSar)
+    // Bild the SAR
+    val clusterSarTree = new SarTree()
+    clusterSarTree.buildByClustering(new LibraryMCS(), molecules.asJava)
+    val sarNodes = clusterSarTree.getRootNodes.asScala.map(node => node.getSar)
 
-      val singleRo = roCorpus.getEro(ro)
-      Option(new CharacterizedGroup(s"Ro $ro Group", sarNodes.asJava, new SerializableReactor(singleRo.getReactor, ro)))
+    if (sarNodes.isEmpty) {
+      LOGGER.info(s"Was unable to create any SAR nodes for RO $ro.")
+      return None
     }
+
+    val singleRo = roCorpus.getEro(ro)
+    Option(new CharacterizedGroup(s"Ro $ro Group", sarNodes.asJava, new SerializableReactor(singleRo.getReactor, ro)))
+
   }
 }
