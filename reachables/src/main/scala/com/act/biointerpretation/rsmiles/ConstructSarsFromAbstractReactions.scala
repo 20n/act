@@ -72,6 +72,7 @@ object ConstructSarsFromAbstractReactions {
       return None
     }
 
+    LOGGER.info(s"Created ${sarNodes.length} valid SARs for RO $ro.")
     val singleRo = roCorpus.getEro(ro)
     Option(new CharacterizedGroup(s"Ro $ro Group", sarNodes.asJava, new SerializableReactor(singleRo.getReactor, ro)))
 
