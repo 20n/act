@@ -77,7 +77,10 @@ class UntargetedPeakSpectra(val peaks: Set[UntargetedPeak]) {
     val rngCmt = if (filterMzRt) ", showing mz:[50, 500] rt:[20, 200]" else ""
     Map(
       "num peaks" -> peaks.size,
-      s"topK by integratedInt${rngCmt}" -> lowPks.sortWith(_.integratedInt > _.integratedInt).map(p => List(p.mz, p.rt, p.integratedInt)).take(topk)
+      s"topK by integratedInt${rngCmt}" -> lowPks
+                                            .sortWith(_.integratedInt > _.integratedInt)
+                                            .map(p => List(p.mz, p.rt, p.integratedInt))
+                                            .take(topk)
     )
   }
 
@@ -140,7 +143,9 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
   }
 
   // aggregate characteristic for peaks for the same molecule (eluting at the same mz, and time)
-  def uniformAcross(peaks: List[UntargetedPeak], mz: MonoIsotopicMass, rt: RetentionTime): UntargetedPeak = {
+  def uniformAcross(peaks: List[UntargetedPeak],
+    mz: MonoIsotopicMass,
+    rt: RetentionTime): UntargetedPeak = {
 
     // all the peaks passed in here should have the same (mz, rt) upto tolerances
     // all we have to do is aggregate their (integrated and max) intensity and snr
@@ -151,7 +156,10 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
 
   // identify if the peaks in hyp are outliers compared to the controls
   // we assume these peaks are for the same molecule (eluting at the same mz, and time)
-  def isOutlier(hyp: List[UntargetedPeak], ctrl: List[UntargetedPeak], mz: MonoIsotopicMass, rt: RetentionTime): Option[UntargetedPeak] = {
+  def isOutlier(hyp: List[UntargetedPeak],
+    ctrl: List[UntargetedPeak],
+    mz: MonoIsotopicMass,
+    rt: RetentionTime): Option[UntargetedPeak] = {
 
     // all the peaks passed in here should have the same (mz, rt) upto tolerances
     // all we have to do is aggregate their (integrated and max) intensity and snr
@@ -199,139 +207,20 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     if (valleyShape(metric) > 1.0) { Some(peak) } else { None }
   }
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////
-  ////////////////////////////////////////////////////////////////////////////////////////////////
-  ////////////////////////////////////////////////////////////////////////////////////////////////
-
   def extractOutliers(hypothesis: LCMSExperiment, control: LCMSExperiment): LCMSExperiment = {
-
     val exprVsControl = List(hypothesis, control)
-
-    println(s"Identifying outlying peaks...")
-    val (alignedPeaks, alignedToOriginalPeaks) = getAlignedPeaks(exprVsControl)
-
-    val peaksWithCharacteristics: Set[Option[UntargetedPeak]] = alignedPeaks.map{
-      peak => {
-        val (mz, rt) = peak
-        // for each `peak @ mz,rt`, we now pull the original peaks from the hypothesis and control sets
-        // each `peak @ mz,rt` collapses (potentially) many original `UntargetedPeak`s and we get all
-        // of those back, both for the hypothesis case (originalPeaks(0)) and control case (originalPeak(1))
-        val originalPeaks: List[List[UntargetedPeak]] = alignedToOriginalPeaks(peak)
-        assert( originalPeaks.size == 2)
-        isOutlier(originalPeaks(0), originalPeaks(1), mz, rt)
-      }
-    }.toSet
-
+    val peaksWithCharacteristics: Set[Option[UntargetedPeak]] = null
     // outliers are those that are not none
     val outlierPeaks = peaksWithCharacteristics.filter(_.isDefined).map{ case Some(p) => p }.toSet
-
     val provenance = new ComputedData(sources = exprVsControl.map(_.origin))
     new LCMSExperiment(provenance, new UntargetedPeakSpectra(outlierPeaks))
   }
 
   def unifyReplicates(replicates: List[LCMSExperiment]): LCMSExperiment = {
-
-    println(s"Unifying replicates...")
-    val (alignedPeaks, alignedToOriginalPeaks) = getAlignedPeaks(replicates)
-
-    val sharedPeaksWithCharacteristics: Set[UntargetedPeak] = alignedPeaks.map{
-      peak => {
-        val (mz, rt) = peak
-        val originalPeaks: List[List[UntargetedPeak]] = alignedToOriginalPeaks(peak)
-        uniformAcross(originalPeaks.flatten, mz, rt)
-      }
-    }.toSet
-
+    val sharedPeaksWithCharacteristics: Set[UntargetedPeak] = null
     val provenance = new ComputedData(sources = replicates.map(_.origin))
     new LCMSExperiment(provenance, new UntargetedPeakSpectra(sharedPeaksWithCharacteristics))
   }
-
-  type PeakAt = (MonoIsotopicMass, RetentionTime)
-
-  def intersect(peaksA: List[PeakAt], peaksB: List[PeakAt]) = timer {
-    // We have MonoIsotopicMass and RetentionTime with equals properly defined
-    // MonoIsotopicMass has both equals and hashCode. RetentionTime only has
-    // equals that finds things in the tolerated drigs
-    // *  MonoIsotopicMass answers equals to values if they match 
-    //      upto a certain decimal position.
-    // *  RetentionTime answers equals to values if they are
-    //      within a certain drift apart.
-
-    val mzsInA = peaksA.map(_._1)
-    val mzsInB = peaksB.map(_._1)
-    // set'intersect over MonoIsotopicMass will be fine, we have hashCode defined for it
-    val mzsInBoth = mzsInA.intersect(mzsInB).distinct
-
-    println(s"intersect: mzsInBoth = ${mzsInBoth.sortBy(_.initMass)}")
-    println(s"intersect: |mzsInBoth| = ${mzsInBoth.size}")
-
-    // given an mz, get lists of peaks in both sets that have ~equal mz, and then
-    // n^2 compare each of the pulled peaks to see if they also ~match on retention time
-    def pullPeaksInBoth(mz: MonoIsotopicMass): Set[PeakAt] = {
-
-      val peaksAForMz = peaksA.filter(_._1.equals(mz))
-      val peaksBForMz = peaksB.filter(_._1.equals(mz))
-      val rtsInA = peaksAForMz.map(_._2).toList
-      val rtsInB = peaksBForMz.map(_._2).toList
-
-      if (peaksAForMz.size > 4 || peaksBForMz.size > 4)
-        println(s"|peaks{A,B}ForMz|=${peaksAForMz.size},${peaksBForMz.size} and |rtsIn{A,B}|=${rtsInA.size},${rtsInB.size}")      
-
-      // for each Rt in A map it to matches in B
-      // for each Rt in B map it to matches in A
-      // filter out those that do not have any match in the other set
-      // for each key -> set{others} get `middle(kv :: others)`
-      // of all the values that come out, output the unique ones 
-      def nonEmptyRhs(rtNMatch: (RetentionTime, List[RetentionTime])) = !rtNMatch._2.isEmpty
-      val rtsInAWithMatchInB = rtsInA.zip(rtsInA.map(rA => rtsInB.filter(_.equals(rA)))).filter(nonEmptyRhs)
-      val rtsInBWithMatchInA = rtsInB.zip(rtsInB.map(rB => rtsInA.filter(_.equals(rB)))).filter(nonEmptyRhs)
-      val rtsWithMatchesInOther = rtsInBWithMatchInA ++ rtsInAWithMatchInB
-      val rtsWithMatches = rtsWithMatchesInOther.map{ case (k, vs) => RetentionTime.middle(k :: vs) }
-      def uniq(rts: List[RetentionTime]): List[RetentionTime] = rtsWithMatches.distinct
-      val rtsWithMatchesUniq = uniq(rtsWithMatches)
-      val common = rtsWithMatchesUniq.map(rt => (mz, rt)).toSet
-
-      common
-    }
-
-    val inBoth = mzsInBoth.flatMap(pullPeaksInBoth)
-
-    println(s"${peaksA.size} /-\\ ${peaksB.size} = ${inBoth.size}")
-    inBoth
-  }
-
-  def getAlignedPeaks(traces: List[LCMSExperiment]) = {
-    // get every (mz, rt) found in every replicate
-    val peaks: List[Map[UntargetedPeak, PeakAt]] = traces.map(r => r.peakSpectra.peaks.map(peakKv).toMap)
-
-    // also keep them as a 2D list of lists, so that we can reverse map them later
-    val peaksAs2D: List[List[(UntargetedPeak, PeakAt)]] = peaks.map(_.toList)
-
-    // only find peaks that are common across all traces, so we do
-    // a pairwise intersect of the peaks. 
-    val alignedPeaks: List[PeakAt] = {
-      val uniquePeaksInEachSet = peaks.map(_.values.toList)
-      val uniquePeaksAcrossSets = uniquePeaksInEachSet.reduce(intersect)
-      println(s"unique peaks in each set: ${uniquePeaksInEachSet.map(_.size)} and intersected across: ${uniquePeaksAcrossSets.size} as compared to total peaks: ${peaks.map(_.keys.toSet).map(_.size)}")
-      uniquePeaksAcrossSets
-    }
-
-    val alignedToOriginalPeaks: Map[PeakAt, List[List[UntargetedPeak]]] = alignedPeaks.map(
-      mzRt => mzRt -> peaksAs2D.map(filterToPeaksAtThisMzRT(mzRt))
-    ).toMap
-
-    (alignedPeaks, alignedToOriginalPeaks)
-  }
-
-  def filterToPeaksAtThisMzRT(mzRt: PeakAt)(originalPeaks: List[(UntargetedPeak, PeakAt)]): List[UntargetedPeak] = {
-    for ((origPeak, origMzRt) <- originalPeaks if origMzRt.equals(mzRt)) yield origPeak
-  }
-
-  def peakKv(peak: UntargetedPeak): (UntargetedPeak, PeakAt) = peak -> (peak.mz, peak.rt)
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////
-  ////////////////////////////////////////////////////////////////////////////////////////////////
-  ////////////////////////////////////////////////////////////////////////////////////////////////
 
   def timer[T](blk: => T): T = {
     val start = System.nanoTime()
