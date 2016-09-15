@@ -69,7 +69,7 @@ public class CLIUtil {
   }
 
   public CommandLine getCommandLine() {
-    return this.getCommandLine();
+    return this.commandLine;
   }
 
   public void failWithMessage(String formatStr, String... args) {
