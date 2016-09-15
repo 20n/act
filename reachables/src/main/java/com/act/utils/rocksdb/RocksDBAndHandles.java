@@ -1,6 +1,7 @@
 package com.act.utils.rocksdb;
 
 import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.FlushOptions;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
@@ -67,6 +68,12 @@ public class RocksDBAndHandles<T extends ColumnFamilyEnumeration<T>> {
     return this.db.newIterator(getHandle(columnFamily));
   }
 
+  public void flush(boolean waitForFlush) throws RocksDBException {
+    FlushOptions options = new FlushOptions();
+    options.setWaitForFlush(waitForFlush);
+    db.flush(options);
+  }
+
   /* Important: don't expose merge(), as it appears to be broken in RocksDB JNI.
    *
    * RocksDB supports "merge" functionality, where a new value can be merged at the DB level (as opposed to the client
@@ -85,7 +92,15 @@ public class RocksDBAndHandles<T extends ColumnFamilyEnumeration<T>> {
    * resulting value back to the DB.  This tends to be incredibly slow, however, so just don't expose it at all.
    */
 
-  // Wrap write batches for easier testing.
+  // Wrap write batches for easier CF management and testing.
+  public RocksDBWriteBatch<T> makeWriteBatch() {
+    return new RocksDBWriteBatch<T>(this, RocksDBWriteBatch.RESERVED_BYTES);
+  }
+
+  public RocksDBWriteBatch<T> makeWriteBatch(int reservedBytes) {
+    return new RocksDBWriteBatch<T>(this, reservedBytes);
+  }
+
   public static class RocksDBWriteBatch<T extends ColumnFamilyEnumeration<T>> {
     protected static final int RESERVED_BYTES = 1 << 18;
     private static final WriteOptions DEFAULT_WRITE_OPTIONS = new WriteOptions();
