@@ -34,6 +34,7 @@ public class CLIUtil {
     this.optionBuilders = optionBuilders;
 
     List<Option.Builder> options = new ArrayList<>(optionBuilders);
+    // Everybody needs a little help from their friends.
     options.add(Option.builder("h")
         .argName("help")
         .desc("Prints this help message")
