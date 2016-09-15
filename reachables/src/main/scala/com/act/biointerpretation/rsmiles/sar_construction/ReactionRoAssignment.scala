@@ -10,7 +10,7 @@ import spray.json._
 
 import scala.collection.JavaConverters._
 import scala.collection.parallel.immutable.ParSeq
-
+import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
 
 object ReactionRoAssignment {
   val LOGGER = LogManager.getLogger(getClass)

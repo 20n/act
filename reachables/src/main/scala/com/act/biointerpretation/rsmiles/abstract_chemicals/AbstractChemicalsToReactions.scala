@@ -5,12 +5,11 @@ import java.io.{BufferedWriter, File, FileWriter}
 import act.server.MongoDB
 import com.act.analysis.chemicals.molecules.MoleculeFormat
 import com.act.biointerpretation.l2expansion.L2InchiCorpus
-import com.act.biointerpretation.rsmiles.abstract_chemicals.AbstractReactions.ReactionInformation
 import com.act.biointerpretation.rsmiles.processing.ReactionProcessing.ReactionInformation
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
 import org.apache.log4j.LogManager
 import spray.json._
-
+import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
 import scala.collection.JavaConversions._
 
 object AbstractChemicalsToReactions {

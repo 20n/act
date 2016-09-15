@@ -3,17 +3,15 @@ package com.act.biointerpretation.rsmiles.abstract_chemicals
 import java.util.concurrent.atomic.AtomicInteger
 
 import act.server.MongoDB
-import chemaxon.formats.MolFormatException
-import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
+import com.act.analysis.chemicals.molecules.MoleculeFormat
 import com.act.biointerpretation.rsmiles.abstract_chemicals.AbstractChemicals.ChemicalInformation
 import com.act.biointerpretation.rsmiles.processing.ReactionProcessing
 import com.act.biointerpretation.rsmiles.processing.ReactionProcessing.ReactionInformation
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities, ReactionKeywords}
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoWorkflowUtilities, ReactionKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.log4j.LogManager
-
-import scala.collection.JavaConversions._
 import scala.collection.parallel.immutable.{ParMap, ParSeq}
+
 
 
 object AbstractReactions {

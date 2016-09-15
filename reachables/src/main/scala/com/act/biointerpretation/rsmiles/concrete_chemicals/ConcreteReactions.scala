@@ -5,7 +5,6 @@ import java.io.File
 import act.server.MongoDB
 import com.act.analysis.chemicals.molecules.MoleculeFormat
 import com.act.biointerpretation.mechanisminspection.ErosCorpus
-import com.act.biointerpretation.rsmiles.abstract_chemicals.AbstractChemicals.ChemicalInformation
 import com.act.biointerpretation.rsmiles.processing.ReactionProcessing
 import com.act.biointerpretation.rsmiles.processing.ReactionProcessing.ReactionInformation
 import com.act.biointerpretation.rsmiles.sar_construction.ReactionRoAssignment
@@ -16,6 +15,8 @@ import com.mongodb.DBObject
 
 import scala.collection.JavaConverters._
 import scala.collection.parallel.immutable.{ParMap, ParSeq}
+
+
 
 object ConcreteReactions extends QueryByRo {
   def getConcreteReactions(db: String = "marvin" , host: String = "localhost", port: Int = 27017)
