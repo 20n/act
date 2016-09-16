@@ -67,7 +67,7 @@ class UntargetedPeakSpectra(val peaks: Set[UntargetedPeak]) {
   override def toString = peaks.toString
 
   def toStats = {
-    val topk = 50
+    val topk = 500
     val filterMzRt = false
     def mzRtInRange(p: UntargetedPeak) = {
       if (filterMzRt)
@@ -279,9 +279,6 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
       // for each experiment, get the `mz` if it is there in that experiment, or else empty Set()
       allMzs.map(mz => mz -> exprToMzPeaks.map(mzPeaks => mzPeaks.getOrElse(mz, Set())))
     }.toMap
-    ///////////////// println(s"mzMap: $exprToMzPeaks")
-    ///////////////// println(s"mzMap: $allMzs")
-    ///////////////// println(s"peaksAtMz: $peaksAtMz")
 
     // now for each mz, find all experiments and all retention times within them where this mz appears
     val mzRtToPeaks = for (
@@ -292,11 +289,9 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     ) yield {
       // now filter down to all peaks at that mz, rt
       val peaksAtThisMz: List[Set[UntargetedPeak]] = peaksAtMz(mz)
-      ///////////////// println(s"mz, rt: ($mz, $rt), peaks to process: $peaksAtThisMz")
       val peaksAtThisMzRt: List[Set[UntargetedPeak]] = peaksAtThisMz.map(s => s.filter(isAtMzRt(mz, rt)))
       (mz, rt) -> peaksAtThisMzRt
     }
-    //////////// val mzRtToPeaksStr = mzRtToPeaks.toMap.mkString("\n")
 
     mzRtToPeaks.toMap
   }
@@ -333,7 +328,6 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
       pickCoverElemsAux(l, List()).reverse
     }
     val mostCoveringRTs: List[RetentionTime] = pickCoverElems(rtsInMaxCoverOrder)
-    ////////////// println(s"rt optimal: $mostCoveringRTs")
     
     mostCoveringRTs
   }
