@@ -7,7 +7,7 @@ import act.shared.ChemicalSymbols.MonoIsotopicMass
 
 class RetentionTime(private val time: Double) {
   // Default drift allowed is emperically picked based on observations over experimental data
-  private val driftTolerated = 2.0 // seconds
+  private val driftTolerated = 5.0 // seconds
 
   // This function is a helper to `equals`
   // It tests whether two values are within the range of experimental drift we allow
@@ -76,11 +76,19 @@ class UntargetedPeakSpectra(val peaks: Set[UntargetedPeak]) {
         true
     }
     val lowPks = peaks.toList.filter(mzRtInRange)
+    def sortfn(a: UntargetedPeak, b: UntargetedPeak) = {
+      val field: XCMSCol = IntIntensity // you can also sort by MZ or RT
+      field match {
+        case IntIntensity => a.integratedInt > b.integratedInt
+        case MZ => MonoIsotopicMass.ascender(a.mz, b.mz)
+        case RT => RetentionTime.ascender(a.rt, b.rt)
+      }
+    }
     val rngCmt = if (filterMzRt) ", showing mz:[50, 500] rt:[20, 200]" else ""
     Map(
       "num peaks" -> peaks.size,
       s"topK by integratedInt${rngCmt}" -> lowPks
-                                            .sortWith(_.integratedInt > _.integratedInt)
+                                            .sortWith(sortfn)
                                             .map(p => List(p.mz, p.rt, p.integratedInt))
                                             .take(topk)
     )
@@ -180,19 +188,6 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     // all we have to do is aggregate their (integrated and max) intensity and snr
     val handlePeakCluster = peakClusterToOne(mz, rt) _
     val ratioedPeak = combinePeaks(peaks.map(handlePeakCluster), mz, rt, ratio)
-    checkOutlier(ratioedPeak)
-  }
-
-  def isOutlierOLLLLLLLLLLLLLLLLLD(hyp: List[UntargetedPeak],
-    ctrl: List[UntargetedPeak],
-    mz: MonoIsotopicMass,
-    rt: RetentionTime): Option[UntargetedPeak] = {
-
-    val handlePeakCluster = peakClusterToOne(mz, rt) _
-    val hypPeak = handlePeakCluster(hyp.toSet)
-    val ctrlPeak = handlePeakCluster(ctrl.toSet)
-
-    val ratioedPeak = combinePeaks(List(hypPeak, ctrlPeak), mz, rt, ratio)
     checkOutlier(ratioedPeak)
   }
 
@@ -473,7 +468,7 @@ object UntargetedMetabolomics {
 
       // Check what is commonly over/under expressed in diseased samples
       // Woa! This is not really a test case. This is the final analysis!
-      ("wt-dmdf", wt, dmdf, 35, 50) // 48 @ 5.0, 35 @ 2.0
+      ("wt-dmdf", wt, dmdf, 35, 50) // 48 @ 5.0, 39 @ 2.0
       
     )
 
