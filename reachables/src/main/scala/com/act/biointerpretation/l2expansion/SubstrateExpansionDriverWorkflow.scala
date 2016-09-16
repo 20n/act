@@ -89,6 +89,7 @@ class SubstrateExpansionDriverWorkflow extends Workflow {
     headerJob.thenRun(SparkWrapper.sbtAssembly().doNotWriteErrorStream())
 
     val outputInchiIdentifier = "uniqueInchisIteration"
+    // Copy file so we can just use the same
     FileUtils.copyFile(substrateListFile, new File(workingDirectory, s"$outputInchiIdentifier.0.txt"))
 
     repeatRange.foreach(iteration => {
@@ -97,11 +98,7 @@ class SubstrateExpansionDriverWorkflow extends Workflow {
 
       val outputUniqueInchiFile = new File(workingDirectory, s"$outputInchiIdentifier.$iteration.txt")
 
-      val substrateList =
-        if (iteration == 1)
-          substrateListFile
-        else
-          new File(workingDirectory, s"$outputInchiIdentifier.${iteration - 1}.txt")
+      val substrateList = new File(workingDirectory, s"$outputInchiIdentifier.${iteration - 1}.txt")
 
       val roProjectionArgs = List(
         "--substrates-list", substrateList.getAbsolutePath,
@@ -110,10 +107,13 @@ class SubstrateExpansionDriverWorkflow extends Workflow {
         "-s"
       )
 
+      // Scales memory up as the size gets larger in hopes of avoiding memory issues.
+      // Expansion size grows at about 50x, so memory requirements get large as size increases.
       val expansion = SparkWrapper.runClassPath(
         singleSubstrateRoProjectorClassPath,
         sparkMaster,
-        roProjectionArgs
+        roProjectionArgs,
+        memory = s"${iteration*iteration}G"
       )
 
       val processing: () => Unit = () => {
