@@ -28,13 +28,65 @@ kSSRatio <- 20
 k20logoLocation <- "20nlogo"
 kFatJarLocation <- "reachables-assembly-0.1.jar"
 
-kLCMSDataLocation <- "/mnt/data-level1/lcms-ms1/"
+kLCMSDataLocation <- "/Volumes/data-level1/lcms-ms1/"
 
 sc=scalaInterpreter(kFatJarLocation)
 kImportMS1 <- 'import com.act.lcms.MS1'
 sc%~%kImportMS1
 getIonMzFunctionDef <- 'MS1.computeIonMz(mass, MS1.ionDeltas.filter(i => i.getName.equals(mode)).head)'
 getIonMz <- intpDef(sc, 'mass: Double, mode: String', getIonMzFunctionDef)
+
+getFullData <- function(filename) {
+  filepath <- paste0(kLCMSDataLocation, filename)
+  msfile <- openMSfile(filepath, backend = "netCDF")
+  hd <- header(msfile)
+  ms1 <- which(hd$msLevel == 1)
+  ms1.scans <- peaks(msfile, ms1) # list of num matrix
+  return(list(hd = hd, ms1.scans = ms1.scans))
+}
+
+getScansAndHeader <- function(retention.time.range, full.data) {
+  min.rt <- retention.time.range[1]
+  max.rt <- retention.time.range[2]
+  
+  # Extract the relevant scans from the full dataset
+  header <- full.data$hd
+  ms1 <- which(header$msLevel == 1)
+  rtsel <- header$retentionTime[ms1] > min.rt & header$retentionTime[ms1] < max.rt # vector of boolean
+  scans <- full.data$ms1.scans[rtsel]
+  
+  # We need to replicate the retention time as many times as the length of each scan
+  scan.lengths <- unlist(lapply(scans, nrow))
+  retention.time <- rep(header$retentionTime[rtsel], scan.lengths)
+  return(list(retention.time = retention.time, scans = scans))
+}
+
+getData <- function(target.mz.value, mz.band.halfwidth, scans.header) {
+  min.ionic.mass <- target.mz.value - mz.band.halfwidth
+  max.ionic.mass <- target.mz.value + mz.band.halfwidth
+  data <- with(scans.header, {
+    mz <- unlist(lapply(scans, function(x) x[, "mz"]))
+    intensity <- unlist(lapply(scans, function(x) x[, "intensity"]))
+    data.frame(mz = mz, retention.time = retention.time, intensity = intensity)
+  })
+  data %>% 
+    filter(mz < max.ionic.mass & mz > min.ionic.mass)
+  return(data)
+}
+
+plotRawData <- function(data, target.mz.value, mz.band.halfwidth, angle.theta, angle.phi) {
+  with(data, {
+    min.ionic.mass <- target.mz.value - mz.band.halfwidth
+    max.ionic.mass <- target.mz.value + mz.band.halfwidth
+    scatter3D(retention.time, mz, intensity, pch = 16, cex = 1.5, type = "h",
+              colkey = list(side = 1, length = 0.5, width = 0.5, cex.clab = 0.75), expand = 0.5,
+              cex.lab = kChartLabelSizeFactor, cex.axis = kChartLabelSizeFactor,
+              cex.main = kChartLabelSizeFactor, cex.sub = kChartLabelSizeFactor,
+              zlab = "Intensity", xlab = "Retention time (sec)", ylab = "m/z (Da)",
+              theta = angle.theta, phi = angle.phi, ticktype = "detailed", 
+              ylim = c(min.ionic.mass, max.ionic.mass))
+  })
+}
 
 shinyServer(function(input, output, session) {
   output$logo <- renderImage({
@@ -73,53 +125,57 @@ shinyServer(function(input, output, session) {
   
   # Reactive value, loading all the scans in memory.
   # Recomputed only when filename changes
-  full.data <- reactive({
-    filepath <- paste0(kLCMSDataLocation, input$filename)
-    msfile <- openMSfile(filepath, backend = "netCDF")
-    hd <- header(msfile)
-    ms1 <- which(hd$msLevel == 1)
-    ms1.scans <- peaks(msfile, ms1) # list of num matrix
-    list(hd = hd, ms1.scans = ms1.scans)
+  full.data.simple <- reactive({
+    getFullData(input$filename)
+  })
+  
+  full.data.simple.1 <- reactive({
+    getFullData(input$filename1)
+  })
+  
+  full.data.simple.2 <- reactive({
+    getFullData(input$filename2)
+  })
+  
+  full.data.simple.3 <- reactive({
+    getFullData(input$filename3)
   })
   
   # Based on the retention time range, select relevant scans reactively
   # Recomputed only when retention time range changes
-  scans.and.header <- eventReactive(input$load, {
-    min.rt <- input$retention.time.range[1]
-    max.rt <- input$retention.time.range[2]
-    
-    full.data <- full.data()
-    
-    # Extract the relevant scans from the full dataset
-    header <- full.data$hd
-    ms1 <- which(header$msLevel == 1)
-    rtsel <- header$retentionTime[ms1] > min.rt & header$retentionTime[ms1] < max.rt # vector of boolean
-    scans <- full.data$ms1.scans[rtsel]
-    
-    # We need to replicate the retention time as many times as the length of each scan
-    scan.lengths <- unlist(lapply(scans, nrow))
-    retention.time <- rep(header$retentionTime[rtsel], scan.lengths)
-    list(retention.time = retention.time, scans = scans)
+  scans.and.header <- eventReactive(input$load.simple, {
+    getScansAndHeader(input$retention.time.range, full.data.simple())
   })
+  
+  scans.and.header.1 <- eventReactive(input$load.multi, {
+    getScansAndHeader(input$retention.time.range, full.data.simple.1())
+  })
+  scans.and.header.2 <- eventReactive(input$load.multi, {
+    getScansAndHeader(input$retention.time.range, full.data.simple.2())
+  })
+  scans.and.header.3 <- eventReactive(input$load.multi, {
+    getScansAndHeader(input$retention.time.range, full.data.simple.3())
+  })
+  
   
   # We compute the data in long format
   # Recomputed only when the target mass or the mz band halfwidth changes
-  data.long <- reactive({
-    
-    target.mz.value <- target.mz()
-    min.ionic.mass <- target.mz.value - input$mz.band.halfwidth
-    max.ionic.mass <- target.mz.value + input$mz.band.halfwidth
-    scans.header <- scans.and.header()
-    data <- with(scans.header, {
-      mz <- unlist(lapply(scans, function(x) x[, "mz"]))
-      intensity <- unlist(lapply(scans, function(x) x[, "intensity"]))
-      data.frame(mz = mz, retention.time = retention.time, intensity = intensity)
-    })
-    
-    data %>% 
-      filter(mz < max.ionic.mass & mz > min.ionic.mass)
+  data.simple <- reactive({
+    getData(target.mz(), input$mz.band.halfwidth, scans.and.header())
   })
   
+  data.1 <- reactive({
+    getData(target.mz(), input$mz.band.halfwidth, scans.and.header.1())
+  })
+  data.2 <- reactive({
+    getData(target.mz(), input$mz.band.halfwidth, scans.and.header.2())
+  })
+  
+  data.3 <- reactive({
+    getData(target.mz(), input$mz.band.halfwidth, scans.and.header.3())
+  })
+  
+    
   target.mz <- reactive({
     target.mass <- input$target.monoisotopic.mass
     if (input$mode == "M (use mass as target mz value)") {
@@ -153,20 +209,19 @@ shinyServer(function(input, output, session) {
   })
   
   output$plot <- renderPlot({
-    data <- data.long()
-    with(data, {
-      target.mz.value <- target.mz()
-      min.ionic.mass <- target.mz.value - input$mz.band.halfwidth
-      max.ionic.mass <- target.mz.value + input$mz.band.halfwidth
-      scatter3D(retention.time, mz, intensity, pch = 16, cex = 1.5, type = "h",
-                colkey = list(side = 1, length = 0.5, width = 0.5, cex.clab = 0.75), expand = 0.5,
-                cex.lab = kChartLabelSizeFactor, cex.axis = kChartLabelSizeFactor,
-                cex.main = kChartLabelSizeFactor, cex.sub = kChartLabelSizeFactor,
-                zlab = "Intensity", xlab = "Retention time (sec)", ylab = "m/z (Da)",
-                theta = input$angle.theta, phi = input$angle.phi, ticktype = "detailed", 
-                ylim = c(min.ionic.mass, max.ionic.mass))
-    })
+    plotRawData(data.simple(), target.mz(), input$mz.band.halfwidth, input$angle.theta, input$angle.phi)
   })
+  
+  output$plot1 <- renderPlot({
+    plotRawData(data.1(), target.mz(), input$mz.band.halfwidth, input$angle.theta, input$angle.phi)
+  })
+  output$plot2 <- renderPlot({
+    plotRawData(data.2(), target.mz(), input$mz.band.halfwidth, input$angle.theta, input$angle.phi)
+  })
+  output$plot3 <- renderPlot({
+    plotRawData(data.3(), target.mz(), input$mz.band.halfwidth, input$angle.theta, input$angle.phi)
+  })
+  
   output$target.mz <- renderText({
     sprintf("Target m/z value (computed from input mass and mode): %s", target.mz())
   })
