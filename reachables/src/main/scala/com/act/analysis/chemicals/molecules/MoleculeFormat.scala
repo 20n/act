@@ -81,15 +81,17 @@ object MoleculeFormat extends Enumeration {
       else
         splitString(1).split(",").toList.flatMap(cleaningSetting => {
           try {
-            Option(CleaningOptions.withName(cleaningSetting))
+            if (!cleaningSetting.equals("")) {
+              Option(CleaningOptions.withName(cleaningSetting))
+            } else
+              None
           } catch {
-            case e: NoSuchElementException => {
+            case e: NoSuchElementException =>
               val message = s"The setting '$cleaningSetting' was not available as a cleaning format.  " +
                 s"Continuing the run with only the valid settings."
 
               LOGGER.error(message)
               throw new NoSuchElementException (message)
-            }
           }
         })
 
