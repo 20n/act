@@ -97,7 +97,7 @@ class SubstrateExpansionDriverWorkflow extends Workflow {
         if (iteration == 0)
           substrateListFile
         else
-          new File(workingDirectory, s"$outputInchiIdentifier${iteration - 1}")
+          new File(workingDirectory, s"$outputInchiIdentifier.${iteration - 1}.txt")
 
       val roProjectionArgs = List(
         "--substrates-list", substrateList.getAbsolutePath,
@@ -112,13 +112,14 @@ class SubstrateExpansionDriverWorkflow extends Workflow {
         roProjectionArgs
       )
 
-      val convertPredictionToUniqueInchis = ScalaJobWrapper.wrapScalaFunction(s"Condense $iteration into unique molecules.", () => {
+      val processing: () => Unit = () => {
         // Each RO has its own file.
         val allFilesInOutputDir: List[File] = iterationOutputDirectory.list().
           map(x => new File(x)).toList.
           filter(x => x.exists() && x.isFile)
+        logger.info(s"Found ${allFilesInOutputDir.length} projection files.")
 
-        val allInchis: Set[String] = allFilesInOutputDir.seq.flatMap(inputFile => {
+        val allInchis: Set[String] = allFilesInOutputDir.flatMap(inputFile => {
           val predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputFile)
 
           val uniqueSubstrates = predictionCorpus.getUniqueSubstrateInchis.asScala.toSet
@@ -131,7 +132,9 @@ class SubstrateExpansionDriverWorkflow extends Workflow {
 
         val inchis = new L2InchiCorpus(allInchis.asJava)
         inchis.writeToFile(outputUniqueInchiFile)
-      })
+      }
+
+      val convertPredictionToUniqueInchis = ScalaJobWrapper.wrapScalaFunction(s"Condense $iteration into unique molecules.", processing)
 
       headerJob.thenRun(expansion)
       headerJob.thenRun(convertPredictionToUniqueInchis)
