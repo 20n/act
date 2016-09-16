@@ -7,7 +7,7 @@ import act.shared.ChemicalSymbols.MonoIsotopicMass
 
 class RetentionTime(private val time: Double) {
   // Default drift allowed is emperically picked based on observations over experimental data
-  private val driftTolerated = 5.0 // seconds
+  private val driftTolerated = 2.0 // seconds
 
   // This function is a helper to `equals`
   // It tests whether two values are within the range of experimental drift we allow
@@ -57,7 +57,9 @@ class UntargetedPeak(
   val snr: Double
 ) {
   override def toString = {
-    Map(MZ -> mz, RT -> rt, IntIntensity -> integratedInt, MaxIntensity -> maxInt, SNR -> snr).toString
+    val intensity = String.format("%.0f", integratedInt: java.lang.Double)
+    s"$intensity @ ($mz, $rt)"
+    // Map(MZ -> mz, RT -> rt, IntIntensity -> integratedInt, MaxIntensity -> maxInt, SNR -> snr).toString
   }
 }
 
@@ -139,13 +141,12 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
   def analyze(): LCMSExperiment = {
     val unifiedControls = unifyReplicates(controls)
     val unifiedHypotheses = unifyReplicates(hypotheses)
-    println(s"controls: $unifiedControls")
-    println(s"hypotheses: $unifiedHypotheses")
     extractOutliers(unifiedHypotheses, unifiedControls)
   }
 
   // we use the average to combine multiple signals at the same mz, rt
   def sizedAvg(sz: Int)(a: Double, b: Double) = (a + b)/sz
+  def pickMax(a: Double, b: Double) = math.max(a, b)
   // we use min to aggregate signals across replicates
   def pickMin(a: Double, b: Double) = math.min(a, b)
   // we use ratio to identify differentially expressed peaks
@@ -155,7 +156,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
   // original data in the aggregated hypothesis trace! This is slightly crazy case and will only happen
   // when the peak structure is very zagged. We average the values
   def peakClusterToOne(mz: MonoIsotopicMass, rt: RetentionTime)(s: Set[UntargetedPeak]) = {
-    combinePeaks(s.toList, mz, rt, sizedAvg(s.size))
+    combinePeaks(s.toList, mz, rt, pickMax)// sizedAvg(s.size))
   }
 
   // aggregate characteristic for peaks for the same molecule (eluting at the same mz, and time)
@@ -171,7 +172,18 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
 
   // identify if the peaks in hyp are outliers compared to the controls
   // we assume these peaks are for the same molecule (eluting at the same mz, and time)
-  def isOutlier(hyp: List[UntargetedPeak],
+  def isOutlier(peaks: List[Set[UntargetedPeak]],
+    mz: MonoIsotopicMass,
+    rt: RetentionTime): Option[UntargetedPeak] = {
+
+    // all the peaks passed in here should have the same (mz, rt) upto tolerances
+    // all we have to do is aggregate their (integrated and max) intensity and snr
+    val handlePeakCluster = peakClusterToOne(mz, rt) _
+    val ratioedPeak = combinePeaks(peaks.map(handlePeakCluster), mz, rt, ratio)
+    checkOutlier(ratioedPeak)
+  }
+
+  def isOutlierOLLLLLLLLLLLLLLLLLD(hyp: List[UntargetedPeak],
     ctrl: List[UntargetedPeak],
     mz: MonoIsotopicMass,
     rt: RetentionTime): Option[UntargetedPeak] = {
@@ -214,29 +226,38 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     if (valleyShape(metric) > 1.0) { Some(peak) } else { None }
   }
 
-  def extractOutliers(hypothesis: LCMSExperiment, control: LCMSExperiment): LCMSExperiment = {
-    val exprVsControl = List(hypothesis, control)
-    assert(false) // not implemented yet!
-    val peaksWithCharacteristics: Set[Option[UntargetedPeak]] = null
-    // outliers are those that are not none
-    val outlierPeaks = peaksWithCharacteristics.filter(_.isDefined).map{ case Some(p) => p }.toSet
-    val provenance = new ComputedData(sources = exprVsControl.map(_.origin))
-    new LCMSExperiment(provenance, new UntargetedPeakSpectra(outlierPeaks))
+  type MzRtPeaks = ((MonoIsotopicMass, RetentionTime), List[Set[UntargetedPeak]])
+
+  def findOutlierForOneMzRt(mzRtPeaks: MzRtPeaks): Option[UntargetedPeak] = {
+    val ((mz, rt), peaks) = mzRtPeaks
+    isOutlier(peaks, mz, rt)
   }
 
-  def unifyReplicatesForOneMzRt(mzRtPeaks: ((MonoIsotopicMass, RetentionTime), List[Set[UntargetedPeak]])):
-    UntargetedPeak = {
+  def unifyReplicatesForOneMzRt(mzRtPeaks: MzRtPeaks): Option[UntargetedPeak] = {
     val ((mz, rt), peaks) = mzRtPeaks
-    uniformAcross(peaks, mz, rt)
+    Some(uniformAcross(peaks, mz, rt))
+  }
+
+  def extractOutliers(hypothesis: LCMSExperiment, control: LCMSExperiment): LCMSExperiment = {
+    val exprVsControl = List(hypothesis, control)
+    metricOverCommonPeaks(exprVsControl, findOutlierForOneMzRt)
   }
 
   def unifyReplicates(replicates: List[LCMSExperiment]): LCMSExperiment = {
-    val peakSetsForAllReplicates = replicates.map{ expr => expr.peakSpectra.peaks }
+    metricOverCommonPeaks(replicates, unifyReplicatesForOneMzRt)
+  }
+  
+  def metricOverCommonPeaks(exprs: List[LCMSExperiment], peakCmpFn: MzRtPeaks => Option[UntargetedPeak]): LCMSExperiment = {
+    val peakSetsForAllReplicates = exprs.map{ expr => expr.peakSpectra.peaks }
     val peaksKeyedByMzAndRt = findAlignedPeaks(peakSetsForAllReplicates)
     val peaksByMzAndRtNonEmpty = peaksKeyedByMzAndRt.filter{ case(_, lstSets) => lstSets.forall(_.size != 0) }
 
-    val sharedPeaks: Set[UntargetedPeak] = peaksByMzAndRtNonEmpty.toSet.map(unifyReplicatesForOneMzRt)
-    val provenance = new ComputedData(sources = replicates.map(_.origin))
+    val sharedPeaks: Set[UntargetedPeak] = peaksByMzAndRtNonEmpty
+      .toSet
+      .map(peakCmpFn)
+      .filter(_.isDefined)
+      .map{ case Some(p) => p }
+    val provenance = new ComputedData(sources = exprs.map(_.origin))
     new LCMSExperiment(provenance, new UntargetedPeakSpectra(sharedPeaks))
   }
 
@@ -428,37 +449,37 @@ object UntargetedMetabolomics {
     // d{M,F}{1,2,3} = disease line {M,F} replicates 1, 2, 3
     // each test is specified as (controls, hypothesis, num_peaks_min, num_peaks_max) inclusive both
     val cases = List(
-      ("wtmin-wtmin", wtmin, wtmin, 0, 0) // debugging this case!
-      //      ,("wt-wt", wt, wt, 0, 0) // debugging this case!
+      ("wtmin-wtmin", wtmin, wtmin, 0, 0), // debugging this case!
+      ("wt-wt", wt, wt, 0, 0), // debugging this case!
 
-      //      // consistency check: hypothesis same as control => no peaks should be differentially identified
-      //      ,("wt1-wt1", List(wt1), List(wt1), 0, 0)
-      //      ,("dm1-dm1", List(dm1), List(dm1), 0, 0)
-      //      ,("df1-df1", List(df1), List(df1), 0, 0)
-      //      
-      //      // ensure that replicate aggregation (i.e., min) works as expected. 
-      //      // we already know from the above test that differential calling works 
-      //      // to eliminate all peaks if given the same samples. so now if replicate
-      //      // aggregation gives non-zero sets of peaks, it has to be the min algorithm.
-      //      ,("wt-wt", wt, wt, 0, 0)
-      //      ,("dm-dm", dm, dm, 0, 0)
-      //      ,("df-df", df, df, 0, 0)
-      //      
-      //      // how well does the differential calling work over a single sample of hypothesis and control
-      //      ,("wt1-df1", List(wt1), List(df1), 500, 520) // 515
-      //      ,("wt1-dm1", List(wt1), List(dm1), 450, 500) // 461
-      //      
-      //      // peaks that are differentially expressed in diseased samples compared to the wild type
-      //      ,("wt-dm", wt, dm, 1, 200) // 152
-      //      ,("wt-df", wt, df, 1, 200) // 181
-      //      
-      //      // next two: what is in one diseases samples and not in the other?
-      //      ,("dm-df", dm, df, 1, 200) // 146
-      //      ,("df-dm", df, dm, 1, 200)  // 151
+      // consistency check: hypothesis same as control => no peaks should be differentially identified
+      ("wt1-wt1", List(wt1), List(wt1), 0, 0),
+      ("dm1-dm1", List(dm1), List(dm1), 0, 0),
+      ("df1-df1", List(df1), List(df1), 0, 0),
+      
+      // ensure that replicate aggregation (i.e., min) works as expected. 
+      // we already know from the above test that differential calling works 
+      // to eliminate all peaks if given the same samples. so now if replicate
+      // aggregation gives non-zero sets of peaks, it has to be the min algorithm.
+      ("wt-wt", wt, wt, 0, 0),
+      ("dm-dm", dm, dm, 0, 0),
+      ("df-df", df, df, 0, 0),
+      
+      // how well does the differential calling work over a single sample of hypothesis and control
+      ("wt1-df1", List(wt1), List(df1), 330, 375), // 374 @ 5.0, 337 @ 2.0
+      ("wt1-dm1", List(wt1), List(dm1), 260, 300), // 299 @ 5.0, 268 @ 2.0
+      
+      // peaks that are differentially expressed in diseased samples compared to the wild type
+      ("wt-dm", wt, dm, 45, 60), // 59 @ 5.0, 45 @ 2.0
+      ("wt-df", wt, df, 60, 80), // 77 @ 5.0, 69 @ 2.0
+      
+      // next two: what is in one diseases samples and not in the other?
+      ("dm-df", dm, df, 80, 95), // 92 @ 5.0, 82 @ 2.0
+      ("df-dm", df, dm, 60, 85), // 81 @ 5.0, 68 @ 2.0
 
-      //      // Check what is commonly over/under expressed in diseased samples
-      //      // Woa! This is not really a test case. This is the final analysis!
-      //      ,("wt-dmdf", wt, dmdf, 100, 130) // 115 RT=3.0, 123 RT=5.0 
+      // Check what is commonly over/under expressed in diseased samples
+      // Woa! This is not really a test case. This is the final analysis!
+      ("wt-dmdf", wt, dmdf, 35, 50) // 48 @ 5.0, 35 @ 2.0
       
     )
 
