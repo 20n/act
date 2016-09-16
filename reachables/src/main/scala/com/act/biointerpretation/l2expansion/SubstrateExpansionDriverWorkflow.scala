@@ -114,9 +114,7 @@ class SubstrateExpansionDriverWorkflow extends Workflow {
 
       val processing: () => Unit = () => {
         // Each RO has its own file.
-        val allFilesInOutputDir: List[File] = iterationOutputDirectory.list().
-          map(x => new File(x)).toList.
-          filter(x => x.exists() && x.isFile)
+        val allFilesInOutputDir: List[File] = iterationOutputDirectory.listFiles().toList
         logger.info(s"Found ${allFilesInOutputDir.length} projection files.")
 
         val allInchis: Set[String] = allFilesInOutputDir.flatMap(inputFile => {
