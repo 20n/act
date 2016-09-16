@@ -11,12 +11,12 @@ import org.apache.logging.log4j.LogManager
 
 import scala.collection.JavaConverters._
 
-class SubstrateExpansionDriverWorkflow extends Workflow {
+class SparkSubstrateExpansionDriverWorkflow extends Workflow {
 
   val logger = LogManager.getLogger(getClass.getName)
 
-  override val HELP_MESSAGE = "Workflow to run untargeted metabolomics pipeline. This runs all steps in the pipeline," +
-    "beginning with L2Expansion, followed by LCMS analysis, and then structure clustering and SAR scoring."
+  override val HELP_MESSAGE = "Workflow for doing substrate expansions with Spark.  " +
+    "Handles reconverting the predictions to InChIs and starting the next level of expansion."
 
 
   val OPTION_LICENSE_FILE = "l"
@@ -48,13 +48,13 @@ class SubstrateExpansionDriverWorkflow extends Workflow {
       CliOption.builder(OPTION_NUMBER_OF_REPEATS).
         required(true).
         hasArg.
-        longOpt("output-directory").
-        desc("A directory in which to write per-RO result files"),
+        longOpt("repeat-number").
+        desc("The number of expansions that should be done"),
 
       CliOption.builder(OPTION_SPARK_MASTER).
         hasArg.
         longOpt("spark-master").
-        desc("Spark master for the spark cluster."),
+        desc("Spark master for the spark cluster.  Defaults to 'spark://10.0.20.19:7077'."),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
