@@ -427,8 +427,8 @@ object UntargetedMetabolomics {
     // d{M,F}{1,2,3} = disease line {M,F} replicates 1, 2, 3
     // each test is specified as (controls, hypothesis, num_peaks_min, num_peaks_max) inclusive both
     val cases = List(
-      ("wtmin-wtmin", wtmin, wtmin, 0, 0) // debugging this case!
-      // ,("wt-wt", wt, wt, 0, 0) // debugging this case!
+      // ("wtmin-wtmin", wtmin, wtmin, 0, 0) // debugging this case!
+      ("wt-wt", wt, wt, 0, 0) // debugging this case!
 
       //      // consistency check: hypothesis same as control => no peaks should be differentially identified
       //      ,("wt1-wt1", List(wt1), List(wt1), 0, 0)
