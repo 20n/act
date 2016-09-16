@@ -16,8 +16,11 @@ import org.rocksdb.RocksIterator;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,10 +35,14 @@ import java.util.stream.Collectors;
 public class LCMSIndexSearcher {
   private static final Logger LOGGER = LogManager.getFormatterLogger(LCMSIndexSearcher.class);
   private static final Character RANGE_SEPARATOR = ':';
+  private static final String OUTPUT_HEADER = StringUtils.join(new String[] {
+      "id", "time", "m/z", "intensity"
+  }, "\t");
 
   public static final String OPTION_INDEX_PATH = "x";
   public static final String OPTION_MZ_RANGE   = "m";
   public static final String OPTION_TIME_RANGE = "t";
+  public static final String OPTION_OUTPUT_FILE = "o";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "Queries a triple index constructed by LCMSIndexBuilder for readings in some m/z and time window.",
@@ -53,6 +60,12 @@ public class LCMSIndexSearcher {
         .desc("An m/z range to query separated by a colon, like 151.0:152.0")
         .hasArg()
         .longOpt("mz-range")
+    );
+    add(Option.builder(OPTION_OUTPUT_FILE)
+        .argName("output file")
+        .desc("A destination at which to write the found triples as a TSV (default is stdout)")
+        .hasArg()
+        .longOpt("output")
     );
     add(Option.builder(OPTION_TIME_RANGE)
         .argName("time range")
@@ -81,13 +94,26 @@ public class LCMSIndexSearcher {
     LCMSIndexSearcher searcher = Factory.makeLCMSIndexSearcher(indexDir);
     List<LCMSIndexBuilder.TMzI> results = searcher.searchIndexInRange(mzRange, timeRange);
 
-    int counter = 0;
-    for (LCMSIndexBuilder.TMzI triple : results) {
-      System.out.format("%d\t%.6f\t%.6f\t%.6f\n", counter, triple.getTime(), triple.getMz(), triple.getIntensity());
-      counter++;
+    if (cl.hasOption(OPTION_OUTPUT_FILE)) {
+      try (PrintWriter writer = new PrintWriter(new FileWriter(cl.getOptionValue(OPTION_OUTPUT_FILE)))) {
+        searcher.writeOutput(writer, results);
+      }
+    } else {
+      // Don't close the print writer if we're writing to stdout.
+      searcher.writeOutput(new PrintWriter(new OutputStreamWriter(System.out)), results);
     }
 
     LOGGER.info("Done");
+  }
+
+  private void writeOutput(PrintWriter writer, List<LCMSIndexBuilder.TMzI> results) throws IOException {
+    int counter = 0;
+    writer.println(OUTPUT_HEADER);
+    for (LCMSIndexBuilder.TMzI triple : results) {
+      writer.format("%d\t%.6f\t%.6f\t%.6f\n", counter, triple.getTime(), triple.getMz(), triple.getIntensity());
+      counter++;
+    }
+    writer.flush();
   }
 
   public static Pair<Double, Double> extractRange(String rangeStr) {
