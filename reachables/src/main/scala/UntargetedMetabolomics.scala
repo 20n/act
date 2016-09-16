@@ -439,20 +439,20 @@ object UntargetedMetabolomics {
       ("df-df", df, df, 0, 0),
       
       // how well does the differential calling work over a single sample of hypothesis and control
-      ("wt1-df1", List(wt1), List(df1), 302, 375) // 374 @ 5.0, 337 @ 2.0, 303 @ 1.0
-      // // // ("wt1-dm1", List(wt1), List(dm1), 260, 300), // 299 @ 5.0, 268 @ 2.0
-      // // // 
-      // // // // peaks that are differentially expressed in diseased samples compared to the wild type
-      // // // ("wt-dm", wt, dm, 45, 60), // 59 @ 5.0, 45 @ 2.0
-      // // // ("wt-df", wt, df, 60, 80) // 77 @ 5.0, 69 @ 2.0
-      // // // 
-      // // // // next two: what is in one diseases samples and not in the other?
-      // // // ("dm-df", dm, df, 80, 95), // 92 @ 5.0, 82 @ 2.0
-      // // // ("df-dm", df, dm, 60, 85), // 81 @ 5.0, 68 @ 2.0
+      ("wt1-df1", List(wt1), List(df1), 302, 375), // 374 @ 5.0, 337 @ 2.0, 303 @ 1.0
+      ("wt1-dm1", List(wt1), List(dm1), 225, 300), // 299 @ 5.0, 268 @ 2.0, 225 @ 1.0
+      
+      // peaks that are differentially expressed in diseased samples compared to the wild type
+      ("wt-dm", wt, dm, 37, 60), // 59 @ 5.0, 45 @ 2.0, 37 @ 1.0
+      ("wt-df", wt, df, 58, 80), // 77 @ 5.0, 69 @ 2.0, 58 @ 1.0
+      
+      // next two: what is in one diseases samples and not in the other?
+      ("dm-df", dm, df, 73, 95), // 92 @ 5.0, 82 @ 2.0, 73 @ 1.0
+      ("df-dm", df, dm, 57, 85), // 81 @ 5.0, 68 @ 2.0, 57 @ 1.0
 
-      // // // // Check what is commonly over/under expressed in diseased samples
-      // // // // Woa! This is not really a test case. This is the final analysis!
-      // // // ("wt-dmdf", wt, dmdf, 35, 50) // 48 @ 5.0, 39 @ 2.0
+      // Check what is commonly over/under expressed in diseased samples
+      // Woa! This is not really a test case. This is the final analysis!
+      ("wt-dmdf", wt, dmdf, 33, 50) // 48 @ 5.0, 39 @ 2.0, 33 @ 1.0
       
     )
 
