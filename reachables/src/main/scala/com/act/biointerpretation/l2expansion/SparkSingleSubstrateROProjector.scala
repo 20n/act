@@ -84,6 +84,8 @@ object compute {
 
     val sar: CharacterizedGroup = SarCorpus.readCorpusFromJsonFile(new File(sarFile)).iterator().asScala.toList(sarFileIndex)
 
+    if (sar == null) return ("Failed", 0.0, null)
+
     val singleGroupCorpus = new SarCorpus()
     singleGroupCorpus.addCharacterizedGroup(sar)
 
@@ -279,7 +281,6 @@ object SparkSingleSubstrateROProjector {
       // We map the indices because the CharacterizedGroup isn't serializable.
       val sarRDD: RDD[Int] = spark.makeRDD(groupList.indices, groupList.size)
 
-
       val resultsRDD: RDD[SparkPredictionCorpus] =
         sarRDD.map(sarIndex => {
           val results = compute.run(licenseFileName, sarFileName, sarIndex, validatedMolecules, formatString)
@@ -365,8 +366,10 @@ object SparkSingleSubstrateROProjector {
 
       val outputFile = new File(outputDir, sparkPredictionCorpus.id)
 
-      OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(outputFile, sparkPredictionCorpus.prediction)
-      LOGGER.info(s"Wrote results ${sparkPredictionCorpus.id} (${outputFile.getTotalSpace}.)")
+      if (sparkPredictionCorpus.prediction != null) {
+        OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(outputFile, sparkPredictionCorpus.prediction)
+        LOGGER.info(s"Wrote results ${sparkPredictionCorpus.id} (${outputFile.getTotalSpace}.)")
+      }
 
       (sparkPredictionCorpus.id, sparkPredictionCorpus.time)
     }
