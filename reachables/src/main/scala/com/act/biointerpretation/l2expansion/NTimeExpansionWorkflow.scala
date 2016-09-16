@@ -91,7 +91,7 @@ class NTimeExpansionWorkflow extends Workflow {
       if (!iterationOutputDirectory.exists()) iterationOutputDirectory.mkdirs()
 
       val outputInchiIdentifier = "uniqueInchisIteration"
-      val outputUniqueInchiFile = new File(iterationOutputDirectory, s"$outputInchiIdentifier$iteration")
+      val outputUniqueInchiFile = new File(workingDirectory, s"$outputInchiIdentifier$iteration")
 
       val substrateList =
         if (iteration == 0)
@@ -114,9 +114,11 @@ class NTimeExpansionWorkflow extends Workflow {
 
       val convertPredictionToUniqueInchis = ScalaJobWrapper.wrapScalaFunction(s"Condense $iteration into unique molecules.", () => {
         // Each RO has its own file.
-        val allFilesInOutputDir: List[File] = iterationOutputDirectory.list().map(x => new File(x)).toList
+        val allFilesInOutputDir: List[File] = iterationOutputDirectory.list().
+          map(x => new File(x)).toList.
+          filter(x => x.exists() && x.isFile)
 
-        val allInchis: Set[String] = allFilesInOutputDir.flatMap(inputFile => {
+        val allInchis: Set[String] = allFilesInOutputDir.seq.flatMap(inputFile => {
           val predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputFile)
 
           val uniqueSubstrates = predictionCorpus.getUniqueSubstrateInchis.asScala.toSet
