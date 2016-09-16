@@ -87,7 +87,7 @@ class NTimeExpansionWorkflow extends Workflow {
     headerJob.thenRun(SparkWrapper.sbtAssembly())
 
     repeatRange.foreach(iteration => {
-      val iterationOutputDirectory = new File(workingDirectory, s"$iteration.ExpansionOf")
+      val iterationOutputDirectory = new File(workingDirectory, s"$iteration.ExpansionOf.${substrateListFile.getName}")
       if (!iterationOutputDirectory.exists()) iterationOutputDirectory.mkdirs()
 
       val outputInchiIdentifier = "uniqueInchisIteration"
@@ -113,14 +113,19 @@ class NTimeExpansionWorkflow extends Workflow {
       )
 
       val convertPredictionToUniqueInchis = ScalaJobWrapper.wrapScalaFunction(s"Condense $iteration into unique molecules.", () => {
-        val predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(iterationOutputDirectory)
+        // Each RO has its own file.
+        val allFilesInOutputDir: List[File] = iterationOutputDirectory.list().map(x => new File(x)).toList
 
-        val uniqueSubstrates = predictionCorpus.getUniqueSubstrateInchis.asScala.toSet
-        val uniqueProducts = predictionCorpus.getUniqueProductInchis.asScala.toSet
+        val allInchis: Set[String] = allFilesInOutputDir.flatMap(inputFile => {
+          val predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputFile)
 
-        val combined = uniqueProducts.union(uniqueSubstrates)
+          val uniqueSubstrates = predictionCorpus.getUniqueSubstrateInchis.asScala.toSet
+          val uniqueProducts = predictionCorpus.getUniqueProductInchis.asScala.toSet
 
-        val inchis = new L2InchiCorpus(combined.asJava)
+          uniqueProducts.union(uniqueSubstrates)
+        }).toSet
+
+        val inchis = new L2InchiCorpus(allInchis.asJava)
         inchis.writeToFile(outputUniqueInchiFile)
       })
 
