@@ -19,6 +19,8 @@ shinyUI(fluidPage(
       textInput("filename", label = "File name", value = "Plate_jaffna3_B1_0815201601.nc"),
       sliderInput("retention.time.range", label = "Retention Time range",
                   min = 0, max = 450, value = c(130, 160), step = 5),
+      actionButton("load", "Refresh scans!", icon("magic"), width = "100%", 
+                   style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
       h3("M/Z scope"),
       selectInput("mode", label = "m/z mode", choices = kModes, selected = "M+H"),
       numericInput("target.monoisotopic.mass", label = "Target monoisotopic mass", value = 463.184234, step = 0.001),
@@ -27,11 +29,15 @@ shinyUI(fluidPage(
       sliderInput("angle.theta", label = "Azimuthal Angle (left <-> right)", 
                   min = 0, max = 360, value = 90, step = 5),
       sliderInput("angle.phi", label = "Colatitude Angle (down <-> up)",
-                  min = 0, max = 90, value = 20, step = 5),
-      checkboxInput("top.value", label = "Display m/z value for highest peak", value = FALSE)
+                  min = 0, max = 90, value = 20, step = 5)
     ),
     mainPanel(
+      em("Disclaimer: the peak detection will only detect peaks of intensity more than 1e4 and can't (by design) detect more than 2 peaks."),
+      h4("Target m/z value"),
       textOutput("target.mz"),
+      h4("Detected peaks"),
+      tableOutput("detected.peaks"),
+      h4("3D scatterplot of the raw data"),
       plotOutput("plot", height = "700px")
     )
   )
