@@ -159,6 +159,10 @@ object ChemicalSymbols {
     def isIn(low: Double, high: Double): Boolean = rounded() >= low && rounded() <= high
   }
 
+  object MonoIsotopicMass {
+    def ascender(a: MonoIsotopicMass, b: MonoIsotopicMass) = a.initMass < b.initMass
+  }
+
   object Helpers {
     def fromSymbol(sym: Char): AminoAcid = ChemicalSymbols.AllAminoAcids.find(_.symbol.equals(sym)) match {
       case Some(aa) => aa

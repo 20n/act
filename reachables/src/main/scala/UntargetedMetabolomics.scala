@@ -3,11 +3,11 @@ package com.act.lcms
 import java.io.{PrintWriter, File}
 import act.shared.{CmdLineParser, OptDesc}
 import scala.io.Source
-import act.shared.ChemicalSymbols.MonoIsotopicMass
+import act.shared.ChemicalSymbols.{MonoIsotopicMass, AllAminoAcids}
 
 class RetentionTime(private val time: Double) {
   // Default drift allowed is emperically picked based on observations over experimental data
-  private val driftTolerated = 5.0 // seconds
+  private val driftTolerated = 1.0 // seconds
 
   // This function is a helper to `equals`
   // It tests whether two values are within the range of experimental drift we allow
@@ -57,9 +57,10 @@ class UntargetedPeak(
   val snr: Double
 ) {
   override def toString = {
-    val intensity = String.format("%.0f", integratedInt: java.lang.Double)
-    s"$intensity @ ($mz, $rt)"
-    // Map(MZ -> mz, RT -> rt, IntIntensity -> integratedInt, MaxIntensity -> maxInt, SNR -> snr).toString
+    val intensity = String.format("%.2f", integratedInt: java.lang.Double)
+    val max = String.format("%.2f", maxInt: java.lang.Double)
+    val snrs = String.format("%.2f", snr: java.lang.Double)
+    s"($intensity, $max, $snrs) @ mzrt($mz, $rt) "
   }
 }
 
@@ -67,15 +68,6 @@ class UntargetedPeakSpectra(val peaks: Set[UntargetedPeak]) {
   override def toString = peaks.toString
 
   def toStats = {
-    val topk = 500
-    val filterMzRt = false
-    def mzRtInRange(p: UntargetedPeak) = {
-      if (filterMzRt)
-        p.rt.isIn(20, 200) && p.mz.isIn(50, 500)
-      else
-        true
-    }
-    val lowPks = peaks.toList.filter(mzRtInRange)
     def sortfn(a: UntargetedPeak, b: UntargetedPeak) = {
       val field: XCMSCol = IntIntensity // you can also sort by MZ or RT
       field match {
@@ -84,21 +76,17 @@ class UntargetedPeakSpectra(val peaks: Set[UntargetedPeak]) {
         case RT => RetentionTime.ascender(a.rt, b.rt)
       }
     }
-    val rngCmt = if (filterMzRt) ", showing mz:[50, 500] rt:[20, 200]" else ""
     Map(
       "num peaks" -> peaks.size,
-      s"topK by integratedInt${rngCmt}" -> lowPks
-                                            .sortWith(sortfn)
-                                            .map(p => List(p.mz, p.rt, p.integratedInt))
-                                            .take(topk)
+      s"peaks" -> peaks.toList.sortWith(sortfn)
     )
   }
 
   def toStatsStr = {
     toStats.toList.map{ 
       case (k: String, i: Int) => k + ":\t" + i
-      case (k: String, vl: List[List[Double]]) => k + "\n" + vl.map(_.mkString("\t")).mkString("\n")
-    }.mkString("\n\n")
+      case (k: String, vl: List[UntargetedPeak]) => k + "\n" + vl.map(_.toString).mkString("\n")
+    }.mkString("\n")
   }
 }
 
@@ -424,7 +412,6 @@ object UntargetedMetabolomics {
       new LCMSExperiment(src, UntargetedPeakSpectra.fromXCMSCentwave(f))
     }
 
-    val wtmin = (1 to 3).toList.map(x => s"debugmin${x}.tsv")
     val wt = (1 to 3).toList.map(dataForWell("B")).map(fullLoc)
     val df = (1 to 3).toList.map(dataForWell("A")).map(fullLoc)
     val dm = (1 to 3).toList.map(dataForWell("C")).map(fullLoc)
@@ -438,9 +425,6 @@ object UntargetedMetabolomics {
     // d{M,F}{1,2,3} = disease line {M,F} replicates 1, 2, 3
     // each test is specified as (controls, hypothesis, num_peaks_min, num_peaks_max) inclusive both
     val cases = List(
-      ("wtmin-wtmin", wtmin, wtmin, 0, 0), // debugging this case!
-      ("wt-wt", wt, wt, 0, 0), // debugging this case!
-
       // consistency check: hypothesis same as control => no peaks should be differentially identified
       ("wt1-wt1", List(wt1), List(wt1), 0, 0),
       ("dm1-dm1", List(dm1), List(dm1), 0, 0),
@@ -455,20 +439,20 @@ object UntargetedMetabolomics {
       ("df-df", df, df, 0, 0),
       
       // how well does the differential calling work over a single sample of hypothesis and control
-      ("wt1-df1", List(wt1), List(df1), 330, 375), // 374 @ 5.0, 337 @ 2.0
-      ("wt1-dm1", List(wt1), List(dm1), 260, 300), // 299 @ 5.0, 268 @ 2.0
-      
-      // peaks that are differentially expressed in diseased samples compared to the wild type
-      ("wt-dm", wt, dm, 45, 60), // 59 @ 5.0, 45 @ 2.0
-      ("wt-df", wt, df, 60, 80), // 77 @ 5.0, 69 @ 2.0
-      
-      // next two: what is in one diseases samples and not in the other?
-      ("dm-df", dm, df, 80, 95), // 92 @ 5.0, 82 @ 2.0
-      ("df-dm", df, dm, 60, 85), // 81 @ 5.0, 68 @ 2.0
+      ("wt1-df1", List(wt1), List(df1), 302, 375) // 374 @ 5.0, 337 @ 2.0, 303 @ 1.0
+      // // // ("wt1-dm1", List(wt1), List(dm1), 260, 300), // 299 @ 5.0, 268 @ 2.0
+      // // // 
+      // // // // peaks that are differentially expressed in diseased samples compared to the wild type
+      // // // ("wt-dm", wt, dm, 45, 60), // 59 @ 5.0, 45 @ 2.0
+      // // // ("wt-df", wt, df, 60, 80) // 77 @ 5.0, 69 @ 2.0
+      // // // 
+      // // // // next two: what is in one diseases samples and not in the other?
+      // // // ("dm-df", dm, df, 80, 95), // 92 @ 5.0, 82 @ 2.0
+      // // // ("df-dm", df, dm, 60, 85), // 81 @ 5.0, 68 @ 2.0
 
-      // Check what is commonly over/under expressed in diseased samples
-      // Woa! This is not really a test case. This is the final analysis!
-      ("wt-dmdf", wt, dmdf, 35, 50) // 48 @ 5.0, 39 @ 2.0
+      // // // // Check what is commonly over/under expressed in diseased samples
+      // // // // Woa! This is not really a test case. This is the final analysis!
+      // // // ("wt-dmdf", wt, dmdf, 35, 50) // 48 @ 5.0, 39 @ 2.0
       
     )
 
