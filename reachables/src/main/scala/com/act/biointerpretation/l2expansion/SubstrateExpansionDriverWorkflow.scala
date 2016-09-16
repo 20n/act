@@ -9,7 +9,7 @@ import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.logging.log4j.LogManager
 import scala.collection.JavaConverters._
 
-class NTimeExpansionWorkflow extends Workflow {
+class SubstrateExpansionDriverWorkflow extends Workflow {
 
   val logger = LogManager.getLogger(getClass.getName)
 
@@ -91,13 +91,13 @@ class NTimeExpansionWorkflow extends Workflow {
       if (!iterationOutputDirectory.exists()) iterationOutputDirectory.mkdirs()
 
       val outputInchiIdentifier = "uniqueInchisIteration"
-      val outputUniqueInchiFile = new File(workingDirectory, s"$outputInchiIdentifier$iteration")
+      val outputUniqueInchiFile = new File(workingDirectory, s"$outputInchiIdentifier.$iteration.txt")
 
       val substrateList =
         if (iteration == 0)
           substrateListFile
         else
-          new File(iterationOutputDirectory, s"$outputInchiIdentifier${iteration - 1}")
+          new File(workingDirectory, s"$outputInchiIdentifier${iteration - 1}")
 
       val roProjectionArgs = List(
         "--substrates-list", substrateList.getAbsolutePath,
@@ -124,7 +124,9 @@ class NTimeExpansionWorkflow extends Workflow {
           val uniqueSubstrates = predictionCorpus.getUniqueSubstrateInchis.asScala.toSet
           val uniqueProducts = predictionCorpus.getUniqueProductInchis.asScala.toSet
 
-          uniqueProducts.union(uniqueSubstrates)
+          logger.info(s"Found $uniqueSubstrates unique substrates and $uniqueProducts unique products.  " +
+            s"Combining and writing them to a file.")
+          uniqueProducts ++ uniqueSubstrates
         }).toSet
 
         val inchis = new L2InchiCorpus(allInchis.asJava)
