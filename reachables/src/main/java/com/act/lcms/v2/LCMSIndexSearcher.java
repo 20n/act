@@ -10,6 +10,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.joda.time.DateTime;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
 
@@ -80,8 +81,10 @@ public class LCMSIndexSearcher {
     LCMSIndexSearcher searcher = Factory.makeLCMSIndexSearcher(indexDir);
     List<LCMSIndexBuilder.TMzI> results = searcher.searchIndexInRange(mzRange, timeRange);
 
+    int counter = 0;
     for (LCMSIndexBuilder.TMzI triple : results) {
-      System.out.format("%.6f\t%.6f\t%.6f\n", triple.getTime(), triple.getMz(), triple.getIntensity());
+      System.out.format("%d\t%.6f\t%.6f\t%.6f\n", counter, triple.getTime(), triple.getMz(), triple.getIntensity());
+      counter++;
     }
 
     LOGGER.info("Done");
@@ -167,6 +170,7 @@ public class LCMSIndexSearcher {
       Pair<Double, Double> mzRange,
       Pair<Double, Double> timeRange)
       throws RocksDBException, ClassNotFoundException, IOException {
+    DateTime start = DateTime.now();
     // Demote the time range to floats, as we know that that's how we stored times in the DB.
     Pair<Float, Float> tRangeF = // My kingdom for a functor!
         Pair.of(timeRange.getLeft().floatValue(), timeRange.getRight().floatValue());
@@ -209,7 +213,7 @@ public class LCMSIndexSearcher {
 
     byte[][] mzIndexBytes = new byte[mzWindowsInRange.size()][];
     ByteBuffer mzIndexBuffer = ByteBuffer.allocate(Integer.BYTES);
-    for (int i = 0; i < timesInRange.size(); i++) {
+    for (int i = 0; i < mzWindowsInRange.size(); i++) {
       LCMSIndexBuilder.MZWindow mz = mzWindowsInRange.get(i);
       mzIndexBuffer.clear();
       mzIndexBuffer.putInt(mz.getIndex()).flip();
@@ -250,7 +254,8 @@ public class LCMSIndexSearcher {
     ).collect(Collectors.toList());
     LOGGER.info("Precise filtering results: %d -> %d", preFilterTMzICount, results.size());
 
-    LOGGER.info("Search complete");
+    DateTime end = DateTime.now();
+    LOGGER.info("Search complete in %dms", end.getMillis() - start.getMillis());
 
     return results;
   }
@@ -266,6 +271,7 @@ public class LCMSIndexSearcher {
      * We should be able to exploit that.  For now, we'll just start by hashing the ids. */
     Set<Long> uniqueIds = new HashSet<>();
     for (int i = 0; i < idBytes.length; i++) {
+      assert(idBytes[i] != null);
       ByteBuffer idsBuffer = ByteBuffer.wrap(idBytes[i]);
       while (idsBuffer.hasRemaining()) {
         uniqueIds.add(idsBuffer.getLong());
