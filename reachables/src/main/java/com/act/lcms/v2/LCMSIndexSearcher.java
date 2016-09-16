@@ -3,7 +3,6 @@ package com.act.lcms.v2;
 import com.act.utils.CLIUtil;
 import com.act.utils.rocksdb.DBUtil;
 import com.act.utils.rocksdb.RocksDBAndHandles;
-import io.netty.buffer.ByteBuf;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.lang3.StringUtils;
@@ -27,6 +26,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 /**
@@ -75,6 +75,24 @@ public class LCMSIndexSearcher {
     );
   }};
 
+  public static class Factory {
+    public static LCMSIndexSearcher makeLCMSIndexSearcher(File indexDir)
+        throws RocksDBException, ClassNotFoundException, IOException {
+      LCMSIndexSearcher searcher = new LCMSIndexSearcher(indexDir);
+      searcher.init();
+      return searcher;
+    }
+  }
+
+  private File indexDir;
+  private RocksDBAndHandles<LCMSIndexBuilder.COLUMN_FAMILIES> dbAndHandles;
+  private List<LCMSIndexBuilder.MZWindow> mzWindows;
+  private List<Float> timepoints;
+
+  LCMSIndexSearcher(File indexDir) throws RocksDBException, ClassNotFoundException, IOException {
+    this.indexDir = indexDir;
+  }
+
   public static void main(String args[]) throws Exception {
     CLIUtil cliUtil = new CLIUtil(LCMSIndexSearcher.class, HELP_MESSAGE, OPTION_BUILDERS);
     CommandLine cl = cliUtil.parseCommandLine(args);
@@ -117,6 +135,10 @@ public class LCMSIndexSearcher {
   }
 
   public static Pair<Double, Double> extractRange(String rangeStr) {
+    // Skip empty ranges so we can just limit on time or m/z.
+    if (rangeStr == null || rangeStr.isEmpty()) {
+      return null;
+    }
     String[] parts = StringUtils.split(rangeStr, RANGE_SEPARATOR);
     if (parts.length == 1) {
       LOGGER.info("Found only one value in ranged '%s', returning closed range (for exact extraction)", rangeStr);
@@ -146,24 +168,6 @@ public class LCMSIndexSearcher {
       // Assumes you know what you're getting into when deserializing.  Don't use this blindly.
       return (T) ois.readObject();
     }
-  }
-
-  public static class Factory {
-    public static LCMSIndexSearcher makeLCMSIndexSearcher(File indexDir)
-        throws RocksDBException, ClassNotFoundException, IOException {
-      LCMSIndexSearcher searcher = new LCMSIndexSearcher(indexDir);
-      searcher.init();
-      return searcher;
-    }
-  }
-
-  private File indexDir;
-  private RocksDBAndHandles<LCMSIndexBuilder.COLUMN_FAMILIES> dbAndHandles;
-  private List<LCMSIndexBuilder.MZWindow> mzWindows;
-  private List<Float> timepoints;
-
-  LCMSIndexSearcher(File indexDir) throws RocksDBException, ClassNotFoundException, IOException {
-    this.indexDir = indexDir;
   }
 
   public void init() throws RocksDBException, ClassNotFoundException, IOException {
@@ -206,49 +210,28 @@ public class LCMSIndexSearcher {
     );
 
     // TODO: short circuit these filters.  The first failure after success => no more possible hits.
-    List<Float> timesInRange = new ArrayList<>( // Use an array list as we'll be accessing by index.
-        timepoints.stream().filter(x -> x >= tRangeF.getLeft() && x <= tRangeF.getRight()).collect(Collectors.toList())
+    List<Float> timesInRange = timepointsInRange(tRangeF);
+
+    byte[][] timeIndexBytes = extractValueBytes(
+        LCMSIndexBuilder.COLUMN_FAMILIES.TIMEPOINT_TO_TRIPLES,
+        timesInRange,
+        Float.BYTES,
+        ByteBuffer::putFloat
     );
-    if (timesInRange.size() == 0) {
-      LOGGER.warn("Found zero times in range %.6f - %.6f, aborting", tRangeF.getLeft(), tRangeF.getRight());
-      return null;
-    }
-
-    List<LCMSIndexBuilder.MZWindow> mzWindowsInRange = new ArrayList<>( // Same here--access by index.
-        mzWindows.stream().filter(x -> rangesOverlap(mzRange.getLeft(), mzRange.getRight(), x.getMin(), x.getMax())).
-            collect(Collectors.toList())
-    );
-    if (mzWindowsInRange.size() == 0) {
-      LOGGER.warn("Found zero m/z windows in range %.6f - %.6f, aborting", mzRange.getLeft(), mzRange.getRight());
-      return null;
-    }
-
-    LOGGER.info("Found %d matching time ranges, %d matching m/z ranges", timesInRange.size(), mzWindowsInRange.size());
-
-    byte[][] timeIndexBytes = new byte[timesInRange.size()][];
-    ByteBuffer timeBuffer = ByteBuffer.allocate(Float.BYTES);
-    for (int i = 0; i < timesInRange.size(); i++) {
-      Float t = timesInRange.get(i);
-      timeBuffer.clear();
-      timeBuffer.putFloat(t).flip();
-      // TODO: try compacting the timeBuffer array to be safe?
-      timeIndexBytes[i] = dbAndHandles.get(LCMSIndexBuilder.COLUMN_FAMILIES.TIMEPOINT_TO_TRIPLES, timeBuffer.array());
-      assert(timeIndexBytes[i] != null);
-    }
     // TODO: bail if all the timeIndexBytes lengths are zero.
 
-    byte[][] mzIndexBytes = new byte[mzWindowsInRange.size()][];
-    ByteBuffer mzIndexBuffer = ByteBuffer.allocate(Integer.BYTES);
-    for (int i = 0; i < mzWindowsInRange.size(); i++) {
-      LCMSIndexBuilder.MZWindow mz = mzWindowsInRange.get(i);
-      mzIndexBuffer.clear();
-      mzIndexBuffer.putInt(mz.getIndex()).flip();
-      // TODO: try compacting the mzIndexBuffer array to be safe?
-      mzIndexBytes[i] =
-          dbAndHandles.get(LCMSIndexBuilder.COLUMN_FAMILIES.WINDOW_ID_TO_TRIPLES, mzIndexBuffer.array());
-      assert(mzIndexBytes[i] != null);
-    }
+    List<LCMSIndexBuilder.MZWindow> mzWindowsInRange = mzWindowsInRange(mzRange);
+
+    byte[][] mzIndexBytes = extractValueBytes(
+        LCMSIndexBuilder.COLUMN_FAMILIES.WINDOW_ID_TO_TRIPLES,
+        mzWindowsInRange,
+        Integer.BYTES,
+        (buff, mz) -> buff.putInt(mz.getIndex())
+    );
     // TODO: bail if all the mzIndexBytes are zero.
+
+    LOGGER.info("Found/loaded %d matching time ranges, %d matching m/z ranges",
+        timesInRange.size(), mzWindowsInRange.size());
 
     Set<Long> unionTimeIds = unionIdBuffers(timeIndexBytes);
     Set<Long> unionMzIds = unionIdBuffers(mzIndexBytes);
@@ -265,13 +248,16 @@ public class LCMSIndexSearcher {
     LOGGER.info("Collecting TMzI triples");
     // Collect all the triples for the ids we extracted.
     List<LCMSIndexBuilder.TMzI> results = new ArrayList<>(idsToFetch.size());
-    ByteBuffer idBuffer = ByteBuffer.allocate(Long.BYTES);
-    for (Long id : idsToFetch) {
-      idBuffer.clear();
-      idBuffer.putLong(id).flip();
-      byte[] tmziBytes = dbAndHandles.get(LCMSIndexBuilder.COLUMN_FAMILIES.ID_TO_TRIPLE, idBuffer.array());
+    byte[][] resultBytes = extractValueBytes(
+        LCMSIndexBuilder.COLUMN_FAMILIES.ID_TO_TRIPLE,
+        idsToFetch,
+        Long.BYTES,
+        ByteBuffer::putLong
+    );
+    for (byte[] tmziBytes : resultBytes) {
       results.add(LCMSIndexBuilder.TMzI.readNextFromByteBuffer(ByteBuffer.wrap(tmziBytes)));
     }
+
     LOGGER.info("Performing final filtering");
     int preFilterTMzICount = results.size();
     results = results.stream().filter(tmzi ->
@@ -284,6 +270,54 @@ public class LCMSIndexSearcher {
     LOGGER.info("Search complete in %dms", end.getMillis() - start.getMillis());
 
     return results;
+  }
+
+  private List<Float> timepointsInRange(Pair<Float, Float> tRange) {
+    // TODO: short circuit these filters.  The first failure after success => no more possible hits.
+    List<Float> timesInRange = new ArrayList<>( // Use an array list as we'll be accessing by index.
+        timepoints.stream().filter(x -> x >= tRange.getLeft() && x <= tRange.getRight()).collect(Collectors.toList())
+    );
+    if (timesInRange.size() == 0) {
+      LOGGER.warn("Found zero times in range %.6f - %.6f", tRange.getLeft(), tRange.getRight());
+    }
+    return timesInRange;
+  }
+
+  private List<LCMSIndexBuilder.MZWindow> mzWindowsInRange(Pair<Double, Double> mzRange) {
+    List<LCMSIndexBuilder.MZWindow> mzWindowsInRange = new ArrayList<>( // Same here--access by index.
+        mzWindows.stream().filter(x -> rangesOverlap(mzRange.getLeft(), mzRange.getRight(), x.getMin(), x.getMax())).
+            collect(Collectors.toList())
+    );
+    if (mzWindowsInRange.size() == 0) {
+      LOGGER.warn("Found zero m/z windows in range %.6f - %.6f", mzRange.getLeft(), mzRange.getRight());
+    }
+    return mzWindowsInRange;
+  }
+
+  /**
+   * Extracts the value bytes from the index corresponding to a list of keys of fixed primitive type.
+   * @param cf The column family from which to read.
+   * @param keys A list of keys whose values to extract.
+   * @param keyBytes The exact number of bytes required by a key; should be uniform for primitive-typed keys
+   * @param put A function that writes a key to a ByteBuffer.
+   * @param <K> The type of the key.
+   * @return An array of arrays of bytes, one per key, containing the values of the key at that position.
+   * @throws RocksDBException
+   */
+  private <K> byte[][] extractValueBytes(
+      LCMSIndexBuilder.COLUMN_FAMILIES cf, List<K> keys, int keyBytes, BiFunction<ByteBuffer, K, ByteBuffer> put)
+      throws RocksDBException {
+    byte[][] valBytes = new byte[keys.size()][];
+    ByteBuffer keyBuffer = ByteBuffer.allocate(keyBytes);
+    for (int i = 0; i < keys.size(); i++) {
+      K k = keys.get(i);
+      keyBuffer.clear();
+      put.apply(keyBuffer, k).flip();
+      // TODO: try compacting the keyBuffer array to be safe?
+      valBytes[i] = dbAndHandles.get(cf, keyBuffer.array());
+      assert(valBytes[i] != null);
+    }
+    return valBytes;
   }
 
   private static boolean rangesOverlap(double aMin, double aMax, double bMin, double bMax) {
