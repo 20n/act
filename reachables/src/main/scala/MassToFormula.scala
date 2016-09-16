@@ -597,6 +597,20 @@ object MassToFormula {
     }
   }
 
+  ////
+  // TODO: Replace below with Chemaxon.Molecule.getAtomCount(atomicNumber)
+  // Function `getFormulaMap: String -> Map[Atom, Int]` and helpers `getFormulaMapStep`,
+  // `get{Num, Atom}AtHead`, and `headExtractHelper` won't be needed. That will take care
+  // of fixing the greedy approach here that only works for single char atoms 
+  // (Line: `!isHeadAlreadyAtom && c.isLetter`)
+  //
+  // Considerations that will need to be tested before the move:
+  // 1. Chemaxon license?
+  // 2. Proton adjustment in `formulaFromInChI`: Does Chemaxon automatically do that?
+  //    * Current code has been tested to be correct with the adjustment
+  //    * When switch to Chemaxon, test if the proton adjustment still needed.
+  ////
+
   def getAtomAtHead(f: String): (Atom, String) = {
     def doMove(hd: String, c: Char) = {
       val isHeadAlreadyAtom = AllAtoms.exists(_.symbol.toString.equals(hd))
