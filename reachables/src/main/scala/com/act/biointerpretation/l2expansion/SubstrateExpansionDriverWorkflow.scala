@@ -6,7 +6,9 @@ import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.tool_wrappers.{ScalaJobWrapper, SparkWrapper}
 import com.act.workflow.tool_manager.workflow.Workflow
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
+import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
+
 import scala.collection.JavaConverters._
 
 class SubstrateExpansionDriverWorkflow extends Workflow {
@@ -65,7 +67,7 @@ class SubstrateExpansionDriverWorkflow extends Workflow {
   }
 
   override def defineWorkflow(cl: CommandLine): Job = {
-    val repeatRange = Range(0, cl.getOptionValue(OPTION_NUMBER_OF_REPEATS).toInt)
+    val repeatRange = Range(1, cl.getOptionValue(OPTION_NUMBER_OF_REPEATS).toInt + 1)
 
     val substrateListFile = new File(cl.getOptionValue(OPTION_SUBSTRATES_LIST))
     require(substrateListFile.exists(),
@@ -86,15 +88,17 @@ class SubstrateExpansionDriverWorkflow extends Workflow {
     // Make sure to assemble jar first
     headerJob.thenRun(SparkWrapper.sbtAssembly())
 
+    val outputInchiIdentifier = "uniqueInchisIteration"
+    FileUtils.copyFile(substrateListFile, new File(workingDirectory, s"$outputInchiIdentifier.0.txt"))
+
     repeatRange.foreach(iteration => {
       val iterationOutputDirectory = new File(workingDirectory, s"$iteration.ExpansionOf.${substrateListFile.getName}")
       if (!iterationOutputDirectory.exists()) iterationOutputDirectory.mkdirs()
 
-      val outputInchiIdentifier = "uniqueInchisIteration"
       val outputUniqueInchiFile = new File(workingDirectory, s"$outputInchiIdentifier.$iteration.txt")
 
       val substrateList =
-        if (iteration == 0)
+        if (iteration == 1)
           substrateListFile
         else
           new File(workingDirectory, s"$outputInchiIdentifier.${iteration - 1}.txt")
@@ -123,7 +127,7 @@ class SubstrateExpansionDriverWorkflow extends Workflow {
           val uniqueSubstrates = predictionCorpus.getUniqueSubstrateInchis.asScala.toSet
           val uniqueProducts = predictionCorpus.getUniqueProductInchis.asScala.toSet
 
-          logger.info(s"Found $uniqueSubstrates unique substrates and $uniqueProducts unique products.  " +
+          logger.info(s"Found ${uniqueSubstrates.size} unique substrates and ${uniqueProducts.size} unique products.  " +
             s"Combining and writing them to a file.")
           uniqueProducts ++ uniqueSubstrates
         }).toSet
