@@ -6,7 +6,6 @@ import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
 import org.rocksdb.WriteBatch;
-import org.rocksdb.WriteBatchWithIndex;
 import org.rocksdb.WriteOptions;
 
 import java.util.Map;
@@ -103,9 +102,18 @@ public class RocksDBAndHandles<T extends ColumnFamilyEnumeration<T>> {
 
   public static class RocksDBWriteBatch<T extends ColumnFamilyEnumeration<T>> {
     protected static final int RESERVED_BYTES = 1 << 18;
-    private static final WriteOptions DEFAULT_WRITE_OPTIONS = new WriteOptions();
+    private static final WriteOptions DEFAULT_WRITE_OPTIONS;
+    static {
+      // Note: the WriteOptions constructor requires a native library call, so make sure RocksDB is loaded first.
+      RocksDB.loadLibrary();
+      DEFAULT_WRITE_OPTIONS = new WriteOptions();
+    }
     WriteBatch batch;
     RocksDBAndHandles<T> parent;
+
+    protected RocksDBWriteBatch() {
+      // Just for testing.
+    }
 
     protected RocksDBWriteBatch(RocksDBAndHandles<T> parent, int reservedBytes) {
       this.parent = parent;

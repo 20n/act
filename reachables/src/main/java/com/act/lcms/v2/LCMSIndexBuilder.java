@@ -478,7 +478,7 @@ public class LCMSIndexBuilder {
       writeBatch.write();
 
       // We should have used up every byte we had.  TODO: make this an assert() call.
-      assert(triplesForThisTime.position() != triplesForThisTime.capacity());
+      assert(triplesForThisTime.position() == triplesForThisTime.capacity());
 
       ByteBuffer timeBuffer = ByteBuffer.allocate(Float.BYTES).putFloat(time);
       timeBuffer.flip(); // Prep both bufers for reading so they can be written to the DB.
