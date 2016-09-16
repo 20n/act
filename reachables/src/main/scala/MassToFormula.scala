@@ -238,7 +238,7 @@ object Solver {
   } 
 }
 
-class MassToFormula(elements: List[Atom] = AllAtoms) {
+class MassToFormula(private val atomSpace: List[Atom] = AllAtoms) {
   // this is critical correctness parameter. The solver searches the integral space
   // int(mass) + { -delta .. +delta} for candidate solutions. it then validates each
   // solution in the continuous domain (but up to the precision as dictated by mass
@@ -246,6 +246,9 @@ class MassToFormula(elements: List[Atom] = AllAtoms) {
   // for some test cases we would need to expand this delta to ensure the right space
   // is being searched. APAP (and 2k other DB chems) get solved with delta = 0!
   val delta = 0
+
+  // this sorted is so that we order in Hill System Order. See fn `hillSystemOrder`
+  val elements = atomSpace.sortBy(_.symbol)
 
   type ChemicalFormula = Map[Atom, Int]
 
@@ -310,8 +313,19 @@ class MassToFormula(elements: List[Atom] = AllAtoms) {
     matchingFormulae
   }
 
+  val nonCHAtoms = elements.filter(_ != C).filter(_ != H).sortBy(_.symbol)
+  def hillSystemOrder(atoms: List[Atom], hasC: Boolean): List[Atom] = {
+    // This is from https://en.wikipedia.org/wiki/Chemical_formula#Hill_system
+    if (hasC) {
+      C :: H :: nonCHAtoms
+    } else {
+      elements
+    }
+  }
+
   def buildChemFormulaA(soln: ChemicalFormula) = {
-    elements.map(a => {
+    val hillOrder = hillSystemOrder(elements, soln(C) != 0)
+    hillOrder.map(a => {
         soln(a) match {
           case 1 => a.symbol.toString
           case 0 => ""
@@ -461,7 +475,7 @@ object MassToFormula {
 
   def solveNCheck(test: (Double, List[Atom], Map[Atom, Int], String)) {
     val (mass, atoms, expected, inchi) = test
-    val formulator = new MassToFormula(elements = atoms)
+    val formulator = new MassToFormula(atomSpace = atoms)
 
     val atomsInt = atoms.map(a => a.mass.rounded(0) * expected(a)).sum
     val massRounded = math round mass
@@ -749,7 +763,7 @@ object MassToFormula {
     testcases.foreach{ test =>
       {
         val (intMz, elems, validAtomicFormulae) = test
-        val formulator = new MassToFormula(elements = elems) // Hah! The "formulator"
+        val formulator = new MassToFormula(atomSpace = elems) // Hah! The "formulator"
         val constraints = formulator.buildConstraintOverInts(intMz)
         val validSolns = validAtomicFormulae.map(_.map(kv => (formulator.atomToVar(kv._1), kv._2)))
         testOneSolnOverCNO(constraints, intMz, validSolns, formulator)
