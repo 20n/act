@@ -14,6 +14,7 @@ import com.act.lcms.MassCalculator.calculateMass
 import com.microsoft.z3._
 
 // scala/java stuff
+import scala.annotation.tailrec
 import collection.JavaConversions._
 import java.io.PrintWriter
 
@@ -48,7 +49,7 @@ object Solver {
   // solver = z3 under MIT license.
   // git clone git@github.com:Z3Prover/z3.git
   // compile instructions: https://github.com/Z3Prover/z3
-  // the jar needs to be in the lib: `com.microsoft.z3.jar`
+  // the jar needs to be in the lib directory: `com.microsoft.z3.jar`
   // and the dynamic runtime link libraries in lib/native/${os}/
 
   val config = Map("model" -> "true")
@@ -189,9 +190,12 @@ object Solver {
     }
   }
 
+  // With solveMany and helper solveManyAux, we solve for all possible satisfying solutions.
+  // We do it the standard way: Solve the constraint set, recursively add a "blocking" clause
+  // clause "negation(this specific solution)" and continue until UNSAT. When UNSAT return solns
   def solveMany(eqns: List[BooleanExpr]): Set[Map[Var, Int]] = time { solveManyAux(eqns, Set()) }
 
-  def solveManyAux(eqns: List[BooleanExpr], solns: Set[Map[Var, Int]]): Set[Map[Var, Int]] = {
+  @tailrec def solveManyAux(eqns: List[BooleanExpr], solns: Set[Map[Var, Int]]): Set[Map[Var, Int]] = {
     solveOne(eqns) match {
       case None => solns
       case Some(s) => {
@@ -267,7 +271,7 @@ class MassToFormula(elements: List[Atom] = AllAtoms) {
   // LHS_int := `12c + h + 16o + 14n + 32s`
   // RHS_int := `floor(mass) + {0, +-1, +-2, .. +-delta}`
   // Note that `delta` cannot be arbitrarily high if we restrict attention to `mass` values that
-  // are bounded, e.g., by `950Da` (in the case where the molecules are to LCMS detected)
+  // are bounded, e.g., by `950Da` (in the case where the molecules are to be LCMS detected)
   // This is because each atom's monoisotopic mass deviates from their integral values in the 2nd-3rd
   // decimal place, and which means a whole lot of atoms would have to be accumulated (consistently
   // in one direction, that too) to get a full 1Da deviation from integral values.
@@ -307,10 +311,11 @@ class MassToFormula(elements: List[Atom] = AllAtoms) {
 
   def buildChemFormulaA(soln: ChemicalFormula) = {
     elements.map(a => {
-        if (soln(a) != 0)
-          a.symbol.toString + soln(a)
-        else
-          ""
+        soln(a) match {
+          case 1 => a.symbol.toString
+          case 0 => ""
+          case _ => a.symbol.toString + soln(a)
+        }
       }
     ).reduce(_+_)
   }
