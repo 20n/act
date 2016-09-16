@@ -139,6 +139,8 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
   def analyze(): LCMSExperiment = {
     val unifiedControls = unifyReplicates(controls)
     val unifiedHypotheses = unifyReplicates(hypotheses)
+    println(s"controls: $unifiedControls")
+    println(s"hypotheses: $unifiedHypotheses")
     extractOutliers(unifiedHypotheses, unifiedControls)
   }
 
@@ -231,8 +233,9 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
   def unifyReplicates(replicates: List[LCMSExperiment]): LCMSExperiment = {
     val peakSetsForAllReplicates = replicates.map{ expr => expr.peakSpectra.peaks }
     val peaksKeyedByMzAndRt = findAlignedPeaks(peakSetsForAllReplicates)
+    val peaksByMzAndRtNonEmpty = peaksKeyedByMzAndRt.filter{ case(_, lstSets) => lstSets.forall(_.size != 0) }
 
-    val sharedPeaks: Set[UntargetedPeak] = peaksKeyedByMzAndRt.toSet.map(unifyReplicatesForOneMzRt)
+    val sharedPeaks: Set[UntargetedPeak] = peaksByMzAndRtNonEmpty.toSet.map(unifyReplicatesForOneMzRt)
     val provenance = new ComputedData(sources = replicates.map(_.origin))
     new LCMSExperiment(provenance, new UntargetedPeakSpectra(sharedPeaks))
   }
@@ -272,9 +275,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
       val peaksAtThisMzRt: List[Set[UntargetedPeak]] = peaksAtThisMz.map(s => s.filter(isAtMzRt(mz, rt)))
       (mz, rt) -> peaksAtThisMzRt
     }
-    val mzRtToPeaksStr = mzRtToPeaks.toMap.mkString("\n")
-
-    println(s"mapset: ${mzRtToPeaksStr}")
+    //////////// val mzRtToPeaksStr = mzRtToPeaks.toMap.mkString("\n")
 
     mzRtToPeaks.toMap
   }
@@ -427,8 +428,8 @@ object UntargetedMetabolomics {
     // d{M,F}{1,2,3} = disease line {M,F} replicates 1, 2, 3
     // each test is specified as (controls, hypothesis, num_peaks_min, num_peaks_max) inclusive both
     val cases = List(
-      // ("wtmin-wtmin", wtmin, wtmin, 0, 0) // debugging this case!
-      ("wt-wt", wt, wt, 0, 0) // debugging this case!
+      ("wtmin-wtmin", wtmin, wtmin, 0, 0) // debugging this case!
+      //      ,("wt-wt", wt, wt, 0, 0) // debugging this case!
 
       //      // consistency check: hypothesis same as control => no peaks should be differentially identified
       //      ,("wt1-wt1", List(wt1), List(wt1), 0, 0)
