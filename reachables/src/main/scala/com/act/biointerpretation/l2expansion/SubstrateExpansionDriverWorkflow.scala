@@ -86,7 +86,7 @@ class SubstrateExpansionDriverWorkflow extends Workflow {
     // Tries to assemble JAR for spark export.  Step 1 towards Skynet is self-assembly of jar files.
 
     // Make sure to assemble jar first
-    headerJob.thenRun(SparkWrapper.sbtAssembly())
+    headerJob.thenRun(SparkWrapper.sbtAssembly().doNotWriteErrorStream())
 
     val outputInchiIdentifier = "uniqueInchisIteration"
     FileUtils.copyFile(substrateListFile, new File(workingDirectory, s"$outputInchiIdentifier.0.txt"))
@@ -138,8 +138,13 @@ class SubstrateExpansionDriverWorkflow extends Workflow {
 
       val convertPredictionToUniqueInchis = ScalaJobWrapper.wrapScalaFunction(s"Condense $iteration into unique molecules.", processing)
 
-      headerJob.thenRun(expansion)
-      headerJob.thenRun(convertPredictionToUniqueInchis)
+      // Skip if already created
+      if (!outputUniqueInchiFile.exists) {
+        headerJob.thenRun(expansion.doNotWriteOutputStream())
+        headerJob.thenRun(convertPredictionToUniqueInchis)
+      } else {
+        logger.info(s"Skipping trying to create ${outputUniqueInchiFile.getAbsolutePath} as it already exists.")
+      }
     })
 
     headerJob
