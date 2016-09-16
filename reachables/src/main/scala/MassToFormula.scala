@@ -24,8 +24,9 @@ case class Var(val id: String) extends Expr
 case class Term(val c: Const, val v: Var) extends Expr
 case class LinExpr(val terms: List[Term]) extends Expr
 
+// TODO: FIX ADT 
 // The structure below is not right. Done correctly, there should be case
-// classes for And, Or, Not, Lt, Gt that extend BooleanExpr: TODO: fix in later PR
+// classes for And, Or, Not, Lt, Gt that extend BooleanExpr
 sealed trait CompareOp
 case object Lt extends CompareOp
 case object Gt extends CompareOp
@@ -334,6 +335,12 @@ class MassToFormula(elements: List[Atom] = AllAtoms) {
     val lhse = LinExpr(linExprTerms)
     val rhse = Const(closeMz)
     val ineq = LinIneq(lhse, Eq, rhse)
+
+    // Our linear equations need a constant term, but our unfortunate Term ADT only allows
+    // Terms to be (Constant x Variable), which means to get a constant term, we need a 
+    // variable `one` whose numerical value "solves" to `1`. Then we can use that variable
+    // in Term(c, one) and that Term will equal the value of the constant `c`.
+    // (TODO: FIX ADT will get rid of this hack!)
     val one  = Var("v=1")
     val onec = LinIneq(one, Eq, Const(1))
 
@@ -381,6 +388,8 @@ class MassToFormula(elements: List[Atom] = AllAtoms) {
       case (la, lb) => la ++ lb
     }
 
+    // |bounds| = |elements|, which defaults to |AllAtoms| and is 6 (for CHONPS),
+    // so this final contraints set is 2 + 6 = 8.
     ineq :: onec :: bounds
   }
 }
@@ -392,33 +401,17 @@ object MassToFormula {
   // So we chicken-ed out and used `var`s
   var outStream = new PrintWriter(System.out)
   var errStream = new PrintWriter(System.err)
+  var errStreamToConsole = true
+  var outStreamToConsole = true
 
   def main(args: Array[String]) {
     val className = this.getClass.getCanonicalName
     val opts = List(optMz, optMassFile, optOutputFile, optOutFailedTests, optRunTests)
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
-    val masses: List[Double] = {
-      if ((cmdLine has optMz) && (cmdLine has optMassFile)) {
-        println(s"You specified both a single mass and a mass file as input. Is one or the other? Aborting.")
-        System.exit(-1)
-      }
-      if (cmdLine has optMz) {
-        List((cmdLine get optMz).toDouble)
-      } else {
-        if (cmdLine has optMassFile) {
-          val source = scala.io.Source.fromFile(cmdLine get optMassFile)
-          val massStrs = try source.getLines.toList finally source.close()
-          // expect input lines to be tab separated with the first column the mass
-          // and the rest can have meta data with them (e.g., the err output file)
-          // we split by tabs and then pick the first element to convert to double
-          massStrs.map(_.split("\t")(0).toDouble)
-        } else List()
-      }
-    }
-
     outStream = {
       if (cmdLine has optOutputFile) {
+        outStreamToConsole = false
         new PrintWriter(cmdLine get optOutputFile)
       } else {
         new PrintWriter(System.out)
@@ -427,25 +420,41 @@ object MassToFormula {
 
     errStream = {
       if (cmdLine has optOutFailedTests) {
+        errStreamToConsole = false
         new PrintWriter(cmdLine get optOutFailedTests)
       } else {
         new PrintWriter(System.err)
       }
     }
 
-    solve(masses, new MassToFormula)
-
-    // TODO: Eventually, move to scalatest.
     if (cmdLine has optRunTests) {
+      // TODO: Eventually, move to scalatest.
       runAllUnitTests
+    } else if ((cmdLine has optMz) && !(cmdLine has optMassFile)) {
+      val mass = (cmdLine get optMz).toDouble
+      solve(List(mass))
+    } else if ((cmdLine has optMassFile) && !(cmdLine has optMz)) {
+      val source = scala.io.Source.fromFile(cmdLine get optMassFile)
+      val massStrs = try source.getLines.toList finally source.close()
+      // expect input lines to be tab separated with the first column the mass
+      // and the rest can have meta data with them (e.g., the err output file)
+      // we split by tabs and then pick the first element to convert to double
+      solve(massStrs.map(_.split("\t")(0).toDouble))
+    } else {
+      // we cannot handle both a single mass and a mass file on the command line
+      // so write a snarky message to user, and abort! Ouch.
+      errStream.println(s"You specified both a single mass and a mass file as input. Is one or the other? Aborting.")
+      System.exit(-1)
     }
+
   }
 
-  def solve(masses: List[Double], f: MassToFormula): Unit = {
+  def solve(masses: List[Double]): Unit = {
+    val f = new MassToFormula
     masses.foreach( m => {
       val solns = f.solve(new MonoIsotopicMass(m))
       val allChemicalFormulae = solns.map(f.buildChemFormulaA)
-      outStream.write(allChemicalFormulae.mkString("\t") + "\n")
+      outStream.write(m + "\t" + allChemicalFormulae.mkString("\t") + "\n")
       outStream.flush
     })
   }
@@ -459,7 +468,7 @@ object MassToFormula {
     val solnsFound = formulator.solve(new MonoIsotopicMass(mass))
     val timeTaken = Solver.getLastSolveTimeTaken / 1000000.0 // ns to milliseconds
     val isPass = solnsFound.contains(expected)
-    val passFail = if (isPass) "PASS" else"FAIL"
+    val passFail = if (isPass) "PASS" else "FAIL"
 
     val log = List(s"$mass",
                       s"$atoms",
@@ -476,15 +485,13 @@ object MassToFormula {
       reportFail(s"$log")
   }
 
-  def reportFail(s: String) = reportHelper(s, errStream, Console.RED)
-  def reportPass(s: String) = reportHelper(s, outStream, Console.GREEN)
+  // Do not write color codes if we are writing to files
+  // But when writing to screen it is good to see visual indicators
+  def reportFail(s: String) = reportHelper(s, errStream, if (errStreamToConsole) Console.RED else "")
+  def reportPass(s: String) = reportHelper(s, outStream, if (outStreamToConsole) Console.GREEN else "")
 
   def reportHelper(s: String, stream: PrintWriter, color: String): Unit = {
-    // Do not write color codes if we are writing to files
-    // But when writing to screen it is good to see visual indicators
-    if (stream == System.out || stream == System.err)
-      stream.write(color)
-
+    stream.write(color)
     stream.write(s)
     stream.println()
     stream.flush
