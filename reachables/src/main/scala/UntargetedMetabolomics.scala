@@ -7,12 +7,9 @@ import act.shared.ChemicalSymbols.{MonoIsotopicMass, AllAminoAcids}
 import com.act.lcms.MS1.MetlinIonMass
 
 class RetentionTime(private val time: Double) {
-  // Default drift allowed is emperically picked based on observations over experimental data
-  private val driftTolerated = 1.0 // seconds
-
   // This function is a helper to `equals`
   // It tests whether two values are within the range of experimental drift we allow
-  private def withinDriftWindow(a: Double, b: Double) = (math abs (a - b)) < driftTolerated
+  private def withinDriftWindow(a: Double, b: Double) = (math abs (a - b)) < RetentionTime.driftTolerated
 
   // we allow for times to drift by driftTolerated, and so equals matches times that only that apart
   override def equals(that: Any) = that match { 
@@ -29,6 +26,9 @@ class RetentionTime(private val time: Double) {
 }
 
 object RetentionTime {
+  // Default drift allowed is emperically picked based on observations over experimental data
+  val driftTolerated = 1.0 // seconds
+
   def middle(xs: List[Double]): Double = {
     // In the cases of odd sized xs this would correspond to median
     // But in the case of even sized lists, we don't want to average since that 
@@ -295,7 +295,11 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
 
     def angle(that: NormalizationVector): Double = {
       // cos(angle) = dot product / product of lens
-      math acos ((this dot that) / (this.len * that.len))
+      val angle = math acos ((this dot that) / (this.len * that.len))
+
+      // because of errors in precision, for this == that, cos-1(1.0) 
+      // ends up computing a 1e-8 value, so lets round that down to 0
+      if (angle < 1e-7) 0 else angle
     }
 
     def len(): Double = {
@@ -323,9 +327,6 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
   }
 
   object NormalizationVector {
-    val okAngleDeviation = math toRadians (20.0)
-    val okLengthDeviation = 1.0
-
     // build a normalization vector using a set of peaks coming in for pivots
     def build(alignedPeaks: List[MzRtPeaks]) = {
       // now filter/focus attention to only the relevant peaks, e.g., aminoacid peaks
@@ -346,29 +347,38 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
           new NormalizationVector(multipliers, mz)
         }
       }
-      average(possibleNormalizers)
+      pickRep(possibleNormalizers)
     }
 
-    def average(vectors: Set[NormalizationVector]) = {
-      println(s"Norm vectors: $vectors")
-      ensureNotTooDeviant(vectors)
-      val avgVec = vectors.reduce(_ + _) / vectors.size
-      avgVec
-    }
+    def pickRep(vectors: Set[NormalizationVector]) = {
+      // find the vector that is least away from all others
+      // i.e., find one whose average angle to all others is minimal
 
-    def ensureNotTooDeviant(vectors: Set[NormalizationVector]) {
-      // for all pairs of vectors compute the angles and lengths
+      val sz = vectors.size
+      // for all pairs of vectors compute the angles
       // this will be O(n^2) in the size of vectors
-      val anglesLens = for (a <- vectors; b <- vectors) yield {
-        val angle = a angle b
-        val lenDiff = math abs (a.len - b.len)
-        (angle, lenDiff)
-      }
-      val (angles, lenDiffs): (List[Double], List[Double]) = anglesLens.toList.unzip
-      val maxAngle = angles.reduce(math max (_, _))
-      val maxLenDiff = lenDiffs.reduce(math max (_, _))
-      println(s"Norm vectors: maxAngle: $maxAngle, maxLenDiff: $maxLenDiff")
-      val tooDeviant = maxAngle > okAngleDeviation || maxLenDiff > okLengthDeviation
+      val vecAvgAngles = vectors.map{ case v => v -> {
+        val anglesToOthers = for (other <- vectors if other != v) yield { v angle other }
+        val avgAngleToOthers = anglesToOthers.reduce(_ + _) / (sz - 1)
+        avgAngleToOthers
+      }}.toList
+      val inOrderOfSimilarityToOthers = vecAvgAngles.sortWith{ case ((v1, ang1), (v2, ang2)) => ang1 < ang2 }
+      val mostRep = inOrderOfSimilarityToOthers(0)._1
+      
+      ensureRepNotTooCrazy(inOrderOfSimilarityToOthers)
+
+      mostRep
+    }
+
+    val okAngleDeviation = math toRadians (20.0)
+
+    def ensureRepNotTooCrazy(ordVecs: List[(NormalizationVector, Double)]) {
+      println(s"Norm pivots: ${ordVecs.map{ case (v, a) => v.pivots}}")
+      println(s"Norm vectors: $ordVecs")
+      val repAngle: Double = ordVecs(0)._2
+      val rebelAngle: Double = ordVecs.last._2
+      
+      val tooDeviant = rebelAngle > okAngleDeviation || repAngle > okAngleDeviation
       if (tooDeviant) { println(s"Vectors deviate way too much!"); assert(false) }
     }
 
@@ -587,11 +597,33 @@ object UntargetedMetabolomics {
     // wt{1,2,3} = wildtype replicates 1, 2, 3
     // d{M,F}{1,2,3} = disease line {M,F} replicates 1, 2, 3
 
+    // the below test cases are RetentionTime and MonoIsotopicMass parameter dependent
+    // (MonoIsotopicMass.defaultNumPlaces, RetentionTime.driftTolerated, numPeaks)
+    val expPks = Map(
+      "wt1-df1" -> Map((3, 1.0) -> 303, (3, 2.0) -> 337, (3, 5.0) -> 374, (2, 1.0) -> 1219),
+      "wt1-dm1" -> Map((3, 1.0) -> 225, (3, 2.0) -> 268, (3, 5.0) -> 299, (2, 1.0) -> 826),
+      "wt-dm"   -> Map((3, 1.0) ->  37, (3, 2.0) ->  45, (3, 5.0) ->  59, (2, 1.0) -> 742),
+      "wt-df"   -> Map((3, 1.0) ->  58, (3, 2.0) ->  69, (3, 5.0) ->  77, (2, 1.0) -> 347),
+      "dm-df"   -> Map((3, 1.0) ->  73, (3, 2.0) ->  82, (3, 5.0) ->  92, (2, 1.0) -> 331),
+      "df-dm"   -> Map((3, 1.0) ->  57, (3, 2.0) ->  68, (3, 5.0) ->  81, (2, 1.0) -> 340),
+      "wt-dmdf" -> Map((3, 1.0) ->  33, (3, 2.0) ->  39, (3, 5.0) ->  48, (2, 1.0) -> 895)
+    )
+  
+    def bnd(tcase: String) = expPks(tcase)((MonoIsotopicMass.defaultNumPlaces, RetentionTime.driftTolerated))
+
     val cases = List(
       // consistency check: hypothesis same as control => no peaks should be differentially identified
       ("wt1-wt1", List(wt1), List(wt1), 0, 0),
       ("dm1-dm1", List(dm1), List(dm1), 0, 0),
       ("df1-df1", List(df1), List(df1), 0, 0),
+      
+      ("wt2-wt2", List(wt1), List(wt1), 0, 0),
+      ("dm2-dm2", List(dm1), List(dm1), 0, 0),
+      ("df2-df2", List(df1), List(df1), 0, 0),
+      
+      ("wt3-wt3", List(wt1), List(wt1), 0, 0),
+      ("dm3-dm3", List(dm1), List(dm1), 0, 0),
+      ("df3-df3", List(df1), List(df1), 0, 0),
       
       // ensure that replicate aggregation (i.e., min) works as expected. 
       // we already know from the above test that differential calling works 
@@ -602,20 +634,20 @@ object UntargetedMetabolomics {
       ("df-df", df, df, 0, 0),
       
       // how well does the differential calling work over a single sample of hypothesis and control
-      ("wt1-df1", List(wt1), List(df1), 302, 375), // 374 @ 5.0, 337 @ 2.0, 303 @ 1.0
-      ("wt1-dm1", List(wt1), List(dm1), 225, 300), // 299 @ 5.0, 268 @ 2.0, 225 @ 1.0
+      ("wt1-df1", List(wt1), List(df1), bnd("wt1-df1"), bnd("wt1-df1")),
+      ("wt1-dm1", List(wt1), List(dm1), bnd("wt1-dm1"), bnd("wt1-dm1")), 
       
       // peaks that are differentially expressed in diseased samples compared to the wild type
-      ("wt-dm", wt, dm, 37, 60), // 59 @ 5.0, 45 @ 2.0, 37 @ 1.0
-      ("wt-df", wt, df, 58, 80), // 77 @ 5.0, 69 @ 2.0, 58 @ 1.0
+      ("wt-dm", wt, dm, bnd("wt-dm"), bnd("wt-dm")),
+      ("wt-df", wt, df, bnd("wt-df"), bnd("wt-df")),
       
       // next two: what is in one diseases samples and not in the other?
-      ("dm-df", dm, df, 73, 95), // 92 @ 5.0, 82 @ 2.0, 73 @ 1.0
-      ("df-dm", df, dm, 57, 85), // 81 @ 5.0, 68 @ 2.0, 57 @ 1.0
+      ("dm-df", dm, df, bnd("dm-df"), bnd("dm-df")),
+      ("df-dm", df, dm, bnd("df-dm"), bnd("df-dm")),
 
       // Check what is commonly over/under expressed in diseased samples
       // Woa! This is not really a test case. This is the final analysis!
-      ("wt-dmdf", wt, dmdf, 33, 50) // 48 @ 5.0, 39 @ 2.0, 33 @ 1.0
+      ("wt-dmdf", wt, dmdf, bnd("wt-dmdf"), bnd("wt-dmdf"))
       
     )
 
