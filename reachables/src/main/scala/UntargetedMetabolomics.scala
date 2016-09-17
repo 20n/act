@@ -135,9 +135,22 @@ object UntargetedPeakSpectra {
 class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses: List[LCMSExperiment]) {
 
   def analyze(): LCMSExperiment = {
-    val unifiedControls = unifyReplicates(controls)
-    val unifiedHypotheses = unifyReplicates(hypotheses)
+    val (normalizedControls, normalizedHypotheses) = normalize(controls, hypotheses)
+    val unifiedControls = unifyReplicates(normalizedControls)
+    val unifiedHypotheses = unifyReplicates(normalizedHypotheses)
     extractOutliers(unifiedHypotheses, unifiedControls)
+  }
+
+  def normalize(setA: List[LCMSExperiment], setB: List[LCMSExperiment]) = {
+    // we normalize across all datasets, so we put them in a bin together
+    // but we remember where each came from by keeping the num of experiments
+    // each in A, B, i.e., |A|, |B|, so that later we can just `take` that many out
+    val exprAB = List(setA, setB)
+    val szA = setA.size
+    val allExpr = exprAB.flatten
+    val norm = normalizeCommonPeaks(allExpr)
+    // now split it back into two lists of appropriate sizes
+    (norm.take(szA), norm.drop(szA))
   }
 
   // we use the average to combine multiple signals at the same mz, rt
@@ -242,6 +255,50 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
       .map{ case Some(p) => p }
     val provenance = new ComputedData(sources = exprs.map(_.origin))
     new LCMSExperiment(provenance, new UntargetedPeakSpectra(sharedPeaks))
+  }
+
+  def normalizeCommonPeaks(exprs: List[LCMSExperiment]): List[LCMSExperiment] = {
+    // we do the same thing we do when we are computing a uniform metric over shared peaks across all exprs
+    // we first extract the shared peaks (and then we'll look for how they vary across each set)
+    val peakSetsForAllReplicates = exprs.map{ expr => expr.peakSpectra.peaks }
+    val peaksKeyedByMzAndRt = findAlignedPeaks(peakSetsForAllReplicates)
+    val peaksByMzAndRtNonEmpty = peaksKeyedByMzAndRt.filter{ case(_, lstSets) => lstSets.forall(_.size != 0) }
+
+
+
+
+
+
+
+    def isPivotMz(mz: MonoIsotopicMass) = {
+      true
+    }
+
+    // now filter/focus attention to only the relevant peaks, e.g., aminoacid peaks
+    val peaksForPivots = peaksByMzAndRtNonEmpty.filter{ case ((mz, _), _) => isPivotMz(mz) }
+
+    // calculate the normalization factor compared to some picked pivot.
+    val normFactors = exprs.map{ case e => 1 }
+
+
+
+
+
+
+
+
+    def normalizePeak(pk: UntargetedPeak, factor: Double) = {
+      // change the integrated and max intensities, but SNR stays the same. SNR is not a scaling candidate!
+      new UntargetedPeak(pk.mz, pk.rt, pk.integratedInt * factor, pk.maxInt * factor, pk.snr)
+    }
+
+    val exprsNormFactor = exprs.zip(normFactors)
+    exprsNormFactor.map{ case (e, normFactor)  => {
+      val normalizedPeaks = e.peakSpectra.peaks.map(p => normalizePeak(p, normFactor))
+      val provenance = new ComputedData(sources = List(e.origin))
+      new LCMSExperiment(provenance, new UntargetedPeakSpectra(normalizedPeaks))
+    }}
+
   }
 
   // This does not serious boilerplating to move stuff around!
@@ -481,3 +538,4 @@ object UntargetedMetabolomics {
   }
 
 }
+
