@@ -4,6 +4,7 @@ import java.io.{PrintWriter, File}
 import act.shared.{CmdLineParser, OptDesc}
 import scala.io.Source
 import act.shared.ChemicalSymbols.{MonoIsotopicMass, AllAminoAcids}
+import com.act.lcms.MS1.MetlinIonMass
 
 class RetentionTime(private val time: Double) {
   // Default drift allowed is emperically picked based on observations over experimental data
@@ -257,6 +258,141 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     new LCMSExperiment(provenance, new UntargetedPeakSpectra(sharedPeaks))
   }
 
+  class NormalizationVector(val vec: List[Double], val pivots: Object) {
+    // a normalization vector is a ordered list of multiplicative factors
+
+    // we can also think of it as a `vector arrow` in n-dimensional space
+    // which allows us to compute normal vector metrics between vectors
+    // e.g., we can use the angle between the vectors and their magnitude
+    // as measures of how similar the vectors are to each other
+    // and if they are all similar within bounds, then use the average of
+    // the vectors as the consensus vector.
+
+    def +(that: NormalizationVector) = {
+      val vecSum = this.vec.zip(that.vec).map(pairwise(_+_))
+      val origin = List(this.pivots, "+", that.pivots)
+      new NormalizationVector(vecSum, origin)
+    }
+
+    def -(that: NormalizationVector) = {
+      val vecSum = this.vec.zip(that.vec).map(pairwise(_-_))
+      val origin = List(this.pivots, "-", that.pivots)
+      new NormalizationVector(vecSum, origin)
+    }
+
+    def pairwise(fn: (Double, Double) => Double)(v: (Double, Double)): Double = { fn(v._1, v._2) }
+
+    def /(denominator: Double) = {
+      val div = this.vec.map(_ / denominator)
+      val origin = List(pivots, "/", denominator)
+      new NormalizationVector(div, origin)
+    }
+
+    def dot(that: NormalizationVector): Double = {
+      val prd: List[Double] = this.vec.zip(that.vec).map(pairwise(_*_))
+      prd.reduce(_ + _)
+    }
+
+    def angle(that: NormalizationVector): Double = {
+      // cos(angle) = dot product / product of lens
+      math acos ((this dot that) / (this.len * that.len))
+    }
+
+    def len(): Double = {
+      val squares = this.vec.map(v => math pow (v, 2))
+      math.sqrt(squares.reduce(_ + _))
+    }
+
+    // to normalize a trace with a vector, we multiply each peak within
+    // each experiment with its corresponding multiplicative factor
+    def normalize(exprs: List[LCMSExperiment]) = {
+      val exprsNormFactor = exprs.zip(vec)
+      exprsNormFactor.map{ case (e, multiplier)  => {
+        val normalizedPeaks = e.peakSpectra.peaks.map(p => scalePeak(p, multiplier))
+        val provenance = new ComputedData(sources = List(e.origin))
+        new LCMSExperiment(provenance, new UntargetedPeakSpectra(normalizedPeaks))
+      }}
+    }
+
+    def scalePeak(pk: UntargetedPeak, scale: Double) = {
+      // change the integrated and max intensities, but SNR stays the same. SNR is not a scaling candidate!
+      new UntargetedPeak(pk.mz, pk.rt, pk.integratedInt * scale, pk.maxInt * scale, pk.snr)
+    }
+
+    override def toString = s"Multipliers = $vec Using pivots = $pivots"
+  }
+
+  object NormalizationVector {
+    val okAngleDeviation = math toRadians (20.0)
+    val okLengthDeviation = 1.0
+
+    // build a normalization vector using a set of peaks coming in for pivots
+    def build(alignedPeaks: List[MzRtPeaks]) = {
+      // now filter/focus attention to only the relevant peaks, e.g., aminoacid peaks
+      val peaksForPivots: Set[MzRtPeaks] = alignedPeaks.filter{ 
+        case ((mz, _), _) => NormalizeUsingAminoAcids.isPivotMz(mz)
+      }.toSet
+
+      val possibleNormalizers: Set[NormalizationVector] = peaksForPivots.map{
+        case ((mz, rt), peakSets) => {
+          // peakSets is a ordered list of peaks found in each spectra
+          // because there might be multiple reading in each spectra for the same mz,rt
+          // there can be a set of replicates readings. So we compress each set into a single peak
+          val representativePeaks = peakSets.map(peakClusterToOne(mz, rt))
+          // we now have a single representative peak for each spectra (at this pivot point mz)
+          // use that representative peak to find the normalization factor
+          val multipliers = getMultipliers(representativePeaks)
+          val derivedFrom = mz
+          new NormalizationVector(multipliers, mz)
+        }
+      }
+      average(possibleNormalizers)
+    }
+
+    def average(vectors: Set[NormalizationVector]) = {
+      println(s"Norm vectors: $vectors")
+      ensureNotTooDeviant(vectors)
+      val avgVec = vectors.reduce(_ + _) / vectors.size
+      avgVec
+    }
+
+    def ensureNotTooDeviant(vectors: Set[NormalizationVector]) {
+      // for all pairs of vectors compute the angles and lengths
+      // this will be O(n^2) in the size of vectors
+      val anglesLens = for (a <- vectors; b <- vectors) yield {
+        val angle = a angle b
+        val lenDiff = math abs (a.len - b.len)
+        (angle, lenDiff)
+      }
+      val (angles, lenDiffs): (List[Double], List[Double]) = anglesLens.toList.unzip
+      val maxAngle = angles.reduce(math max (_, _))
+      val maxLenDiff = lenDiffs.reduce(math max (_, _))
+      println(s"Norm vectors: maxAngle: $maxAngle, maxLenDiff: $maxLenDiff")
+      val tooDeviant = maxAngle > okAngleDeviation || maxLenDiff > okLengthDeviation
+      if (tooDeviant) { println(s"Vectors deviate way too much!"); assert(false) }
+    }
+
+    def getMultipliers(peakSet: List[UntargetedPeak]) = {
+      // it does not matter which peak we pick as the normalizer, so might as well pick the first
+      val valueOf1 = peakSet(0).integratedInt
+      // for each spectra now, we calculate what factor will bring it to the same scale as the first
+      // e.g., if the AminoAcid Cys was present in all traces, and in the first it's intensity was 5
+      // and in the 2nd, 3rd, 4th it was 10, 20, 30 respectively. Then we need to normalize by
+      // 1/1, 1/2, 1/4, and 1/6 in the 1st..4th respectively. These are equivalently
+      // 5/5, 5/10, 5/20, 5/30, which is `valueOf1 / (ith intensity)`
+      val normFactors = peakSet.map{ p => valueOf1 / p.integratedInt }
+      normFactors
+    }
+
+  }
+
+  object NormalizeUsingAminoAcids {
+    val mH: MetlinIonMass = MS1.ionDeltas.find(_.getName.equals("M+H")) match { case Some(mh) => mh }
+    val aaMasses: List[Double] = AllAminoAcids.map(_.mass.initMass)
+    val aaMzs: List[MonoIsotopicMass] = aaMasses.map(m => new MonoIsotopicMass(MS1.computeIonMz(m, mH)))
+    def isPivotMz(mz: MonoIsotopicMass) = aaMzs.contains(mz)
+  }
+
   def normalizeCommonPeaks(exprs: List[LCMSExperiment]): List[LCMSExperiment] = {
     // we do the same thing we do when we are computing a uniform metric over shared peaks across all exprs
     // we first extract the shared peaks (and then we'll look for how they vary across each set)
@@ -264,41 +400,11 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     val peaksKeyedByMzAndRt = findAlignedPeaks(peakSetsForAllReplicates)
     val peaksByMzAndRtNonEmpty = peaksKeyedByMzAndRt.filter{ case(_, lstSets) => lstSets.forall(_.size != 0) }
 
+    // calculate the normalization factor, defined as ratio of peak intensities in pivot compared to each expr
+    val normalizer = NormalizationVector.build(peaksByMzAndRtNonEmpty.toList)
 
-
-
-
-
-
-    def isPivotMz(mz: MonoIsotopicMass) = {
-      true
-    }
-
-    // now filter/focus attention to only the relevant peaks, e.g., aminoacid peaks
-    val peaksForPivots = peaksByMzAndRtNonEmpty.filter{ case ((mz, _), _) => isPivotMz(mz) }
-
-    // calculate the normalization factor compared to some picked pivot.
-    val normFactors = exprs.map{ case e => 1 }
-
-
-
-
-
-
-
-
-    def normalizePeak(pk: UntargetedPeak, factor: Double) = {
-      // change the integrated and max intensities, but SNR stays the same. SNR is not a scaling candidate!
-      new UntargetedPeak(pk.mz, pk.rt, pk.integratedInt * factor, pk.maxInt * factor, pk.snr)
-    }
-
-    val exprsNormFactor = exprs.zip(normFactors)
-    exprsNormFactor.map{ case (e, normFactor)  => {
-      val normalizedPeaks = e.peakSpectra.peaks.map(p => normalizePeak(p, normFactor))
-      val provenance = new ComputedData(sources = List(e.origin))
-      new LCMSExperiment(provenance, new UntargetedPeakSpectra(normalizedPeaks))
-    }}
-
+    // now normalize each experiment to normalize across systematic variation in peak intensities
+    normalizer.normalize(exprs)
   }
 
   // This does not serious boilerplating to move stuff around!
@@ -480,7 +586,7 @@ object UntargetedMetabolomics {
 
     // wt{1,2,3} = wildtype replicates 1, 2, 3
     // d{M,F}{1,2,3} = disease line {M,F} replicates 1, 2, 3
-    // each test is specified as (controls, hypothesis, num_peaks_min, num_peaks_max) inclusive both
+
     val cases = List(
       // consistency check: hypothesis same as control => no peaks should be differentially identified
       ("wt1-wt1", List(wt1), List(wt1), 0, 0),
@@ -536,6 +642,5 @@ object UntargetedMetabolomics {
 
     }}
   }
-
 }
 
