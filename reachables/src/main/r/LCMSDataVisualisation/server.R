@@ -17,8 +17,7 @@ library(dplyr)
 library(rscala)
 library(classInt)
 
-kChartLabelSizeFactor <- 1.3
-kLabelFactor <- 1.2
+kChartLabelSizeFactor <- 1
 kIntensityThreshold <- 10000
 kSSRatio <- 20
 
@@ -155,17 +154,17 @@ shinyServer(function(input, output, session) {
     getScansAndHeader(input$retention.time.range, full.data.simple)
   })
   
-  scans.and.header.1 <- eventReactive(input$load.multi, {
+  scans.and.header.1 <- eventReactive(input$load.multi.1, {
     full.data.simple <- full.data.simple.1()
-    getScansAndHeader(input$retention.time.range, full.data.simple)
+    getScansAndHeader(input$retention.time.range.multi, full.data.simple)
   })
-  scans.and.header.2 <- eventReactive(input$load.multi, {
+  scans.and.header.2 <- eventReactive(input$load.multi.2, {
     full.data.simple <- full.data.simple.2()
-    getScansAndHeader(input$retention.time.range, full.data.simple)
+    getScansAndHeader(input$retention.time.range.multi, full.data.simple)
   })
-  scans.and.header.3 <- eventReactive(input$load.multi, {
+  scans.and.header.3 <- eventReactive(input$load.multi.3, {
     full.data.simple <- full.data.simple.3()
-    getScansAndHeader(input$retention.time.range, full.data.simple)
+    getScansAndHeader(input$retention.time.range.multi, full.data.simple)
   })
   
   
@@ -179,19 +178,19 @@ shinyServer(function(input, output, session) {
   
   data.1 <- reactive({
     scans.header <- scans.and.header.1()
-    target.mz <- target.mz()
-    getData(target.mz, input$mz.band.halfwidth, scans.header)
+    target.mz <- target.mz.multi()
+    getData(target.mz, input$mz.band.halfwidth.multi, scans.header)
   })
   data.2 <- reactive({
     scans.header <- scans.and.header.2()
-    target.mz <- target.mz()
-    getData(target.mz, input$mz.band.halfwidth, scans.header)
+    target.mz <- target.mz.multi()
+    getData(target.mz, input$mz.band.halfwidth.multi, scans.header)
   })
   
   data.3 <- reactive({
     scans.header <- scans.and.header.3()
-    target.mz <- target.mz()
-    getData(target.mz, input$mz.band.halfwidth, scans.header)
+    target.mz <- target.mz.multi()
+    getData(target.mz, input$mz.band.halfwidth.multi, scans.header)
   })
   
   target.mz <- reactive({
@@ -202,7 +201,16 @@ shinyServer(function(input, output, session) {
       getIonMz(target.mass, input$mode)
     }
   })
-  
+
+  target.mz.multi <- reactive({
+    target.mass <- input$target.monoisotopic.mass.multi
+    if (input$mode.multi == "M (use mass as target mz value)") {
+      target.mass
+    } else {
+      getIonMz(target.mass, input$mode.multi)
+    }
+  })
+    
   detected.peaks <- reactive({
     data <- data.simple()
     data <- data %>%
@@ -234,20 +242,20 @@ shinyServer(function(input, output, session) {
   
   output$plot1 <- renderPlot({
     data <- data.1()
-    target.mz <- target.mz()
-    plotRawData(data, target.mz, input$mz.band.halfwidth, input$angle.theta, input$angle.phi)
+    target.mz <- target.mz.multi()
+    plotRawData(data, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
   })
   
   output$plot2 <- renderPlot({
     data <- data.2()
-    target.mz <- target.mz()
-    plotRawData(data, target.mz, input$mz.band.halfwidth, input$angle.theta, input$angle.phi)
+    target.mz <- target.mz.multi()
+    plotRawData(data, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
   })
   
   output$plot3 <- renderPlot({
     data <- data.3()
-    target.mz <- target.mz()
-    plotRawData(data, target.mz, input$mz.band.halfwidth, input$angle.theta, input$angle.phi)
+    target.mz <- target.mz.multi()
+    plotRawData(data, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
   })
   
   output$target.mz <- renderText({
@@ -256,7 +264,7 @@ shinyServer(function(input, output, session) {
   
   # https://github.com/rstudio/shiny/issues/743
   output$target.mz.multi <- renderText({
-    sprintf("Target m/z value (computed from input mass and mode): %s", target.mz())
+    sprintf("Target m/z value (computed from input mass and mode): %s", target.mz.multi())
   })
   
   output$detected.peaks <- renderTable({
