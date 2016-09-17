@@ -70,7 +70,7 @@ class UntargetedPeakSpectra(val peaks: Set[UntargetedPeak]) {
 
   def toStats = {
     def sortfn(a: UntargetedPeak, b: UntargetedPeak) = {
-      val field: XCMSCol = IntIntensity // you can also sort by MZ or RT
+      val field: XCMSCol = RT // IntIntensity // you can also sort by MZ or RT
       field match {
         case IntIntensity => a.integratedInt > b.integratedInt
         case MZ => MonoIsotopicMass.ascender(a.mz, b.mz)
