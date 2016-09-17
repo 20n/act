@@ -196,7 +196,8 @@ object Solver {
   // clause "negation(this specific solution)" and continue until UNSAT. When UNSAT return solns
   def solveMany(eqns: List[BooleanExpr]): Set[Map[Var, Int]] = time { solveManyAux(eqns, Set()) }
 
-  @tailrec def solveManyAux(eqns: List[BooleanExpr], solns: Set[Map[Var, Int]]): Set[Map[Var, Int]] = {
+  @tailrec
+  def solveManyAux(eqns: List[BooleanExpr], solns: Set[Map[Var, Int]]): Set[Map[Var, Int]] = {
     solveOne(eqns) match {
       case None => solns
       case Some(s) => {
