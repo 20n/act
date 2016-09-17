@@ -2,13 +2,15 @@ package act.shared
 
 object ChemicalSymbols {
 
-  sealed trait Atom { def symbol: Char; def mass: MonoIsotopicMass }
-  case object C extends Atom { val symbol = 'C'; val mass = new MonoIsotopicMass(12.000000) }
-  case object H extends Atom { val symbol = 'H'; val mass = new MonoIsotopicMass( 1.007825) }
-  case object O extends Atom { val symbol = 'O'; val mass = new MonoIsotopicMass(15.994915) }
-  case object N extends Atom { val symbol = 'N'; val mass = new MonoIsotopicMass(14.003074) }
-  case object P extends Atom { val symbol = 'P'; val mass = new MonoIsotopicMass(30.973761) }
-  case object S extends Atom { val symbol = 'S'; val mass = new MonoIsotopicMass(31.972071) }
+  sealed trait Atom { def symbol: Char; def mass: MonoIsotopicMass; def maxValency: Int }
+  case object C extends Atom { val symbol = 'C'; val mass = new MonoIsotopicMass(12.000000); val maxValency = 4  }
+  case object H extends Atom { val symbol = 'H'; val mass = new MonoIsotopicMass( 1.007825); val maxValency = 1  }
+  case object O extends Atom { val symbol = 'O'; val mass = new MonoIsotopicMass(15.994915); val maxValency = 2  }
+  case object N extends Atom { val symbol = 'N'; val mass = new MonoIsotopicMass(14.003074); val maxValency = 4  }
+  case object P extends Atom { val symbol = 'P'; val mass = new MonoIsotopicMass(30.973761); val maxValency = 2  }
+  case object S extends Atom { val symbol = 'S'; val mass = new MonoIsotopicMass(31.972071); val maxValency = 6  }
+
+  val AllAtoms = List(C, H, O, N, P, S)
   
   abstract class AminoAcid {
     def name: String
@@ -126,15 +128,26 @@ object ChemicalSymbols {
     // tolerate differences in the last decimal place at which monoIsotopicMasses specified
     // i.e., we consider masses upto 0.001 away from each other to be identical
     // note that the mass of an electron is 5.5e-4 Da, so we allow upto around an electron mass
-    private val tolerance = 1e3
-    private val truncated = (math round (initMass * tolerance)) / tolerance
+    private val defaultNumPlaces = 3
+
+    // `` holds the value of initMass rounded to integers and scaled by 10^defaultNumPlaces
+    // Reason we keep the scaling (and not just the truncated double value) is that allows us to
+    // get away from floating point rounding errors. With the scaled value, we also get to keep
+    // the type as `Long`. With all of that `hashCode` and `equals` are proper and don't introduce
+    // errors. We were seeing values such as 5.944444444444445 and 100.07600000000001 in the output
+    // when `truncated` was typed as `Double` instead of `Long`. 
+    private val truncated = roundedAndScaled()
+
+    def rounded(numDec: Int = defaultNumPlaces): Double = roundedAndScaled(numDec) * tolerance(numDec)
+    def roundedAndScaled(numDec: Int = defaultNumPlaces): Long = math round (initMass/tolerance(numDec))
+    def tolerance(numDec: Int): Double = math.pow(10, -numDec)
 
     override def equals(that: Any) = that match { 
-      case that: MonoIsotopicMass => this.truncated == that.truncated
+      case that: MonoIsotopicMass => this.truncated.equals(that.truncated)
       case _ => false
     }
     override def hashCode() = truncated.hashCode
-    override def toString(): String = this.truncated.toString
+    override def toString(): String = this.rounded().toString
 
     // case when we might want to add: set of atoms together in a formula. need its full mass
     def +(that: MonoIsotopicMass) = new MonoIsotopicMass(this.initMass + that.initMass)

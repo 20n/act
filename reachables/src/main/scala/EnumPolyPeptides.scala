@@ -180,7 +180,7 @@ object EnumPolyPeptides {
   def main(args: Array[String]) {
 
     val className = this.getClass.getCanonicalName
-    val opts = List(optOutFile, optMaxLen, optIonSet, optRunStats)
+    val opts = List(optOutFile, optMaxLen, optIonSet, optRunStats, optRunTests)
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
     // read the command line options
@@ -205,11 +205,16 @@ object EnumPolyPeptides {
         })
     }
     outTsvFile.close()
-    if (cmdLine has optRunStats) { println(stats.mkString()) }
 
+    if (cmdLine has optRunStats) {
+      println(stats.mkString()) 
+    }
+
+    // TODO: move to scalatest. 
     // run unit test to make sure code is still sane
-    // TODO: move this to tests framework.
-    runAllUnitTests
+    if (cmdLine has optRunTests) {
+      runAllUnitTests
+    }
   }
 
   val optOutFile = new OptDesc(
@@ -245,8 +250,16 @@ object EnumPolyPeptides {
                               some basic stats on the masses, e.g., their distribution.""",
                     isReqd = false, hasArg = false)
 
+  val optRunTests = new OptDesc(
+                    param = "t",
+                    longParam = "run-tests",
+                    name = "run regression tests",
+                    desc = """Run regression tests. This will take some time.""",
+                    isReqd = false, hasArg = false)
+
   // TODO: move this into the tests directory
   def runAllUnitTests() {
+    println(s"${Console.BLUE}Running all tests!")
     checkNChooseK
     checkEnumerationSizeCorrect
     checkSpecificPeptides
