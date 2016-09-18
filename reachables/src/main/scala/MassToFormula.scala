@@ -843,11 +843,15 @@ object MassToFormula {
 trait Specials {
   def constraints(): Set[LinIneq]
 
-  def moreOf(x: Atom, y: Atom) = {
+  def moreOf(xCnt: (Int, Atom), yCnt: (Int, Atom)): LinIneq = {
+    val (cntx, x) = xCnt
+    val (cnty, y) = yCnt
     def t(c: Int, a: Atom) = Term(Const(c), MassToFormula.atomToVar(a))
-    val lhs = LinExpr(List(t(1, x), t(-1, y)))
-    LinIneq(lhs, Gt, Const(0))
+    val lhs = LinExpr(List(t(cntx, x), t(-1 * cnty, y)))
+    LinIneq(lhs, Ge, Const(0))
   }
+
+  def moreOf(x: Atom, y: Atom): LinIneq = moreOf((1, x), (1, y))
 }
 
 class MostlyCarbons extends Specials {
@@ -856,4 +860,8 @@ class MostlyCarbons extends Specials {
 
 class MoreHThanC extends Specials {
   def constraints() = Set() + moreOf(H, C)
+}
+
+class LessThan3xH extends Specials {
+  def constraints() = Set() + moreOf((3, C), (1, H))
 }
