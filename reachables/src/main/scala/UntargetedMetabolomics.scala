@@ -538,6 +538,7 @@ object UntargetedMetabolomics {
         val hypotheses = hyp.map(mkLCMSExpr).toList
         val experiment = new UntargetedMetabolomics(controls = controls, hypotheses = hypotheses)
         val analysisRslt = experiment.analyze()
+        val candidateMols = new PlausibleMolecules(analysisRslt)
 
         val statsStr = analysisRslt.toStatsStr
         println(s"stats = $statsStr")
@@ -606,7 +607,7 @@ object UntargetedMetabolomics {
       "wt-df"   -> Map((3, 1.0) ->  58, (3, 2.0) ->  69, (3, 5.0) ->  77, (2, 1.0) -> 347),
       "dm-df"   -> Map((3, 1.0) ->  73, (3, 2.0) ->  82, (3, 5.0) ->  92, (2, 1.0) -> 331),
       "df-dm"   -> Map((3, 1.0) ->  57, (3, 2.0) ->  68, (3, 5.0) ->  81, (2, 1.0) -> 340),
-      "wt-dmdf" -> Map((3, 1.0) ->  33, (3, 2.0) ->  39, (3, 5.0) ->  48, (2, 1.0) -> 895)
+      "wt-dmdf" -> Map((3, 1.0) ->  33, (3, 2.0) ->  39, (3, 5.0) ->  48, (2, 1.0) -> 1231)
     )
   
     def bnd(tcase: String) = expPks(tcase)((MonoIsotopicMass.defaultNumPlaces, RetentionTime.driftTolerated))
@@ -662,9 +663,12 @@ object UntargetedMetabolomics {
       val hypotheses = hypothesesF.map(readSpectra)
       val experiment = new UntargetedMetabolomics(controls = controls, hypotheses = hypotheses)
       val analysisRslt = experiment.analyze()
+      val candidateMols = new PlausibleMolecules(analysisRslt)
       if (verbose) {
-        val statsStr = analysisRslt.toStatsStr
-        println(s"stats = $statsStr")
+        val rawMzPeaks = analysisRslt.toStatsStr
+        val molecules = candidateMols.toStatsStr
+        println(s"rawPeaks = $rawMzPeaks")
+        println(s"molecules = $molecules")
       }
       val numPeaks = analysisRslt.toStats("num peaks").asInstanceOf[Int]
       if (!(numPeaks >= peakMinCnt && numPeaks <= peakMaxCnt)) {
@@ -676,3 +680,64 @@ object UntargetedMetabolomics {
   }
 }
 
+class PlausibleMolecules(val rawMzPeaks: LCMSExperiment, val ionOpts: Set[String] = Set("M+H", "M+Na")) {
+  val validIons = MS1.ionDeltas.toList.filter(i => ionOpts.contains(i.getName))
+
+  val (ionCandidatesForMolecules, toRawPeaksMap) = matchToPlausibleMols(rawMzPeaks)
+
+  def matchToPlausibleMols(rawPks: LCMSExperiment): (LCMSExperiment, Map[UntargetedPeak, UntargetedPeak]) = {
+    val (peakSets, mapToOriginalPks) = rawPks.peakSpectra.peaks.map(toIonCandidates).unzip
+
+    val peaks = keepOnlyMultiple(peakSets.flatten)
+    val provenance = new ComputedData(sources = List(rawMzPeaks.origin))
+    val molPeakSet = new LCMSExperiment(provenance, new UntargetedPeakSpectra(peaks))
+
+    val mapToOrig = {
+      if (mapToOriginalPks.size > 0)
+        mapToOriginalPks.reduce(_ ++ _)
+      else
+        Map[UntargetedPeak, UntargetedPeak]()
+    }.filterKeys(k => peaks.contains(k))
+
+    (molPeakSet, mapToOrig)
+  }
+
+  def keepOnlyMultiple(ionPeaks: Set[UntargetedPeak]): Set[UntargetedPeak] = {
+    // isolate to peaks that are the same (mz, rt) and multiple of those
+
+    // TODO: check if groupBy works if instead of toString we just use p.rt
+    // We are not sure if groupBy uses hashCode (which is deliberately not
+    // defined for RetentionTime) or it uses equals (which is defined)
+
+    // this has type Map[(MonoIsotopicMass, RetentionTime), UntargetedPeak]
+    // where we are expecting multiple peaks for the same MonoIsotopicMass
+    // because we backcalculated these masses from candidate ions for a peak
+    val mzRtToPeaks = ionPeaks.toList.groupBy(p => (p.mz, p.rt.toString))
+    val multiplePeak = mzRtToPeaks.filter{ case (_, pks) => pks.size > 1 }
+    multiplePeak.values.toSet.flatten
+  }
+
+  def toIonCandidates(mzPeak: UntargetedPeak): (List[UntargetedPeak], Map[UntargetedPeak, UntargetedPeak]) = {
+    val molCandPks = toMolCandidates(mzPeak)
+    val mp = molCandPks.map(molPk => (molPk -> mzPeak))
+
+    (molCandPks, mp.toMap)
+  }
+
+  def toMolCandidates(mzPeak: UntargetedPeak): List[UntargetedPeak] = {
+    validIons.map(ion => {
+      val massVal = MS1.computeMassFromIonMz(mzPeak.mz.initMass, ion)
+      val mass = new MonoIsotopicMass(massVal)
+      new UntargetedPeak(mass, mzPeak.rt, mzPeak.integratedInt, mzPeak.maxInt, mzPeak.snr)
+    })
+  }
+
+  def toStatsStr = {
+    List(
+      ionCandidatesForMolecules.peakSpectra.toStatsStr,
+      toRawPeaksMap.toList.sortBy(_._1.mz.initMass)
+        .map{ case (molPk, mzPk) => s"${molPk.mz.initMass} -> ${mzPk.mz.initMass} with (int, max, snr) = ${(molPk.integratedInt, molPk.maxInt, molPk.snr)}" }
+        .mkString("\n")
+    ).mkString("\n")
+  }
+}

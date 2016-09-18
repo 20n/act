@@ -355,6 +355,12 @@ public class MS1 {
     return ionMz;
   }
 
+  public static Double computeMassFromIonMz(Double ionMz, MetlinIonMass delta) {
+    // this reverses the computation of `computeIonMz`
+    Double mass = (ionMz + delta.mz) * delta.charge;
+    return mass;
+  }
+
   /**
    * This function takes a mass charge and mode as input and returns a list of metlin ion masses
    * @param mz Mass charge

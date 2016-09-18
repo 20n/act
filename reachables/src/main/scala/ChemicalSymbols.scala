@@ -124,11 +124,15 @@ object ChemicalSymbols {
   val AllAminoAcids = List(Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser,
                            Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg)
 
-  class MonoIsotopicMass(val initMass: Double) {
+  object MonoIsotopicMass {
     // tolerate differences in the last decimal place at which monoIsotopicMasses specified
     // i.e., we consider masses upto 0.001 away from each other to be identical
     // note that the mass of an electron is 5.5e-4 Da, so we allow upto around an electron mass
-    private val defaultNumPlaces = 3
+    val defaultNumPlaces = 2
+    def ascender(a: MonoIsotopicMass, b: MonoIsotopicMass) = a.initMass < b.initMass
+  }
+
+  class MonoIsotopicMass(val initMass: Double) {
 
     // `scaled` holds the value of initMass rounded to integers and scaled by 10^defaultNumPlaces
     // Reason we keep the scaling (and not just the truncated double value) is that allows us to
@@ -138,8 +142,8 @@ object ChemicalSymbols {
     // when `scaled` was typed as `Double` instead of `Long`. 
     private val scaled = roundedAndScaled()
 
-    def rounded(numDec: Int = defaultNumPlaces): Double = roundedAndScaled(numDec) * tolerance(numDec)
-    def roundedAndScaled(numDec: Int = defaultNumPlaces): Long = math round (initMass/tolerance(numDec))
+    def rounded(numDec: Int = MonoIsotopicMass.defaultNumPlaces): Double = roundedAndScaled(numDec) * tolerance(numDec)
+    def roundedAndScaled(numDec: Int = MonoIsotopicMass.defaultNumPlaces): Long = math round (initMass/tolerance(numDec))
     def tolerance(numDec: Int): Double = math.pow(10, -numDec)
 
     override def equals(that: Any) = that match { 
@@ -147,7 +151,7 @@ object ChemicalSymbols {
       case _ => false
     }
     override def hashCode() = scaled.hashCode
-    override def toString(): String = String.format(s"%.${defaultNumPlaces}f", this.rounded(): java.lang.Double)
+    override def toString(): String = String.format(s"%.${MonoIsotopicMass.defaultNumPlaces}f", this.rounded(): java.lang.Double)
 
     // case when we might want to add: set of atoms together in a formula. need its full mass
     def +(that: MonoIsotopicMass) = new MonoIsotopicMass(this.initMass + that.initMass)
@@ -157,10 +161,6 @@ object ChemicalSymbols {
     def *(num: Int) = new MonoIsotopicMass(this.initMass * num)
 
     def isIn(low: Double, high: Double): Boolean = rounded() >= low && rounded() <= high
-  }
-
-  object MonoIsotopicMass {
-    def ascender(a: MonoIsotopicMass, b: MonoIsotopicMass) = a.initMass < b.initMass
   }
 
   object Helpers {
