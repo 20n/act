@@ -239,7 +239,7 @@ object Solver {
   } 
 }
 
-class MassToFormula(private val atomSpace: List[Atom] = AllAtoms) {
+class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: List[Atom] = AllAtoms) {
   // this is critical correctness parameter. The solver searches the integral space
   // int(mass) + { -delta .. +delta} for candidate solutions. it then validates each
   // solution in the continuous domain (but up to the precision as dictated by mass
@@ -257,10 +257,9 @@ class MassToFormula(private val atomSpace: List[Atom] = AllAtoms) {
       val integralMass = a.mass.rounded(0).toInt
       (a, integralMass)
     }).toMap
-  val varsForAtoms = elements.map(a => (a, atomToVar(a))).toMap
-  val atomsForVars = elements.map(a => (atomToVar(a), a)).toMap
+  val varsForAtoms = elements.map(a => (a, MassToFormula.atomToVar(a))).toMap
+  val atomsForVars = elements.map(a => (MassToFormula.atomToVar(a), a)).toMap
 
-  def atomToVar(a: Atom) = Var(a.symbol.toString)
   def computedMass(formula: ChemicalFormula) = formula.map{ case (a, i) => a.mass * i }.reduce(_+_)
   def toChemicalFormula(x: (Var, Int)) = (atomsForVars(x._1), x._2)
 
@@ -295,7 +294,8 @@ class MassToFormula(private val atomSpace: List[Atom] = AllAtoms) {
 
     val candidateFormulae = RHSints.map( intMz => {
       val constraints = buildConstraintOverInts(intMz)
-      val sat = Solver.solveMany(constraints)
+      val specializations = specials.map(_.constraints).flatten
+      val sat = Solver.solveMany(constraints ++ specializations)
       val formulae = sat.map(soln => soln.map(toChemicalFormula))
       formulae
     }).flatten
@@ -407,9 +407,11 @@ class MassToFormula(private val atomSpace: List[Atom] = AllAtoms) {
     // so this final contraints set is 2 + 6 = 8.
     ineq :: onec :: bounds
   }
+
 }
 
 object MassToFormula {
+  def atomToVar(a: Atom) = Var(a.symbol.toString)
 
   // These can be overwritten by command line arguments to specific files
   // We can pass them around as arguments, but it was getting very painful.
@@ -421,7 +423,7 @@ object MassToFormula {
 
   def main(args: Array[String]) {
     val className = this.getClass.getCanonicalName
-    val opts = List(optMz, optMassFile, optOutputFile, optOutFailedTests, optRunTests)
+    val opts = List(optMz, optMassFile, optOutputFile, optOutFailedTests, optRunTests, optSpecials)
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
     outStream = {
@@ -442,19 +444,35 @@ object MassToFormula {
       }
     }
 
+    val specials: Set[Specials] = {
+      if (cmdLine has optSpecials) {
+        val spls = (cmdLine getMany optSpecials).toSet
+        def nameToClass(s: String) = {
+          val fullyQualifiedName = this.getClass.getPackage.getName + "." + s
+          Class.forName(fullyQualifiedName)
+          .newInstance
+          .asInstanceOf[Specials]
+        }
+        val splConstraints = spls.map(nameToClass)
+        splConstraints
+      } else {
+        Set()
+      }
+    }
+
     if (cmdLine has optRunTests) {
       // TODO: Eventually, move to scalatest.
       runAllUnitTests
     } else if ((cmdLine has optMz) && !(cmdLine has optMassFile)) {
       val mass = (cmdLine get optMz).toDouble
-      solve(List(mass))
+      solve(specials)(List(mass))
     } else if ((cmdLine has optMassFile) && !(cmdLine has optMz)) {
       val source = scala.io.Source.fromFile(cmdLine get optMassFile)
       val massStrs = try source.getLines.toList finally source.close()
       // expect input lines to be tab separated with the first column the mass
       // and the rest can have meta data with them (e.g., the err output file)
       // we split by tabs and then pick the first element to convert to double
-      solve(massStrs.map(_.split("\t")(0).toDouble))
+      solve(specials)(massStrs.map(_.split("\t")(0).toDouble))
     } else {
       // we cannot handle both a single mass and a mass file on the command line
       // so write a snarky message to user, and abort! Ouch.
@@ -464,8 +482,8 @@ object MassToFormula {
 
   }
 
-  def solve(masses: List[Double]): Unit = {
-    val f = new MassToFormula
+  def solve(specials: Set[Specials])(masses: List[Double]): Unit = {
+    val f = new MassToFormula(specials)
     masses.foreach( m => {
       val solns = f.solve(new MonoIsotopicMass(m))
       val allChemicalFormulae = solns.map(f.buildChemFormulaA)
@@ -530,6 +548,15 @@ object MassToFormula {
                              |solvings back as input and iteratively improve the algorithm until
                              |it can solve all masses.""".stripMargin,
                     isReqd = false, hasArg = true)
+
+  val optSpecials = new OptDesc(
+                    param = "s",
+                    longParam = "specials",
+                    name = "restrictions",
+                    desc = """Do solving in a specialized, i.e., restricted space of solutions
+                             |For example, under a setting where the num carbons dominates.
+                             |To specialize the solver to that, pass it MostlyCarbons""".stripMargin,
+                    isReqd = false, hasArgs = true)
 
   val optOutputFile = new OptDesc(
                     param = "o",
@@ -766,7 +793,7 @@ object MassToFormula {
         val (intMz, elems, validAtomicFormulae) = test
         val formulator = new MassToFormula(atomSpace = elems) // Hah! The "formulator"
         val constraints = formulator.buildConstraintOverInts(intMz)
-        val validSolns = validAtomicFormulae.map(_.map(kv => (formulator.atomToVar(kv._1), kv._2)))
+        val validSolns = validAtomicFormulae.map(_.map(kv => (MassToFormula.atomToVar(kv._1), kv._2)))
         testOneSolnOverCNO(constraints, intMz, validSolns, formulator)
         testAllSolnOverCNO(constraints, intMz, validSolns, formulator)
       }
@@ -811,4 +838,22 @@ object MassToFormula {
     }
   }
 
+}
+
+trait Specials {
+  def constraints(): Set[LinIneq]
+
+  def moreOf(x: Atom, y: Atom) = {
+    def t(c: Int, a: Atom) = Term(Const(c), MassToFormula.atomToVar(a))
+    val lhs = LinExpr(List(t(1, x), t(-1, y)))
+    LinIneq(lhs, Gt, Const(0))
+  }
+}
+
+class MostlyCarbons extends Specials {
+  def constraints() = Set() + (moreOf(C, N), moreOf(C, O), moreOf(C, S), moreOf(C, P))
+}
+
+class MoreHThanC extends Specials {
+  def constraints() = Set() + moreOf(H, C)
 }
