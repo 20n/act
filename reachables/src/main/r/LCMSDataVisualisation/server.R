@@ -74,7 +74,8 @@ getScansAndHeader <- function(retention.time.range, full.data) {
 getScopedData <- function(target.mz.value, mz.band.halfwidth, scans.and.header) {
   validate(
     need(target.mz.value >= 50 && target.mz.value <= 950, "Target mz value should be between 50 and 950"),
-    need(mz.band.halfwidth >= 0.00001, "M/Z band halfwidth should be >= 0.00001")
+    need(mz.band.halfwidth >= 0.00001, "M/Z band halfwidth should be >= 0.00001"),
+    need(mz.band.halfwidth <= 1, "Avoid values of M/Z band halfwidth > 1 that can make the server crash")
   )
   cat("Getting data for given mz scope\n")
   min.ionic.mass <- target.mz.value - mz.band.halfwidth
