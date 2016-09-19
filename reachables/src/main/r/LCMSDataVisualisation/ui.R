@@ -45,28 +45,13 @@ shinyUI(fluidPage(
              tabPanel("Multi",
                       sidebarPanel(
                         h3("Scans selection"),
-                        div(
-                          div(style="width:80%; display:inline-block", textInput("filename1", label = "File name", value = "Plate_jaffna3_A1_0815201601.nc")),
-                          div(style="display:inline-block", actionButton("load.1", icon("refresh"),
-                                                                         style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))
-                        ),
-                        div(
-                          div(style="width:80%; display:inline-block", textInput("filename2", label = "File name", value = "Plate_jaffna3_B1_0815201601.nc")),
-                          div(style="display:inline-block", actionButton("load.2", icon("refresh"),
-                                                                         style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))
-                        ),
-                        div(
-                          div(style="width:80%; display:inline-block", textInput("filename3", label = "File name", value = "Plate_jaffna3_C1_0815201601.nc")),
-                          div(style="display:inline-block", actionButton("load.3", icon("refresh"),
-                                                                         style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))
-                        ),
-                        div(
-                          div(style="width:80%; display:inline-block", sliderInput("retention.time.range.multi", label = "Retention Time range",
-                                                                        min = 0, max = 450, value = c(130, 160), step = 5)),
-                          div(style="display:inline-block", actionButton("load.multi.time", icon("refresh"),
-                                                                         style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))
-                        ),
-                        em("Press the time range refresh button to display plots"),
+                        textInput("filename1", label = "Filename - Plate 1", value = "Plate_jaffna3_A1_0815201601.nc"),
+                        textInput("filename2", label = "Filename - Plate 2", value = "Plate_jaffna3_B1_0815201601.nc"),
+                        textInput("filename3", label = "Filename - Plate 3", value = "Plate_jaffna3_C1_0815201601.nc"),
+                        sliderInput("retention.time.range.multi", label = "Retention Time range",
+                                    min = 0, max = 450, value = c(130, 160), step = 5),
+                        actionButton("load.multi", "Load or refresh scans", icon("refresh"),
+                                     style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
                         h3("M/Z scope"),
                         selectInput("mode.multi", label = "m/z mode", choices = kModes, selected = "M+H"),
                         numericInput("target.monoisotopic.mass.multi", label = "Target monoisotopic mass", value = 463.184234, step = 0.001),
