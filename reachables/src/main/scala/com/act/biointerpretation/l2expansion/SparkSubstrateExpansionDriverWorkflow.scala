@@ -84,7 +84,7 @@ class SparkSubstrateExpansionDriverWorkflow extends Workflow {
       s"A JAR file must either be explicitly supplied [Option: $OPTION_ASSEMBLED_JAR_FILE <File Path>] or you must " +
         s"indicate that you'd like to try to assemble the JAR file at runtime [Option $OPTION_CREATE_JAR_FILE_AT_RUNTIME]")
 
-    val assembledJarPath = if (cl.hasOption(OPTION_ASSEMBLED_JAR_FILE)){
+    val assembledJarPath = if (cl.hasOption(OPTION_ASSEMBLED_JAR_FILE)) {
       val existingJar = new File(cl.getOptionValue(OPTION_ASSEMBLED_JAR_FILE))
       require(existingJar.exists(), s"Assembled JAR file that was supplied does not exist.  " +
         s"Supplied ${existingJar.getAbsolutePath}")
@@ -110,7 +110,7 @@ class SparkSubstrateExpansionDriverWorkflow extends Workflow {
     val workingDirectory = new File(cl.getOptionValue(OPTION_OUTPUT_DIRECTORY))
     if (!workingDirectory.exists()) workingDirectory.mkdirs()
 
-    // Drop right ot remove $
+    // Drop right to remove $
     val singleSubstrateRoProjectorClassPath = SparkSingleSubstrateROProjector.getClass.getName.dropRight(1)
     val sparkMaster = cl.getOptionValue(OPTION_SPARK_MASTER, DEFAULT_SPARK_MASTER)
     // Tries to assemble JAR for spark export.  Step 1 towards Skynet is self-assembly of jar files.
