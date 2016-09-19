@@ -6,7 +6,7 @@ import scala.io.Source
 import act.shared.ChemicalSymbols.{MonoIsotopicMass, AllAminoAcids}
 import com.act.lcms.MS1.MetlinIonMass
 
-class RetentionTime(private val time: Double) {
+class RetentionTime(val time: Double) {
   // This function is a helper to `equals`
   // It tests whether two values are within the range of experimental drift we allow
   private def withinDriftWindow(a: Double, b: Double) = (math abs (a - b)) < RetentionTime.driftTolerated
@@ -18,8 +18,12 @@ class RetentionTime(private val time: Double) {
   }
 
   override def toString(): String = {
-    val timeToTwoDecimal = (math round (time * 100.0)) / 100.0
-    timeToTwoDecimal.toString
+    // calculate how many decimal places we consider equal, e.g., drift = 0.1 => numDecimals = 1
+    // if drift = 1.0 => numDecimals = 0, if drift = 5.0 => numDecimals = 0
+    val invLogDrift = math log10 (1.0/RetentionTime.driftTolerated)
+    // when drift > 1.0 inverse log will be < 0.0, so min bound it to 0 and round it
+    val numDecimalsSignificant = math round (math max (0.0, invLogDrift))
+    String.format(s"%3.${numDecimalsSignificant}f", this.time: java.lang.Double)
   }
 
   def isIn(low: Double, high: Double): Boolean = time >= low && time <= high
@@ -63,6 +67,14 @@ class UntargetedPeak(
     val snrs = String.format("%.2f", snr: java.lang.Double)
     s"($intensity, $max, $snrs) @ mzrt($mz, $rt) "
   }
+
+  def getHdrVal(hdr: OutputHeader): Any = hdr match {
+    case HdrMZ => mz
+    case HdrRT => rt
+    case HdrDiff => integratedInt // this needs explanation: TODO
+    case HdrRawMZ => mz.initMass  // raw MZ from incoming data 
+    case HdrRawRT => rt.time      // raw RT from incoming data
+  }
 }
 
 class UntargetedPeakSpectra(val peaks: Set[UntargetedPeak]) {
@@ -70,33 +82,55 @@ class UntargetedPeakSpectra(val peaks: Set[UntargetedPeak]) {
 
   def sortedPeaks = {
     def sortfn(a: UntargetedPeak, b: UntargetedPeak) = {
-      val field: XCMSCol = RT // IntIntensity // you can also sort by MZ or RT
+      val field: XCMSCol = IntIntensity // you can also sort by MZ or RT
       field match {
         case IntIntensity => a.integratedInt > b.integratedInt
         case MZ => MonoIsotopicMass.ascender(a.mz, b.mz)
         case RT => RetentionTime.ascender(a.rt, b.rt)
       }
     }
-    Map(
-      s"peaks" -> peaks.toList.sortWith(sortfn)
-    )
+    peaks.toList.sortWith(sortfn)
   }
 
-  def outputTo(stream: PrintWriter) = {
-    sortedPeaks.toList.map{ 
-      case (k: String, vl: List[UntargetedPeak]) => k + "\n" + vl.map(_.toString).mkString("\n")
-    }.mkString("\n")
+  val hdrs = List(HdrMZ, HdrRT, HdrDiff, HdrRawMZ, HdrRawRT)
+
+  def outputTo(stream: PrintWriter) {
+    val peakData = sortedPeaks.map(p => hdrs.map(h => p getHdrVal h))
+
+    // write the header and peak data to output stream
+    stream.println("# num-rows:" + peaks.size)
+    stream.println(hdrs mkString "\t")
+    stream.println(peakData.map(row => row.map(toFixedCol) mkString "\t") mkString "\n")
+    stream.flush
+  }
+
+  def toFixedCol(value: Any): String = value match {
+    // raw data can contain values such as 0.37564751220734904 and 183.431997299194
+    // so lets make it 20.14f
+    case n: Double => String.format(s"%20.14f", n: java.lang.Double)
+    case _ => value.toString
   }
 }
 
-sealed class XCMSCol(val id: String) {
-  override def toString = id
-}
+sealed class XCMSCol(val id: String) { override def toString = id }
 object MZ extends XCMSCol("mz")
 object RT extends XCMSCol("rt")
 object IntIntensity extends XCMSCol("into")
 object MaxIntensity extends XCMSCol("maxo")
 object SNR extends XCMSCol("sn")
+
+
+sealed class OutputHeader(val id: String) { override def toString = id }
+object HdrMZ extends OutputHeader("MZ")       // mz at precision considered equal (MonoIsotopicMass.numDecimalPlaces)
+object HdrRT extends OutputHeader("RT")       // rt at precision considered equal (RetentionTime.driftTolerated/toString)
+object HdrDiff extends OutputHeader("Differential Factor") // the x% over- or under-expressed compared to controls
+object HdrRawMZ extends OutputHeader("RawMZ") // mz value up to infinite precision (from input data)
+object HdrRawRT extends OutputHeader("RawRT") // rt value up to infinite precision (from input data)
+object HdrMolMass extends OutputHeader("MolMass") // if we map to molecules, then the monoisotopic mass thereof
+object HdrMolIon extends OutputHeader("Ion")  // if we map to molecules, the ion of which the peak is observed
+object HdrMolFormula extends OutputHeader("Formula") // if we map to formula, the formula of the molecule
+object HdrMolInChI extends OutputHeader("InChI") // if we map to InChI, the inchi of the molecule
+object HdrMolHitSource extends OutputHeader("HitSrc") // if we map to formula/inchi, where the hit was found & DB ID
 
 object UntargetedPeakSpectra {
 
@@ -133,6 +167,10 @@ object UntargetedPeakSpectra {
 
 class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses: List[LCMSExperiment]) {
 
+  // assign a very high ratio, i.e., 99,900% for peaks that are underexpressed to the point
+  // of being absent in the hypotheses compared to the controls.
+  val ABSENT_PK_DIFF = 999.00
+
   def analyze(): LCMSExperiment = {
     val (normalizedControls, normalizedHypotheses) = normalize(controls, hypotheses)
     val unifiedControls = unifyReplicates(normalizedControls)
@@ -158,7 +196,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
   // we use min to aggregate signals across replicates
   def pickMin(a: Double, b: Double) = math.min(a, b)
   // we use ratio to identify differentially expressed peaks
-  def ratio(a: Double, b: Double) = if (b == 0.0) Double.MaxValue else a/b
+  def ratio(a: Double, b: Double) = if (b == 0.0) ABSENT_PK_DIFF else a/b
 
   // the lists coming in for the inputs are if for this `peak @ mz, rt` there are *many* peaks in the
   // original data in the aggregated hypothesis trace! This is slightly crazy case and will only happen
@@ -242,7 +280,8 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     metricOverCommonPeaks(replicates, unifyReplicatesForOneMzRt)
   }
   
-  def metricOverCommonPeaks(exprs: List[LCMSExperiment], peakCmpFn: MzRtPeaks => Option[UntargetedPeak]): LCMSExperiment = {
+  def metricOverCommonPeaks(exprs: List[LCMSExperiment],
+    peakCmpFn: MzRtPeaks => Option[UntargetedPeak]): LCMSExperiment = {
     val peakSetsForAllReplicates = exprs.map{ expr => expr.peakSpectra.peaks }
     val peaksKeyedByMzAndRt = findAlignedPeaks(peakSetsForAllReplicates)
     val peaksByMzAndRtNonEmpty = peaksKeyedByMzAndRt.filter{ case(_, lstSets) => lstSets.forall(_.size != 0) }
@@ -258,7 +297,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
 
   def normalizeCommonPeaks(exprs: List[LCMSExperiment]): List[LCMSExperiment] = {
     // we do the same thing we do when we are computing a uniform metric over shared peaks across all exprs
-    // we first extract the shared peaks (and then we'll look for how they vary across each set)
+    // we first extract the shared peaks (and then we'll look for how they differ across each set)
     val peakSetsForAllReplicates = exprs.map{ expr => expr.peakSpectra.peaks }
     val peaksKeyedByMzAndRt = findAlignedPeaks(peakSetsForAllReplicates)
     val peaksByMzAndRtNonEmpty = peaksKeyedByMzAndRt.filter{ case(_, lstSets) => lstSets.forall(_.size != 0) }
@@ -266,7 +305,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     // calculate the normalization factor, defined as ratio of peak intensities in pivot compared to each expr
     val normalizer = NormalizationVector.build(peaksByMzAndRtNonEmpty.toList)
 
-    // now normalize each experiment to normalize across systematic variation in peak intensities
+    // now normalize each experiment to normalize across systematic changes in peak intensities
     normalizer.normalize(exprs)
   }
 
@@ -646,11 +685,10 @@ object UntargetedMetabolomics {
     val expPks = Map(
       "wt1-df1" -> Map((3, 1.0) -> 303, (3, 2.0) -> 337, (3, 5.0) -> 374, (2, 1.0) -> 1219),
       "wt1-dm1" -> Map((3, 1.0) -> 225, (3, 2.0) -> 268, (3, 5.0) -> 299, (2, 1.0) -> 826),
-      "wt-dm"   -> Map((3, 1.0) ->  37, (3, 2.0) ->  45, (3, 5.0) ->  59, (2, 1.0) -> 742),
-      "wt-df"   -> Map((3, 1.0) ->  58, (3, 2.0) ->  69, (3, 5.0) ->  77, (2, 1.0) -> 347),
       "dm-df"   -> Map((3, 1.0) ->  73, (3, 2.0) ->  82, (3, 5.0) ->  92, (2, 1.0) -> 331),
       "df-dm"   -> Map((3, 1.0) ->  57, (3, 2.0) ->  68, (3, 5.0) ->  81, (2, 1.0) -> 340),
-      "wt-dmdf" -> Map((3, 1.0) ->  33, (3, 2.0) ->  39, (3, 5.0) ->  48, (2, 1.0) -> 1231)
+      "wt-dm"   -> Map((3, 1.0) ->  37, (3, 2.0) ->  45, (3, 5.0) ->  59, (2, 1.0) -> 742),
+      "wt-df"   -> Map((3, 1.0) ->  58, (3, 2.0) ->  69, (3, 5.0) ->  77, (2, 1.0) -> 347)
     )
   
     def bnd(tcase: String) = expPks(tcase)((MonoIsotopicMass.defaultNumPlaces, RetentionTime.driftTolerated))
@@ -677,21 +715,18 @@ object UntargetedMetabolomics {
       ("dm-dm", dm, dm, 0, 0),
       ("df-df", df, df, 0, 0),
       
-      // how well does the differential calling work over a single sample of hypothesis and control
-      ("wt1-df1", List(wt1), List(df1), bnd("wt1-df1"), bnd("wt1-df1")),
-      ("wt1-dm1", List(wt1), List(dm1), bnd("wt1-dm1"), bnd("wt1-dm1")), 
-      
-      // peaks that are differentially expressed in diseased samples compared to the wild type
       ("wt-dm", wt, dm, bnd("wt-dm"), bnd("wt-dm")),
-      ("wt-df", wt, df, bnd("wt-df"), bnd("wt-df")),
+      // how well does the differential calling work over a single sample of hypothesis and control
+      // ("wt1-df1", List(wt1), List(df1), bnd("wt1-df1"), bnd("wt1-df1")),
+      // ("wt1-dm1", List(wt1), List(dm1), bnd("wt1-dm1"), bnd("wt1-dm1")), 
       
       // next two: what is in one diseases samples and not in the other?
       ("dm-df", dm, df, bnd("dm-df"), bnd("dm-df")),
       ("df-dm", df, dm, bnd("df-dm"), bnd("df-dm")),
 
-      // Check what is commonly over/under expressed in diseased samples
-      // Woa! This is not really a test case. This is the final analysis!
-      ("wt-dmdf", wt, dmdf, bnd("wt-dmdf"), bnd("wt-dmdf"))
+      // peaks that are differentially expressed in diseased samples compared to the wild type
+      ("wt-dm", wt, dm, bnd("wt-dm"), bnd("wt-dm")),
+      ("wt-df", wt, df, bnd("wt-df"), bnd("wt-df"))
       
     )
 
@@ -708,7 +743,7 @@ object UntargetedMetabolomics {
       val analysisRslt = experiment.analyze()
       val candidateMols = new PlausibleMolecules(analysisRslt)
       if (verbose) {
-        outStream.println("Raw Peaks:")
+        outStream.println("Differential peaks:")
         val rawMzPeaks = analysisRslt.outputTo(outStream)
         outStream.println("Candidate Molecules:")
         val molecules = candidateMols.outputTo(outStream)
@@ -716,6 +751,7 @@ object UntargetedMetabolomics {
       val numPeaks = analysisRslt.numPeaks
       if (!(numPeaks >= peakMinCnt && numPeaks <= peakMaxCnt)) {
         outStream.println(s"Failed test ${testID}, unexpected peak count: $numPeaks != [$peakMinCnt, $peakMaxCnt]")
+        outStream.flush
         assert(false)
       }
 

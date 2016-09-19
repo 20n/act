@@ -151,7 +151,9 @@ object ChemicalSymbols {
       case _ => false
     }
     override def hashCode() = scaled.hashCode
-    override def toString(): String = String.format(s"%.${MonoIsotopicMass.defaultNumPlaces}f", this.rounded(): java.lang.Double)
+    override def toString(): String = {
+      String.format(s"%3.${MonoIsotopicMass.defaultNumPlaces}f", this.rounded(): java.lang.Double)
+    }
 
     // case when we might want to add: set of atoms together in a formula. need its full mass
     def +(that: MonoIsotopicMass) = new MonoIsotopicMass(this.initMass + that.initMass)
