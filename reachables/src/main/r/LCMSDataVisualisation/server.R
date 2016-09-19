@@ -27,8 +27,8 @@ kSSRatio <- 20
 k20logoLocation <- "20nlogo"
 kFatJarLocation <- "reachables-assembly-0.1.jar"
 
-kLCMSDataLocation <- "/mnt/data-level1/lcms-ms1/"
-print("Loading interpreter")
+kLCMSDataLocation <- "/Volumes/data-level1/lcms-ms1/"
+cat("Loading interpreter\n")
 sc=scalaInterpreter(kFatJarLocation)
 kImportMS1 <- 'import com.act.lcms.MS1'
 sc%~%kImportMS1
@@ -40,6 +40,7 @@ getFullData <- function(filename) {
     need(filename != "", "Filename field cannot be empty")
   )
   cat(paste("Getting full data from file:", filename))
+  cat("\n")
   filepath <- paste0(kLCMSDataLocation, filename)
   msfile <- openMSfile(filepath, backend = "netCDF")
   hd <- header(msfile)
@@ -54,7 +55,7 @@ getScansAndHeader <- function(retention.time.range, full.data) {
     need(is.numeric(retention.time.range), "Rentention time range needs to be numeric"),
     need(length(full.data$ms1.scans) > 0, "Full data should be of length > 0")
   )
-  cat("Getting scans and headers")
+  cat("Getting scans and headers\n")
   min.rt <- retention.time.range[1]
   max.rt <- retention.time.range[2]
   
@@ -75,7 +76,7 @@ getData <- function(target.mz.value, mz.band.halfwidth, scans.and.header) {
     need(target.mz.value >= 50 && target.mz.value <= 950, "Target mz value should be between 50 and 950"),
     need(mz.band.halfwidth >= 0.00001, "M/Z band halfwidth should be >= 0.00001")
   )
-  cat("Getting data for given mz scope")
+  cat("Getting data for given mz scope\n")
   min.ionic.mass <- target.mz.value - mz.band.halfwidth
   max.ionic.mass <- target.mz.value + mz.band.halfwidth
   data <- with(scans.and.header, {
@@ -88,7 +89,7 @@ getData <- function(target.mz.value, mz.band.halfwidth, scans.and.header) {
 }
 
 plotRawData <- function(data, target.mz.value, mz.band.halfwidth, angle.theta, angle.phi) {
-  cat("Plotting...")
+  cat("Plotting...\n")
   with(data, {
     min.ionic.mass <- target.mz.value - mz.band.halfwidth
     max.ionic.mass <- target.mz.value + mz.band.halfwidth
@@ -103,6 +104,8 @@ plotRawData <- function(data, target.mz.value, mz.band.halfwidth, angle.theta, a
 }
 
 shinyServer(function(input, output, session) {
+  
+  # 20n logo rendering
   output$logo <- renderImage({
     # Return a list containing the filename
     list(src = k20logoLocation,
@@ -112,6 +115,7 @@ shinyServer(function(input, output, session) {
          alt = "20n Logo")
   }, deleteFile = FALSE)
   
+  # URL parameters parsing, only in the simple visualisation mode
   observe({
     query <- parseQueryString(session$clientData$url_search)
     filename <- query[['filename']]
@@ -141,65 +145,65 @@ shinyServer(function(input, output, session) {
     }
   })
   
-  # Reactive value, loading all the scans in memory.
-  # Recomputed only when filename changes
-  full.data.simple <- reactive({
+  # Reactive values for loading the full dataset in memory
+  # In the multi visualisation case, only triggered when refresh button pressed
+  full.data <- reactive({
     getFullData(input$filename)
   })
   
-  full.data.simple.1 <- eventReactive(input$load.multi.1, {
+  full.data.1 <- reactive({
     getFullData(input$filename1)
   })
   
-  full.data.simple.2 <- eventReactive(input$load.multi.2, {
+  full.data.2 <- reactive({
     getFullData(input$filename2)
   })
   
-  full.data.simple.3 <- eventReactive(input$load.multi.3, {
+  full.data.3 <- reactive({
     getFullData(input$filename3)
   })
   
   # Based on the retention time range, select relevant scans reactively
-  # Recomputed only when retention time range changes
-  scans.and.header <- eventReactive(input$load.simple, {
-    full.data.simple <- full.data.simple()
-    getScansAndHeader(input$retention.time.range, full.data.simple)
+  # Recomputed only when refresh button is pressed
+  scans.and.header <- eventReactive(input$load, {
+    full.data <- full.data()
+    getScansAndHeader(input$retention.time.range, full.data)
   })
   
   scans.and.header.1 <- eventReactive(input$load.multi.time, {
-    full.data.simple <- full.data.simple.1()
-    getScansAndHeader(input$retention.time.range.multi, full.data.simple)
+    full.data <- full.data.1()
+    getScansAndHeader(input$retention.time.range.multi, full.data)
   })
   scans.and.header.2 <- eventReactive(input$load.multi.time, {
-    full.data.simple <- full.data.simple.2()
-    getScansAndHeader(input$retention.time.range.multi, full.data.simple)
+    full.data <- full.data.2()
+    getScansAndHeader(input$retention.time.range.multi, full.data)
   })
   scans.and.header.3 <- eventReactive(input$load.multi.time, {
-    full.data.simple <- full.data.simple.3()
-    getScansAndHeader(input$retention.time.range.multi, full.data.simple)
+    full.data <- full.data.3()
+    getScansAndHeader(input$retention.time.range.multi, full.data)
   })
   
   
   # We compute the data in long format
   # Recomputed only when the target mass or the mz band halfwidth changes
-  data.simple <- reactive({
+  scoped.data <- reactive({
     scans.header <- scans.and.header()
     target.mz <- target.mz()
     getData(target.mz, input$mz.band.halfwidth, scans.header)
   })
   
-  data.1 <- reactive({
+  scoped.data.1 <- reactive({
     scans.header <- scans.and.header.1()
     target.mz <- target.mz.multi()
     getData(target.mz, input$mz.band.halfwidth.multi, scans.header)
   })
-  data.2 <- reactive({
+  scoped.data.2 <- reactive({
     scans.header <- scans.and.header.2()
     target.mz <- target.mz.multi()
     getData(target.mz, input$mz.band.halfwidth.multi, scans.header)
   })
   
-  data.3 <- reactive({
+  scoped.data.3 <- reactive({
     scans.header <- scans.and.header.3()
     target.mz <- target.mz.multi()
     getData(target.mz, input$mz.band.halfwidth.multi, scans.header)
@@ -223,8 +227,9 @@ shinyServer(function(input, output, session) {
     }
   })
     
+  # Simple peak detection algorithm.
   detected.peaks <- reactive({
-    data <- data.simple()
+    data <- scoped.data()
     data <- data %>%
       filter(intensity > kIntensityThreshold)
     set.seed(2016)
@@ -247,27 +252,27 @@ shinyServer(function(input, output, session) {
   })
   
   output$plot <- renderPlot({
-    data <- data.simple()
+    scoped.data <- scoped.data()
     target.mz <- target.mz()
-    plotRawData(data, target.mz, input$mz.band.halfwidth, input$angle.theta, input$angle.phi)
+    plotRawData(scoped.data, target.mz, input$mz.band.halfwidth, input$angle.theta, input$angle.phi)
   })
   
   output$plot1 <- renderPlot({
-    data <- data.1()
+    scoped.data <- scoped.data.1()
     target.mz <- target.mz.multi()
-    plotRawData(data, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
+    plotRawData(scoped.data, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
   })
   
   output$plot2 <- renderPlot({
-    data <- data.2()
+    scoped.data <- scoped.data.2()
     target.mz <- target.mz.multi()
-    plotRawData(data, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
+    plotRawData(scoped.data, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
   })
   
   output$plot3 <- renderPlot({
-    data <- data.3()
+    scoped.data <- scoped.data.3()
     target.mz <- target.mz.multi()
-    plotRawData(data, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
+    plotRawData(scoped.data, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
   })
   
   output$target.mz <- renderText({
