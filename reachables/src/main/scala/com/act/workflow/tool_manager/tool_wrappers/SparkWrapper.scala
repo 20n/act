@@ -6,9 +6,10 @@ import com.act.workflow.tool_manager.jobs.ShellJob
 import org.apache.log4j.LogManager
 
 object SparkWrapper extends ToolWrapper {
-  private val assembledJar = new File("target/scala-2.10/reachables-assembly-0.1.jar")
   private val LOGGER = LogManager.getLogger(getClass)
-  def runClassPath(classPath: String, sparkMaster: String, classArgs: List[String], memory: String = "1G"): ShellJob = {
+  def runClassPath(assembledJar: String, sparkMaster: String)
+                  (classPath: String, classArgs: List[String])
+                  (memory: String = "1G"): ShellJob = {
 
     // Check if class path exists.
     try {
@@ -19,18 +20,18 @@ object SparkWrapper extends ToolWrapper {
     }
 
     val fullArgs: List[String] = List(
-      "--driver-class-path", assembledJar.getAbsolutePath,
+      "--driver-class-path", assembledJar,
       "--class", classPath,
       "--master", sparkMaster,
       "--deploy-mode", "client",
       "--executor-memory", memory,
-      assembledJar.getAbsolutePath) ::: classArgs
+      assembledJar) ::: classArgs
 
     constructJob("Spark Submit", Option("spark-submit"), args = fullArgs)
   }
 
-  def sbtAssembly(useCached: Boolean = false): ShellJob = {
-    if (useCached && assembledJar.exists()){
+  def assembleJarAtRuntime(assembledJarLocation: String, useCached: Boolean = false): ShellJob = {
+    if (useCached && new File(assembledJarLocation).exists()){
       // Placeholder
       val job = constructJob("Assembled JAR in Cache", None, args = List(""))
       job.doNotWriteOutputStream()
