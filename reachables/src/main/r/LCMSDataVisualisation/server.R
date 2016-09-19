@@ -36,7 +36,10 @@ getIonMzFunctionDef <- 'MS1.computeIonMz(mass, MS1.ionDeltas.filter(i => i.getNa
 getIonMz <- intpDef(sc, 'mass: Double, mode: String', getIonMzFunctionDef)
 
 getFullData <- function(filename) {
-  print(paste("Getting full data", filename))
+  validate(
+    need(filename != "", "Filename field cannot be empty")
+  )
+  cat(paste("Getting full data from file:", filename))
   filepath <- paste0(kLCMSDataLocation, filename)
   msfile <- openMSfile(filepath, backend = "netCDF")
   hd <- header(msfile)
@@ -46,7 +49,12 @@ getFullData <- function(filename) {
 }
 
 getScansAndHeader <- function(retention.time.range, full.data) {
-  print("Getting scans and headers")
+  validate(
+    need(length(retention.time.range) == 2, "Rentention time range needs to be a tuple"),
+    need(is.numeric(retention.time.range), "Rentention time range needs to be numeric"),
+    need(length(full.data$ms1.scans) > 0, "Full data should be of length > 0")
+  )
+  cat("Getting scans and headers")
   min.rt <- retention.time.range[1]
   max.rt <- retention.time.range[2]
   
@@ -62,11 +70,15 @@ getScansAndHeader <- function(retention.time.range, full.data) {
   list(retention.time = retention.time, scans = scans)
 }
 
-getData <- function(target.mz.value, mz.band.halfwidth, scans.header) {
-  print("Getting data")
+getData <- function(target.mz.value, mz.band.halfwidth, scans.and.header) {
+  validate(
+    need(target.mz.value >= 50 && target.mz.value <= 950, "Target mz value should be between 50 and 950"),
+    need(mz.band.halfwidth >= 0.00001, "M/Z band halfwidth should be >= 0.00001")
+  )
+  cat("Getting data for given mz scope")
   min.ionic.mass <- target.mz.value - mz.band.halfwidth
   max.ionic.mass <- target.mz.value + mz.band.halfwidth
-  data <- with(scans.header, {
+  data <- with(scans.and.header, {
     mz <- unlist(lapply(scans, function(x) x[, "mz"]))
     intensity <- unlist(lapply(scans, function(x) x[, "intensity"]))
     data.frame(mz = mz, retention.time = retention.time, intensity = intensity)
@@ -76,7 +88,7 @@ getData <- function(target.mz.value, mz.band.halfwidth, scans.header) {
 }
 
 plotRawData <- function(data, target.mz.value, mz.band.halfwidth, angle.theta, angle.phi) {
-  print("Plotting data")
+  cat("Plotting...")
   with(data, {
     min.ionic.mass <- target.mz.value - mz.band.halfwidth
     max.ionic.mass <- target.mz.value + mz.band.halfwidth
@@ -135,15 +147,15 @@ shinyServer(function(input, output, session) {
     getFullData(input$filename)
   })
   
-  full.data.simple.1 <- reactive({
+  full.data.simple.1 <- eventReactive(input$load.multi.1, {
     getFullData(input$filename1)
   })
   
-  full.data.simple.2 <- reactive({
+  full.data.simple.2 <- eventReactive(input$load.multi.2, {
     getFullData(input$filename2)
   })
   
-  full.data.simple.3 <- reactive({
+  full.data.simple.3 <- eventReactive(input$load.multi.3, {
     getFullData(input$filename3)
   })
   
@@ -154,15 +166,15 @@ shinyServer(function(input, output, session) {
     getScansAndHeader(input$retention.time.range, full.data.simple)
   })
   
-  scans.and.header.1 <- eventReactive(input$load.multi.1, {
+  scans.and.header.1 <- eventReactive(input$load.multi.time, {
     full.data.simple <- full.data.simple.1()
     getScansAndHeader(input$retention.time.range.multi, full.data.simple)
   })
-  scans.and.header.2 <- eventReactive(input$load.multi.2, {
+  scans.and.header.2 <- eventReactive(input$load.multi.time, {
     full.data.simple <- full.data.simple.2()
     getScansAndHeader(input$retention.time.range.multi, full.data.simple)
   })
-  scans.and.header.3 <- eventReactive(input$load.multi.3, {
+  scans.and.header.3 <- eventReactive(input$load.multi.time, {
     full.data.simple <- full.data.simple.3()
     getScansAndHeader(input$retention.time.range.multi, full.data.simple)
   })
