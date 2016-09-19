@@ -45,17 +45,27 @@ shinyUI(fluidPage(
              tabPanel("Multi",
                       sidebarPanel(
                         h3("Scans selection"),
-                        textInput("filename1", label = "File name", value = "Plate_jaffna3_B1_0815201601.nc"),
-                        actionButton("load.multi.1", "Refresh scan 1!", icon("magic"),
-                                     style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
-                        textInput("filename2", label = "File name", value = "Plate_jaffna3_B1_0815201601.nc"),
-                        actionButton("load.multi.2", "Refresh scan 2!", icon("magic"),
-                                     style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
-                        textInput("filename3", label = "File name", value = "Plate_jaffna3_B1_0815201601.nc"),
-                        actionButton("load.multi.3", "Refresh scan 3!", icon("magic"),
-                                     style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
-                        sliderInput("retention.time.range.multi", label = "Retention Time range",
-                                    min = 0, max = 450, value = c(130, 160), step = 5),
+                        div(
+                          div(style="display:inline-block", textInput("filename1", label = "File name", value = "Plate_jaffna3_B1_0815201601.nc", width = "500px")),
+                          div(style="display:inline-block", actionButton("load.multi.1", icon("refresh"),
+                                                                         style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))
+                        ),
+                        div(
+                          div(style="display:inline-block", textInput("filename2", label = "File name", value = "Plate_jaffna3_B1_0815201601.nc", width = "500px")),
+                          div(style="display:inline-block", actionButton("load.multi.2", icon("refresh"),
+                                                                         style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))
+                        ),
+                        div(
+                          div(style="display:inline-block", textInput("filename3", label = "File name", value = "Plate_jaffna3_B1_0815201601.nc", width = "500px")),
+                          div(style="display:inline-block", actionButton("load.multi.3", icon("refresh"),
+                                                                         style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))
+                        ),
+                        div(
+                          div(style="display:inline-block", sliderInput("retention.time.range.multi", label = "Retention Time range",
+                                                                        min = 0, max = 450, value = c(130, 160), step = 5, width = "500px")),
+                          div(style="display:inline-block", actionButton("load.multi.time", icon("refresh"),
+                                                                         style="color: #fff; background-color: #337ab7; border-color: #2e6da4"))
+                        ),
                         h3("M/Z scope"),
                         selectInput("mode.multi", label = "m/z mode", choices = kModes, selected = "M+H"),
                         numericInput("target.monoisotopic.mass.multi", label = "Target monoisotopic mass", value = 463.184234, step = 0.001),
@@ -76,6 +86,5 @@ shinyUI(fluidPage(
                       )
              )
   )
-
 )
 )
