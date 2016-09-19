@@ -46,8 +46,8 @@ class ComputedData(val sources: List[Provenance]) extends Provenance
 
 class LCMSExperiment(val origin: Provenance, val peakSpectra: UntargetedPeakSpectra) {
   override def toString = peakSpectra.toString
-  def toStats = peakSpectra.toStats
-  def toStatsStr = peakSpectra.toStatsStr
+  def outputTo = peakSpectra.outputTo _
+  def numPeaks = peakSpectra.peaks.size
 }
 
 class UntargetedPeak(
@@ -68,7 +68,7 @@ class UntargetedPeak(
 class UntargetedPeakSpectra(val peaks: Set[UntargetedPeak]) {
   override def toString = peaks.toString
 
-  def toStats = {
+  def sortedPeaks = {
     def sortfn(a: UntargetedPeak, b: UntargetedPeak) = {
       val field: XCMSCol = RT // IntIntensity // you can also sort by MZ or RT
       field match {
@@ -78,14 +78,12 @@ class UntargetedPeakSpectra(val peaks: Set[UntargetedPeak]) {
       }
     }
     Map(
-      "num peaks" -> peaks.size,
       s"peaks" -> peaks.toList.sortWith(sortfn)
     )
   }
 
-  def toStatsStr = {
-    toStats.toList.map{ 
-      case (k: String, i: Int) => k + ":\t" + i
+  def outputTo(stream: PrintWriter) = {
+    sortedPeaks.toList.map{ 
       case (k: String, vl: List[UntargetedPeak]) => k + "\n" + vl.map(_.toString).mkString("\n")
     }.mkString("\n")
   }
@@ -508,7 +506,8 @@ object UntargetedMetabolomics {
 
   def main(args: Array[String]) {
     val className = this.getClass.getCanonicalName
-    val opts = List(optOutFile, optControls, optHypotheses, optRunTests)
+    val opts = List(optOutFile, optControls, optHypotheses, optDoIons, optMultiIonsRankHigher, 
+                    optToStructUsingList, optToFormulaUsingList, optToFormulaUsingSolver, optRunTests)
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
     // read the command line options
@@ -525,7 +524,7 @@ object UntargetedMetabolomics {
 
     if (cmdLine has optRunTests) {
       val nasSharedDir = cmdLine get optRunTests
-      runPerlsteinLabTests(new File(nasSharedDir))
+      runPerlsteinLabTests(new File(nasSharedDir), out)
     }
 
     def mkLCMSExpr(kv: String) = {
@@ -544,10 +543,11 @@ object UntargetedMetabolomics {
         val hypotheses = hyp.map(mkLCMSExpr).toList
         val experiment = new UntargetedMetabolomics(controls = controls, hypotheses = hypotheses)
         val analysisRslt = experiment.analyze()
-        val candidateMols = new PlausibleMolecules(analysisRslt)
+        analysisRslt.outputTo(out)
 
-        val statsStr = analysisRslt.toStatsStr
-        println(s"stats = $statsStr")
+        // we can optionally also map these peaks to candidate molecules
+        val candidateMols = new PlausibleMolecules(analysisRslt)
+        // we currently do not output the candidate molecules anywhere...
       }
     }
   }
@@ -573,6 +573,43 @@ object UntargetedMetabolomics {
                     desc = "The file to which ...",
                     isReqd = false, hasArg = true)
 
+  val optDoIons = new OptDesc(
+                    param = "I",
+                    longParam = "convert-ion-mzs-to-masses",
+                    name = "",
+                    desc = "",
+                    isReqd = false, hasArg = false)
+
+  val optMultiIonsRankHigher = new OptDesc(
+                    param = "M",
+                    longParam = "rank-multiple-ions-higher",
+                    name = "",
+                    desc = "",
+                    isReqd = false, hasArg = false)
+
+  val optToStructUsingList = new OptDesc(
+                    param = "S",
+                    longParam = "to-structure-using-list",
+                    name = "",
+                    desc = "",
+                    isReqd = false, hasArg = false)
+
+  val optToFormulaUsingList = new OptDesc(
+                    param = "F",
+                    longParam = "to-formula-using-list",
+                    name = "",
+                    desc = "",
+                    isReqd = false, hasArg = false)
+
+  val optToFormulaUsingSolver = new OptDesc(
+                    param = "C",
+                    longParam = "to-formula-using-solver",
+                    name = "",
+                    desc = """Fallback to SMT Constraint solver to solve formula. Ideally, the lower MW
+                             |formulae would have been enumerated in lists, and so would be matched using lookup
+                             |but for higher MW, e.g., where CHNOPS counts are > 30 we use the solver""".stripMargin,
+                    isReqd = false, hasArg = false)
+
   val optRunTests = new OptDesc(
                     param = "t",
                     longParam = "run-tests-from",
@@ -582,7 +619,7 @@ object UntargetedMetabolomics {
                              |to test over.""".stripMargin,
                     isReqd = false, hasArg = true)
 
-  def runPerlsteinLabTests(sharedDirLoc: File) {
+  def runPerlsteinLabTests(sharedDirLoc: File, outStream: PrintWriter) {
     // this data was collected with XCMS Centwave "optimzed" parameters: peak width 1-50 and ppm 20 (@vijay-20n?)
     def dataForWell(dataset: String)(repl: Int) = s"Plate_plate2016_09_08_${dataset}${repl}_0908201601.tsv"
     val pLabXCMSLoc = s"${sharedDirLoc.getPath}/Vijay/perlstein_xcms_centwave_optimized_output/"
@@ -671,14 +708,14 @@ object UntargetedMetabolomics {
       val analysisRslt = experiment.analyze()
       val candidateMols = new PlausibleMolecules(analysisRslt)
       if (verbose) {
-        val rawMzPeaks = analysisRslt.toStatsStr
-        val molecules = candidateMols.toStatsStr
-        println(s"rawPeaks = $rawMzPeaks")
-        println(s"molecules = $molecules")
+        outStream.println("Raw Peaks:")
+        val rawMzPeaks = analysisRslt.outputTo(outStream)
+        outStream.println("Candidate Molecules:")
+        val molecules = candidateMols.outputTo(outStream)
       }
-      val numPeaks = analysisRslt.toStats("num peaks").asInstanceOf[Int]
+      val numPeaks = analysisRslt.numPeaks
       if (!(numPeaks >= peakMinCnt && numPeaks <= peakMaxCnt)) {
-        println(s"Failed test ${testID}, unexpected peak count: $numPeaks != [$peakMinCnt, $peakMaxCnt]")
+        outStream.println(s"Failed test ${testID}, unexpected peak count: $numPeaks != [$peakMinCnt, $peakMaxCnt]")
         assert(false)
       }
 
@@ -739,12 +776,15 @@ class PlausibleMolecules(val rawMzPeaks: LCMSExperiment, val ionOpts: Set[String
     })
   }
 
-  def toStatsStr = {
-    List(
-      ionCandidatesForMolecules.peakSpectra.toStatsStr,
+  def outputTo(out: PrintWriter) {
+    ionCandidatesForMolecules.peakSpectra.outputTo(out)
+
+    val massToMzMapStr = List(
       toRawPeaksMap.toList.sortBy(_._1.mz.initMass)
         .map{ case (molPk, mzPk) => s"${molPk.mz.initMass} -> ${mzPk.mz.initMass} with (int, max, snr) = ${(molPk.integratedInt, molPk.maxInt, molPk.snr)}" }
         .mkString("\n")
     ).mkString("\n")
+
+    out.println(massToMzMapStr)
   }
 }
