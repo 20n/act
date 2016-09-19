@@ -66,9 +66,9 @@ shinyUI(fluidPage(
                         h4("Target m/z value"),
                         textOutput("target.mz.multi"),
                         h4("3D scatterplot of the raw data"),
-                        plotOutput("plot1", height = "500px"),
-                        plotOutput("plot2", height = "500px"),
-                        plotOutput("plot3", height = "500px")
+                        plotOutput("plot1", height = "450px"),
+                        plotOutput("plot2", height = "450px"),
+                        plotOutput("plot3", height = "450px")  
                       )
              )
   )
