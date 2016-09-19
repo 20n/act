@@ -13,6 +13,7 @@ import scala.collection.concurrent.TrieMap
   */
 object MoleculeExporter {
   // By hashing also on the format we can support a molecule being converted to multiple formats in a given JVM
+  // TODO Make this a more LRU style cache so it is less memory intensive for large data sets.
   private val moleculeCache = TrieMap[MoleculeFormat.Value, TrieMap[Molecule, String]]()
 
   // Defaults to inchi which has aux information.

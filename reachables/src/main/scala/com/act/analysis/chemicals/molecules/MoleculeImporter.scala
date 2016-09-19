@@ -14,6 +14,7 @@ import scala.collection.concurrent.TrieMap
   */
 object MoleculeImporter {
   // Have a cache for each format.
+  // TODO Make this a more LRU style cache so it is less memory intensive for large data sets.
   private val moleculeCache = TrieMap[MoleculeFormat.Value, TrieMap[String, Molecule]]()
 
   def clearCache(): Unit = {
@@ -34,29 +35,20 @@ object MoleculeImporter {
 
   @throws[MolFormatException]
   def importMolecule(mol: String, formats: List[MoleculeFormat.Value]): Molecule = {
-    val resultingInchis: List[Molecule] = formats.flatMap(format => {
+    formats.foreach(format => {
       try {
         // Inchis must start with "InChI="
-        if (format.equals(MoleculeFormat.stdInchi) || format.equals(MoleculeFormat.inchi)){
-          if (!mol.startsWith("InChI=")) throw new MolFormatException()
-        }
-        val importedMolecule = Option(importMolecule(mol, format))
-        importedMolecule
+        if (format.toString.toLowerCase.contains("inchi") && !mol.startsWith("InChI=")) throw new MolFormatException()
+        val importedMolecule = importMolecule(mol, format)
+
+        // Short-circuit upon first find.
+        return importedMolecule
       } catch {
         case e: MolFormatException => None
       }
     })
 
-    if (resultingInchis.isEmpty) {
-      throw new MolFormatException()
-    }
-
-    if (resultingInchis.length > 1) {
-      throw new MolFormatException("Multiple format types matched this string, " +
-        s"so we couldn't decide which one was correct. String was $mol.")
-    }
-
-    resultingInchis.head
+    throw new MolFormatException(s"Could not convert your input string [$mol] into any of format [$formats].")
   }
 
   @throws[MolFormatException]
