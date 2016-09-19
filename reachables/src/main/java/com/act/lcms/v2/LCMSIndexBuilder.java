@@ -17,7 +17,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.rocksdb.FlushOptions;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.WriteOptions;
@@ -489,7 +488,9 @@ public class LCMSIndexBuilder {
       timepoints.add(time);
 
       spectrumCounter++;
-      LOGGER.info("Extracted %d time spectra", spectrumCounter);
+      if (spectrumCounter % 1000 == 0) {
+        LOGGER.info("Extracted %d time spectra", spectrumCounter);
+      }
     }
 
     // Now write all the mzWindow to triple indexes.
@@ -533,7 +534,7 @@ public class LCMSIndexBuilder {
    * @throws RocksDBException
    * @throws IOException
    */
-  private void writeWindowsToDB(RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles, List<MZWindow> windows)
+  protected void writeWindowsToDB(RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles, List<MZWindow> windows)
       throws RocksDBException, IOException {
     for (MZWindow window : windows) {
       byte[] keyBytes = serializeObject(window.getTargetMZ());
@@ -542,7 +543,7 @@ public class LCMSIndexBuilder {
       dbAndHandles.put(COLUMN_FAMILIES.TARGET_TO_WINDOW, keyBytes, valBytes);
     }
 
-    dbAndHandles.getDb().flush(new FlushOptions());
+    dbAndHandles.flush(true);
     LOGGER.info("Done writing window data to index");
   }
 

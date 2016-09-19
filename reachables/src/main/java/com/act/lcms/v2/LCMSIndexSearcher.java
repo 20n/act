@@ -11,7 +11,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joda.time.DateTime;
 import org.rocksdb.RocksDBException;
-import org.rocksdb.RocksIterator;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -78,19 +77,20 @@ public class LCMSIndexSearcher {
   public static class Factory {
     public static LCMSIndexSearcher makeLCMSIndexSearcher(File indexDir)
         throws RocksDBException, ClassNotFoundException, IOException {
-      LCMSIndexSearcher searcher = new LCMSIndexSearcher(indexDir);
+      RocksDBAndHandles<LCMSIndexBuilder.COLUMN_FAMILIES> dbAndHandles =
+          DBUtil.openExistingRocksDB(indexDir, LCMSIndexBuilder.COLUMN_FAMILIES.values());
+      LCMSIndexSearcher searcher = new LCMSIndexSearcher(dbAndHandles);
       searcher.init();
       return searcher;
     }
   }
 
-  private File indexDir;
   private RocksDBAndHandles<LCMSIndexBuilder.COLUMN_FAMILIES> dbAndHandles;
   private List<LCMSIndexBuilder.MZWindow> mzWindows;
   private List<Float> timepoints;
 
-  LCMSIndexSearcher(File indexDir) throws RocksDBException, ClassNotFoundException, IOException {
-    this.indexDir = indexDir;
+  LCMSIndexSearcher(RocksDBAndHandles<LCMSIndexBuilder.COLUMN_FAMILIES> dbAndHandles) {
+    this.dbAndHandles = dbAndHandles;
   }
 
   public static void main(String args[]) throws Exception {
@@ -114,17 +114,17 @@ public class LCMSIndexSearcher {
 
     if (cl.hasOption(OPTION_OUTPUT_FILE)) {
       try (PrintWriter writer = new PrintWriter(new FileWriter(cl.getOptionValue(OPTION_OUTPUT_FILE)))) {
-        searcher.writeOutput(writer, results);
+        LCMSIndexSearcher.writeOutput(writer, results);
       }
     } else {
       // Don't close the print writer if we're writing to stdout.
-      searcher.writeOutput(new PrintWriter(new OutputStreamWriter(System.out)), results);
+      LCMSIndexSearcher.writeOutput(new PrintWriter(new OutputStreamWriter(System.out)), results);
     }
 
     LOGGER.info("Done");
   }
 
-  private void writeOutput(PrintWriter writer, List<LCMSIndexBuilder.TMzI> results) throws IOException {
+  private static void writeOutput(PrintWriter writer, List<LCMSIndexBuilder.TMzI> results) throws IOException {
     int counter = 0;
     writer.println(OUTPUT_HEADER);
     for (LCMSIndexBuilder.TMzI triple : results) {
@@ -170,8 +170,7 @@ public class LCMSIndexSearcher {
     }
   }
 
-  public void init() throws RocksDBException, ClassNotFoundException, IOException {
-    dbAndHandles = DBUtil.openExistingRocksDB(indexDir, LCMSIndexBuilder.COLUMN_FAMILIES.values());
+  protected void init() throws RocksDBException, ClassNotFoundException, IOException {
     LOGGER.info("Initializing DB");
 
     // TODO: hold onto the byte representation of the timepoints so we can use them as keys more easily.
@@ -182,8 +181,8 @@ public class LCMSIndexSearcher {
     // Assumes timepoints are sorted.  TODO: check!
 
     mzWindows = new ArrayList<>();
-    RocksIterator mzIter = dbAndHandles.newIterator(LCMSIndexBuilder.COLUMN_FAMILIES.TARGET_TO_WINDOW);
-    mzIter.seekToFirst();
+    RocksDBAndHandles.RocksDBIterator mzIter = dbAndHandles.newIterator(LCMSIndexBuilder.COLUMN_FAMILIES.TARGET_TO_WINDOW);
+    mzIter.reset();
     while (mzIter.isValid()) {
       // The keys are the target m/z's, so we can ignore them.
       mzWindows.add(deserializeObject(mzIter.value()));
@@ -196,12 +195,31 @@ public class LCMSIndexSearcher {
     LOGGER.info("Loaded %d m/z windows", mzWindows.size());
   }
 
+  /**
+   * Searches an LCMS index for all (time, m/z, intensity) triples within some time and m/z ranges.
+   *
+   * Note that this method is very much a first-draft/WIP.  There are many opportunities for optimization and
+   * improvement here, but this works as an initial attempt.  This method is littered with TODOs, which once TODone
+   * should make this a near optimal method of searching through LCMS readings.
+   *
+   * @param mzRange The range of m/z values for which to search.
+   * @param timeRange The time range for which to search.
+   * @return A list of (time, m/z, intensity) triples that fall within the specified ranges.
+   * @throws RocksDBException
+   * @throws ClassNotFoundException
+   * @throws IOException
+   */
   public List<LCMSIndexBuilder.TMzI> searchIndexInRange(
       Pair<Double, Double> mzRange,
       Pair<Double, Double> timeRange)
       throws RocksDBException, ClassNotFoundException, IOException {
+    // TODO: gracefully handle the case when only range is specified.
+    // TODO: consider producing some sort of query plan structure that can be used for optimization/explanation.
+
     DateTime start = DateTime.now();
-    // Demote the time range to floats, as we know that that's how we stored times in the DB.
+    /* Demote the time range to floats, as we know that that's how we stored times in the DB.  This tight coupling would
+     * normally be a bad thing, but given that this class is joined at the hip with LCMSIndexBuilder necessarily, it
+     * doesn't seem like a terrible thing at the moment. */
     Pair<Float, Float> tRangeF = // My kingdom for a functor!
         Pair.of(timeRange.getLeft().floatValue(), timeRange.getRight().floatValue());
 
@@ -230,14 +248,23 @@ public class LCMSIndexSearcher {
     );
     // TODO: bail if all the mzIndexBytes are zero.
 
+    /* TODO: if the number of entries in one range is significantly smaller than the other (like an order of magnitude
+     * or more, skip extraction of the other set of ids and just filter at the end.  This will be especially helpful
+     * when the number of ids in the m/z domain is small, as each time point will probably have >10k ids. */
+
     LOGGER.info("Found/loaded %d matching time ranges, %d matching m/z ranges",
         timesInRange.size(), mzWindowsInRange.size());
 
+    // TODO: there is no need to union the time indices since they are necessarily distinct.  Just concatenate instead.
     Set<Long> unionTimeIds = unionIdBuffers(timeIndexBytes);
     Set<Long> unionMzIds = unionIdBuffers(mzIndexBytes);
     // TODO: handle the case where one of the sets is empty specially.  Either keep all in the other set or drop all.
     // TODO: we might be able to do this faster by intersecting two sorted lists.
     Set<Long> intersectionIds = new HashSet<>(unionTimeIds);
+    /* TODO: this is effectively a hash join, which isn't optimal for sets of wildly different cardinalities.
+     * Consider using sort-merge join instead, which will reduce the object overhead (by a lot) and allow us to pass
+     * over the union of the ids from each range just once when joining them.  Additionally, just skip this whole step
+     * and filter at the end if one of the set's sizes is less than 1k or so and the other is large. */
     intersectionIds.retainAll(unionMzIds);
     LOGGER.info("Id intersection results: t = %d, mz = %d, t ^ mz = %d",
         unionTimeIds.size(), unionMzIds.size(), intersectionIds.size());
@@ -247,6 +274,7 @@ public class LCMSIndexSearcher {
 
     LOGGER.info("Collecting TMzI triples");
     // Collect all the triples for the ids we extracted.
+    // TODO: don't manifest all the bytes: just create a stream of results from the cursor to reduce memory overhead.
     List<LCMSIndexBuilder.TMzI> results = new ArrayList<>(idsToFetch.size());
     byte[][] resultBytes = extractValueBytes(
         LCMSIndexBuilder.COLUMN_FAMILIES.ID_TO_TRIPLE,
@@ -258,6 +286,7 @@ public class LCMSIndexSearcher {
       results.add(LCMSIndexBuilder.TMzI.readNextFromByteBuffer(ByteBuffer.wrap(tmziBytes)));
     }
 
+    // TODO: do this filtering inline with the extraction.  We shouldn't have to load all the triples before filtering.
     LOGGER.info("Performing final filtering");
     int preFilterTMzICount = results.size();
     results = results.stream().filter(tmzi ->
@@ -269,6 +298,7 @@ public class LCMSIndexSearcher {
     DateTime end = DateTime.now();
     LOGGER.info("Search complete in %dms", end.getMillis() - start.getMillis());
 
+    // TODO: return a stream instead that can load the triples lazily.
     return results;
   }
 
@@ -327,7 +357,7 @@ public class LCMSIndexSearcher {
   }
 
   private static Set<Long> unionIdBuffers(byte[][] idBytes) {
-    /* Note: this doesn't take advantage of the fact that all of the ids are in sorted order in every idBytes sub-array.
+    /* TODO: this doesn't take advantage of the fact that all of the ids are in sorted order in every idBytes sub-array.
      * We should be able to exploit that.  For now, we'll just start by hashing the ids. */
     Set<Long> uniqueIds = new HashSet<>();
     for (int i = 0; i < idBytes.length; i++) {

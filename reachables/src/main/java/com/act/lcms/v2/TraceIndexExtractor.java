@@ -458,9 +458,9 @@ public class TraceIndexExtractor {
   public Iterator<Pair<Double, List<XZ>>> getIteratorOverTraces(File index)
       throws IOException, RocksDBException {
     RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles = DBUtil.openExistingRocksDB(index, COLUMN_FAMILIES.values());
-    final RocksIterator rangesIterator = dbAndHandles.newIterator(COLUMN_FAMILIES.TARGET_TO_WINDOW);
+    final RocksDBAndHandles.RocksDBIterator rangesIterator = dbAndHandles.newIterator(COLUMN_FAMILIES.TARGET_TO_WINDOW);
 
-    rangesIterator.seekToFirst();
+    rangesIterator.reset();
 
     final List<Double> times;
     try {

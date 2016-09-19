@@ -63,10 +63,6 @@ public class RocksDBAndHandles<T extends ColumnFamilyEnumeration<T>> {
     return this.db.get(getHandle(columnFamily), key);
   }
 
-  public RocksIterator newIterator(T columnFamily) throws RocksDBException {
-    return this.db.newIterator(getHandle(columnFamily));
-  }
-
   public void flush(boolean waitForFlush) throws RocksDBException {
     FlushOptions options = new FlushOptions();
     options.setWaitForFlush(waitForFlush);
@@ -91,6 +87,11 @@ public class RocksDBAndHandles<T extends ColumnFamilyEnumeration<T>> {
    * resulting value back to the DB.  This tends to be incredibly slow, however, so just don't expose it at all.
    */
 
+  // Wrap cursors for easier testing.
+  public RocksDBIterator newIterator(T columnFamily) throws RocksDBException {
+    return new RocksDBIterator(this.db.newIterator(getHandle(columnFamily)));
+  }
+
   // Wrap write batches for easier CF management and testing.
   public RocksDBWriteBatch<T> makeWriteBatch() {
     return new RocksDBWriteBatch<T>(this, RocksDBWriteBatch.RESERVED_BYTES);
@@ -99,6 +100,11 @@ public class RocksDBAndHandles<T extends ColumnFamilyEnumeration<T>> {
   public RocksDBWriteBatch<T> makeWriteBatch(int reservedBytes) {
     return new RocksDBWriteBatch<T>(this, reservedBytes);
   }
+
+  /* ----------------------------------------
+   * Proxy classes for write batches and cursors.  These proxies allow us to condense the API to the parts we care about
+   * and create hooks we can override for testing without using an actual DB.
+   */
 
   public static class RocksDBWriteBatch<T extends ColumnFamilyEnumeration<T>> {
     protected static final int RESERVED_BYTES = 1 << 18;
@@ -127,6 +133,57 @@ public class RocksDBAndHandles<T extends ColumnFamilyEnumeration<T>> {
     public void write() throws RocksDBException {
       WriteOptions writeOptions = parent.getWriteOptions() != null ? parent.getWriteOptions() : DEFAULT_WRITE_OPTIONS;
       parent.getDb().write(writeOptions, batch);
+    }
+  }
+
+  /* RocksDB's iterators don't implement Iterable because they talk about byte arrays instead of objects (hence no
+   * Object subtype to bind to T).  It's API is also a little backwards: rather than calling `hasNext` and then `next`,
+   * you call `next` and then `isValid` to check if you've gone off the end of the index.  We don't do anything to
+   * simplify that right now, but we could in the future. */
+  public static class RocksDBIterator {
+    RocksIterator rocksIter;
+
+    protected RocksDBIterator() {
+      // Just for testing.
+    }
+
+    protected RocksDBIterator(RocksIterator rocksIter) {
+      this.rocksIter = rocksIter;
+      this.rocksIter.seekToFirst(); // How does this not throw an exception?  Oh well.
+    }
+
+    public void reset() { // Easy synonym so users don't have to think about seeking.
+      seekToFirst();
+    }
+
+    public void seekToFirst() {
+      rocksIter.seekToFirst();
+    }
+
+    public void seekToLast() {
+      rocksIter.seekToLast();
+    }
+
+    // Don't expose seek-to-byte yet.  Not sure what that byte offset means.
+
+    public void next() {
+      rocksIter.next();
+    }
+
+    public void prev() {
+      rocksIter.prev();
+    }
+
+    public boolean isValid() {
+      return rocksIter.isValid();
+    }
+
+    public byte[] value() {
+      return rocksIter.value();
+    }
+
+    public byte[] key() {
+      return rocksIter.key();
     }
   }
 }
