@@ -174,6 +174,39 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
   public static void main(String[] args) throws Exception {
 
+    IonAnalysisInterchangeModel alignedDiseasedPeaks = new IonAnalysisInterchangeModel();
+    alignedDiseasedPeaks.loadResultsFromFile(new File("/mnt/shared-data/Vijay/perlstein_azure_run_water/diseased_combined"));
+
+    IonAnalysisInterchangeModel wildType = new IonAnalysisInterchangeModel();
+    wildType.loadResultsFromFile(new File("/mnt/shared-data/Vijay/perlstein_azure_run_water/GM09503_combined_water"));
+
+    List<String> header = new ArrayList<>();
+    header.add("MZ");
+    header.add("Time");
+    header.add("Diseased_Intensity");
+    header.add("Wild_Type_Intensity");
+    header.add("Disease-Wild_Ratio");
+
+    TSVWriter<String, String> writer = new TSVWriter<>(header);
+    writer.open(new File("out.tsv"));
+
+    for (int i = 0; i < alignedDiseasedPeaks.getResults().size(); i++) {
+      IonAnalysisInterchangeModel.ResultForMZ diseasedPeak = alignedDiseasedPeaks.getResults().get(i);
+      IonAnalysisInterchangeModel.ResultForMZ wildTypePeak = wildType.getResults().get(i);
+      Double ratio = diseasedPeak.getMolecules().get(0).getAverageIntensity() / wildTypePeak.getMolecules().get(0).getAverageIntensity();
+
+      Map<String, String> row = new HashMap<>();
+      row.put("MZ", diseasedPeak.getMz().toString());
+      row.put("Time", diseasedPeak.getMolecules().get(0).getTime().toString());
+      row.put("Diseased_Intensity", diseasedPeak.getMolecules().get(0).getAverageIntensity().toString());
+      row.put("Wild_Type_Intensity", wildTypePeak.getMolecules().get(0).getAverageIntensity().toString());
+      row.put("Disease-Wild_Ratio", ratio.toString());
+
+      writer.append(row);
+    }
+
+    writer.close();
+    
 //    IonAnalysisInterchangeModel alignedPeaks = new IonAnalysisInterchangeModel();
 //    alignedPeaks.loadResultsFromFile(new File("/mnt/shared-data/Vijay/perlstein_azure_run_water/water_combined"));
 
@@ -341,68 +374,68 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 //
 
 
-    Options opts = new Options();
-    for (Option.Builder b : OPTION_BUILDERS) {
-      opts.addOption(b.build());
-    }
-
-    CommandLine cl = null;
-    try {
-      CommandLineParser parser = new DefaultParser();
-      cl = parser.parse(opts, args);
-    } catch (ParseException e) {
-      HELP_FORMATTER.printHelp(BestMoleculesPickerFromLCMSIonAnalysis.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      System.exit(1);
-    }
-
-    if (cl.hasOption("help")) {
-      HELP_FORMATTER.printHelp(BestMoleculesPickerFromLCMSIonAnalysis.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      System.exit(1);
-    }
-
-    List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
-
-    if (cl.hasOption(OPTION_MIN_OF_REPLICATES)) {
-      HitOrMissReplicateFilterAndTransformer transformer = new HitOrMissReplicateFilterAndTransformer();
-
-      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
-          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults), transformer);
-
-      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
-      return;
-    }
-
-    Double minSnrThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_SNR_THRESHOLD));
-    Double minIntensityThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_INTENSITY_THRESHOLD));
-    Double minTimeThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_TIME_THRESHOLD));
-
-    if (cl.hasOption(OPTION_GET_IONS_SUPERSET)) {
-      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.getSupersetOfIonicVariants(
-          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
-          minSnrThreshold,
-          minIntensityThreshold,
-          minTimeThreshold);
-
-      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
-      return;
-    }
-
-    if (cl.hasOption(OPTION_THRESHOLD_ANALYSIS)) {
-
-      // We need to set this variable as a final since it is used in a lambda function below.
-      final Set<String> ions = new HashSet<>();
-      if (cl.hasOption(OPTION_FILTER_BY_IONS)) {
-        ions.addAll(Arrays.asList(cl.getOptionValues(OPTION_FILTER_BY_IONS)));
-      }
-
-      HitOrMissSingleSampleFilterAndTransformer hitOrMissSingleSampleTransformer =
-          new HitOrMissSingleSampleFilterAndTransformer(minIntensityThreshold, minSnrThreshold, minTimeThreshold, ions);
-
-      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
-          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
-          hitOrMissSingleSampleTransformer);
-
-      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
-    }
+//    Options opts = new Options();
+//    for (Option.Builder b : OPTION_BUILDERS) {
+//      opts.addOption(b.build());
+//    }
+//
+//    CommandLine cl = null;
+//    try {
+//      CommandLineParser parser = new DefaultParser();
+//      cl = parser.parse(opts, args);
+//    } catch (ParseException e) {
+//      HELP_FORMATTER.printHelp(BestMoleculesPickerFromLCMSIonAnalysis.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+//      System.exit(1);
+//    }
+//
+//    if (cl.hasOption("help")) {
+//      HELP_FORMATTER.printHelp(BestMoleculesPickerFromLCMSIonAnalysis.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+//      System.exit(1);
+//    }
+//
+//    List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
+//
+//    if (cl.hasOption(OPTION_MIN_OF_REPLICATES)) {
+//      HitOrMissReplicateFilterAndTransformer transformer = new HitOrMissReplicateFilterAndTransformer();
+//
+//      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
+//          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults), transformer);
+//
+//      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
+//      return;
+//    }
+//
+//    Double minSnrThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_SNR_THRESHOLD));
+//    Double minIntensityThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_INTENSITY_THRESHOLD));
+//    Double minTimeThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_TIME_THRESHOLD));
+//
+//    if (cl.hasOption(OPTION_GET_IONS_SUPERSET)) {
+//      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.getSupersetOfIonicVariants(
+//          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
+//          minSnrThreshold,
+//          minIntensityThreshold,
+//          minTimeThreshold);
+//
+//      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
+//      return;
+//    }
+//
+//    if (cl.hasOption(OPTION_THRESHOLD_ANALYSIS)) {
+//
+//      // We need to set this variable as a final since it is used in a lambda function below.
+//      final Set<String> ions = new HashSet<>();
+//      if (cl.hasOption(OPTION_FILTER_BY_IONS)) {
+//        ions.addAll(Arrays.asList(cl.getOptionValues(OPTION_FILTER_BY_IONS)));
+//      }
+//
+//      HitOrMissSingleSampleFilterAndTransformer hitOrMissSingleSampleTransformer =
+//          new HitOrMissSingleSampleFilterAndTransformer(minIntensityThreshold, minSnrThreshold, minTimeThreshold, ions);
+//
+//      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
+//          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
+//          hitOrMissSingleSampleTransformer);
+//
+//      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
+//    }
   }
 }
