@@ -49,7 +49,7 @@ shinyUI(fluidPage(
                         textInput("filename2", label = "Filename - Plate 2", value = "Plate_jaffna3_B1_0815201601.nc"),
                         textInput("filename3", label = "Filename - Plate 3", value = "Plate_jaffna3_C1_0815201601.nc"),
                         sliderInput("retention.time.range.multi", label = "Retention Time range",
-                                    min = 0, max = 450, value = c(130, 160), step = 5),
+                                    min = 0, max = 90, value = c(130, 160), step = 5),
                         actionButton("load.multi", "Load or refresh scans", icon("refresh"),
                                      style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
                         h3("M/Z scope"),
@@ -58,7 +58,7 @@ shinyUI(fluidPage(
                         numericInput("mz.band.halfwidth.multi", label = "Mass charge band halfwidth", value = 0.01, step = 0.01),
                         h3("Plot parameters"),
                         sliderInput("angle.theta.multi", label = "Azimuthal Angle (left <-> right)", 
-                                    min = 0, max = 360, value = 90, step = 5),
+                                    min = 0, max = 90, value = 90, step = 5),
                         sliderInput("angle.phi.multi", label = "Colatitude Angle (down <-> up)",
                                     min = 0, max = 90, value = 20, step = 5)
                       ),
@@ -66,9 +66,29 @@ shinyUI(fluidPage(
                         h4("Target m/z value"),
                         textOutput("target.mz.multi"),
                         h4("3D scatterplot of the raw data"),
-                        plotOutput("plot1", height = "450px"),
-                        plotOutput("plot2", height = "450px"),
-                        plotOutput("plot3", height = "450px")  
+                        plotOutput("plot1.multi", height = "450px"),
+                        plotOutput("plot2.multi", height = "450px"),
+                        plotOutput("plot3.multi", height = "450px")  
+                      )
+             ),
+             tabPanel("Configuration-based",
+                      sidebarPanel(
+                        h3("Input configuration"),
+                        fileInput("config.file", label = "Choose a configuration file", accept=c("application/json")),
+                        h3("Peak selection"),
+                        uiOutput("ui.peaks"),
+                        em("Peak format is {mz-value} - {retention-time}"),
+                        uiOutput("ui.retention.time.range"),
+                        uiOutput("ui.target.mz"),
+                        uiOutput("ui.mz.band.halfwidth"),
+                        h3("Plot parameters"),
+                        sliderInput("angle.theta.config", label = "Azimuthal Angle (left <-> right)", 
+                                    min = 0, max = 90, value = 90, step = 5),
+                        sliderInput("angle.phi.config", label = "Colatitude Angle (down <-> up)",
+                                    min = 0, max = 90, value = 20, step = 5)
+                      ),
+                      mainPanel(
+                        uiOutput("plots")
                       )
              )
   )
