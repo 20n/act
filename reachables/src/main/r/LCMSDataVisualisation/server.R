@@ -16,6 +16,7 @@ library(mzR)
 library(dplyr)
 library(rscala)
 library(classInt)
+library(jsonlite)
 
 kIntensityThreshold <- 10000
 kSSRatio <- 20
