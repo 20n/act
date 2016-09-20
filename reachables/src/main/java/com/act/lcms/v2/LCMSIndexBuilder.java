@@ -124,18 +124,6 @@ public class LCMSIndexBuilder {
     CLIUtil cliUtil = new CLIUtil(LCMSIndexBuilder.class, HELP_MESSAGE, OPTION_BUILDERS);
     CommandLine cl = cliUtil.parseCommandLine(args);
 
-    // Not enough memory available?  We're gonna need a bigger heap.
-    long maxMemory = Runtime.getRuntime().maxMemory();
-    if (maxMemory < 1L << 34) {  // 16GB
-      String msg = StringUtils.join(
-          String.format("You have run this class with a maximum heap size of less than 16GB (%d to be exact). ",
-              maxMemory),
-          "There is no way this process will complete with that much space available. ",
-          "Crank up your heap allocation with -Xmx and try again."
-          , "");
-      throw new RuntimeException(msg);
-    }
-
     File inputFile = new File(cl.getOptionValue(OPTION_SCAN_FILE));
     if (!inputFile.exists()) {
       cliUtil.failWithMessage("Cannot find input scan file at %s", inputFile.getAbsolutePath());
