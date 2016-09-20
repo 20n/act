@@ -7,7 +7,7 @@
 #
 # example: spawn_vm d11_v2_worker 50 mdaly ~/.ssh/id_rsa.pub
 #
-# This script wraps the azure CLI utilities to conveinently create a VM using JSON template
+# This script wraps the azure CLI utilities to conveniently create a VM using JSON template
 # and parameter files that can be exported from the azure dashboard.
 # Note that some cross-host parameters like locations and security groups should be configured
 # directly in the parameters file.

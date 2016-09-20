@@ -58,8 +58,8 @@ To see the set of available locations, run
 $ azure location list
 ```
 
-To see what VM sizes are available within a region and what are
-resource quotas for that region are, run:
+To see what VM sizes are available within a region and what our
+resource quotas are for that region, run:
 ```
 $ azure vm sizes --location centralus
 $ azure quotas show centralus
@@ -89,7 +89,7 @@ $ azure vm stop twentyn-azure-central-us twentyn-worker-2
 $ azure vm deallocate twentyn-azure-central-us twentyn-worker-2
 ```
 
-**Important**: stopping or deallocating a VM will wipe its ephemeral
+**Important**: Stopping or deallocating a VM will wipe its ephemeral
 drive, which lives at `/mnt`.  *Data lost on an ephemeral drive is
 absolutely non-recoverable.* Use `/mnt` only for genuinely temporary
 data (like Spark work dirs).  Additional disks can be created and
@@ -106,7 +106,7 @@ attempt to acquire the necessary resources and start the machine.
 Assuming capacity is available and quotas are not exceeded, a VM can
 be resized, giving it more or less CPU and memory capacity as needed.
 
-**Important**: a VM must be stopped before it can be resized.
+**Important**: A VM must be stopped before it can be resized.
 Resizing a running host will cause it to stop, erasing all data on
 `/mnt`.
 
