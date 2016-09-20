@@ -1,4 +1,4 @@
-package com.act.lcms.v2;
+package com.act.utils;
 
 import com.act.utils.rocksdb.ColumnFamilyEnumeration;
 import com.act.utils.rocksdb.RocksDBAndHandles;
@@ -40,6 +40,10 @@ public class MockRocksDBAndHandles<T extends ColumnFamilyEnumeration<T>> extends
     return array;
   }
 
+
+  public Map<T, Map<List<Byte>, byte[]>> getFakeDB() {
+    return this.fakeDB;
+  }
 
   @Override
   public void put(T columnFamily, byte[] key, byte[] val) throws RocksDBException {

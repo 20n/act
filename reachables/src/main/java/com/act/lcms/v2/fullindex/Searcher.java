@@ -1,4 +1,4 @@
-package com.act.lcms.v2;
+package com.act.lcms.v2.fullindex;
 
 import com.act.utils.CLIUtil;
 import com.act.utils.rocksdb.DBUtil;
@@ -12,11 +12,9 @@ import org.apache.logging.log4j.Logger;
 import org.joda.time.DateTime;
 import org.rocksdb.RocksDBException;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.ByteBuffer;
@@ -29,10 +27,10 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 /**
- * This is the conjoined twin of LCMSIndexBuilder.  If IndexBuilder changes in a material way, this class should also.
+ * This is the conjoined twin of Builder.  If IndexBuilder changes in a material way, this class should also.
  */
-public class LCMSIndexSearcher {
-  private static final Logger LOGGER = LogManager.getFormatterLogger(LCMSIndexSearcher.class);
+public class Searcher {
+  private static final Logger LOGGER = LogManager.getFormatterLogger(Searcher.class);
   private static final Character RANGE_SEPARATOR = ':';
   private static final String OUTPUT_HEADER = StringUtils.join(new String[] {
       "id", "time", "m/z", "intensity"
@@ -44,7 +42,7 @@ public class LCMSIndexSearcher {
   public static final String OPTION_OUTPUT_FILE = "o";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "Queries a triple index constructed by LCMSIndexBuilder for readings in some m/z and time window.",
+      "Queries a triple index constructed by Builder for readings in some m/z and time window.",
   }, "");
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
@@ -75,26 +73,26 @@ public class LCMSIndexSearcher {
   }};
 
   public static class Factory {
-    public static LCMSIndexSearcher makeLCMSIndexSearcher(File indexDir)
+    public static Searcher makeSearcher(File indexDir)
         throws RocksDBException, ClassNotFoundException, IOException {
-      RocksDBAndHandles<LCMSIndexBuilder.COLUMN_FAMILIES> dbAndHandles =
-          DBUtil.openExistingRocksDB(indexDir, LCMSIndexBuilder.COLUMN_FAMILIES.values());
-      LCMSIndexSearcher searcher = new LCMSIndexSearcher(dbAndHandles);
+      RocksDBAndHandles<ColumnFamilies> dbAndHandles =
+          DBUtil.openExistingRocksDB(indexDir, ColumnFamilies.values());
+      Searcher searcher = new Searcher(dbAndHandles);
       searcher.init();
       return searcher;
     }
   }
 
-  private RocksDBAndHandles<LCMSIndexBuilder.COLUMN_FAMILIES> dbAndHandles;
-  private List<LCMSIndexBuilder.MZWindow> mzWindows;
+  private RocksDBAndHandles<ColumnFamilies> dbAndHandles;
+  private List<MZWindow> mzWindows;
   private List<Float> timepoints;
 
-  LCMSIndexSearcher(RocksDBAndHandles<LCMSIndexBuilder.COLUMN_FAMILIES> dbAndHandles) {
+  Searcher(RocksDBAndHandles<ColumnFamilies> dbAndHandles) {
     this.dbAndHandles = dbAndHandles;
   }
 
   public static void main(String args[]) throws Exception {
-    CLIUtil cliUtil = new CLIUtil(LCMSIndexSearcher.class, HELP_MESSAGE, OPTION_BUILDERS);
+    CLIUtil cliUtil = new CLIUtil(Searcher.class, HELP_MESSAGE, OPTION_BUILDERS);
     CommandLine cl = cliUtil.parseCommandLine(args);
 
     File indexDir = new File(cl.getOptionValue(OPTION_INDEX_PATH));
@@ -109,32 +107,32 @@ public class LCMSIndexSearcher {
     Pair<Double, Double> mzRange = extractRange(cl.getOptionValue(OPTION_MZ_RANGE));
     Pair<Double, Double> timeRange = extractRange(cl.getOptionValue(OPTION_TIME_RANGE));
 
-    LCMSIndexSearcher searcher = Factory.makeLCMSIndexSearcher(indexDir);
-    List<LCMSIndexBuilder.TMzI> results = searcher.searchIndexInRange(mzRange, timeRange);
+    Searcher searcher = Factory.makeSearcher(indexDir);
+    List<TMzI> results = searcher.searchIndexInRange(mzRange, timeRange);
 
     if (cl.hasOption(OPTION_OUTPUT_FILE)) {
       try (PrintWriter writer = new PrintWriter(new FileWriter(cl.getOptionValue(OPTION_OUTPUT_FILE)))) {
-        LCMSIndexSearcher.writeOutput(writer, results);
+        Searcher.writeOutput(writer, results);
       }
     } else {
       // Don't close the print writer if we're writing to stdout.
-      LCMSIndexSearcher.writeOutput(new PrintWriter(new OutputStreamWriter(System.out)), results);
+      Searcher.writeOutput(new PrintWriter(new OutputStreamWriter(System.out)), results);
     }
 
     LOGGER.info("Done");
   }
 
-  private static void writeOutput(PrintWriter writer, List<LCMSIndexBuilder.TMzI> results) throws IOException {
+  private static void writeOutput(PrintWriter writer, List<TMzI> results) throws IOException {
     int counter = 0;
     writer.println(OUTPUT_HEADER);
-    for (LCMSIndexBuilder.TMzI triple : results) {
+    for (TMzI triple : results) {
       writer.format("%d\t%.6f\t%.6f\t%.6f\n", counter, triple.getTime(), triple.getMz(), triple.getIntensity());
       counter++;
     }
     writer.flush();
   }
 
-  public static Pair<Double, Double> extractRange(String rangeStr) {
+  private static Pair<Double, Double> extractRange(String rangeStr) {
     // Skip empty ranges so we can just limit on time or m/z.
     if (rangeStr == null || rangeStr.isEmpty()) {
       return null;
@@ -163,29 +161,22 @@ public class LCMSIndexSearcher {
     }
   }
 
-  private static <T> T deserializeObject(byte[] bytes) throws IOException, ClassNotFoundException {
-    try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
-      // Assumes you know what you're getting into when deserializing.  Don't use this blindly.
-      return (T) ois.readObject();
-    }
-  }
-
   protected void init() throws RocksDBException, ClassNotFoundException, IOException {
     LOGGER.info("Initializing DB");
 
     // TODO: hold onto the byte representation of the timepoints so we can use them as keys more easily.
-    timepoints = LCMSIndexBuilder.byteArrayToFloatList(
-        dbAndHandles.get(LCMSIndexBuilder.COLUMN_FAMILIES.TIMEPOINTS, LCMSIndexBuilder.TIMEPOINTS_KEY)
+    timepoints = Utils.byteArrayToFloatList(
+        dbAndHandles.get(ColumnFamilies.TIMEPOINTS, Builder.TIMEPOINTS_KEY)
     );
     LOGGER.info("Loaded %d timepoints", timepoints.size());
     // Assumes timepoints are sorted.  TODO: check!
 
     mzWindows = new ArrayList<>();
-    RocksDBAndHandles.RocksDBIterator mzIter = dbAndHandles.newIterator(LCMSIndexBuilder.COLUMN_FAMILIES.TARGET_TO_WINDOW);
+    RocksDBAndHandles.RocksDBIterator mzIter = dbAndHandles.newIterator(ColumnFamilies.TARGET_TO_WINDOW);
     mzIter.reset();
     while (mzIter.isValid()) {
       // The keys are the target m/z's, so we can ignore them.
-      mzWindows.add(deserializeObject(mzIter.value()));
+      mzWindows.add(Utils.deserializeObject(mzIter.value()));
       mzIter.next();
     }
 
@@ -209,7 +200,7 @@ public class LCMSIndexSearcher {
    * @throws ClassNotFoundException
    * @throws IOException
    */
-  public List<LCMSIndexBuilder.TMzI> searchIndexInRange(
+  public List<TMzI> searchIndexInRange(
       Pair<Double, Double> mzRange,
       Pair<Double, Double> timeRange)
       throws RocksDBException, ClassNotFoundException, IOException {
@@ -218,7 +209,7 @@ public class LCMSIndexSearcher {
 
     DateTime start = DateTime.now();
     /* Demote the time range to floats, as we know that that's how we stored times in the DB.  This tight coupling would
-     * normally be a bad thing, but given that this class is joined at the hip with LCMSIndexBuilder necessarily, it
+     * normally be a bad thing, but given that this class is joined at the hip with Builder necessarily, it
      * doesn't seem like a terrible thing at the moment. */
     Pair<Float, Float> tRangeF = // My kingdom for a functor!
         Pair.of(timeRange.getLeft().floatValue(), timeRange.getRight().floatValue());
@@ -231,17 +222,17 @@ public class LCMSIndexSearcher {
     List<Float> timesInRange = timepointsInRange(tRangeF);
 
     byte[][] timeIndexBytes = extractValueBytes(
-        LCMSIndexBuilder.COLUMN_FAMILIES.TIMEPOINT_TO_TRIPLES,
+        ColumnFamilies.TIMEPOINT_TO_TRIPLES,
         timesInRange,
         Float.BYTES,
         ByteBuffer::putFloat
     );
     // TODO: bail if all the timeIndexBytes lengths are zero.
 
-    List<LCMSIndexBuilder.MZWindow> mzWindowsInRange = mzWindowsInRange(mzRange);
+    List<MZWindow> mzWindowsInRange = mzWindowsInRange(mzRange);
 
     byte[][] mzIndexBytes = extractValueBytes(
-        LCMSIndexBuilder.COLUMN_FAMILIES.WINDOW_ID_TO_TRIPLES,
+        ColumnFamilies.WINDOW_ID_TO_TRIPLES,
         mzWindowsInRange,
         Integer.BYTES,
         (buff, mz) -> buff.putInt(mz.getIndex())
@@ -275,15 +266,15 @@ public class LCMSIndexSearcher {
     LOGGER.info("Collecting TMzI triples");
     // Collect all the triples for the ids we extracted.
     // TODO: don't manifest all the bytes: just create a stream of results from the cursor to reduce memory overhead.
-    List<LCMSIndexBuilder.TMzI> results = new ArrayList<>(idsToFetch.size());
+    List<TMzI> results = new ArrayList<>(idsToFetch.size());
     byte[][] resultBytes = extractValueBytes(
-        LCMSIndexBuilder.COLUMN_FAMILIES.ID_TO_TRIPLE,
+        ColumnFamilies.ID_TO_TRIPLE,
         idsToFetch,
         Long.BYTES,
         ByteBuffer::putLong
     );
     for (byte[] tmziBytes : resultBytes) {
-      results.add(LCMSIndexBuilder.TMzI.readNextFromByteBuffer(ByteBuffer.wrap(tmziBytes)));
+      results.add(TMzI.readNextFromByteBuffer(ByteBuffer.wrap(tmziBytes)));
     }
 
     // TODO: do this filtering inline with the extraction.  We shouldn't have to load all the triples before filtering.
@@ -296,7 +287,7 @@ public class LCMSIndexSearcher {
     LOGGER.info("Precise filtering results: %d -> %d", preFilterTMzICount, results.size());
 
     DateTime end = DateTime.now();
-    LOGGER.info("Search complete in %dms", end.getMillis() - start.getMillis());
+    LOGGER.info("Search completed in %dms", end.getMillis() - start.getMillis());
 
     // TODO: return a stream instead that can load the triples lazily.
     return results;
@@ -313,8 +304,8 @@ public class LCMSIndexSearcher {
     return timesInRange;
   }
 
-  private List<LCMSIndexBuilder.MZWindow> mzWindowsInRange(Pair<Double, Double> mzRange) {
-    List<LCMSIndexBuilder.MZWindow> mzWindowsInRange = new ArrayList<>( // Same here--access by index.
+  private List<MZWindow> mzWindowsInRange(Pair<Double, Double> mzRange) {
+    List<MZWindow> mzWindowsInRange = new ArrayList<>( // Same here--access by index.
         mzWindows.stream().filter(x -> rangesOverlap(mzRange.getLeft(), mzRange.getRight(), x.getMin(), x.getMax())).
             collect(Collectors.toList())
     );
@@ -335,7 +326,7 @@ public class LCMSIndexSearcher {
    * @throws RocksDBException
    */
   private <K> byte[][] extractValueBytes(
-      LCMSIndexBuilder.COLUMN_FAMILIES cf, List<K> keys, int keyBytes, BiFunction<ByteBuffer, K, ByteBuffer> put)
+      ColumnFamilies cf, List<K> keys, int keyBytes, BiFunction<ByteBuffer, K, ByteBuffer> put)
       throws RocksDBException {
     byte[][] valBytes = new byte[keys.size()][];
     ByteBuffer keyBuffer = ByteBuffer.allocate(keyBytes);

@@ -1,61 +1,54 @@
-package com.act.lcms.v2;
+package com.act.lcms.v2.fullindex;
 
 import com.act.lcms.LCMSNetCDFParser;
 import com.act.lcms.LCMSSpectrum;
 import com.act.lcms.MS1;
 import com.act.utils.CLIUtil;
-import com.act.utils.rocksdb.ColumnFamilyEnumeration;
 import com.act.utils.rocksdb.DBUtil;
 import com.act.utils.rocksdb.RocksDBAndHandles;
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.joda.time.DateTime;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.WriteOptions;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLStreamException;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
-public class LCMSIndexBuilder {
-  private static final Logger LOGGER = LogManager.getFormatterLogger(LCMSIndexBuilder.class);
+public class Builder {
+  private static final Logger LOGGER = LogManager.getFormatterLogger(Builder.class);
   private static final Charset UTF8 = StandardCharsets.UTF_8;
   /* TIMEPOINTS_KEY is a fixed key into a separate column family in the index that just holds a list of time points.
    * Within that column family, there is only one entry:
    *   "timepoints" -> serialized array of time point doubles
    * and we use this key to write/read those time points.  Since time points are shared across all traces, we can
    * maintain this one copy in the index and reconstruct the XZ pairs as we read trace intensity arrays. */
+  // All of these are intentionally package private.
   static final byte[] TIMEPOINTS_KEY = "timepoints".getBytes(UTF8);
 
-  private static final Double WINDOW_WIDTH_FROM_CENTER = MS1.MS1_MZ_TOLERANCE_DEFAULT;
-  private static final Double MZ_STEP_SIZE = MS1.MS1_MZ_TOLERANCE_DEFAULT / 2.0;
-  private static final Double MIN_MZ = 50.0;
-  private static final Double MAX_MZ = 950.0;
+  static final Double WINDOW_WIDTH_FROM_CENTER = MS1.MS1_MZ_TOLERANCE_DEFAULT;
+  /* This step size should make it impossible for us to miss any readings in the index due to FP error.
+   * We could make the index more compact by spacing these windows out a bit, but I'll leave that as a TODO. */
+  static final Double MZ_STEP_SIZE = MS1.MS1_MZ_TOLERANCE_DEFAULT / 2.0;
+  static final Double MIN_MZ = 50.0;
+  static final Double MAX_MZ = 950.0;
 
   public static final String OPTION_INDEX_PATH = "x";
   public static final String OPTION_SCAN_FILE = "i";
@@ -85,43 +78,23 @@ public class LCMSIndexBuilder {
     );
   }};
 
-  // Package private so the searcher can use this enum but nobody else.
-  enum COLUMN_FAMILIES implements ColumnFamilyEnumeration<COLUMN_FAMILIES> {
-    TARGET_TO_WINDOW("target_mz_to_window_obj"),
-    TIMEPOINTS("timepoints"),
-    ID_TO_TRIPLE("id_to_triple"),
-    TIMEPOINT_TO_TRIPLES("timepoints_to_triples"),
-    WINDOW_ID_TO_TRIPLES("windows_to_triples"),
-    ;
-
-    private static final Map<String, COLUMN_FAMILIES> reverseNameMap =
-        new HashMap<String, COLUMN_FAMILIES>() {{
-          for (COLUMN_FAMILIES cf : COLUMN_FAMILIES.values()) {
-            put(cf.getName(), cf);
-          }
-        }};
-
-    private String name;
-
-    COLUMN_FAMILIES(String name) {
-      this.name = name;
-    }
-
-    public String getName() {
-      return name;
-    }
-
-    @Override
-    public COLUMN_FAMILIES getFamilyByName(String name) {
-      return reverseNameMap.get(name);
+  public static class Factory {
+    public static Builder makeBuilder(File indexDir) throws RocksDBException{
+      RocksDB.loadLibrary();
+      LOGGER.info("Creating index at %s", indexDir.getAbsolutePath());
+      RocksDBAndHandles<ColumnFamilies> dbAndHandles = DBUtil.createNewRocksDB(indexDir, ColumnFamilies.values());
+      return new Builder(dbAndHandles);
     }
   }
 
-  public LCMSIndexBuilder() {
+  private RocksDBAndHandles<ColumnFamilies> dbAndHandles;
+
+  Builder(RocksDBAndHandles<ColumnFamilies> dbAndHandles) {
+    this.dbAndHandles = dbAndHandles;
   }
 
   public static void main(String[] args) throws Exception {
-    CLIUtil cliUtil = new CLIUtil(LCMSIndexBuilder.class, HELP_MESSAGE, OPTION_BUILDERS);
+    CLIUtil cliUtil = new CLIUtil(Builder.class, HELP_MESSAGE, OPTION_BUILDERS);
     CommandLine cl = cliUtil.parseCommandLine(args);
 
     File inputFile = new File(cl.getOptionValue(OPTION_SCAN_FILE));
@@ -129,15 +102,25 @@ public class LCMSIndexBuilder {
       cliUtil.failWithMessage("Cannot find input scan file at %s", inputFile.getAbsolutePath());
     }
 
-    File rocksDBFile = new File(cl.getOptionValue(OPTION_INDEX_PATH));
-    if (rocksDBFile.exists()) {
-      cliUtil.failWithMessage("Index file at %s already exists--remove and retry", rocksDBFile.getAbsolutePath());
+    File indexDir = new File(cl.getOptionValue(OPTION_INDEX_PATH));
+    if (indexDir.exists()) {
+      cliUtil.failWithMessage("Index file at %s already exists--remove and retry", indexDir.getAbsolutePath());
     }
 
-    LCMSIndexBuilder indexBuilder = new LCMSIndexBuilder();
-    List<Double> targetMZs = indexBuilder.makeTargetMasses();
+    Builder indexBuilder = Factory.makeBuilder(indexDir);
+    try {
+      indexBuilder.processScan(indexBuilder.makeTargetMasses(), inputFile);
+    } finally {
+      if (indexBuilder != null) {
+        indexBuilder.close();
+      }
+    }
 
-    indexBuilder.processScan(targetMZs, inputFile, rocksDBFile);
+    LOGGER.info("Done");
+  }
+
+  public void close() throws RocksDBException {
+    dbAndHandles.close();
   }
 
   private List<Double> makeTargetMasses() {
@@ -148,73 +131,29 @@ public class LCMSIndexBuilder {
     return targets;
   }
 
-  public void processScan(List<Double> targetMZs, File scanFile, File rocksDBFile)
+  public void processScan(List<Double> targetMZs, File scanFile)
       throws RocksDBException, ParserConfigurationException, XMLStreamException, IOException {
+    DateTime start = DateTime.now();
     LOGGER.info("Accessing scan file at %s", scanFile.getAbsolutePath());
     LCMSNetCDFParser parser = new LCMSNetCDFParser();
     Iterator<LCMSSpectrum> spectrumIterator = parser.getIterator(scanFile.getAbsolutePath());
 
-    LOGGER.info("Opening index at %s", rocksDBFile.getAbsolutePath());
-    RocksDB.loadLibrary();
-    RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles = null;
+    WriteOptions writeOptions = new WriteOptions();
+    writeOptions.setDisableWAL(true);
+    writeOptions.setSync(false);
+    dbAndHandles.setWriteOptions(writeOptions);
 
-    try {
-      // TODO: add to existing DB instead of complaining if the DB already exists.  That'll enable one index per scan.
-      dbAndHandles = DBUtil.createNewRocksDB(rocksDBFile, COLUMN_FAMILIES.values());
+    // TODO: split targetMZs into batches of ~100k and extract incrementally to allow huge input sets.
 
-      WriteOptions writeOptions = new WriteOptions();
-      writeOptions.setDisableWAL(true);
-      writeOptions.setSync(false);
-      dbAndHandles.setWriteOptions(writeOptions);
+    LOGGER.info("Extracting traces");
+    List<MZWindow> windows = targetsToWindows(targetMZs);
+    extractTriples(spectrumIterator, windows);
 
-      // TODO: split targetMZs into batches of ~100k and extract incrementally to allow huge input sets.
+    LOGGER.info("Writing search targets to on-disk index");
+    writeWindowsToDB(windows);
 
-      LOGGER.info("Extracting traces");
-      List<MZWindow> windows = targetsToWindows(targetMZs);
-      extractTriples(dbAndHandles, spectrumIterator, windows);
-
-      LOGGER.info("Writing search targets to on-disk index");
-      writeWindowsToDB(dbAndHandles, windows);
-    } finally {
-      if (dbAndHandles != null) {
-        dbAndHandles.getDb().close();
-      }
-    }
-
-    LOGGER.info("Done");
-  }
-
-  // Make this public so it can be de/serialized
-  public static class MZWindow implements Serializable {
-    private static final long serialVersionUID = -3326765598920871504L;
-
-    int index;
-    Double targetMZ;
-    double min;
-    double max;
-
-    public MZWindow(int index, Double targetMZ) {
-      this.index = index;
-      this.targetMZ = targetMZ;
-      this.min = targetMZ - WINDOW_WIDTH_FROM_CENTER;
-      this.max = targetMZ + WINDOW_WIDTH_FROM_CENTER;
-    }
-
-    public int getIndex() {
-      return index;
-    }
-
-    public Double getTargetMZ() {
-      return targetMZ;
-    }
-
-    public double getMin() {
-      return min;
-    }
-
-    public double getMax() {
-      return max;
-    }
+    DateTime end = DateTime.now();
+    LOGGER.info("Index construction completed in %dms", end.getMillis() - start.getMillis());
   }
 
   private List<MZWindow> targetsToWindows(List<Double> targetMZs) {
@@ -235,66 +174,7 @@ public class LCMSIndexBuilder {
     return windows;
   }
 
-  /**
-   * (time, mass/charge, intensity) triples.
-   *
-   * The three axes (XYZ) from MS1 are stored as binary triples in our index, so that we can recover the individual
-   * readings from the LCMS instrument in any m/z and time ranges.
-   *
-   * This could be called XYZ, but T(ime, )Mz(, and) I(ntensity) makes more sense to me.
-   */
-  public static class TMzI {
-    /* Note: we are cheating here.  We usually throw around Doubles for time and intensity.  To save (a whole bunch of)
-     * of bytes, we pare down our time intensity values to floats, knowing they were actually floats to begin with
-     * in the NetCDF file but were promoted to doubles to be compatible with the LCMS parser API.  */
-    public static final int BYTES = Float.BYTES + Double.BYTES + Float.BYTES;
-
-    // TODO: we might get better compression out of using an index for time.
-    float time;
-    double mz;
-    float intensity;
-
-    public TMzI(float time, double mz, float intensity) {
-      this.time = time;
-      this.mz = mz;
-      this.intensity = intensity;
-    }
-
-    public float getTime() {
-      return time;
-    }
-
-    public double getMz() {
-      return mz;
-    }
-
-    public float getIntensity() {
-      return intensity;
-    }
-
-    public void writeToByteBuffer(ByteBuffer buffer) {
-      buffer.putFloat(time);
-      buffer.putDouble(mz);
-      buffer.putFloat(intensity);
-    }
-
-    // Write the fields without bothering to create an object.
-    public static void writeToByteBuffer(ByteBuffer buffer, float time, double mz, float intensity) {
-      buffer.putFloat(time);
-      buffer.putDouble(mz);
-      buffer.putFloat(intensity);
-    }
-
-    public static TMzI readNextFromByteBuffer(ByteBuffer buffer) {
-      float time = buffer.getFloat();
-      double mz = buffer.getDouble();
-      float intensity = buffer.getFloat();
-      return new TMzI(time, mz, intensity);
-    }
-  }
-
   protected void extractTriples(
-      RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles,
       Iterator<LCMSSpectrum> iter,
       List<MZWindow> windows)
       throws RocksDBException, IOException {
@@ -378,7 +258,7 @@ public class LCMSIndexBuilder {
 
       // Batch up all the triple writes to reduce the number of times we hit the disk in this loop.
       // Note: huge success!
-      RocksDBAndHandles.RocksDBWriteBatch<COLUMN_FAMILIES> writeBatch = dbAndHandles.makeWriteBatch();
+      RocksDBAndHandles.RocksDBWriteBatch<ColumnFamilies> writeBatch = dbAndHandles.makeWriteBatch();
 
       // Initialize the sweep line lists.  Windows go follow: tbd -> working -> done (nowhere).
       LinkedList<MZWindow> workingQueue = new LinkedList<>();
@@ -423,13 +303,13 @@ public class LCMSIndexBuilder {
           // TODO: count the number of times we add intensities to each window's accumulator for MS1-style warnings.
           counterBuffer.rewind(); // Already flipped.
           mzWindowTripleBuffers[window.getIndex()] = // Must assign when calling appendOrRealloc.
-              appendOrRealloc(mzWindowTripleBuffers[window.getIndex()], counterBuffer);
+              Utils.appendOrRealloc(mzWindowTripleBuffers[window.getIndex()], counterBuffer);
         }
 
         // We flipped after reading, so we should be good to rewind (to be safe) and write here.
         counterBuffer.rewind();
         valBuffer.rewind();
-        writeBatch.put(COLUMN_FAMILIES.ID_TO_TRIPLE, toCompactArray(counterBuffer), toCompactArray(valBuffer));
+        writeBatch.put(ColumnFamilies.ID_TO_TRIPLE, Utils.toCompactArray(counterBuffer), Utils.toCompactArray(valBuffer));
 
         // Rewind again for another read.
         counterBuffer.rewind();
@@ -444,8 +324,8 @@ public class LCMSIndexBuilder {
       ByteBuffer timeBuffer = ByteBuffer.allocate(Float.BYTES).putFloat(time);
       timeBuffer.flip(); // Prep both bufers for reading so they can be written to the DB.
       triplesForThisTime.flip();
-      dbAndHandles.put(COLUMN_FAMILIES.TIMEPOINT_TO_TRIPLES,
-          toCompactArray(timeBuffer), toCompactArray(triplesForThisTime));
+      dbAndHandles.put(ColumnFamilies.TIMEPOINT_TO_TRIPLES,
+          Utils.toCompactArray(timeBuffer), Utils.toCompactArray(triplesForThisTime));
 
       timepoints.add(time);
 
@@ -456,7 +336,7 @@ public class LCMSIndexBuilder {
     }
 
     // Now write all the mzWindow to triple indexes.
-    RocksDBAndHandles.RocksDBWriteBatch<COLUMN_FAMILIES> writeBatch = dbAndHandles.makeWriteBatch();
+    RocksDBAndHandles.RocksDBWriteBatch<ColumnFamilies> writeBatch = dbAndHandles.makeWriteBatch();
     ByteBuffer idBuffer = ByteBuffer.allocate(Integer.BYTES);
     for (int i = 0; i < mzWindowTripleBuffers.length; i++) {
       idBuffer.clear();
@@ -466,11 +346,11 @@ public class LCMSIndexBuilder {
       ByteBuffer triplesBuffer = mzWindowTripleBuffers[i];
       triplesBuffer.flip(); // Prep for read.
 
-      writeBatch.put(COLUMN_FAMILIES.WINDOW_ID_TO_TRIPLES, toCompactArray(idBuffer), toCompactArray(triplesBuffer));
+      writeBatch.put(ColumnFamilies.WINDOW_ID_TO_TRIPLES, Utils.toCompactArray(idBuffer), Utils.toCompactArray(triplesBuffer));
     }
     writeBatch.write();
 
-    dbAndHandles.put(COLUMN_FAMILIES.TIMEPOINTS, TIMEPOINTS_KEY, floatListToByteArray(timepoints));
+    dbAndHandles.put(ColumnFamilies.TIMEPOINTS, TIMEPOINTS_KEY, Utils.floatListToByteArray(timepoints));
     dbAndHandles.flush(true);
   }
 
@@ -491,135 +371,19 @@ public class LCMSIndexBuilder {
    * Writes all MZWindows to the DB as serialized objects.  Windows are keyed by target MZ (as a Double) for easy lookup
    * in the case that we have a target m/z that exactly matches a window.
    *
-   * @param dbAndHandles A handle to the DB to which to write the windows.
    * @param windows The windows to write.
    * @throws RocksDBException
    * @throws IOException
    */
-  protected void writeWindowsToDB(RocksDBAndHandles<COLUMN_FAMILIES> dbAndHandles, List<MZWindow> windows)
-      throws RocksDBException, IOException {
+  protected void writeWindowsToDB(List<MZWindow> windows) throws RocksDBException, IOException {
     for (MZWindow window : windows) {
-      byte[] keyBytes = serializeObject(window.getTargetMZ());
-      byte[] valBytes = serializeObject(window);
+      byte[] keyBytes = Utils.serializeObject(window.getTargetMZ());
+      byte[] valBytes = Utils.serializeObject(window);
 
-      dbAndHandles.put(COLUMN_FAMILIES.TARGET_TO_WINDOW, keyBytes, valBytes);
+      dbAndHandles.put(ColumnFamilies.TARGET_TO_WINDOW, keyBytes, valBytes);
     }
 
     dbAndHandles.flush(true);
     LOGGER.info("Done writing window data to index");
-  }
-
-  private static <T> byte[] serializeObject(T obj) throws IOException {
-    try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
-         ObjectOutputStream oo = new ObjectOutputStream(bos)) {
-      oo.writeObject(obj);
-      oo.flush();
-      return bos.toByteArray();
-    }
-  }
-
-  /* ----------------------------------------
-   * Byte buffer utilities.
-   * TODO: these could live in their own class, maybe.
-   * These are all package private so that sibling classes can read from the DB.
-   * */
-
-  /**
-   * Appends the contents of toAppend to dest if there is capacity, or does the equivalent of C's "realloc" by
-   * allocating a larger buffer and copying both dest and toAppend into that new buffer.
-   *
-   * Always call this function as:
-   * <pre>
-   * {@code
-   *   dest = appendOrRealloc(dest, toAppend)
-   * }
-   * </pre>
-   * as we can't actually resize or reallocate dest once it's been allocated.
-   *
-   * @param dest The buffer into which to write or to reallocate if necessary.
-   * @param toAppend The data to write into dest.
-   * @return dest or a new, larger buffer containing both dest and toAppend.
-   */
-  static ByteBuffer appendOrRealloc(ByteBuffer dest, ByteBuffer toAppend) {
-    /* Before reading this function, review this excellent explanation of the behaviors of ByteBuffers:
-     * http://mindprod.com/jgloss/bytebuffer.html */
-
-    // Assume toAppend is pre-flipped to avoid a double flip, which would be Very Bad.
-    if (dest.capacity() - dest.position() < toAppend.limit()) {
-      // Whoops, we have to reallocate!
-
-      ByteBuffer newDest = ByteBuffer.allocate(dest.capacity() << 1); // TODO: make sure these are page-divisible sizes.
-      dest.flip(); // Switch dest to reading mode.
-      newDest.put(dest); // Write all of dest into the new buffer.
-      dest = newDest;
-    }
-    dest.put(toAppend);
-    return dest;
-  }
-
-  /**
-   * Return an appropriately sized byte array filled with the contents of src.
-   *
-   * The {@link ByteBuffer#array()} call returns the array that backs the buffer, which is sometimes larger than the
-   * data contained in the buffer.  For instance, in this example:
-   * <pre>
-   * {@code
-   *   ByteBuffer buffer = ByteBuffer.allocate(16);
-   *   buffer.put("hello world!".getBytes());
-   *   byte[] arr = buffer.array();
-   * }
-   * </pre>
-   * {@code arr} will always have length 16, even though we've only written 12 bytes to it.
-   *
-   * @param src
-   * @return
-   */
-  public static byte[] toCompactArray(ByteBuffer src) {
-    // Assume src is pre-flipped to avoid a double-flip.
-    if (src.hasArray() && src.limit() >= src.capacity()) { // No need to compact if limit covers the full backing array.
-      return src.array();
-    }
-    assertReadyForFreshRead(src);
-
-    // Otherwise, we need to allocate and copy into a new array of the correct size.
-
-    // TODO: is Arrays.copyOf any faster than this?  Ideally we want CoW semantics here...
-    // Warning: do not use src.compact().  That does something entirely different.
-
-    /* We use a byte array here rather than another byte buffer for two reasons:
-     * 1) It's possible for byte buffers to reside off-heap (like in shared pages), and we definitely want the array on
-     *    the heap.
-     * 2) If the byte-buffer resides on the heap, it's allocation will be identical, and we save the object management
-     *    overhead by not creating another ByteBuffer. */
-    byte[] dest = new byte[src.limit()];
-    src.get(dest); // Copy the contents of the buffer into our appropriately sized array.
-    assert(src.position() == src.limit()); // All bytes should have been read.
-    src.rewind(); // Be kind: rewind.
-    return dest;
-  }
-
-  /**
-   * Ensure that a buffer is prepared for reading from the beginning.
-   * @param b The buffer to check.
-   */
-  static void assertReadyForFreshRead(ByteBuffer b) {
-    assert(b.limit() != 0); // A zero limit would cause an immediate buffer underflow.
-    assert(b.position() == 0); // A non-zero position means either the buffer hasn't been flipped or has been read from.
-  }
-
-  static byte[] floatListToByteArray(List<Float> vals) {
-    ByteBuffer buffer = ByteBuffer.allocate(vals.size() * Float.BYTES); // Don't waste any bits!
-    vals.forEach(buffer::putFloat);
-    buffer.flip(); // Prep for reading.
-    return toCompactArray(buffer); // Compact just to be safe, check invariants.
-  }
-
-  static List<Float> byteArrayToFloatList(byte[] bytes) {
-    ByteBuffer buffer = ByteBuffer.wrap(bytes);
-    List<Float> vals = new ArrayList<>(bytes.length / Float.BYTES);
-    while (buffer.hasRemaining()) {
-      vals.add(buffer.getFloat());
-    }
-    return vals;
   }
 }

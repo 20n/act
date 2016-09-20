@@ -26,6 +26,10 @@ public class RocksDBAndHandles<T extends ColumnFamilyEnumeration<T>> {
     this.columnFamilyHandleMap = columnFamilyHandleMap;
   }
 
+  public void close() {
+    this.db.close();
+  }
+
   public WriteOptions getWriteOptions() {
     return writeOptions;
   }
