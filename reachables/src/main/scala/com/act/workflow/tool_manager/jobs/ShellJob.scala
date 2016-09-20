@@ -17,7 +17,7 @@ class ShellJob(name: String, commands: List[String]) extends Job(name) {
   private var errorMethod: Option[(String) => Unit] = None
 
   def asyncJob() {
-    logger.info(s"Running command line job ${commands.mkString(" ")}")
+    logger.info(s"Running command line job '${commands.mkString(" ")}'")
 
     // Run the call in the future
     val (future, cancel) = CanceleableFuture.create[Process](future => commands.run(setupProcessIO()))
