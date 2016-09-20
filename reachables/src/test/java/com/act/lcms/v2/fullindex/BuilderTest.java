@@ -125,4 +125,23 @@ public class BuilderTest {
       }
     }
   }
+
+  @Test
+  public void testAppendOrRealloc() throws Exception {
+    ByteBuffer dest = ByteBuffer.allocate(4);
+    assertEquals("Initial buffer capacity matches expected", 4, dest.capacity());
+    dest = Utils.appendOrRealloc(dest, ByteBuffer.wrap(new byte[] {'a', 'b', 'c', 'd'})); // No need to flip w/ wrap().
+    assertEquals("Post-append (fits) buffer capacity matches expected", 4, dest.capacity());
+    assertEquals("Post-append (fits) buffer position matches expected", 4, dest.position());
+    dest = Utils.appendOrRealloc(dest, ByteBuffer.wrap(new byte[] {'e'}));
+    assertEquals("Post-append (too large) buffer capacity has doubled", 8, dest.capacity());
+    assertEquals("Post-append (too large) buffer position matches expected", 5, dest.position());
+    dest = Utils.appendOrRealloc(dest, ByteBuffer.wrap(new byte[] {'f', 'g', 'h'}));
+    assertEquals("Post-append (fits) buffer capacity matches expected", 8, dest.capacity());
+    assertEquals("Post-append (fits) buffer position matches expected", 8, dest.position());
+    dest = Utils.appendOrRealloc(dest, ByteBuffer.wrap(new byte[] {'i'}));
+    assertEquals("Post-append (too large) buffer capacity has doubled", 16, dest.capacity());
+    assertEquals("Post-append (too large) buffer position matches expected", 9, dest.position());
+
+  }
 }
