@@ -2,6 +2,7 @@ package com.act.biointerpretation.l2expansion
 
 import java.io.File
 
+import com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector.InchiResult
 import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.tool_wrappers.{ScalaJobWrapper, SparkWrapper}
 import com.act.workflow.tool_manager.workflow.Workflow
@@ -10,6 +11,8 @@ import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
 
 import scala.collection.JavaConverters._
+import spray.json._
+import InchiFormat._
 
 class SparkSubstrateExpansionDriverWorkflow extends Workflow {
 
@@ -145,20 +148,19 @@ class SparkSubstrateExpansionDriverWorkflow extends Workflow {
       expansion.writeErrorStreamToLogger()
 
       val processing: () => Unit = () => {
-        // Each RO has its own file.
-        val allFilesInOutputDir: List[File] = iterationOutputDirectory.listFiles().toList
-        logger.info(s"Found ${allFilesInOutputDir.length} projection files.")
 
-        val allInchis: Set[String] = allFilesInOutputDir.flatMap(inputFile => {
-          val predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputFile)
 
-          val uniqueSubstrates = predictionCorpus.getUniqueSubstrateInchis.asScala.toSet
-          val uniqueProducts = predictionCorpus.getUniqueProductInchis.asScala.toSet
+        val outputFile = new File(iterationOutputDirectory, "outputfile.json")
 
-          logger.info(s"Found ${uniqueSubstrates.size} unique substrates and ${uniqueProducts.size} unique products.  " +
-            s"Combining and writing them to a file.")
-          uniqueProducts ++ uniqueSubstrates
-        }).toSet
+        val results: List[InchiResult] = scala.io.Source.fromFile(outputFile).getLines().mkString.parseJson.convertTo[List[InchiResult]]
+
+        val uniqueSubstrates: Set[String] = results.map(result => result.substrate).toSet
+        val uniqueProducts: Set[String] = results.flatMap(result => result.products.flatten).toSet
+
+        val allInchis = uniqueSubstrates ++ uniqueProducts
+
+        logger.info(s"Found ${uniqueSubstrates.size} unique substrates and ${uniqueProducts.size} unique products.  " +
+          s"Combining and writing them to a file with a total of ${allInchis.size} inchis.")
 
         val inchis = new L2InchiCorpus(allInchis.asJava)
         inchis.writeToFile(outputUniqueInchiFile)

@@ -1,11 +1,12 @@
 package com.act.biointerpretation.l2expansion
 
-import java.io.File
+import java.io.{BufferedWriter, File, FileWriter}
 
 import chemaxon.formats.MolImporter
 import chemaxon.license.LicenseManager
 import chemaxon.struc.Molecule
 import com.act.biointerpretation.Utils.ReactionProjector
+import com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector.InchiResult
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
@@ -13,6 +14,9 @@ import org.apache.logging.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
 import org.joda.time.{DateTime, DateTimeZone}
+import spray.json._
+import spray.json
+import InchiFormat._
 
 import scala.collection.JavaConverters._
 import scala.io.Source
@@ -189,7 +193,6 @@ object SparkSingleSubstrateROProjector {
     val molecules = inchiCorpus.getMolecules.asScala.toList
 
     val validInchis = Source.fromFile(substratesListFile).getLines().
-      filter(_.startsWith("InChI=")).
       filter(x => try { MolImporter.importMol(x); true } catch { case e : Exception => false }).toList
     LOGGER.info(s"Loaded and validated ${validInchis.size} InChIs from source file at $substratesListFile")
 
@@ -212,10 +215,16 @@ object SparkSingleSubstrateROProjector {
 
     LOGGER.info("Starting execution")
     // PROJECT!  Run ERO projection over all InChIs.
-    val resultsRDD: RDD[(String, L2PredictionCorpus)] =
+    val resultsRDD: RDD[InchiResult] =
       inchiRDD.map(inchi => {
         val result = compute.run(licenseFileName, eros)(inchi._2)
-        (inchi._1, result)
+
+        // Break down the corpus into the important parts.
+        val corpy = result.getCorpus
+        val ros: List[String] = corpy.asScala.map(prediction => prediction.getProjectorName).toList
+        val products: List[List[String]] = corpy.asScala.map(prediction => prediction.getProductInchis.asScala.toList).toList
+
+        new InchiResult(inchi._1, ros, products)
       })
 
     /* This next part represents us jumping through some hoops (that are possibly on fire) in order to make Spark do
@@ -257,8 +266,14 @@ object SparkSingleSubstrateROProjector {
     val resultCount = resultsRDD.persist().count()
     LOGGER.info(s"Projection completed with $resultCount results")
 
+    // TODO => Json
+    val outputFile = new BufferedWriter(new FileWriter(new File(outputDir, "outputfile.json")))
+    resultsRDD.toLocalIterator.foreach(t => outputFile.write(t.toJson.prettyPrint))
+    outputFile.close()
     // Release the RDD now that we're done reading it.
     resultsRDD.unpersist()
 
   }
+
+  case class InchiResult(substrate: String, ros: List[String], products: List[List[String]])
 }
