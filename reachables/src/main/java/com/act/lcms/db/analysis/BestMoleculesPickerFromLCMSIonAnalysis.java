@@ -174,9 +174,9 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 
   public static void main(String[] args) throws Exception {
 
-//    IonAnalysisInterchangeModel alignedPeaks = new IonAnalysisInterchangeModel();
-//    alignedPeaks.loadResultsFromFile(new File("/mnt/shared-data/Vijay/perlstein_azure_run/aligned_water"));
-//
+    IonAnalysisInterchangeModel alignedPeaks = new IonAnalysisInterchangeModel();
+    alignedPeaks.loadResultsFromFile(new File("/mnt/shared-data/Vijay/perlstein_azure_run_water/water_combined"));
+
 //    // Analysis for GM03123
 //    for (int j = 0; j < 3; j++) {
 //      int startingIndex = j * 3;
@@ -243,42 +243,75 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 //      System.out.println(String.format("Replicate B has mean: %.2f and std: %.3f", averageB, stdB));
 //      System.out.println(String.format("Replicate C has mean: %.2f and std: %.3f", averageC, stdC));
 //    }
-//
-//
-//    Map<IonAnalysisInterchangeModel.ResultForMZ, Triple<Double, Double, Double>> GM03123infoTorTriples = new HashMap<>();
-//
-//    IonAnalysisInterchangeModel GM03123PeaksRepA = new IonAnalysisInterchangeModel();
-//    GM03123PeaksRepA.loadResultsFromFile(new File(String.format("/mnt/shared-data/Vijay/perlstein_azure_run/GM18453_combined_water")));
-//
-//    IonAnalysisInterchangeModel GM03123PeaksRepB = new IonAnalysisInterchangeModel();
-//    GM03123PeaksRepB.loadResultsFromFile(new File(String.format("/mnt/shared-data/Vijay/perlstein_azure_run/GM03123_combined_water")));
-//
-//    IonAnalysisInterchangeModel GM03123PeaksRepC = new IonAnalysisInterchangeModel();
-//    GM03123PeaksRepC.loadResultsFromFile(new File(String.format("/mnt/shared-data/Vijay/perlstein_azure_run/GM09503_combined_water")));
-//
-//    for (int i = 0; i < GM03123PeaksRepA.getResults().size(); i++) {
-//      IonAnalysisInterchangeModel.ResultForMZ alignedPeak = alignedPeaks.getResults().get(i);
-//      IonAnalysisInterchangeModel.ResultForMZ GM03123PeakRepA = GM03123PeaksRepA.getResults().get(i);
-//      IonAnalysisInterchangeModel.ResultForMZ GM03123PeakRepB = GM03123PeaksRepB.getResults().get(i);
-//      IonAnalysisInterchangeModel.ResultForMZ GM03123PeakRepC = GM03123PeaksRepC.getResults().get(i);
-//
-//      if (alignedPeak.getMolecules().get(0).getIntensity() > 0.0) {
-//        GM03123infoTorTriples.put(alignedPeak,
-//            Triple.of(GM03123PeakRepA.getMolecules().get(0).getAverageIntensity(), GM03123PeakRepB.getMolecules().get(0).getAverageIntensity(), GM03123PeakRepC.getMolecules().get(0).getAverageIntensity()));
-//      }
-//    }
-//
+
+    Map<IonAnalysisInterchangeModel.ResultForMZ, Triple<Double, Double, Double>> GM03123infoTorTriples = new HashMap<>();
+
+    IonAnalysisInterchangeModel GM03123PeaksRepA = new IonAnalysisInterchangeModel();
+    GM03123PeaksRepA.loadResultsFromFile(new File(String.format("/mnt/shared-data/Vijay/perlstein_azure_run_water/GM18453_combined_water")));
+
+    IonAnalysisInterchangeModel GM03123PeaksRepB = new IonAnalysisInterchangeModel();
+    GM03123PeaksRepB.loadResultsFromFile(new File(String.format("/mnt/shared-data/Vijay/perlstein_azure_run_water/GM03123_combined_water")));
+
+    IonAnalysisInterchangeModel GM03123PeaksRepC = new IonAnalysisInterchangeModel();
+    GM03123PeaksRepC.loadResultsFromFile(new File(String.format("/mnt/shared-data/Vijay/perlstein_azure_run_water/GM09503_combined_water")));
+
+
+    List<String> header = new ArrayList<>();
+    header.add("GM18453_Average_Intensity");
+    header.add("GM18453_Time");
+    header.add("GM18453_Mass_Charge");
+    header.add("GM03123_Average_Intensity");
+    header.add("GM03123_Time");
+    header.add("GM03123_Mass_Charge");
+    header.add("GM09503_Average_Intensity");
+    header.add("GM09503_Time");
+    header.add("GM09503_Mass_Charge");
+
+    TSVWriter<String, String> writer = new TSVWriter<>(header);
+    writer.open(new File("out.tsv"));
+
+    for (int i = 0; i < GM03123PeaksRepA.getResults().size(); i++) {
+      IonAnalysisInterchangeModel.ResultForMZ alignedPeak = alignedPeaks.getResults().get(i);
+      IonAnalysisInterchangeModel.ResultForMZ GM03123PeakRepA = GM03123PeaksRepA.getResults().get(i);
+      IonAnalysisInterchangeModel.ResultForMZ GM03123PeakRepB = GM03123PeaksRepB.getResults().get(i);
+      IonAnalysisInterchangeModel.ResultForMZ GM03123PeakRepC = GM03123PeaksRepC.getResults().get(i);
+
+      if (alignedPeak.getMolecules().get(0).getIntensity() > 0.0) {
+
+        Map<String, String> row = new HashMap<>();
+        row.put("GM18453_Average_Intensity", GM03123PeakRepA.getMolecules().get(0).getAverageIntensity().toString());
+        row.put("GM03123_Average_Intensity", GM03123PeakRepB.getMolecules().get(0).getAverageIntensity().toString());
+        row.put("GM09503_Average_Intensity", GM03123PeakRepC.getMolecules().get(0).getAverageIntensity().toString());
+
+        row.put("GM18453_Time", GM03123PeakRepA.getMolecules().get(0).getTime().toString());
+        row.put("GM03123_Time", GM03123PeakRepB.getMolecules().get(0).getTime().toString());
+        row.put("GM09503_Time", GM03123PeakRepC.getMolecules().get(0).getTime().toString());
+
+        row.put("GM18453_Mass_Charge", GM03123PeakRepA.getMz().toString());
+        row.put("GM03123_Mass_Charge", GM03123PeakRepB.getMz().toString());
+        row.put("GM09503_Mass_Charge", GM03123PeakRepC.getMz().toString());
+
+        writer.append(row);
+
+        GM03123infoTorTriples.put(alignedPeak,
+            Triple.of(GM03123PeakRepA.getMolecules().get(0).getAverageIntensity(), GM03123PeakRepB.getMolecules().get(0).getAverageIntensity(), GM03123PeakRepC.getMolecules().get(0).getAverageIntensity()));
+      }
+    }
+
+    writer.close();
+
 //    List<Double> leftRatios = new ArrayList<>();
 //    List<Double> middleRatios = new ArrayList<>();
 //    List<Double> rightRatios = new ArrayList<>();
 //
 //    for (Map.Entry<IonAnalysisInterchangeModel.ResultForMZ, Triple<Double, Double, Double>> entry : GM03123infoTorTriples.entrySet()) {
 //
-//      if (entry.getKey().getMolecules().get(0).getTime() > 15.0 && entry.getKey().getMolecules().get(0).getIntensity() > 1000.0) {
+//      //if (entry.getKey().getMolecules().get(0).getTime() > 15.0 && entry.getKey().getMolecules().get(0).getIntensity() > 1000.0) {
 ////          System.out.println(entry.getKey().getMolecules().get(0).getInchi());
 ////          System.out.println(entry.getKey().getMolecules().get(0).getIon());
 //
 //      Double total = entry.getValue().getLeft() + entry.getValue().getMiddle() + entry.getValue().getRight();
+//      total = entry.getValue().getRight();
 //
 //          System.out.println(String.format("Rep A: %.2f", entry.getValue().getLeft()/total));
 //          System.out.println(String.format("Rep B: %.2f", entry.getValue().getMiddle()/total));
@@ -288,7 +321,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 //      leftRatios.add(entry.getValue().getLeft() / total);
 //      middleRatios.add(entry.getValue().getMiddle() / total);
 //      rightRatios.add(entry.getValue().getRight() / total);
-//      }
+//      //}
 //    }
 //
 //    System.out.println(String.format("Count is %d", leftRatios.size()));
@@ -306,70 +339,70 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
 //    System.out.println(String.format("GM03123 has mean: %.2f and std: %.3f", averageB, stdB));
 //    System.out.println(String.format("GM09503 has mean: %.2f and std: %.3f", averageC, stdC));
 //
+
+
+//    Options opts = new Options();
+//    for (Option.Builder b : OPTION_BUILDERS) {
+//      opts.addOption(b.build());
+//    }
 //
-
-    Options opts = new Options();
-    for (Option.Builder b : OPTION_BUILDERS) {
-      opts.addOption(b.build());
-    }
-
-    CommandLine cl = null;
-    try {
-      CommandLineParser parser = new DefaultParser();
-      cl = parser.parse(opts, args);
-    } catch (ParseException e) {
-      HELP_FORMATTER.printHelp(BestMoleculesPickerFromLCMSIonAnalysis.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      System.exit(1);
-    }
-
-    if (cl.hasOption("help")) {
-      HELP_FORMATTER.printHelp(BestMoleculesPickerFromLCMSIonAnalysis.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      System.exit(1);
-    }
-
-    List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
-
-    if (cl.hasOption(OPTION_MIN_OF_REPLICATES)) {
-      HitOrMissReplicateFilterAndTransformer transformer = new HitOrMissReplicateFilterAndTransformer();
-
-      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
-          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults), transformer);
-
-      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
-      return;
-    }
-
-    Double minSnrThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_SNR_THRESHOLD));
-    Double minIntensityThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_INTENSITY_THRESHOLD));
-    Double minTimeThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_TIME_THRESHOLD));
-
-    if (cl.hasOption(OPTION_GET_IONS_SUPERSET)) {
-      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.getSupersetOfIonicVariants(
-          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
-          minSnrThreshold,
-          minIntensityThreshold,
-          minTimeThreshold);
-
-      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
-      return;
-    }
-
-    if (cl.hasOption(OPTION_THRESHOLD_ANALYSIS)) {
-
-      // We need to set this variable as a final since it is used in a lambda function below.
-      final Set<String> ions = new HashSet<>();
-      if (cl.hasOption(OPTION_FILTER_BY_IONS)) {
-        ions.addAll(Arrays.asList(cl.getOptionValues(OPTION_FILTER_BY_IONS)));
-      }
-
-      HitOrMissSingleSampleFilterAndTransformer hitOrMissSingleSampleTransformer =
-          new HitOrMissSingleSampleFilterAndTransformer(minIntensityThreshold, minSnrThreshold, minTimeThreshold, ions);
-
-      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
-          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
-          hitOrMissSingleSampleTransformer);
-
-      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
-    }
+//    CommandLine cl = null;
+//    try {
+//      CommandLineParser parser = new DefaultParser();
+//      cl = parser.parse(opts, args);
+//    } catch (ParseException e) {
+//      HELP_FORMATTER.printHelp(BestMoleculesPickerFromLCMSIonAnalysis.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+//      System.exit(1);
+//    }
+//
+//    if (cl.hasOption("help")) {
+//      HELP_FORMATTER.printHelp(BestMoleculesPickerFromLCMSIonAnalysis.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+//      System.exit(1);
+//    }
+//
+//    List<String> positiveReplicateResults = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_INPUT_FILES)));
+//
+//    if (cl.hasOption(OPTION_MIN_OF_REPLICATES)) {
+//      HitOrMissReplicateFilterAndTransformer transformer = new HitOrMissReplicateFilterAndTransformer();
+//
+//      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
+//          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults), transformer);
+//
+//      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
+//      return;
+//    }
+//
+//    Double minSnrThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_SNR_THRESHOLD));
+//    Double minIntensityThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_INTENSITY_THRESHOLD));
+//    Double minTimeThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_TIME_THRESHOLD));
+//
+//    if (cl.hasOption(OPTION_GET_IONS_SUPERSET)) {
+//      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.getSupersetOfIonicVariants(
+//          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
+//          minSnrThreshold,
+//          minIntensityThreshold,
+//          minTimeThreshold);
+//
+//      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
+//      return;
+//    }
+//
+//    if (cl.hasOption(OPTION_THRESHOLD_ANALYSIS)) {
+//
+//      // We need to set this variable as a final since it is used in a lambda function below.
+//      final Set<String> ions = new HashSet<>();
+//      if (cl.hasOption(OPTION_FILTER_BY_IONS)) {
+//        ions.addAll(Arrays.asList(cl.getOptionValues(OPTION_FILTER_BY_IONS)));
+//      }
+//
+//      HitOrMissSingleSampleFilterAndTransformer hitOrMissSingleSampleTransformer =
+//          new HitOrMissSingleSampleFilterAndTransformer(minIntensityThreshold, minSnrThreshold, minTimeThreshold, ions);
+//
+//      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
+//          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
+//          hitOrMissSingleSampleTransformer);
+//
+//      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
+//    }
   }
 }
