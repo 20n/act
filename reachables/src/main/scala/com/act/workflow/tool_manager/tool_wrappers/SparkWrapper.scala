@@ -26,7 +26,6 @@ object SparkWrapper extends ToolWrapper {
       "--deploy-mode", "client",
       "--executor-memory", memory,
       assembledJar) ::: classArgs
-
     constructJob("Spark Submit", Option("spark-submit"), args = fullArgs)
   }
 
