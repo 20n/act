@@ -17,7 +17,6 @@ library(dplyr)
 library(rscala)
 library(classInt)
 
-kChartLabelSizeFactor <- 1
 kIntensityThreshold <- 10000
 kSSRatio <- 20
 
@@ -27,7 +26,10 @@ kSSRatio <- 20
 k20logoLocation <- "20nlogo"
 kFatJarLocation <- "reachables-assembly-0.1.jar"
 
+kPeakDisplaySep <- " - "
 kLCMSDataLocation <- "/mnt/data-level1/lcms-ms1/"
+kLCMSDataCacheLocation <- "/mnt/data-level1/lcms-ms1-rcache/"
+
 cat("Loading interpreter\n")
 sc=scalaInterpreter(kFatJarLocation)
 kImportMS1 <- 'import com.act.lcms.MS1'
@@ -35,22 +37,36 @@ sc%~%kImportMS1
 getIonMzFunctionDef <- 'MS1.computeIonMz(mass, MS1.ionDeltas.filter(i => i.getName.equals(mode)).head)'
 getIonMz <- intpDef(sc, 'mass: Double, mode: String', getIonMzFunctionDef)
 
-getFullData <- function(filename) {
-  validate(
+# alternatives to caching are R.cache 
+getAndCachePeaks <- function(filename) {
+  shiny::validate(
     need(filename != "", "Filename field cannot be empty")
   )
-  cat(paste("Getting full data from file:", filename))
-  cat("\n")
   filepath <- paste0(kLCMSDataLocation, filename)
-  msfile <- openMSfile(filepath, backend = "netCDF")
-  hd <- header(msfile)
-  ms1 <- which(hd$msLevel == 1)
-  ms1.scans <- peaks(msfile, ms1) # list of num matrix
-  list(hd = hd, ms1.scans = ms1.scans)
+  cachename <- gsub(".nc", ".RData", filename)
+  cachepath <- paste0(kLCMSDataCacheLocation, cachename)
+  tryCatch({
+    cat(sprintf("Attempt to load ms1 peaks for plate: %s from cache at %s\n", filename, cachepath))
+    full.data <- readRDS(cachepath)
+    cat(sprintf("Done loading ms1 peaks for plate: %s from cache at %s\n", filename, cachepath))
+    return(full.data)
+  }, error = function(e) {
+    cat(sprintf("Reading ms1 peaks for plate %s from disk\n", filename))
+    msfile <- openMSfile(filepath, backend="netCDF")
+    hd <- header(msfile)
+    ms1 <- which(hd$msLevel == 1)
+    ms1.scans <- peaks(msfile, ms1)
+    full.data <- list(hd = hd, ms1.scans = ms1.scans)
+    cat(sprintf("Done reading ms1 peaks for plate: %s from disk\n", filename))
+    saveRDS(full.data, file = cachepath)
+    cat(sprintf("Done saving ms1 peaks for plate: %s in the cache at %s\n", filename, cachepath))
+    return(full.data)
+  })
 }
 
+
 getScansAndHeader <- function(retention.time.range, full.data) {
-  validate(
+  shiny::validate(
     need(length(retention.time.range) == 2, "Rentention time range needs to be a tuple"),
     need(is.numeric(retention.time.range), "Rentention time range needs to be numeric"),
     need(length(full.data$ms1.scans) > 0, "Full data should be of length > 0")
@@ -72,7 +88,7 @@ getScansAndHeader <- function(retention.time.range, full.data) {
 }
 
 getScopedData <- function(target.mz.value, mz.band.halfwidth, scans.and.header) {
-  validate(
+  shiny::validate(
     need(target.mz.value >= 50 && target.mz.value <= 950, "Target mz value should be between 50 and 950"),
     need(mz.band.halfwidth >= 0.00001, "M/Z band halfwidth should be >= 0.00001"),
     need(mz.band.halfwidth <= 1, "Avoid values of M/Z band halfwidth > 1 that can make the server crash")
@@ -89,15 +105,13 @@ getScopedData <- function(target.mz.value, mz.band.halfwidth, scans.and.header) 
     filter(mz < max.ionic.mass & mz > min.ionic.mass)
 }
 
-drawScatterplot <- function(data, target.mz.value, mz.band.halfwidth, angle.theta, angle.phi) {
+drawScatterplot <- function(data, title, target.mz.value, mz.band.halfwidth, angle.theta, angle.phi) {
   cat("Plotting...\n")
   with(data, {
     min.ionic.mass <- target.mz.value - mz.band.halfwidth
     max.ionic.mass <- target.mz.value + mz.band.halfwidth
-    scatter3D(retention.time, mz, intensity, pch = 16, cex = 1.5, type = "h",
+    scatter3D(retention.time, mz, intensity, pch = 16, cex = 1.5, type = "h", main = title,
               colkey = list(side = 1, length = 0.5, width = 0.5, cex.clab = 0.75), expand = 0.5,
-              cex.lab = kChartLabelSizeFactor, cex.axis = kChartLabelSizeFactor,
-              cex.main = kChartLabelSizeFactor, cex.sub = kChartLabelSizeFactor,
               zlab = "Intensity", xlab = "Retention time (sec)", ylab = "m/z (Da)",
               theta = angle.theta, phi = angle.phi, ticktype = "detailed", 
               ylim = c(min.ionic.mass, max.ionic.mass))
@@ -149,19 +163,19 @@ shinyServer(function(input, output, session) {
   # Reactive values for loading the full dataset in memory
   # `reactive` is lazy, so this will not be called until the refresh button is pressed
   full.data <- reactive({
-    getFullData(input$filename)
+    getAndCachePeaks(input$filename)
   })
   
   full.data.1 <- reactive({
-    getFullData(input$filename1)
+    getAndCachePeaks(input$filename1)
   })
   
   full.data.2 <- reactive({
-    getFullData(input$filename2)
+    getAndCachePeaks(input$filename2)
   })
   
   full.data.3 <- reactive({
-    getFullData(input$filename3)
+    getAndCachePeaks(input$filename3)
   })
   
   # Based on the retention time range, select relevant scans reactively
@@ -258,19 +272,19 @@ shinyServer(function(input, output, session) {
     drawScatterplot(scoped.data, target.mz, input$mz.band.halfwidth, input$angle.theta, input$angle.phi)
   })
   
-  output$plot1 <- renderPlot({
+  output$plot1.multi <- renderPlot({
     scoped.data <- scoped.data.1()
     target.mz <- target.mz.multi()
     drawScatterplot(scoped.data, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
   })
   
-  output$plot2 <- renderPlot({
+  output$plot2.multi <- renderPlot({
     scoped.data <- scoped.data.2()
     target.mz <- target.mz.multi()
     drawScatterplot(scoped.data, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
   })
   
-  output$plot3 <- renderPlot({
+  output$plot3.multi <- renderPlot({
     scoped.data <- scoped.data.3()
     target.mz <- target.mz.multi()
     drawScatterplot(scoped.data, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
@@ -288,4 +302,192 @@ shinyServer(function(input, output, session) {
   output$detected.peaks <- renderTable({
     detected.peaks()
   }, digits = c(0, 6, 2, 0))
+  
+  config <- reactive({
+    inFile <- input$config.file
+    shiny::validate(
+      need(!is.null(inFile), "Please upload a configuration file.") 
+    )
+    json.file <- fromJSON(file(input$config.file$datapath))
+    layout <- json.file$layout
+    platenames <- json.file$plates$filename
+    shiny::validate(
+      need(layout$nrow * layout$ncol == length(platenames), "Too many or not enough plates for input layout. Please double check the layout."), 
+      need(layout$nrow >= 2 && layout$nrow <= 3, "Number of rows in the layout should be in {2, 3}"),
+      need(layout$ncol >= 2 && layout$nrow <= 3, "Number of cols in the layout should be in {2, 3}")
+    )
+    json.file
+  })
+  
+  platenames <- reactive({
+    config <- config()
+    config$plates$filename
+  })
+  
+  layout <- reactive({
+    config <- config()
+    config$layout
+  })
+  
+  peaks <- reactive({
+    config <- config()
+    config$peaks
+  })
+  
+  output$ui.peaks <- renderUI({
+    peaks <- peaks()
+    labels <- apply(peaks[, c("mz", "retention_time")], 1, function(x) paste0(x, collapse = kPeakDisplaySep))
+    selectizeInput("peaks", "Choose a peak to visualize", choices = unname(labels))
+  })
+  
+  output$ui.target.mz <- renderUI({
+    selected.peak <- selected.peak()
+    numericInput("target.mz.config", label = "Target mz value", value = selected.peak$mz, step = 0.001)
+  })
+  
+  output$ui.retention.time.range <- renderUI({
+    selected.peak <- selected.peak()
+    rt.min <- selected.peak$retention_time - selected.peak$retention_time_band_halfwidth
+    rt.max <- selected.peak$retention_time + selected.peak$retention_time_band_halfwidth
+    sprintf("Changing retention time range slider input to %s,%s", rt.min, rt.max)
+    sliderInput("retention.time.range.config", value = c(rt.min, rt.max), 
+                min = 0, max = 450, label = "Retention time range", step = 1)
+  })
+  
+  output$ui.mz.band.halfwidth <- renderUI({
+    selected.peak <- selected.peak()
+    numericInput("mz.band.halfwidth.config", label = "Mass charge band halfwidth", 
+                 value = selected.peak$mz_band_halfwidth, step = 0.01)
+  })
+  
+  selected.peak <- reactive({
+    shiny::validate(
+      need(!is.null(input$peaks), "Input peaks are null")
+    )
+    splits <- unlist(strsplit(input$peaks, kPeakDisplaySep))
+    mz.val <- as.numeric(splits[1])
+    rt <- as.numeric(splits[2])
+    peak <- peaks() %>% dplyr::filter(mz == mz.val, retention_time == rt)
+    sprintf("Selected peak was %s", peak)
+    peak
+  })
+  
+  full.data.config <- reactive({
+    platenames <- platenames()
+    lapply(platenames, getAndCachePeaks)
+  })
+  
+  scans.and.headers.config <- reactive({
+    shiny::validate(
+      need(!is.null(input$retention.time.range.config), "Input retention time was found NULL")
+    )
+    full.data <- full.data.config()
+    lapply(full.data, function(x) getScansAndHeader(input$retention.time.range.config, x))
+  })
+  
+  scoped.data.config <- reactive({
+    shiny::validate(
+      need(!is.null(input$target.mz.config), "target mz was found NULL"),
+      need(!is.null(input$mz.band.halfwidth.config), "mz band was found NULL")
+    )
+    scans.header <- scans.and.headers.config()
+    lapply(scans.header, function(x) getScopedData(input$target.mz.config, input$mz.band.halfwidth.config, x))
+  })
+  
+  output$plot1 <- renderPlot({
+    scoped.data <- scoped.data.config()
+    platenames <- platenames()
+    drawScatterplot(scoped.data[[1]], platenames[1], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+  })
+  
+  output$plot2 <- renderPlot({
+    scoped.data <- scoped.data.config()
+    platenames <- platenames()
+    drawScatterplot(scoped.data[[2]], platenames[2], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+  })
+  
+  output$plot3 <- renderPlot({
+    scoped.data <- scoped.data.config()
+    platenames <- platenames()
+    drawScatterplot(scoped.data[[3]], platenames[3], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+  })
+  
+  output$plot4 <- renderPlot({
+    scoped.data <- scoped.data.config()
+    platenames <- platenames()
+    drawScatterplot(scoped.data[[4]], platenames[4], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+  })
+  
+  output$plot5 <- renderPlot({
+    scoped.data <- scoped.data.config()
+    platenames <- platenames()
+    drawScatterplot(scoped.data[[5]], platenames[5], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+  })
+  
+  output$plot6 <- renderPlot({
+    scoped.data <- scoped.data.config()
+    platenames <- platenames()
+    drawScatterplot(scoped.data[[6]], platenames[6], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+  })
+  
+  output$plot7 <- renderPlot({
+    scoped.data <- scoped.data.config()
+    platenames <- platenames()
+    drawScatterplot(scoped.data[[7]], platenames[7], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+  })
+  
+  output$plot8 <- renderPlot({
+    scoped.data <- scoped.data.config()
+    platenames <- platenames()
+    drawScatterplot(scoped.data[[8]], platenames[8], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+  })
+  
+  output$plot9 <- renderPlot({
+    scoped.data <- scoped.data.config()
+    platenames <- platenames()
+    drawScatterplot(scoped.data[[9]], platenames[9], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+  })
+  
+  output$plots <- renderUI({
+    scoped.data <- scoped.data.config()
+    layout <- layout()
+    if (layout$ncol == 2) {
+      fluidPage(
+        fluidRow(
+          column(width = 6, plotOutput("plot1")),
+          column(width = 6, plotOutput("plot2"))
+        ),
+        fluidRow(
+          column(width = 6, plotOutput("plot3")),
+          column(width = 6, plotOutput("plot4"))
+        ),
+        if (layout$nrow == 3) {
+          fluidRow(
+            column(width = 6, plotOutput("plot5")),
+            column(width = 6, plotOutput("plot6"))
+          )
+        }        
+      )
+    } else if (layout$ncol == 3) {
+      fluidPage(
+        fluidRow(
+          column(width = 4, plotOutput("plot1")),
+          column(width = 4, plotOutput("plot2")),
+          column(width = 4, plotOutput("plot3"))
+        ),
+        fluidRow(
+          column(width = 4, plotOutput("plot4")),
+          column(width = 4, plotOutput("plot5")),
+          column(width = 4, plotOutput("plot6"))
+        ),
+        if (layout$nrow == 3) {
+          fluidRow(
+            column(width = 4, plotOutput("plot7")),
+            column(width = 4, plotOutput("plot8")),
+            column(width = 4, plotOutput("plot9"))
+          )
+        }
+      )
+    }
+  })
 })
