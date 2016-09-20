@@ -193,7 +193,14 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     for (int i = 0; i < alignedDiseasedPeaks.getResults().size(); i++) {
       IonAnalysisInterchangeModel.ResultForMZ diseasedPeak = alignedDiseasedPeaks.getResults().get(i);
       IonAnalysisInterchangeModel.ResultForMZ wildTypePeak = wildType.getResults().get(i);
-      Double ratio = diseasedPeak.getMolecules().get(0).getAverageIntensity() / wildTypePeak.getMolecules().get(0).getAverageIntensity();
+
+
+      Double ratio;
+      if (wildTypePeak.getMolecules().get(0).getAverageIntensity() > 0) {
+        ratio = diseasedPeak.getMolecules().get(0).getAverageIntensity() / wildTypePeak.getMolecules().get(0).getAverageIntensity();
+      } else {
+        ratio = 10000000000.0;
+      }
 
       Map<String, String> row = new HashMap<>();
       row.put("MZ", diseasedPeak.getMz().toString());
