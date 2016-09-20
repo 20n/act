@@ -216,15 +216,14 @@ object SparkSingleSubstrateROProjector {
     LOGGER.info("Starting execution")
     // PROJECT!  Run ERO projection over all InChIs.
     val resultsRDD: RDD[InchiResult] =
-      inchiRDD.map(inchi => {
+      inchiRDD.flatMap(inchi => {
         val result = compute.run(licenseFileName, eros)(inchi._2)
 
         // Break down the corpus into the important parts.
         val corpy = result.getCorpus
-        val ros: List[String] = corpy.asScala.map(prediction => prediction.getProjectorName).toList
-        val products: List[List[String]] = corpy.asScala.map(prediction => prediction.getProductInchis.asScala.toList).toList
 
-        new InchiResult(inchi._1, ros, products)
+        corpy.asScala.map(prediction =>
+          new InchiResult(inchi._1, prediction.getProjectorName, prediction.getProductInchis.asScala.toList))
       })
 
     /* This next part represents us jumping through some hoops (that are possibly on fire) in order to make Spark do
@@ -275,5 +274,5 @@ object SparkSingleSubstrateROProjector {
 
   }
 
-  case class InchiResult(substrate: String, ros: List[String], products: List[List[String]])
+  case class InchiResult(substrate: String, ros: String, products: List[String]])
 }
