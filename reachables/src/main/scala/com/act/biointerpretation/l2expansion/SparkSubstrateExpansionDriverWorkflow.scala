@@ -128,10 +128,10 @@ class SparkSubstrateExpansionDriverWorkflow extends Workflow {
       val substrateList = new File(workingDirectory, s"$outputInchiIdentifier.${iteration - 1}.txt")
 
       val roProjectionArgs = List(
-        s"-$SparkSingleSubstrateROProjector.OPTION_SUBSTRATES_LIST", substrateList.getAbsolutePath,
-        s"-$SparkSingleSubstrateROProjector.OPTION_OUTPUT_DIRECTORY", iterationOutputDirectory.getAbsolutePath,
-        s"-$SparkSingleSubstrateROProjector.OPTION_LICENSE_FILE", chemaxonLicenseFile.getAbsolutePath,
-        s"-$SparkSingleSubstrateROProjector.OPTION_FILTER_FOR_SPECTROMETERY"
+        s"-${SparkSingleSubstrateROProjector.OPTION_SUBSTRATES_LIST}", substrateList.getAbsolutePath,
+        s"-${SparkSingleSubstrateROProjector.OPTION_OUTPUT_DIRECTORY}", iterationOutputDirectory.getAbsolutePath,
+        s"-${SparkSingleSubstrateROProjector.OPTION_LICENSE_FILE}", chemaxonLicenseFile.getAbsolutePath,
+        s"-${SparkSingleSubstrateROProjector.OPTION_FILTER_FOR_SPECTROMETERY}"
       )
 
       // Scales memory up as the size gets larger in hopes of avoiding memory issues.
