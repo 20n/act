@@ -51,24 +51,16 @@ object compute {
    *
    * TODO: try out other partitioning schemes and/or pre-compile and cache ERO Reactors for improved performance.
    */
-  def run(licenseFileName: String, ero: Ero, molecules: List[Molecule]): (Double, L2PredictionCorpus) = {
-    val startTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
+  def run(licenseFileName: String, ero: ErosCorpus)(inchi: Molecule): L2PredictionCorpus = {
     val localLicenseFile = SparkFiles.get(licenseFileName)
 
     LOGGER.info(s"Using license file at $localLicenseFile (file exists: ${new File(localLicenseFile).exists()})")
     LicenseManager.setLicenseFile(localLicenseFile)
 
-    val expander = new SingleSubstrateRoExpander(new ErosCorpus(List(ero).asJava), molecules.asJava,
-      new AllPredictionsGenerator(new ReactionProjector()))
+    val expander = new SingleSubstrateRoExpander(ero, List(inchi).asJava, new AllPredictionsGenerator(new ReactionProjector()))
     val results = expander.getPredictions()
 
-    val endTime: DateTime = new DateTime().withZone(DateTimeZone.UTC)
-    val deltaTS = (endTime.getMillis - startTime.getMillis).toDouble / MS_PER_S
-    LOGGER.info(f"Completed projection of ERO ${ero.getId} in $deltaTS%.3fs")
-    if (deltaTS > RUNTIME_WARNING_THRESHOLD_S) {
-      LOGGER.warn(s"ERO ${ero.getId} required excessive time to complete, please consider refining")
-    }
-    (deltaTS, results)
+    results
   }
 }
 
@@ -176,9 +168,9 @@ object SparkSingleSubstrateROProjector {
     val eros = new ErosCorpus()
     eros.loadValidationCorpus()
     val fullErosList = eros.getRos
-    LOGGER.info("Filtering down to only one substrate ROs.");
+    LOGGER.info("Filtering down to only one substrate ROs.")
     if (cl.hasOption(OPTION_FILTER_REQUIRE_RO_NAMES)) {
-      LOGGER.info("Filtering down to only ROs with names.");
+      LOGGER.info("Filtering down to only ROs with names.")
       eros.retainNamedRos()
     }
     val erosList = eros.getRos.asScala
@@ -201,6 +193,7 @@ object SparkSingleSubstrateROProjector {
       filter(x => try { MolImporter.importMol(x); true } catch { case e : Exception => false }).toList
     LOGGER.info(s"Loaded and validated ${validInchis.size} InChIs from source file at $substratesListFile")
 
+    val validInchiMolecules = validInchis.map(MolImporter.importMol)
     // Don't set a master here, spark-submit will do that for us.
     val conf = new SparkConf().setAppName("Spark RO Projection")
     conf.getAll.foreach(x => LOGGER.info(s"Spark config pair: ${x._1}: ${x._2}"))
@@ -214,14 +207,15 @@ object SparkSingleSubstrateROProjector {
     val licenseFileName = new File(licenseFile).getName
 
     LOGGER.info("Building ERO RDD")
-    val eroRDD: RDD[Ero] = spark.makeRDD(erosList, erosList.size)
+    val inchiMoleculePairs = validInchis zip validInchiMolecules
+    val inchiRDD: RDD[(String, Molecule)] = spark.makeRDD(inchiMoleculePairs, inchiMoleculePairs.size)
 
     LOGGER.info("Starting execution")
     // PROJECT!  Run ERO projection over all InChIs.
-    val resultsRDD: RDD[(Ero, Double, L2PredictionCorpus)] =
-      eroRDD.map(ero => {
-        val results = compute.run(licenseFileName, ero, molecules)
-        (ero, results._1, results._2)
+    val resultsRDD: RDD[(String, L2PredictionCorpus)] =
+      inchiRDD.map(inchi => {
+        val result = compute.run(licenseFileName, eros)(inchi._2)
+        (inchi._1, result)
       })
 
     /* This next part represents us jumping through some hoops (that are possibly on fire) in order to make Spark do
@@ -261,26 +255,10 @@ object SparkSingleSubstrateROProjector {
      * See http://stackoverflow.com/questions/31383904/how-can-i-force-spark-to-execute-code/31384084#31384084
      * for more context on Spark's laziness. */
     val resultCount = resultsRDD.persist().count()
-    LOGGER.info(s"Projection completed with ${resultCount} results")
-
-    // Map over results and runtime, writing results to appropriate output files and collecting ids/runtime for reports.
-    val mapper: (Ero, Double, L2PredictionCorpus) => (Integer, Double) = (ero, runtime, projectionResults) => {
-      val outputFile = new File(outputDir, ero.getId.toString)
-      OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(outputFile, projectionResults)
-      LOGGER.info(s"Wrote results for ERO ${ero.getId} (${outputFile.getTotalSpace}B)")
-      (ero.getId, runtime)
-    }
-
-    // DO THE THING!  Run the mapper on all the executors over the projection results, and collect timing info.
-
-    // Output results one at a time and collect timing info.
-    val timingPairs: List[(Integer, Double)] = resultsRDD.toLocalIterator.map(t => mapper(t._1, t._2, t._3)).toList
+    LOGGER.info(s"Projection completed with $resultCount results")
 
     // Release the RDD now that we're done reading it.
     resultsRDD.unpersist()
 
-    LOGGER.info("Projection execution time report:")
-    timingPairs.sortWith((a, b) => b._2 < a._2).foreach(pair => LOGGER.info(f"ERO ${pair._1}%4d: ${pair._2}%.3fs"))
-    LOGGER.info("Done")
   }
 }
