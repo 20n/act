@@ -11,6 +11,7 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -20,7 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class ErosCorpus implements Iterable<Ero> {
+public class ErosCorpus implements Iterable<Ero>, Serializable{
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(ErosCorpus.class);
   private final Class INSTANCE_CLASS_LOADER = getClass();
