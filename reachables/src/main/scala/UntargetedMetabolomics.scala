@@ -352,7 +352,6 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     val peakSetsForAllReplicates = exprs.map{ expr => expr.peakSpectra.peaks }
     val peaksKeyedByMzAndRt = findAlignedPeaks(peakSetsForAllReplicates)
     val peaksByMzAndRtNonEmpty = handleMissingPks(addProxyPeak)(peaksKeyedByMzAndRt)
-    peaksKeyedByMzAndRt.filter{ case(_, lstSets) => lstSets.forall(_.size != 0) }
 
     val sharedPeaks: Set[UntargetedPeak] = peaksByMzAndRtNonEmpty
       .toSet
@@ -781,39 +780,38 @@ object UntargetedMetabolomics {
     def bnd(tcase: String) = expPks(tcase)((MonoIsotopicMass.defaultNumPlaces, RetentionTime.driftTolerated))
 
     val cases = List(
-      ("wt-dm", wt, dm, bnd("wt-dm"), bnd("wt-dm"))
-      ////        // consistency check: hypothesis same as control => no peaks should be differentially identified
-      ////        ("wt1-wt1", List(wt1), List(wt1), 0, 0),
-      ////        ("dm1-dm1", List(dm1), List(dm1), 0, 0),
-      ////        ("df1-df1", List(df1), List(df1), 0, 0),
-      ////        
-      ////        ("wt2-wt2", List(wt1), List(wt1), 0, 0),
-      ////        ("dm2-dm2", List(dm1), List(dm1), 0, 0),
-      ////        ("df2-df2", List(df1), List(df1), 0, 0),
-      ////        
-      ////        ("wt3-wt3", List(wt1), List(wt1), 0, 0),
-      ////        ("dm3-dm3", List(dm1), List(dm1), 0, 0),
-      ////        ("df3-df3", List(df1), List(df1), 0, 0),
-      ////        
-      ////        // ensure that replicate aggregation (i.e., min) works as expected. 
-      ////        // we already know from the above test that differential calling works 
-      ////        // to eliminate all peaks if given the same samples. so now if replicate
-      ////        // aggregation gives non-zero sets of peaks, it has to be the min algorithm.
-      ////        ("wt-wt", wt, wt, 0, 0),
-      ////        ("dm-dm", dm, dm, 0, 0),
-      ////        ("df-df", df, df, 0, 0),
-      ////        
-      ////        // how well does the differential calling work over a single sample of hypothesis and control
-      ////        // ("wt1-df1", List(wt1), List(df1), bnd("wt1-df1"), bnd("wt1-df1")),
-      ////        // ("wt1-dm1", List(wt1), List(dm1), bnd("wt1-dm1"), bnd("wt1-dm1")), 
-      ////        
-      ////        // next two: what is in one diseases samples and not in the other?
-      ////        ("dm-df", dm, df, bnd("dm-df"), bnd("dm-df")),
-      ////        ("df-dm", df, dm, bnd("df-dm"), bnd("df-dm")),
+      // consistency check: hypothesis same as control => no peaks should be differentially identified
+      ("wt1-wt1", List(wt1), List(wt1), 0, 0),
+      ("dm1-dm1", List(dm1), List(dm1), 0, 0),
+      ("df1-df1", List(df1), List(df1), 0, 0),
+      
+      ("wt2-wt2", List(wt1), List(wt1), 0, 0),
+      ("dm2-dm2", List(dm1), List(dm1), 0, 0),
+      ("df2-df2", List(df1), List(df1), 0, 0),
+      
+      ("wt3-wt3", List(wt1), List(wt1), 0, 0),
+      ("dm3-dm3", List(dm1), List(dm1), 0, 0),
+      ("df3-df3", List(df1), List(df1), 0, 0),
+      
+      // ensure that replicate aggregation (i.e., min) works as expected. 
+      // we already know from the above test that differential calling works 
+      // to eliminate all peaks if given the same samples. so now if replicate
+      // aggregation gives non-zero sets of peaks, it has to be the min algorithm.
+      ("wt-wt", wt, wt, 0, 0),
+      ("dm-dm", dm, dm, 0, 0),
+      ("df-df", df, df, 0, 0),
+      
+      // how well does the differential calling work over a single sample of hypothesis and control
+      // ("wt1-df1", List(wt1), List(df1), bnd("wt1-df1"), bnd("wt1-df1")),
+      // ("wt1-dm1", List(wt1), List(dm1), bnd("wt1-dm1"), bnd("wt1-dm1")), 
+      
+      // next two: what is in one diseases samples and not in the other?
+      ("dm-df", dm, df, bnd("dm-df"), bnd("dm-df")),
+      ("df-dm", df, dm, bnd("df-dm"), bnd("df-dm")),
 
-      ////        // peaks that are differentially expressed in diseased samples compared to the wild type
-      ////        ("wt-dm", wt, dm, bnd("wt-dm"), bnd("wt-dm")),
-      ////        ("wt-df", wt, df, bnd("wt-df"), bnd("wt-df"))
+      // peaks that are differentially expressed in diseased samples compared to the wild type
+      ("wt-dm", wt, dm, bnd("wt-dm"), bnd("wt-dm")),
+      ("wt-df", wt, df, bnd("wt-df"), bnd("wt-df"))
       
     )
 
