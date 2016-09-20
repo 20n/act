@@ -3,6 +3,7 @@ package com.act.lcms.v2;
 import com.act.lcms.LCMSNetCDFParser;
 import com.act.lcms.LCMSSpectrum;
 import com.act.lcms.MS1;
+import com.act.utils.CLIUtil;
 import com.act.utils.rocksdb.ColumnFamilyEnumeration;
 import com.act.utils.rocksdb.DBUtil;
 import com.act.utils.rocksdb.RocksDBAndHandles;
@@ -84,12 +85,6 @@ public class LCMSIndexBuilder {
     );
   }};
 
-  public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
-
-  static {
-    HELP_FORMATTER.setWidth(100);
-  }
-
   // Package private so the searcher can use this enum but nobody else.
   enum COLUMN_FAMILIES implements ColumnFamilyEnumeration<COLUMN_FAMILIES> {
     TARGET_TO_WINDOW("target_mz_to_window_obj"),
@@ -126,25 +121,8 @@ public class LCMSIndexBuilder {
   }
 
   public static void main(String[] args) throws Exception {
-    Options opts = new Options();
-    for (Option.Builder b : OPTION_BUILDERS) {
-      opts.addOption(b.build());
-    }
-
-    CommandLine cl = null;
-    try {
-      CommandLineParser parser = new DefaultParser();
-      cl = parser.parse(opts, args);
-    } catch (ParseException e) {
-      System.err.format("Argument parsing failed: %s\n", e.getMessage());
-      HELP_FORMATTER.printHelp(LCMSIndexBuilder.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      System.exit(1);
-    }
-
-    if (cl.hasOption("help")) {
-      HELP_FORMATTER.printHelp(LCMSIndexBuilder.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      return;
-    }
+    CLIUtil cliUtil = new CLIUtil(LCMSIndexBuilder.class, HELP_MESSAGE, OPTION_BUILDERS);
+    CommandLine cl = cliUtil.parseCommandLine(args);
 
     // Not enough memory available?  We're gonna need a bigger heap.
     long maxMemory = Runtime.getRuntime().maxMemory();
@@ -160,16 +138,12 @@ public class LCMSIndexBuilder {
 
     File inputFile = new File(cl.getOptionValue(OPTION_SCAN_FILE));
     if (!inputFile.exists()) {
-      System.err.format("Cannot find input scan file at %s\n", inputFile.getAbsolutePath());
-      HELP_FORMATTER.printHelp(LCMSIndexBuilder.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      System.exit(1);
+      cliUtil.failWithMessage("Cannot find input scan file at %s", inputFile.getAbsolutePath());
     }
 
     File rocksDBFile = new File(cl.getOptionValue(OPTION_INDEX_PATH));
     if (rocksDBFile.exists()) {
-      System.err.format("Index file at %s already exists--remove and retry\n", rocksDBFile.getAbsolutePath());
-      HELP_FORMATTER.printHelp(LCMSIndexBuilder.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      System.exit(1);
+      cliUtil.failWithMessage("Index file at %s already exists--remove and retry", rocksDBFile.getAbsolutePath());
     }
 
     LCMSIndexBuilder indexBuilder = new LCMSIndexBuilder();
