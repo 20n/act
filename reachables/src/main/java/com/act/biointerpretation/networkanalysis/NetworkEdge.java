@@ -13,10 +13,7 @@ public class NetworkEdge {
   @JsonProperty("product")
   private String product;
 
-  @JsonProperty("reaction_id")
   Optional<Integer> reactionId;
-
-  @JsonProperty("projector_name")
   Optional<String> projectorName;
 
   public NetworkEdge() {
@@ -50,6 +47,7 @@ public class NetworkEdge {
     return reactionId;
   }
 
+  @JsonProperty("reaction_id")
   public void setReactionId(int reactionId) {
     this.reactionId = Optional.of(reactionId);
   }
@@ -58,8 +56,20 @@ public class NetworkEdge {
     return projectorName;
   }
 
+  @JsonProperty("projector_name")
   public void setProjectorName(String projectorName) {
     this.projectorName = Optional.of(projectorName);
+  }
+
+  @JsonProperty("reaction_id")
+  private Integer getReactionIdAsInt() {
+    return reactionId.isPresent() ? reactionId.get() : null;
+  }
+
+
+  @JsonProperty("projector_name")
+  private String getProjectorNameAsString() {
+    return projectorName.isPresent() ? projectorName.get() : null;
   }
 }
 

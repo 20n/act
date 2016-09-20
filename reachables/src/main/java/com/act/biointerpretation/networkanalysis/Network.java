@@ -50,6 +50,7 @@ public class Network {
       createNodeIfNoneExists(productInchi);
       NetworkEdge edge = new NetworkEdge(substrateInchi, productInchi);
       edge.setReactionId(reaction.getUUID());
+      linkEdge(edge);
     }
   }
 
@@ -67,8 +68,20 @@ public class Network {
         createNodeIfNoneExists(product);
         NetworkEdge edge = new NetworkEdge(substrate, product);
         edge.setProjectorName(prediction.getProjectorName());
+        linkEdge(edge);
       }
     }
+  }
+
+
+  /**
+   * Links an edge with its product and substrate by pointing the corresponding nodes to the edge.
+   *
+   * @param edge The edge to link.
+   */
+  private void linkEdge(NetworkEdge edge) {
+    getNode(edge.getProduct()).addInEdge(edge);
+    getNode(edge.getSubstrate()).addOutEdge(edge);
   }
 
   private void createNodeIfNoneExists(String inchi) {

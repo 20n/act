@@ -56,5 +56,6 @@ public class NetworkNode {
   }
 
   // Only for json reading
-  private NetworkNode() {}
+  private NetworkNode() {
+  }
 }
