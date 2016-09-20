@@ -2,7 +2,7 @@ package com.act.biointerpretation.l2expansion;
 
 import chemaxon.formats.MolFormatException;
 import chemaxon.struc.Molecule;
-import com.act.analysis.chemicals.MoleculeImporter;
+import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import com.act.jobs.FileChecker;
 import com.act.jobs.JavaRunnable;
 import org.apache.logging.log4j.LogManager;

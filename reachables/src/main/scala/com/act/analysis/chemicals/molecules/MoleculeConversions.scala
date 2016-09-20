@@ -1,7 +1,6 @@
-package com.act.analysis.chemicals
+package com.act.analysis.chemicals.molecules
 
 import chemaxon.descriptors.{CFParameters, ChemicalFingerprint}
-import chemaxon.formats.MolFormatException
 import chemaxon.struc.Molecule
 import org.apache.log4j.LogManager
 
@@ -108,17 +107,6 @@ object MoleculeConversions {
   }
 
   implicit def stringToMolecule(s: String): Molecule = {
-    try {
-      // Definitely isn't an inchi
-      if (!s.startsWith("InChI=")) throw new MolFormatException()
-
-      // Is InChI
-      MoleculeImporter.importMolecule(s)
-    } catch {
-      case e: MolFormatException =>
-        logger.debug("Unable to convert String to InChI, trying to convert to Smiles.")
-        MoleculeImporter.importMolecule(s, MoleculeImporter.ChemicalSetting.Smiles)
-    }
+    MoleculeImporter.importMolecule(s, List(MoleculeFormat.inchi, MoleculeFormat.smarts))
   }
 }
-
