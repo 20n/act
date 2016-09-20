@@ -141,6 +141,9 @@ class SparkSubstrateExpansionDriverWorkflow extends Workflow {
           assembledJarPath.getAbsolutePath, sparkMaster)(singleSubstrateRoProjectorClassPath,
           roProjectionArgs)(memory = s"${iteration*iteration}G")
 
+      expansion.writeOutputStreamToLogger()
+      expansion.writeErrorStreamToLogger()
+
       val processing: () => Unit = () => {
         // Each RO has its own file.
         val allFilesInOutputDir: List[File] = iterationOutputDirectory.listFiles().toList
