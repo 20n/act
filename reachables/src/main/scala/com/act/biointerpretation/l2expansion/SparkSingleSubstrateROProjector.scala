@@ -274,5 +274,5 @@ object SparkSingleSubstrateROProjector {
 
   }
 
-  case class InchiResult(substrate: String, ros: String, products: List[String]])
+  case class InchiResult(substrate: String, ros: String, products: List[String])
 }
