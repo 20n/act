@@ -54,4 +54,7 @@ public class NetworkNode {
   public void addInEdge(NetworkEdge edge) {
     this.inEdges.add(edge);
   }
+
+  // Only for json reading
+  private NetworkNode() {}
 }

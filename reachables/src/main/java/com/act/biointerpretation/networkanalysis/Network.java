@@ -13,6 +13,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 // Represents a metabolism network, cataloging all possible predicted chemical transformations that could be happening
@@ -24,6 +25,10 @@ public class Network {
 
   @JsonProperty("nodes")
   Map<String, NetworkNode> nodes;
+
+  public Network() {
+    nodes = new HashMap<>();
+  }
 
   public NetworkNode getNode(String inchi) {
     return nodes.get(inchi);
