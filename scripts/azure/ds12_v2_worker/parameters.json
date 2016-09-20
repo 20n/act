@@ -1,0 +1,36 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "value": "Central US"
+        },
+        "virtualMachineName": {
+            "value": "INSERT VALUE HERE"
+        },
+        "virtualMachineSize": {
+            "value": "Standard_DS12_v2"
+        },
+        "adminUsername": {
+            "value": "INSERT USER NAME HERE"
+        },
+        "storageAccountName": {
+            "value": "twentynazurecentralus204"
+        },
+        "virtualNetworkName": {
+            "value": "twentyn-azure"
+        },
+        "networkInterfaceName": {
+            "value": "INSERT INTERFACE NAME HERE"
+        },
+        "networkSecurityGroupName": {
+            "value": "twentyn-worker-1-nsg"
+        },
+        "adminPublicKey": {
+            "value": "INSERT KEY HERE"
+        },
+        "subnetName": {
+            "value": "twentyn-azure-subnet"
+        }
+    }
+}

@@ -1,0 +1,47 @@
+#!/bin/bash
+
+########################################
+# install_java: unpacks, moves, and symlinks an Oracle distribution into place.
+#
+# usage: install_java <jdk tar>
+#
+# Quick and dirty script to install Java from a tar.
+#
+# Warning: uses sudo to install java as root.
+#
+########################################
+
+usage="usage: $0 <java tar>"
+
+TAR=$1
+if [[ -z $TAR || ! -e $TAR ]]; then
+    echo "Must specify tar file.";
+    echo $usage;
+    exit 1;
+fi
+
+JAVA_DIR=$(tar tvf $TAR | head -1 | awk '{print $NF}' | xargs basename)
+
+echo "Java directory is $JAVA_DIR"
+
+echo "Extracting archive"
+tar zxf $TAR
+
+echo "Moving into place"
+sudo mkdir -p /usr/local/java
+sudo mv $JAVA_DIR /usr/local/java
+sudo chown -R root:root /usr/local/java
+
+echo "Linking as current"
+sudo ln -sf /usr/local/java/$JAVA_DIR /usr/local/java/current
+
+echo "Linking executables"
+for i in $(ls /usr/local/java/current/bin); do
+    echo "Linking ${i}"
+    sudo ln -sf /usr/local/java/current/bin/${i} /usr/local/bin/${i}
+done;
+
+echo "Installing JAVA_HOME to profile if needed"
+grep -L "JAVA_HOME" ~/.profile  | xargs -n1 -I__ echo "JAVA_HOME=/usr/local/java/current" >> ~/.profile
+
+echo "Done."
