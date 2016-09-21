@@ -66,7 +66,7 @@ public class NetworkEdge {
     return reactionId.isPresent() ? reactionId.get() : null;
   }
 
-
+  // Only for JSON SerDe
   @JsonProperty("projector_name")
   private String getProjectorNameAsString() {
     return projectorName.isPresent() ? projectorName.get() : null;
