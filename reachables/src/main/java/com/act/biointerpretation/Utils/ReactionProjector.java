@@ -275,7 +275,7 @@ public class ReactionProjector {
    * @return A list of product arrays returned by the Reactor.
    * @throws ReactionException
    */
-  public List<Molecule[]> getProductsFixedOrder(Reactor reactor, Molecule[] substrates)
+  synchronized private List<Molecule[]> getProductsFixedOrder(Reactor reactor, Molecule[] substrates)
       throws ReactionException {
 
     reactor.setReactants(substrates);

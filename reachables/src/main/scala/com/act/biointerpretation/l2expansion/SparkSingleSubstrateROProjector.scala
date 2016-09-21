@@ -58,10 +58,10 @@ object compute {
    */
   def run(licenseFileName: String)(inchi: Molecule): L2PredictionCorpus = {
     // Load license file once
-    if (this.localLicenseFile.isEmpty){
-      this.localLicenseFile = Option(SparkFiles.get(licenseFileName))
-      LOGGER.info(s"Using license file at $localLicenseFile (file exists: ${new File(localLicenseFile.get).exists()})")
-      LicenseManager.setLicenseFile(localLicenseFile.get)
+    if (this.localLicenseFile.isEmpty) {
+        this.localLicenseFile = Option(SparkFiles.get(licenseFileName))
+        LOGGER.info(s"Using license file at $localLicenseFile (file exists: ${new File(SparkFiles.get(licenseFileName)).exists()})")
+        LicenseManager.setLicenseFile(SparkFiles.get(licenseFileName))
     }
 
     val expander = new SingleSubstrateRoExpander(this.eros, List(inchi).asJava, new AllPredictionsGenerator(new ReactionProjector()))
