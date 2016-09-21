@@ -162,6 +162,7 @@ class SparkSubstrateExpansionDriverWorkflow extends Workflow {
 
         val localList = ListBuffer[InchiResult]()
 
+        @tailrec
         def parseFile(inputLines: Iterator[String]): Unit = {
           if (!inputLines.hasNext) return
           // } demarks end of line.
@@ -170,6 +171,8 @@ class SparkSubstrateExpansionDriverWorkflow extends Workflow {
           rest.next()
 
           localList.append(myResult)
+
+          parseFile(rest)
         }
 
         parseFile(fileIterator)
