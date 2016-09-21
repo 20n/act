@@ -43,9 +43,6 @@ public class Ero implements Serializable {
   @JsonProperty("product_count")
   private Integer product_count;
 
-  @JsonIgnore
-  private transient Reactor reactor = null;
-
   public Ero() {}
 
   public Integer getId() {
@@ -143,7 +140,7 @@ public class Ero implements Serializable {
       Otherwise, we'd use the same reactor which means that we could have problems
       multiple objects set the reactants to a single reference of this reactor.
      */
-    reactor = new Reactor();
+    Reactor reactor = new Reactor();
     reactor.setReactionString(this.getRo());
     return reactor;
   }
