@@ -267,9 +267,7 @@ object SparkSingleSubstrateROProjector {
 
     // TODO => Json
     val outputFile = new BufferedWriter(new FileWriter(new File(outputDir, "outputfile.json")))
-    outputFile.write("[")
-    resultsRDD.toLocalIterator.foreach(t => outputFile.write(t.toJson.prettyPrint + ","))
-    outputFile.write("]")
+    outputFile.write(resultsRDD.toLocalIterator.toList.toJson.prettyPrint)
     outputFile.close()
     // Release the RDD now that we're done reading it.
     resultsRDD.unpersist()
