@@ -9,16 +9,15 @@ import com.act.workflow.tool_manager.workflow.workflow_mixins.base.WorkingDirect
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.logging.log4j.LogManager
 
-import scala.collection.JavaConverters._
-
-class NetworkWorkflow extends Workflow with WorkingDirectoryUtility {
+class NetworkAnalysisFlow extends Workflow with WorkingDirectoryUtility {
 
   val logger = LogManager.getLogger(getClass.getName)
 
-  override val HELP_MESSAGE = "Workflow to run basic build of a network from input corpuses."
+  override val HELP_MESSAGE = "Workflow to link a network with lcms results and get statistics on it."
 
   private val OPTION_WORKING_DIRECTORY = "w"
-  private val OPTION_INPUT_DIRECTORIES = "i"
+  private val OPTION_INPUT_NETWORK = "i"
+  private val OPTION_INPUT_LCMS = "l"
 
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -30,9 +29,13 @@ class NetworkWorkflow extends Workflow with WorkingDirectoryUtility {
           "does not already exist.").
         required(),
 
-      CliOption.builder(OPTION_INPUT_DIRECTORIES).
-        hasArgs.valueSeparator(',').
-        desc("The directories in which to find the input corpuses.").
+      CliOption.builder(OPTION_INPUT_NETWORK).
+        hasArg.
+        desc("The file path to the input network.").
+        required(),
+
+      CliOption.builder(OPTION_INPUT_LCMS).
+        desc("The file path to the input lcms results.").
         required(),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
@@ -54,22 +57,16 @@ class NetworkWorkflow extends Workflow with WorkingDirectoryUtility {
     val workingDirPath = cl.getOptionValue(OPTION_WORKING_DIRECTORY, null)
     val workingDir: File = new File(workingDirPath)
 
-    val inputDirs = cl.getOptionValues(OPTION_INPUT_DIRECTORIES).map(path => new File(path))
+    val inputNetworkFile = new File(cl.getOptionValue(OPTION_INPUT_NETWORK))
+    val inputLcmsFile = new File(cl.getOptionValue(OPTION_INPUT_LCMS))
+    val outputFile = new File(workingDir, "network.withLcms")
 
-    def findInputFiles(directory: File): List[File] = {
-      val inputFiles = directory.listFiles().toList
-      inputFiles.filter(f => !f.isDirectory)
-      inputFiles.foreach(f => verifyInputFile(f))
-      inputFiles
-    }
-
-    val inputFiles = inputDirs.flatMap(inputDir => findInputFiles(inputDir))
-
-    val outputFile = new File(workingDir, "networkOutput")
+    verifyInputFile(inputNetworkFile)
+    verifyInputFile(inputLcmsFile)
     verifyOutputFile(outputFile)
 
-    val networkBuilder = new NetworkBuilder(inputFiles.toList.asJava, outputFile)
-    headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("network builder", networkBuilder))
+    val networkLcmsLinker = new NetworkLcmsLinker(inputNetworkFile, inputLcmsFile, outputFile)
+    headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("network lcms linker", networkLcmsLinker))
 
     val networkStats = new NetworkStats(outputFile);
     headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("network stats", networkStats))

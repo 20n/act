@@ -16,11 +16,11 @@ public class NetworkLcmsLinker implements JavaRunnable {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(NetworkLcmsLinker.class);
 
-  private final File lcmsResultsFile;
   private final File networkFile;
+  private final File lcmsResultsFile;
   private final File outputFile;
 
-  public NetworkLcmsLinker(File lcmsResultsFile, File networkFile, File outputFile) {
+  public NetworkLcmsLinker(File networkFile, File lcmsResultsFile, File outputFile) {
     this.lcmsResultsFile = lcmsResultsFile;
     this.networkFile = networkFile;
     this.outputFile = outputFile;
