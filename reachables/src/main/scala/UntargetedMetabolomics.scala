@@ -170,8 +170,8 @@ class UntargetedPeak(
   def summary() = {
     val taggedVals = hdrs.map(h => h.toString -> getHdrVal(h)).toMap
     val withMeta = taggedVals + 
-        ("mz_band_halfwidth" -> MonoIsotopicMass.tolerance()) +
-        ("retention_time_band_halfwidth" -> RetentionTime.driftTolerated)
+        ("mz_band_halfwidth" -> 2 * MonoIsotopicMass.tolerance()) +
+        ("retention_time_band_halfwidth" -> 5 * RetentionTime.driftTolerated)
     withMeta
   }
 
@@ -201,7 +201,7 @@ object SNR extends XCMSCol("sn")
 sealed class OutputHeader(val id: String) { override def toString = id }
 object HdrMZ extends OutputHeader("mz")       // mz at precision considered equal (MonoIsotopicMass.numDecimalPlaces)
 object HdrRT extends OutputHeader("retention_time") // rt at precision considered equal (RetentionTime.driftTolerated/toString)
-object HdrDiff extends OutputHeader("differential_factor") // the x% over- or under-expressed compared to controls
+object HdrDiff extends OutputHeader("rank_metric") // the x% over- or under-expressed compared to controls
 object HdrRawMZ extends OutputHeader("raw_mz") // mz value up to infinite precision (from input data)
 object HdrRawRT extends OutputHeader("raw_rt") // rt value up to infinite precision (from input data)
 object HdrMolMass extends OutputHeader("mol_mass") // if we map to molecules, then the monoisotopic mass thereof
