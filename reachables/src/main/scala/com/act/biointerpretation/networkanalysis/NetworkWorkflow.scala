@@ -71,6 +71,8 @@ class NetworkWorkflow extends Workflow with WorkingDirectoryUtility {
     val networkBuilder = new NetworkBuilder(inputFiles.toList.asJava, outputFile)
     headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("network builder", networkBuilder))
 
+    val networkStats = new NetworkStats(outputFile);
+    headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("network stats", networkStats))
     headerJob
   }
 }

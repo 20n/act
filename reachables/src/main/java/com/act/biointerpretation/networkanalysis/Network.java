@@ -4,6 +4,7 @@ import act.server.MongoDB;
 import act.shared.Reaction;
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
@@ -13,6 +14,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,6 +34,19 @@ public class Network {
 
   public NetworkNode getNode(String inchi) {
     return nodes.get(inchi);
+  }
+
+  @JsonIgnore
+  public Collection<NetworkNode> getNodes() {
+    return nodes.values();
+  }
+
+  public int size() {
+    return nodes.size();
+  }
+
+  public int numEdges() {
+    return nodes.values().stream().mapToInt(node -> node.getOutEdges().size()).sum();
   }
 
   public void loadEdgeFromReaction(MongoDB db, long rxnId) {

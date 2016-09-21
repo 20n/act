@@ -11,16 +11,27 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Runnable class to build a metabolic network from a set of prediction corpuses.
+ * For maximum flexibility
+ */
 public class NetworkBuilder implements JavaRunnable {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(NetworkBuilder.class);
 
-  private final List<File> corpusFiles;
-  private final File outputFile;
+  private final List<File> corpusFiles; // Input files
+  private final File outputFile; // The file to which the network structure will be written.
+  // False if the builder should read in every valid input file even if some inputs are invalid.
+  // True if builder should crash on even a single invalid input file.
+  private boolean failOnInvalidInput = false;
 
   public NetworkBuilder(List<File> corpusFiles, File outputFile) {
     this.corpusFiles = corpusFiles;
     this.outputFile = outputFile;
+  }
+
+  public void setFailOnInvalidInput(boolean fail) {
+    failOnInvalidInput = fail;
   }
 
   @Override
@@ -32,26 +43,29 @@ public class NetworkBuilder implements JavaRunnable {
       FileChecker.verifyInputFile(file);
     }
     FileChecker.verifyAndCreateOutputFile(outputFile);
+    LOGGER.info("Checked input files for validity.");
 
     // Read in input corpuses
-    int successCount = 0;
     List<L2PredictionCorpus> corpuses = new ArrayList<>(corpusFiles.size());
     for (File file : corpusFiles) {
       try {
         corpuses.add(L2PredictionCorpus.readPredictionsFromJsonFile(file));
-        successCount++;
       } catch (IOException e) {
-        LOGGER.warn("Couldn't read file of name %s as input corpus", file.getName());
+        if (failOnInvalidInput) {
+          throw new IOException("Couldn't read input file " + file.getName() + ": " + e.getMessage());
+        }
+        LOGGER.warn("Couldn't read file of name %s as input corpus; ignoring this file.", file.getName());
       }
     }
-    LOGGER.info("Read in %d input files. Loading corpuses.", successCount);
+    LOGGER.info("Successfully read in %d input files. Loading edges into network.", corpuses.size());
 
-    // Set up network object, load from corpuses
+    // Set up network object, and loading predictions from corpuses into network edges.
     Network network = new Network();
     corpuses.forEach(corpus -> network.loadSingleSubstratePredictions(corpus));
-    LOGGER.info("Loaded corpuses. Writing files");
+    LOGGER.info("Loaded corpuses. Writing network to file.");
 
     // Write network out
     network.writeToJsonFile(outputFile);
+    LOGGER.info("Complete!");
   }
 }
