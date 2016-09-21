@@ -18,6 +18,7 @@ library(rscala)
 library(classInt)
 library(jsonlite)
 
+
 kIntensityThreshold <- 10000
 kSSRatio <- 20
 
@@ -106,7 +107,7 @@ getScopedData <- function(target.mz.value, mz.band.halfwidth, scans.and.header) 
     filter(mz < max.ionic.mass & mz > min.ionic.mass)
 }
 
-drawScatterplot <- function(data, title, target.mz.value, mz.band.halfwidth, angle.theta, angle.phi) {
+drawScatterplot <- function(data, title, target.mz.value, mz.band.halfwidth, angle.theta, angle.phi, max.int) {
   cat("Plotting...\n")
   with(data, {
     min.ionic.mass <- target.mz.value - mz.band.halfwidth
@@ -115,7 +116,7 @@ drawScatterplot <- function(data, title, target.mz.value, mz.band.halfwidth, ang
               colkey = list(side = 1, length = 0.5, width = 0.5, cex.clab = 0.75), expand = 0.5,
               zlab = "Intensity", xlab = "Retention time (sec)", ylab = "m/z (Da)",
               theta = angle.theta, phi = angle.phi, ticktype = "detailed", 
-              ylim = c(min.ionic.mass, max.ionic.mass))
+              ylim = c(min.ionic.mass, max.ionic.mass), zlim = c(0, max.int), clim = c(0, max.int))
   })
 }
 
@@ -337,7 +338,7 @@ shinyServer(function(input, output, session) {
   
   output$ui.peaks <- renderUI({
     peaks <- peaks()
-    labels <- apply(peaks[, c("mz", "retention_time", "rank_metric")], 1, function(x) paste0(x, collapse = kPeakDisplaySep))
+    labels <- apply(round(peaks[, c("mz", "retention_time", "rank_metric")], 2), 1, function(x) paste0(x, collapse = kPeakDisplaySep))
     selectizeInput("peaks", "Choose a peak to visualize", choices = unname(labels))
   })
   
@@ -363,13 +364,15 @@ shinyServer(function(input, output, session) {
   
   selected.peak <- reactive({
     shiny::validate(
-      need(!is.null(input$peaks), "Input peaks are null")
+      need(!is.null(input$peaks), "Waiting for peak selection...")
     )
     splits <- unlist(strsplit(input$peaks, kPeakDisplaySep))
     mz.val <- as.numeric(splits[1])
     rt <- as.numeric(splits[2])
-    peak <- peaks() %>% dplyr::filter(mz == mz.val, retention_time == rt)
-    sprintf("Selected peak was %s", peak)
+    print(sprintf("MZ value is %s", mz.val))
+    print(sprintf("RT is %s", rt))
+    peak <- peaks() %>% dplyr::filter(round(mz, 2) == mz.val, round(retention_time, 2) == rt)
+    print(sprintf("Selected peak was %s", paste(round(peak, 2), collapse = ":")))
     peak
   })
   
@@ -395,58 +398,108 @@ shinyServer(function(input, output, session) {
     lapply(scans.header, function(x) getScopedData(input$target.mz.config, input$mz.band.halfwidth.config, x))
   })
   
+  max.int <- reactive({
+    scoped.data.config <- scoped.data.config()
+    max(unlist(lapply(scoped.data.config, function(x) max(x$intensity))))
+  })
+  
   output$plot1 <- renderPlot({
     scoped.data <- scoped.data.config()
     platenames <- platenames()
-    drawScatterplot(scoped.data[[1]], platenames[1], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+    if (input$normalize) {
+      max.int <- max.int()
+    } else {
+      max.int <- max(scoped.data[[1]]$intensity)
+    }
+    drawScatterplot(scoped.data[[1]], platenames[1], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config, max.int)
   })
   
   output$plot2 <- renderPlot({
     scoped.data <- scoped.data.config()
     platenames <- platenames()
-    drawScatterplot(scoped.data[[2]], platenames[2], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+    if (input$normalize) {
+      max.int <- max.int()
+    } else {
+      max.int <- max(scoped.data[[2]]$intensity)
+    }
+    drawScatterplot(scoped.data[[2]], platenames[2], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config, max.int)
   })
   
   output$plot3 <- renderPlot({
     scoped.data <- scoped.data.config()
     platenames <- platenames()
-    drawScatterplot(scoped.data[[3]], platenames[3], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+    if (input$normalize) {
+      max.int <- max.int()
+    } else {
+      max.int <- max(scoped.data[[3]]$intensity)
+    }
+    drawScatterplot(scoped.data[[3]], platenames[3], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config, max.int)
   })
   
   output$plot4 <- renderPlot({
     scoped.data <- scoped.data.config()
     platenames <- platenames()
-    drawScatterplot(scoped.data[[4]], platenames[4], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+    if (input$normalize) {
+      max.int <- max.int()
+    } else {
+      max.int <- max(scoped.data[[4]]$intensity)
+    }
+    drawScatterplot(scoped.data[[4]], platenames[4], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config, max.int)
   })
   
   output$plot5 <- renderPlot({
     scoped.data <- scoped.data.config()
     platenames <- platenames()
-    drawScatterplot(scoped.data[[5]], platenames[5], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+    if (input$normalize) {
+      max.int <- max.int()
+    } else {
+      max.int <- max(scoped.data[[5]]$intensity)
+    }
+    drawScatterplot(scoped.data[[5]], platenames[5], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config, max.int)
   })
   
   output$plot6 <- renderPlot({
     scoped.data <- scoped.data.config()
     platenames <- platenames()
-    drawScatterplot(scoped.data[[6]], platenames[6], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+    if (input$normalize) {
+      max.int <- max.int()
+    } else {
+      max.int <- max(scoped.data[[6]]$intensity)
+    }
+    drawScatterplot(scoped.data[[6]], platenames[6], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config, max.int)
   })
   
   output$plot7 <- renderPlot({
     scoped.data <- scoped.data.config()
     platenames <- platenames()
-    drawScatterplot(scoped.data[[7]], platenames[7], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+    if (input$normalize) {
+      max.int <- max.int()
+    } else {
+      max.int <- max(scoped.data[[7]]$intensity)
+    }
+    drawScatterplot(scoped.data[[7]], platenames[7], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config, max.int)
   })
   
   output$plot8 <- renderPlot({
     scoped.data <- scoped.data.config()
     platenames <- platenames()
-    drawScatterplot(scoped.data[[8]], platenames[8], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+    if (input$normalize) {
+      max.int <- max.int()
+    } else {
+      max.int <- max(scoped.data[[8]]$intensity)
+    }
+    drawScatterplot(scoped.data[[8]], platenames[8], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config, max.int)
   })
   
   output$plot9 <- renderPlot({
     scoped.data <- scoped.data.config()
     platenames <- platenames()
-    drawScatterplot(scoped.data[[9]], platenames[9], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config)
+    if (input$normalize) {
+      max.int <- max.int()
+    } else {
+      max.int <- max(scoped.data[[9]]$intensity)
+    }
+    drawScatterplot(scoped.data[[9]], platenames[9], input$target.mz.config, input$mz.band.halfwidth.config, input$angle.theta.config, input$angle.phi.config, max.int)
   })
   
   output$plots <- renderUI({
