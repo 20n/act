@@ -14,6 +14,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
 import org.joda.time.{DateTime, DateTimeZone}
 import spray.json._
+import InchiFormat._
 
 import scala.collection.JavaConverters._
 import scala.io.Source
