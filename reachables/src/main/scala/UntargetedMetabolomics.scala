@@ -6,6 +6,10 @@ import scala.io.Source
 import act.shared.ChemicalSymbols.{MonoIsotopicMass, AllAminoAcids}
 import com.act.lcms.MS1.MetlinIonMass
 
+// @mark-20n @MichaelLampe20n: help resolve this to specific imports; please!
+import spray.json._
+import spray.json.DefaultJsonProtocol._
+
 object Magic {
   // peak size metric is either MaxInt or IntegratedInt
   val _peakSizeByMaxes = false
@@ -110,24 +114,33 @@ class LCMSExperiment(val origin: Provenance, val peakSpectra: UntargetedPeakSpec
     peakSpectra.peaks.toList.sortWith(sortfn)
   }
 
-  val hdrs = List(HdrMZ, HdrRT, HdrDiff, HdrRawMZ, HdrRawRT)
-
   def outputTo(stream: PrintWriter) {
-    val peakData = sortedPeaks.map(p => hdrs.map(h => p getHdrVal h))
+    def getPlates(src: Provenance): List[Map[String, String]] = {
+      // because of the processing we do, we end up with three nested arrays on provenance:
+      // 1. normalization
+      // 2. replication aggregation
+      // 3. outlier detection
+      src match {
+        case file: RawData => List(Map("filename" -> new File(file.source).getName.replace("tsv","nc")))
+        case nested: ComputedData => {
+          nested.sources.map(o => getPlates(o)).flatten
+        }
+      }
+    }
+    val peaksAsJson = sortedPeaks.map(_.summary).toJson
+    val layout = Map("nrow" -> 2, "ncol" -> 3)
+    val output = Map(
+      "peaks" -> peaksAsJson,
+      "num_peaks" -> numPeaks.toJson,
+      "plates" -> getPlates(origin).toJson,
+      "layout" -> layout.toJson
+    ).toJson
 
     // write the header and peak data to output stream
-    stream.println(hdrs mkString "\t")
-    stream.println(peakData.map(row => row.map(toFixedCol) mkString "\t") mkString "\n")
-    stream.println("# num-rows: " + numPeaks)
+    stream.println(output.prettyPrint)
     stream.flush
   }
 
-  def toFixedCol(value: Any): String = value match {
-    // raw data can contain values such as 0.37564751220734904 and 183.431997299194
-    // so lets make it 20.14f
-    case n: Double => String.format(s"%20.14f", n: java.lang.Double)
-    case _ => value.toString
-  }
 }
 
 class UntargetedPeak(
@@ -144,12 +157,22 @@ class UntargetedPeak(
     s"($intensity, $max, $snrs) @ mzrt($mz, $rt) "
   }
 
-  def getHdrVal(hdr: OutputHeader): Any = hdr match {
-    case HdrMZ => mz
-    case HdrRT => rt
-    case HdrDiff => sz() // use whatever metric was used for `sz`
-    case HdrRawMZ => mz.initMass  // raw MZ from incoming data 
-    case HdrRawRT => rt.time      // raw RT from incoming data
+  def getHdrVal(hdr: OutputHeader): Double = hdr match {
+    case HdrMZ => mz.rounded()
+    case HdrRT => rt.time
+    case HdrDiff => sz // use whatever metric was used for `sz`
+    case HdrRawMZ => mz.initMass // raw MZ from incoming data 
+    case HdrRawRT => rt.time // raw RT from incoming data
+  }
+
+  val hdrs = List(HdrMZ, HdrRT, HdrDiff, HdrRawMZ, HdrRawRT)
+
+  def summary() = {
+    val taggedVals = hdrs.map(h => h.toString -> getHdrVal(h)).toMap
+    val withMeta = taggedVals + 
+        ("mz_band_halfwidth" -> MonoIsotopicMass.tolerance()) +
+        ("retention_time_band_halfwidth" -> RetentionTime.driftTolerated)
+    withMeta
   }
 
   def sz() = {
@@ -176,16 +199,16 @@ object SNR extends XCMSCol("sn")
 
 
 sealed class OutputHeader(val id: String) { override def toString = id }
-object HdrMZ extends OutputHeader("MZ")       // mz at precision considered equal (MonoIsotopicMass.numDecimalPlaces)
-object HdrRT extends OutputHeader("RT")       // rt at precision considered equal (RetentionTime.driftTolerated/toString)
-object HdrDiff extends OutputHeader("Differential Factor") // the x% over- or under-expressed compared to controls
-object HdrRawMZ extends OutputHeader("RawMZ") // mz value up to infinite precision (from input data)
-object HdrRawRT extends OutputHeader("RawRT") // rt value up to infinite precision (from input data)
-object HdrMolMass extends OutputHeader("MolMass") // if we map to molecules, then the monoisotopic mass thereof
-object HdrMolIon extends OutputHeader("Ion")  // if we map to molecules, the ion of which the peak is observed
-object HdrMolFormula extends OutputHeader("Formula") // if we map to formula, the formula of the molecule
-object HdrMolInChI extends OutputHeader("InChI") // if we map to InChI, the inchi of the molecule
-object HdrMolHitSource extends OutputHeader("HitSrc") // if we map to formula/inchi, where the hit was found & DB ID
+object HdrMZ extends OutputHeader("mz")       // mz at precision considered equal (MonoIsotopicMass.numDecimalPlaces)
+object HdrRT extends OutputHeader("retention_time") // rt at precision considered equal (RetentionTime.driftTolerated/toString)
+object HdrDiff extends OutputHeader("differential_factor") // the x% over- or under-expressed compared to controls
+object HdrRawMZ extends OutputHeader("raw_mz") // mz value up to infinite precision (from input data)
+object HdrRawRT extends OutputHeader("raw_rt") // rt value up to infinite precision (from input data)
+object HdrMolMass extends OutputHeader("mol_mass") // if we map to molecules, then the monoisotopic mass thereof
+object HdrMolIon extends OutputHeader("ion")  // if we map to molecules, the ion of which the peak is observed
+object HdrMolFormula extends OutputHeader("formula") // if we map to formula, the formula of the molecule
+object HdrMolInChI extends OutputHeader("inchi") // if we map to InChI, the inchi of the molecule
+object HdrMolHitSource extends OutputHeader("hitsrc") // if we map to formula/inchi, where the hit was found & DB ID
 
 object UntargetedPeakSpectra {
 
@@ -654,8 +677,10 @@ object UntargetedMetabolomics {
 
     def mkLCMSExpr(kv: String) = {
       val spl = kv.split("=")
-      val (name, file) = (spl(0), spl(1))
-      val srcOrigin = new RawData(source = name)
+      val (shortname, file) = (spl(0), spl(1))
+      // right now, we drop the shortname on the floor! It can go into the source field of RawData
+      // but we need the full path name to be able to output to http://lcms/
+      val srcOrigin = new RawData(source = file)
       new LCMSExperiment(srcOrigin, UntargetedPeakSpectra.fromXCMSCentwave(file))
     }
 

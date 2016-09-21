@@ -129,6 +129,7 @@ object ChemicalSymbols {
     // i.e., we consider masses upto 0.001 away from each other to be identical
     // note that the mass of an electron is 5.5e-4 Da, so we allow upto around an electron mass
     val defaultNumPlaces = 2
+    def tolerance(numDec: Int = defaultNumPlaces): Double = math.pow(10, -numDec)
     def ascender(a: MonoIsotopicMass, b: MonoIsotopicMass) = a.initMass < b.initMass
   }
 
@@ -142,9 +143,8 @@ object ChemicalSymbols {
     // when `scaled` was typed as `Double` instead of `Long`. 
     private val scaled = roundedAndScaled()
 
-    def rounded(numDec: Int = MonoIsotopicMass.defaultNumPlaces): Double = roundedAndScaled(numDec) * tolerance(numDec)
-    def roundedAndScaled(numDec: Int = MonoIsotopicMass.defaultNumPlaces): Long = math round (initMass/tolerance(numDec))
-    def tolerance(numDec: Int): Double = math.pow(10, -numDec)
+    def rounded(numDec: Int = MonoIsotopicMass.defaultNumPlaces): Double = roundedAndScaled(numDec) * MonoIsotopicMass.tolerance(numDec)
+    def roundedAndScaled(numDec: Int = MonoIsotopicMass.defaultNumPlaces): Long = math round (initMass/MonoIsotopicMass.tolerance(numDec))
 
     override def equals(that: Any) = that match { 
       case that: MonoIsotopicMass => this.scaled.equals(that.scaled)
