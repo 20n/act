@@ -15,7 +15,6 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
 import org.joda.time.{DateTime, DateTimeZone}
 import spray.json._
-import spray.json
 import InchiFormat._
 
 import scala.collection.JavaConverters._
@@ -39,6 +38,10 @@ import scala.io.Source
   */
 object compute {
   private val LOGGER = LogManager.getLogger(getClass)
+  var eros = new ErosCorpus()
+  eros.loadValidationCorpus()
+
+  var localLicenseFile: Option[String] = None
 
   /* The current parallelism scheme partitions projections by ERO, using one worker thread to project one ERO over all
    * input InChIs.  Given the respective size of our sets of EROs and InChIs (i.e. ERO << InChIs), it might make sense
@@ -53,13 +56,15 @@ object compute {
    *
    * TODO: try out other partitioning schemes and/or pre-compile and cache ERO Reactors for improved performance.
    */
-  def run(licenseFileName: String, ero: ErosCorpus)(inchi: List[Molecule]): L2PredictionCorpus = {
-    val localLicenseFile = SparkFiles.get(licenseFileName)
+  def run(licenseFileName: String)(inchi: Molecule): L2PredictionCorpus = {
+    // Load license file once
+    if (this.localLicenseFile.isEmpty){
+      this.localLicenseFile = Option(SparkFiles.get(licenseFileName))
+      LOGGER.info(s"Using license file at $localLicenseFile (file exists: ${new File(localLicenseFile.get).exists()})")
+      LicenseManager.setLicenseFile(localLicenseFile.get)
+    }
 
-    LOGGER.info(s"Using license file at $localLicenseFile (file exists: ${new File(localLicenseFile).exists()})")
-    LicenseManager.setLicenseFile(localLicenseFile)
-
-    val expander = new SingleSubstrateRoExpander(ero, inchi.asJava, new AllPredictionsGenerator(new ReactionProjector()))
+    val expander = new SingleSubstrateRoExpander(this.eros, List(inchi).asJava, new AllPredictionsGenerator(new ReactionProjector()))
     val results = expander.getPredictions()
 
     results
@@ -169,6 +174,8 @@ object SparkSingleSubstrateROProjector {
 
     val eros = new ErosCorpus()
     eros.loadValidationCorpus()
+
+
     val fullErosList = eros.getRos
     LOGGER.info("Filtering down to only one substrate ROs.")
     if (cl.hasOption(OPTION_FILTER_REQUIRE_RO_NAMES)) {
@@ -209,14 +216,13 @@ object SparkSingleSubstrateROProjector {
 
     LOGGER.info("Building ERO RDD")
     val groupSize = 1000
-    val groupedMolecules: List[List[Molecule]] = validInchiMolecules.grouped(groupSize).toList
-    val inchiRDD: RDD[List[Molecule]] = spark.makeRDD(groupedMolecules, groupedMolecules.size)
+    val inchiRDD: RDD[Molecule] = spark.makeRDD(validInchiMolecules, groupSize)
 
     LOGGER.info("Starting execution")
     // PROJECT!  Run ERO projection over all InChIs.
     val resultsRDD: RDD[InchiResult] =
       inchiRDD.flatMap(inchi => {
-        val result = compute.run(licenseFileName, eros)(inchi)
+        val result = compute.run(licenseFileName)(inchi)
 
         // Break down the corpus into the important parts.
         val corpy = result.getCorpus
