@@ -157,7 +157,7 @@ class SparkSubstrateExpansionDriverWorkflow extends Workflow {
 
         val results: List[InchiResult] = scala.io.Source.fromFile(outputFile).getLines().mkString.parseJson.convertTo[List[InchiResult]]
 
-        val uniqueSubstrates: Set[String] = results.map(result => result.substrate).toSet
+        val uniqueSubstrates: Set[String] = results.flatMap(result => result.substrate).toSet
         val uniqueProducts: Set[String] = results.flatMap(result => result.products).toSet
 
         val allInchis = uniqueSubstrates ++ uniqueProducts

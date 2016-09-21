@@ -38,8 +38,6 @@ import scala.io.Source
   *   -l license file
   */
 object compute {
-  private val MS_PER_S = 1000.0d
-  private val RUNTIME_WARNING_THRESHOLD_S = 60d * 15d // 15 mins
   private val LOGGER = LogManager.getLogger(getClass)
 
   /* The current parallelism scheme partitions projections by ERO, using one worker thread to project one ERO over all
@@ -55,13 +53,13 @@ object compute {
    *
    * TODO: try out other partitioning schemes and/or pre-compile and cache ERO Reactors for improved performance.
    */
-  def run(licenseFileName: String, ero: ErosCorpus)(inchi: Molecule): L2PredictionCorpus = {
+  def run(licenseFileName: String, ero: ErosCorpus)(inchi: List[Molecule]): L2PredictionCorpus = {
     val localLicenseFile = SparkFiles.get(licenseFileName)
 
     LOGGER.info(s"Using license file at $localLicenseFile (file exists: ${new File(localLicenseFile).exists()})")
     LicenseManager.setLicenseFile(localLicenseFile)
 
-    val expander = new SingleSubstrateRoExpander(ero, List(inchi).asJava, new AllPredictionsGenerator(new ReactionProjector()))
+    val expander = new SingleSubstrateRoExpander(ero, inchi.asJava, new AllPredictionsGenerator(new ReactionProjector()))
     val results = expander.getPredictions()
 
     results
@@ -210,20 +208,21 @@ object SparkSingleSubstrateROProjector {
     val licenseFileName = new File(licenseFile).getName
 
     LOGGER.info("Building ERO RDD")
-    val inchiMoleculePairs = validInchis zip validInchiMolecules
-    val inchiRDD: RDD[(String, Molecule)] = spark.makeRDD(inchiMoleculePairs, inchiMoleculePairs.size)
+    val groupSize = 1000
+    val groupedMolecules: List[List[Molecule]] = validInchiMolecules.grouped(groupSize).toList
+    val inchiRDD: RDD[List[Molecule]] = spark.makeRDD(groupedMolecules, groupedMolecules.size)
 
     LOGGER.info("Starting execution")
     // PROJECT!  Run ERO projection over all InChIs.
     val resultsRDD: RDD[InchiResult] =
       inchiRDD.flatMap(inchi => {
-        val result = compute.run(licenseFileName, eros)(inchi._2)
+        val result = compute.run(licenseFileName, eros)(inchi)
 
         // Break down the corpus into the important parts.
         val corpy = result.getCorpus
 
         corpy.asScala.map(prediction =>
-          new InchiResult(inchi._1, prediction.getProjectorName, prediction.getProductInchis.asScala.toList))
+          new InchiResult(prediction.getSubstrateInchis.asScala.toList, prediction.getProjectorName, prediction.getProductInchis.asScala.toList))
       })
 
     /* This next part represents us jumping through some hoops (that are possibly on fire) in order to make Spark do
@@ -265,14 +264,12 @@ object SparkSingleSubstrateROProjector {
     val resultCount = resultsRDD.persist().count()
     LOGGER.info(s"Projection completed with $resultCount results")
 
-    // TODO => Json
     val outputFile = new BufferedWriter(new FileWriter(new File(outputDir, "outputfile.json")))
     outputFile.write(resultsRDD.toLocalIterator.toList.toJson.prettyPrint)
     outputFile.close()
     // Release the RDD now that we're done reading it.
     resultsRDD.unpersist()
-
   }
 
-  case class InchiResult(substrate: String, ros: String, products: List[String])
+  case class InchiResult(substrate: List[String], ros: String, products: List[String])
 }
