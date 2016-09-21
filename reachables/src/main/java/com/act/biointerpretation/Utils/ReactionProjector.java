@@ -282,8 +282,12 @@ public class ReactionProjector {
     List<Molecule[]> results = new ArrayList<>();
 
     Molecule[] products;
-    while ((products = reactor.react()) != null) {
-      results.add(products);
+    try {
+      while ((products = reactor.react()) != null) {
+        results.add(products);
+      }
+    } catch (NullPointerException e){
+      return results;
     }
 
     return results;
