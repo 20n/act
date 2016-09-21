@@ -6,7 +6,6 @@ import chemaxon.formats.MolImporter
 import chemaxon.license.LicenseManager
 import chemaxon.struc.Molecule
 import com.act.biointerpretation.Utils.ReactionProjector
-import com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector.InchiResult
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
@@ -15,7 +14,6 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
 import org.joda.time.{DateTime, DateTimeZone}
 import spray.json._
-import InchiFormat._
 
 import scala.collection.JavaConverters._
 import scala.io.Source
@@ -271,8 +269,12 @@ object SparkSingleSubstrateROProjector {
     val resultCount = resultsRDD.persist().count()
     LOGGER.info(s"Projection completed with $resultCount results")
 
-    val outputFile = new BufferedWriter(new FileWriter(new File(outputDir, "outputfile.json")))
-    outputFile.write(resultsRDD.toLocalIterator.toList.toJson.prettyPrint)
+    val outputFile = new BufferedWriter(new FileWriter(new File(outputDir, "outputfile.txt")))
+    resultsRDD.toLocalIterator.foreach(result => {
+      outputFile.write(result.toJson.prettyPrint)
+      outputFile.newLine()
+    }
+    )
     outputFile.close()
     // Release the RDD now that we're done reading it.
     resultsRDD.unpersist()

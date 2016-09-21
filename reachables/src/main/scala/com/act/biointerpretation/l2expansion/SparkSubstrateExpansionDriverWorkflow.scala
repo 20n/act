@@ -15,6 +15,9 @@ import spray.json._
 import InchiFormat._
 import com.act.workflow.tool_manager.jobs.management.JobManager
 
+import scala.annotation.tailrec
+import scala.collection.mutable.ListBuffer
+
 class SparkSubstrateExpansionDriverWorkflow extends Workflow {
 
   val DEFAULT_SPARK_MASTER = "spark://spark-master:7077"
@@ -153,9 +156,25 @@ class SparkSubstrateExpansionDriverWorkflow extends Workflow {
       val processing: () => Unit = () => {
 
 
-        val outputFile = new File(iterationOutputDirectory, "outputfile.json")
+        val outputFile = new File(iterationOutputDirectory, "outputfile.txt")
 
-        val results: List[InchiResult] = scala.io.Source.fromFile(outputFile).getLines().mkString.parseJson.convertTo[List[InchiResult]]
+        val fileIterator = scala.io.Source.fromFile(outputFile).getLines()
+
+        val localList = ListBuffer[InchiResult]()
+
+        def parseFile(inputLines: Iterator[String]): Unit = {
+          if (!inputLines.hasNext) return
+          // } demarks end of line.
+          val (oneResult, rest) = inputLines.span(!_.contains("}"))
+          val myResult: InchiResult = (oneResult.mkString + "}").parseJson.convertTo[InchiResult]
+          rest.next()
+
+          localList.append(myResult)
+        }
+
+        parseFile(fileIterator)
+
+        val results: List[InchiResult] = localList.toList
 
         val uniqueSubstrates: Set[String] = results.flatMap(result => result.substrate).toSet
         val uniqueProducts: Set[String] = results.flatMap(result => result.products).toSet

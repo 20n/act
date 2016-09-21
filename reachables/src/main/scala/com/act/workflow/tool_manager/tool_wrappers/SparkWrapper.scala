@@ -25,6 +25,7 @@ object SparkWrapper extends ToolWrapper {
       "--master", sparkMaster,
       "--deploy-mode", "client",
       "--executor-memory", memory,
+      "--driver-memory", "8G",
       assembledJar) ::: classArgs
     constructJob("Spark Submit", Option("spark-submit"), args = fullArgs)
   }
