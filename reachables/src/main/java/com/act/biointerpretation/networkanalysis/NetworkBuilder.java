@@ -49,14 +49,9 @@ public class NetworkBuilder implements JavaRunnable {
     // Set up network object, load from corpuses
     Network network = new Network();
     corpuses.forEach(corpus -> network.loadSingleSubstratePredictions(corpus));
-    LOGGER.info("Loaded corpuses. Writing and reading in files");
+    LOGGER.info("Loaded corpuses. Writing files");
 
     // Write network out
     network.writeToJsonFile(outputFile);
-
-    // Read network back in
-    network.loadFromJsonFile(outputFile);
-    LOGGER.info("Complete!");
-
   }
 }
