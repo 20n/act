@@ -1,0 +1,66 @@
+#!/bin/bash
+
+########################################
+# install_spark: unpacks, moves, and symlinks a Spark distribution into place.
+#
+# usage: install_spark <spark tar>
+#
+# Quick and dirty script to install Spark from a tar.
+#
+# Warning: uses sudo to install spark as root.
+#
+########################################
+
+usage="usage: $0 <spark tar>"
+
+TAR=$1
+if [[ -z $TAR || ! -e $TAR ]]; then
+    echo "Must specify tar file.";
+    echo $usage;
+    exit 1;
+fi
+
+SPARK_DIR=$(tar tvf $TAR | head -1 | awk '{print $NF}' | xargs basename)
+
+echo "Spark directory is $SPARK_DIR"
+
+SPARK_HOME=/usr/local/software/$SPARK_DIR
+
+SPARK_LOG_DIR=/var/log/spark
+SPARK_PID_DIR=/var/run/spark
+SPARK_WORKER_DIR=/mnt/spark
+
+if [[ -e $SPARK_HOME ]]; then
+    echo "Spark is already extracted, skipping setup."
+else
+    echo "Extracting archive"
+    tar zxf $TAR
+
+    echo "Moving into place"
+    sudo mkdir -p /usr/local/software
+    sudo mv $SPARK_DIR /usr/local/software
+    sudo chown -R root:root /usr/local/software
+
+    echo "Setting up config file"
+    SPARK_CONFIG=$SPARK_HOME/conf/spark-env.sh
+    sudo cp ${SPARK_CONFIG}.template $SPARK_CONFIG
+    sudo bash -c "echo 'export SPARK_LOG_DIR=$SPARK_LOG_DIR' >> $SPARK_CONFIG"
+    sudo bash -c "echo 'export SPARK_PID_DIR=$SPARK_PID_DIR' >> $SPARK_CONFIG"
+    sudo bash -c "echo 'export SPARK_WORKER_DIR=$SPARK_WORKER_DIR' >> $SPARK_CONFIG"
+fi
+
+SPARK_USER_CHECK=$(grep -c '^spark:' /etc/passwd)
+
+if [[ $SPARK_USER_CHECK = "0" ]]; then
+    echo "Spark user does not exists, creating"
+    sudo useradd -r -s /usr/sbin/nologin spark
+fi
+
+echo "Setting up supporting directories"
+for dir in $SPARK_LOG_DIR $SPARK_PID_DIR $SPARK_WORKER_DIR; do
+    echo "Creating $dir"
+    sudo mkdir -p $dir
+    sudo chown -R spark:spark $dir
+done
+
+echo "Done installing spark.  Please start master/slave processes to boot cluster."

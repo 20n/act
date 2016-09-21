@@ -1,0 +1,36 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "value": "westus2"
+        },
+        "virtualMachineName": {
+            "value": "spark-master-1-west2"
+        },
+        "virtualMachineSize": {
+            "value": "Standard_DS13_v2"
+        },
+        "adminUsername": {
+            "value": "mdaly"
+        },
+        "storageAccountName": {
+            "value": "twentynazureus2"
+        },
+        "virtualNetworkName": {
+            "value": "twentyn-azure-spark"
+        },
+        "networkInterfaceName": {
+            "value": "spark-master-1-west277"
+        },
+        "networkSecurityGroupName": {
+            "value": "twentyn-spark-worker-nsg"
+        },
+        "adminPublicKey": {
+            "value": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC8d+DyJ1yzQLOfBdFkjiVgwLcbEP/1JABFYnzuQ1TKBC8ILB9mNvGW+2P77r0/9zEbcDSeXg6qrPwZIUHtJE//Z+zdJT6pkXahhaj+8CiGqKKh6SVpSVOolwoLD5aR24oRDAOfWt2wFECN6KmSlMs9yeVPTG2Y95ebI7CUPcRWhiAz92tq3siEsWOL3Mq9hi+EYDJheWKBeIsvdzeGR2qpscsPQVNAuctPSFyn/1sXka38rtdvum8egT/ykYbDqx0K7WYmfLje6Rc3v2XOkzPa4RStMTiVgq0jaARi2NtMEGbENUiG9hVpggDLoLIlkcDZolXEhtPBwPlzXEEGby+D"
+        },
+        "subnetName": {
+            "value": "default"
+        }
+    }
+}

@@ -3,7 +3,7 @@
 ########################################
 # spawn_vm: creates an Azure VM using a host template and parameters
 #
-# usage: spawn_vm <config dir> <numeric identifier> [<admin username> [<public key file>]]"
+# usage: spawn_vm <config dir> <resource group> <hostname> [<admin username> [<public key file>]]"
 #
 # example: spawn_vm d11_v2_worker 50 mdaly ~/.ssh/id_rsa.pub
 #
@@ -28,7 +28,7 @@
 # executed in parallel.
 ########################################
 
-usage="usage: $0 <config dir> <numeric identifier> [<admin username> [<public key file>]]"
+usage="usage: $0 <config dir> <hostname> [<admin username> [<public key file>]]"
 
 # Check for dependencies.
 AZURE=`which azure`
@@ -54,30 +54,38 @@ if [[ -z $1 || ! -d $1 ]]; then
 fi
 
 if [[ -z $2 ]]; then
-    echo "Must specify a host suffix number."
+    echo "Must specify a resource group.  Run `azure group list` to see possible values."
+    echo $usage
+    exit 1
+fi
+
+if [[ -z $3 ]]; then
+    echo "Must specify a host name."
     echo $usage
     exit 1
 fi
 
 CONFIG_DIR=$1
-SUFFIX=$2
+RESOURCE_GROUP=$2
+NEW_HOSTNAME=$3
 
 USER=$(whoami)
-if [[ ! -z $3 ]]; then
-    USER=$3
+if [[ ! -z $4 ]]; then
+    USER=$4
 fi
 
+echo "Creating host $NEW_HOSTNAME."
 echo "Using username '$USER' as admin user."
 
 KEY=""
-if [[ ! -z $4 ]]; then
-    if [[ ! $4 =~ \.pub$ ]]; then
-        echo "Public keys are expected to end with '.pub', but $4 does not.  Cowardly refusing to use a potentially private key."
+if [[ ! -z $5 ]]; then
+    if [[ ! $5 =~ \.pub$ ]]; then
+        echo "Public keys are expected to end with '.pub', but $5 does not.  Cowardly refusing to use a potentially private key."
         echo $usage
         exit 1
     else
-        echo "Using public key at $4"
-        KEY=$(cat $4)
+        echo "Using public key at $5"
+        KEY=$(cat $5)
     fi
 elif [[ -e $HOME/.ssh/id_rsa.pub ]]; then
     echo "Using public key at ~/.ssh/id_rsa.pub"
@@ -95,23 +103,22 @@ fi
 PARAMS_OUT=$(mktemp -t "spawn_vm")
 echo "Temporary parameters file at $PARAMS_OUT."
 
-HOSTNAME="twentyn-${SUFFIX}"
-NIC="${HOSTNAME}-nic"
+NIC="${NEW_HOSTNAME}-nic"
 
 # Populate the parameters file.
 echo "Substituting hostname and NIC parameter values."
-$JQ ".parameters.virtualMachineName.value = \"${HOSTNAME}\" | .parameters.networkInterfaceName.value = \"$NIC\" | .parameters.adminUsername.value = \"$USER\" | .parameters.adminPublicKey.value = \"$KEY\"" \
+$JQ ".parameters.virtualMachineName.value = \"${NEW_HOSTNAME}\" | .parameters.networkInterfaceName.value = \"$NIC\" | .parameters.adminUsername.value = \"$USER\" | .parameters.adminPublicKey.value = \"$KEY\"" \
     $CONFIG_DIR/parameters.json > $PARAMS_OUT
 
 # Spin up a VM.
 echo "----------------------------------------"
 echo "Creating worker ${SUFFIX} with parameters:"
-echo "  Hostname: $HOSTNAME"
+echo "  Hostname: $NEW_HOSTNAME"
 echo "  NIC name: $NIC"
 echo "  Username: $USER"
 echo "  SSH key:  $KEY"
 echo "----------------------------------------"
-$AZURE group deployment create --resource-group twentyn-azure-central-us --template-file $CONFIG_DIR/template.json --parameters-file $PARAMS_OUT
+$AZURE group deployment create --resource-group $RESOURCE_GROUP --template-file $CONFIG_DIR/template.json --parameters-file $PARAMS_OUT
 echo "----------------------------------------"
 # All done.
 echo "Cleaning up."
