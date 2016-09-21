@@ -340,8 +340,10 @@ shinyServer(function(input, output, session) {
   })
   
   output$ui.peaks <- renderUI({
-    peaks <- peaks()
-    labels <- apply(round(peaks[, c("mz", "retention_time", "rank_metric")], 2), 1, function(x) paste0(x, collapse = kPeakDisplaySep))
+    peaks <- peaks() %>% 
+      mutate_each(funs(round(.,2)), mz, retention_time) %>%
+      mutate(rank_metric_signif = signif(rank_metric, 3))
+    labels <- apply(peaks[, c("mz", "retention_time", "rank_metric_signif")], 1, function(x) paste0(x, collapse = kPeakDisplaySep))
     selectizeInput("peaks", "Choose a peak to visualize", choices = unname(labels))
   })
   
