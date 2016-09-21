@@ -138,10 +138,8 @@ public class Ero implements Serializable {
 
   @JsonIgnore
   public Reactor getReactor() throws ReactionException {
-    if (reactor == null) {
-      reactor = new Reactor();
-      reactor.setReactionString(this.getRo());
-    }
+    reactor = new Reactor();
+    reactor.setReactionString(this.getRo());
     return reactor;
   }
 }
