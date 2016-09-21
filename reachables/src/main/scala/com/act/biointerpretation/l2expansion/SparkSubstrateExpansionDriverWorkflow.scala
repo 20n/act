@@ -13,6 +13,7 @@ import org.apache.logging.log4j.LogManager
 import scala.collection.JavaConverters._
 import spray.json._
 import InchiFormat._
+import com.act.workflow.tool_manager.jobs.management.JobManager
 
 class SparkSubstrateExpansionDriverWorkflow extends Workflow {
 
@@ -83,6 +84,8 @@ class SparkSubstrateExpansionDriverWorkflow extends Workflow {
   }
 
   override def defineWorkflow(cl: CommandLine): Job = {
+    JobManager.setVerbosity(6)
+
     require(!cl.hasOption(OPTION_ASSEMBLED_JAR_FILE) | !cl.hasOption(OPTION_CREATE_JAR_FILE_AT_RUNTIME),
       s"A JAR file must either be explicitly supplied [Option: $OPTION_ASSEMBLED_JAR_FILE <File Path>] or you must " +
         s"indicate that you'd like to try to assemble the JAR file at runtime [Option $OPTION_CREATE_JAR_FILE_AT_RUNTIME]")
