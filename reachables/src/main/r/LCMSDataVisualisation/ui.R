@@ -28,7 +28,7 @@ shinyUI(fluidPage(
                         numericInput("mz.band.halfwidth", label = "Mass charge band halfwidth", value = 0.01, step = 0.01),
                         h3("Plot parameters"),
                         sliderInput("angle.theta", label = "Azimuthal Angle (left <-> right)", 
-                                    min = 0, max = 360, value = 90, step = 5),
+                                    min = 0, max = 90, value = 90, step = 5),
                         sliderInput("angle.phi", label = "Colatitude Angle (down <-> up)",
                                     min = 0, max = 90, value = 20, step = 5)
                       ),
@@ -49,7 +49,7 @@ shinyUI(fluidPage(
                         textInput("filename2", label = "Filename - Plate 2", value = "Plate_jaffna3_B1_0815201601.nc"),
                         textInput("filename3", label = "Filename - Plate 3", value = "Plate_jaffna3_C1_0815201601.nc"),
                         sliderInput("retention.time.range.multi", label = "Retention Time range",
-                                    min = 0, max = 90, value = c(130, 160), step = 5),
+                                    min = 0, max = 450, value = c(130, 160), step = 5),
                         actionButton("load.multi", "Load or refresh scans", icon("refresh"),
                                      style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
                         h3("M/Z scope"),

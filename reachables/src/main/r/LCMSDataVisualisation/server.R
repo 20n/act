@@ -270,25 +270,25 @@ shinyServer(function(input, output, session) {
   output$plot <- renderPlot({
     scoped.data <- scoped.data()
     target.mz <- target.mz()
-    drawScatterplot(scoped.data, target.mz, input$mz.band.halfwidth, input$angle.theta, input$angle.phi)
+    drawScatterplot(scoped.data, input$filename, target.mz, input$mz.band.halfwidth, input$angle.theta, input$angle.phi)
   })
   
   output$plot1.multi <- renderPlot({
     scoped.data <- scoped.data.1()
     target.mz <- target.mz.multi()
-    drawScatterplot(scoped.data, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
+    drawScatterplot(scoped.data, input$filename1, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
   })
   
   output$plot2.multi <- renderPlot({
     scoped.data <- scoped.data.2()
     target.mz <- target.mz.multi()
-    drawScatterplot(scoped.data, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
+    drawScatterplot(scoped.data, input$filename2, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
   })
   
   output$plot3.multi <- renderPlot({
     scoped.data <- scoped.data.3()
     target.mz <- target.mz.multi()
-    drawScatterplot(scoped.data, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
+    drawScatterplot(scoped.data, input$filename3, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
   })
   
   output$target.mz <- renderText({
