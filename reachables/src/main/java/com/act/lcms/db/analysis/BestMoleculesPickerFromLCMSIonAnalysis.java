@@ -188,7 +188,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     header.add("Disease-Wild_Ratio");
 
     TSVWriter<String, String> writer = new TSVWriter<>(header);
-    writer.open(new File("/mnt/shared-data/Vijay/perlstein_azure_run_water/differentail_analysis.tsv"));
+    writer.open(new File("/mnt/shared-data/Vijay/perlstein_azure_run_water/differential_analysis.tsv"));
 
     for (int i = 0; i < alignedDiseasedPeaks.getResults().size(); i++) {
       IonAnalysisInterchangeModel.ResultForMZ diseasedPeak = alignedDiseasedPeaks.getResults().get(i);
@@ -203,7 +203,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
       } else if (wildTypeIntensity.equals(0.0)) {
         ratio = 10000000000.0;
       } else {
-        ratio = diseasedPeak.getMolecules().get(0).getAverageIntensity() / wildTypePeak.getMolecules().get(0).getAverageIntensity();
+        ratio = diseaseTypeIntensity / wildTypeIntensity;
       }
 
       Map<String, String> row = new HashMap<>();
