@@ -65,9 +65,12 @@ object compute {
     }
 
     val expander = new SingleSubstrateRoExpander(this.eros, List(inchi).asJava, new AllPredictionsGenerator(new ReactionProjector()))
-    val results = expander.getPredictions()
 
-    results
+    // Get predictions is not thread safe
+    synchronized {
+      val results = expander.getPredictions()
+      results
+    }
   }
 }
 
