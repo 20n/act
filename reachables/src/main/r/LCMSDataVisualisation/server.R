@@ -18,7 +18,6 @@ library(rscala)
 library(classInt)
 library(jsonlite)
 
-
 kIntensityThreshold <- 10000
 kSSRatio <- 20
 
@@ -271,25 +270,29 @@ shinyServer(function(input, output, session) {
   output$plot <- renderPlot({
     scoped.data <- scoped.data()
     target.mz <- target.mz()
-    drawScatterplot(scoped.data, input$filename, target.mz, input$mz.band.halfwidth, input$angle.theta, input$angle.phi)
+    max.int <- max(scoped.data$intensity)
+    drawScatterplot(scoped.data, input$filename, target.mz, input$mz.band.halfwidth, input$angle.theta, input$angle.phi, max.int)
   })
   
   output$plot1.multi <- renderPlot({
     scoped.data <- scoped.data.1()
     target.mz <- target.mz.multi()
-    drawScatterplot(scoped.data, input$filename1, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
+    max.int <- max(scoped.data$intensity)
+    drawScatterplot(scoped.data, input$filename1, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi, max.int)
   })
   
   output$plot2.multi <- renderPlot({
     scoped.data <- scoped.data.2()
     target.mz <- target.mz.multi()
-    drawScatterplot(scoped.data, input$filename2, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
+    max.int <- max(scoped.data$intensity)
+    drawScatterplot(scoped.data, input$filename2, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi, max.int)
   })
   
   output$plot3.multi <- renderPlot({
     scoped.data <- scoped.data.3()
     target.mz <- target.mz.multi()
-    drawScatterplot(scoped.data, input$filename3, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi)
+    max.int <- max(scoped.data$intensity)
+    drawScatterplot(scoped.data, input$filename3, target.mz, input$mz.band.halfwidth.multi, input$angle.theta.multi, input$angle.phi.multi, max.int)
   })
   
   output$target.mz <- renderText({
@@ -369,10 +372,7 @@ shinyServer(function(input, output, session) {
     splits <- unlist(strsplit(input$peaks, kPeakDisplaySep))
     mz.val <- as.numeric(splits[1])
     rt <- as.numeric(splits[2])
-    print(sprintf("MZ value is %s", mz.val))
-    print(sprintf("RT is %s", rt))
     peak <- peaks() %>% dplyr::filter(round(mz, 2) == mz.val, round(retention_time, 2) == rt)
-    print(sprintf("Selected peak was %s", paste(round(peak, 2), collapse = ":")))
     peak
   })
   
