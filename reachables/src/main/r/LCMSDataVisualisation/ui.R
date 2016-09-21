@@ -13,7 +13,8 @@ shinyUI(fluidPage(
     column(8, headerPanel("LCMS data explorer"), align = "center"),
     column(2)
   ),
-  navbarPage("Visualisation mode:",
+  navbarPage("Visualisation mode:", 
+             selected = "Configuration-based",
              tabPanel("Simple",
                       sidebarPanel(
                         h3("Scans selection"),
@@ -77,7 +78,7 @@ shinyUI(fluidPage(
                         fileInput("config.file", label = "Choose a configuration file", accept=c("application/json")),
                         h3("Peak selection"),
                         uiOutput("ui.peaks"),
-                        em("Peak format is {mz-value} - {retention-time}"),
+                        em("Peak format is {mz-value} - {retention-time} - {rank-factor}"),
                         uiOutput("ui.retention.time.range"),
                         uiOutput("ui.target.mz"),
                         uiOutput("ui.mz.band.halfwidth"),
@@ -85,7 +86,8 @@ shinyUI(fluidPage(
                         sliderInput("angle.theta.config", label = "Azimuthal Angle (left <-> right)", 
                                     min = 0, max = 90, value = 90, step = 5),
                         sliderInput("angle.phi.config", label = "Colatitude Angle (down <-> up)",
-                                    min = 0, max = 90, value = 20, step = 5)
+                                    min = 0, max = 90, value = 20, step = 5),
+                        checkboxInput("normalize", "Normalize values", value = FALSE)
                       ),
                       mainPanel(
                         uiOutput("plots")
