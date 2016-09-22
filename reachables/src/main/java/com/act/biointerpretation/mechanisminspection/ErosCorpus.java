@@ -6,11 +6,11 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,11 +24,9 @@ import java.util.stream.Collectors;
 public class ErosCorpus implements Iterable<Ero>, Serializable{
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(ErosCorpus.class);
-  private final Class INSTANCE_CLASS_LOADER = getClass();
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
   private static final String VALIDATION_EROS_FILE_NAME = "validation_eros.json";
-
+  private final Class INSTANCE_CLASS_LOADER = getClass();
   private List<Ero> ros;
   private Map<Integer, Ero> roIdToEroMap;
 
@@ -84,7 +82,7 @@ public class ErosCorpus implements Iterable<Ero>, Serializable{
    *
    * @param roIdList The list of relevant ids.
    */
-  public void filterCorpusById(List<Integer> roIdList) {
+  synchronized public void filterCorpusById(List<Integer> roIdList) {
     Set<Integer> roSet = new HashSet<>(roIdList);
     ros.removeIf(ro -> !roSet.contains(ro.getId()));
   }
