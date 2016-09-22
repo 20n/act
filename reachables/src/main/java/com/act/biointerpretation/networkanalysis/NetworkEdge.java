@@ -53,7 +53,7 @@ public class NetworkEdge {
    * @return True if same.
    */
   public boolean isSameEdge(NetworkEdge edge) {
-    return this.substrate == edge.getSubstrate() && this.product == edge.getProduct();
+    return this.substrate.equals(edge.getSubstrate()) && this.product.equals(edge.getProduct());
   }
 
   public String getSubstrate() {

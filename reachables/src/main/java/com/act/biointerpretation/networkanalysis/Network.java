@@ -95,11 +95,9 @@ public class Network {
 
     Long substrateId = reaction.getSubstrates()[0];
     String substrateInchi = db.getChemicalFromChemicalUUID(substrateId).getInChI();
-    createNodeIfNoneExists(substrateInchi);
 
     for (Long productId : reaction.getProducts()) {
       String productInchi = db.getChemicalFromChemicalUUID(productId).getInChI();
-      createNodeIfNoneExists(productInchi);
       NetworkEdge edge = new NetworkEdge(substrateInchi, productInchi);
       edge.addReactionId(reaction.getUUID());
       addEdge(edge);
@@ -121,10 +119,8 @@ public class Network {
       }
 
       String substrateInchi = prediction.getSubstrateInchis().get(0);
-      createNodeIfNoneExists(substrateInchi);
 
       for (String productInchi : prediction.getProductInchis()) {
-        createNodeIfNoneExists(productInchi);
         NetworkEdge edge = new NetworkEdge(substrateInchi, productInchi);
         edge.addProjectorName(prediction.getProjectorName());
         addEdge(edge);
@@ -134,13 +130,17 @@ public class Network {
 
 
   /**
-   * Links an edge with its product and substrate by pointing the corresponding nodes to the edge.
-   * Checks for an already existing edge with the same substrate and product; if such an edge exists, this edge's
+   * Adds a given edge to the graph.
+   * First, adds the substrate and product nodes to the graph, if they don't already exist.
+   * Then, checks for an already existing edge with the same substrate and product; if such an edge exists, this edge's
    * auxiliary data is merged into the already existing edge.  If no such edge exists, a new edge is added.
    *
-   * @param edge The edge to link.
+   * @param edge The edge to add.
    */
   public void addEdge(NetworkEdge edge) {
+
+    createNodeIfNoneExists(edge.getSubstrate());
+    createNodeIfNoneExists(edge.getProduct());
 
     NetworkNode substrateNode = getNode(edge.getSubstrate());
     List<NetworkEdge> equivalentEdges = substrateNode.getOutEdges().stream()
