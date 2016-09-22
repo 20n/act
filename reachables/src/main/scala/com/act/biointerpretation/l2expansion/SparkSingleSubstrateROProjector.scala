@@ -2,21 +2,21 @@ package com.act.biointerpretation.l2expansion
 
 import java.io.{BufferedWriter, File, FileWriter}
 
-import chemaxon.formats.MolImporter
+import chemaxon.formats.{MolExporter, MolImporter}
 import chemaxon.license.LicenseManager
 import chemaxon.struc.Molecule
-import com.act.biointerpretation.Utils.ReactionProjector
-import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
+import com.act.biointerpretation.l2expansion.InchiFormat._
+import com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector.InchiResult
+import com.act.biointerpretation.mechanisminspection.ErosCorpus
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.logging.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
-import org.joda.time.{DateTime, DateTimeZone}
 import spray.json._
-import InchiFormat._
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ListBuffer
 import scala.io.Source
 
 /**
@@ -55,106 +55,53 @@ object compute {
    *
    * TODO: try out other partitioning schemes and/or pre-compile and cache ERO Reactors for improved performance.
    */
-  def run(licenseFileName: String)(inchi: Molecule): L2PredictionCorpus = {
+  def run(licenseFileName: String)(inchi: Molecule): List[InchiResult] = {
     // Load license file once
     if (this.localLicenseFile.isEmpty) {
         this.localLicenseFile = Option(SparkFiles.get(licenseFileName))
         LOGGER.info(s"Using license file at $localLicenseFile (file exists: ${new File(SparkFiles.get(licenseFileName)).exists()})")
         LicenseManager.setLicenseFile(SparkFiles.get(licenseFileName))
     }
+    /*
 
-    val expander = new SingleSubstrateRoExpander(this.eros, List(inchi).asJava, new AllPredictionsGenerator(new ReactionProjector()))
+      public L2Prediction(id: Integer, substrates: util.List[L2PredictionChemical], projectorName: String, products: util.List[L2PredictionChemical]) {
 
-    // Get predictions is not thread safe
-    val results = expander.getPredictions()
-    results
+     */
+    val substrates = MolExporter.exportToFormat(inchi, "inchi")
+
+    val resultingReactions = ListBuffer[InchiResult]()
+    val results = this.eros.getRos.asScala.foreach(ro => {
+      val reactor = ro.getReactor
+      reactor.setReactant(inchi)
+
+      var reactMore = true
+      while (reactMore) {
+        val products = reactor.react()
+        if (products == null) {
+          reactMore = false
+        } else {
+          resultingReactions.append(new InchiResult(List(substrates), ro.getId.toString, products.toList.map(x => MolExporter.exportToFormat(x, "inchi"))))
+        }
+      }
+
+
+    })
+
+    resultingReactions.toList
   }
 }
 
 object SparkSingleSubstrateROProjector {
-  private val LOGGER = LogManager.getLogger(getClass)
-
-  private val OBJECT_MAPPER = new ObjectMapper()
-
-  private val SPARK_LOG_LEVEL = "WARN"
-
   val OPTION_LICENSE_FILE = "l"
   val OPTION_SUBSTRATES_LIST = "i"
   val OPTION_OUTPUT_DIRECTORY = "o"
   val OPTION_FILTER_FOR_SPECTROMETERY = "s"
   val OPTION_FILTER_REQUIRE_RO_NAMES = "n"
-
-  def getCommandLineOptions: Options = {
-    val options = List[CliOption.Builder](
-      CliOption.builder(OPTION_LICENSE_FILE).
-        required(true).
-        hasArg.
-        longOpt("license-file")
-        .desc("A path to the Chemaxon license file to load, mainly for checking license validity"),
-
-      CliOption.builder(OPTION_SUBSTRATES_LIST).
-        required(true).
-        hasArg.
-        longOpt("substrates-list").
-        desc("A list of substrate InChIs onto which to project ROs"),
-
-      CliOption.builder(OPTION_OUTPUT_DIRECTORY).
-        required(true).
-        hasArg.
-        longOpt("output-directory").
-        desc("A directory in which to write per-RO result files"),
-
-      CliOption.builder(OPTION_FILTER_FOR_SPECTROMETERY).
-        longOpt("filter-for-spectrometery").
-        desc("Filter potential substrates to those that we think could be detected via LCMS (i.e. <= 950 daltons"),
-
-      CliOption.builder(OPTION_FILTER_REQUIRE_RO_NAMES).
-        longOpt("only-named-eros").
-        desc("Only apply EROs from the validation corpus that have assigned names"),
-
-      CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
-    )
-
-    val opts: Options = new Options()
-    for (opt <- options) {
-      opts.addOption(opt.build)
-    }
-    opts
-  }
-
   val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   val HELP_MESSAGE = "A Spark job that will project the set of validation ROs over a list of substrates."
-  HELP_FORMATTER.setWidth(100)
-
-  // The following were stolen (in haste) from Workflow.scala.
-  def parseCommandLineOptions(args: Array[String]): CommandLine = {
-    val opts = getCommandLineOptions
-
-    // Parse command line options
-    var cl: Option[CommandLine] = None
-    try {
-      val parser = new DefaultParser()
-      cl = Option(parser.parse(opts, args))
-    } catch {
-      case e: ParseException =>
-        LOGGER.error(s"Argument parsing failed: ${e.getMessage}\n")
-        exitWithHelp(opts)
-    }
-
-    if (cl.isEmpty) {
-      LOGGER.error("Detected that command line parser failed to be constructed.")
-      exitWithHelp(opts)
-    }
-
-    if (cl.get.hasOption("help")) exitWithHelp(opts)
-
-    cl.get
-  }
-
-  def exitWithHelp(opts: Options): Unit = {
-    HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
-    System.exit(1)
-  }
+  private val LOGGER = LogManager.getLogger(getClass)
+  private val OBJECT_MAPPER = new ObjectMapper()
+  private val SPARK_LOG_LEVEL = "WARN"
 
   def main(args: Array[String]): Unit = {
     val cl = parseCommandLineOptions(args)
@@ -220,16 +167,7 @@ object SparkSingleSubstrateROProjector {
 
     LOGGER.info("Starting execution")
     // PROJECT!  Run ERO projection over all InChIs.
-    val resultsRDD: RDD[InchiResult] =
-      inchiRDD.flatMap(inchi => {
-        val result = compute.run(licenseFileName)(inchi)
-
-        // Break down the corpus into the important parts.
-        val corpy = result.getCorpus
-
-        corpy.asScala.map(prediction =>
-          new InchiResult(prediction.getSubstrateInchis.asScala.toList, prediction.getProjectorName, prediction.getProductInchis.asScala.toList))
-      })
+    val resultsRDD: RDD[InchiResult] = inchiRDD.flatMap(inchi => compute.run(licenseFileName)(inchi))
 
     /* This next part represents us jumping through some hoops (that are possibly on fire) in order to make Spark do
      * the thing we want it to do: project in parallel but stream results back for storage partitioned by RO.
@@ -279,6 +217,76 @@ object SparkSingleSubstrateROProjector {
     outputFile.close()
     // Release the RDD now that we're done reading it.
     resultsRDD.unpersist()
+  }
+
+  HELP_FORMATTER.setWidth(100)
+
+  def getCommandLineOptions: Options = {
+    val options = List[CliOption.Builder](
+      CliOption.builder(OPTION_LICENSE_FILE).
+        required(true).
+        hasArg.
+        longOpt("license-file")
+        .desc("A path to the Chemaxon license file to load, mainly for checking license validity"),
+
+      CliOption.builder(OPTION_SUBSTRATES_LIST).
+        required(true).
+        hasArg.
+        longOpt("substrates-list").
+        desc("A list of substrate InChIs onto which to project ROs"),
+
+      CliOption.builder(OPTION_OUTPUT_DIRECTORY).
+        required(true).
+        hasArg.
+        longOpt("output-directory").
+        desc("A directory in which to write per-RO result files"),
+
+      CliOption.builder(OPTION_FILTER_FOR_SPECTROMETERY).
+        longOpt("filter-for-spectrometery").
+        desc("Filter potential substrates to those that we think could be detected via LCMS (i.e. <= 950 daltons"),
+
+      CliOption.builder(OPTION_FILTER_REQUIRE_RO_NAMES).
+        longOpt("only-named-eros").
+        desc("Only apply EROs from the validation corpus that have assigned names"),
+
+      CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
+    )
+
+    val opts: Options = new Options()
+    for (opt <- options) {
+      opts.addOption(opt.build)
+    }
+    opts
+  }
+
+  // The following were stolen (in haste) from Workflow.scala.
+  def parseCommandLineOptions(args: Array[String]): CommandLine = {
+    val opts = getCommandLineOptions
+
+    // Parse command line options
+    var cl: Option[CommandLine] = None
+    try {
+      val parser = new DefaultParser()
+      cl = Option(parser.parse(opts, args))
+    } catch {
+      case e: ParseException =>
+        LOGGER.error(s"Argument parsing failed: ${e.getMessage}\n")
+        exitWithHelp(opts)
+    }
+
+    if (cl.isEmpty) {
+      LOGGER.error("Detected that command line parser failed to be constructed.")
+      exitWithHelp(opts)
+    }
+
+    if (cl.get.hasOption("help")) exitWithHelp(opts)
+
+    cl.get
+  }
+
+  def exitWithHelp(opts: Options): Unit = {
+    HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
+    System.exit(1)
   }
 
   case class InchiResult(substrate: List[String], ros: String, products: List[String])
