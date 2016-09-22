@@ -2,7 +2,8 @@ package com.act.biointerpretation.networkanalysis;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.util.Optional;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Represents an edge, or reaction, in the metabolism network
@@ -15,18 +16,44 @@ public class NetworkEdge {
   @JsonProperty("product")
   private String product;
 
-  Optional<Integer> reactionId;
-  Optional<String> projectorName;
+  @JsonProperty("reaction_ids")
+  Set<Integer> reactionIds;
+
+  @JsonProperty("projector_names")
+  Set<String> projectorNames;
 
   public NetworkEdge() {
-    reactionId = Optional.empty();
-    projectorName = Optional.empty();
+    reactionIds = new HashSet<>();
+    projectorNames = new HashSet<>();
   }
 
   public NetworkEdge(String substrate, String product) {
     this();
     this.substrate = substrate;
     this.product = product;
+  }
+
+  /**
+   * Adds auxiliary data from another edge to this edge.
+   * This includes reaction IDs and projector names associated with the other edge.
+   * Used to merge two edges with the same substrate, product, but different auxiliary data.
+   *
+   * @param edge The edge whose data should be added.
+   */
+  public void addData(NetworkEdge edge) {
+    this.reactionIds.addAll(edge.getReactionIds());
+    this.projectorNames.addAll(edge.getProjectorNames());
+  }
+
+  /**
+   * Tests if this edge should be considered the same as another. Returns true if substrate and product are the same,
+   * regardless of auxiliary data.
+   *
+   * @param edge The edge to compare to.
+   * @return True if same.
+   */
+  public boolean isSameEdge(NetworkEdge edge) {
+    return this.substrate == edge.getSubstrate() && this.product == edge.getProduct();
   }
 
   public String getSubstrate() {
@@ -45,33 +72,28 @@ public class NetworkEdge {
     this.product = product;
   }
 
-  public Optional<Integer> getReactionId() {
-    return reactionId;
+  public Set<Integer> getReactionIds() {
+    return reactionIds;
   }
 
-  @JsonProperty("reaction_id")
-  public void setReactionId(int reactionId) {
-    this.reactionId = Optional.of(reactionId);
+  public void setReactionIds(Set<Integer> reactionIds) {
+    this.reactionIds = reactionIds;
   }
 
-  public Optional<String> getProjectorName() {
-    return projectorName;
+  public void addReactionId(Integer reactionId) {
+    this.reactionIds.add(reactionId);
   }
 
-  @JsonProperty("projector_name")
-  public void setProjectorName(String projectorName) {
-    this.projectorName = Optional.of(projectorName);
+  public Set<String> getProjectorNames() {
+    return projectorNames;
   }
 
-  @JsonProperty("reaction_id")
-  private Integer getReactionIdAsInt() {
-    return reactionId.isPresent() ? reactionId.get() : null;
+  public void setProjectorNames(Set<String> projectorNames) {
+    this.projectorNames = projectorNames;
   }
 
-  // Only for JSON SerDe
-  @JsonProperty("projector_name")
-  private String getProjectorNameAsString() {
-    return projectorName.isPresent() ? projectorName.get() : null;
+  public void addProjectorName(String projectorName) {
+    this.projectorNames.add(projectorName);
   }
 }
 

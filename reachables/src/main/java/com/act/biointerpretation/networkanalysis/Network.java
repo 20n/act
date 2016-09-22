@@ -101,8 +101,8 @@ public class Network {
       String productInchi = db.getChemicalFromChemicalUUID(productId).getInChI();
       createNodeIfNoneExists(productInchi);
       NetworkEdge edge = new NetworkEdge(substrateInchi, productInchi);
-      edge.setReactionId(reaction.getUUID());
-      linkEdge(edge);
+      edge.addReactionId(reaction.getUUID());
+      addEdge(edge);
     }
   }
 
@@ -126,8 +126,8 @@ public class Network {
       for (String productInchi : prediction.getProductInchis()) {
         createNodeIfNoneExists(productInchi);
         NetworkEdge edge = new NetworkEdge(substrateInchi, productInchi);
-        edge.setProjectorName(prediction.getProjectorName());
-        linkEdge(edge);
+        edge.addProjectorName(prediction.getProjectorName());
+        addEdge(edge);
       }
     }
   }
@@ -135,12 +135,25 @@ public class Network {
 
   /**
    * Links an edge with its product and substrate by pointing the corresponding nodes to the edge.
+   * Checks for an already existing edge with the same substrate and product; if such an edge exists, this edge's
+   * auxiliary data is merged into the already existing edge.  If no such edge exists, a new edge is added.
    *
    * @param edge The edge to link.
    */
-  private void linkEdge(NetworkEdge edge) {
-    getNode(edge.getProduct()).addInEdge(edge);
-    getNode(edge.getSubstrate()).addOutEdge(edge);
+  public void addEdge(NetworkEdge edge) {
+
+    NetworkNode substrateNode = getNode(edge.getSubstrate());
+    List<NetworkEdge> equivalentEdges = substrateNode.getOutEdges().stream()
+        .filter(e -> e.isSameEdge(edge))
+        .collect(Collectors.toList());
+    assert (equivalentEdges.size() <= 1); // Should be at most one edge with a given substrate, product pair
+
+    if (equivalentEdges.isEmpty()) { // If no equivalent edge exists, add the new edge
+      getNode(edge.getProduct()).addInEdge(edge);
+      getNode(edge.getSubstrate()).addOutEdge(edge);
+    } else { // If there is an equivalent edge, merge the data into that edge.
+      equivalentEdges.get(0).addData(edge);
+    }
   }
 
   private void createNodeIfNoneExists(String inchi) {
