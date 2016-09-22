@@ -133,14 +133,16 @@ public class ErosCorpus implements Iterable<Ero>, Serializable{
    *
    * @param count The required number of sybstrates.
    */
-  public void filterCorpusBySubstrateCount(Integer count) {
+  // TODO Fix all the code that uses this so that we can implement a thread-safe version without the sync.
+  synchronized public void filterCorpusBySubstrateCount(Integer count) {
     ros.removeIf(ro -> !ro.getSubstrate_count().equals(count));
   }
 
   /**
    * Retain only ROs with a name in this corpus.
    */
-  public void retainNamedRos() {
+  // TODO Fix all the code that uses this so that we can implement a thread-safe version without the sync.
+  synchronized public void retainNamedRos() {
     ros.removeIf(ro -> ro.getName().isEmpty());
   }
 
