@@ -4,9 +4,10 @@ import com.act.biointerpretation.mechanisminspection.ErosCorpus
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.SequenceKeywords
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.reaction_db.QueryByRo
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.sequence_db.QueryByReactionId
-import com.mongodb.DBObject
+import com.mongodb.{BasicDBList, DBObject}
 import org.apache.logging.log4j.LogManager
 
+import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.collection.parallel.immutable.ParSeq
 
@@ -36,7 +37,8 @@ object OrganismSpecificReactions {
       val returnDocList = returnSequenceDocuments.toList
 
       if (returnDocList.nonEmpty) {
-        val rxnList: List[Long] = returnDocList.map(doc => doc.get(SequenceKeywords.RXN_REFS.toString)).asInstanceOf[List[Long]]
+        val rxnList: List[Long] = returnDocList.flatMap(doc =>
+          doc.get(SequenceKeywords.RXN_REFS.toString).asInstanceOf[BasicDBList].toList.asInstanceOf[List[Long]])
         Some(RoReactions(ro.toInt, rxnList))
       } else {
         None
