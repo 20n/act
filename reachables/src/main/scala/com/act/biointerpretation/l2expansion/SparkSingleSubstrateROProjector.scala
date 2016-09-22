@@ -6,7 +6,6 @@ import chemaxon.formats.{MolExporter, MolImporter}
 import chemaxon.license.LicenseManager
 import chemaxon.struc.Molecule
 import com.act.biointerpretation.l2expansion.InchiFormat._
-import com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector.InchiResult
 import com.act.biointerpretation.mechanisminspection.ErosCorpus
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
@@ -55,7 +54,7 @@ object compute {
    *
    * TODO: try out other partitioning schemes and/or pre-compile and cache ERO Reactors for improved performance.
    */
-  def run(licenseFileName: String)(inchi: Molecule): List[InchiResult] = {
+  def run(licenseFileName: String)(inchi: Molecule): List[(List[Molecule], String, List[Molecule])] = {
     // Load license file once
     if (this.localLicenseFile.isEmpty) {
         this.localLicenseFile = Option(SparkFiles.get(licenseFileName))
@@ -67,9 +66,7 @@ object compute {
       public L2Prediction(id: Integer, substrates: util.List[L2PredictionChemical], projectorName: String, products: util.List[L2PredictionChemical]) {
 
      */
-    val substrates = MolExporter.exportToFormat(inchi, "inchi")
-
-    val resultingReactions = ListBuffer[InchiResult]()
+    val resultingReactions = ListBuffer[(List[Molecule], String, List[Molecule])]()
     val results = this.eros.getRos.asScala.foreach(ro => {
       val reactor = ro.getReactor
       reactor.setReactant(inchi)
@@ -80,7 +77,7 @@ object compute {
         if (products == null) {
           reactMore = false
         } else {
-          resultingReactions.append(new InchiResult(List(substrates), ro.getId.toString, products.toList.map(x => MolExporter.exportToFormat(x, "inchi"))))
+          resultingReactions.append((List(inchi), ro.getId.toString, products.toList))
         }
       }
 
@@ -167,7 +164,13 @@ object SparkSingleSubstrateROProjector {
 
     LOGGER.info("Starting execution")
     // PROJECT!  Run ERO projection over all InChIs.
-    val resultsRDD: RDD[InchiResult] = inchiRDD.flatMap(inchi => compute.run(licenseFileName)(inchi))
+    val resultsRDD: RDD[InchiResult] = inchiRDD.flatMap(inchi => {
+      val results = compute.run(licenseFileName)(inchi)
+
+      results.map(result => {
+        new InchiResult(result._1.map(x => MolExporter.exportToFormat(x, "inchi:AuxNone")), result._2, result._3.map(x => MolExporter.exportToFormat(x, "inchi:AuxNone")))
+      })
+    })
 
     /* This next part represents us jumping through some hoops (that are possibly on fire) in order to make Spark do
      * the thing we want it to do: project in parallel but stream results back for storage partitioned by RO.
