@@ -334,6 +334,7 @@ public class Builder {
         LOGGER.info("Extracted %d time spectra", spectrumCounter);
       }
     }
+    LOGGER.info("Extracted %d total time spectra", spectrumCounter);
 
     // Now write all the mzWindow to triple indexes.
     RocksDBAndHandles.RocksDBWriteBatch<ColumnFamilies> writeBatch = dbAndHandles.makeWriteBatch();
