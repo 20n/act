@@ -82,6 +82,7 @@ public class ErosCorpus implements Iterable<Ero>, Serializable{
    *
    * @param roIdList The list of relevant ids.
    */
+  // TODO Fix all the code that uses this so that we can implement a thread-safe version without the sync.
   synchronized public void filterCorpusById(List<Integer> roIdList) {
     Set<Integer> roSet = new HashSet<>(roIdList);
     ros.removeIf(ro -> !roSet.contains(ro.getId()));
