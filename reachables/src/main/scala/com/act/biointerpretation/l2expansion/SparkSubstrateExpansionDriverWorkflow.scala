@@ -2,32 +2,28 @@ package com.act.biointerpretation.l2expansion
 
 import java.io.File
 
+import com.act.biointerpretation.l2expansion.InchiFormat._
 import com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector.InchiResult
 import com.act.workflow.tool_manager.jobs.Job
+import com.act.workflow.tool_manager.jobs.management.JobManager
 import com.act.workflow.tool_manager.tool_wrappers.{ScalaJobWrapper, SparkWrapper}
 import com.act.workflow.tool_manager.workflow.Workflow
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
-
-import scala.collection.JavaConverters._
 import spray.json._
-import InchiFormat._
-import com.act.workflow.tool_manager.jobs.management.JobManager
 
 import scala.annotation.tailrec
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
 class SparkSubstrateExpansionDriverWorkflow extends Workflow {
 
+  override val HELP_MESSAGE = "Workflow for doing substrate expansions with Spark.  " +
+    "Handles reconverting the predictions to InChIs and starting the next level of expansion."
   val DEFAULT_SPARK_MASTER = "spark://spark-master:7077"
   val LOCAL_JAR_PATH = "target/scala-2.10/reachables-assembly-0.1.jar"
   val logger = LogManager.getLogger(getClass.getName)
-
-  override val HELP_MESSAGE = "Workflow for doing substrate expansions with Spark.  " +
-    "Handles reconverting the predictions to InChIs and starting the next level of expansion."
-
-
   val OPTION_LICENSE_FILE = "l"
   val OPTION_SUBSTRATES_LIST = "i"
   val OPTION_OUTPUT_DIRECTORY = "o"
@@ -164,7 +160,6 @@ class SparkSubstrateExpansionDriverWorkflow extends Workflow {
 
         @tailrec
         def parseFile(inputLines: Iterator[String]): Unit = {
-          if (!inputLines.hasNext) return
           // } demarks end of line.
           val (oneResult, rest) = inputLines.span(!_.contains("}"))
           val myResult: InchiResult = (oneResult.mkString + "}").parseJson.convertTo[InchiResult]
@@ -172,7 +167,9 @@ class SparkSubstrateExpansionDriverWorkflow extends Workflow {
 
           localList.append(myResult)
 
-          parseFile(rest)
+          if (rest.hasNext) {
+            parseFile(rest)
+          }
         }
 
         parseFile(fileIterator)
