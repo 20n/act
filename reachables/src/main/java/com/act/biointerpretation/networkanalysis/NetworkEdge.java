@@ -4,7 +4,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Optional;
 
-//Represents an edge, or reaction, in the metabolism network
+/**
+ * Represents an edge, or reaction, in the metabolism network
+ */
 public class NetworkEdge {
 
   @JsonProperty("substrate")

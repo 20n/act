@@ -2,6 +2,7 @@ package com.act.biointerpretation.networkanalysis;
 
 import com.act.jobs.FileChecker;
 import com.act.jobs.JavaRunnable;
+import com.act.lcms.db.io.report.IonAnalysisInterchangeModel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -34,8 +35,13 @@ public class NetworkStats implements JavaRunnable {
     LOGGER.info("Loaded network in from file.");
 
     // Print stats on network
-    LOGGER.info("Total nodes: %d", network.size());
-    LOGGER.info("Total edges: %d", network.numEdges());
+    LOGGER.info("Total nodes: %d", network.getNodes().size());
+    LOGGER.info("Total edges: %d", network.getEdges().size());
+
+    LOGGER.info("Total LCMS hits: %d", network.getNodes().stream()
+        .filter(node -> node.getLcmsResult().equals(IonAnalysisInterchangeModel.LCMS_RESULT.HIT))
+        .count());
+
     LOGGER.info("Complete!");
   }
 }

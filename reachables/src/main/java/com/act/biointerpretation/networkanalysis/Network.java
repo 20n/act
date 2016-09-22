@@ -16,10 +16,15 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-// Represents a metabolism network, cataloging all possible predicted chemical transformations that could be happening
-// in a given sample.
+/**
+ * Represents a metabolism network, cataloging all possible predicted chemical transformations that could be happening
+ * in a given sample.  Currently all edges encode one-substrate-one-product transformations.
+ * TODO: generalize the network to encapsulate multiple-substrate, multiple-product dependencies.
+ */
 public class Network {
 
   private static transient final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -41,14 +46,46 @@ public class Network {
     return nodes.values();
   }
 
-  public int size() {
-    return nodes.size();
+  /**
+   * Get all edges from the graph. Assumes each edge has one substrate; otherwise this may return duplicates.
+   * TODO: generalize this if we generalize the graph for multiple substrate edges.
+   *
+   * @return A collection of the graph's edges.
+   */
+  public Collection<NetworkEdge> getEdges() {
+    return nodes.values().stream().flatMap(node -> node.getOutEdges().stream()).collect(Collectors.toList());
   }
 
-  public int numEdges() {
-    return nodes.values().stream().mapToInt(node -> node.getOutEdges().size()).sum();
+  /**
+   * Get all nodes that are one step forward from this node. These are predicted products of reactions that have this
+   * node as a substrate.
+   *
+   * @param node The starting node.
+   * @return The list of potential product nodes.
+   */
+  public List<NetworkNode> getChildren(NetworkNode node) {
+    return node.getOutEdges().stream().map(edge -> getNode(edge.getProduct())).collect(Collectors.toList());
   }
 
+  /**
+   * Get all nodes that are one step before this node. These are substrates of reactions that are predicted to produce
+   * this node as a product.
+   *
+   * @param node The starting node.
+   * @return The list of potential substrate nodes.
+   */
+  public List<NetworkNode> getParents(NetworkNode node) {
+    return node.getInEdges().stream().map(edge -> getNode(edge.getSubstrate())).collect(Collectors.toList());
+  }
+
+  /**
+   * Load an edge into the network from a reaction in our reactions DB.
+   * Only works on single-substrate reactions. For a reaction with multiple products, one edge is loaded into the
+   * network for each product.  i.e. the reaction A -> (B,C) creates two edges: (A->B) and (A->C).
+   *
+   * @param db    The DB to look in.
+   * @param rxnId The reaction ID.
+   */
   public void loadEdgeFromReaction(MongoDB db, long rxnId) {
     Reaction reaction = db.getReactionFromUUID(rxnId);
     if (reaction.getSubstrates().length != 1) {
@@ -56,12 +93,12 @@ public class Network {
       return;
     }
 
-    Long substrate = reaction.getSubstrates()[0];
-    String substrateInchi = db.getChemicalFromChemicalUUID(substrate).getInChI();
+    Long substrateId = reaction.getSubstrates()[0];
+    String substrateInchi = db.getChemicalFromChemicalUUID(substrateId).getInChI();
     createNodeIfNoneExists(substrateInchi);
 
-    for (Long product : reaction.getProducts()) {
-      String productInchi = db.getChemicalFromChemicalUUID(product).getInChI();
+    for (Long productId : reaction.getProducts()) {
+      String productInchi = db.getChemicalFromChemicalUUID(productId).getInChI();
       createNodeIfNoneExists(productInchi);
       NetworkEdge edge = new NetworkEdge(substrateInchi, productInchi);
       edge.setReactionId(reaction.getUUID());
@@ -69,6 +106,13 @@ public class Network {
     }
   }
 
+  /**
+   * Loads all predictions from a prediction corpus into the network as edges.
+   * Only works on single-substrate predictions.  For a prediction with multiple products, one edge is loaded into the
+   * network for each product. i.e. the prediction A -> (B,C) creates two edges: (A->B), (A->C).
+   *
+   * @param predictionCorpus
+   */
   public void loadSingleSubstratePredictions(L2PredictionCorpus predictionCorpus) {
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
       if (prediction.getSubstrateInchis().size() != 1) {
@@ -76,12 +120,12 @@ public class Network {
         return;
       }
 
-      String substrate = prediction.getSubstrateInchis().get(0);
-      createNodeIfNoneExists(substrate);
+      String substrateInchi = prediction.getSubstrateInchis().get(0);
+      createNodeIfNoneExists(substrateInchi);
 
-      for (String product : prediction.getProductInchis()) {
-        createNodeIfNoneExists(product);
-        NetworkEdge edge = new NetworkEdge(substrate, product);
+      for (String productInchi : prediction.getProductInchis()) {
+        createNodeIfNoneExists(productInchi);
+        NetworkEdge edge = new NetworkEdge(substrateInchi, productInchi);
         edge.setProjectorName(prediction.getProjectorName());
         linkEdge(edge);
       }
@@ -100,9 +144,7 @@ public class Network {
   }
 
   private void createNodeIfNoneExists(String inchi) {
-    if (nodes.get(inchi) == null) {
-      nodes.put(inchi, new NetworkNode(inchi));
-    }
+    nodes.putIfAbsent(inchi, new NetworkNode(inchi));
   }
 
   public void writeToJsonFile(File outputFile) throws IOException {

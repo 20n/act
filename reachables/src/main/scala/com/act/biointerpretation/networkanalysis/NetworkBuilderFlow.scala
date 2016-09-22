@@ -11,6 +11,9 @@ import org.apache.logging.log4j.LogManager
 
 import scala.collection.JavaConverters._
 
+/**
+  * A Workflow to build a metabolism network from a set of prediction corpuses, and print out basic statistics on it.
+  */
 class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility {
 
   val logger = LogManager.getLogger(getClass.getName)
@@ -45,12 +48,8 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility {
     opts
   }
 
-  // Implement this with the job structure you want to run to define a workflow
   override def defineWorkflow(cl: CommandLine): Job = {
 
-    /**
-      * Handle command line args and create files
-      */
     val workingDirPath = cl.getOptionValue(OPTION_WORKING_DIRECTORY, null)
     val workingDir: File = new File(workingDirPath)
 

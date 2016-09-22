@@ -9,11 +9,15 @@ import com.act.workflow.tool_manager.workflow.workflow_mixins.base.WorkingDirect
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.logging.log4j.LogManager
 
+/**
+  * A workflow to read in a metabolism network from file, optionally fill it out with LCMS data from a given input
+  * file, and then print out basic statistics about it.
+  */
 class NetworkAnalysisFlow extends Workflow with WorkingDirectoryUtility {
 
   val logger = LogManager.getLogger(getClass.getName)
 
-  override val HELP_MESSAGE = "Workflow to link a network with lcms results and get statistics on it."
+  override val HELP_MESSAGE = "Workflow to link a network with lcms results and/or get statistics about it."
 
   private val OPTION_WORKING_DIRECTORY = "w"
   private val OPTION_INPUT_NETWORK = "i"
@@ -35,8 +39,10 @@ class NetworkAnalysisFlow extends Workflow with WorkingDirectoryUtility {
         required(),
 
       CliOption.builder(OPTION_INPUT_LCMS).
-        desc("The file path to the input lcms results.").
-        required(),
+        hasArg.
+        desc("The file path to the input lcms results. If this option is used, the network's LCMS data is reset " +
+          "based on the supplied input LCMS data.  If no path is provided, the input network is analyzed as is, " +
+          "with or without LCMS results."),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -48,27 +54,29 @@ class NetworkAnalysisFlow extends Workflow with WorkingDirectoryUtility {
     opts
   }
 
-  // Implement this with the job structure you want to run to define a workflow
   override def defineWorkflow(cl: CommandLine): Job = {
 
-    /**
-      * Handle command line args and create files
-      */
     val workingDirPath = cl.getOptionValue(OPTION_WORKING_DIRECTORY, null)
     val workingDir: File = new File(workingDirPath)
 
     val inputNetworkFile = new File(cl.getOptionValue(OPTION_INPUT_NETWORK))
-    val inputLcmsFile = new File(cl.getOptionValue(OPTION_INPUT_LCMS))
-    val outputFile = new File(workingDir, "network.withLcms")
-
     verifyInputFile(inputNetworkFile)
-    verifyInputFile(inputLcmsFile)
-    verifyOutputFile(outputFile)
+    var networkToAnalyze = inputNetworkFile
 
-    val networkLcmsLinker = new NetworkLcmsLinker(inputNetworkFile, inputLcmsFile, outputFile)
-    headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("network lcms linker", networkLcmsLinker))
+    if (cl.hasOption(OPTION_INPUT_LCMS)) {
+      val inputLcmsFile = new File(cl.getOptionValue(OPTION_INPUT_LCMS))
+      verifyInputFile(inputLcmsFile)
 
-    val networkStats = new NetworkStats(outputFile);
+      val outputFile = new File(workingDir, "network.withLcms")
+      verifyOutputFile(outputFile)
+
+      val networkLcmsLinker = new NetworkLcmsLinker(inputNetworkFile, inputLcmsFile, outputFile)
+      headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("network lcms linker", networkLcmsLinker))
+
+      networkToAnalyze = outputFile
+    }
+
+    val networkStats = new NetworkStats(networkToAnalyze);
     headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("network stats", networkStats))
     headerJob
   }

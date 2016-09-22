@@ -6,7 +6,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
 import java.util.List;
 
-// Represents a node, or chemical, in the metabolism network
+/**
+ * Represents a node, or chemical, in the metabolism network
+ */
 public class NetworkNode {
 
   @JsonProperty("inchi")
@@ -21,9 +23,8 @@ public class NetworkNode {
   private IonAnalysisInterchangeModel.LCMS_RESULT lcmsResult;
 
   public NetworkNode(String inchi) {
+    this();
     this.inchi = inchi;
-    this.outEdges = new ArrayList<>();
-    this.inEdges = new ArrayList<>();
   }
 
   public String getInchi() {
@@ -68,5 +69,8 @@ public class NetworkNode {
 
   // For JSON SerDe
   private NetworkNode() {
+    this.outEdges = new ArrayList<>();
+    this.inEdges = new ArrayList<>();
+    this.lcmsResult = IonAnalysisInterchangeModel.LCMS_RESULT.NO_DATA;
   }
 }
