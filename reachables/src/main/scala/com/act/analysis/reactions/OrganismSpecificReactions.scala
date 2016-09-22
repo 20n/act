@@ -39,7 +39,7 @@ object OrganismSpecificReactions {
       if (returnDocList.nonEmpty) {
         val rxnList: List[Long] = returnDocList.flatMap(doc =>
           doc.get(SequenceKeywords.RXN_REFS.toString).asInstanceOf[BasicDBList].toList.asInstanceOf[List[Long]])
-        Some(RoReactions(ro.toInt, rxnList))
+        Some(RoReactions(ro.toInt, rxnList.toSet.toList))
       } else {
         None
       }
