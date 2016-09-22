@@ -71,8 +71,8 @@ class CmdLineParser(parent: String, args: Array[String], optDescs: List[OptDesc]
 
     val optStr = whichOpt match {
       case Some(o) => o.param
-      case None => throw new Exception("You asked for a longparam that is not present " + 
-                                       "in the option descriptions. Code failure. Please fix!")
+      case None => throw new Exception(s"""You asked for a param $option that is not present
+                                          |in the option descriptions. Code failure. Please fix!""".stripMargin)
     }
 
     outfn(optStr)

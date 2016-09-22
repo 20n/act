@@ -72,9 +72,22 @@ sealed trait Provenance
 class RawData(val source: String) extends Provenance
 class ComputedData(val sources: List[Provenance]) extends Provenance
 
-class LCMSExperiment(val origin: Provenance, val peakSpectra: UntargetedPeakSpectra) {
-  override def toString = peakSpectra.toString
-  def numPeaks = {
+sealed class PeakHits(val origin: Provenance, val peakSpectra: PeakSpectra) {
+
+  def peakSummarizer(p: Peak) = p.summary
+
+  // when we take the ratio (and install -1.0 missing peaks), the output metrics will be such:
+  // (+1.0,\inf): if signals present in ALL samples and OVER expressed in hypotheses vs controls
+  // (0.0, +1.0): if sinnals present in ALL samples and UNDER expressed in hypotheses vs controls 
+  // (-1.0, 0.0): if signals MISSING in hypotheses, i.e., extreme UNDER expressed in hypotheses vs controls
+  // (-\inf, -1.0): if signals MISSING in controls, i.e., extreme OVER expressed in hypotheses vs controls
+  def signalPresentInAll(p: Peak) = p.sz > +0.0
+  def signalPresentInAllOverExpr(p: Peak) = p.sz > +1.0
+
+  assert(Magic._missingPeakVal == -1.0) 
+  def signalMissingInHypOverExpr(p: Peak) = p.sz < -1.0
+
+  def numPeaks: Map[String, Int] = {
     val (peaksInAll, peaksMissingInSome) = peakSpectra.peaks.partition(signalPresentInAll)
     val (overExprPresentInAll, underExprPresentInAll) = peaksInAll.partition(signalPresentInAllOverExpr)
     val (overExprMissingInSome, underExprMissingInSome) = peaksMissingInSome.partition(signalMissingInHypOverExpr)
@@ -89,19 +102,8 @@ class LCMSExperiment(val origin: Provenance, val peakSpectra: UntargetedPeakSpec
     sizes
   }
 
-  // when we take the ratio (and install -1.0 missing peaks), the output metrics will be such:
-  // (+1.0,\inf): if signals present in ALL samples and OVER expressed in hypotheses vs controls
-  // (0.0, +1.0): if sinnals present in ALL samples and UNDER expressed in hypotheses vs controls 
-  // (-1.0, 0.0): if signals MISSING in hypotheses, i.e., extreme UNDER expressed in hypotheses vs controls
-  // (-\inf, -1.0): if signals MISSING in controls, i.e., extreme OVER expressed in hypotheses vs controls
-  def signalPresentInAll(p: UntargetedPeak) = p.sz > +0.0
-  def signalPresentInAllOverExpr(p: UntargetedPeak) = p.sz > +1.0
-
-  assert(Magic._missingPeakVal == -1.0) 
-  def signalMissingInHypOverExpr(p: UntargetedPeak) = p.sz < -1.0
-
   def sortedPeaks = {
-    def sortfn(a: UntargetedPeak, b: UntargetedPeak) = {
+    def sortfn(a: Peak, b: Peak) = {
       val field: XCMSCol = IntIntensity // you can also sort by MZ or RT
       field match {
         case IntIntensity => a.integratedInt > b.integratedInt
@@ -114,7 +116,7 @@ class LCMSExperiment(val origin: Provenance, val peakSpectra: UntargetedPeakSpec
     peakSpectra.peaks.toList.sortWith(sortfn)
   }
 
-  def outputTo(stream: PrintWriter) {
+  def toJsonFormat() = {
     def getPlates(src: Provenance): List[Map[String, String]] = {
       // because of the processing we do, we end up with three nested arrays on provenance:
       // 1. normalization
@@ -127,23 +129,22 @@ class LCMSExperiment(val origin: Provenance, val peakSpectra: UntargetedPeakSpec
         }
       }
     }
-    val peaksAsJson = sortedPeaks.map(_.summary).toJson
+    val peakSummaries = sortedPeaks.map(peakSummarizer)
     val layout = Map("nrow" -> 2, "ncol" -> 3)
     val output = Map(
-      "peaks" -> peaksAsJson,
-      "num_peaks" -> numPeaks.toJson,
-      "plates" -> getPlates(origin).toJson,
-      "layout" -> layout.toJson
-    ).toJson
+      "peaks" -> peakSummaries.toJson,      // List[Map[String, Double]]
+      "plates" -> getPlates(origin).toJson, // List[Map[String, String]]
+      "num_peaks" -> numPeaks.toJson,       // Map[String, Int]
+      "layout" -> layout.toJson             // Map[String, Int]
+    )
 
-    // write the header and peak data to output stream
-    stream.println(output.prettyPrint)
-    stream.flush
+    output.toJson
   }
-
 }
 
-class UntargetedPeak(
+class RawPeaks(val o: Provenance, val ps: PeakSpectra) extends PeakHits(o, ps)
+
+class Peak(
   val mz: MonoIsotopicMass,
   val rt: RetentionTime,
   val integratedInt: Double,
@@ -167,7 +168,7 @@ class UntargetedPeak(
 
   val hdrs = List(HdrMZ, HdrRT, HdrDiff, HdrRawMZ, HdrRawRT)
 
-  def summary() = {
+  def summary(): Map[String, Double] = {
     val taggedVals = hdrs.map(h => h.toString -> getHdrVal(h)).toMap
     val withMeta = taggedVals + 
         ("mz_band_halfwidth" -> 2 * MonoIsotopicMass.tolerance()) +
@@ -184,11 +185,11 @@ class UntargetedPeak(
 
   def scaleBy(factor: Double) = {
     // change the integrated and max intensities, but SNR stays the same. SNR is not a scaling candidate!
-    new UntargetedPeak(this.mz, this.rt, this.integratedInt * factor, this.maxInt * factor, this.snr)
+    new Peak(this.mz, this.rt, this.integratedInt * factor, this.maxInt * factor, this.snr)
   }
 }
 
-class UntargetedPeakSpectra(val peaks: Set[UntargetedPeak])
+class PeakSpectra(val peaks: Set[Peak])
 
 sealed class XCMSCol(val id: String) { override def toString = id }
 object MZ extends XCMSCol("mz")
@@ -210,10 +211,10 @@ object HdrMolFormula extends OutputHeader("formula") // if we map to formula, th
 object HdrMolInChI extends OutputHeader("inchi") // if we map to InChI, the inchi of the molecule
 object HdrMolHitSource extends OutputHeader("hitsrc") // if we map to formula/inchi, where the hit was found & DB ID
 
-object UntargetedPeakSpectra {
+object PeakSpectra {
 
   val hdrsXCMS = List(MZ, RT, IntIntensity, MaxIntensity, SNR)
-  def fromXCMSCentwave(file: String): UntargetedPeakSpectra = {
+  def fromXCMSCentwave(file: String): PeakSpectra = {
     // example to process (with header):
     // mz  mzmin mzmax rt  rtmin rtmax into  intb  maxo  sn  sample
     // 244.98272  244.97964  244.985247  2.56099  1.91800  2.98900  130.32171 129.46491  253.17785  252 1
@@ -229,7 +230,7 @@ object UntargetedPeakSpectra {
     val relevantLines = withHdrs.map(keepOnlyRecognizedCols)
 
     def peaksFromXCMSCentwave(row: Map[XCMSCol, Double]) = {
-      new UntargetedPeak(
+      new Peak(
         new MonoIsotopicMass(row(MZ)),
         new RetentionTime(row(RT)),
         row(IntIntensity),
@@ -238,21 +239,21 @@ object UntargetedPeakSpectra {
     }
     val peaks = relevantLines.map(peaksFromXCMSCentwave).toSet
 
-    new UntargetedPeakSpectra(peaks)
+    new PeakSpectra(peaks)
   }
 
 }
 
-class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses: List[LCMSExperiment]) {
+class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[RawPeaks]) {
 
-  def analyze(): LCMSExperiment = {
+  def analyze(): RawPeaks = {
     val (normalizedControls, normalizedHypotheses) = normalize(controls, hypotheses)
     val unifiedControls = unifyReplicates(normalizedControls)
     val unifiedHypotheses = unifyReplicates(normalizedHypotheses)
     extractOutliers(unifiedHypotheses, unifiedControls)
   }
 
-  def normalize(setA: List[LCMSExperiment], setB: List[LCMSExperiment]) = {
+  def normalize(setA: List[RawPeaks], setB: List[RawPeaks]) = {
     // we normalize across all datasets, so we put them in a bin together
     // but we remember where each came from by keeping the num of experiments
     // each in A, B, i.e., |A|, |B|, so that later we can just `take` that many out
@@ -281,20 +282,20 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
   }
   def missingPk(mz: MonoIsotopicMass, rt: RetentionTime) = {
     val defaultv = Magic._missingPeakVal
-    new UntargetedPeak(mz, rt, defaultv, defaultv, defaultv)
+    new Peak(mz, rt, defaultv, defaultv, defaultv)
   }
 
   // the lists coming in for the inputs are if for this `peak @ mz, rt` there are *many* peaks in the
   // original data in the aggregated hypothesis trace! This is slightly crazy case and will only happen
   // when the peak structure is very zagged. We average the values
-  def peakClusterToOne(mz: MonoIsotopicMass, rt: RetentionTime)(s: Set[UntargetedPeak]) = {
+  def peakClusterToOne(mz: MonoIsotopicMass, rt: RetentionTime)(s: Set[Peak]) = {
     combinePeaks(s.toList, mz, rt, pickMax)
   }
 
   // aggregate characteristic for peaks for the same molecule (eluting at the same mz, and time)
-  def uniformAcross(peaks: List[Set[UntargetedPeak]],
+  def uniformAcross(peaks: List[Set[Peak]],
     mz: MonoIsotopicMass,
-    rt: RetentionTime): UntargetedPeak = {
+    rt: RetentionTime): Peak = {
 
     // all the peaks passed in here should have the same (mz, rt) upto tolerances
     // all we have to do is aggregate their (integrated and max) intensity and snr
@@ -304,9 +305,9 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
 
   // identify if the peaks in hyp are outliers compared to the controls
   // we assume these peaks are for the same molecule (eluting at the same mz, and time)
-  def isOutlier(peaks: List[Set[UntargetedPeak]],
+  def isOutlier(peaks: List[Set[Peak]],
     mz: MonoIsotopicMass,
-    rt: RetentionTime): Option[UntargetedPeak] = {
+    rt: RetentionTime): Option[Peak] = {
 
     // all the peaks passed in here should have the same (mz, rt) upto tolerances
     // all we have to do is aggregate their (integrated and max) intensity and snr
@@ -315,7 +316,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     checkOutlier(ratioedPeak)
   }
 
-  def combinePeaks(peaks: List[UntargetedPeak], 
+  def combinePeaks(peaks: List[Peak], 
     mz: MonoIsotopicMass, rt: RetentionTime,
     fn: (Double, Double) => Double) = {
 
@@ -324,10 +325,10 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     val aggMaxInts = maxInts reduce fn
     val aggSnrs = snrs reduce fn
 
-    new UntargetedPeak(mz, rt, aggIntegratedInts, aggMaxInts, aggSnrs)
+    new Peak(mz, rt, aggIntegratedInts, aggMaxInts, aggSnrs)
   }
 
-  def checkOutlier(peak: UntargetedPeak): Option[UntargetedPeak] = {
+  def checkOutlier(peak: Peak): Option[Peak] = {
     // 10*(cosh(x-1) - 1) is a nice function that is has properties we would need:
     // (x, y) 
     //    = (1.0, 0)
@@ -348,44 +349,44 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
       None
   }
 
-  type MzRtPeaks = ((MonoIsotopicMass, RetentionTime), List[Set[UntargetedPeak]])
+  type MzRtPeaks = ((MonoIsotopicMass, RetentionTime), List[Set[Peak]])
 
-  def findOutlierForOneMzRt(mzRtPeaks: MzRtPeaks): Option[UntargetedPeak] = {
+  def findOutlierForOneMzRt(mzRtPeaks: MzRtPeaks): Option[Peak] = {
     val ((mz, rt), peaks) = mzRtPeaks
     isOutlier(peaks, mz, rt)
   }
 
-  def unifyReplicatesForOneMzRt(mzRtPeaks: MzRtPeaks): Option[UntargetedPeak] = {
+  def unifyReplicatesForOneMzRt(mzRtPeaks: MzRtPeaks): Option[Peak] = {
     val ((mz, rt), peaks) = mzRtPeaks
     Some(uniformAcross(peaks, mz, rt))
   }
 
-  def extractOutliers(hypothesis: LCMSExperiment, control: LCMSExperiment): LCMSExperiment = {
+  def extractOutliers(hypothesis: RawPeaks, control: RawPeaks): RawPeaks = {
     val exprVsControl = List(hypothesis, control)
     metricOverCommonPeaks(exprVsControl, findOutlierForOneMzRt, addProxyPeak = true)
   }
 
-  def unifyReplicates(replicates: List[LCMSExperiment]): LCMSExperiment = {
+  def unifyReplicates(replicates: List[RawPeaks]): RawPeaks = {
     metricOverCommonPeaks(replicates, unifyReplicatesForOneMzRt)
   }
   
-  def metricOverCommonPeaks(exprs: List[LCMSExperiment],
-    peakCmpFn: MzRtPeaks => Option[UntargetedPeak],
-    addProxyPeak: Boolean = false): LCMSExperiment = {
+  def metricOverCommonPeaks(exprs: List[RawPeaks],
+    peakCmpFn: MzRtPeaks => Option[Peak],
+    addProxyPeak: Boolean = false): RawPeaks = {
     val peakSetsForAllReplicates = exprs.map{ expr => expr.peakSpectra.peaks }
     val peaksKeyedByMzAndRt = findAlignedPeaks(peakSetsForAllReplicates)
     val peaksByMzAndRtNonEmpty = handleMissingPks(addProxyPeak)(peaksKeyedByMzAndRt)
 
-    val sharedPeaks: Set[UntargetedPeak] = peaksByMzAndRtNonEmpty
+    val sharedPeaks: Set[Peak] = peaksByMzAndRtNonEmpty
       .toSet
       .map(peakCmpFn)
       .filter(_.isDefined)
       .map{ case Some(p) => p }
     val provenance = new ComputedData(sources = exprs.map(_.origin))
-    new LCMSExperiment(provenance, new UntargetedPeakSpectra(sharedPeaks))
+    new RawPeaks(provenance, new PeakSpectra(sharedPeaks))
   }
 
-  def handleMissingPks(addProxy: Boolean)(aligned: Map[(MonoIsotopicMass, RetentionTime), List[Set[UntargetedPeak]]]) = {
+  def handleMissingPks(addProxy: Boolean)(aligned: Map[(MonoIsotopicMass, RetentionTime), List[Set[Peak]]]) = {
     addProxy match {
       case true => {
         // replace the missing peak with proxy
@@ -401,7 +402,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     }
   }
 
-  def normalizeCommonPeaks(exprs: List[LCMSExperiment]): List[LCMSExperiment] = {
+  def normalizeCommonPeaks(exprs: List[RawPeaks]): List[RawPeaks] = {
     // we do the same thing we do when we are computing a uniform metric over shared peaks across all exprs
     // we first extract the shared peaks (and then we'll look for how they differ across each set)
     val peakSetsForAllReplicates = exprs.map{ expr => expr.peakSpectra.peaks }
@@ -417,7 +418,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
     } catch {
       // if a normalization vector not found, abort and return unnormalized peaks
       case e: Exception => {
-        println(s"No normalization peaks common across samples. Aborting normalization!")
+        println(s"No shared (AA) peaks common across samples. Continuing without normalization!")
         exprs
       }
     }
@@ -430,14 +431,14 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
   //    -- For each unique mz, rt pair, it is a split of the original data (in the same expr order)
   //       to those peaks in that experiment that have the corresponding (mz, rt).
   //    -- If there are no peaks at that mz, rt in that experiment then it'll be an empty set at that list loc
-  def findAlignedPeaks(exprData: List[Set[UntargetedPeak]]): 
-    Map[(MonoIsotopicMass, RetentionTime), List[Set[UntargetedPeak]]] = {
+  def findAlignedPeaks(exprData: List[Set[Peak]]): 
+    Map[(MonoIsotopicMass, RetentionTime), List[Set[Peak]]] = {
     
     // first group each peakset in the list of exprs into a map(mz -> peakset)
-    val exprToMzPeaks: List[Map[MonoIsotopicMass, Set[UntargetedPeak]]] = exprData.map(_.groupBy(_.mz))
+    val exprToMzPeaks: List[Map[MonoIsotopicMass, Set[Peak]]] = exprData.map(_.groupBy(_.mz))
     // then take the mz's out a layer and map each mz -> list(peakset)
     val allMzs = exprToMzPeaks.flatMap(mp => mp.keys).distinct.sortBy(_.initMass)
-    val peaksAtMz: Map[MonoIsotopicMass, List[Set[UntargetedPeak]]] = {
+    val peaksAtMz: Map[MonoIsotopicMass, List[Set[Peak]]] = {
       // for each experiment, get the `mz` if it is there in that experiment, or else empty Set()
       allMzs.map(mz => mz -> exprToMzPeaks.map(mzPeaks => mzPeaks.getOrElse(mz, Set())))
     }.toMap
@@ -450,19 +451,19 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
       rt <- optimalRts(peaksAtMz(mz))
     ) yield {
       // now filter down to all peaks at that mz, rt
-      val peaksAtThisMz: List[Set[UntargetedPeak]] = peaksAtMz(mz)
-      val peaksAtThisMzRt: List[Set[UntargetedPeak]] = peaksAtThisMz.map(s => s.filter(isAtMzRt(mz, rt)))
+      val peaksAtThisMz: List[Set[Peak]] = peaksAtMz(mz)
+      val peaksAtThisMzRt: List[Set[Peak]] = peaksAtThisMz.map(s => s.filter(isAtMzRt(mz, rt)))
       (mz, rt) -> peaksAtThisMzRt
     }
 
     mzRtToPeaks.toMap
   }
 
-  def isAtMzRt(mz: MonoIsotopicMass, rt: RetentionTime)(p: UntargetedPeak): Boolean = {
+  def isAtMzRt(mz: MonoIsotopicMass, rt: RetentionTime)(p: Peak): Boolean = {
     p.mz.equals(mz) && p.rt.equals(rt)
   }
 
-  def optimalRts(peaksForThisMz: List[Set[UntargetedPeak]]): List[RetentionTime] = {
+  def optimalRts(peaksForThisMz: List[Set[Peak]]): List[RetentionTime] = {
     val peaksToRtForThisMz: List[List[RetentionTime]] = peaksForThisMz.map(_.toList.map(_.rt))
 
     // we are most interested in keeping peaks that show up across experiments.
@@ -559,12 +560,12 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
   
     // to normalize a trace with a vector, we multiply each peak within
     // each experiment with its corresponding multiplicative factor
-    def normalize(exprs: List[LCMSExperiment]) = {
+    def normalize(exprs: List[RawPeaks]) = {
       val exprsNormFactor = exprs.zip(vec)
       exprsNormFactor.map{ case (e, multiplier)  => {
         val normalizedPeaks = e.peakSpectra.peaks.map(_.scaleBy(multiplier))
         val provenance = new ComputedData(sources = List(e.origin))
-        new LCMSExperiment(provenance, new UntargetedPeakSpectra(normalizedPeaks))
+        new RawPeaks(provenance, new PeakSpectra(normalizedPeaks))
       }}
     }
   
@@ -628,7 +629,7 @@ class UntargetedMetabolomics(val controls: List[LCMSExperiment], val hypotheses:
       if (tooDeviant) { println(s"Vectors deviate way too much!"); assert(false) }
     }
   
-    def getMultipliers(peakSet: List[UntargetedPeak]) = {
+    def getMultipliers(peakSet: List[Peak]) = {
       // it does not matter which peak we pick as the normalizer, so might as well pick the first
       val valueOf1 = peakSet(0).sz
       // for each spectra now, we calculate what factor will bring it to the same scale as the first
@@ -654,7 +655,7 @@ object UntargetedMetabolomics {
 
   def main(args: Array[String]) {
     val className = this.getClass.getCanonicalName
-    val opts = List(optOutFile, optControls, optHypotheses, optDoIons, optMultiIonsRankHigher, 
+    val opts = List(optOutFile, optControls, optHypotheses, optDoIons, optRestrictIons, optMultiIonsRankHigher, 
                     optToStructUsingList, optToFormulaUsingList, optToFormulaUsingSolver, optRunTests)
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
@@ -662,6 +663,9 @@ object UntargetedMetabolomics {
     val runTests = cmdLine get optRunTests
     val controls = cmdLine getMany optControls
     val hypotheses = cmdLine getMany optHypotheses
+    val mapToMassAndIons = cmdLine has optDoIons
+    val restrictedIons = cmdLine getMany optRestrictIons
+    val rankMultipleIons = cmdLine has optMultiIonsRankHigher
 
     val out: PrintWriter = {
       if (cmdLine has optOutFile) 
@@ -681,7 +685,7 @@ object UntargetedMetabolomics {
       // right now, we drop the shortname on the floor! It can go into the source field of RawData
       // but we need the full path name to be able to output to http://lcms/
       val srcOrigin = new RawData(source = file)
-      new LCMSExperiment(srcOrigin, UntargetedPeakSpectra.fromXCMSCentwave(file))
+      new RawPeaks(srcOrigin, PeakSpectra.fromXCMSCentwave(file))
     }
 
     // do the thing!
@@ -693,11 +697,20 @@ object UntargetedMetabolomics {
         val hypotheses = hyp.map(mkLCMSExpr).toList
         val experiment = new UntargetedMetabolomics(controls = controls, hypotheses = hypotheses)
         val analysisRslt = experiment.analyze()
-        analysisRslt.outputTo(out)
+ 
+        val rslt = if (!mapToMassAndIons) {
+          analysisRslt
+        } else {
+          // map the peaks to candidate molecules
+          val candidateMols = restrictedIons match {
+            case null => MolPeaks.convertToMolHits(rawPeaks = analysisRslt, lookForMultipleIons = rankMultipleIons)
+            case _ => MolPeaks.convertToMolHits(rawPeaks = analysisRslt, ionOpts = restrictedIons.toSet, lookForMultipleIons = rankMultipleIons)
+          }
+          candidateMols
+        }
 
-        // we can optionally also map these peaks to candidate molecules
-        val candidateMols = new PlausibleMolecules(analysisRslt)
-        // we currently do not output the candidate molecules anywhere...
+        out.println(rslt.toJsonFormat.prettyPrint)
+        out.flush
       }
     }
   }
@@ -718,42 +731,51 @@ object UntargetedMetabolomics {
 
   val optOutFile = new OptDesc(
                     param = "o",
-                    longParam = "outfile",
+                    longParam = "outjson",
                     name = "filename",
-                    desc = "The file to which ...",
+                    desc = "Output json of peaks, mz, rt, masses, formulae etc.",
                     isReqd = false, hasArg = true)
 
   val optDoIons = new OptDesc(
                     param = "I",
                     longParam = "convert-ion-mzs-to-masses",
                     name = "",
-                    desc = "",
+                    desc = """If flag set, each mz is translated to {(ion, mass)}, where mass is the
+                             |monoisotopic mass of the molecule whose candidate ion got a hit""".stripMargin,
                     isReqd = false, hasArg = false)
+
+  val optRestrictIons = new OptDesc(
+                    param = "Z",
+                    longParam = "restrict-ions",
+                    name = "M",
+                    desc = """Only consider limited set of ions, e.g., M+H,M+Na,M+H-H2O,M+Li,M+K.
+                             |If this option is omitted system defaults to M+H,M+Na""".stripMargin,
+                    isReqd = false, hasArgs = true)
 
   val optMultiIonsRankHigher = new OptDesc(
                     param = "M",
                     longParam = "rank-multiple-ions-higher",
                     name = "",
-                    desc = "",
+                    desc = "If flag set, then each if a mass has multiple ions with hits, it ranks higher",
                     isReqd = false, hasArg = false)
 
   val optToStructUsingList = new OptDesc(
                     param = "S",
-                    longParam = "to-structure-using-list",
+                    longParam = "map-to-structure-using-list",
                     name = "",
                     desc = "",
                     isReqd = false, hasArg = false)
 
   val optToFormulaUsingList = new OptDesc(
                     param = "F",
-                    longParam = "to-formula-using-list",
+                    longParam = "map-to-formula-using-list",
                     name = "",
                     desc = "",
                     isReqd = false, hasArg = false)
 
   val optToFormulaUsingSolver = new OptDesc(
                     param = "C",
-                    longParam = "to-formula-using-solver",
+                    longParam = "map-to-formula-using-solver",
                     name = "",
                     desc = """Fallback to SMT Constraint solver to solve formula. Ideally, the lower MW
                              |formulae would have been enumerated in lists, and so would be matched using lookup
@@ -776,7 +798,7 @@ object UntargetedMetabolomics {
     def fullLoc(well: String) = pLabXCMSLoc + well
     def readSpectra(f: String) = {
       val src = new RawData(source = f)
-      new LCMSExperiment(src, UntargetedPeakSpectra.fromXCMSCentwave(f))
+      new RawPeaks(src, PeakSpectra.fromXCMSCentwave(f))
     }
 
     val wt = (1 to 3).toList.map(dataForWell("B")).map(fullLoc)
@@ -841,6 +863,7 @@ object UntargetedMetabolomics {
     )
 
     val verbose = true
+    val outputRawPeakHits = true
     cases.foreach{ case (testID, controlsF, hypothesesF, peakMinCnt, peakMaxCnt) => {
 
       println(s"Testing $testID")
@@ -851,12 +874,12 @@ object UntargetedMetabolomics {
       val hypotheses = hypothesesF.map(readSpectra)
       val experiment = new UntargetedMetabolomics(controls = controls, hypotheses = hypotheses)
       val analysisRslt = experiment.analyze()
-      val candidateMols = new PlausibleMolecules(analysisRslt)
+      val candidateMols = MolPeaks.convertToMolHits(rawPeaks = analysisRslt, lookForMultipleIons = true)
       if (verbose) {
-        outStream.println("Differential peaks:")
-        val rawMzPeaks = analysisRslt.outputTo(outStream)
-        outStream.println("Candidate Molecules:")
-        val molecules = candidateMols.outputTo(outStream)
+        val peaks = analysisRslt.toJsonFormat // differential peaks
+        val molecules = candidateMols.toJsonFormat // candidate molecules
+        outStream.println(if (outputRawPeakHits) peaks.prettyPrint else molecules.prettyPrint)
+        outStream.flush
       }
       val numPeaks = analysisRslt.numPeaks
       val numPeaksPresentAllOverUnder = numPeaks("overExprPresentInAll") + numPeaks("underExprPresentInAll")
@@ -870,67 +893,74 @@ object UntargetedMetabolomics {
   }
 }
 
-class PlausibleMolecules(val rawMzPeaks: LCMSExperiment, val ionOpts: Set[String] = Set("M+H", "M+Na")) {
-  val validIons = MS1.ionDeltas.toList.filter(i => ionOpts.contains(i.getName))
+object MolPeaks {
 
-  val (ionCandidatesForMolecules, toRawPeaksMap) = matchToPlausibleMols(rawMzPeaks)
 
-  def matchToPlausibleMols(rawPks: LCMSExperiment): (LCMSExperiment, Map[UntargetedPeak, UntargetedPeak]) = {
-    val (peakSets, mapToOriginalPks) = rawPks.peakSpectra.peaks.map(toIonCandidates).unzip
+  def convertToMolHits(
+    rawPeaks: RawPeaks,
+    ionOpts: Set[String] = Set("M+H", "M+Na"),
+    lookForMultipleIons: Boolean = false): MolPeaks = {
 
-    val peaks = keepOnlyMultiple(peakSets.flatten)
-    val provenance = new ComputedData(sources = List(rawMzPeaks.origin))
-    val molPeakSet = new LCMSExperiment(provenance, new UntargetedPeakSpectra(peaks))
+    // helper function to take each mz to Map(mass_i -> (ion_i, mz))
+    def toMolCandidates(mzPeak: Peak): Map[Peak, (MetlinIonMass, MonoIsotopicMass)] = {
+      val validIons = MS1.ionDeltas.toList.filter(i => ionOpts.contains(i.getName))
+      validIons.map(ion => {
+        val massVal = MS1.computeMassFromIonMz(mzPeak.mz.initMass, ion)
+        val mass = new MonoIsotopicMass(massVal)
+        val pk = new Peak(mass, mzPeak.rt, mzPeak.integratedInt, mzPeak.maxInt, mzPeak.snr)
+        val ionMz = (ion, mzPeak.mz)
+        pk -> ionMz
+      }).toMap
+    }
 
-    val mapToOrig = {
-      if (mapToOriginalPks.size > 0)
-        mapToOriginalPks.reduce(_ ++ _)
+    // helper function to take Map(mass_i -> (ion_i, mz)) to mass_i values that have more than one ion
+    def keepOnlyMultiple(ionPeaks: Map[Peak, (MetlinIonMass, MonoIsotopicMass)]): Set[Peak] = {
+      // isolate to peaks that are the same (mz, rt) and multiple of those
+
+      // TODO: check if groupBy works if instead of toString we just use p.rt
+      // We are not sure if groupBy uses hashCode (which is deliberately not
+      // defined for RetentionTime) or it uses equals (which is defined)
+
+      // this has type List[(MonoIsotopicMass, RetentionTime), Peak]
+      // where we are expecting multiple peaks for the same MonoIsotopicMass
+      // because we backcalculated these masses from candidate ions for a peak
+      val mzRtToPeaks = ionPeaks.toList.groupBy{ case (molPk, ionMz) => (molPk.mz, molPk.rt.toString) }
+      val multiplePeak = mzRtToPeaks.filter{ case (_, pks) => pks.size > 1 }
+      multiplePeak.map{ case (_, pkMap) => pkMap(0)._1 }.toSet[Peak]
+    }
+
+    // compute candidate molecule peaks, and corresponding map of mol_peak -> (ion, mz)
+    val molPeaks: Map[Peak, (MetlinIonMass, MonoIsotopicMass)] = {
+      rawPeaks.peakSpectra
+        .peaks                // the Set(mz: Peak) of original mz peak hits
+        .map(toMolCandidates) // convert to Set(Map(mol_mass -> (ion, mz_peak)))
+        .reduce(_ ++ _)       // reduce all sets of Maps to single Map(mol_mass -> (ion, mz_peak))
+    }
+
+    val multiple: Set[Peak] = {
+      if (lookForMultipleIons)
+        keepOnlyMultiple(molPeaks)
       else
-        Map[UntargetedPeak, UntargetedPeak]()
-    }.filterKeys(k => peaks.contains(k))
+        molPeaks.keys.toSet
+    }
+    val molToMzIon = molPeaks.filterKeys(k => multiple.contains(k))
 
-    (molPeakSet, mapToOrig)
+    val provenance = new ComputedData(sources = List(rawPeaks.origin))
+    val moleculePeaks = new RawPeaks(provenance, new PeakSpectra(multiple))
+
+    // return the wrapped data structure with mol peaks and map back to the (ion, mz) it came from 
+    new MolPeaks(moleculePeaks, molToMzIon)
+  }
+}
+
+class MolPeaks(val peaks: RawPeaks, val toOriginalMzIon: Map[Peak, (MetlinIonMass, MonoIsotopicMass)]) extends
+  PeakHits(peaks.origin, peaks.peakSpectra) {
+
+  override def peakSummarizer(p: Peak) = {
+    // original in RawPeaks just called p.summary. We want to augment that with information from 
+    val basic: Map[String, Double] = p.summary
+    val (metlinIon, mzMonoIsotopicMass) = toOriginalMzIon(p)
+    basic + ("metlionIonMass" -> mzMonoIsotopicMass.initMass)
   }
 
-  def keepOnlyMultiple(ionPeaks: Set[UntargetedPeak]): Set[UntargetedPeak] = {
-    // isolate to peaks that are the same (mz, rt) and multiple of those
-
-    // TODO: check if groupBy works if instead of toString we just use p.rt
-    // We are not sure if groupBy uses hashCode (which is deliberately not
-    // defined for RetentionTime) or it uses equals (which is defined)
-
-    // this has type Map[(MonoIsotopicMass, RetentionTime), UntargetedPeak]
-    // where we are expecting multiple peaks for the same MonoIsotopicMass
-    // because we backcalculated these masses from candidate ions for a peak
-    val mzRtToPeaks = ionPeaks.toList.groupBy(p => (p.mz, p.rt.toString))
-    val multiplePeak = mzRtToPeaks.filter{ case (_, pks) => pks.size > 1 }
-    multiplePeak.values.toSet.flatten
-  }
-
-  def toIonCandidates(mzPeak: UntargetedPeak): (List[UntargetedPeak], Map[UntargetedPeak, UntargetedPeak]) = {
-    val molCandPks = toMolCandidates(mzPeak)
-    val mp = molCandPks.map(molPk => (molPk -> mzPeak))
-
-    (molCandPks, mp.toMap)
-  }
-
-  def toMolCandidates(mzPeak: UntargetedPeak): List[UntargetedPeak] = {
-    validIons.map(ion => {
-      val massVal = MS1.computeMassFromIonMz(mzPeak.mz.initMass, ion)
-      val mass = new MonoIsotopicMass(massVal)
-      new UntargetedPeak(mass, mzPeak.rt, mzPeak.integratedInt, mzPeak.maxInt, mzPeak.snr)
-    })
-  }
-
-  def outputTo(out: PrintWriter) {
-    ionCandidatesForMolecules.outputTo(out)
-
-    val massToMzMapStr = List(
-      toRawPeaksMap.toList.sortBy(_._1.mz.initMass)
-        .map{ case (molPk, mzPk) => s"${molPk.mz.initMass} -> ${mzPk.mz.initMass} with (int, max, snr) = ${(molPk.integratedInt, molPk.maxInt, molPk.snr)}" }
-        .mkString("\n")
-    ).mkString("\n")
-
-    out.println(massToMzMapStr)
-  }
 }
