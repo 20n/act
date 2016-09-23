@@ -1,9 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
 import csv
-import os
-
 import numpy as np
+import os
 from sklearn.cluster import MiniBatchKMeans
 from tqdm import tqdm
 from utility import row_to_mz
@@ -52,30 +51,45 @@ class LcmsClusterer:
             print("Writing results to file")
 
         with open(os.path.join(self.output_directory, "clustered_output_file.csv"), "w") as f:
-            header = ["mass", "time", "cluster", "normalizer", "max_intensity_time"] + [str(x) for x in
-                                                                                        range(0, block_size)]
+            header = ["mz", "mzmin", "mzmax", "rt", "rtmin", "rtmax", "into", "maxo", "cluster"] + [str(x) for x in
+                                                                                                    range(0,
+                                                                                                          block_size)]
 
             writer = csv.DictWriter(f, header)
             writer.writeheader()
 
             # For each original window
             for i in tqdm(range(0, len(training_real))):
+                normalizer = row_numbers[i][2]
+                row_in_array = row_numbers[i][0]
+                starting_time_index = int(row_numbers[i][1])
+
+
                 row = dict()
 
-                max_index = 0
+                # Get the max intensity index.  Additionally, assign the row values.
+                max_value_index = 0
                 for time_number in range(0, len(training_real[i])):
                     if (training_real[i][time_number]) == 1:
-                        max_index = time_number
+                        max_value_index = time_number
                     row[str(time_number)] = training_real[i][time_number]
 
+                # Which m/z bucket
+                row["mz"] = row_to_mz(row_in_array, mz_split, mz_min)
+                # Min and max within window
+                row["mzmin"] = row["mz"]
+                row["mzmax"] = row["mz"] + mz_split
+
+                # Largest intensity value
+                row["rt"] = retention_times[starting_time_index + max_value_index]
+                row["rtmin"] = retention_times[starting_time_index]
+                row["rtmin"] = retention_times[starting_time_index + len(training_real[i]) - 1]
+
+                # Sum of all points aprox of AUTC
+                row["into"] = sum(training_real[i]) * normalizer
+
+                # We normalize by max value so this works out.
+                row["maxo"] = normalizer
                 row["cluster"] = str(clusters[i])
-
-                # Add in the time and m/z
-                row["mass"] = row_to_mz(row_numbers[i][0], mz_split, mz_min)
-                row["time"] = retention_times[int(row_numbers[i][1])]
-
-                # Start point + offset
-                row["max_intensity_time"] = retention_times[int(row_numbers[i][1]) + max_index]
-                row["normalizer"] = row_numbers[i][2]
 
                 writer.writerow(row)
