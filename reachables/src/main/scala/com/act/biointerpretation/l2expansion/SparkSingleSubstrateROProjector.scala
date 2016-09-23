@@ -83,6 +83,7 @@ object compute {
               List(inchi).map(x => MolExporter.exportToFormat(x, "inchi:AuxNone")),
               ro.getId.toString,
               products.toList.map(x => MolExporter.exportToFormat(x, "inchi:AuxNone")))
+          )
         }
       }
 
@@ -248,6 +249,11 @@ object SparkSingleSubstrateROProjector {
     cl.get
   }
 
+  def exitWithHelp(opts: Options): Unit = {
+    HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
+    System.exit(1)
+  }
+
   def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
       CliOption.builder(OPTION_LICENSE_FILE).
@@ -284,11 +290,6 @@ object SparkSingleSubstrateROProjector {
       opts.addOption(opt.build)
     }
     opts
-  }
-
-  def exitWithHelp(opts: Options): Unit = {
-    HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
-    System.exit(1)
   }
 
   case class InchiResult(substrate: List[String], ros: String, products: List[String])
