@@ -57,5 +57,5 @@ if __name__ == "__main__":
     row_matrix = autoencoder.process_lcms_trace(mz_division, mz_min, mz_max)
     training_data, validation_data = autoencoder.prepare_matrix_for_encoding(row_matrix, block_size, step_size)
     autoencoder.train(training_data, validation_data)
-    autoencoder.cluster(number_clusters, block_size)
+    autoencoder.cluster(number_clusters, block_size, mz_division, mz_min)
     autoencoder.visualize(number_clusters)

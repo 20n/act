@@ -23,6 +23,7 @@ class LcmsAutoencoder:
 
     TRAINING_OUTPUT_FILE_NAME = "predicted_training_encodings"
     INPUT_TRAINING_FILE_NAME = "input_training_data"
+    INPUT_VALIDATION_FILE_NAME = "input_validation_data"
 
     def __init__(self, lcms_directory, lcms_plate_name, output_directory, window_size, encoding_size, verbose=True,
                  debug=False):
@@ -33,8 +34,7 @@ class LcmsAutoencoder:
         self.lcms_directory = os.path.join(lcms_directory, '')
         self.lcms_plate = lcms_plate_name.split(".nc")[0]
         self.current_trace_file = os.path.join(self.lcms_directory, self.lcms_plate + ".nc")
-        assert (os.path.exists(self.current_trace_file),
-                "LCMS trace file does not exist.  Supplied path is {}".format(self.current_trace_file))
+        assert (os.path.exists(self.current_trace_file))
 
         self.output_directory = os.path.join(output_directory, '')
         if not os.path.exists(self.output_directory):
@@ -159,6 +159,17 @@ class LcmsAutoencoder:
 
     def prepare_matrix_for_encoding(self, input_matrix, block_size, step_size, lowest_max_value=1e3,
                                     training_split=0.9):
+        # Already available
+        if self.verbose:
+            print("Checking if prepared matrix already exists.")
+
+        training_file_name = os.path.join(self.output_directory, LcmsAutoencoder.INPUT_TRAINING_FILE_NAME + ".npy")
+        validation_file_name = os.path.join(self.output_directory, LcmsAutoencoder.INPUT_VALIDATION_FILE_NAME + ".npy")
+        if os.path.exists(training_file_name) and os.path.exists(validation_file_name):
+            if self.verbose:
+                print("Using cached prepared matrix.")
+            return np.load(training_file_name), np.load(validation_file_name)
+
         """
         Create intervals of size {block_size}
         """
@@ -199,6 +210,8 @@ class LcmsAutoencoder:
             os.path.join(self.output_directory, LcmsAutoencoder.VALIDATION_OUTPUT_ROW_NUMBERS_FILE_NAME),
             np.asarray(split_validation_row_numbers))
 
+        np.save(training_file_name, split_training)
+        np.save(validation_file_name, split_validation)
         return split_training, split_validation
 
     def compile_model(self, loss_function="mse"):
@@ -243,9 +256,8 @@ class LcmsAutoencoder:
         training_output = self.encoder.predict(training_samples)
 
         np.save(os.path.join(self.output_directory, LcmsAutoencoder.TRAINING_OUTPUT_FILE_NAME), training_output)
-        np.save(os.path.join(self.output_directory, LcmsAutoencoder.INPUT_TRAINING_FILE_NAME), training_samples)
 
-    def cluster(self, number_clusters, block_size):
+    def cluster(self, number_clusters, block_size, mz_split, mz_min):
         clusterer = LcmsClusterer(number_clusters,
                                   os.path.join(self.output_directory,
                                                LcmsAutoencoder.TRAINING_OUTPUT_FILE_NAME + ".npy"),
@@ -260,7 +272,7 @@ class LcmsAutoencoder:
                                   )
 
         output_predictions = clusterer.cluster()
-        clusterer.write_to_file(output_predictions, block_size)
+        clusterer.write_to_file(output_predictions, block_size, mz_split, mz_min)
 
     def visualize(self, number_clusters):
         visualization_path = os.path.join(self.output_directory, "Visualizations")
