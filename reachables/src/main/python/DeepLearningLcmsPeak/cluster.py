@@ -64,8 +64,7 @@ class LcmsClusterer:
                 row_in_array = row_numbers[i][0]
                 starting_time_index = int(row_numbers[i][1])
 
-
-                row = dict()
+                row = {}
 
                 # Get the max intensity index.  Additionally, assign the row values.
                 max_value_index = 0
