@@ -10,7 +10,7 @@ This is the primary control file.  Run new Deep processings from here.
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("lcmsDirectory", help="The LCMS plate directory.")
-    parser.add_argument("lcmsPlateName", help="The name of the LCMS plate without the file ending.")
+    parser.add_argument("lcmsPlateName", help="The name of the LCMS plate file.  Currently supports '.nc' format.")
     parser.add_argument("outputDirectory", help="Where to save all intermediate and final files.")
 
     parser.add_argument("-w", "--lcmsWindowSize",
