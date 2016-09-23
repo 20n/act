@@ -43,7 +43,7 @@ class LcmsClusterer:
             print("Fitting data to clusters.")
         return kmeans.predict(training_output)
 
-    def write_to_file(self, clusters, block_size):
+    def write_to_file(self, clusters, block_size, mz_split, mz_min):
         training_real = np.load(self.training_input_file)
         row_numbers = np.load(self.row_numbers_file)
         retention_times = np.load(self.retention_times_file)
@@ -71,7 +71,7 @@ class LcmsClusterer:
                 row["cluster"] = str(clusters[i])
 
                 # Add in the time and m/z
-                row["mass"] = row_to_mz(row_numbers[i][0])
+                row["mass"] = row_to_mz(row_numbers[i][0], mz_split, mz_min)
                 row["time"] = retention_times[int(row_numbers[i][1])]
 
                 # Start point + offset
