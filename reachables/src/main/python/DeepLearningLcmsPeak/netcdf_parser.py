@@ -1,6 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
+import sys
+
 import netCDF4 as nc4
+import numpy as np
 
 
 def load_lcms_trace(filename):
@@ -38,3 +41,16 @@ def load_lcms_trace(filename):
         results.append(spectrum)
 
     return results
+
+
+if __name__ == "__main__":
+    results = load_lcms_trace(sys.argv[1])
+    print(len(results))
+    for triple in results:
+        time = triple['time']
+        mz = triple['mz']
+        intensity = triple['intensity']
+        print("%.6f %d %d: mz %.6f-%.6f, int %.6f-%.6f" %
+              (time, mz.size, intensity.size, mz.min(), mz.max(), intensity.min(), intensity.max()))
+        max_idx = np.argmax(intensity)
+        print("  max: %.6f %.6f" % (mz[max_idx], intensity[max_idx]))
