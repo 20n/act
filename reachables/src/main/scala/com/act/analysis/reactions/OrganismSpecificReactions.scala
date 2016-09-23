@@ -1,17 +1,19 @@
 package com.act.analysis.reactions
 
+import java.io.{BufferedWriter, File, FileWriter}
+
 import com.act.biointerpretation.mechanisminspection.ErosCorpus
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.SequenceKeywords
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoWorkflowUtilities, SequenceKeywords}
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.reaction_db.QueryByRo
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.sequence_db.QueryByReactionId
-import com.mongodb.{BasicDBList, DBObject}
+import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.collection.parallel.immutable.ParSeq
 
-object OrganismSpecificReactions {
+object OrganismSpecificReactions extends MongoWorkflowUtilities {
   val logger = LogManager.getLogger(getClass)
 
   def findOrganismSpecificReactions(organismRegexString: String = "sapien"): List[RoReactions] = {
@@ -47,6 +49,30 @@ object OrganismSpecificReactions {
 
     validRos.seq.toList
   }
+
+  def findAllOrganismReactions(organismRegexString: String = "sapien", outputFile : File) : Unit = {
+    val organismRegex: Option[String] = Option(organismRegexString)
+    val mongoConnection = query.connectToMongoDatabase()
+
+    val seqKey = createDbObject(SequenceKeywords.ORGANISM_NAME, defineMongoRegex(organismRegex.get))
+
+    val reactionIdReturnFilter = new BasicDBObject()
+    reactionIdReturnFilter.append(SequenceKeywords.RXN_REFS.value, 1)
+
+    val reactionReturnIterator: Iterator[DBObject] = mongoQuerySequences(mongoConnection)(seqKey, reactionIdReturnFilter)
+
+    val writer : BufferedWriter = new BufferedWriter(new FileWriter(outputFile))
+
+    def writeReactionRefsToFile(dbResult : DBObject): Unit = {
+      dbResult.get(SequenceKeywords.RXN_REFS.value)
+        .asInstanceOf[BasicDBList].toList.asInstanceOf[List[Long]]
+        .foreach(rxnId => writer.write(rxnId.toString + "\n"))
+    }
+
+    reactionReturnIterator.foreach(dbResult => writeReactionRefsToFile(dbResult))
+  }
+
+
 
   case class RoReactions(ro: Int, reactions: List[Long])
 
