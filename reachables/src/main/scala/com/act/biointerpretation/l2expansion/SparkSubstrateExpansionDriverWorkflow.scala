@@ -162,7 +162,7 @@ class SparkSubstrateExpansionDriverWorkflow extends Workflow {
         while (rest != null) {
         // Parse file iteratively
         val (oneResult, remaining) = rest.span(!_.contains("}"))
-          val myResult: InchiResult = (oneResult.mkString + remaining.head).parseJson.convertTo[InchiResult]
+          val myResult: InchiResult = (oneResult.mkString + remaining.head.mkString).parseJson.convertTo[InchiResult]
 
           localList.append(myResult)
 
