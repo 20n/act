@@ -30,7 +30,7 @@ public class NetworkStats implements JavaRunnable {
     LOGGER.info("Verified input file validity.");
 
     // Read in network from file
-    Network network = new Network();
+    MetabolismNetwork network = new MetabolismNetwork();
     network.loadFromJsonFile(inputFile);
     LOGGER.info("Loaded network in from file.");
 

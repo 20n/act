@@ -35,7 +35,7 @@ public class NetworkLcmsLinker implements JavaRunnable {
     // Read in structures from files
     IonAnalysisInterchangeModel lcmsResults = new IonAnalysisInterchangeModel();
     lcmsResults.loadResultsFromFile(lcmsResultsFile);
-    Network network = new Network();
+    MetabolismNetwork network = new MetabolismNetwork();
     network.loadFromJsonFile(networkFile);
 
     // Add LCMS results to network

@@ -19,19 +19,16 @@ public class NetworkBuilder implements JavaRunnable {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(NetworkBuilder.class);
 
-  private final List<File> corpusFiles; // Input files
-  private final File outputFile; // The file to which the network structure will be written.
+  private final List<File> corpusFiles;
+  private final File outputFile;
   // False if the builder should read in every valid input file even if some inputs are invalid.
   // True if builder should crash on even a single invalid input file.
-  private boolean failOnInvalidInput = false;
+  private final boolean failOnInvalidInput;
 
-  public NetworkBuilder(List<File> corpusFiles, File outputFile) {
+  public NetworkBuilder(List<File> corpusFiles, File outputFile, boolean failOnInvalidInput) {
     this.corpusFiles = corpusFiles;
     this.outputFile = outputFile;
-  }
-
-  public void setFailOnInvalidInput(boolean fail) {
-    failOnInvalidInput = fail;
+    this.failOnInvalidInput = failOnInvalidInput;
   }
 
   @Override
@@ -60,12 +57,12 @@ public class NetworkBuilder implements JavaRunnable {
     LOGGER.info("Successfully read in %d input files. Loading edges into network.", corpuses.size());
 
     // Set up network object, and loading predictions from corpuses into network edges.
-    Network network = new Network();
+    MetabolismNetwork network = new MetabolismNetwork();
     corpuses.forEach(corpus -> network.loadSingleSubstratePredictions(corpus));
     LOGGER.info("Loaded corpuses. Writing network to file.");
 
     // Write network out
     network.writeToJsonFile(outputFile);
-    LOGGER.info("Complete!");
+    LOGGER.info("Complete! Network has been written to %s", outputFile.getAbsolutePath());
   }
 }

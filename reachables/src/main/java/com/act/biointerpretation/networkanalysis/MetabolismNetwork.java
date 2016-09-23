@@ -14,10 +14,8 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -25,35 +23,43 @@ import java.util.stream.Collectors;
  * in a given sample.  Currently all edges encode one-substrate-one-product transformations.
  * TODO: generalize the network to encapsulate multiple-substrate, multiple-product dependencies.
  */
-public class Network {
+public class MetabolismNetwork {
 
   private static transient final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-  private static final Logger LOGGER = LogManager.getFormatterLogger(Network.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(MetabolismNetwork.class);
 
   @JsonProperty("nodes")
   Map<String, NetworkNode> nodes;
 
-  public Network() {
-    nodes = new HashMap<>();
+  @JsonProperty("edges")
+  Collection<NetworkEdge> edges;
+
+  public MetabolismNetwork() {
+    nodes = new ConcurrentHashMap<>();
+    edges = new ArrayList<>();
   }
 
   public NetworkNode getNode(String inchi) {
-    return nodes.get(inchi);
+    NetworkNode node = nodes.get(inchi);
+    if (node != null) {
+      return node;
+    }
+    LOGGER.warn("Couldn't get node with inchi %s", inchi);
+    return null;
   }
 
   @JsonIgnore
   public Collection<NetworkNode> getNodes() {
-    return nodes.values();
+    return Collections.unmodifiableCollection(nodes.values());
   }
 
   /**
-   * Get all edges from the graph. Assumes each edge has one substrate; otherwise this may return duplicates.
-   * TODO: generalize this if we generalize the graph for multiple substrate edges.
+   * Get all edges from the graph.
    *
-   * @return A collection of the graph's edges.
+   * @return An unmodifiable collection of the graph's edges.
    */
   public Collection<NetworkEdge> getEdges() {
-    return nodes.values().stream().flatMap(node -> node.getOutEdges().stream()).collect(Collectors.toList());
+    return Collections.unmodifiableCollection(edges);
   }
 
   /**
@@ -63,7 +69,7 @@ public class Network {
    * @param node The starting node.
    * @return The list of potential product nodes.
    */
-  public List<NetworkNode> getChildren(NetworkNode node) {
+  public List<NetworkNode> getDerivatives(NetworkNode node) {
     return node.getOutEdges().stream().map(edge -> getNode(edge.getProduct())).collect(Collectors.toList());
   }
 
@@ -74,7 +80,7 @@ public class Network {
    * @param node The starting node.
    * @return The list of potential substrate nodes.
    */
-  public List<NetworkNode> getParents(NetworkNode node) {
+  public List<NetworkNode> getPrecursors(NetworkNode node) {
     return node.getInEdges().stream().map(edge -> getNode(edge.getSubstrate())).collect(Collectors.toList());
   }
 
@@ -106,28 +112,35 @@ public class Network {
 
   /**
    * Loads all predictions from a prediction corpus into the network as edges.
-   * Only works on single-substrate predictions.  For a prediction with multiple products, one edge is loaded into the
-   * network for each product. i.e. the prediction A -> (B,C) creates two edges: (A->B), (A->C).
    *
    * @param predictionCorpus
    */
   public void loadSingleSubstratePredictions(L2PredictionCorpus predictionCorpus) {
-    for (L2Prediction prediction : predictionCorpus.getCorpus()) {
-      if (prediction.getSubstrateInchis().size() != 1) {
-        LOGGER.warn("Can only load edge from prediction with one substrate. Refusing to load.");
-        return;
-      }
-
-      String substrateInchi = prediction.getSubstrateInchis().get(0);
-
-      for (String productInchi : prediction.getProductInchis()) {
-        NetworkEdge edge = new NetworkEdge(substrateInchi, productInchi);
-        edge.addProjectorName(prediction.getProjectorName());
-        addEdge(edge);
-      }
-    }
+    predictionCorpus.getCorpus().forEach(prediction -> loadEdgeFromPrediction(prediction));
   }
 
+  /**
+   * Loads a single prediction into the graph as an edge or edges.
+   * Only works on single-substrate predictions.  For a prediction with multiple products, one edge is loaded into the
+   * network for each product. i.e. the prediction A -> (B,C) creates two edges: (A->B), (A->C).
+   * TODO: generalize to multiple substrates by generalizing edge data structure
+   *
+   * @param prediction The prediction to load.
+   */
+  public void loadEdgeFromPrediction(L2Prediction prediction) {
+    if (prediction.getSubstrateInchis().size() != 1) {
+      LOGGER.warn("Can only load edge from prediction with one substrate. Refusing to load.");
+      return;
+    }
+
+    String substrateInchi = prediction.getSubstrateInchis().get(0);
+
+    for (String productInchi : prediction.getProductInchis()) {
+      NetworkEdge edge = new NetworkEdge(substrateInchi, productInchi);
+      edge.addProjectorName(prediction.getProjectorName());
+      addEdge(edge);
+    }
+  }
 
   /**
    * Adds a given edge to the graph.
@@ -144,20 +157,32 @@ public class Network {
 
     NetworkNode substrateNode = getNode(edge.getSubstrate());
     List<NetworkEdge> equivalentEdges = substrateNode.getOutEdges().stream()
-        .filter(e -> e.isSameEdge(edge))
+        .filter(e -> e.hasSameChemicals(edge))
         .collect(Collectors.toList());
     assert (equivalentEdges.size() <= 1); // Should be at most one edge with a given substrate, product pair
 
     if (equivalentEdges.isEmpty()) { // If no equivalent edge exists, add the new edge
       getNode(edge.getProduct()).addInEdge(edge);
       getNode(edge.getSubstrate()).addOutEdge(edge);
+      edges.add(edge);
     } else { // If there is an equivalent edge, merge the data into that edge.
-      equivalentEdges.get(0).addData(edge);
+      equivalentEdges.get(0).addDataFrom(edge);
     }
   }
 
-  private void createNodeIfNoneExists(String inchi) {
-    nodes.putIfAbsent(inchi, new NetworkNode(inchi));
+  /**
+   * Checks if a node with a given inchi is already in the map.  If so, returns the node. If not, creates a new node
+   * with that inchi and returns it.
+   *
+   * @param inchi The inchi.
+   * @return The node.
+   */
+  private NetworkNode createNodeIfNoneExists(String inchi) {
+    NetworkNode node = nodes.get(inchi);
+    if (node == null) {
+      node = nodes.put(inchi, new NetworkNode(inchi));
+    }
+    return node;
   }
 
   public void writeToJsonFile(File outputFile) throws IOException {
@@ -167,7 +192,14 @@ public class Network {
   }
 
   public void loadFromJsonFile(File inputFile) throws IOException {
-    Network fromFile = OBJECT_MAPPER.readValue(inputFile, Network.class);
-    this.nodes = fromFile.nodes;
+    MetabolismNetwork networkFromFile = OBJECT_MAPPER.readValue(inputFile, MetabolismNetwork.class);
+
+    this.nodes = networkFromFile.nodes;
+    this.edges = networkFromFile.edges;
+
+    for (NetworkEdge edge : edges) {
+      getNode(edge.getSubstrate()).addOutEdge(edge);
+      getNode(edge.getProduct()).addInEdge(edge);
+    }
   }
 }

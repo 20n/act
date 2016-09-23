@@ -2,6 +2,7 @@ package com.act.biointerpretation.networkanalysis;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -23,12 +24,12 @@ public class NetworkEdge {
   Set<String> projectorNames;
 
   public NetworkEdge() {
-    reactionIds = new HashSet<>();
-    projectorNames = new HashSet<>();
+    this(null, null);
   }
 
   public NetworkEdge(String substrate, String product) {
-    this();
+    reactionIds = new HashSet<>();
+    projectorNames = new HashSet<>();
     this.substrate = substrate;
     this.product = product;
   }
@@ -40,7 +41,7 @@ public class NetworkEdge {
    *
    * @param edge The edge whose data should be added.
    */
-  public void addData(NetworkEdge edge) {
+  public void addDataFrom(NetworkEdge edge) {
     this.reactionIds.addAll(edge.getReactionIds());
     this.projectorNames.addAll(edge.getProjectorNames());
   }
@@ -52,7 +53,7 @@ public class NetworkEdge {
    * @param edge The edge to compare to.
    * @return True if same.
    */
-  public boolean isSameEdge(NetworkEdge edge) {
+  public boolean hasSameChemicals(NetworkEdge edge) {
     return this.substrate.equals(edge.getSubstrate()) && this.product.equals(edge.getProduct());
   }
 
@@ -60,20 +61,12 @@ public class NetworkEdge {
     return substrate;
   }
 
-  public void setSubstrate(String substrate) {
-    this.substrate = substrate;
-  }
-
   public String getProduct() {
     return product;
   }
 
-  public void setProduct(String product) {
-    this.product = product;
-  }
-
   public Set<Integer> getReactionIds() {
-    return reactionIds;
+    return Collections.unmodifiableSet(reactionIds);
   }
 
   public void setReactionIds(Set<Integer> reactionIds) {
@@ -85,7 +78,7 @@ public class NetworkEdge {
   }
 
   public Set<String> getProjectorNames() {
-    return projectorNames;
+    return Collections.unmodifiableSet(projectorNames);
   }
 
   public void setProjectorNames(Set<String> projectorNames) {

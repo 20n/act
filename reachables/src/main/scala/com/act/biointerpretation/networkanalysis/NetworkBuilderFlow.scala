@@ -56,9 +56,8 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility {
     val inputDirs = cl.getOptionValues(OPTION_INPUT_DIRECTORIES).map(path => new File(path))
 
     def findInputFiles(directory: File): List[File] = {
-      val inputFiles = directory.listFiles().toList
-      inputFiles.filter(f => !f.isDirectory)
-      inputFiles.foreach(f => verifyInputFile(f))
+      val inputFiles = directory.listFiles().toList.filter(!_.isDirectory)
+      inputFiles.foreach(verifyInputFile(_))
       inputFiles
     }
 
@@ -67,7 +66,7 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility {
     val outputFile = new File(workingDir, "networkOutput")
     verifyOutputFile(outputFile)
 
-    val networkBuilder = new NetworkBuilder(inputFiles.toList.asJava, outputFile)
+    val networkBuilder = new NetworkBuilder(inputFiles.toList.asJava, outputFile, false)
     headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("network builder", networkBuilder))
 
     val networkStats = new NetworkStats(outputFile);

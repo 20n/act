@@ -1,9 +1,11 @@
 package com.act.biointerpretation.networkanalysis;
 
 import com.act.lcms.db.io.report.IonAnalysisInterchangeModel;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -14,10 +16,8 @@ public class NetworkNode {
   @JsonProperty("inchi")
   private String inchi;
 
-  @JsonProperty("out_edges")
   private List<NetworkEdge> outEdges;
 
-  @JsonProperty("in_edges")
   private List<NetworkEdge> inEdges;
 
   private IonAnalysisInterchangeModel.LCMS_RESULT lcmsResult;
@@ -35,8 +35,9 @@ public class NetworkNode {
     this.inchi = inchi;
   }
 
+  @JsonIgnore
   public List<NetworkEdge> getOutEdges() {
-    return outEdges;
+    return Collections.unmodifiableList(outEdges);
   }
 
   public void setOutEdges(List<NetworkEdge> outEdges) {
@@ -47,8 +48,9 @@ public class NetworkNode {
     this.outEdges.add(edge);
   }
 
+  @JsonIgnore
   public List<NetworkEdge> getInEdges() {
-    return inEdges;
+    return Collections.unmodifiableList(inEdges);
   }
 
   public void setInEdges(List<NetworkEdge> inEdges) {
