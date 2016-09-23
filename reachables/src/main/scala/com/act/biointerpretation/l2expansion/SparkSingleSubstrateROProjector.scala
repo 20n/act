@@ -6,6 +6,7 @@ import chemaxon.formats.{MolExporter, MolImporter}
 import chemaxon.license.LicenseManager
 import chemaxon.marvin.io.MolExportException
 import chemaxon.struc.Molecule
+import com.act.biointerpretation.l2expansion.InchiFormat._
 import com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector.InchiResult
 import com.act.biointerpretation.mechanisminspection.ErosCorpus
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -13,6 +14,7 @@ import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Option
 import org.apache.logging.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
+import spray.json._
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
