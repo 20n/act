@@ -26,6 +26,7 @@ import com.ggasoftware.indigo.IndigoObject;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.biopax.paxtools.model.level3.CatalysisDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;
@@ -56,8 +57,9 @@ public class OrganismCompositionMongoWriter {
   boolean debugFails = false;
 
   // Cache these values as they'll base the same throughout.
-  private String organism = null;
-  private Long organismDbId = null;
+  // TODO: consider using a LinkedHashMap-based LRU cache to keep track of multiple organisms.
+  private String mostRecentOrganismName = null;
+  private Long mostRecentOrganismDBId = null;
 
   // metacyc id's are in Unification DB=~name of origin, ID.matches(METACYC_URI_PREFIX)
   String METACYC_URI_IDS = "^[A-Z0-9-]+$"; //
@@ -90,10 +92,10 @@ public class OrganismCompositionMongoWriter {
   }
 
   /**
-   * Each Metacyc biopax file contains collections of reactions and chemicals, organized by organism.
+   * Each Metacyc biopax file contains collections of reactions and chemicals, organized by mostRecentOrganismName.
    * The reactions reference the chemicals using biopax-specific (or Metacyc-specific?) identifiers that don't match
    * our internal id scheme (for good reason--our identifier approach is far less complex!).  This method writes the
-   * contents of one organism's reactions and chemicals to the DB.  The chemicals are written first so that we can
+   * contents of one mostRecentOrganismName's reactions and chemicals to the DB.  The chemicals are written first so that we can
    * accumulate a mapping of Metacyc small molecule reference ids to our DB's chemical ids.  The reactions' substrates
    * and products are then written to the DB using our internal chemical IDs, allowing us to unify Metacyc's chemical
    * and reaction data with whatever has already been written. */
@@ -299,7 +301,7 @@ public class OrganismCompositionMongoWriter {
   }
 
   /* Add a reaction to the DB based on a complete Catalysis.  This will extract the underlying Conversion and append
-   * available sequence/organism data.  This is preferred over the Conversion variant of this function as we want the
+   * available sequence/mostRecentOrganismName data.  This is preferred over the Conversion variant of this function as we want the
    * extra data to appear in the DB. */
   private Reaction addReaction(Catalysis c, HashMap<String, Long> rdfID2MongoID, StepDirection pathwayStepDirection) {
     // using the map of chemical rdfID->mongodb id, construct a Reaction object
@@ -336,11 +338,11 @@ public class OrganismCompositionMongoWriter {
     return rxn;
   }
 
-  // Add a Conversion to the DB without sequence or organism data.
+  // Add a Conversion to the DB without sequence or mostRecentOrganismName data.
   private Reaction addReaction(Conversion c, HashMap<String, Long> rdfID2MongoID, StepDirection pathwayStepDirection) {
     Reaction rxn = constructReaction(c, rdfID2MongoID, pathwayStepDirection);
     rxn.setDataSource(Reaction.RxnDataSource.METACYC);
-    // There's no organism/sequence information available on Conversions, so just write the reaction without it.
+    // There's no mostRecentOrganismName/sequence information available on Conversions, so just write the reaction without it.
     int rxnid = db.submitToActReactionDB(rxn);
     db.updateActReaction(rxn, rxnid);
 
@@ -383,7 +385,7 @@ public class OrganismCompositionMongoWriter {
       idlist.put(chemID);
     } else {
       // a ref exists, maybe it is from installing this exact same chem,
-      // or from a replicate chemical from another organism. add the DB's ID
+      // or from a replicate chemical from another mostRecentOrganismName. add the DB's ID
       // to the chemical's xref field
       idlist = ref.has("id") ? (JSONArray)ref.get("id") : new JSONArray();
       boolean contains = false;
@@ -749,7 +751,7 @@ public class OrganismCompositionMongoWriter {
   }
 
   Long getOrganismID(BPElement organism) {
-    // orgID = organism.xref(type Unification Xref).{ db: "NCBI Taxonomy", id: ID }
+    // orgID = mostRecentOrganismName.xref(type Unification Xref).{ db: "NCBI Taxonomy", id: ID }
     for (BPElement bpe : this.src.resolve(organism.getXrefs())) {
       Unification u = (Unification)bpe;
       if (u.getUnifID() != null && u.getUnifDB().equals("NCBI Taxonomy"))
@@ -765,7 +767,7 @@ public class OrganismCompositionMongoWriter {
     List<NXT> path = Arrays.asList(NXT.controller, NXT.ref, NXT.organism);
     for (BPElement biosrc : this.src.traverse(c, path)) {
       if (biosrc == null) {
-        System.err.format("WARNING: got null organism for %s\n", c.getID());
+        System.err.format("WARNING: got null mostRecentOrganismName for %s\n", c.getID());
         continue;
       }
       for (BPElement bpe : this.src.resolve(biosrc.getXrefs())) {
@@ -812,22 +814,41 @@ public class OrganismCompositionMongoWriter {
     String name = seqRef.getStandardName();
     Set<JSONObject> refs = toJSONObject(seqRef.getRefs()); // this contains things like UniProt accession#s, other db references etc.
 
-    // Submit the name to the organism database if it doesn't exist.
-    if (organism == null) {
-      HashMap bioSourceMap = this.src.getMap(BioSource.class);
-      if (bioSourceMap.size() != 1) {
-        throw new RuntimeException(
-                String.format("Incorrect number of BioSources found. Set was of size %d", bioSourceMap.size()));
+    HashMap bioSourceMap = this.src.getMap(BioSource.class);
+    BioSource s = (BioSource) bioSourceMap.get(org);
+    String thisOrganismName;
+    if (org == null || s == null) {
+      // This means missing data in the OWL model.  Not good!  But we press onward.
+      if (bioSourceMap.size() != 1 && this.mostRecentOrganismName != null) {
+        // Just use a default value of "Unknown" for sequences we can't precisely tie to an organism.
+        // TODO: log these occurrences.
+        thisOrganismName = "Unknown";
+      } else {
+        // Otherwise, do nothing as we're in an organism-specific file and there's only one option--use the old value.
+        thisOrganismName = this.mostRecentOrganismName;
       }
+    } else {
+      // TODO: log when there are multiple organism names.  When/why would that ever happen?
+      thisOrganismName = s.getName().iterator().next();
+    }
 
-      BioSource s = (BioSource) bioSourceMap.get(bioSourceMap.keySet().iterator().next());
 
-      this.organism = s.getName().iterator().next();
+    if (this.mostRecentOrganismName == null || !this.mostRecentOrganismName.equals(thisOrganismName)) {
+      // We are not dealing with the same organism as before!
+      this.mostRecentOrganismName = thisOrganismName;
 
-      this.organismDbId = db.getOrganismId(this.organism);
-      if (this.organismDbId == -1) {
-        this.organismDbId = db.submitToActOrganismNameDB(this.organism);
+      // Attempt to look up the organism in the DB; insert if we can't find it.
+      this.mostRecentOrganismDBId = db.getOrganismId(this.mostRecentOrganismName);
+      if (this.mostRecentOrganismDBId == -1) {
+        this.mostRecentOrganismDBId = db.submitToActOrganismNameDB(this.mostRecentOrganismName);
       }
+    }
+
+    /* We should have covered all possible cases that would have allowed the organism name to be null by this point.
+     * That probably represents programmer error, so we'll just crash. */
+    if (this.mostRecentOrganismName == null) {
+      throw new RuntimeException(String.format(
+          "Unable to find any organism name for sequence: %s", seqRef.getID()));
     }
 
     String ecnum = null;
@@ -842,7 +863,7 @@ public class OrganismCompositionMongoWriter {
 
     String dir = direction == null ? "NULL" : direction.toString();
     String act_inh = act_inhibit == null ? "NULL" : act_inhibit.toString();
-    SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, this.organismDbId, name, ecnum, comments, refs, rxnid, rxn, act_inh, dir);
+    SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, this.mostRecentOrganismDBId, name, ecnum, comments, refs, rxnid, rxn, act_inh, dir);
     long seqid = entry.writeToDB(db, Seq.AccDB.metacyc);
 
     return seqid;
