@@ -138,26 +138,14 @@ class SparkSubstrateExpansionDriverWorkflow extends Workflow {
         s"-${SparkSingleSubstrateROProjector.OPTION_FILTER_FOR_SPECTROMETERY}"
       )
 
-      // Scales memory up as the size gets larger in hopes of avoiding memory issues.
-      // Expansion size grows at about 50x, so memory requirements get large as size increases.
-      val expansion =
-        SparkWrapper.runClassPath(
-          assembledJarPath.getAbsolutePath, sparkMaster)(singleSubstrateRoProjectorClassPath,
-          roProjectionArgs)(memory = s"${iteration*iteration}G")
-
-      expansion.writeOutputStreamToLogger()
-      expansion.writeErrorStreamToLogger()
-
       val processing: () => Unit = () => {
 
 
         val outputFile = new File(iterationOutputDirectory, "outputfile.txt")
 
-        var fileIterator = scala.io.Source.fromFile(outputFile).getLines().toStream
-
         val localList = ListBuffer[InchiResult]()
 
-        var rest = fileIterator
+        var rest = scala.io.Source.fromFile(outputFile).getLines().toStream
 
         while (rest != null) {
         // Parse file iteratively
@@ -186,11 +174,20 @@ class SparkSubstrateExpansionDriverWorkflow extends Workflow {
         inchis.writeToFile(outputUniqueInchiFile)
       }
 
-      val convertPredictionToUniqueInchis = ScalaJobWrapper.wrapScalaFunction(s"Condense $iteration into unique molecules.", processing)
-
       // Skip if already created
       if (!outputUniqueInchiFile.exists) {
+        // Scales memory up as the size gets larger in hopes of avoiding memory issues.
+        // Expansion size grows at about 50x, so memory requirements get large as size increases.
+        val expansion =
+          SparkWrapper.runClassPath(
+            assembledJarPath.getAbsolutePath, sparkMaster)(singleSubstrateRoProjectorClassPath,
+            roProjectionArgs)(memory = s"${iteration * iteration * iteration}G")
+
+        expansion.writeErrorStreamToLogger()
+
         headerJob.thenRun(expansion.doNotWriteOutputStream())
+
+        val convertPredictionToUniqueInchis = ScalaJobWrapper.wrapScalaFunction(s"Condense $iteration into unique molecules.", processing)
         headerJob.thenRun(convertPredictionToUniqueInchis)
       } else {
         logger.info(s"Skipping trying to create ${outputUniqueInchiFile.getAbsolutePath} as it already exists.")
