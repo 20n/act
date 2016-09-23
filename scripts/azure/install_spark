@@ -53,7 +53,7 @@ SPARK_USER_CHECK=$(grep -c '^spark:' /etc/passwd)
 
 if [[ $SPARK_USER_CHECK = "0" ]]; then
     echo "Spark user does not exists, creating"
-    sudo useradd -r -s /usr/sbin/nologin spark
+    sudo useradd -m -r -s /usr/sbin/nologin spark
 fi
 
 echo "Setting up supporting directories"
