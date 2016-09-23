@@ -31,8 +31,10 @@ class LcmsAutoencoder:
 
         # Plate file stuff
         self.lcms_directory = os.path.join(lcms_directory, '')
-        self.lcms_plate = lcms_plate_name
-        assert (not self.lcms_plate.endswith(".nc"))
+        self.lcms_plate = lcms_plate_name.split(".nc")[0]
+        self.current_trace_file = os.path.join(self.lcms_directory, self.lcms_plate + ".nc")
+        assert (os.path.exists(self.current_trace_file),
+                "LCMS trace file does not exist.  Supplied path is {}".format(self.current_trace_file))
 
         self.output_directory = os.path.join(output_directory, '')
         if not os.path.exists(self.output_directory):
@@ -44,8 +46,6 @@ class LcmsAutoencoder:
         self.model, self.encoder = self.compile_model()
 
     def process_lcms_trace(self, mz_split, mz_min, max_mz):
-        # Import File
-        current_trace_file = os.path.join(self.lcms_directory, self.lcms_plate + ".nc")
         saved_array_name = self.lcms_plate + "_mz_split_" + str(mz_split)
 
         try:
@@ -58,12 +58,12 @@ class LcmsAutoencoder:
             def assign_column_by_mz(mz):
                 mz_column_assignment = mz / mz_split - mz_min / mz_split
                 if mz_column_assignment < 0:
-                    raise RuntimeError("M/Z assignment was less than 0.\n M/Z "
+                    raise RuntimeError("M/Z assignment was less than 0. M/Z "
                                        "value supplied was {}, granularity was {}, "
                                        "min M/Z value was {}".format(mz, mz_split, mz_min))
                 return int(math.floor(mz_column_assignment))
 
-            loaded_triples = load_lcms_trace(current_trace_file)
+            loaded_triples = load_lcms_trace(self.current_trace_file)
 
             # Add 1 to make inclusive bounds.
             row_count = int(float(max_mz - mz_min + 1) / mz_split)
