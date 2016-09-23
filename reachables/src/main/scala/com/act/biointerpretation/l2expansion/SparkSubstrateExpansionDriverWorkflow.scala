@@ -13,7 +13,6 @@ import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
 import spray.json._
 
-import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
@@ -154,25 +153,22 @@ class SparkSubstrateExpansionDriverWorkflow extends Workflow {
 
         val outputFile = new File(iterationOutputDirectory, "outputfile.txt")
 
-        val fileIterator = scala.io.Source.fromFile(outputFile).getLines()
+        var fileIterator = scala.io.Source.fromFile(outputFile).getLines()
 
         val localList = ListBuffer[InchiResult]()
 
-        @tailrec
-        def parseFile(inputLines: Iterator[String]): Unit = {
-          // } demarks end of line.
-          val (oneResult, rest) = inputLines.span(!_.contains("}"))
+        // Parse file iteratively
+        while (fileIterator.hasNext) {
+          val (oneResult, rest) = fileIterator.span(!_.contains("}"))
           val myResult: InchiResult = (oneResult.mkString + "}").parseJson.convertTo[InchiResult]
-          rest.next()
 
           localList.append(myResult)
 
-          if (rest.hasNext) {
-            parseFile(rest)
+          if (fileIterator.hasNext) {
+            rest.next()
           }
+          fileIterator = rest
         }
-
-        parseFile(fileIterator)
 
         val results: List[InchiResult] = localList.toList
 
