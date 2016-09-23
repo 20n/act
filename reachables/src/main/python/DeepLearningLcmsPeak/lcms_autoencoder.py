@@ -1,9 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
 import math
-import os
-
 import numpy as np
+import os
 import pandas as pd
 import seaborn as sns
 from cluster import LcmsClusterer
@@ -287,7 +286,8 @@ class LcmsAutoencoder:
 
         for ci in range(0, number_clusters):
             cluster = df[df["cluster"] == ci]
-            print("Cluster {}".format(ci))
+            if self.verbose:
+                print("Cluster {}".format(ci))
 
             cluster = cluster.drop("normalizer", 1)
             cluster = cluster.drop("cluster", 1)
@@ -295,20 +295,19 @@ class LcmsAutoencoder:
             cluster = cluster.drop("time", 1)
             cluster = cluster.drop("max_intensity_time", 1)
 
-            # Skip big clusters as they likely lack information
-            # if len(cluster) > 10000:
-            #     continue
-
-            print("Creating plot")
+            if self.verbose:
+                print("Creating plot")
             if len(cluster) == 0:
                 continue
 
             sns.tsplot(cluster.as_matrix(), color="indianred", err_style="unit_traces")
-            print("Saving plot")
+            save_location = os.path.join(visualization_path, "Cluster_{}_Count_{}.png".format(ci, len(cluster)))
+            if self.verbose:
+                print("Saving plot at {}".format(save_location))
 
             sns.plt.ylim(0, 1)
             sns.plt.title("Cluster {} : Count {}".format(ci, len(cluster)))
-            sns.plt.savefig(os.path.join(visualization_path, "Cluster_{}_Count_{}.png".format(ci, len(cluster))))
+            sns.plt.savefig(save_location)
 
             # Make sure to clear after creating each figure.
             sns.plt.cla()
