@@ -4,6 +4,7 @@ import java.io.{BufferedWriter, File, FileWriter}
 
 import chemaxon.formats.{MolExporter, MolImporter}
 import chemaxon.license.LicenseManager
+import chemaxon.marvin.io.MolExportException
 import chemaxon.struc.Molecule
 import com.act.biointerpretation.l2expansion.InchiFormat._
 import com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector.InchiResult
@@ -78,12 +79,16 @@ object compute {
         if (products == null) {
           reactMore = false
         } else {
-          resultingReactions.append(
-            InchiResult(
-              List(inchi).map(x => MolExporter.exportToFormat(x, "inchi:AuxNone")),
-              ro.getId.toString,
-              products.toList.map(x => MolExporter.exportToFormat(x, "inchi:AuxNone")))
-          )
+          try {
+            resultingReactions.append(
+              InchiResult(
+                List(inchi).map(x => MolExporter.exportToFormat(x, "inchi:AuxNone")),
+                ro.getId.toString,
+                products.toList.map(x => MolExporter.exportToFormat(x, "inchi:AuxNone")))
+            )
+          } catch {
+            case e: MolExportException => None
+          }
         }
       }
 
