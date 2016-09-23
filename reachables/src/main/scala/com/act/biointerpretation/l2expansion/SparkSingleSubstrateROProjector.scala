@@ -6,6 +6,7 @@ import chemaxon.formats.{MolExporter, MolImporter}
 import chemaxon.license.LicenseManager
 import chemaxon.struc.Molecule
 import com.act.biointerpretation.l2expansion.InchiFormat._
+import com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector.InchiResult
 import com.act.biointerpretation.mechanisminspection.ErosCorpus
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
@@ -40,6 +41,8 @@ object compute {
   eros.loadValidationCorpus()
   eros.filterCorpusBySubstrateCount(1)
 
+  //  net.sf.jniinchi.JniInchiWrapper.loadLibrary()
+
   var localLicenseFile: Option[String] = None
 
   /* The current parallelism scheme partitions projections by ERO, using one worker thread to project one ERO over all
@@ -55,19 +58,16 @@ object compute {
    *
    * TODO: try out other partitioning schemes and/or pre-compile and cache ERO Reactors for improved performance.
    */
-  def run(licenseFileName: String)(inchi: Molecule): List[(List[Molecule], String, List[Molecule])] = {
+  def run(licenseFileName: String)(inchi: Molecule): List[InchiResult] = {
     // Load license file once
     if (this.localLicenseFile.isEmpty) {
         this.localLicenseFile = Option(SparkFiles.get(licenseFileName))
         LOGGER.info(s"Using license file at $localLicenseFile (file exists: ${new File(SparkFiles.get(licenseFileName)).exists()})")
         LicenseManager.setLicenseFile(SparkFiles.get(licenseFileName))
     }
-    /*
 
-      public L2Prediction(id: Integer, substrates: util.List[L2PredictionChemical], projectorName: String, products: util.List[L2PredictionChemical]) {
-
-     */
-    val resultingReactions = ListBuffer[(List[Molecule], String, List[Molecule])]()
+    // React
+    val resultingReactions = ListBuffer[InchiResult]()
     val results = this.eros.getRos.asScala.foreach(ro => {
       val reactor = ro.getReactor
       reactor.setReactant(inchi)
@@ -78,13 +78,18 @@ object compute {
         if (products == null) {
           reactMore = false
         } else {
-          resultingReactions.append((List(inchi), ro.getId.toString, products.toList))
+          resultingReactions.append(
+            InchiResult(
+              List(inchi).map(x => MolExporter.exportToFormat(x, "inchi:AuxNone")),
+              ro.getId.toString,
+              products.toList.map(x => MolExporter.exportToFormat(x, "inchi:AuxNone")))
         }
       }
 
 
     })
 
+    // Output list
     resultingReactions.toList
   }
 }
@@ -165,13 +170,7 @@ object SparkSingleSubstrateROProjector {
 
     LOGGER.info("Starting execution")
     // PROJECT!  Run ERO projection over all InChIs.
-    val resultsRDD: RDD[InchiResult] = inchiRDD.flatMap(inchi => {
-      val results = compute.run(licenseFileName)(inchi)
-
-      results.map(result => {
-        new InchiResult(result._1.map(x => MolExporter.exportToFormat(x, "inchi:AuxNone")), result._2, result._3.map(x => MolExporter.exportToFormat(x, "inchi:AuxNone")))
-      })
-    })
+    val resultsRDD: RDD[InchiResult] = inchiRDD.flatMap(inchi => compute.run(licenseFileName)(inchi))
 
     /* This next part represents us jumping through some hoops (that are possibly on fire) in order to make Spark do
      * the thing we want it to do: project in parallel but stream results back for storage partitioned by RO.
@@ -216,14 +215,38 @@ object SparkSingleSubstrateROProjector {
     resultsRDD.toLocalIterator.foreach(result => {
       outputFile.write(result.toJson.prettyPrint)
       outputFile.newLine()
-    }
-    )
+    })
     outputFile.close()
     // Release the RDD now that we're done reading it.
     resultsRDD.unpersist()
   }
 
   HELP_FORMATTER.setWidth(100)
+
+  // The following were stolen (in haste) from Workflow.scala.
+  def parseCommandLineOptions(args: Array[String]): CommandLine = {
+    val opts = getCommandLineOptions
+
+    // Parse command line options
+    var cl: Option[CommandLine] = None
+    try {
+      val parser = new DefaultParser()
+      cl = Option(parser.parse(opts, args))
+    } catch {
+      case e: ParseException =>
+        LOGGER.error(s"Argument parsing failed: ${e.getMessage}\n")
+        exitWithHelp(opts)
+    }
+
+    if (cl.isEmpty) {
+      LOGGER.error("Detected that command line parser failed to be constructed.")
+      exitWithHelp(opts)
+    }
+
+    if (cl.get.hasOption("help")) exitWithHelp(opts)
+
+    cl.get
+  }
 
   def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -261,31 +284,6 @@ object SparkSingleSubstrateROProjector {
       opts.addOption(opt.build)
     }
     opts
-  }
-
-  // The following were stolen (in haste) from Workflow.scala.
-  def parseCommandLineOptions(args: Array[String]): CommandLine = {
-    val opts = getCommandLineOptions
-
-    // Parse command line options
-    var cl: Option[CommandLine] = None
-    try {
-      val parser = new DefaultParser()
-      cl = Option(parser.parse(opts, args))
-    } catch {
-      case e: ParseException =>
-        LOGGER.error(s"Argument parsing failed: ${e.getMessage}\n")
-        exitWithHelp(opts)
-    }
-
-    if (cl.isEmpty) {
-      LOGGER.error("Detected that command line parser failed to be constructed.")
-      exitWithHelp(opts)
-    }
-
-    if (cl.get.hasOption("help")) exitWithHelp(opts)
-
-    cl.get
   }
 
   def exitWithHelp(opts: Options): Unit = {
