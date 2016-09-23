@@ -153,21 +153,23 @@ class SparkSubstrateExpansionDriverWorkflow extends Workflow {
 
         val outputFile = new File(iterationOutputDirectory, "outputfile.txt")
 
-        var fileIterator = scala.io.Source.fromFile(outputFile).getLines()
+        var fileIterator = scala.io.Source.fromFile(outputFile).getLines().toStream
 
         val localList = ListBuffer[InchiResult]()
 
+        var rest = fileIterator
+
+        while (rest != null) {
         // Parse file iteratively
-        while (fileIterator.hasNext) {
-          val (oneResult, rest) = fileIterator.span(!_.contains("}"))
-          val myResult: InchiResult = (oneResult.mkString + "}").parseJson.convertTo[InchiResult]
+        val (oneResult, remaining) = rest.span(!_.contains("}"))
+          val myResult: InchiResult = (oneResult.mkString + remaining.head).parseJson.convertTo[InchiResult]
 
           localList.append(myResult)
 
-          if (fileIterator.hasNext) {
-            rest.next()
+          rest = remaining.tail
+          if (rest.isEmpty) {
+            rest = null
           }
-          fileIterator = rest
         }
 
         val results: List[InchiResult] = localList.toList
