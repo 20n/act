@@ -288,12 +288,7 @@ class LcmsAutoencoder:
             cluster = df[df["cluster"] == ci]
             if self.verbose:
                 print("Cluster {}".format(ci))
-
-            cluster = cluster.drop("normalizer", 1)
-            cluster = cluster.drop("cluster", 1)
-            cluster = cluster.drop("mass", 1)
-            cluster = cluster.drop("time", 1)
-            cluster = cluster.drop("max_intensity_time", 1)
+            cluster = cluster.drop(["mz", "mzmin", "mzmax", "rt", "rtmin", "rtmax", "into", "maxo", "cluster"], 1)
 
             if self.verbose:
                 print("Creating plot")
