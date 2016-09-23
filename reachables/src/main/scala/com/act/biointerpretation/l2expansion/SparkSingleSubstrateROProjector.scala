@@ -5,7 +5,7 @@ import java.io.{BufferedWriter, File, FileWriter}
 import chemaxon.formats.{MolExporter, MolImporter}
 import chemaxon.license.LicenseManager
 import chemaxon.marvin.io.MolExportException
-import chemaxon.struc.Molecule
+import com.act.analysis.chemicals.MoleculeImporter
 import com.act.biointerpretation.l2expansion.InchiFormat._
 import com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector.InchiResult
 import com.act.biointerpretation.mechanisminspection.ErosCorpus
@@ -59,7 +59,7 @@ object compute {
    *
    * TODO: try out other partitioning schemes and/or pre-compile and cache ERO Reactors for improved performance.
    */
-  def run(licenseFileName: String)(inchi: Molecule): List[InchiResult] = {
+  def run(licenseFileName: String)(inchi: String): List[InchiResult] = {
     // Load license file once
     if (this.localLicenseFile.isEmpty) {
         this.localLicenseFile = Option(SparkFiles.get(licenseFileName))
@@ -71,7 +71,7 @@ object compute {
     val resultingReactions = ListBuffer[InchiResult]()
     val results = this.eros.getRos.asScala.foreach(ro => {
       val reactor = ro.getReactor
-      reactor.setReactant(inchi)
+      reactor.setReactants(List(MoleculeImporter.importMolecule(inchi)).toArray)
 
       var reactMore = true
       while (reactMore) {
@@ -82,7 +82,7 @@ object compute {
           try {
             resultingReactions.append(
               InchiResult(
-                List(inchi).map(x => MolExporter.exportToFormat(x, "inchi:AuxNone,SAbs")),
+                List(inchi),
                 ro.getId.toString,
                 products.toList.map(x => MolExporter.exportToFormat(x, "inchi:AuxNone,SAbs")))
             )
@@ -153,11 +153,11 @@ object SparkSingleSubstrateROProjector {
 
     val molecules = inchiCorpus.getMolecules.asScala.toList
 
+    // We filter, but don't actually import here.  If we imported we'd run out of memory way faster.
     val validInchis = Source.fromFile(substratesListFile).getLines().
       filter(x => try { MolImporter.importMol(x); true } catch { case e : Exception => false }).toList
     LOGGER.info(s"Loaded and validated ${validInchis.size} InChIs from source file at $substratesListFile")
 
-    val validInchiMolecules = validInchis.map(MolImporter.importMol)
     // Don't set a master here, spark-submit will do that for us.
     val conf = new SparkConf().setAppName("Spark RO Projection")
     conf.getAll.foreach(x => LOGGER.info(s"Spark config pair: ${x._1}: ${x._2}"))
@@ -172,7 +172,7 @@ object SparkSingleSubstrateROProjector {
 
     LOGGER.info("Building ERO RDD")
     val groupSize = 1000
-    val inchiRDD: RDD[Molecule] = spark.makeRDD(validInchiMolecules, groupSize)
+    val inchiRDD: RDD[String] = spark.makeRDD(validInchis, groupSize)
 
     LOGGER.info("Starting execution")
     // PROJECT!  Run ERO projection over all InChIs.
