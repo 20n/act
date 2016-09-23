@@ -3,7 +3,7 @@ package com.act.lcms
 import java.io.{PrintWriter, File}
 import act.shared.{CmdLineParser, OptDesc}
 import scala.io.Source
-import act.shared.ChemicalSymbols.{MonoIsotopicMass, AllAminoAcids}
+import act.shared.ChemicalSymbols.{MonoIsotopicMass, Atom, AllAminoAcids}
 import com.act.lcms.MS1.MetlinIonMass
 
 // @mark-20n @MichaelLampe20n: help resolve this to specific imports; please!
@@ -158,7 +158,7 @@ class Peak(
     s"($intensity, $max, $snrs) @ mzrt($mz, $rt) "
   }
 
-  def getHdrVal(hdr: OutputHeader): Double = hdr match {
+  def getHdrVal(hdr: TSVHdr): Double = hdr match {
     case HdrMZ => mz.rounded()
     case HdrRT => rt.time
     case HdrDiff => sz // use whatever metric was used for `sz`
@@ -191,54 +191,69 @@ class Peak(
 
 class PeakSpectra(val peaks: Set[Peak])
 
-sealed class XCMSCol(val id: String) { override def toString = id }
+sealed trait HasId {
+  val id: String
+  override def toString = id
+}
+
+sealed class XCMSCol(val id: String) extends HasId
 object MZ extends XCMSCol("mz")
 object RT extends XCMSCol("rt")
 object IntIntensity extends XCMSCol("into")
 object MaxIntensity extends XCMSCol("maxo")
 object SNR extends XCMSCol("sn")
 
+sealed class TSVHdr(val id: String) extends HasId
+object HdrMZ extends TSVHdr("mz")       // mz at precision considered equal (MonoIsotopicMass.numDecimalPlaces)
+object HdrRT extends TSVHdr("retention_time") // rt at precision considered equal (RetentionTime.driftTolerated/toString)
+object HdrDiff extends TSVHdr("rank_metric") // the x% over- or under-expressed compared to controls
+object HdrRawMZ extends TSVHdr("raw_mz") // mz value up to infinite precision (from input data)
+object HdrRawRT extends TSVHdr("raw_rt") // rt value up to infinite precision (from input data)
+object HdrMolMass extends TSVHdr("mol_mass") // if we map to molecules, then the monoisotopic mass thereof
+object HdrMolIon extends TSVHdr("ion")  // if we map to molecules, the ion of which the peak is observed
+object HdrMolFormula extends TSVHdr("formula") // if we map to formula, the formula of the molecule
+object HdrMolInChI extends TSVHdr("inchi") // if we map to InChI, the inchi of the molecule
+object HdrMolHitSource extends TSVHdr("hitsrc") // if we map to formula/inchi, where the hit was found & DB ID
 
-sealed class OutputHeader(val id: String) { override def toString = id }
-object HdrMZ extends OutputHeader("mz")       // mz at precision considered equal (MonoIsotopicMass.numDecimalPlaces)
-object HdrRT extends OutputHeader("retention_time") // rt at precision considered equal (RetentionTime.driftTolerated/toString)
-object HdrDiff extends OutputHeader("rank_metric") // the x% over- or under-expressed compared to controls
-object HdrRawMZ extends OutputHeader("raw_mz") // mz value up to infinite precision (from input data)
-object HdrRawRT extends OutputHeader("raw_rt") // rt value up to infinite precision (from input data)
-object HdrMolMass extends OutputHeader("mol_mass") // if we map to molecules, then the monoisotopic mass thereof
-object HdrMolIon extends OutputHeader("ion")  // if we map to molecules, the ion of which the peak is observed
-object HdrMolFormula extends OutputHeader("formula") // if we map to formula, the formula of the molecule
-object HdrMolInChI extends OutputHeader("inchi") // if we map to InChI, the inchi of the molecule
-object HdrMolHitSource extends OutputHeader("hitsrc") // if we map to formula/inchi, where the hit was found & DB ID
-
-object PeakSpectra {
-
-  val hdrsXCMS = List(MZ, RT, IntIntensity, MaxIntensity, SNR)
-  def fromXCMSCentwave(file: String): PeakSpectra = {
-    // example to process (with header):
-    // mz  mzmin mzmax rt  rtmin rtmax into  intb  maxo  sn  sample
-    // 244.98272  244.97964  244.985247  2.56099  1.91800  2.98900  130.32171 129.46491  253.17785  252 1
-    // these are truncated, 14-15 digits (including before and after decimal)
-    // Such are the files in /mnt/shared-data/Vijay/perlstein_xcms_centwave_optimized_output
+trait CanReadTSV {
+  type H <: HasId // head types in the first row
+  type V // value types in everything expect the first row
+  def readTSV(file: String, hdrs: List[H], semanticizer: String => V): List[Map[H, V]] = {
     val lines = Source.fromFile(file).getLines.toList.map(_.split("\t").toList)
     val hdr::tail = lines
-    val identifiedHdrs = hdr.map(hid => hdrsXCMS.find(_.id.equals(hid)))
+    val identifiedHdrs = hdr.map(hid => hdrs.find(_.id.equals(hid)))
     val withHdrs = tail.map(l => identifiedHdrs.zip(l))
-    def keepOnlyRecognizedCols(line: List[(Option[XCMSCol], String)]): Map[XCMSCol, Double] = {
-      line.filter(_._1.isDefined).map{ case (Some(hdr), value) => (hdr, value.toDouble) }.toMap
+    def keepOnlyRecognizedCols(line: List[(Option[H], String)]): Map[H, V] = {
+      line.filter(_._1.isDefined).map{ case (Some(hdr), value) => (hdr, semanticizer(value)) }.toMap
     }
-    val relevantLines = withHdrs.map(keepOnlyRecognizedCols)
+    val tsvData = withHdrs.map(keepOnlyRecognizedCols)
+    tsvData
+  }
+}
 
-    def peaksFromXCMSCentwave(row: Map[XCMSCol, Double]) = {
-      new Peak(
-        new MonoIsotopicMass(row(MZ)),
-        new RetentionTime(row(RT)),
-        row(IntIntensity),
-        row(MaxIntensity),
-        row(SNR))
-    }
-    val peaks = relevantLines.map(peaksFromXCMSCentwave).toSet
+object PeakSpectra extends CanReadTSV {
+  type H = XCMSCol
+  type V = Double
 
+  val hdrsXCMS = List(MZ, RT, IntIntensity, MaxIntensity, SNR)
+
+  def peaksFromXCMSCentwave(row: Map[XCMSCol, Double]): Peak = {
+    new Peak(
+      new MonoIsotopicMass(row(MZ)),
+      new RetentionTime(row(RT)),
+      row(IntIntensity),
+      row(MaxIntensity),
+      row(SNR))
+  }
+
+  def fromXCMSCentwave(file: String): PeakSpectra = {
+    // example TSV
+    //    mz  mzmin mzmax rt  rtmin rtmax into  intb  maxo  sn  sample
+    //    244.98272  244.97964  244.985247  2.56099  1.91800  2.98900  130.32171 129.46491  253.17785  252 1
+    // Such are the files in /mnt/shared-data/Vijay/perlstein_xcms_centwave_optimized_output
+    def toMass(s: String): Double = s.toDouble
+    val rows: List[Map[XCMSCol, Double]] = readTSV(file, hdrsXCMS, toMass _)
+    val peaks: Set[Peak] = rows.map(peaksFromXCMSCentwave).toSet
     new PeakSpectra(peaks)
   }
 
@@ -703,8 +718,8 @@ object UntargetedMetabolomics {
         } else {
           // map the peaks to candidate molecules
           val candidateMols = restrictedIons match {
-            case null => MolPeaks.convertToMolHits(rawPeaks = analysisRslt, lookForMultipleIons = rankMultipleIons)
-            case _ => MolPeaks.convertToMolHits(rawPeaks = analysisRslt, ionOpts = restrictedIons.toSet, lookForMultipleIons = rankMultipleIons)
+            case null => MultiIonHits.convertToMolHits(rawPeaks = analysisRslt, lookForMultipleIons = rankMultipleIons)
+            case _ => MultiIonHits.convertToMolHits(rawPeaks = analysisRslt, ionOpts = restrictedIons.toSet, lookForMultipleIons = rankMultipleIons)
           }
           candidateMols
         }
@@ -874,7 +889,7 @@ object UntargetedMetabolomics {
       val hypotheses = hypothesesF.map(readSpectra)
       val experiment = new UntargetedMetabolomics(controls = controls, hypotheses = hypotheses)
       val analysisRslt = experiment.analyze()
-      val candidateMols = MolPeaks.convertToMolHits(rawPeaks = analysisRslt, lookForMultipleIons = true)
+      val candidateMols = MultiIonHits.convertToMolHits(rawPeaks = analysisRslt, lookForMultipleIons = true)
       if (verbose) {
         val peaks = analysisRslt.toJsonFormat // differential peaks
         val molecules = candidateMols.toJsonFormat // candidate molecules
@@ -893,13 +908,12 @@ object UntargetedMetabolomics {
   }
 }
 
-object MolPeaks {
-
+object MultiIonHits {
 
   def convertToMolHits(
     rawPeaks: RawPeaks,
     ionOpts: Set[String] = Set("M+H", "M+Na"),
-    lookForMultipleIons: Boolean = false): MolPeaks = {
+    lookForMultipleIons: Boolean = false): MultiIonHits = {
 
     // helper function to take each mz to Map(mass_i -> (ion_i, mz))
     def toMolCandidates(mzPeak: Peak): Map[Peak, (MetlinIonMass, MonoIsotopicMass)] = {
@@ -949,11 +963,11 @@ object MolPeaks {
     val moleculePeaks = new RawPeaks(provenance, new PeakSpectra(multiple))
 
     // return the wrapped data structure with mol peaks and map back to the (ion, mz) it came from 
-    new MolPeaks(moleculePeaks, molToMzIon)
+    new MultiIonHits(moleculePeaks, molToMzIon)
   }
 }
 
-class MolPeaks(val peaks: RawPeaks, val toOriginalMzIon: Map[Peak, (MetlinIonMass, MonoIsotopicMass)]) extends
+class MultiIonHits(val peaks: RawPeaks, val toOriginalMzIon: Map[Peak, (MetlinIonMass, MonoIsotopicMass)]) extends
   PeakHits(peaks.origin, peaks.peakSpectra) {
 
   override def peakSummarizer(p: Peak) = {
@@ -963,4 +977,103 @@ class MolPeaks(val peaks: RawPeaks, val toOriginalMzIon: Map[Peak, (MetlinIonMas
     basic + ("metlionIonMass" -> mzMonoIsotopicMass.initMass)
   }
 
+}
+
+trait ChemicalFormulae {
+  type ChemicalFormula = Map[Atom, Int]
+}
+
+trait LookupInEnumeratedList extends CanReadTSV {
+  type T // the output type, InChI: String or Formula: ChemicalFormula
+  type H = TSVHdr // headers are inchi, formula, mass
+  type V = String // row values read from TSV have String as cell elements (either InChI, formula, or Mass)
+
+  def findHits(hits: PeakHits, enumerated: Map[MonoIsotopicMass, List[T]]): Map[Peak, List[T]] = {
+    val pks: Set[Peak] = hits.peakSpectra.peaks
+    val haveHits = pks.filter(p => enumerated.contains(p.mz))
+    // now that we have filtered to those that are guaranteed to have a hit, we can just
+    // look them up in a map and not have it fail (instead of doing a get which return Option[T])
+    haveHits.map(p => p -> enumerated(p.mz)).toMap
+  }
+
+  def assumeUniqT(tsv: List[Map[TSVHdr, String]], hdrForT: TSVHdr): Map[String, Option[String]] = {
+    val massHdr: TSVHdr = HdrMolMass
+    val moleculeHdr: TSVHdr = hdrForT
+    def tsvRowToKV(row: Map[TSVHdr, String]): (String, Option[String]) = {
+      val k = row(moleculeHdr)
+      val v = if (row contains massHdr) Some(row(massHdr)) else None
+      k -> v
+    }
+    tsv.map(tsvRowToKV).toMap
+  }
+
+  def grpByMass(toMass: Map[T, MonoIsotopicMass]): Map[MonoIsotopicMass, List[T]] = {
+    val grouped: Map[MonoIsotopicMass, List[(T, MonoIsotopicMass)]] = toMass.toList.groupBy{ case (t, m) => m }
+    val mass2Ts: Map[MonoIsotopicMass, List[T]] = grouped.map{ case (m, listTM) => (m, listTM.unzip._1) }
+    mass2Ts
+  }
+  
+  def readEnumeratedList(file: String, hdrT: TSVHdr, semanticizer: String => T, masser: T => MonoIsotopicMass): 
+    Map[T, MonoIsotopicMass] = {
+    // get all the rows as maps from string (formula or inchi) to mass (optional, if specified)
+    // if mass is not specified, each of the values in the map are `None` and the data in the
+    // map is just the list of keys
+    val hdrs = List(HdrMolMass, hdrT)
+    val tsv: List[Map[TSVHdr, String]] = readTSV(file, hdrs, identity)
+    val rows: Map[String, Option[String]] = assumeUniqT(tsv, hdrT)
+
+    val semanticized: Map[T, Option[String]] = rows.map{ case (k, v) => semanticizer(k) -> v }
+    
+    // if mass column does not exist then call MassCalculator
+    def fillMass(kv: (T, Option[String])): (T, MonoIsotopicMass) = {
+      val (k, v) = kv
+      val mass = v match {
+        case None => masser(k) 
+        case Some(massStr) => new MonoIsotopicMass(massStr.toDouble)
+      }
+      k -> mass
+    }
+    val withMasses: Map[T, MonoIsotopicMass] = semanticized map fillMass
+
+    withMasses
+  }
+}
+
+object FormulaHits extends LookupInEnumeratedList with ChemicalFormulae {
+  type T = ChemicalFormula
+
+  def toFormulaHitsUsingLists(peaks: PeakHits, sourceList: Map[MonoIsotopicMass, List[ChemicalFormula]]) = {
+    new FormulaHits(peaks, findHits(peaks, sourceList))
+  }
+
+  def toFormulaHitsUsingSolver(peaks: PeakHits, onlyAbove: ChemicalFormula) = {
+    val formulaeHits = Map[Peak, List[ChemicalFormula]]()
+    // TODO: implement calling solver
+    new FormulaHits(peaks, formulaeHits)
+  }
+}
+
+object StructureHits extends LookupInEnumeratedList {
+  type T = String
+
+  def toStructureHitsUsingLists(peaks: PeakHits, source: String): StructureHits = {
+    def toInChI(s: String): String = { assert(s startsWith "InChI="); s }
+    def toMass(s: String): MonoIsotopicMass = new MonoIsotopicMass(s.toDouble)
+    val sourceList = readEnumeratedList(source, HdrMolInChI, toInChI _, toMass _)
+    toStructureHitsUsingLists(peaks, grpByMass(sourceList))
+  }
+
+  def toStructureHitsUsingLists(peaks: PeakHits, sourceList: Map[MonoIsotopicMass, List[String]]): StructureHits = {
+    new StructureHits(peaks, findHits(peaks, sourceList))
+  }
+}
+
+class FormulaHits(val peaks: PeakHits, val toFormula: Map[Peak, List[Map[Atom, Int]]]) extends
+  PeakHits(peaks.origin, peaks.peakSpectra) with ChemicalFormulae {
+  // TODO: override peakSummarizer
+}
+
+class StructureHits(val peaks: PeakHits, val toInChI: Map[Peak, List[String]]) extends
+  PeakHits(peaks.origin, peaks.peakSpectra) {
+  // TODO: override peakSummarizer
 }
