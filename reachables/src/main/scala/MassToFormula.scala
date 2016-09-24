@@ -17,6 +17,8 @@ import com.microsoft.z3._
 import scala.annotation.tailrec
 import collection.JavaConversions._
 import java.io.PrintWriter
+import scala.reflect.runtime.universe._
+import scala.reflect.runtime.{currentMirror => cm}
 
 sealed trait Expr
 case class Const(c: Int) extends Expr
@@ -421,6 +423,9 @@ object MassToFormula {
   var errStreamToConsole = true
   var outStreamToConsole = true
 
+  val allSpecials = typeOf[Specials].typeSymbol.asClass.knownDirectSubclasses
+  val allSpecialNm = allSpecials.map(_.toString.stripPrefix("class "))
+
   def main(args: Array[String]) {
     val className = this.getClass.getCanonicalName
     val opts = List(optMz, optMassFile, optOutputFile, optOutFailedTests, optRunTests, optSpecials)
@@ -447,6 +452,13 @@ object MassToFormula {
     val specials: Set[Specials] = {
       if (cmdLine has optSpecials) {
         val spls = (cmdLine getMany optSpecials).toSet
+        // check if the provided specialization is valid, before loading it as a class
+        if (!spls.forall(s => allSpecialNm.contains(s))) {
+          errStream.println("Invalid specialization provided.")
+          errStream.println("Specializations of solver supported: " + allSpecialNm.mkString(", "))
+          errStream.flush
+          System.exit(1)
+        }
         def nameToClass(s: String) = {
           val fullyQualifiedName = this.getClass.getPackage.getName + "." + s
           Class.forName(fullyQualifiedName)
@@ -553,9 +565,11 @@ object MassToFormula {
                     param = "s",
                     longParam = "specials",
                     name = "restrictions",
-                    desc = """Do solving in a specialized, i.e., restricted space of solutions
+                    desc = s"""Do solving in a specialized, i.e., restricted space of solutions
                              |For example, under a setting where the num carbons dominates.
-                             |To specialize the solver to that, pass it MostlyCarbons""".stripMargin,
+                             |To specialize the solver to that, pass it MostlyCarbons.
+                             |Any of the following, or a comma separated list of multiple are
+                             |supported: ${allSpecialNm}.""".stripMargin,
                     isReqd = false, hasArgs = true)
 
   val optOutputFile = new OptDesc(
@@ -840,28 +854,31 @@ object MassToFormula {
 
 }
 
-trait Specials {
+sealed trait Specials {
   def constraints(): Set[LinIneq]
+  def describe(): String
 
   def moreOf(xCnt: (Int, Atom), yCnt: (Int, Atom)): LinIneq = {
     val (cntx, x) = xCnt
     val (cnty, y) = yCnt
     def t(c: Int, a: Atom) = Term(Const(c), MassToFormula.atomToVar(a))
-    val lhs = LinExpr(List(t(cntx, x), t(-1 * cnty, y)))
-    LinIneq(lhs, Ge, Const(0))
+    LinIneq(t(cntx, x), Ge, t(cnty, y))
   }
 
   def moreOf(x: Atom, y: Atom): LinIneq = moreOf((1, x), (1, y))
 }
 
 class MostlyCarbons extends Specials {
+  def describe() = "C>=N + C>=O + C>=S + C>=P"
   def constraints() = Set() + (moreOf(C, N), moreOf(C, O), moreOf(C, S), moreOf(C, P))
 }
 
 class MoreHThanC extends Specials {
+  def describe() = "H>=C"
   def constraints() = Set() + moreOf(H, C)
 }
 
 class LessThan3xH extends Specials {
+  def describe() = "3C>=H"
   def constraints() = Set() + moreOf((3, C), (1, H))
 }
