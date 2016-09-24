@@ -1,8 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
 import math
-import numpy as np
+import operator
 import os
+
+import numpy as np
 import pandas as pd
 import seaborn as sns
 from cluster import LcmsClusterer
@@ -156,7 +158,7 @@ class LcmsAutoencoder:
             np.save(os.path.join(self.output_directory, saved_array_name), processing_array)
             return processing_array
 
-    def prepare_matrix_for_encoding(self, input_matrix, block_size, step_size, lowest_max_value=1e3,
+    def prepare_matrix_for_encoding(self, input_matrix, block_size, lowest_max_value=1e3,
                                     training_split=0.9):
         # Already available
         if self.verbose:
@@ -175,26 +177,67 @@ class LcmsAutoencoder:
         if self.verbose:
             print("Generating intervals from input m/z rows (One row is all the time values for a given m/z slice)")
         thresholded_groups = []
-        row_and_time = []
+        row_index_and_max = []
+
+        center = block_size / 2
+
         # For each sample
         for row_number in tqdm(range(0, len(input_matrix))):
             # Windows within sample
             single_row = input_matrix[row_number]
-            for i in range(0, (len(single_row) - block_size), step_size):
+
+            """
+            The windowing algorithm
+
+            Goes through all the times, sampling windows.  If there is no value above our threshold we ignore it.
+
+            We only take windows that, when centered the value in the middle is the max.
+            If you wish to detect peaks that are more closely clustered, decrease the block size so
+            that fewer values are looked at.
+            """
+            max_window_start = len(single_row) - block_size
+            i = 0
+            while i < max_window_start:
                 window = single_row[i:(i + block_size)]
 
-                window_max = float(max(window))
-                window_min = float(min(window))
+                # Get both index and value of max
+                window_max_index, window_max = max(enumerate(window), key=operator.itemgetter(1))
 
-                # Check that it has at least a single value
-                if window_max > lowest_max_value and window_min / window_max < 0.1:
-                    normalized_window = window / float(window_max)
+                if window_max > lowest_max_value:
+                    value_to_center_on_max_index = int(i + window_max_index - center)
 
-                    thresholded_groups.append(normalized_window)
-                    row_and_time.append([row_number, i, window_max])
+                    max_centered_window = single_row[
+                                          value_to_center_on_max_index: (value_to_center_on_max_index + block_size)]
+                    max_centered_window = np.asarray(max_centered_window)
+
+                    normalized_window = max_centered_window / float(window_max)
+
+                    # Handle edge cases that can corrupt our numpy array.
+                    if len(normalized_window) == block_size:
+                        """
+                        TODO - This should be fixed so that we better handle this situation,
+                        as it could cause us to lose some double peaks. (The max(normalized_window) <= 1 part)
+                        """
+                        if max(normalized_window) <= 1:
+                            thresholded_groups.append(normalized_window)
+                            row_index_and_max.append([row_number, value_to_center_on_max_index, window_max])
+
+                    # Take the window after this current max value.
+                    i += window_max_index + 1
+                else:
+                    i += block_size
+
+                    # window_min = float(min(window))
+                    #
+                    # # Check that it has at least a single value
+                    # if window_max > lowest_max_value and window_min / window_max < 0.1:
+                    #     normalized_window = window / float(window_max)
+                    #
+                    #     thresholded_groups.append(normalized_window)
+                    #     row_index_and_max.append([row_number, i, window_max])
 
         samples = np.asarray(thresholded_groups)
-        extra_information = np.asarray(row_and_time)
+        extra_information = np.asarray(row_index_and_max)
 
         split_training = samples[0:int(len(samples) * training_split)]
         split_training_row_numbers = extra_information[0:int(len(samples) * training_split)]
