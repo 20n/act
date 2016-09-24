@@ -5,6 +5,8 @@ import act.shared.{CmdLineParser, OptDesc}
 import scala.io.Source
 import act.shared.ChemicalSymbols.{MonoIsotopicMass, Atom, AllAminoAcids}
 import com.act.lcms.MS1.MetlinIonMass
+import act.shared.MassToFormula
+import act.shared.ChemicalSymbols.Helpers.computeMassFromAtomicFormula
 
 // @mark-20n @MichaelLampe20n: help resolve this to specific imports; please!
 import spray.json._
@@ -76,6 +78,8 @@ sealed class PeakHits(val origin: Provenance, val peakSpectra: PeakSpectra) {
 
   def peakSummarizer(p: Peak) = p.summary
 
+  def extraCodes(): Map[Double, List[String]] = Map()
+
   // when we take the ratio (and install -1.0 missing peaks), the output metrics will be such:
   // (+1.0,\inf): if signals present in ALL samples and OVER expressed in hypotheses vs controls
   // (0.0, +1.0): if sinnals present in ALL samples and UNDER expressed in hypotheses vs controls 
@@ -116,7 +120,7 @@ sealed class PeakHits(val origin: Provenance, val peakSpectra: PeakSpectra) {
     peakSpectra.peaks.toList.sortWith(sortfn)
   }
 
-  def toJsonFormat() = {
+  def toJsonFormat(extra: Map[String, JsValue] = Map()) = {
     def getPlates(src: Provenance): List[Map[String, String]] = {
       // because of the processing we do, we end up with three nested arrays on provenance:
       // 1. normalization
@@ -136,9 +140,9 @@ sealed class PeakHits(val origin: Provenance, val peakSpectra: PeakSpectra) {
       "plates" -> getPlates(origin).toJson, // List[Map[String, String]]
       "num_peaks" -> numPeaks.toJson,       // Map[String, Int]
       "layout" -> layout.toJson             // Map[String, Int]
-    )
+    ) ++ extra
 
-    output.toJson
+    output.toJson 
   }
 }
 
@@ -681,6 +685,11 @@ object UntargetedMetabolomics {
     val mapToMassAndIons = cmdLine has optDoIons
     val restrictedIons = cmdLine getMany optRestrictIons
     val rankMultipleIons = cmdLine has optMultiIonsRankHigher
+    val mapToInChIsUsingList = cmdLine has optToStructUsingList
+    val mapToFormulaUsingList = cmdLine has optToFormulaUsingList
+    val mapToFormulaUsingSolver = cmdLine has optToFormulaUsingSolver
+    val inchiListFile = cmdLine get optToStructUsingList
+    val formulaListFile = cmdLine get optToFormulaUsingList
 
     val out: PrintWriter = {
       if (cmdLine has optOutFile) 
@@ -716,7 +725,7 @@ object UntargetedMetabolomics {
         val rslt = if (!mapToMassAndIons) {
           analysisRslt
         } else {
-          // map the peaks to candidate molecules
+          // map the peaks to candidate molecule masses
           val candidateMols = restrictedIons match {
             case null => MultiIonHits.convertToMolHits(rawPeaks = analysisRslt, lookForMultipleIons = rankMultipleIons)
             case _ => MultiIonHits.convertToMolHits(rawPeaks = analysisRslt, ionOpts = restrictedIons.toSet, lookForMultipleIons = rankMultipleIons)
@@ -724,7 +733,34 @@ object UntargetedMetabolomics {
           candidateMols
         }
 
-        out.println(rslt.toJsonFormat.prettyPrint)
+        val inchis = if (!mapToInChIsUsingList) {
+          rslt
+        } else {
+          // map the peaks to candidate structures if they appear in the lists (from HMDB, ROs, etc)
+          StructureHits.toStructureHitsUsingLists(rslt, inchiListFile)
+        }
+
+        val formulae = if (!mapToFormulaUsingList) {
+          inchis
+        } else {
+          FormulaHits.toFormulaHitsUsingLists(inchis, formulaListFile)
+        }
+
+        val formulaeWithSolver = if (!mapToFormulaUsingSolver) {
+          formulae
+        } else {
+          FormulaHits.toFormulaHitsUsingSolver(formulae)
+        }
+
+        val metaForInChIs: Map[Double, List[String]] = inchis.extraCodes
+        val metaForFormulae: Map[Double, List[String]] = formulae.extraCodes
+
+        val extraMetaData = Map("matching_inchi_hashes" -> metaForInChIs) ++ 
+                            Map("matching_formulae_hashes" -> metaForFormulae)
+        val extraMetaJson = extraMetaData.mapValues(_.toJson)
+        val json = formulaeWithSolver.toJsonFormat(extraMetaJson)
+
+        out.println(json.prettyPrint)
         out.flush
       }
     }
@@ -777,16 +813,21 @@ object UntargetedMetabolomics {
   val optToStructUsingList = new OptDesc(
                     param = "S",
                     longParam = "map-to-structure-using-list",
-                    name = "",
-                    desc = "",
-                    isReqd = false, hasArg = false)
+                    name = "fileOfInChIs",
+                    desc = s"""An enumerated list of InChIs (from HMDB, RO (L2n1-\inf), L2). TSV file with 
+                              |one inchi per line, and optionally tab separated column of monoistopic mass.
+                              |The TSV hdrs need be ${HdrMolInChI.toString} and ${HdrMolMass.toString}""".stripMargin,
+                    isReqd = false, hasArg = true)
 
   val optToFormulaUsingList = new OptDesc(
                     param = "F",
                     longParam = "map-to-formula-using-list",
-                    name = "",
-                    desc = "",
-                    isReqd = false, hasArg = false)
+                    name = "fileOfFormulae",
+                    desc = s"""An enumerated list of formulae (from formulae enumeration, or EnumPolyPeptides).
+                              |TSV file with one formula per line, and optionally tab separated column of
+                              |monoisotopic mass for that formula. If missing it is computed online. The TSV
+                              |hdrs need be ${HdrMolFormula.toString} and ${HdrMolMass.toString}""".stripMargin,
+                    isReqd = false, hasArg = true)
 
   val optToFormulaUsingSolver = new OptDesc(
                     param = "C",
@@ -891,8 +932,8 @@ object UntargetedMetabolomics {
       val analysisRslt = experiment.analyze()
       val candidateMols = MultiIonHits.convertToMolHits(rawPeaks = analysisRslt, lookForMultipleIons = true)
       if (verbose) {
-        val peaks = analysisRslt.toJsonFormat // differential peaks
-        val molecules = candidateMols.toJsonFormat // candidate molecules
+        val peaks = analysisRslt.toJsonFormat() // differential peaks
+        val molecules = candidateMols.toJsonFormat() // candidate molecules
         outStream.println(if (outputRawPeakHits) peaks.prettyPrint else molecules.prettyPrint)
         outStream.flush
       }
@@ -1042,13 +1083,22 @@ trait LookupInEnumeratedList extends CanReadTSV {
 object FormulaHits extends LookupInEnumeratedList with ChemicalFormulae {
   type T = ChemicalFormula
 
+  def toFormulaHitsUsingLists(peaks: PeakHits, source: String): FormulaHits = {
+    // to deconstruct the chemical element composition from the formula string such as `C9H10NO2`
+    def toFormula(s: String): ChemicalFormula = MassToFormula.getFormulaMap(s)
+    def toMass(f: ChemicalFormula): MonoIsotopicMass = computeMassFromAtomicFormula(f)
+    val sourceList = readEnumeratedList(source, HdrMolFormula, toFormula _, toMass _)
+    toFormulaHitsUsingLists(peaks, grpByMass(sourceList))
+  }
+
   def toFormulaHitsUsingLists(peaks: PeakHits, sourceList: Map[MonoIsotopicMass, List[ChemicalFormula]]) = {
     new FormulaHits(peaks, findHits(peaks, sourceList))
   }
 
-  def toFormulaHitsUsingSolver(peaks: PeakHits, onlyAbove: ChemicalFormula) = {
+  def toFormulaHitsUsingSolver(peaks: PeakHits) = {
     val formulaeHits = Map[Peak, List[ChemicalFormula]]()
-    // TODO: implement calling solver
+    // TODO: implement calling solver in MassToFormula
+    // We would want to parameterize the solver to only consider formulae that are `onlyAbove`: `ChemicalFormula`
     new FormulaHits(peaks, formulaeHits)
   }
 }
@@ -1068,12 +1118,65 @@ object StructureHits extends LookupInEnumeratedList {
   }
 }
 
-class FormulaHits(val peaks: PeakHits, val toFormula: Map[Peak, List[Map[Atom, Int]]]) extends
+class FormulaHits(val peaks: PeakHits, val toFormulae: Map[Peak, List[Map[Atom, Int]]]) extends
   PeakHits(peaks.origin, peaks.peakSpectra) with ChemicalFormulae {
-  // TODO: override peakSummarizer
+
+  // we need a copy of MassToFormula with default `elements` coz we want to call its 
+  // hill system readable formula maker: buildChemFormulaA
+  val m2f = new MassToFormula
+
+  def toReadable(f: ChemicalFormula): String = m2f.buildChemFormulaA(f)
+
+  def code(f: Option[List[ChemicalFormula]]): (Double, List[String]) = {
+    f match {
+      case None => (-1.0, List())
+      case Some(fs) => {
+        val hcode = fs.hashCode.toDouble
+        (hcode, fs.map(toReadable))
+      }
+    }
+  }
+
+  override def extraCodes(): Map[Double, List[String]] = {
+    val formulae: List[List[ChemicalFormula]] = toFormulae.values.toList
+    // add an option in front of each element of the list above, so that we can call `code`
+    val formulaeOpt: List[Option[List[ChemicalFormula]]] = formulae.map(l => Some(l))
+    formulaeOpt.map(code).toMap
+  }
+
+  override def peakSummarizer(p: Peak) = {
+    val basic: Map[String, Double] = p.summary
+    // for each peak, the data has to be string->double, so we can only put a pointer to the actual
+    // formula in the peak output. We later to have to dump a mapping of hashCode -> list(formulae)
+    // else where
+    basic + ("matching_formulae" -> code(toFormulae.get(p))._1) 
+  }
 }
 
 class StructureHits(val peaks: PeakHits, val toInChI: Map[Peak, List[String]]) extends
   PeakHits(peaks.origin, peaks.peakSpectra) {
-  // TODO: override peakSummarizer
+  def code(i: Option[List[String]]): (Double, List[String]) = {
+    i match {
+      case None => (-1.0, List())
+      case Some(inchis) => {
+        val hcode = inchis.hashCode.toDouble
+        (hcode, inchis)
+      }
+    }
+  }
+
+  override def extraCodes(): Map[Double, List[String]] = {
+    val inchis: List[List[String]] = toInChI.values.toList
+    // add an option in front of each element of the list above, so that we can call `code`
+    val inchiOpts: List[Option[List[String]]] = inchis.map(l => Some(l))
+    inchiOpts.map(code).toMap
+  }
+
+  override def peakSummarizer(p: Peak) = {
+    val basic: Map[String, Double] = p.summary
+    // for each peak, the data has to be string->double, so we can only put a pointer to the actual
+    // formula in the peak output. We later to have to dump a mapping of hashCode -> list(formulae)
+    // else where
+    basic + ("matching_inchis" -> code(toInChI.get(p))._1) 
+  }
 }
