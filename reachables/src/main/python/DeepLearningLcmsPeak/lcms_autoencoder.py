@@ -232,15 +232,6 @@ class LcmsAutoencoder:
                 else:
                     i += block_size
 
-                    # window_min = float(min(window))
-                    #
-                    # # Check that it has at least a single value
-                    # if window_max > lowest_max_value and window_min / window_max < 0.1:
-                    #     normalized_window = window / float(window_max)
-                    #
-                    #     thresholded_groups.append(normalized_window)
-                    #     row_index_and_max.append([row_number, i, window_max])
-
         samples = np.asarray(thresholded_groups)
         extra_information = np.asarray(row_index_and_max)
 
