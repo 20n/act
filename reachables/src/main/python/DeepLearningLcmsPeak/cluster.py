@@ -43,7 +43,7 @@ class LcmsClusterer:
             print("Fitting data to clusters.")
         return kmeans.predict(training_output)
 
-    def write_to_file(self, clusters, block_size, mz_split, mz_min):
+    def write_to_file(self, output_tsv_file_name, clusters, block_size, mz_split, mz_min):
         training_real = np.load(self.training_input_file)
         row_numbers = np.load(self.row_numbers_file)
         retention_times = np.load(self.retention_times_file)
@@ -51,12 +51,12 @@ class LcmsClusterer:
         if self.verbose:
             print("Writing results to file")
 
-        with open(os.path.join(self.output_directory, "clustered_output_file.csv"), "w") as f:
+        with open(os.path.join(self.output_directory, output_tsv_file_name + ".tsv"), "w") as f:
             header = ["mz", "mzmin", "mzmax", "rt", "rtmin", "rtmax", "into", "maxo", "cluster"] + [str(x) for x in
                                                                                                     range(0,
                                                                                                           block_size)]
 
-            writer = csv.DictWriter(f, header)
+            writer = csv.DictWriter(f, header, delimiter="\t")
             writer.writeheader()
 
             # For each original window

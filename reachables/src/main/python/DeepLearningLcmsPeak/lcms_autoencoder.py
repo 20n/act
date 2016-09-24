@@ -169,7 +169,12 @@ class LcmsAutoencoder:
         if os.path.exists(training_file_name) and os.path.exists(validation_file_name):
             if self.verbose:
                 print("Using cached prepared matrix.")
-            return np.load(training_file_name), np.load(validation_file_name)
+            training = np.load(training_file_name)
+            validation = np.load(validation_file_name)
+
+            # Don't use this one if the block size differs between cached and desired versions.
+            if training.shape[1] == block_size:
+                return training, validation
 
         """
         Create intervals of size {block_size}
@@ -314,7 +319,7 @@ class LcmsAutoencoder:
                                   )
 
         output_predictions = clusterer.cluster()
-        clusterer.write_to_file(output_predictions, block_size, mz_split, mz_min)
+        clusterer.write_to_file(self.lcms_plate, output_predictions, block_size, mz_split, mz_min)
 
     def visualize(self, number_clusters):
         visualization_path = os.path.join(self.output_directory, "Visualizations")
