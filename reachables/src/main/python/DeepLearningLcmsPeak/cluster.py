@@ -1,8 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
 import csv
-import numpy as np
 import os
+
+import numpy as np
 from sklearn.cluster import MiniBatchKMeans
 from tqdm import tqdm
 from utility import row_to_mz
@@ -82,7 +83,7 @@ class LcmsClusterer:
                 # Largest intensity value
                 row["rt"] = retention_times[starting_time_index + max_value_index]
                 row["rtmin"] = retention_times[starting_time_index]
-                row["rtmin"] = retention_times[starting_time_index + len(training_real[i]) - 1]
+                row["rtmax"] = retention_times[starting_time_index + len(training_real[i]) - 1]
 
                 # Sum of all points aprox of AUTC
                 row["into"] = sum(training_real[i]) * normalizer
