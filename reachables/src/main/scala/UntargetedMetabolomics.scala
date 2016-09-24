@@ -752,8 +752,12 @@ object UntargetedMetabolomics {
           FormulaHits.toFormulaHitsUsingSolver(formulae)
         }
 
-        val metaForInChIs: Map[Double, List[String]] = inchis.extraCodes
-        val metaForFormulae: Map[Double, List[String]] = formulae.extraCodes
+        def codesToJson(kv: (Double, List[String])): Map[String, JsValue] = {
+          val (k, v) = kv
+          Map("code" -> k.toJson, "vals" -> v.toJson)
+        }
+        val metaForInChIs = inchis.extraCodes.map(codesToJson)
+        val metaForFormulae = formulae.extraCodes.map(codesToJson)
 
         val extraMetaData = Map("matching_inchi_hashes" -> metaForInChIs) ++ 
                             Map("matching_formulae_hashes" -> metaForFormulae)
@@ -1127,14 +1131,12 @@ class FormulaHits(val peaks: PeakHits, val toFormulae: Map[Peak, List[Map[Atom, 
 
   def toReadable(f: ChemicalFormula): String = m2f.buildChemFormulaA(f)
 
+  val _missing = List().hashCode.toDouble
+
   def code(f: Option[List[ChemicalFormula]]): (Double, List[String]) = {
-    f match {
-      case None => (-1.0, List())
-      case Some(fs) => {
-        val hcode = fs.hashCode.toDouble
-        (hcode, fs.map(toReadable))
-      }
-    }
+    val forms = f.getOrElse(List())
+    val hcode = forms.hashCode.toDouble
+    (hcode, forms.map(toReadable))
   }
 
   override def extraCodes(): Map[Double, List[String]] = {
@@ -1149,20 +1151,26 @@ class FormulaHits(val peaks: PeakHits, val toFormulae: Map[Peak, List[Map[Atom, 
     // for each peak, the data has to be string->double, so we can only put a pointer to the actual
     // formula in the peak output. We later to have to dump a mapping of hashCode -> list(formulae)
     // else where
-    basic + ("matching_formulae" -> code(toFormulae.get(p))._1) 
+    val found = code(toFormulae.get(p))
+    val hcode = found._1
+    if (hcode.equals(_missing)) {
+      basic
+    } else {
+        println(s"Found hit on formulae: $found!")
+        basic + ("matching_formulae" -> hcode) 
+    }
   }
 }
 
 class StructureHits(val peaks: PeakHits, val toInChI: Map[Peak, List[String]]) extends
   PeakHits(peaks.origin, peaks.peakSpectra) {
+
+  val _missing = List().hashCode.toDouble
+
   def code(i: Option[List[String]]): (Double, List[String]) = {
-    i match {
-      case None => (-1.0, List())
-      case Some(inchis) => {
-        val hcode = inchis.hashCode.toDouble
-        (hcode, inchis)
-      }
-    }
+    val inchis = i.getOrElse(List())
+    val hcode = inchis.hashCode.toDouble
+    (hcode, inchis)
   }
 
   override def extraCodes(): Map[Double, List[String]] = {
@@ -1177,6 +1185,13 @@ class StructureHits(val peaks: PeakHits, val toInChI: Map[Peak, List[String]]) e
     // for each peak, the data has to be string->double, so we can only put a pointer to the actual
     // formula in the peak output. We later to have to dump a mapping of hashCode -> list(formulae)
     // else where
-    basic + ("matching_inchis" -> code(toInChI.get(p))._1) 
+    val found = code(toInChI.get(p))
+    val hcode = found._1
+    if (hcode.equals(_missing)) {
+      basic
+    } else {
+        println(s"Found hit on structure: $found!")
+        basic + ("matching_inchis" -> hcode) 
+    }
   }
 }
