@@ -812,21 +812,21 @@ object UntargetedMetabolomics {
 
   val optToStructUsingList = new OptDesc(
                     param = "S",
-                    longParam = "map-to-structure-using-list",
-                    name = "fileOfInChIs",
-                    desc = s"""An enumerated list of InChIs (from HMDB, RO (L2n1-\inf), L2). TSV file with 
+                    longParam = "structures-using-list",
+                    name = "file",
+                    desc = s"""An enumerated list of InChIs (from HMDB, RO (L2n1-inf), L2). TSV file with 
                               |one inchi per line, and optionally tab separated column of monoistopic mass.
-                              |The TSV hdrs need be ${HdrMolInChI.toString} and ${HdrMolMass.toString}""".stripMargin,
+                              |TSV hdrs need be `${HdrMolInChI.toString}` and `${HdrMolMass.toString}`""".stripMargin,
                     isReqd = false, hasArg = true)
 
   val optToFormulaUsingList = new OptDesc(
                     param = "F",
-                    longParam = "map-to-formula-using-list",
-                    name = "fileOfFormulae",
+                    longParam = "formulae-using-list",
+                    name = "file",
                     desc = s"""An enumerated list of formulae (from formulae enumeration, or EnumPolyPeptides).
                               |TSV file with one formula per line, and optionally tab separated column of
                               |monoisotopic mass for that formula. If missing it is computed online. The TSV
-                              |hdrs need be ${HdrMolFormula.toString} and ${HdrMolMass.toString}""".stripMargin,
+                              |hdrs need be `${HdrMolFormula.toString}` and `${HdrMolMass.toString}`""".stripMargin,
                     isReqd = false, hasArg = true)
 
   val optToFormulaUsingSolver = new OptDesc(
