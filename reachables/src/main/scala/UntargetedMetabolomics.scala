@@ -1014,7 +1014,7 @@ object MultiIonHits {
   }
 }
 
-class MultiIonHits(val peaks: RawPeaks, val toOriginalMzIon: Map[Peak, (MetlinIonMass, MonoIsotopicMass)]) extends
+class MultiIonHits(val peaks: PeakHits, val toOriginalMzIon: Map[Peak, (MetlinIonMass, MonoIsotopicMass)]) extends
   PeakHits(peaks.origin, peaks.peakSpectra) {
 
   override def peakSummarizer(p: Peak) = {
