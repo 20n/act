@@ -736,6 +736,7 @@ object UntargetedMetabolomics {
         val inchis = if (!mapToInChIsUsingList) {
           rslt
         } else {
+          println(s"Mapping to structures using inchi list")
           // map the peaks to candidate structures if they appear in the lists (from HMDB, ROs, etc)
           StructureHits.toStructureHitsUsingLists(rslt, inchiListFile)
         }
@@ -743,6 +744,7 @@ object UntargetedMetabolomics {
         val formulae = if (!mapToFormulaUsingList) {
           inchis
         } else {
+          println(s"Mapping to formula using list")
           FormulaHits.toFormulaHitsUsingLists(inchis, formulaListFile)
         }
 
@@ -1016,8 +1018,9 @@ class MultiIonHits(val peaks: RawPeaks, val toOriginalMzIon: Map[Peak, (MetlinIo
   PeakHits(peaks.origin, peaks.peakSpectra) {
 
   override def peakSummarizer(p: Peak) = {
-    // original in RawPeaks just called p.summary. We want to augment that with information from 
-    val basic: Map[String, Double] = p.summary
+    // we augment information from the original summarized peaks
+    // call the chained `PeakHits` subclass's peakSummarizer to get prior information
+    val basic: Map[String, Double] = peaks.peakSummarizer(p)
     val (metlinIon, mzMonoIsotopicMass) = toOriginalMzIon(p)
     basic + ("metlionIonMass" -> mzMonoIsotopicMass.initMass)
   }
@@ -1159,7 +1162,9 @@ class FormulaHits(val peaks: PeakHits, val toFormulae: Map[Peak, List[Map[Atom, 
   }
 
   override def peakSummarizer(p: Peak) = {
-    val basic: Map[String, Double] = p.summary
+    // we augment information from the original summarized peaks
+    // call the chained `PeakHits` subclass's peakSummarizer to get prior information
+    val basic: Map[String, Double] = peaks.peakSummarizer(p)
     // for each peak, the data has to be string->double, so we can only put a pointer to the actual
     // formula in the peak output. We later to have to dump a mapping of hashCode -> list(formulae)
     // else where
@@ -1168,8 +1173,7 @@ class FormulaHits(val peaks: PeakHits, val toFormulae: Map[Peak, List[Map[Atom, 
     if (hcode.equals(_missing)) {
       basic
     } else {
-        println(s"Found hit on formulae: $found!")
-        basic + ("matching_formulae" -> hcode) 
+      basic + ("matching_formulae" -> hcode)
     }
   }
 }
@@ -1193,7 +1197,9 @@ class StructureHits(val peaks: PeakHits, val toInChI: Map[Peak, List[String]]) e
   }
 
   override def peakSummarizer(p: Peak) = {
-    val basic: Map[String, Double] = p.summary
+    // we augment information from the original summarized peaks
+    // call the chained `PeakHits` subclass's peakSummarizer to get prior information
+    val basic: Map[String, Double] = peaks.peakSummarizer(p)
     // for each peak, the data has to be string->double, so we can only put a pointer to the actual
     // formula in the peak output. We later to have to dump a mapping of hashCode -> list(formulae)
     // else where
@@ -1202,8 +1208,7 @@ class StructureHits(val peaks: PeakHits, val toInChI: Map[Peak, List[String]]) e
     if (hcode.equals(_missing)) {
       basic
     } else {
-        println(s"Found hit on structure: $found!")
-        basic + ("matching_inchis" -> hcode) 
+      basic + ("matching_inchis" -> hcode)
     }
   }
 }
