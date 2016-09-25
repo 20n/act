@@ -146,11 +146,25 @@ object ChemicalSymbols {
     def rounded(numDec: Int = MonoIsotopicMass.defaultNumPlaces): Double = roundedAndScaled(numDec) * MonoIsotopicMass.tolerance(numDec)
     def roundedAndScaled(numDec: Int = MonoIsotopicMass.defaultNumPlaces): Long = math round (initMass/MonoIsotopicMass.tolerance(numDec))
 
+    // This function is a helper to `equals`
+    // It tests whether two values are within the range of experimental drift we allow
+    private def withinDriftWindow(a: Double, b: Double) = (math abs (a - b)) < MonoIsotopicMass.tolerance()
+
+    // we allow for times to drift by driftTolerated, and so equals matches times that only that apart
     override def equals(that: Any) = that match { 
-      case that: MonoIsotopicMass => this.scaled.equals(that.scaled)
+      case that: MonoIsotopicMass => withinDriftWindow(this.initMass, that.initMass)
       case _ => false
     }
-    override def hashCode() = scaled.hashCode
+
+    // We deliberately cause hash collisions on *all* MonoIsotopicMass objects. That is because the original
+    // code was using a hashcode implementation that was `roundedAndScaled.hashCode`, i.e., converting to
+    // rounded integers and taking their hashcode. That causes problems at the bucket boundaries of the 
+    // masses. And that cannot be resolved with higher num decimals being hashed, as there will always be
+    // bucket boundaries at that precision that will fail.
+    // TODO: fix this: We need to go through the code and wherever MonoIsotopicMass objects are compared
+    // or put into hashmaps we need to change that into an explicit equality comparison
+    override def hashCode() = 1
+
     override def toString(): String = {
       String.format(s"%3.${MonoIsotopicMass.defaultNumPlaces}f", this.rounded(): java.lang.Double)
     }
