@@ -1084,7 +1084,22 @@ trait LookupInEnumeratedList extends CanReadTSV {
   }
 }
 
-object FormulaHits extends LookupInEnumeratedList with ChemicalFormulae {
+trait SolveUsingSMTSolver extends ChemicalFormulae {
+  def findHitsUsingSolver(hits: PeakHits): Map[Peak, List[ChemicalFormula]] = {
+    // TODO: parameterize the solver to only consider formulae that do not overlap with the 
+    // set already exhaustively covered through enumeration, e.g., if C50 H100 N20 O20 P20 S20,
+    // i.e., 800million (tractable) has already been enumerated, then we only need to consider
+    // cases where it is C>50 or H>100 or N>20 or O>20 or P>20 or S>20
+    val m2f = new MassToFormula
+
+    val pks: List[Peak] = hits.peakSpectra.peaks.toList
+    val formulae: List[List[ChemicalFormula]] = pks.map(p => m2f.solve(p.mz))
+    val formulaeHits: Map[Peak, List[ChemicalFormula]] = pks.zip(formulae).toMap
+    formulaeHits
+  }
+}
+
+object FormulaHits extends LookupInEnumeratedList with SolveUsingSMTSolver with ChemicalFormulae {
   type T = ChemicalFormula
 
   def toFormulaHitsUsingLists(peaks: PeakHits, source: String): FormulaHits = {
@@ -1100,10 +1115,7 @@ object FormulaHits extends LookupInEnumeratedList with ChemicalFormulae {
   }
 
   def toFormulaHitsUsingSolver(peaks: PeakHits) = {
-    val formulaeHits = Map[Peak, List[ChemicalFormula]]()
-    // TODO: implement calling solver in MassToFormula
-    // We would want to parameterize the solver to only consider formulae that are `onlyAbove`: `ChemicalFormula`
-    new FormulaHits(peaks, formulaeHits)
+    new FormulaHits(peaks, findHitsUsingSolver(peaks))
   }
 }
 
