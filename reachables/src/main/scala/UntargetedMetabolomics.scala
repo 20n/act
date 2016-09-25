@@ -30,6 +30,12 @@ object Magic {
   // and we expect most of them to "similar". We calculate similarity by vector angle
   // and only allow "rebelious" angles only as far as the parameter below
   val _normVecMaxDeviation = 20 // degrees
+
+  // replicates should truly be combined using `min` over all technical/biological
+  // that said, it leads to substantially hard to analyze outcomes, and so we (mostly
+  // for debugging and exploration to find visibly different peak sets) have this flag
+  // to allow us to switch to averaging as the means of replicate combination.
+  val _useMinForReplicateAggregation = true
 }
 
 class RetentionTime(val time: Double) {
@@ -319,7 +325,12 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
     // all the peaks passed in here should have the same (mz, rt) upto tolerances
     // all we have to do is aggregate their (integrated and max) intensity and snr
     val handlePeakCluster = peakClusterToOne(mz, rt) _
-    combinePeaks(peaks.map(handlePeakCluster), mz, rt, pickMin)
+    val replicateCombineFn = if (Magic._useMinForReplicateAggregation) {
+      pickMin _
+    } else {
+      sizedAvg(peaks.size) _
+    }
+    combinePeaks(peaks.map(handlePeakCluster), mz, rt, replicateCombineFn)
   }
 
   // identify if the peaks in hyp are outliers compared to the controls
