@@ -64,5 +64,4 @@ if __name__ == "__main__":
                                  lcms_plate_name.split(".nc")[0])
 
     autoencoder.visualize(lcms_plate_name.split(".nc")[0])
-
     autoencoder.save(lcms_plate_name + ".model")

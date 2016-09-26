@@ -3,8 +3,8 @@ from __future__ import absolute_import, division, print_function
 import math
 import operator
 import os
-import pickle
 
+import dill
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -310,8 +310,10 @@ class LcmsAutoencoder:
     def fit_clusters(self, encoded_matrix):
         self.clusterer.fit(encoded_matrix)
 
-    def predict_clusters(self, training_output, training_input, row_numbers, retention_times, output_tsv_file_name):
-        self.clusterer.predict(training_output, training_input, row_numbers, retention_times, output_tsv_file_name)
+    def predict_clusters(self, training_output, training_input, row_numbers, retention_times, output_tsv_file_name,
+                         valid_peak_array=None):
+        self.clusterer.predict(training_output, training_input, row_numbers, retention_times, output_tsv_file_name,
+                               valid_peak_array)
 
     def visualize(self, lcms_plate):
         visualization_path = os.path.join(self.output_directory, "Visualizations")
@@ -351,4 +353,5 @@ class LcmsAutoencoder:
             sns.plt.clf()
 
     def save(self, model_name):
-        pickle.dump(self, os.path.join(self.output_directory, model_name))
+        with open(os.path.join(self.output_directory, model_name), "w") as f:
+            dill.dumps(self, f)
