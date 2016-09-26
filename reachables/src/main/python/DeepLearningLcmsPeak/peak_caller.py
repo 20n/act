@@ -24,7 +24,10 @@ if __name__ == "__main__":
     peaks = args.validPeaks
     output_directory = args.outputDirectory
 
-    autoencoder = dill.loads(model)
+    autoencoder = None
+    with open(model) as f:
+        autoencoder = dill.loads("".join(f.readlines()))
+        autoencoder.set_output_directory(output_directory)
 
     row_matrix, retention_times = autoencoder.process_lcms_trace(lcms_directory, lcms_plate_name)
 
@@ -35,7 +38,7 @@ if __name__ == "__main__":
     valid_peak_array = []
     with open(peaks) as f:
         lines = f.readlines()
-        valid_peak_array = [int(cluster) for cluster in lines]
+        valid_peak_array = [int(cluster.strip()) for cluster in lines]
 
     autoencoder.predict_clusters(encoded_samples, processed_samples,
                                  auxilariy_information, retention_times, lcms_plate_name.split(".nc")[0],
