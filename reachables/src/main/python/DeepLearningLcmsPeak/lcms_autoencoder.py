@@ -26,16 +26,11 @@ class LcmsAutoencoder:
     INPUT_TRAINING_FILE_NAME = "input_training_data"
     INPUT_VALIDATION_FILE_NAME = "input_validation_data"
 
-    def __init__(self, lcms_directory, lcms_plate_name, output_directory, window_size, encoding_size, verbose=True,
+    def __init__(self, output_directory, window_size, encoding_size, number_of_clusters, block_size, mz_split, mz_min,
+                 mz_max, verbose=True,
                  debug=False):
         self.debug = debug
         self.verbose = verbose
-
-        # Plate file stuff
-        self.lcms_directory = os.path.join(lcms_directory, '')
-        self.lcms_plate = lcms_plate_name.split(".nc")[0]
-        self.current_trace_file = os.path.join(self.lcms_directory, self.lcms_plate + ".nc")
-        assert (os.path.exists(self.current_trace_file))
 
         self.output_directory = os.path.join(output_directory, '')
         if not os.path.exists(self.output_directory):
@@ -46,8 +41,25 @@ class LcmsAutoencoder:
 
         self.model, self.encoder = self.compile_model()
 
-    def process_lcms_trace(self, mz_split, mz_min, max_mz):
-        saved_array_name = self.lcms_plate + "_mz_split_" + str(mz_split)
+        self.block_size = block_size
+        self.mz_split = mz_split
+        self.mz_min = mz_min
+        self.mz_max = mz_max
+
+        self.number_of_clusters = number_of_clusters
+
+        self.clusterer = LcmsClusterer(self.number_of_clusters, self.output_directory,
+                                       self.block_size, self.mz_split,
+                                       self.mz_min, verbose=self.verbose)
+
+    def process_lcms_trace(self, lcms_directory, lcms_plate_filename):
+        # Plate file stuff
+        lcms_directory = os.path.join(lcms_directory, '')
+        lcms_plate_name = lcms_plate_filename.split(".nc")[0]
+        current_trace_file = os.path.join(lcms_directory, lcms_plate_filename)
+        assert (os.path.exists(current_trace_file))
+
+        saved_array_name = lcms_plate_name + "_mz_split_" + str(self.mz_split)
 
         try:
             processing_array = np.load(os.path.join(self.output_directory, saved_array_name + ".npy"))
@@ -57,17 +69,17 @@ class LcmsAutoencoder:
         except IOError:
             # Fill numpy array with appropriate values
             def assign_column_by_mz(mz):
-                mz_column_assignment = mz / mz_split - mz_min / mz_split
+                mz_column_assignment = mz / self.mz_split - self.mz_min / self.mz_split
                 if mz_column_assignment < 0:
                     raise RuntimeError("M/Z assignment was less than 0. M/Z "
                                        "value supplied was {}, granularity was {}, "
-                                       "min M/Z value was {}".format(mz, mz_split, mz_min))
+                                       "min M/Z value was {}".format(mz, self.mz_split, self.mz_min))
                 return int(math.floor(mz_column_assignment))
 
-            loaded_triples = load_lcms_trace(self.current_trace_file)
+            loaded_triples = load_lcms_trace(current_trace_file)
 
             # Add 1 to make inclusive bounds.
-            row_count = int(float(max_mz - mz_min + 1) / mz_split)
+            row_count = int(float(self.mz_max - self.mz_min + 1) / self.mz_split)
             column_count = int(len(loaded_triples))
 
             processing_array = np.zeros((row_count, column_count))
@@ -109,11 +121,11 @@ class LcmsAutoencoder:
                     current_mz = this_triples_mass[mz_index]
                     row = assign_column_by_mz(current_mz)
 
-                    predicted_mz = row_to_mz(row, mz_split, mz_min)
+                    predicted_mz = row_to_mz(row, self.mz_split, self.mz_min)
 
                     if self.debug:
-                        assert (predicted_mz <= current_mz + mz_split)
-                        assert (predicted_mz >= current_mz - mz_split)
+                        assert (predicted_mz <= current_mz + self.mz_split)
+                        assert (predicted_mz >= current_mz - self.mz_split)
 
                     intensity_value = this_triple_intensity[mz_index]
 
@@ -148,18 +160,16 @@ class LcmsAutoencoder:
                         processing_array[row][column] = (processing_array[row][column - 1] + processing_array[row][
                             column + 1]) / 2.0
 
-            retention_times = [t["time"] for t in loaded_triples]
+            retention_times = np.asarray([t["time"] for t in loaded_triples])
 
             # Save the times so we can access later
-            np.save(os.path.join(self.output_directory, LcmsAutoencoder.RETENTION_TIMES_FILE_NAME),
-                    np.asarray(retention_times))
+            np.save(os.path.join(self.output_directory, LcmsAutoencoder.RETENTION_TIMES_FILE_NAME), retention_times)
 
             processing_array = np.nan_to_num(processing_array)
             np.save(os.path.join(self.output_directory, saved_array_name), processing_array)
-            return processing_array
+            return processing_array, retention_times
 
-    def prepare_matrix_for_encoding(self, input_matrix, block_size, lowest_max_value=1e3,
-                                    training_split=0.9):
+    def prepare_matrix_for_encoding(self, input_matrix, lowest_max_value=1e3):
         # Already available
         if self.verbose:
             print("Checking if prepared matrix already exists.")
@@ -173,7 +183,7 @@ class LcmsAutoencoder:
             validation = np.load(validation_file_name)
 
             # Don't use this one if the block size differs between cached and desired versions.
-            if training.shape[1] == block_size:
+            if training.shape[1] == self.block_size:
                 return training, validation
 
         """
@@ -184,7 +194,7 @@ class LcmsAutoencoder:
         thresholded_groups = []
         row_index_and_max = []
 
-        center = block_size / 2
+        center = self.block_size / 2
 
         # For each sample
         for row_number in tqdm(range(0, len(input_matrix))):
@@ -200,10 +210,10 @@ class LcmsAutoencoder:
             If you wish to detect peaks that are more closely clustered, decrease the block size so
             that fewer values are looked at.
             """
-            max_window_start = len(single_row) - block_size
+            max_window_start = len(single_row) - self.block_size
             i = 0
             while i < max_window_start:
-                window = single_row[i:(i + block_size)]
+                window = single_row[i:(i + self.block_size)]
 
                 # Get both index and value of max
                 window_max_index, window_max = max(enumerate(window), key=operator.itemgetter(1))
@@ -212,13 +222,14 @@ class LcmsAutoencoder:
                     value_to_center_on_max_index = int(i + window_max_index - center)
 
                     max_centered_window = single_row[
-                                          value_to_center_on_max_index: (value_to_center_on_max_index + block_size)]
+                                          value_to_center_on_max_index: (
+                                          value_to_center_on_max_index + self.block_size)]
                     max_centered_window = np.asarray(max_centered_window)
 
                     normalized_window = max_centered_window / float(window_max)
 
                     # Handle edge cases that can corrupt our numpy array.
-                    if len(normalized_window) == block_size:
+                    if len(normalized_window) == self.block_size:
                         """
                         TODO - This should be fixed so that we better handle this situation,
                         as it could cause us to lose some double peaks. (The max(normalized_window) <= 1 part)
@@ -230,27 +241,18 @@ class LcmsAutoencoder:
                     # Take the window after this current max value.
                     i += window_max_index + 1
                 else:
-                    i += block_size
+                    i += self.block_size
 
         samples = np.asarray(thresholded_groups)
         extra_information = np.asarray(row_index_and_max)
 
-        split_training = samples[0:int(len(samples) * training_split)]
-        split_training_row_numbers = extra_information[0:int(len(samples) * training_split)]
-        split_validation = samples[int(len(samples) * training_split):]
-        split_validation_row_numbers = extra_information[int(len(samples) * training_split):]
-
         # Save for future use.
-        np.save(
-            os.path.join(self.output_directory, LcmsAutoencoder.TRAINING_OUTPUT_ROW_NUMBERS_FILE_NAME),
-            np.asarray(split_training_row_numbers))
-        np.save(
-            os.path.join(self.output_directory, LcmsAutoencoder.VALIDATION_OUTPUT_ROW_NUMBERS_FILE_NAME),
-            np.asarray(split_validation_row_numbers))
 
-        np.save(training_file_name, split_training)
-        np.save(validation_file_name, split_validation)
-        return split_training, split_validation
+        np.save(os.path.join(self.output_directory, LcmsAutoencoder.TRAINING_OUTPUT_ROW_NUMBERS_FILE_NAME),
+                np.asarray(extra_information))
+        np.save(training_file_name, samples)
+
+        return samples, extra_information
 
     def compile_model(self, loss_function="mse"):
         assert (self.window_size > self.encoding_size)
@@ -283,7 +285,11 @@ class LcmsAutoencoder:
 
         return model, encoder
 
-    def train(self, training_samples, validation_samples):
+    def train(self, samples, training_split=0.9):
+        # TODO Random Sampling
+        training_samples = samples[0:int(len(samples) * training_split)]
+        validation_samples = samples[int(len(samples) * training_split):]
+
         self.model.fit(training_samples, training_samples,
                        validation_data=(validation_samples, validation_samples),
                        batch_size=10000,
@@ -291,41 +297,29 @@ class LcmsAutoencoder:
                        shuffle=True,
                        callbacks=[EarlyStopping(monitor='val_loss', patience=5, verbose=True, mode="auto")])
 
-        training_output = self.encoder.predict(training_samples)
+    def predict(self, samples):
+        return self.encoder.predict(samples)
 
-        np.save(os.path.join(self.output_directory, LcmsAutoencoder.TRAINING_OUTPUT_FILE_NAME), training_output)
+    def fit_clusters(self, encoded_matrix):
+        self.clusterer.fit(encoded_matrix)
 
-    def cluster(self, number_clusters, block_size, mz_split, mz_min):
-        clusterer = LcmsClusterer(number_clusters,
-                                  os.path.join(self.output_directory,
-                                               LcmsAutoencoder.TRAINING_OUTPUT_FILE_NAME + ".npy"),
-                                  os.path.join(self.output_directory,
-                                               LcmsAutoencoder.INPUT_TRAINING_FILE_NAME + ".npy"),
-                                  os.path.join(self.output_directory,
-                                               LcmsAutoencoder.TRAINING_OUTPUT_ROW_NUMBERS_FILE_NAME + ".npy"),
-                                  os.path.join(self.output_directory,
-                                               LcmsAutoencoder.RETENTION_TIMES_FILE_NAME + ".npy"),
-                                  self.output_directory,
-                                  verbose=self.verbose
-                                  )
+    def predict_clusters(self, training_output, training_input, row_numbers, retention_times, output_tsv_file_name):
+        self.clusterer.predict(training_output, training_input, row_numbers, retention_times, output_tsv_file_name)
 
-        output_predictions = clusterer.cluster()
-        clusterer.write_to_file(self.lcms_plate, output_predictions, block_size, mz_split, mz_min)
-
-    def visualize(self, number_clusters):
+    def visualize(self, lcms_plate):
         visualization_path = os.path.join(self.output_directory, "Visualizations")
         if not os.path.exists(visualization_path):
             os.makedirs(visualization_path)
         if self.verbose:
             print("Loading large CSV into dataframe")
-        df = pd.DataFrame.from_csv(os.path.join(self.output_directory, self.lcms_plate + ".tsv"),
+        df = pd.DataFrame.from_csv(os.path.join(self.output_directory, lcms_plate + ".tsv"),
                                    index_col=None,
                                    sep="\t")
 
         if self.verbose:
             print("Finished loading CSV into dataframe")
 
-        for ci in range(0, number_clusters):
+        for ci in range(0, self.number_of_clusters):
             cluster = df[df["cluster"] == ci]
             if self.verbose:
                 print("Cluster {}".format(ci))
