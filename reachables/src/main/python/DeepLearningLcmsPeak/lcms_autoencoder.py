@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import math
 import operator
 import os
+import pickle
 
 import numpy as np
 import pandas as pd
@@ -342,3 +343,6 @@ class LcmsAutoencoder:
             # Make sure to clear after creating each figure.
             sns.plt.cla()
             sns.plt.clf()
+
+    def save(self, model_name):
+        pickle.dump(self, os.path.join(self.output_directory, model_name))
