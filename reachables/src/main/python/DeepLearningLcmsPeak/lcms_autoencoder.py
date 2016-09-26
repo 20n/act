@@ -4,7 +4,6 @@ import math
 import operator
 import os
 
-import dill
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -33,10 +32,6 @@ class LcmsAutoencoder:
         self.debug = debug
         self.verbose = verbose
 
-        self.output_directory = os.path.join(output_directory, '')
-        if not os.path.exists(self.output_directory):
-            os.makedirs(self.output_directory)
-
         self.window_size = window_size
         self.encoding_size = encoding_size
 
@@ -49,9 +44,19 @@ class LcmsAutoencoder:
 
         self.number_of_clusters = number_of_clusters
 
-        self.clusterer = LcmsClusterer(self.number_of_clusters, self.output_directory,
+        self.output_directory = None
+
+        self.clusterer = LcmsClusterer(self.number_of_clusters,
                                        self.block_size, self.mz_split,
                                        self.mz_min, verbose=self.verbose)
+
+        self.set_output_directory(output_directory)
+
+    def set_output_directory(self, output_directory):
+        self.output_directory = os.path.join(output_directory, '')
+        if not os.path.exists(self.output_directory):
+            os.makedirs(self.output_directory)
+        self.clusterer.set_output_directory(output_directory)
 
     def process_lcms_trace(self, lcms_directory, lcms_plate_filename):
         # Plate file stuff
@@ -321,9 +326,7 @@ class LcmsAutoencoder:
             os.makedirs(visualization_path)
         if self.verbose:
             print("Loading large CSV into dataframe")
-        df = pd.DataFrame.from_csv(os.path.join(self.output_directory, lcms_plate + ".tsv"),
-                                   index_col=None,
-                                   sep="\t")
+        df = pd.DataFrame.from_csv(os.path.join(self.output_directory, lcms_plate + ".tsv"), index_col=None, sep="\t")
 
         if self.verbose:
             print("Finished loading CSV into dataframe")
@@ -340,7 +343,9 @@ class LcmsAutoencoder:
                 continue
 
             sns.tsplot(cluster.as_matrix(), color="indianred", err_style="unit_traces")
-            save_location = os.path.join(visualization_path, "Cluster_{}_Count_{}.png".format(ci, len(cluster)))
+
+            # Count first so we can order by count easily.
+            save_location = os.path.join(visualization_path, "{}_Cluster_{}.png".format(ci, len(cluster)))
             if self.verbose:
                 print("Saving plot at {}".format(save_location))
 
@@ -351,7 +356,3 @@ class LcmsAutoencoder:
             # Make sure to clear after creating each figure.
             sns.plt.cla()
             sns.plt.clf()
-
-    def save(self, model_name):
-        with open(os.path.join(self.output_directory, model_name), "w") as f:
-            dill.dumps(self, f)

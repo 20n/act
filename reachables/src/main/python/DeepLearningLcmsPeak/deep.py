@@ -1,6 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
 import argparse
+import os
+import pickle
+import sys
 
 from lcms_autoencoder import LcmsAutoencoder
 
@@ -64,4 +67,8 @@ if __name__ == "__main__":
                                  lcms_plate_name.split(".nc")[0])
 
     autoencoder.visualize(lcms_plate_name.split(".nc")[0])
-    autoencoder.save(lcms_plate_name + ".model")
+
+    with open(os.path.join(output_directory, lcms_plate_name + ".model"), "w") as f:
+        # Complex objects require more recursive steps to pickle.
+        sys.setrecursionlimit(10000)
+        pickle.dump(autoencoder, f)

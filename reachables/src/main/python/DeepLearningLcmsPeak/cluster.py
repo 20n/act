@@ -9,20 +9,23 @@ from utility import row_to_mz
 
 
 class LcmsClusterer:
-    def __init__(self, n_cluster, output_directory, block_size, mz_split, mz_min, verbose=True):
+    def __init__(self, n_cluster, block_size, mz_split, mz_min, verbose=True):
         self.verbose = verbose
 
         self.n_cluster = n_cluster
-
-        self.output_directory = output_directory
-        if not os.path.exists(self.output_directory):
-            os.makedirs(self.output_directory)
 
         self.kmeans = MiniBatchKMeans(n_clusters=self.n_cluster)
 
         self.block_size = block_size
         self.mz_split = mz_split
         self.mz_min = mz_min
+
+        self.output_directory = None
+
+    def set_output_directory(self, output_directory):
+        self.output_directory = output_directory
+        if not os.path.exists(self.output_directory):
+            os.makedirs(self.output_directory)
 
     def fit(self, training_output):
         if self.verbose:
