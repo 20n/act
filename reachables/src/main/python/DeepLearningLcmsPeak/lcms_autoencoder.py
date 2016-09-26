@@ -62,11 +62,17 @@ class LcmsAutoencoder:
 
         saved_array_name = lcms_plate_name + "_mz_split_" + str(self.mz_split)
 
+        processed_file_name = os.path.join(self.output_directory,
+                                           saved_array_name + ".npy")
+        retention_time_file_name = os.path.join(self.output_directory,
+                                                LcmsAutoencoder.RETENTION_TIMES_FILE_NAME + ".npy")
+
         try:
-            processing_array = np.load(os.path.join(self.output_directory, saved_array_name + ".npy"))
+            processing_array = np.load(processed_file_name)
+            retention_times = np.load(retention_time_file_name)
             if self.verbose:
                 print("Using cached version of the LCMS trace.")
-            return processing_array
+            return processing_array, retention_times
         except IOError:
             # Fill numpy array with appropriate values
             def assign_column_by_mz(mz):
@@ -164,10 +170,10 @@ class LcmsAutoencoder:
             retention_times = np.asarray([t["time"] for t in loaded_triples])
 
             # Save the times so we can access later
-            np.save(os.path.join(self.output_directory, LcmsAutoencoder.RETENTION_TIMES_FILE_NAME), retention_times)
+            np.save(retention_time_file_name, retention_times)
 
             processing_array = np.nan_to_num(processing_array)
-            np.save(os.path.join(self.output_directory, saved_array_name), processing_array)
+            np.save(processed_file_name, processing_array)
             return processing_array, retention_times
 
     def prepare_matrix_for_encoding(self, input_matrix, lowest_max_value=1e3):
