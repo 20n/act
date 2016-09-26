@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
 import argparse
-import pickle
+
+import dill
 
 """
 This is the primary control file.  Run new Deep processings from here.
@@ -23,7 +24,7 @@ if __name__ == "__main__":
     peaks = args.validPeaks
     output_directory = args.outputDirectory
 
-    autoencoder = pickle.load(model)
+    autoencoder = dill.loads(model)
 
     row_matrix, retention_times = autoencoder.process_lcms_trace(lcms_directory, lcms_plate_name)
 
@@ -34,6 +35,8 @@ if __name__ == "__main__":
     valid_peak_array = []
     with open(peaks) as f:
         lines = f.readlines()
+        valid_peak_array = [int(cluster) for cluster in lines]
 
     autoencoder.predict_clusters(encoded_samples, processed_samples,
-                                 auxilariy_information, retention_times, lcms_plate_name.split(".nc")[0])
+                                 auxilariy_information, retention_times, lcms_plate_name.split(".nc")[0],
+                                 valid_peak_array)

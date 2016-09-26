@@ -29,7 +29,8 @@ class LcmsClusterer:
             print("Clustering")
         self.kmeans.fit(training_output)
 
-    def predict(self, encoded_data, raw_normalized_data, row_numbers, retention_times, output_tsv_file_name):
+    def predict(self, encoded_data, raw_normalized_data, row_numbers, retention_times, output_tsv_file_name,
+                valid_peaks=None):
         clusters = self.kmeans.predict(encoded_data)
         if self.verbose:
             print("Writing results to file")
@@ -75,4 +76,6 @@ class LcmsClusterer:
                 row["maxo"] = normalizer
                 row["cluster"] = str(clusters[i])
 
-                writer.writerow(row)
+                # Check if it is in the valid peaks or if no valid peaks were supplied.
+                if (valid_peaks and clusters[i] in valid_peaks) or not valid_peaks:
+                    writer.writerow(row)
