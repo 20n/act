@@ -47,9 +47,19 @@ if __name__ == "__main__":
     number_clusters = args.clusterNumber
 
     # Train matrix
-    autoencoder = LcmsAutoencoder(lcms_directory, lcms_plate_name, output_directory, block_size, encoding_size)
-    row_matrix = autoencoder.process_lcms_trace(mz_division, mz_min, mz_max)
-    training_data, validation_data = autoencoder.prepare_matrix_for_encoding(row_matrix, block_size)
-    autoencoder.train(training_data, validation_data)
-    autoencoder.cluster(number_clusters, block_size, mz_division, mz_min)
-    autoencoder.visualize(number_clusters)
+    autoencoder = LcmsAutoencoder(output_directory, block_size, encoding_size,
+                                  number_clusters, block_size, mz_division, mz_min)
+
+    row_matrix = autoencoder.process_lcms_trace(lcms_directory, lcms_plate_name, )
+
+    processed_samples = autoencoder.prepare_matrix_for_encoding(row_matrix)
+
+    autoencoder.train(processed_samples)
+    encoded_samples = autoencoder.train(processed_samples)
+
+    autoencoder.fit_clusters(encoded_samples)
+
+    # This currently also does the writing
+    autoencoder.predict_clusters()
+
+    autoencoder.visualize(lcms_plate_name)
