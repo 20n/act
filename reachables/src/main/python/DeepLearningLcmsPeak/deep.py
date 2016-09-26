@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     # Train matrix
     autoencoder = LcmsAutoencoder(output_directory, block_size, encoding_size,
-                                  number_clusters, block_size, mz_division, mz_min)
+                                  number_clusters, block_size, mz_division, mz_min, mz_max)
 
     row_matrix = autoencoder.process_lcms_trace(lcms_directory, lcms_plate_name, )
 
@@ -63,3 +63,5 @@ if __name__ == "__main__":
     autoencoder.predict_clusters()
 
     autoencoder.visualize(lcms_plate_name)
+
+    autoencoder.save(lcms_plate_name + ".model")
