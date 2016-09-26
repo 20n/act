@@ -50,18 +50,19 @@ if __name__ == "__main__":
     autoencoder = LcmsAutoencoder(output_directory, block_size, encoding_size,
                                   number_clusters, block_size, mz_division, mz_min, mz_max)
 
-    row_matrix = autoencoder.process_lcms_trace(lcms_directory, lcms_plate_name, )
+    row_matrix, retention_times = autoencoder.process_lcms_trace(lcms_directory, lcms_plate_name)
 
-    processed_samples = autoencoder.prepare_matrix_for_encoding(row_matrix)
+    processed_samples, auxilariy_information = autoencoder.prepare_matrix_for_encoding(row_matrix)
 
     autoencoder.train(processed_samples)
-    encoded_samples = autoencoder.train(processed_samples)
+    encoded_samples = autoencoder.predict(processed_samples)
 
     autoencoder.fit_clusters(encoded_samples)
 
     # This currently also does the writing
-    autoencoder.predict_clusters()
+    autoencoder.predict_clusters(encoded_samples, processed_samples, auxilariy_information, retention_times,
+                                 lcms_plate_name.split(".nc")[0])
 
-    autoencoder.visualize(lcms_plate_name)
+    autoencoder.visualize(lcms_plate_name.split(".nc")[0])
 
     autoencoder.save(lcms_plate_name + ".model")
