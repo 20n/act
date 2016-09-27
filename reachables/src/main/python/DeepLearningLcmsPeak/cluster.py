@@ -14,7 +14,8 @@ class LcmsClusterer:
 
         self.n_cluster = n_cluster
 
-        self.kmeans = MiniBatchKMeans(n_clusters=self.n_cluster)
+        # As the joke goes, random state of 1337 for reproducibility
+        self.kmeans = MiniBatchKMeans(n_clusters=self.n_cluster, random_state=1337)
 
         self.block_size = block_size
         self.mz_split = mz_split
@@ -25,6 +26,8 @@ class LcmsClusterer:
     def set_output_directory(self, output_directory):
         self.output_directory = output_directory
         if not os.path.exists(self.output_directory):
+            print("Creating {} as it did not previously exist.  "
+                  "This it the output directory.".format(self.output_directory))
             os.makedirs(self.output_directory)
 
     def fit(self, training_output):
@@ -32,25 +35,38 @@ class LcmsClusterer:
             print("Clustering")
         self.kmeans.fit(training_output)
 
-    def predict(self, encoded_data, raw_normalized_data, row_numbers, retention_times, output_tsv_file_name,
+    def predict(self, encoded_data, raw_normalized_data, extra_information, retention_times, output_tsv_file_name,
                 valid_peaks=None):
+        """
+        :param encoded_data:            The encoded version of the original matrix.  Size (# Samples x Encoding Length)
+        :param raw_normalized_data:     The raw, normalized version of the
+                                        input matrix. Size (# Samples x # time points)
+        :param extra_information:       A matrix that carries extra information on.  The three fields in order are:
+
+                                        1) The information is (Row number in the original matrix,
+                                        2) Time point window was centered on,
+                                        3) Maximum value of the window [What it was normalized by]
+        :param retention_times:         Retention time of each time index.  Size (# Of time points x 1)
+        :param output_tsv_file_name:    Name of the output file
+        :param valid_peaks:             A list, if provided, of clusters containing valid peaks.
+                                        If not provided, all clusters are written to file.
+        """
         clusters = self.kmeans.predict(encoded_data)
         if self.verbose:
             print("Writing results to file")
 
         with open(os.path.join(self.output_directory, output_tsv_file_name + ".tsv"), "w") as f:
-            header = ["mz", "mzmin", "mzmax", "rt", "rtmin", "rtmax", "into", "maxo", "cluster"] + [str(x) for x in
-                                                                                                    range(0,
-                                                                                                          self.block_size)]
+            header = ["mz", "mzmin", "mzmax", "rt", "rtmin", "rtmax", "into", "maxo", "sn", "cluster"] + \
+                     [str(x) for x in range(0, self.block_size)]
 
             writer = csv.DictWriter(f, header, delimiter="\t")
             writer.writeheader()
 
             # For each original window
             for i in tqdm(range(0, len(raw_normalized_data))):
-                normalizer = row_numbers[i][2]
-                row_in_array = row_numbers[i][0]
-                starting_time_index = int(row_numbers[i][1])
+                normalizer = extra_information[i][2]
+                row_in_array = extra_information[i][0]
+                starting_time_index = int(extra_information[i][1])
 
                 row = {}
 
@@ -73,11 +89,15 @@ class LcmsClusterer:
                 row["rtmax"] = retention_times[starting_time_index + len(raw_normalized_data[i]) - 1]
 
                 # Sum of all points aprox of AUTC
+                # into == integrated intensity of original raw peak
                 row["into"] = sum(raw_normalized_data[i]) * normalizer
 
                 # We normalize by max value so this works out.
                 row["maxo"] = normalizer
                 row["cluster"] = str(clusters[i])
+
+                # TODO Calculate
+                row["sn"] = 1
 
                 # Check if it is in the valid peaks or if no valid peaks were supplied.
                 if (valid_peaks and clusters[i] in valid_peaks) or not valid_peaks:
