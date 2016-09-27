@@ -202,7 +202,7 @@ class LcmsAutoencoder:
 
             # Don't use this one if the block size differs between cached and desired versions.
             if training.shape[1] == self.block_size:
-                return training, row_numbers_file
+                return training, row_numbers
 
         """
         Create intervals of size {block_size}
