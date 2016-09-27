@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import csv
 import os
 
+import defaults
 from sklearn.cluster import MiniBatchKMeans
 from tqdm import tqdm
 from utility import row_to_mz
@@ -14,8 +15,7 @@ class LcmsClusterer:
 
         self.n_cluster = n_cluster
 
-        # As the joke goes, random state of 1337 for reproducibility
-        self.kmeans = MiniBatchKMeans(n_clusters=self.n_cluster, random_state=1337)
+        self.kmeans = MiniBatchKMeans(n_clusters=self.n_cluster, random_state=defaults.kmeans_random_state)
 
         self.block_size = block_size
         self.mz_split = mz_split
@@ -59,7 +59,7 @@ class LcmsClusterer:
             header = ["mz", "mzmin", "mzmax", "rt", "rtmin", "rtmax", "into", "maxo", "sn", "cluster"] + \
                      [str(x) for x in range(0, self.block_size)]
 
-            writer = csv.DictWriter(f, header, delimiter="\t")
+            writer = csv.DictWriter(f, header, delimiter=defaults.separator)
             writer.writeheader()
 
             # For each original window

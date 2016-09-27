@@ -388,7 +388,9 @@ class LcmsAutoencoder:
             os.makedirs(visualization_path)
         if self.verbose:
             print("Loading large CSV into dataframe")
-        df = pd.DataFrame.from_csv(os.path.join(self.output_directory, lcms_plate + ".tsv"), index_col=None, sep="\t")
+        df = pd.DataFrame.from_csv(os.path.join(self.output_directory, lcms_plate + ".tsv"),
+                                   index_col=None,
+                                   sep=defaults.separator)
 
         if self.verbose:
             print("Finished loading CSV into dataframe")
