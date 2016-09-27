@@ -151,6 +151,7 @@ class LcmsAutoencoder:
                     # Take the max of what is currently there and the new value we found so that
                     # each bucket contains the highest value found within that bucket as the intensity.
                     row_column[row] = max(float(intensity_value), row_column[row])
+
                 processing_array[:, sample_time] = row_column
 
             # Fill in blanks with interpolated values after getting the first pass values in.
