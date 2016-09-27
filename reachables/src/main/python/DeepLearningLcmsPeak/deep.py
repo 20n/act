@@ -5,6 +5,7 @@ import os
 import pickle
 import sys
 
+import defaults
 from lcms_autoencoder import LcmsAutoencoder
 
 """
@@ -19,22 +20,22 @@ if __name__ == "__main__":
     parser.add_argument("-w", "--lcmsWindowSize",
                         type=int,
                         help="The size of the window to include over time. Each unit is about 0.2 seconds here.",
-                        default=90)
+                        default=defaults.window_size)
 
     parser.add_argument("-e", "--encodingSize", type=int,
                         help="The size of the NN's encoding layer. "
                              "This is the compressed plot's representation and how many neurons it has to move around.",
-                        default=5)
+                        default=defaults.encoding_size)
     parser.add_argument("-z", "--mzSplit", type=float,
                         help="The level of granularity when dividing LCMS plots up.",
-                        default=0.01)
+                        default=defaults.mz_split)
     parser.add_argument("-c", "--clusterNumber",
                         type=int,
                         help="Number of kMeans clusters to cluster on.",
-                        default=200)
+                        default=defaults.cluster_number)
 
-    parser.add_argument("-n", "--mzMin", type=int, help="The lowest M/Z value allowed.", default=49)
-    parser.add_argument("-x", "--mzMax", type=int, help="The highest M/Z value allowed.", default=950)
+    parser.add_argument("-n", "--mzMin", type=int, help="The lowest M/Z value allowed.", default=defaults.mz_min)
+    parser.add_argument("-x", "--mzMax", type=int, help="The highest M/Z value allowed.", default=defaults.mz_max)
 
     args = parser.parse_args()
 
@@ -51,7 +52,7 @@ if __name__ == "__main__":
 
     # Train matrix
     autoencoder = LcmsAutoencoder(output_directory, block_size, encoding_size,
-                                  number_clusters, block_size, mz_division, mz_min, mz_max)
+                                  number_clusters, mz_division, mz_min, mz_max)
 
     row_matrix, retention_times = autoencoder.process_lcms_trace(lcms_directory, lcms_plate_name)
 
