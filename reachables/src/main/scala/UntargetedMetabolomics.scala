@@ -36,6 +36,10 @@ object Magic {
   // for debugging and exploration to find visibly different peak sets) have this flag
   // to allow us to switch to averaging as the means of replicate combination.
   val _useMinForReplicateAggregation = true
+
+  // to keep the output file for visualization smaller, we disable outputing raw mz and raw rt
+  // values. this flag controls that.
+  val _outputRawPeakData = false
 }
 
 class RetentionTime(val time: Double) {
@@ -176,13 +180,17 @@ class Peak(
     case HdrRawRT => rt.time // raw RT from incoming data
   }
 
-  val hdrs = List(HdrMZ, HdrRT, HdrDiff, HdrRawMZ, HdrRawRT)
+  val hdrs = {
+    val core = List(HdrMZ, HdrRT, HdrDiff)
+    val extr = List(HdrRawMZ, HdrRawRT)
+    if (!Magic._outputRawPeakData) core else core ++ extr
+  }
 
   def summary(): Map[String, Double] = {
     val taggedVals = hdrs.map(h => h.toString -> getHdrVal(h)).toMap
     val withMeta = taggedVals + 
-        ("mz_band_halfwidth" -> 2 * MonoIsotopicMass.tolerance()) +
-        ("retention_time_band_halfwidth" -> 5 * RetentionTime.driftTolerated)
+        (HdrMZBand.toString -> 2 * MonoIsotopicMass.tolerance()) +
+        (HdrRTBand.toString -> 5 * RetentionTime.driftTolerated)
     withMeta
   }
 
@@ -215,7 +223,9 @@ object SNR extends XCMSCol("sn")
 
 sealed class TSVHdr(val id: String) extends HasId
 object HdrMZ extends TSVHdr("mz")       // mz at precision considered equal (MonoIsotopicMass.numDecimalPlaces)
-object HdrRT extends TSVHdr("retention_time") // rt at precision considered equal (RetentionTime.driftTolerated/toString)
+object HdrRT extends TSVHdr("rt") // rt at precision considered equal (RetentionTime.driftTolerated/toString)
+object HdrMZBand extends TSVHdr("mz_band") // when outputing the json for viz on lcms/ we need a band param
+object HdrRTBand extends TSVHdr("rt_band") // when outputing the json for viz on lcms/ we need a band param
 object HdrDiff extends TSVHdr("rank_metric") // the x% over- or under-expressed compared to controls
 object HdrRawMZ extends TSVHdr("raw_mz") // mz value up to infinite precision (from input data)
 object HdrRawRT extends TSVHdr("raw_rt") // rt value up to infinite precision (from input data)
