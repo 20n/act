@@ -144,10 +144,13 @@ sealed class PeakHits(val origin: Provenance, val peakSpectra: PeakSpectra) {
       }
     }
     val peakSummaries = sortedPeaks.map(peakSummarizer)
-    val layout = Map("nrow" -> 2, "ncol" -> 3)
+    val plateNames = getPlates(origin)
+    val nrows = 2 // always have one control set and one experimental set
+    val ncols = plateNames.size / nrows
+    val layout = Map("nrow" -> nrows, "ncol" -> ncols)
     val output = Map(
       "peaks" -> peakSummaries.toJson,      // List[Map[String, Double]]
-      "plates" -> getPlates(origin).toJson, // List[Map[String, String]]
+      "plates" -> plateNames.toJson,        // List[Map[String, String]]
       "num_peaks" -> numPeaks.toJson,       // Map[String, Int]
       "layout" -> layout.toJson             // Map[String, Int]
     ) ++ extra
@@ -239,7 +242,8 @@ trait CanReadTSV {
   type H <: HasId // head types in the first row
   type V // value types in everything expect the first row
   def readTSV(file: String, hdrs: List[H], semanticizer: String => V): List[Map[H, V]] = {
-    val lines = Source.fromFile(file).getLines.toList.map(_.split("\t").toList)
+    val linesWithComments = Source.fromFile(file).getLines.toList
+    val lines = linesWithComments.filter(l => l.length > 0 && l(0) != '#').map(_.split("\t").toList)
     val hdr::tail = lines
     val identifiedHdrs = hdr.map(hid => hdrs.find(_.id.equals(hid)))
     val withHdrs = tail.map(l => identifiedHdrs.zip(l))
