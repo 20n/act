@@ -6,7 +6,7 @@ mz_split = 0.01
 encoding_size = 5
 window_size = 90
 mz_min = 49
-mz_max = 450
+mz_max = 951
 
 """
 Lcms_Autoencoder.py Default Values
