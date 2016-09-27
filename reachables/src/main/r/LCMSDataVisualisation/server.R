@@ -373,8 +373,8 @@ shinyServer(function(input, output, session) {
     )
     splits <- unlist(strsplit(input$peaks, kPeakDisplaySep))
     mz.val <- as.numeric(splits[1])
-    rt <- as.numeric(splits[2])
-    peak <- peaks() %>% dplyr::filter(round(mz, 2) == mz.val, round(rt, 2) == rt)
+    rt.val <- as.numeric(splits[2])
+    peak <- peaks() %>% dplyr::filter(round(mz, 2) == mz.val, round(rt, 2) == rt.val)
     peak
   })
   
