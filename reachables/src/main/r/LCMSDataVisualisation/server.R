@@ -343,7 +343,7 @@ shinyServer(function(input, output, session) {
     peaks <- peaks() %>% 
       mutate_each(funs(round(.,2)), mz, retention_time) %>%
       mutate(rank_metric_signif = signif(rank_metric, 3))
-    labels <- apply(peaks[, c("mz", "retention_time", "rank_metric_signif")], 1, function(x) paste0(x, collapse = kPeakDisplaySep))
+    labels <- apply(peaks[, c("mz", "rt", "rank_metric_signif")], 1, function(x) paste0(x, collapse = kPeakDisplaySep))
     selectizeInput("peaks", "Choose a peak to visualize", choices = unname(labels), options = list(maxOptions = 20000))
   })
   
@@ -354,8 +354,8 @@ shinyServer(function(input, output, session) {
   
   output$ui.retention.time.range <- renderUI({
     selected.peak <- selected.peak()
-    rt.min <- selected.peak$retention_time - selected.peak$retention_time_band_halfwidth
-    rt.max <- selected.peak$retention_time + selected.peak$retention_time_band_halfwidth
+    rt.min <- selected.peak$rt - selected.peak$rt_band
+    rt.max <- selected.peak$rt + selected.peak$rt_band
     sprintf("Changing retention time range slider input to %s,%s", rt.min, rt.max)
     sliderInput("retention.time.range.config", value = c(rt.min, rt.max), 
                 min = 0, max = 450, label = "Retention time range", step = 1)
@@ -364,7 +364,7 @@ shinyServer(function(input, output, session) {
   output$ui.mz.band.halfwidth <- renderUI({
     selected.peak <- selected.peak()
     numericInput("mz.band.halfwidth.config", label = "Mass charge band halfwidth", 
-                 value = selected.peak$mz_band_halfwidth, step = 0.01)
+                 value = selected.peak$mz_band, step = 0.01)
   })
   
   selected.peak <- reactive({
