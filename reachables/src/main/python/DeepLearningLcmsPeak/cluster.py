@@ -64,13 +64,15 @@ class LcmsClusterer:
 
             # For each original window
             for i in tqdm(range(0, len(raw_normalized_data))):
-                normalizer = extra_information[i][2]
+                max_intensity_value = extra_information[i][2]
                 row_in_array = extra_information[i][0]
                 starting_time_index = int(extra_information[i][1])
 
                 row = {}
 
                 # Get the max intensity index.  Additionally, assign the row values.
+                # We don't use the trick operator trick here because we still want to do work while
+                # getting the max index
                 max_value_index = 0
                 for time_number in range(0, len(raw_normalized_data[i])):
                     if (raw_normalized_data[i][time_number]) == 1:
@@ -90,13 +92,13 @@ class LcmsClusterer:
 
                 # Sum of all points aprox of AUTC
                 # into == integrated intensity of original raw peak
-                row["into"] = sum(raw_normalized_data[i]) * normalizer
+                row["into"] = sum(raw_normalized_data[i]) * max_intensity_value
 
                 # We normalize by max value so this works out.
-                row["maxo"] = normalizer
+                row["maxo"] = max_intensity_value
                 row["cluster"] = str(clusters[i])
 
-                # TODO Calculate
+                # TODO Calculate actual SNR value
                 row["sn"] = 1
 
                 # Check if it is in the valid peaks or if no valid peaks were supplied.
