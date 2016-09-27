@@ -51,6 +51,11 @@ Host *-scus
   ForwardAgent Yes
 ```
 
+If your local username is not the same as the one you use on remote
+servers (which is usually the same as your email address), add a
+`User <username>` directive to each of these config blocks with the
+correct value set for `<username>`.
+
 Note that if the bastion host's public IP changes, this will need to
 be updated.
 
@@ -85,6 +90,12 @@ file in this repository.  Once you click `OK` and `Apply`, your
 browser will attempt to pattern match host names against the same
 naming conventions used for ssh connectivity, and will direct traffic
 to a known port as appropriate.  Now all we need is a tunnel!
+
+**Important**: Once you've set your proxy configuration to use
+`proxy.pac`, *don't move/rename/delete that file!* Your machine will
+rely on the absolute path of `proxy.pac` being stable and the file
+being consistently available in order to enforce correct proxying
+rules.
 
 As specified in the `proxy.pac` file, your browser will use certain
 ports to attempt to proxy traffic into Azure.  You can set up tunnels
