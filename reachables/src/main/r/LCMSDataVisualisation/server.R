@@ -341,7 +341,7 @@ shinyServer(function(input, output, session) {
   
   output$ui.peaks <- renderUI({
     peaks <- peaks() %>% 
-      mutate_each(funs(round(.,2)), mz, retention_time) %>%
+      mutate_each(funs(round(.,2)), mz, rt) %>%
       mutate(rank_metric_signif = signif(rank_metric, 3))
     labels <- apply(peaks[, c("mz", "rt", "rank_metric_signif")], 1, function(x) paste0(x, collapse = kPeakDisplaySep))
     selectizeInput("peaks", "Choose a peak to visualize", choices = unname(labels), options = list(maxOptions = 30000))
@@ -374,7 +374,7 @@ shinyServer(function(input, output, session) {
     splits <- unlist(strsplit(input$peaks, kPeakDisplaySep))
     mz.val <- as.numeric(splits[1])
     rt <- as.numeric(splits[2])
-    peak <- peaks() %>% dplyr::filter(round(mz, 2) == mz.val, round(retention_time, 2) == rt)
+    peak <- peaks() %>% dplyr::filter(round(mz, 2) == mz.val, round(rt, 2) == rt)
     peak
   })
   
