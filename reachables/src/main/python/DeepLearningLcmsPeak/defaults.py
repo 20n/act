@@ -18,3 +18,14 @@ loss_function = "mse"
 metrics = ["accuracy"]
 training_split = 0.9
 batch_size = 10000
+
+"""
+Cluster.py Default Values
+"""
+# As the joke goes, random state of 1337 for reproducibility
+kmeans_random_state = 1337
+
+"""
+*SV file separator (Default tsv)
+"""
+separator = "\t"
