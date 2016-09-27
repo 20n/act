@@ -1,0 +1,76 @@
+#!/bin/bash
+
+########################################
+# add_user: creates a user on a remote host and installs that user's public ssh key.
+#
+# usage: add_user <keys directory> <user name> <host>
+#
+# Warning: uses sudo to create user remotely.
+#
+########################################
+
+
+USAGE="$0 <keys directory> <user name> <host>"
+
+KEYS_DIR=$1
+NEW_USER=$2
+REMOTE_HOST=$3
+
+if [[ -z $KEYS_DIR || ! -d $KEYS_DIR ]]; then
+    echo "Must specify directory of public keys"
+    echo $USAGE
+    exit 1
+fi
+
+
+if [[ -z $NEW_USER ]]; then
+    echo "Must specify user to create"
+    echo $USAGE
+    exit 1
+fi
+
+KEY_NAME="${NEW_USER}_public_key.pub"
+KEY_FILE="${KEYS_DIR}/$KEY_NAME"
+
+if [[ ! -e "${KEYS_DIR}/${NEW_USER}_public_key.pub" ]]; then
+    echo "No key file found at $KEY_FILE"
+    echo "Install key file for user $NEW_USER and retry"
+    echo $USAGE
+    exit 1
+fi
+
+# Special shortcut for if we're installing the user locally
+if [[ $REMOTE_HOST = $HOSTNAME ]]; then
+    echo "Installing user on local host"
+    sudo useradd -m -s /bin/bash ${NEW_USER}
+    sudo mkdir /home/${NEW_USER}/.ssh
+    sudo cp $KEY_FILE /home/$NEW_USER/.ssh/authorized_keys
+    sudo chown -R ${NEW_USER}:$NEW_USER /home/$NEW_USER/.ssh
+    sudo chmod 644 /home/$NEW_USER/.ssh/authorized_keys
+    exit 0
+fi
+
+# Note: I tried using $? to make sure ssh worked, but it always ended
+# up being set to 1.  Why so?
+NEW_USER_CHECK=$(ssh $REMOTE_HOST "grep -c '^$NEW_USER:' /etc/passwd")
+
+# Don't make a fuss if this is re-run on a host where the user already exists.
+# This makes it much easier to run quickly over a big pool of machines where
+# some might already be initialized.
+if [[ $NEW_USER_CHECK != "0" ]]; then
+    echo "User $NEW_USER exists on $REMOTE_HOST, skipping"
+    exit 0
+fi
+
+echo "Copying key to current user's home dir on remote host."
+rsync -azP $KEY_FILE ${REMOTE_HOST}:
+
+echo "Creating user and home directory."
+ssh $REMOTE_HOST "sudo useradd -m -s /bin/bash ${NEW_USER} && \
+                  sudo -u $NEW_USER mkdir /home/${NEW_USER}/.ssh && \
+                  sudo -u $NEW_USER cp $KEY_NAME /home/$NEW_USER/.ssh/authorized_keys && \
+                  sudo chown -R ${NEW_USER}:$NEW_USER /home/$NEW_USER/.ssh && \
+                  sudo -u $NEW_USER chmod 644 /home/$NEW_USER/.ssh/authorized_keys &&
+                  rm $KEY_NAME"
+
+echo "${NEW_USER}@${REMOTE_HOST} created"

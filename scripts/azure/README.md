@@ -33,25 +33,101 @@ also tell ssh to connect to the hosts in azure via a proxy: ssh will
 connect to the bastion and then make a second "hop" to the destination
 host based on the name of the final target.
 
-Add this to your ssh config to enable transparent ssh-ing through the bastion host:
+Add this to your ssh config to enable transparent ssh-ing through the bastion hosts:
 ```
-Host twentyn-worker-*
+Host twentyn-*
   ProxyCommand ssh 13.89.34.25 -W %h:%p
+  ServerAliveInterval 30
+  ForwardAgent Yes
+
+Host *-west2
+  ProxyCommand ssh 13.66.211.16 -W %h:%p
+  ServerAliveInterval 30
+  ForwardAgent Yes
+
+Host *-scus
+  ProxyCommand ssh 13.65.25.6 -W %h:%p
   ServerAliveInterval 30
   ForwardAgent Yes
 ```
 
+If your local username is not the same as the one you use on remote
+servers (which is usually the same as your email address), add a
+`User <username>` directive to each of these config blocks with the
+correct value set for `<username>`.
+
 Note that if the bastion host's public IP changes, this will need to
 be updated.
+
+### Naming conventions
+
+With the exception of `twentyn-` hosts, I've adopted the convention of
+suffixing each host's names with a region identifier for easier ssh
+connectivity through a bastion.  I've selected shortened region names
+as the suffixes (i.e. `west2` for `west-us-2` and `scus` for the
+incredibly verbose `south-central-us`).  The ssh configuration can
+pattern-match on the host names and select the appropriate tunneling
+command.  This is a commonly used convention, though it's usually done
+with separating the name and region/subnet rather than dashes; alas,
+azure does not allow the use of dots in hostnames when using their
+internal DNS.
+
+## Web browser proxy configuration
+
+Connecting to azure via ssh is made easy with ssh config files, but
+doing the same with a browser is slightly more complicated.  We would
+like to be able to transparently connect to any host in a particular
+Azure region without having to create a new ssh tunnel for every host
+and port.  Fortunately, ssh suports SOCKS-based proxying, which can
+perform DNS lookups and traffic proxying on the *remote* side of a
+tunnel.  We can convince our browser to direct traffic through this
+tunnel by installing a proxy-autoconfig file on our local machines.
+
+On OS X, navigate to `System Preferences -> Network -> Advanced -> Proxies`,
+check the box next to "Automatic Proxy Configuration," and input a URL
+(i.e. an absolute path beginning with `file:///`) to the `proxy.pac`
+file in this repository.  Once you click `OK` and `Apply`, your
+browser will attempt to pattern match host names against the same
+naming conventions used for ssh connectivity, and will direct traffic
+to a known port as appropriate.  Now all we need is a tunnel!
+
+**Important**: Once you've set your proxy configuration to use
+`proxy.pac`, *don't move/rename/delete that file!* Your machine will
+rely on the absolute path of `proxy.pac` being stable and the file
+being consistently available in order to enforce correct proxying
+rules.
+
+As specified in the `proxy.pac` file, your browser will use certain
+ports to attempt to proxy traffic into Azure.  You can set up tunnels
+to each region like so (assuming you have acces to our private DNS
+server, such as when you are in the office or connected to the VPN):
+```
+# Open a tunnel to central-us, for connecting to twentyn-* hosts
+$ ssh -D 127.0.0.1:20141 azure-central-us
+# Open a tunnel to west-us-2 hosts, for connecting to Spark
+$ ssh -D 127.0.0.1:20142 azure-west-us-2
+# Open a tunnel to south-central-us hosts, for connecting to a
+# GPU-enabled host
+$ ssh -D 127.0.0.1:20143 azure-south-central-us
+```
+
+If it becomes convenient to do so, we can use `autossh` to establish
+and maintain these connections persistently in the background.
 
 ## Basic VM organization
 
 Azure VMs are organized into resource groups, which are arbitrary
-collections of machines.  We currently use only one resource group:
-`twentyn-azure-central-us`.  Each resource group is confined to a
-location; our resource group lives in `centralus`.  Locations
-determine the cost of VM time, as well as the size of the
-pool of available hardware resources.
+collections of machines.  We currently use only three resource groups:
+```
+twentyn-azure-central-us
+twentyn-azure-west-us-2
+twentyn-azure-south-central-us
+```
+
+Each resource group is confined to a location; the
+`twentyn-azure-central-us` group lives in `centralus`.  Locations
+determine the cost of VM time, as well as the size of the pool of
+available hardware resources.
 
 To see the set of available locations, run
 ```
@@ -68,6 +144,21 @@ $ azure quotas show centralus
 Note that quotas are per region and can be increased (assuming
 resources are available) within ~24 hours by contacting Azure support
 through the web panel.
+
+Currently, we use `central-us` for "bursty" allocations, where some
+tens of hosts must be spun up at a time to run simple command line
+utilities.  There is no regional cost savings for `central-us`, so we
+use it for short-lived (on the order of hours or days) computations
+only.
+
+The `west-us-2` region offers lower prices than other regions, and so
+is a good place for longer-running hosts like Spark clusters.  Hosts
+in `west-us-2` should still be deallocated when not in use, but the
+cost savings between this region and others is material.
+
+`south-central-us` is the only US region that has GPU-enabled VMs.
+Our quota in this region has not been raised above the default, so we
+can at most have one very powerful GPU-enabled host in `south-central-us`.
 
 ## Starting and stopping existing VMs
 
@@ -129,3 +220,5 @@ YMMV.
 TODO
 
 For now, ask Mark for assistance.  There may already be machines available for you.
+
+## Connecting to Azure VMs

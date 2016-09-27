@@ -1,0 +1,36 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "value": "westus2"
+        },
+        "virtualMachineName": {
+            "value": "INSERT NAME HERE"
+        },
+        "virtualMachineSize": {
+            "value": "Standard_DS13_v2"
+        },
+        "adminUsername": {
+            "value": "INSERT USER NAME HERE"
+        },
+        "storageAccountName": {
+            "value": "twentynazureus2"
+        },
+        "virtualNetworkName": {
+            "value": "twentyn-azure-spark"
+        },
+        "networkInterfaceName": {
+            "value": "INSERT INTERFACE NAME HERE"
+        },
+        "networkSecurityGroupName": {
+            "value": "twentyn-spark-worker-nsg"
+        },
+        "adminPublicKey": {
+            "value": "INSERT KEY HERE"
+        },
+        "subnetName": {
+            "value": "default"
+        }
+    }
+}
