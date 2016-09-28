@@ -89,7 +89,7 @@ class LcmsClusterer:
 
                 # Largest intensity value is where we call the retention time at
                 row["rt"] = column_number_to_time(time_index + max_value_index, magic.time_step, magic.time_min)
-                if drop_rt and row["rt"] < drop_rt:
+                if drop_rt and row["rt"] <= drop_rt:
                     continue
 
                 row["rtmin"] = column_number_to_time(time_index, magic.time_step, magic.time_min)
