@@ -139,6 +139,11 @@ public class Builder {
     Iterator<LCMSSpectrum> spectrumIterator = parser.getIterator(scanFile.getAbsolutePath());
 
     WriteOptions writeOptions = new WriteOptions();
+    /* The write-ahead log and disk synchronization features are useful when we need our writes to be durable (i.e. to
+     * survive a crash).  However, our index construction is effectively a one-shot deal: if it doesn't succeed, we'll
+     * just start from scratch.  Since we don't care about durability while we're constructing the index, the WAL and
+     * sync features eat a lot of disk space and I/O bandwidth, which slows us down.  So long as we cleanly close the
+     * index once it's built, nobody has to know that we disabled these features. */
     writeOptions.setDisableWAL(true);
     writeOptions.setSync(false);
     dbAndHandles.setWriteOptions(writeOptions);
@@ -167,7 +172,7 @@ public class Builder {
 
     /* We *must* ensure the windows are sorted in m/z order for the sweep line to work.  However, we don't know anything
      * about the input targetMZs list, which may be immutable or may be in some order the client wants to preserve.
-     * Rather than mess with that array, we'll sort the windows in our internal array and leave be he client's targets.
+     * Rather than mess with that array, we'll sort the windows in our internal array and leave be the client's targets.
      */
     Collections.sort(windows, (a, b) -> a.getTargetMZ().compareTo(b.getTargetMZ()));
 
@@ -201,7 +206,7 @@ public class Builder {
      *   reset:     Don't use this.  It uses the mark, which we don't need currently.
      *
      * Write/read patterns look like:
-     *   buffer.reset(); // Clear out anything already in the buffer.
+     *   buffer.clear(); // Clear out anything already in the buffer.
      *   buffer.put(thing1).put(thing2)... // write a bunch of stuff
      *   buffer.flip(); // Prep for reading.  Call *once*!
      *
@@ -318,7 +323,6 @@ public class Builder {
 
       writeBatch.write();
 
-      // We should have used up every byte we had.  TODO: make this an assert() call.
       assert(triplesForThisTime.position() == triplesForThisTime.capacity());
 
       ByteBuffer timeBuffer = ByteBuffer.allocate(Float.BYTES).putFloat(time);
@@ -365,6 +369,7 @@ public class Builder {
         // A hard invariant has been violated, so crash the program.
         throw new RuntimeException(msg);
       }
+      ids.add(window.getIndex());
     }
   }
 

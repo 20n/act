@@ -16,6 +16,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class BuilderTest {
+  public static final double FP_TOLERANCE = 0.000001;
 
   public static final double[] TIMES = { 1.0, 2.0, 3.0 };
   public static final double[][] MZS = {
@@ -53,12 +54,12 @@ public class BuilderTest {
       spectra.add(new LCMSSpectrum(i, TIMES[i], "s", mzIntensities, null, null, null, i, totalIntensity));
     }
 
-    MockRocksDBAndHandles<ColumnFamilies> fakeDB =
+    MockRocksDBAndHandles<ColumnFamilies> testDB =
         new MockRocksDBAndHandles<>(ColumnFamilies.values());
-    Builder builder = new Builder(fakeDB);
+    Builder builder = new Builder(testDB);
     builder.extractTriples(spectra.iterator(), MZ_WINDOWS);
     builder.writeWindowsToDB(MZ_WINDOWS);
-    return fakeDB;
+    return testDB;
   }
 
   public MockRocksDBAndHandles<ColumnFamilies> fakeDB;
@@ -83,9 +84,9 @@ public class BuilderTest {
       Double expectedMZ = MZS[id.intValue() / 3][id.intValue() % 3];
       Float expectedIntensity = Double.valueOf(INTENSITIES[id.intValue() / 3][id.intValue() % 3]).floatValue();
 
-      assertEquals("Time matches expected", expectedTime, triple.getTime(), 0.000001); // No error expected
-      assertEquals("M/z matches expected", expectedMZ, triple.getMz(), 0.000001);
-      assertEquals("Intensity matches expected", expectedIntensity, triple.getIntensity(), 0.000001);
+      assertEquals("Time matches expected", expectedTime, triple.getTime(), FP_TOLERANCE); // No error expected
+      assertEquals("M/z matches expected", expectedMZ, triple.getMz(), FP_TOLERANCE);
+      assertEquals("Intensity matches expected", expectedIntensity, triple.getIntensity(), FP_TOLERANCE);
 
       deserializedTriples.put(id, triple);
     }
@@ -121,7 +122,7 @@ public class BuilderTest {
 
       for (Long tripleId : tmziIds) {
         TMzI triple = deserializedTriples.get(tripleId);
-        assertEquals("Triple time matches key time", time, triple.getTime(), 0.000001);
+        assertEquals("Triple time matches key time", time, triple.getTime(), FP_TOLERANCE);
       }
     }
   }

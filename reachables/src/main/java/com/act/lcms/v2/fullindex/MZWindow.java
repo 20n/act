@@ -2,6 +2,7 @@ package com.act.lcms.v2.fullindex;
 
 import java.io.Serializable;
 
+// TODO: unify this with the MZWindow from TraceIndexExtractor, or better yet replace TraceIndexExtractor altogether.
 public class MZWindow implements Serializable {
   private static final long serialVersionUID = -3326765598920871504L;
 

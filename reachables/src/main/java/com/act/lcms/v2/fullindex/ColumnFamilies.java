@@ -21,11 +21,11 @@ enum ColumnFamilies implements ColumnFamilyEnumeration<ColumnFamilies> {
   ID_TO_TRIPLE("id_to_triple"),
   /* This maps time points (by time point value, since they're guaranteed to be from a closed universe) to lists of
    * `long` ids (as raw bytes) that correspond to the TMzI triples that occurred at that time.  We don't have to worry
-   * about FP error here, as we're just marshalling data back and from from primitive floats to bytes. */
+   * about FP error here, as we're just marshalling data back and forth from primitive floats to bytes. */
   TIMEPOINT_TO_TRIPLES("timepoints_to_triples"),
   /* This maps MZWindow index (aka id) to lists of `long` ids (as raw bytes) that correspond to the TMzI triples that
    * fall within that window.  We could maybe use the MZWindow's target as a key, but given that the definition (as I
-   * stole it from the TraceIndexExtractor) already had an idex field, I figured a MZWindow -> id -> triples list
+   * stole it from the TraceIndexExtractor) already had an index field, I figured a MZWindow -> id -> triples list
    * structure would be easier to reason about/debug. */
   WINDOW_ID_TO_TRIPLES("windows_to_triples"),
   ;

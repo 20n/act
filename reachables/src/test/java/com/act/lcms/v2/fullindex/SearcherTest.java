@@ -12,6 +12,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 
 public class SearcherTest {
+  public static final double FP_TOLERANCE = 0.000001;
 
   Searcher searcher;
 
@@ -39,9 +40,9 @@ public class SearcherTest {
     for (int i = 0; i < expected.size(); i++) {
       Triple<Float, Double, Float> e = expected.get(i);
       TMzI a = actual.get(i);
-      assertEquals("Time matches expected", e.getLeft(), a.getTime(), 0.00001);
-      assertEquals("M/z matches expected", e.getMiddle(), a.getMz(), 0.00001);
-      assertEquals("Intensity matches expected", e.getRight(), a.getIntensity(), 0.00001);
+      assertEquals("Time matches expected", e.getLeft(), a.getTime(), FP_TOLERANCE);
+      assertEquals("M/z matches expected", e.getMiddle(), a.getMz(), FP_TOLERANCE);
+      assertEquals("Intensity matches expected", e.getRight(), a.getIntensity(), FP_TOLERANCE);
     }
   }
 }
