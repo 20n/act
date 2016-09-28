@@ -1070,6 +1070,7 @@ public class MongoDB {
     BasicDBObject doc = new BasicDBObject();
     doc.put("org_id", o.getUUID());
     doc.put("name", o.getName());
+    // TODO: support NCBI ids too.
     if(this.dbOrganismNames == null) {
       System.out.print("Organism: " + o);
     } else {
@@ -1087,6 +1088,7 @@ public class MongoDB {
     Long id = this.dbOrganismNames.count() + ORG_ID_BASE;
     doc.put("org_id", id);
     doc.put("name", name);
+    // TODO: support NCBI ids too.
     if (this.dbOrganismNames == null) {
       System.out.print("Organism: " + name);
       return null;
