@@ -7,6 +7,7 @@ import act.shared.ChemicalSymbols.{MonoIsotopicMass, Atom, AllAminoAcids}
 import com.act.lcms.MS1.MetlinIonMass
 import act.shared.MassToFormula
 import act.shared.ChemicalSymbols.Helpers.computeMassFromAtomicFormula
+import com.act.lcms.MassCalculator.calculateMass
 
 // @mark-20n @MichaelLampe20n: help resolve this to specific imports; please!
 import spray.json._
@@ -1157,7 +1158,10 @@ object StructureHits extends LookupInEnumeratedList {
 
   def toStructureHitsUsingLists(peaks: PeakHits, source: String): StructureHits = {
     def toInChI(s: String): String = { assert(s startsWith "InChI="); s }
-    def toMass(s: String): MonoIsotopicMass = new MonoIsotopicMass(s.toDouble)
+    def toMass(inchi: String): MonoIsotopicMass = {
+      val mass = try { calculateMass(inchi).doubleValue } catch { case _ => 0.0 }
+      new MonoIsotopicMass(mass)
+    }
     val sourceList = readEnumeratedList(source, HdrMolInChI, toInChI _, toMass _)
     toStructureHitsUsingLists(peaks, grpByMass(sourceList))
   }
