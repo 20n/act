@@ -38,6 +38,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -58,8 +59,13 @@ public class OrganismCompositionMongoWriter {
 
   // Cache these values as they'll base the same throughout.
   // TODO: consider using a LinkedHashMap-based LRU cache to keep track of multiple organisms.
-  private String mostRecentOrganismName = null;
-  private Long mostRecentOrganismDBId = null;
+  private Map<String, Long> organismNameToIdCache = new LinkedHashMap<String, Long>(101, 1.0f, true) {
+    // Believe it or not, this is all that is required to create an LRU cache!
+    @Override
+    protected boolean removeEldestEntry(Map.Entry eldest) {
+      return this.size() > 100; // Retain last 100 used organisms.
+    }
+  };
 
   // metacyc id's are in Unification DB=~name of origin, ID.matches(METACYC_URI_PREFIX)
   String METACYC_URI_IDS = "^[A-Z0-9-]+$"; //
@@ -313,9 +319,39 @@ public class OrganismCompositionMongoWriter {
     int rxnid = db.submitToActReactionDB(rxn);
 
     // construct protein info object to be installed into the rxn
-    Long[] orgIDs = getOrganismIDs(c);
-    Long[] seqs = createCatalyzingSequences(c, rxn, rxnid);
-    JSONObject proteinInfo = constructProteinInfo(c, orgIDs, seqs);
+    Map<Set<String>, List<Long>> orgIDs = getOrganismIDs(c); // Maps org names to lists of NCBI taxonomy ids.
+
+    String thisOrganismName = "Unknown";
+    if (orgIDs.size() == 0) {
+      System.err.format("WARNING: writing catalysis %s with no organisms, defaulting to %s\n",
+          c.getID(), thisOrganismName);
+    } else {
+      if (orgIDs.size() > 1) {
+        // TODO: log when there are multiple organisms.  When/why would that ever happen?
+        System.err.format("WARNING: found multiple organisms for catalysis %s, using first\n", c.getID());
+      }
+      Set<String> organismNames = orgIDs.keySet().iterator().next();
+      if (organismNames.size() > 1) {
+        // TODO: log when there are multiple organism names.  When/why would that ever happen?
+        System.err.format("WARNING: found multiple organism names for catalysis %s, using first of: %s\n",
+            c.getID(), StringUtils.join(organismNames, ", "));
+      }
+      thisOrganismName = organismNames.iterator().next();
+    }
+
+    /* We should have covered all possible cases that would have allowed the organism name to be null by this point.
+     * That probably represents programmer error, so we'll just crash. */
+    if (thisOrganismName == null) {
+      throw new RuntimeException(String.format(
+          "Unable to find any organism name for catalysis: %s", c.getID()));
+    }
+
+    // For now ignore the NCBI id.  They aren't currently used today, and this doesn't seem an opportune time to start.
+    Long thisOrganismId = getOrganismNameIdByNameFromDB(thisOrganismName);
+
+
+    Long[] seqs = createCatalyzingSequences(c, rxn, rxnid, thisOrganismId);
+    JSONObject proteinInfo = constructProteinInfo(c, new Long[]{thisOrganismId}, seqs);
 
     // add it to the in-memory object
     rxn.addProteinData(proteinInfo);
@@ -750,36 +786,66 @@ public class OrganismCompositionMongoWriter {
     return coeff;
   }
 
-  Long getOrganismID(BPElement organism) {
-    // orgID = mostRecentOrganismName.xref(type Unification Xref).{ db: "NCBI Taxonomy", id: ID }
-    for (BPElement bpe : this.src.resolve(organism.getXrefs())) {
-      Unification u = (Unification)bpe;
-      if (u.getUnifID() != null && u.getUnifDB().equals("NCBI Taxonomy"))
-        return Long.parseLong(u.getUnifID());
-    }
-
-    return null;
-  }
-
-  Long[] getOrganismIDs(Catalysis c) {
+  Map<Set<String>, List<Long>> getOrganismIDs(Catalysis c) {
     // orgIDs = c.controller(type Protein).proteinRef(type ProteinRNARef).organism(type BioSource).xref(type Unification Xref).{ db : "NCBI Taxonomy", id: ID) -- that ID is to be sent in orgIDs
-    List<Long> orgs = new ArrayList<Long>();
     List<NXT> path = Arrays.asList(NXT.controller, NXT.ref, NXT.organism);
+    Map<Set<String>, List<Long>> results = new HashMap<>();
     for (BPElement biosrc : this.src.traverse(c, path)) {
       if (biosrc == null) {
-        System.err.format("WARNING: got null mostRecentOrganismName for %s\n", c.getID());
+        System.err.format("WARNING: got null organism for %s\n", c.getID());
         continue;
       }
+
+      Set<String> organismNames = new HashSet<>();
+      List<Long> orgs = new ArrayList<>();
+      if (biosrc instanceof BioSource) {
+        BioSource bs = (BioSource) biosrc;
+        if (bs.getName().size() != 1) {
+          // Assume only one name per BioSource entity.
+          System.err.format("WARNING: found a BioSource with multiple names (%s): %s\n",
+              bs.getID(), StringUtils.join(bs.getName(), ", "));
+        }
+        organismNames.addAll(bs.getName());
+      } else {
+        System.err.format("WARNING: found a non-BioSource organism (%s) for %s, using anyway\n",
+            biosrc.getID(), c.getID());
+        organismNames.addAll(biosrc.getName());
+      }
+
       for (BPElement bpe : this.src.resolve(biosrc.getXrefs())) {
         Unification u = (Unification)bpe;
         if (u.getUnifID() != null && u.getUnifDB().equals("NCBI Taxonomy"))
           orgs.add(Long.parseLong(u.getUnifID()));
       }
+
+      List<Long> existingIds = results.get(organismNames);
+      if (existingIds == null) {
+        existingIds = new ArrayList<>(orgs.size());
+        results.put(organismNames, existingIds);
+      }
+      existingIds.addAll(orgs);
     }
-    return orgs.toArray(new Long[0]);
+    return results;
   }
 
-  Long[] createCatalyzingSequences(Catalysis c, Reaction rxn, long rxnid) {
+  private Long getOrganismNameIdByNameFromDB(String organismName) {
+    // Try the cache first.
+    if (this.organismNameToIdCache.containsKey(organismName)) {
+      return this.organismNameToIdCache.get(organismName);
+    }
+
+    // Fall back to the DB.
+    Long id = db.getOrganismId(organismName);
+    // Create a new entry if missing.
+    if (id == null || id == -1) {
+      id = db.submitToActOrganismNameDB(organismName);
+    }
+    // Write through to cache.
+    this.organismNameToIdCache.put(organismName, id);
+    return id;
+  }
+
+  Long[] createCatalyzingSequences(Catalysis c, Reaction rxn, long rxnid, Long orgId) {
     // c.controller(type: Protein).proteinRef(type ProteinRNARef).sequence
     // c.controller(type: Complex).component(type: Protein) .. as above
     List<NXT> proteinPath = Arrays.asList( NXT.controller, NXT.ref );
@@ -791,19 +857,19 @@ public class OrganismCompositionMongoWriter {
     for (BPElement seqRef : this.src.traverse(c, proteinPath)) {
       //  String seq = ((ProteinRNARef)seqRef).getSeq();
       //  if (seq == null) continue;
-      seqs.add(writeCatalyzingSequenceToDb(c, (ProteinRNARef) seqRef, rxn, rxnid));
+      seqs.add(writeCatalyzingSequenceToDb(c, (ProteinRNARef) seqRef, rxn, rxnid, orgId));
     }
     // extract the sequences of proteins that make up complexes that control the rxn
     for (BPElement seqRef : this.src.traverse(c, complexPath)) {
       //  String seq = ((ProteinRNARef)seqRef).getSeq();
       //  if (seq == null) continue;
-      seqs.add(writeCatalyzingSequenceToDb(c, (ProteinRNARef) seqRef, rxn, rxnid));
+      seqs.add(writeCatalyzingSequenceToDb(c, (ProteinRNARef) seqRef, rxn, rxnid, orgId));
     }
 
     return seqs.toArray(new Long[0]);
   }
 
-  Long writeCatalyzingSequenceToDb(Catalysis c, ProteinRNARef seqRef, Reaction rxn, long rxnid) {
+  Long writeCatalyzingSequenceToDb(Catalysis c, ProteinRNARef seqRef, Reaction rxn, long rxnid, Long orgId) {
     // the Catalysis object has ACTIVATION/INHIBITION and L->R or R->L annotations
     // put them alongside the sequence that controls the Conversion
     org.biopax.paxtools.model.level3.ControlType act_inhibit = c.getControlType();
@@ -813,43 +879,6 @@ public class OrganismCompositionMongoWriter {
     Set<String> comments = seqRef.getComments();
     String name = seqRef.getStandardName();
     Set<JSONObject> refs = toJSONObject(seqRef.getRefs()); // this contains things like UniProt accession#s, other db references etc.
-
-    HashMap bioSourceMap = this.src.getMap(BioSource.class);
-    BioSource s = (BioSource) bioSourceMap.get(org);
-    String thisOrganismName;
-    if (org == null || s == null) {
-      // This means missing data in the OWL model.  Not good!  But we press onward.
-      if (bioSourceMap.size() != 1 && this.mostRecentOrganismName != null) {
-        // Just use a default value of "Unknown" for sequences we can't precisely tie to an organism.
-        // TODO: log these occurrences.
-        thisOrganismName = "Unknown";
-      } else {
-        // Otherwise, do nothing as we're in an organism-specific file and there's only one option--use the old value.
-        thisOrganismName = this.mostRecentOrganismName;
-      }
-    } else {
-      // TODO: log when there are multiple organism names.  When/why would that ever happen?
-      thisOrganismName = s.getName().iterator().next();
-    }
-
-
-    if (this.mostRecentOrganismName == null || !this.mostRecentOrganismName.equals(thisOrganismName)) {
-      // We are not dealing with the same organism as before!
-      this.mostRecentOrganismName = thisOrganismName;
-
-      // Attempt to look up the organism in the DB; insert if we can't find it.
-      this.mostRecentOrganismDBId = db.getOrganismId(this.mostRecentOrganismName);
-      if (this.mostRecentOrganismDBId == -1) {
-        this.mostRecentOrganismDBId = db.submitToActOrganismNameDB(this.mostRecentOrganismName);
-      }
-    }
-
-    /* We should have covered all possible cases that would have allowed the organism name to be null by this point.
-     * That probably represents programmer error, so we'll just crash. */
-    if (this.mostRecentOrganismName == null) {
-      throw new RuntimeException(String.format(
-          "Unable to find any organism name for sequence: %s", seqRef.getID()));
-    }
 
     String ecnum = null;
     if (name != null) {
@@ -863,7 +892,7 @@ public class OrganismCompositionMongoWriter {
 
     String dir = direction == null ? "NULL" : direction.toString();
     String act_inh = act_inhibit == null ? "NULL" : act_inhibit.toString();
-    SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, this.mostRecentOrganismDBId, name, ecnum, comments, refs, rxnid, rxn, act_inh, dir);
+    SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, orgId, name, ecnum, comments, refs, rxnid, rxn, act_inh, dir);
     long seqid = entry.writeToDB(db, Seq.AccDB.metacyc);
 
     return seqid;
