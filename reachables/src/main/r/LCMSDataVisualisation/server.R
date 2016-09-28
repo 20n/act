@@ -19,7 +19,6 @@ library(shiny)
 k20logoLocation <- "20nlogo"
 
 source("lcms_plate.R")
-source("lcms_config_plates.R")
 source("lcms_lib.R")
 
 shinyServer(function(input, output, session) {
@@ -37,11 +36,4 @@ shinyServer(function(input, output, session) {
   mz.scope <- callModule(mzScope, "mz.scope")
   plot.parameters <- callModule(plotParameters, "plot.parameters")
   callModule(lcmsSinglePlate, "simple", plot.parameters, mz.scope)
-  
-  mz.scope <- callModule(mzScope, "mz.scope.multi")
-  plot.parameters <- callModule(plotParameters, "plot.parameters.multi")
-  callModule(lcmsMultiPlate, "multi", plot.parameters, mz.scope)
-
-  plot.parameters <- callModule(plotParameters, "plot.parameters.config")
-  callModule(lcmsConfigPlates, "config", plot.parameters)
 })

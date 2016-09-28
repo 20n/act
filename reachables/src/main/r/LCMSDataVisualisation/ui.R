@@ -30,8 +30,6 @@ plotParametersInput <- function(id) {
   )
 }
 
-
-# lcmsPlate Module UI function
 lcmsSinglePlateInput <- function(id, label = "LCMS single plate") {
   # Create a namespace function using the provided id
   ns <- NS(id)
@@ -43,44 +41,11 @@ lcmsSinglePlateInput <- function(id, label = "LCMS single plate") {
                 min = 0, max = 450, value = c(130, 160), step = 5),
     actionButton(ns("load"), "Refresh scans!", icon("magic"), width = "100%", 
                  style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
-    mzScopeInput("mz.scope"),
-    plotParametersInput("plot.parameters")
+    mzScopeInput(ns("mz.scope")),
+    plotParametersInput(ns("plot.parameters"))
   )
 }
 
-
-lcmsMultiPlateInput <- function(id, label = "LCMS multi plate") {
-  # Create a namespace function using the provided id
-  ns <- NS(id)
-  tagList(
-    h3("Scans selection"),
-    textInput(ns("filename1"), label = "Filename - Plate 1", value = "Plate_jaffna3_A1_0815201601.nc"),
-    textInput(ns("filename2"), label = "Filename - Plate 2", value = "Plate_jaffna3_B1_0815201601.nc"),
-    textInput(ns("filename3"), label = "Filename - Plate 3", value = "Plate_jaffna3_C1_0815201601.nc"),
-    sliderInput(ns("retention.time.range"), label = "Retention Time range",
-                min = 0, max = 450, value = c(130, 160), step = 5),
-    actionButton(ns("load"), "Refresh scans!", icon("magic"), width = "100%", 
-                 style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
-    mzScopeInput("mz.scope.multi"),
-    plotParametersInput("plot.parameters.multi")
-  )
-}
-
-lcmsConfigPlatesInput <- function(id, label = "LCMS config plates") {
-  # Create a namespace function using the provided id
-  ns <- NS(id)
-  tagList(
-    h3("Input configuration"),
-    fileInput(ns("config.file"), label = "Choose a configuration file", accept=c("application/json")),
-    p("Example config: '/shared-data/Thomas/lcms_viz/FR_config_file/sample_config.json'"),
-    h3("Peak selection"),
-    uiOutput(ns("ui.peaks")),
-    em("Peak format is {mz-value} - {retention-time} - {rank-factor}"),
-    uiOutput(ns("ui.rt.mz.scope")),
-    plotParametersInput("plot.parameters.config"),
-    checkboxInput(ns("normalize"), "Normalize values", value = FALSE)
-  )
-}
 
 lcmsSinglePlateUI <- function(id) {
   ns <- NS(id)
@@ -94,25 +59,6 @@ lcmsSinglePlateUI <- function(id) {
     lcmsPlotOutput(ns("plot"), height = "700px")
   )
 }
-
-lcmsMultiPlateUI <- function(id) {
-  ns <- NS(id)
-  tagList(
-    h4("Target m/z value"),
-    textOutput(ns("target.mz")),
-    h4("3D scatterplot of the raw data"),
-    lcmsPlotOutput(ns("plot1"), height = "450px"),
-    lcmsPlotOutput(ns("plot2"), height = "450px"),
-    lcmsPlotOutput(ns("plot3"), height = "450px")  
-  )
-}
-
-lcmsConfigPlatesUI <- function(id) {
-  ns <- NS(id)
-  uiOutput(ns("plots"))
-}
-
-
 lcmsPlotOutput <- function(id, ...) {
   ns <- NS(id)
   plotOutput(ns("plot"), ...)
@@ -127,29 +73,13 @@ shinyUI(fluidPage(
     column(2)
   ),
   navbarPage("Visualisation mode:", 
-             selected = "Configuration-based",
+             selected = "Simple",
              tabPanel("Simple",
                       sidebarPanel(
                         lcmsSinglePlateInput("simple")
                       ),
                       mainPanel(
                         lcmsSinglePlateUI("simple")
-                      )
-             ),
-             tabPanel("Multi",
-                      sidebarPanel(
-                        lcmsMultiPlateInput("multi")
-                      ),
-                      mainPanel(
-                        lcmsMultiPlateUI("multi")
-                      )
-             ),
-             tabPanel("Configuration-based",
-                      sidebarPanel(
-                        lcmsConfigPlatesInput("config")
-                      ),
-                      mainPanel(
-                        lcmsConfigPlatesUI("config")
                       )
              )
   )
