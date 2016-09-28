@@ -1045,9 +1045,14 @@ class MultiIonHits(val peaks: PeakHits, val toOriginalMzIon: Map[Peak, (MetlinIo
   override def peakSummarizer(p: Peak) = {
     // we augment information from the original summarized peaks
     // call the chained `PeakHits` subclass's peakSummarizer to get prior information
-    val basic: Map[String, Double] = peaks.peakSummarizer(p)
     val (metlinIon, mzMonoIsotopicMass) = toOriginalMzIon(p)
-    basic + ("metlionIonMass" -> mzMonoIsotopicMass.initMass)
+    val peakForIon = new Peak(mzMonoIsotopicMass, p.rt, p.integratedInt, p.maxInt, p.snr)
+    val basic: Map[String, Double] = peaks.peakSummarizer(peakForIon)
+    // I would love to also write the specific ion to the output M+H or M+Na etc, but
+    // the map needs to be a String -> Double, and so we could stuff the hashcode, but the string
+    // corresponding to the ion name. TODO: Fix this.
+    // ("ion" -> metlinIon.getName)
+    basic + ("moleculeMass" -> p.mz.initMass) 
   }
 
 }
@@ -1195,11 +1200,7 @@ class FormulaHits(val peaks: PeakHits, val toFormulae: Map[Peak, List[Map[Atom, 
     // else where
     val found = code(toFormulae.get(p))
     val hcode = found._1
-    if (hcode.equals(_missing)) {
-      basic
-    } else {
-      basic + ("matching_formulae" -> hcode)
-    }
+    basic + ("matching_formulae" -> hcode)
   }
 }
 
@@ -1230,10 +1231,6 @@ class StructureHits(val peaks: PeakHits, val toInChI: Map[Peak, List[String]]) e
     // else where
     val found = code(toInChI.get(p))
     val hcode = found._1
-    if (hcode.equals(_missing)) {
-      basic
-    } else {
-      basic + ("matching_inchis" -> hcode)
-    }
+    basic + ("matching_inchis" -> hcode)
   }
 }
