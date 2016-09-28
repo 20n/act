@@ -343,7 +343,7 @@ shinyServer(function(input, output, session) {
     peaks <- peaks() %>% 
       mutate_each(funs(round(.,2)), mz, rt) %>%
       mutate(rank_metric_signif = signif(rank_metric, 3)) %>%
-      arrange(rank_metric_signif, desc())
+      arrange(desc(rank_metric_signif))
     labels <- apply(peaks[, c("mz", "rt", "rank_metric_signif")], 1, function(x) paste0(x, collapse = kPeakDisplaySep))
     selectizeInput("peaks", "Choose a peak to visualize", choices = unname(labels), options = list(maxOptions = 30000))
   })
