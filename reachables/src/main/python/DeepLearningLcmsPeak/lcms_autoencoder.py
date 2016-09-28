@@ -3,23 +3,23 @@ from __future__ import absolute_import, division, print_function
 import operator
 import os
 
-import defaults
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from cluster import LcmsClusterer
 from keras.callbacks import EarlyStopping
 from keras.layers import Input, Dense
 from keras.models import Model
 from keras.optimizers import RMSprop
-from netcdf_parser import load_lcms_trace
 from tqdm import tqdm
-from utility import assign_row_by_mz
+
+import magic
+from cluster import LcmsClusterer
+from netcdf_parser import load_lcms_trace
+from utility import assign_row_by_mz, assign_column_by_time
 
 
 class LcmsAutoencoder:
     TRAINING_OUTPUT_ROW_NUMBERS_FILE_NAME = "training_output_row_numbers.npy"
-    RETENTION_TIMES_FILE_NAME = "retention_times.npy"
     VALIDATION_OUTPUT_ROW_NUMBERS_FILE_NAME = "validation_output_row_numbers.npy"
 
     TRAINING_OUTPUT_FILE_NAME = "predicted_training_encodings.npy"
@@ -70,6 +70,14 @@ class LcmsAutoencoder:
         self.model, self.encoder = self.compile_model()
 
     def set_output_directory(self, output_directory):
+        """
+        Sets the output directory in a way that also modifies the cluster output directory and creates
+        the directory structure if it does not exist.  This allows us to reuse
+        models and change all the outputs at the same time.
+
+        :param output_directory:    Directory to write all our output files to.
+        :return:
+        """
         self.output_directory = os.path.join(output_directory, '')
         if not os.path.exists(self.output_directory):
             print("Creating {} as it did not previously exist.  "
@@ -77,37 +85,52 @@ class LcmsAutoencoder:
             os.makedirs(self.output_directory)
         self.clusterer.set_output_directory(output_directory)
 
-    def process_lcms_trace(self, lcms_directory, lcms_plate_filename):
+    def process_lcms_trace(self, lcms_directory, scan_file_name):
+        """
+        The goal of this function is to take in a raw LCMS trace and convert it into a time
+        and m/z aligned matrix that we can do later processing on.
+
+        :param lcms_directory:  Directory of the LCMS file
+        :param scan_file_name:  Actual LCMS scan file.
+        :return:                Prepared matrix
+        """
         # Plate file stuff
         lcms_directory = os.path.join(lcms_directory, '')
-        lcms_plate_name = lcms_plate_filename.split(".nc")[0]
+        lcms_plate_name = scan_file_name.split(".nc")[0]
         assert lcms_plate_name.endswith("01"), "This module only processes MS1 data which should always have a " \
                                                "file ending of '01'.  Your supplied file " \
-                                               "was {}".format(lcms_plate_filename)
-        current_trace_file = os.path.join(lcms_directory, lcms_plate_filename)
+                                               "was {}".format(scan_file_name)
+
+        current_trace_file = os.path.join(lcms_directory, scan_file_name)
         assert os.path.exists(current_trace_file), "The trace file at {} does not exist.".format(current_trace_file)
 
         saved_array_name = lcms_plate_name + "_mz_split_" + str(self.mz_split) + ".npy"
 
         processed_file_name = os.path.join(self.output_directory, saved_array_name)
-        retention_time_file_name = os.path.join(self.output_directory,
-                                                LcmsAutoencoder.RETENTION_TIMES_FILE_NAME)
 
         # Check for cached version.
-        if os.path.exists(processed_file_name) and os.path.exists(retention_time_file_name):
+        if os.path.exists(processed_file_name):
             if self.verbose:
-                print("Using cached version of the LCMS trace.")
+                print("Using cached version of the LCMS trace at {}.".format(scan_file_name))
             processing_array = np.load(processed_file_name)
-            retention_times = np.load(retention_time_file_name)
-            return processing_array, retention_times
+            return processing_array
         else:
+            """
+            The process:
+            Step 1) Load the LCMS file using the netcdf_parser
+            Step 2) Bucket every value by time and m/z value
+            Step 3) Apply a smoothing to the buckets such that if a value is 0, but the flanking values
+                    are non-zero, we say that the 0 value is actually the average of the flanking values.
+            Step 4) Save processed file for later reuse.
+            """
+            # Step 1
             loaded_triples = load_lcms_trace(current_trace_file)
 
             # Add 1 to make inclusive bounds.
             row_count = assign_row_by_mz(self.mz_max, self.mz_split, self.mz_min) + 1
-            column_count = len(loaded_triples)
+            column_count = assign_column_by_time(magic.time_max, magic.time_step, magic.time_min)
 
-            # We preinitialize the array because merging a bunch of arrays is slow in numpy
+            # We initialize the array as all 0s because merging a bunch of arrays is slow in numpy
             processing_array = np.zeros((row_count, column_count))
             if self.verbose:
                 print("LCMS array has shape {}".format(processing_array.shape))
@@ -126,6 +149,7 @@ class LcmsAutoencoder:
             ...
             950
             """
+            # Step 2
             for triples_index, triple in tqdm(enumerate(loaded_triples)):
                 """
                 We place each triple into a matrix at the assigned location and
@@ -134,11 +158,13 @@ class LcmsAutoencoder:
 
                 # List of M/Z values
                 mass_list = triple["mz"]
+
                 # List of Intensities aligned with M/Z value (Index 1 in M/Z == Index 1 in Intensity)
                 intensity_list = triple["intensity"]
+
                 # The current relative time, based on the index in the triples array
                 # (Each index has one time, though they are not equally spaced/distributed).
-                sample_time = triples_index
+                sample_time = assign_column_by_time(triple["time"], magic.time_step, magic.time_min)
 
                 row_column = np.zeros(len(processing_array))
 
@@ -148,14 +174,18 @@ class LcmsAutoencoder:
 
                     intensity_value = intensity_list[mz_index]
 
-                    # Take the max of what is currently there and the new value we found so that
-                    # each bucket contains the highest value found within that bucket as the intensity.
+                    """
+                    Take the max of what is currently there and the new value we found so that
+                    each bucket contains the highest value found within that bucket as the intensity.
+                    """
                     row_column[row] = max(float(intensity_value), row_column[row])
 
-                processing_array[:, sample_time] = row_column
+                processing_array[:, sample_time] = np.vstack((row_column, processing_array[:, sample_time])).max(axis=0)
 
             # Fill in blanks with interpolated values after getting the first pass values in.
             # TODO: Evaluate if this is effective and useful.
+
+            # Step 3
             for row in tqdm(range(0, len(processing_array))):
                 """
                 Don't try to interpolate the first and last values, but try to correct
@@ -173,20 +203,28 @@ class LcmsAutoencoder:
                 for column in range(1, len(processing_array[row]) - 1):
                     # If unassigned, interpolate.  Unassigned values are always 0 because we initialize the array to 0.
                     if processing_array[row][column] == 0:
+                        # We really only want to do this while traversing up a peak, not to augment the noise floor.
+                        # This single statement increases the number of iterations we can do each second by roughly 55%.
                         before_and_after_sum = processing_array[row][column - 1] + processing_array[row][column + 1]
                         processing_array[row][column] = float(before_and_after_sum) / 2.0
 
-            # We pull the actual retention times out of the array and save them for later.
-            retention_times = np.asarray([t["time"] for t in loaded_triples])
-
-            # Save the times so we can access later
-            np.save(retention_time_file_name, retention_times)
-
+            # Step 4
             processing_array = np.nan_to_num(processing_array)
             np.save(processed_file_name, processing_array)
-            return processing_array, retention_times
+            return processing_array
 
-    def prepare_matrix_for_encoding(self, input_matrix, lowest_max_value=defaults.lowest_encoded_window_max_value):
+    def prepare_matrix_for_encoding(self, input_matrix, lowest_max_value=magic.lowest_encoded_window_max_value,
+                                    snr=None):
+        """
+        The goal of this function is to window and threshold an input matrix such that the output
+        can be directly used by the autoencoder to learn.
+
+        :param input_matrix:        Processed LCMS matrix
+        :param lowest_max_value:    The lowest maximum value that a window can have and still be considered
+        :param snr:                 A SNR calculation supplied from outside that should be used if a window is valid.
+                                    The SNR output value here is the highest - lowest SNR in a window.
+        :return:                    A vector of valid windows.
+        """
         if self.verbose:
             print("Checking if prepared matrix already exists.")
 
@@ -236,8 +274,15 @@ class LcmsAutoencoder:
 
                 # Get both index and value of max
                 window_max_index, window_max = max(enumerate(window), key=operator.itemgetter(1))
+                window_min_index, window_min = min(enumerate(window), key=operator.itemgetter(1))
 
-                if window_max > lowest_max_value:
+                # Special case when doing differential analysis which can be negative.
+                # Iff all values are positive this will never be true (Aka non-differential time).
+                if abs(window_min) > window_max:
+                    window_max_index = window_min_index
+                    window_max = window_min
+
+                if abs(window_max) > lowest_max_value:
                     """
                     We center the window onto the max value we just found.
                     We do this by taking the current index, adding whichever index the max_index was in
@@ -263,17 +308,35 @@ class LcmsAutoencoder:
                     max_centered_window = np.asarray(single_row[centered_time: (centered_time + self.block_size)])
 
                     # By dividing by the max, we normalize the entire window to our max value that we previously found.
-                    normalized_window = max_centered_window / float(window_max)
+                    normalized_window = max_centered_window / abs(float(window_max))
 
                     # Handle edge cases that can corrupt our numpy array.
                     if len(normalized_window) == self.block_size:
-                        # TODO: This should be fixed so that we better handle this situation.
-                        # It could cause us to lose some double peaks. (The max(normalized_window) <= 1 part)
-                        if max(normalized_window) <= 1:
+                        if abs(max(normalized_window, key=abs)) <= 1:
                             thresholded_groups.append(normalized_window)
-                            row_index_and_max.append([row_number, centered_time, window_max])
+                            extra_info = [row_number, centered_time, window_max]
+
+                            if snr is not None:
+                                """
+                                One problem that can occur here is when the window is off-center.
+                                We see that the off-centering tends to happen a couple seconds apart.
+                                We try to fix this by taking the using the difference between the most
+                                negative and most positive SN values as our actual SN value.
+                                If we saw two widely different, oppositely signed SN values in a single window,
+                                we'd likely assume that a shift is just causing one peak to look like two.
+                                """
+                                signed_snr = \
+                                    np.sign(max_centered_window) * \
+                                    snr[row_number][centered_time: (centered_time + self.block_size)]
+
+                                max_signed = max(signed_snr)
+                                min_signed = abs(min(signed_snr))
+
+                                extra_info.append(max_signed - min_signed)
+                            row_index_and_max.append(extra_info)
                         else:
-                            print("Skipping window as another, larger peak was found nearby.")
+                            if self.debug:
+                                print("Skipping window as another, larger peak was found nearby.")
 
                     # We take one step here to not miss anything
                     i += window_max_index + 1
@@ -294,7 +357,7 @@ class LcmsAutoencoder:
 
         return samples, extra_information
 
-    def compile_model(self, loss_function=defaults.loss_function):
+    def compile_model(self, loss_function=magic.loss_function):
         """
         Takes the model we've created below and compiles it so that we can fit the model.
 
@@ -332,11 +395,19 @@ class LcmsAutoencoder:
         encoder = Model(input=input_layer, output=encoded)
 
         rmsprop = RMSprop()
-        model.compile(optimizer=rmsprop, loss=loss_function, metrics=defaults.metrics)
+        model.compile(optimizer=rmsprop, loss=loss_function, metrics=magic.metrics)
 
         return model, encoder
 
-    def train(self, samples, training_split=defaults.training_split):
+    def train(self, samples, training_split=magic.training_split):
+        """
+        Trains an autoencoder based on the input samples.
+
+        :param samples:         A vector of equally sized windows
+        :param training_split:  What percent of the training data we should use as a
+                                validation set to allow for early-stopping.
+        :return:
+        """
         # TODO Random Sampling
         training_samples = samples[0:int(len(samples) * training_split)]
         validation_samples = samples[int(len(samples) * training_split):]
@@ -367,31 +438,62 @@ class LcmsAutoencoder:
         """
         self.model.fit(x=training_samples, y=training_samples,
                        validation_data=(validation_samples, validation_samples),
-                       batch_size=defaults.batch_size,
+                       batch_size=magic.batch_size,
                        nb_epoch=15000,
                        shuffle=True,
                        callbacks=[EarlyStopping(monitor='val_loss', patience=5, verbose=True, mode="auto")])
 
     def predict(self, samples):
+        """
+        Uses the encoder to encode a list of samples
+
+        :param samples: Samples to be encoded.
+        :return:        Encoded samples
+        """
         return self.encoder.predict(samples)
 
     def fit_clusters(self, encoded_matrix):
+        """
+        Takes an encoded matrix and clusters the encodings
+
+        :param encoded_matrix:  Encoded input
+        """
         self.clusterer.fit(encoded_matrix)
 
-    def predict_clusters(self, training_output, training_input, row_numbers, retention_times, output_tsv_file_name,
-                         valid_peak_array=None):
-        self.clusterer.predict(training_output, training_input, row_numbers, retention_times, output_tsv_file_name,
-                               valid_peak_array)
+    def predict_clusters(self, training_output, training_input, row_numbers, output_tsv_file_name,
+                         valid_peak_array=None, drop_rt=None):
+        """
+        Takes all the necessary parameters to cluster an encoding and output
+        it as a TSV full of all interesting information.
 
-    def visualize(self, lcms_plate):
+        :param training_output:         Output of training, the encoded samples
+        :param training_input:          Input of the training, the unencoded samples
+        :param row_numbers:             The location in the original array of the window.
+                                        Can be used to calculate time and m/z
+        :param output_tsv_file_name:    Name of output file
+        :param valid_peak_array:        List of clusters that may be supplied as valid.
+                                        This effectively filters by cluster.
+        """
+        self.clusterer.predict(training_output, training_input, row_numbers, output_tsv_file_name,
+                               valid_peak_array, drop_rt)
+
+    def visualize(self, tsv_name, lower_axis=0, higher_axis=1):
+        """
+        Given a CSV file that has clusters, visualize each of those clusters based on the original normalized values.
+
+        :param tsv_name:    The name of the TSV file to visualize the clusters of
+        :param lower_axis:  The lower bound of each graph, default 0
+        :param higher_axis: The upper bound of each graph, default 1
+        :return:
+        """
         visualization_path = os.path.join(self.output_directory, "Visualizations")
         if not os.path.exists(visualization_path):
             os.makedirs(visualization_path)
         if self.verbose:
             print("Loading large CSV into dataframe")
-        df = pd.DataFrame.from_csv(os.path.join(self.output_directory, lcms_plate + ".tsv"),
+        df = pd.DataFrame.from_csv(os.path.join(self.output_directory, tsv_name + ".tsv"),
                                    index_col=None,
-                                   sep=defaults.separator)
+                                   sep=magic.separator)
 
         if self.verbose:
             print("Finished loading CSV into dataframe")
@@ -401,7 +503,8 @@ class LcmsAutoencoder:
             if self.verbose:
                 print("Cluster {}".format(ci))
             just_time_values = \
-                cluster.drop(["mz", "mzmin", "mzmax", "rt", "rtmin", "rtmax", "into", "maxo", "cluster"], 1)
+                cluster.drop(["mz", "mzmin", "mzmax", "rt", "rtmin",
+                              "rtmax", "into", "maxo", "cluster", "sn", "abs_sn"], 1)
 
             if self.verbose:
                 print("Creating plot")
@@ -415,7 +518,7 @@ class LcmsAutoencoder:
             if self.verbose:
                 print("Saving plot at {}".format(save_location))
 
-            sns.plt.ylim(0, 1)
+            sns.plt.ylim(lower_axis, higher_axis)
             sns.plt.title("Cluster {} : Count {}".format(ci, len(cluster)))
             sns.plt.savefig(save_location)
 

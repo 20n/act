@@ -5,7 +5,7 @@ import os
 import pickle
 import sys
 
-import defaults
+import magic
 from lcms_autoencoder import LcmsAutoencoder
 
 """
@@ -20,22 +20,22 @@ if __name__ == "__main__":
     parser.add_argument("-w", "--lcmsWindowSize",
                         type=int,
                         help="The size of the window to include over time. Each unit is about 0.2 seconds here.",
-                        default=defaults.window_size)
+                        default=magic.window_size)
 
     parser.add_argument("-e", "--encodingSize", type=int,
                         help="The size of the NN's encoding layer. "
                              "This is the compressed plot's representation and how many neurons it has to move around.",
-                        default=defaults.encoding_size)
+                        default=magic.encoding_size)
     parser.add_argument("-z", "--mzSplit", type=float,
                         help="The level of granularity when dividing LCMS plots up.",
-                        default=defaults.mz_split)
+                        default=magic.mz_split)
     parser.add_argument("-c", "--clusterNumber",
                         type=int,
                         help="Number of kMeans clusters to cluster on.",
-                        default=defaults.cluster_number)
+                        default=magic.cluster_number)
 
-    parser.add_argument("-n", "--mzMin", type=int, help="The lowest M/Z value allowed.", default=defaults.mz_min)
-    parser.add_argument("-x", "--mzMax", type=int, help="The highest M/Z value allowed.", default=defaults.mz_max)
+    parser.add_argument("-n", "--mzMin", type=int, help="The lowest M/Z value allowed.", default=magic.mz_min)
+    parser.add_argument("-x", "--mzMax", type=int, help="The highest M/Z value allowed.", default=magic.mz_max)
 
     args = parser.parse_args()
 
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     autoencoder = LcmsAutoencoder(output_directory, block_size, encoding_size,
                                   number_clusters, mz_division, mz_min, mz_max)
 
-    row_matrix, retention_times = autoencoder.process_lcms_trace(lcms_directory, lcms_plate_name)
+    row_matrix = autoencoder.process_lcms_trace(lcms_directory, lcms_plate_name)
 
     processed_samples, auxilariy_information = autoencoder.prepare_matrix_for_encoding(row_matrix)
 
@@ -64,7 +64,8 @@ if __name__ == "__main__":
     autoencoder.fit_clusters(encoded_samples)
 
     # This currently also does the writing
-    autoencoder.predict_clusters(encoded_samples, processed_samples, auxilariy_information, retention_times,
+    autoencoder.predict_clusters(encoded_samples, processed_samples,
+                                 auxilariy_information,
                                  lcms_plate_name.split(".nc")[0])
 
     autoencoder.visualize(lcms_plate_name.split(".nc")[0])
