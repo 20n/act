@@ -130,7 +130,7 @@ object ChemicalSymbols {
     // note that the mass of an electron is 5.5e-4 Da, so we allow upto around an electron mass
     val defaultNumPlaces = 2
     def tolerance(numDec: Int = defaultNumPlaces): Double = math.pow(10, -numDec)
-    def ascender(a: MonoIsotopicMass, b: MonoIsotopicMass) = a.initMass < b.initMass
+    def isLt(a: MonoIsotopicMass, b: MonoIsotopicMass) = a.initMass < b.initMass
   }
 
   class MonoIsotopicMass(val initMass: Double) {

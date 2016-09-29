@@ -12,8 +12,9 @@ import com.act.lcms.MassCalculator.calculateMass
 // @mark-20n @MichaelLampe20n: help resolve this to specific imports; please!
 import spray.json._
 import spray.json.DefaultJsonProtocol._
+import scala.annotation.tailrec
 
-object Magic {
+object MagicParams {
   // peak size metric is either INT = IntegratedInt or MAX = MaxInt or SNR = SNR
   val _rankPeaksBy = "SNR" // "INT" // "MAX"
   
@@ -24,23 +25,42 @@ object Magic {
   //  * y=0.0 @ x=1.0
   //  * y>1.0 @ [-inf, 0.55] and [1.45, inf]
   // The threshold below is the check on `y>`, i.e., <55% under- or >45% over-expressed
+  // Note that the cosh function we are using is asymmetrical. That is absolute non-ideal
+  // TODO: Switch to symmetrical function that calls over- and under- in the same way.
+  // Then, we'd be able to switch the engg vs wildtype to wildtype vs engg andd see
+  // numerically similar results, just switched around.
   val _valleyShapeThreshold = 1.0
 
   // when normalization vectors are calculated, we get for each pivot (amino acid)
   // a vector in n-dimensional space (n = number of LCMS traces being normalized)
-  // and we expect most of them to "similar". We calculate similarity by vector angle
+  // and we expect most of them to be "similar". We calculate similarity by vector angle
   // and only allow "rebelious" angles only as far as the parameter below
   val _normVecMaxDeviation = 20 // degrees
 
-  // replicates should truly be combined using `min` over all technical/biological
-  // that said, it leads to substantially hard to analyze outcomes, and so we (mostly
-  // for debugging and exploration to find visibly different peak sets) have this flag
-  // to allow us to switch to averaging as the means of replicate combination.
+  // replicates should truly be combined using `min` over all technical/biological.
+  // that said, the outcomes with min (as opposed to avg) are hard to intuitively interpret
+  // for humans. so for debugging and exploration, we have this flag
+  // that temporarily switches to averaging as the means of replicate combination.
   val _useMinForReplicateAggregation = true
 
   // to keep the output file for visualization smaller, we disable outputing raw mz and raw rt
   // values. this flag controls that.
   val _outputRawPeakData = false
+}
+
+object RetentionTime {
+  // Default drift allowed is emperically picked based on observations over experimental data
+  val driftTolerated = 1.0 // seconds
+
+  def middle(xs: List[Double]): Double = {
+    // In the cases of odd sized xs this would correspond to median
+    // But in the case of even sized lists, we don't want to average since that 
+    // would give us a point that is not in the original retention times making
+    // provenance of that datapoint difficult to track from the original
+    xs.sorted.toList(xs.size / 2)
+  }
+  def middle(times: List[RetentionTime]): RetentionTime = new RetentionTime(middle(times.map(_.time)))
+  def isLt(a: RetentionTime, b: RetentionTime) = a.time < b.time
 }
 
 class RetentionTime(val time: Double) {
@@ -65,21 +85,6 @@ class RetentionTime(val time: Double) {
   }
 
   def isIn(low: Double, high: Double): Boolean = time >= low && time <= high
-}
-
-object RetentionTime {
-  // Default drift allowed is emperically picked based on observations over experimental data
-  val driftTolerated = 1.0 // seconds
-
-  def middle(xs: List[Double]): Double = {
-    // In the cases of odd sized xs this would correspond to median
-    // But in the case of even sized lists, we don't want to average since that 
-    // would give us a point that is not in the original retention times making
-    // provenance of that datapoint difficult to track from the original
-    xs.sorted.toList(xs.size / 2)
-  }
-  def middle(times: List[RetentionTime]): RetentionTime = new RetentionTime(middle(times.map(_.time)))
-  def isLt(a: RetentionTime, b: RetentionTime) = a.time < b.time
 }
 
 sealed trait Provenance
@@ -107,7 +112,7 @@ class PeakHits(val origin: Provenance, val peakSpectra: PeakSpectra) {
   def signalPresentInAll(p: Peak) = p.rank > +0.0
   def signalPresentInAllOverExpr(p: Peak) = p.rank > +1.0
 
-  assert(Magic._missingPeakVal == -1.0) 
+  assert(MagicParams._missingPeakVal == -1.0) 
   def signalMissingInHypOverExpr(p: Peak) = p.rank < -1.0
 
   def numPeaks: Map[String, Int] = {
@@ -130,7 +135,7 @@ class PeakHits(val origin: Provenance, val peakSpectra: PeakSpectra) {
         case IntIntensity => a.integratedInt > b.integratedInt
         case MaxIntensity => a.maxInt > b.maxInt
         case SNR => a.snr > b.snr
-        case MZ => MonoIsotopicMass.ascender(a.mz, b.mz)
+        case MZ => MonoIsotopicMass.isLt(a.mz, b.mz)
         case RT => RetentionTime.isLt(a.rt, b.rt)
       }
     }
@@ -191,7 +196,7 @@ class Peak(
   val hdrs = {
     val core = List(HdrMZ, HdrRT, HdrDiff)
     val extr = List(HdrRawMZ, HdrRawRT)
-    if (!Magic._outputRawPeakData) core else core ++ extr
+    if (!MagicParams._outputRawPeakData) core else core ++ extr
   }
 
   def summary(): Map[String, Double] = {
@@ -202,7 +207,7 @@ class Peak(
     withMeta
   }
 
-  def rank() = Magic._rankPeaksBy match {
+  def rank() = MagicParams._rankPeaksBy match {
     case "MAX" => this.maxInt
     case "INT" => this.integratedInt
     case "SNR" => this.snr
@@ -330,13 +335,12 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
       a/b
   }
   def missingPk(mz: MonoIsotopicMass, rt: RetentionTime) = {
-    val defaultv = Magic._missingPeakVal
+    val defaultv = MagicParams._missingPeakVal
     new Peak(mz, rt, defaultv, defaultv, defaultv)
   }
 
   // the lists coming in for the inputs are if for this `peak @ mz, rt` there are *many* peaks in the
-  // original data in the aggregated hypothesis trace! This is slightly crazy case and will only happen
-  // when the peak structure is very zagged. We average the values
+  // original data. To combine the peaks we pick their Max value.
   def peakClusterToOne(mz: MonoIsotopicMass, rt: RetentionTime)(s: Set[Peak]) = {
     combinePeaks(s.toList, mz, rt, pickMax)
   }
@@ -349,7 +353,7 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
     // all the peaks passed in here should have the same (mz, rt) upto tolerances
     // all we have to do is aggregate their (integrated and max) intensity and snr
     val handlePeakCluster = peakClusterToOne(mz, rt) _
-    val replicateCombineFn = if (Magic._useMinForReplicateAggregation) {
+    val replicateCombineFn = if (MagicParams._useMinForReplicateAggregation) {
       pickMin _
     } else {
       sizedAvg(peaks.size) _
@@ -383,6 +387,7 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
   }
 
   def checkOutlier(peak: Peak): Option[Peak] = {
+    // TODO: change this to a symmetric function. E.g., 10 (x-1) ^2 might do.
     // 10*(cosh(x-1) - 1) is a nice function that is has properties we would need:
     // (x, y) 
     //    = (1.0, 0)
@@ -397,7 +402,7 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
     // signal in control identical to hypothesis: metric = 1.0 => valleyShape = 0
     // signal in hypothesis lower or higher than control:  metric < 0.8 || metric > 1.2 => valleyShape > 1.0
     val metric = peak.rank
-    if (valleyShape(metric) > Magic._valleyShapeThreshold)
+    if (valleyShape(metric) > MagicParams._valleyShapeThreshold)
       Some(peak)
     else
       None
@@ -457,14 +462,18 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
   }
 
   def normalizeCommonPeaks(exprs: List[RawPeaks]): List[RawPeaks] = {
+    // Important: This function has to output normalized peaks in the same order as input (hence the list in-out)
+    // `normalize` below maintains that invariant
+
     // we do the same thing we do when we are computing a uniform metric over shared peaks across all exprs
     // we first extract the shared peaks (and then we'll look for how they differ across each set)
     val peakSetsForAllReplicates = exprs.map{ expr => expr.peakSpectra.peaks }
-    val peaksKeyedByMzAndRt = findAlignedPeaks(peakSetsForAllReplicates)
-    val peaksByMzAndRtNonEmpty = peaksKeyedByMzAndRt.filter{ case(_, lstSets) => lstSets.forall(_.size != 0) }
+    val alignedPeaksKeyedByMzAndRt = findAlignedPeaks(peakSetsForAllReplicates)
+    val peaksByMzAndRtNonEmpty = alignedPeaksKeyedByMzAndRt.filter{ case(_, lstSets) => lstSets.forall(_.size != 0) }
 
     try {
       // calculate the normalization factor, defined as ratio of peak intensities in pivot compared to each expr
+      // by default, `NormalizationVector.build` normalizes using Amino Acids. (See `NormalizeUsingAminoAcids`)
       val normalizer = NormalizationVector.build(peaksByMzAndRtNonEmpty.toList)
 
       // now normalize each experiment to normalize across systematic changes in peak intensities
@@ -478,15 +487,14 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
     }
   }
 
-  // This does not serious boilerplating to move stuff around!
+  // This does some serious boilerplating to move stuff around!
   // Input: Type `List[Set[raw peaks]]` represents:
   //    -- Each list element is an LCMS trace, and the set corresponds to all peaks found in that trace
   // Output: Type `Map[ (mz, rt) -> List[Set[raw peaks]] ]`
   //    -- For each unique mz, rt pair, it is a split of the original data (in the same expr order)
   //       to those peaks in that experiment that have the corresponding (mz, rt).
   //    -- If there are no peaks at that mz, rt in that experiment then it'll be an empty set at that list loc
-  def findAlignedPeaks(exprData: List[Set[Peak]]): 
-    Map[(MonoIsotopicMass, RetentionTime), List[Set[Peak]]] = {
+  def findAlignedPeaks(exprData: List[Set[Peak]]): Map[(MonoIsotopicMass, RetentionTime), List[Set[Peak]]] = {
     
     // first group each peakset in the list of exprs into a map(mz -> peakset)
     val exprToMzPeaks: List[Map[MonoIsotopicMass, Set[Peak]]] = exprData.map(_.groupBy(_.mz))
@@ -506,6 +514,8 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
     ) yield {
       // now filter down to all peaks at that mz, rt
       val peaksAtThisMz: List[Set[Peak]] = peaksAtMz(mz)
+      // TODO: is filtering on mz redundant? Maybe not so if hashcode for mz always leads to collisions
+      // this filter is done with `equals`
       val peaksAtThisMzRt: List[Set[Peak]] = peaksAtThisMz.map(s => s.filter(isAtMzRt(mz, rt)))
       (mz, rt) -> peaksAtThisMzRt
     }
@@ -529,8 +539,14 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
     // for each element in the list, calculate the number of other elements it is equal to O(n^2)
     val numElemsEqual: List[Int] = rtsAcrossAllExpr.map(t => rtsAcrossAllExpr.count(r => r.equals(t)))
     // order the retention times according to how many elements before and after they cover
-    val rtsInMaxCoverOrder = rtsAcrossAllExpr.zip(numElemsEqual).sortWith(_._2 > _._2)
+    // Also, to keep it as a stable sort, we ensure that when the counts are equal we order by RT
+    val rtsInMaxCoverOrder = rtsAcrossAllExpr
+                              .zip(numElemsEqual)
+                              .sortWith{ 
+                                case ((rt1, n1), (rt2, n2)) => if (n1 == n2) RetentionTime.isLt(rt1, rt2) else n1 > n2
+                              }
     // now start from head and pick retention times eliminating candidates as you go down the list
+    @tailrec
     def pickCoverElemsAux(remain: List[(RetentionTime, Int)], acc: List[RetentionTime]): List[RetentionTime] = { 
       remain match {
         case List() => acc
@@ -566,7 +582,7 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
   class NormalizationVector(val vec: List[Double], val pivots: Object) {
     // a normalization vector is a ordered list of multiplicative factors
   
-    // we can also think of it as a `vector arrow` in n-dimensional space
+    // we compute cosine similarity in n-dimensional space
     // which allows us to compute normal vector metrics between vectors
     // e.g., we can use the angle between the vectors and their magnitude
     // as measures of how similar the vectors are to each other
@@ -615,6 +631,8 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
     // to normalize a trace with a vector, we multiply each peak within
     // each experiment with its corresponding multiplicative factor
     def normalize(exprs: List[RawPeaks]) = {
+      // Important: This function has to output normalized RawPeaks in the same order as input
+      // The map below over maintains taht invariant
       val exprsNormFactor = exprs.zip(vec)
       exprsNormFactor.map{ case (e, multiplier)  => {
         val normalizedPeaks = e.peakSpectra.peaks.map(_.scaleBy(multiplier))
@@ -654,6 +672,10 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
     def pickRep(vectors: Set[NormalizationVector]): NormalizationVector = {
       // find the vector that is least away from all others
       // i.e., find one whose average angle to all others is minimal
+      // we compute for each vector its angle to all others, then take the average of
+      // that angle and create a map(vector, avg_angle), we then sort on avg angle
+      // such that at the head of the list we have the "representative" with min angle
+      // to all others.
   
       val size = vectors.size
       // for all pairs of vectors compute the angles
@@ -671,7 +693,7 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
       mostRep
     }
   
-    val okAngleDeviation = math toRadians Magic._normVecMaxDeviation
+    val okAngleDeviation = math toRadians MagicParams._normVecMaxDeviation
   
     def ensureRepNotTooCrazy(ordVecs: List[(NormalizationVector, Double)]) {
       println(s"Norm pivots: ${ordVecs.map{ case (v, a) => v.pivots}}")
@@ -680,7 +702,8 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
       val rebelAngle: Double = ordVecs.last._2
       
       val tooDeviant = rebelAngle > okAngleDeviation || repAngle > okAngleDeviation
-      if (tooDeviant) { println(s"Vectors deviate way too much!"); assert(false) }
+      if (tooDeviant)
+        assert(false, "Vectors deviate way too much!")
     }
   
     def getMultipliers(peakSet: List[Peak]) = {
@@ -744,8 +767,9 @@ object UntargetedMetabolomics {
     def mkLCMSExpr(kv: String) = {
       val spl = kv.split("=")
       val (shortname, file) = (spl(0), spl(1))
-      // right now, we drop the shortname on the floor! It can go into the source field of RawData
-      // but we need the full path name to be able to output to http://lcms/
+      // right now, we drop the shortname on the floor! That is just a tag such as "wt1"
+      // http://lcms/ only needs the the plate name, e.g., Plate_jaffna3_B1_0815201601.nc
+      // we get that by extracting the filename from the full path in `file`
       val srcOrigin = new RawData(source = file)
       new RawPeaks(srcOrigin, PeakSpectra.fromCalledPeaks(file))
     }
@@ -858,14 +882,14 @@ object UntargetedMetabolomics {
                     param = "c",
                     longParam = "controls",
                     name = "{name=file}*",
-                    desc = """Controls: Comma separated list of name=file pairs""".stripMargin,
+                    desc = "Controls: Comma separated list of name=file pairs",
                     isReqd = false, hasArgs = true)
 
   val optHypotheses = new OptDesc(
                     param = "e",
                     longParam = "experiments",
                     name = "{name=file}*",
-                    desc = """Experiments: Comma separated list of name=file pairs""".stripMargin,
+                    desc = "Experiments: Comma separated list of name=file pairs",
                     isReqd = false, hasArgs = true)
 
   val optOutFile = new OptDesc(
@@ -940,7 +964,7 @@ object UntargetedMetabolomics {
                     param = "R",
                     longParam = "filter-rt-regions",
                     name = "[low-high,]+",
-                    desc = """A set of retention time regions that should be ignored in the output""".stripMargin,
+                    desc = "A set of retention time regions that should be ignored in the output",
                     isReqd = false, hasArgs = true)
 
   val optRunTests = new OptDesc(
@@ -952,6 +976,7 @@ object UntargetedMetabolomics {
                              |to test over.""".stripMargin,
                     isReqd = false, hasArg = true)
 
+  // TODO: move to scalatest
   def runPerlsteinLabTests(sharedDirLoc: File, outStream: PrintWriter) {
     // this data was collected with XCMS Centwave "optimzed" parameters: peak width 1-50 and ppm 20 (@vijay-20n?)
     def dataForWell(dataset: String)(repl: Int) = s"Plate_plate2016_09_08_${dataset}${repl}_0908201601.tsv"
@@ -1095,7 +1120,7 @@ object MultiIonHits {
       // this has type List[(MonoIsotopicMass, RetentionTime), Peak]
       // where we are expecting multiple peaks for the same MonoIsotopicMass
       // because we backcalculated these masses from candidate ions for a peak
-      val mzRtToPeaks = ionPeaks.toList.groupBy{ case (molPk, ionMz) => (molPk.mz, molPk.rt.toString) }
+      val mzRtToPeaks = ionPeaks.toList.groupBy{ case (molPk, ionMz) => (molPk.mz.toString, molPk.rt.toString) }
       val multiplePeak = mzRtToPeaks.filter{ case (_, pks) => pks.size > 1 }
       multiplePeak.map{ case (_, pkMap) => pkMap(0)._1 }.toSet[Peak]
     }
@@ -1237,24 +1262,6 @@ object FormulaHits extends LookupInEnumeratedList with SolveUsingSMTSolver with 
   }
 }
 
-object StructureHits extends LookupInEnumeratedList {
-  type T = String
-
-  def toStructureHitsUsingLists(peaks: PeakHits, source: String): StructureHits = {
-    def toInChI(s: String): String = { assert(s startsWith "InChI="); s }
-    def toMass(inchi: String): MonoIsotopicMass = {
-      val mass = try { calculateMass(inchi).doubleValue } catch { case _: Exception => 0.0 }
-      new MonoIsotopicMass(mass)
-    }
-    val sourceList = readEnumeratedList(source, HdrMolInChI, toInChI _, toMass _)
-    toStructureHitsUsingLists(peaks, grpByMass(sourceList))
-  }
-
-  def toStructureHitsUsingLists(peaks: PeakHits, sourceList: Map[MonoIsotopicMass, List[String]]): StructureHits = {
-    new StructureHits(peaks, findHits(peaks, sourceList))
-  }
-}
-
 class FormulaHits(val peaks: PeakHits, val toFormulae: Map[Peak, List[Map[Atom, Int]]]) extends
   PeakHits(peaks.origin, peaks.peakSpectra) with ChemicalFormulae {
 
@@ -1289,6 +1296,24 @@ class FormulaHits(val peaks: PeakHits, val toFormulae: Map[Peak, List[Map[Atom, 
     val found = code(toFormulae.get(p))
     val hcode = found._1
     basic + ("matching_formulae" -> hcode)
+  }
+}
+
+object StructureHits extends LookupInEnumeratedList {
+  type T = String
+
+  def toStructureHitsUsingLists(peaks: PeakHits, source: String): StructureHits = {
+    def toInChI(s: String): String = { assert(s startsWith "InChI="); s }
+    def toMass(inchi: String): MonoIsotopicMass = {
+      val mass = try { calculateMass(inchi).doubleValue } catch { case _: Exception => 0.0 }
+      new MonoIsotopicMass(mass)
+    }
+    val sourceList = readEnumeratedList(source, HdrMolInChI, toInChI _, toMass _)
+    toStructureHitsUsingLists(peaks, grpByMass(sourceList))
+  }
+
+  def toStructureHitsUsingLists(peaks: PeakHits, sourceList: Map[MonoIsotopicMass, List[String]]): StructureHits = {
+    new StructureHits(peaks, findHits(peaks, sourceList))
   }
 }
 
