@@ -40,5 +40,5 @@ if __name__ == "__main__":
         lines = f.readlines()
         valid_peak_array = [int(cluster.strip()) for cluster in lines]
 
-    autoencoder.predict_clusters(encoded_samples, processed_samples, auxilariy_information,
+    autoencoder.predict_clusters(encoded_samples, processed_samples, auxilariy_information, [row_matrix],
                                  lcms_plate_name.split(".nc")[0], valid_peak_array)

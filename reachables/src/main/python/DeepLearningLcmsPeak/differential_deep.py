@@ -9,7 +9,7 @@ import sys
 import numpy as np
 
 import magic
-from lcms_autoencoder import LcmsAutoencoder
+from lcms_autoencoder import LcmsAutoencoder, LcmsScan
 
 """
 This is the primary control file.  Run new Deep processings from here.
@@ -67,7 +67,7 @@ if __name__ == "__main__":
     summary_dict["model_location"] = model_location
 
     # Train matrix
-    if os.path.exists(model_location):
+    if model_location and os.path.exists(model_location):
         print("Using previously created model at {}".format(model_location))
         autoencoder = pickle.load(open(model_location, "rb"))
         autoencoder.set_output_directory(output_directory)
@@ -75,28 +75,46 @@ if __name__ == "__main__":
         autoencoder = LcmsAutoencoder(output_directory, block_size, encoding_size,
                                       number_clusters, mz_division, mz_min, mz_max)
 
-    experimental_arrays = [autoencoder.process_lcms_trace(lcms_directory, plate) for plate in experimental_samples]
-    row_matrix1 = np.min(np.dstack(experimental_arrays), axis=2)
 
-    control_arrays = [autoencoder.process_lcms_trace(lcms_directory, plate) for plate in control_samples]
-    row_matrix2 = np.min(np.dstack(control_arrays), axis=2)
+    def merge_lcms_replicates(samples):
+        """
+        For the reader: A conditional within a numpy array index causes a mask to be created and applied to the array
+        it is inside.
 
-    """
-    For the reader: A conditional within a numpy array index causes a mask to be created and applied to the array
-    it is inside.
+        Example: Array = [1,2,3], Array < 2 creates a mask [1, 0, 0].  Array[Array < 2]
+        applies that mask so that Array[Array < 2] = 5 would create the array [5, 2, 3]
+        """
+        scans = [autoencoder.process_lcms_trace(lcms_directory, plate) for plate in samples]
 
-    Example: Array = [1,2,3], Array < 2 creates a mask [1, 0, 0].  Array[Array < 2]
-    applies that mask so that Array[Array < 2] = 5 would create the array [5, 2, 3]
-    """
-    # Prevent very small values from have a disproportionate effect
-    row_matrix1[row_matrix1 <= 10] = 1
-    row_matrix2[row_matrix2 <= 10] = 1
-    summary_dict["experimental_total_intensity"] = np.sum(row_matrix1)
-    summary_dict["control_total_intensity"] = np.sum(row_matrix2)
+        # Get the min
+        min_stacked = np.dstack([a.get_array() for a in scans])
+        min_representation = np.min(min_stacked, axis=2)
 
-    overall_normalizer = np.sum(row_matrix1) / np.sum(row_matrix2)
+        # Prevent very small values from have a disproportionate effect
+
+        bucket_list = [scan.get_bucket_mz() for scan in scans]
+
+        mz_index_of_mins = np.argmin(min_stacked, axis=2)
+        mz_buckets = np.zeros(bucket_list[0].shape)
+        for index, bucket in enumerate(bucket_list):
+            # Where the index arg is equal to the current index we find the m/z
+            # of the value that will be used moving forward.
+            bucket_mask = mz_index_of_mins == index
+            mz_buckets[bucket_mask] = bucket[bucket_mask]
+        min_representation[min_representation <= 10] = 1
+
+        return LcmsScan(min_representation, mz_buckets)
+
+
+    row_matrix1 = merge_lcms_replicates(experimental_samples)
+    row_matrix2 = merge_lcms_replicates(control_samples)
+
+    summary_dict["experimental_total_intensity"] = np.sum(row_matrix1.get_array())
+    summary_dict["control_total_intensity"] = np.sum(row_matrix2.get_array())
+
+    overall_normalizer = np.sum(row_matrix1.get_array()) / np.sum(row_matrix2.get_array())
     summary_dict["normalizer_value"] = overall_normalizer
-    row_matrix1 /= overall_normalizer
+    row_matrix1.normalize_array(overall_normalizer)
 
     np.seterr(divide="ignore")
     """
@@ -104,28 +122,29 @@ if __name__ == "__main__":
 
     Snr = Max/Min for each position
     """
-    row_matrix = np.multiply(np.max(np.dstack((row_matrix1, row_matrix2)), axis=2),
-                             np.divide(row_matrix1 - row_matrix2, row_matrix1 + row_matrix2))
+    row_matrix = np.multiply(np.max(np.dstack((row_matrix1.get_array(), row_matrix2.get_array())), axis=2),
+                             np.divide(row_matrix1.get_array() - row_matrix2.get_array(),
+                                       row_matrix1.get_array() + row_matrix2.get_array()))
 
-    snr = np.divide(np.max(np.dstack((row_matrix1, row_matrix2)), axis=2),
-                    np.min(np.dstack((row_matrix1, row_matrix2)), axis=2))
+    snr = np.divide(np.max(np.dstack((row_matrix1.get_array(), row_matrix2.get_array())), axis=2),
+                    np.min(np.dstack((row_matrix1.get_array(), row_matrix2.get_array())), axis=2))
     np.seterr(divide=None)
 
     processed_samples, auxilariy_information = autoencoder.prepare_matrix_for_encoding(row_matrix, snr=snr)
     summary_dict["number_of_valid_windows"] = len(processed_samples)
 
-    if not os.path.exists(model_location):
+    if not model_location or not os.path.exists(model_location):
         autoencoder.train(processed_samples)
     encoded_samples = autoencoder.predict(processed_samples)
 
-    if not os.path.exists(model_location):
+    if not model_location or not os.path.exists(model_location):
         autoencoder.fit_clusters(encoded_samples)
 
     # This currently also does the writing
     autoencoder.predict_clusters(encoded_samples, processed_samples, auxilariy_information,
-                                 "differential_expression", drop_rt=15)
+                                 "differential_expression", [row_matrix1, row_matrix2], drop_rt=15)
 
-    if not os.path.exists(model_location):
+    if not model_location or not os.path.exists(model_location):
         autoencoder.visualize("differential_expression", lower_axis=-1)
 
     # Write run summary information
