@@ -33,7 +33,7 @@ shinyServer(function(input, output, session) {
          alt = "20n Logo")
   }, deleteFile = FALSE)
   
-  mz.scope <- callModule(mzScope, "mz.scope")
-  plot.parameters <- callModule(plotParameters, "plot.parameters")
-  callModule(lcmsSinglePlate, "simple", plot.parameters, mz.scope)
+  callModule(lcmsSinglePlate, "simple")
+  callModule(lcmsMultiPlate, "multi")
+  callModule(lcmsConfigPlates, "config", plot.parameters)
 })
