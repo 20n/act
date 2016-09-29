@@ -744,8 +744,26 @@ object UntargetedMetabolomics {
     def fromDeepLearnDiff(kv: String) = {
       val spl = kv.split("=")
       val (srcFilesJson, deepCalledPeaks) = (spl(0), spl(1))
-      // TODO @MichaelLampe20n: convert srcFilesJson to src such as below
-      val srcs = List("Plate13873_G3_0421201601.nc", "Plate13873_G9_0421201601.nc", "Plate13873_A5_0421201601.nc", "Plate13873_A11_0421201601.nc")
+
+      // Parse my outside JSON format
+      val lines = scala.io.Source.fromFile(srcFilesJson).getLines().mkString
+      val json = scala.util.parsing.json.JSON.parseFull(lines)
+
+      // Ensure everything is correct in the JSON file
+      assert(json.isDefined, s"Parsing JSON file as $srcFilesJson failed.  Please check validity of file.")
+      val jsonMap = json.get.asInstanceOf[Map[Any, Any]]
+
+      val experimentalValue = jsonMap.get("experimental")
+      assert(experimentalValue.isDefined, s"JSON file at $srcFilesJson is expected to have field 'experimental'")
+
+      val controlValue = jsonMap.get("control")
+      assert(controlValue.isDefined, s"JSON file at $srcFilesJson is expected to have field 'experimental'")
+
+      val experimental: List[String] = experimentalValue.get.asInstanceOf[List[String]]
+      val controls: List[String] = controlValue.get.asInstanceOf[List[String]]
+
+      val srcs: List[String] = experimental ::: controls
+
       val srcFiles = srcs.map(s => new RawData(source = s))
       val provenance = new ComputedData(sources = srcFiles)
       new RawPeaks(provenance, PeakSpectra.fromDeepLearnt(deepCalledPeaks))
