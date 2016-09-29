@@ -21,9 +21,11 @@ if __name__ == "__main__":
     parser.add_argument("--control", help="List of names of control files.", nargs='*')
     parser.add_argument("--outputDirectory", help="Where to save all intermediate and final files.")
 
+    parser.add_argument("--previousModelLocation", help="Location of a previously created model.")
+
     parser.add_argument("-w", "--lcmsWindowSize",
                         type=int,
-                        help="The size of the window to include over time. Each unit is about 0.2 seconds here.",
+                        help="The size of the window to include over time.",
                         default=magic.window_size)
 
     parser.add_argument("-e", "--encodingSize", type=int,
@@ -48,6 +50,8 @@ if __name__ == "__main__":
     control_samples = args.control
     output_directory = args.outputDirectory
 
+    model_location = args.previousModelLocation
+
     block_size = args.lcmsWindowSize
     encoding_size = args.encodingSize
     mz_division = args.mzSplit
@@ -55,7 +59,7 @@ if __name__ == "__main__":
     mz_max = args.mzMax
     number_clusters = args.clusterNumber
 
-    model_location = os.path.join(output_directory, "differential_expression" + ".model")
+    # model_location = os.path.join(output_directory, "differential_expression" + ".model")
 
     # Copy of args dictionary, vars converts args from Namespace => dictionary
     summary_dict = {}
@@ -64,7 +68,9 @@ if __name__ == "__main__":
 
     # Train matrix
     if os.path.exists(model_location):
+        print("Using previously created model at {}".format(model_location))
         autoencoder = pickle.load(open(model_location, "rb"))
+        autoencoder.set_output_directory(output_directory)
     else:
         autoencoder = LcmsAutoencoder(output_directory, block_size, encoding_size,
                                       number_clusters, mz_division, mz_min, mz_max)
