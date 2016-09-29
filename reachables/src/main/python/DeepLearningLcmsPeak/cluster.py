@@ -106,7 +106,11 @@ class LcmsClusterer:
                 # Which m/z bucket
                 # call it in the middle
                 which_sample = 0 if row["sn"] > 0 else 1
-                row["mz"] = row_matrices[which_sample].get_bucket_mz()[row_in_array, time_index + max_value_index]
+                row["mz"] = \
+                    row_matrices[which_sample].get_bucket_mz()[int(row_in_array), int(time_index + max_value_index)]
+                if row["mz"] == 0:
+                    # So we don't get 0 if something messes up.
+                    row["mz"] = row_to_mz(row_in_array, self.mz_split, self.mz_min) + 0.5 * self.mz_split
                 # Min and max within window
                 row["mzmin"] = row_to_mz(row_in_array, self.mz_split, self.mz_min)
                 row["mzmax"] = row_to_mz(row_in_array, self.mz_split, self.mz_min) + self.mz_split
