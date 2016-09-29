@@ -762,11 +762,13 @@ object UntargetedMetabolomics {
       assert(json.isDefined, s"Parsing JSON file as $srcFilesJson failed.  Please check validity of file.")
       val jsonMap = json.get.asInstanceOf[Map[Any, Any]]
 
-      val experimentalValue = jsonMap.get("experimental")
-      assert(experimentalValue.isDefined, s"JSON file at $srcFilesJson is expected to have field 'experimental'")
+      val experimentalKeyValue = "experimental"
+      val experimentalValue = jsonMap.get(experimentalKeyValue)
+      assert(experimentalValue.isDefined, s"JSON file at $srcFilesJson is expected to have field '$experimentalKeyValue'")
 
-      val controlValue = jsonMap.get("control")
-      assert(controlValue.isDefined, s"JSON file at $srcFilesJson is expected to have field 'experimental'")
+      val controlKeyValue = "control"
+      val controlValue = jsonMap.get(controlKeyValue)
+      assert(controlValue.isDefined, s"JSON file at $srcFilesJson is expected to have field '$controlKeyValue'")
 
       val experimental: List[String] = experimentalValue.get.asInstanceOf[List[String]]
       val controls: List[String] = controlValue.get.asInstanceOf[List[String]]
