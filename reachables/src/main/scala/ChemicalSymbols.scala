@@ -144,7 +144,7 @@ object ChemicalSymbols {
     private val scaled = roundedAndScaled()
 
     def rounded(numDec: Int = MonoIsotopicMass.defaultNumPlaces): Double = roundedAndScaled(numDec) * MonoIsotopicMass.tolerance(numDec)
-    def roundedAndScaled(numDec: Int = MonoIsotopicMass.defaultNumPlaces): Long = math round (initMass/MonoIsotopicMass.tolerance(numDec))
+    def roundedAndScaled(numDec: Int = MonoIsotopicMass.defaultNumPlaces): Long = math round (initMass / MonoIsotopicMass.tolerance(numDec))
 
     // This function is a helper to `equals`
     // It tests whether two values are within the range of experimental drift we allow

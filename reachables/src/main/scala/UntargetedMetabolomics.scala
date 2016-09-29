@@ -54,12 +54,13 @@ class RetentionTime(val time: Double) {
     case _ => false
   }
 
+  // calculate how many decimal places we consider equal, e.g., drift = 0.1 => numDecimals = 1
+  // if drift = 1.0 => numDecimals = 0, if drift = 5.0 => numDecimals = 0
+  val invLogDrift = math log10 (1.0 / RetentionTime.driftTolerated)
+  // when drift > 1.0 inverse log will be < 0.0, so min bound it to 0 and round it
+  val numDecimalsSignificant = math round (math max (0.0, invLogDrift))
+
   override def toString(): String = {
-    // calculate how many decimal places we consider equal, e.g., drift = 0.1 => numDecimals = 1
-    // if drift = 1.0 => numDecimals = 0, if drift = 5.0 => numDecimals = 0
-    val invLogDrift = math log10 (1.0/RetentionTime.driftTolerated)
-    // when drift > 1.0 inverse log will be < 0.0, so min bound it to 0 and round it
-    val numDecimalsSignificant = math round (math max (0.0, invLogDrift))
     String.format(s"%3.${numDecimalsSignificant}f", this.time: java.lang.Double)
   }
 
@@ -75,7 +76,7 @@ object RetentionTime {
     // But in the case of even sized lists, we don't want to average since that 
     // would give us a point that is not in the original retention times making
     // provenance of that datapoint difficult to track from the original
-    xs.sorted.toList(xs.size/2)
+    xs.sorted.toList(xs.size / 2)
   }
   def middle(times: List[RetentionTime]): RetentionTime = new RetentionTime(middle(times.map(_.time)))
   def isLt(a: RetentionTime, b: RetentionTime) = a.time < b.time
@@ -85,10 +86,17 @@ sealed trait Provenance
 class RawData(val source: String) extends Provenance
 class ComputedData(val sources: List[Provenance]) extends Provenance
 
-sealed class PeakHits(val origin: Provenance, val peakSpectra: PeakSpectra) {
+class PeakHits(val origin: Provenance, val peakSpectra: PeakSpectra) {
 
+  // the peak summary is what makes it to the output. we also expect other overriders of this class
+  // to override the peakSummarizer when they need to augment the peak information, e.g., molecules
+  // corresponding to the peak.
   def peakSummarizer(p: Peak) = p.summary
 
+  // because the peakSummary is a Map(String -> Double) (and the corresponding json object), if for
+  // a peak we need to output more than a double, we need a way of storing them elsewhere. What we do
+  // is output a double (hashCode) in the peak map, basically an ID that can then be located in another
+  // place in the output json. That "another" place are the `extraCodes`
   def extraCodes(): Map[Double, List[String]] = Map()
 
   // when we take the ratio (and install -1.0 missing peaks), the output metrics will be such:
@@ -137,9 +145,7 @@ sealed class PeakHits(val origin: Provenance, val peakSpectra: PeakSpectra) {
       // 3. outlier detection
       src match {
         case file: RawData => List(Map("filename" -> new File(file.source).getName.replace(".tsv",".nc")))
-        case nested: ComputedData => {
-          nested.sources.map(o => getPlates(o)).flatten
-        }
+        case nested: ComputedData => nested.sources.map(o => getPlates(o)).flatten
       }
     }
     val peakSummaries = sortedPeaks.map(peakSummarizer)
@@ -158,7 +164,7 @@ sealed class PeakHits(val origin: Provenance, val peakSpectra: PeakSpectra) {
   }
 }
 
-class RawPeaks(val o: Provenance, val ps: PeakSpectra) extends PeakHits(o, ps)
+class RawPeaks(val org: Provenance, val ps: PeakSpectra) extends PeakHits(org, ps)
 
 class Peak(
   val mz: MonoIsotopicMass,
@@ -239,6 +245,9 @@ object HdrMolHitSource extends TSVHdr("hitsrc") // if we map to formula/inchi, w
 trait CanReadTSV {
   type H <: HasId // head types in the first row
   type V // value types in everything expect the first row
+
+  // TODO: If com.act.utils.TSVParser was parameterized to use the header type `H` and content value type `V`
+  // it could replace this custom reader. Considerations: 1) Types, 2) Only keep recognized hdrs, 3) # comments
   def readTSV(file: String, hdrs: List[H], semanticizer: String => V): List[Map[H, V]] = {
     val linesWithComments = Source.fromFile(file).getLines.toList
     val lines = linesWithComments.filter(l => l.length > 0 && l(0) != '#').map(_.split("\t").toList)
@@ -306,18 +315,18 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
   }
 
   // we use the average to combine multiple signals at the same mz, rt
-  def sizedAvg(num: Int)(a: Double, b: Double) = (a + b)/num
+  def sizedAvg(num: Int)(a: Double, b: Double) = (a + b) / num
   def pickMax(a: Double, b: Double) = math.max(a, b)
   // we use min to aggregate signals across replicates
   def pickMin(a: Double, b: Double) = math.min(a, b)
   // we use ratio to identify differentially expressed peaks
   def ratio(a: Double, b: Double) = {
-    // Neither `a` nor `b` can be zero. That would represent a missing peak in either the control/hypotheses
-    // Missing peaks are either removed (when doing replicate analysis) or replaced with `missingPk` when
-    // checking for outliers. This means we can safely take the ratio without a NaN or 0.0 result
-    if (a == 0.0 && b == 0.0)
-      0.0 // this case happens when we combine snr's which can be both 0.0
-    else
+    //// // Neither `a` nor `b` can be zero. That would represent a missing peak in either the control/hypotheses
+    //// // Missing peaks are either removed (when doing replicate analysis) or replaced with `missingPk` when
+    //// // checking for outliers. This means we can safely take the ratio without a NaN or 0.0 result
+    //// if (a == 0.0 && b == 0.0)
+    ////   0.0 // this case happens when we combine snr's which can be both 0.0
+    //// else
       a/b
   }
   def missingPk(mz: MonoIsotopicMass, rt: RetentionTime) = {
@@ -544,7 +553,7 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
     val start = System.nanoTime()
     val rslt = blk
     val end = System.nanoTime()
-    println(s"Timed: ${(end - start)/1000000000.0} seconds")
+    println(s"Timed: ${(end - start) / 1000000000.0} seconds")
     rslt
   } 
 
