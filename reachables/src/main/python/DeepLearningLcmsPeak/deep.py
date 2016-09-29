@@ -66,7 +66,7 @@ if __name__ == "__main__":
     # This currently also does the writing
     autoencoder.predict_clusters(encoded_samples, processed_samples,
                                  auxilariy_information,
-                                 lcms_plate_name.split(".nc")[0])
+                                 lcms_plate_name.split(".nc")[0], [row_matrix])
 
     autoencoder.visualize(lcms_plate_name.split(".nc")[0])
 

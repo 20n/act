@@ -36,7 +36,7 @@ class LcmsClusterer:
             print("Clustering")
         self.kmeans.fit(training_output)
 
-    def predict(self, encoded_data, raw_normalized_data, extra_information, output_tsv_file_name,
+    def predict(self, encoded_data, raw_normalized_data, extra_information, output_tsv_file_name, row_matrices,
                 valid_peaks=None, drop_rt=None):
         """
         :param encoded_data:            The encoded version of the original matrix.  Size (# Samples x Encoding Length)
@@ -79,13 +79,6 @@ class LcmsClusterer:
                         max_value_index = time_number
                     row[str(time_number)] = raw_normalized_data[i][time_number]
 
-                # Which m/z bucket
-                # call it in the middle
-                row["mz"] = row_to_mz(row_in_array, self.mz_split, self.mz_min) + 0.5 * self.mz_split
-                # Min and max within window
-                row["mzmin"] = row_to_mz(row_in_array, self.mz_split, self.mz_min)
-                row["mzmax"] = row_to_mz(row_in_array, self.mz_split, self.mz_min) + self.mz_split
-
                 # Largest intensity value is where we call the retention time at
                 row["rt"] = column_number_to_time(time_index + max_value_index, magic.time_step, magic.time_min)
                 if drop_rt and row["rt"] <= drop_rt:
@@ -109,6 +102,14 @@ class LcmsClusterer:
                     row["sn"] = 1
 
                 row["abs_sn"] = abs(row["sn"])
+
+                # Which m/z bucket
+                # call it in the middle
+                which_sample = 0 if row["sn"] > 0 else 1
+                row["mz"] = row_matrices[which_sample].get_bucket_mz()[row_in_array, time_index + max_value_index]
+                # Min and max within window
+                row["mzmin"] = row_to_mz(row_in_array, self.mz_split, self.mz_min)
+                row["mzmax"] = row_to_mz(row_in_array, self.mz_split, self.mz_min) + self.mz_split
 
                 # Check if it is in the valid peaks or if no valid peaks were supplied.
                 if (valid_peaks and clusters[i] in valid_peaks) or not valid_peaks:

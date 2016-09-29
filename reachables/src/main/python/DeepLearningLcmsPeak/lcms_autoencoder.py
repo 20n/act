@@ -105,15 +105,16 @@ class LcmsAutoencoder:
         assert os.path.exists(current_trace_file), "The trace file at {} does not exist.".format(current_trace_file)
 
         saved_array_name = lcms_plate_name + "_mz_split_" + str(self.mz_split) + ".npy"
+        saved_mz_name = lcms_plate_name + "_mz_split_" + str(self.mz_split) + "_mz_" + ".npy"
 
         processed_file_name = os.path.join(self.output_directory, saved_array_name)
+        saved_mz_file_name = os.path.join(self.output_directory, saved_mz_name)
 
         # Check for cached version.
-        if os.path.exists(processed_file_name):
+        if os.path.exists(processed_file_name) and os.path.exists(saved_mz_file_name):
             if self.verbose:
                 print("Using cached version of the LCMS trace at {}.".format(scan_file_name))
-            processing_array = np.load(processed_file_name)
-            return processing_array
+            return LcmsScan(np.load(processed_file_name), np.load(saved_mz_file_name))
         else:
             """
             The process:
@@ -132,6 +133,8 @@ class LcmsAutoencoder:
 
             # We initialize the array as all 0s because merging a bunch of arrays is slow in numpy
             processing_array = np.zeros((row_count, column_count))
+            # Holds the absolute m/z of a given bucket where the max value resides.
+            exact_mz_array = np.zeros((row_count, column_count))
             if self.verbose:
                 print("LCMS array has shape {}".format(processing_array.shape))
             """
@@ -150,7 +153,7 @@ class LcmsAutoencoder:
             950
             """
             # Step 2
-            for triples_index, triple in tqdm(enumerate(loaded_triples)):
+            for triple in tqdm(loaded_triples):
                 """
                 We place each triple into a matrix at the assigned location and
                 also keep track of how many values we placed there.
@@ -166,21 +169,19 @@ class LcmsAutoencoder:
                 # (Each index has one time, though they are not equally spaced/distributed).
                 sample_time = assign_column_by_time(triple["time"], magic.time_step, magic.time_min)
 
-                row_column = np.zeros(len(processing_array))
-
                 for mz_index in range(0, len(triple["mz"])):
                     current_mz = mass_list[mz_index]
                     row = assign_row_by_mz(current_mz, self.mz_split, self.mz_min)
 
-                    intensity_value = intensity_list[mz_index]
+                    intensity_value = float(intensity_list[mz_index])
 
                     """
                     Take the max of what is currently there and the new value we found so that
                     each bucket contains the highest value found within that bucket as the intensity.
                     """
-                    row_column[row] = max(float(intensity_value), row_column[row])
-
-                processing_array[:, sample_time] = np.vstack((row_column, processing_array[:, sample_time])).max(axis=0)
+                    if intensity_value > processing_array[row, sample_time]:
+                        processing_array[row, sample_time] = intensity_value
+                        exact_mz_array[row, sample_time] = current_mz
 
             # Fill in blanks with interpolated values after getting the first pass values in.
             # TODO: Evaluate if this is effective and useful.
@@ -210,8 +211,11 @@ class LcmsAutoencoder:
 
             # Step 4
             processing_array = np.nan_to_num(processing_array)
+
             np.save(processed_file_name, processing_array)
-            return processing_array
+            np.save(saved_mz_file_name, exact_mz_array)
+
+            return LcmsScan(processing_array, exact_mz_array)
 
     def prepare_matrix_for_encoding(self, input_matrix, lowest_max_value=magic.lowest_encoded_window_max_value,
                                     snr=None):
@@ -460,7 +464,7 @@ class LcmsAutoencoder:
         """
         self.clusterer.fit(encoded_matrix)
 
-    def predict_clusters(self, training_output, training_input, row_numbers, output_tsv_file_name,
+    def predict_clusters(self, training_output, training_input, row_numbers, output_tsv_file_name, row_matrices,
                          valid_peak_array=None, drop_rt=None):
         """
         Takes all the necessary parameters to cluster an encoding and output
@@ -474,7 +478,7 @@ class LcmsAutoencoder:
         :param valid_peak_array:        List of clusters that may be supplied as valid.
                                         This effectively filters by cluster.
         """
-        self.clusterer.predict(training_output, training_input, row_numbers, output_tsv_file_name,
+        self.clusterer.predict(training_output, training_input, row_numbers, output_tsv_file_name, row_matrices,
                                valid_peak_array, drop_rt)
 
     def visualize(self, tsv_name, lower_axis=0, higher_axis=1):
@@ -525,3 +529,18 @@ class LcmsAutoencoder:
             # Make sure to clear after creating each figure.
             sns.plt.cla()
             sns.plt.clf()
+
+
+class LcmsScan:
+    def __init__(self, processed_array, max_mz_array):
+        self.processed_array = processed_array
+        self.max_mz_array = max_mz_array
+
+    def get_array(self):
+        return self.processed_array
+
+    def get_bucket_mz(self):
+        return self.max_mz_array
+
+    def normalize_array(self, normalizer):
+        self.processed_array /= normalizer
