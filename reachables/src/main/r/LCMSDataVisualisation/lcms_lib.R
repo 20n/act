@@ -5,17 +5,33 @@ library(dplyr)
 library(classInt)
 library(jsonlite)
 library(logging)
+library(rscala)
 
 kPeakDisplaySep <- " - "
 kLCMSDataLocation <- "/Volumes/data-level1/lcms-ms1/"
-kLCMSDataCacheLocation <- "~/20n-data/lcms-ms1-rcache/"
+kLCMSDataCacheLocation <- "/Volumes/data-level1/lcms-ms1-rcache/"
 kIntensityThreshold <- 10000
 kSSRatio <- 20
+kFatJarLocation <- "reachables-assembly-0.1.jar"
 
+loginfo("Loading Scala interpreter from fat jar at %s.", kFatJarLocation)
+kScalaInterpreter=scalaInterpreter(kFatJarLocation)
+loginfo("Done loading Scala interpreter.")
 
-# TODO (does not work)
-setLevel("DEBUG", getHandler(with(getLogger(logger=''), names(handlers))))
+saveMoleculeStructure <- {
+  importMoleculeImporter <- 'import com.act.analysis.chemicals.molecules.MoleculeImporter'
+  importReactionRenderer <- 'import com.act.biointerpretation.mechanisminspection.ReactionRenderer'
+  kScalaInterpreter%~%importMoleculeImporter
+  kScalaInterpreter%~%importReactionRenderer
+  getSaveMolStructFunctionDef <- 'ReactionRenderer.drawMolecule(MoleculeImporter.importMolecule(inchiString), file)'
+}
 
+getIonMz <- {
+  importMS1 <- 'import com.act.lcms.MS1'
+  kScalaInterpreter%~%importMS1
+  getIonMzFunctionDef <- 'MS1.computeIonMz(mass, MS1.ionDeltas.filter(i => i.getName.equals(mode)).head)'
+  intpDef(kScalaInterpreter, 'mass: Double, mode: String', getIonMzFunctionDef) 
+}
 
 getAndCachePlate <- function(filename) {
   shiny::validate(
