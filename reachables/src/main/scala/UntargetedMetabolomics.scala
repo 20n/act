@@ -78,7 +78,7 @@ object RetentionTime {
     xs.sorted.toList(xs.size/2)
   }
   def middle(times: List[RetentionTime]): RetentionTime = new RetentionTime(middle(times.map(_.time)))
-  def ascender(a: RetentionTime, b: RetentionTime) = a.time < b.time
+  def isLt(a: RetentionTime, b: RetentionTime) = a.time < b.time
 }
 
 sealed trait Provenance
@@ -125,7 +125,7 @@ sealed class PeakHits(val origin: Provenance, val peakSpectra: PeakSpectra) {
         case MaxIntensity => a.maxInt > b.maxInt
         case SNR => a.snr > b.snr
         case MZ => MonoIsotopicMass.ascender(a.mz, b.mz)
-        case RT => RetentionTime.ascender(a.rt, b.rt)
+        case RT => RetentionTime.isLt(a.rt, b.rt)
       }
     }
     peakSpectra.peaks.toList.sortWith(sortfn)
@@ -518,7 +518,7 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
     // then we pick that, as opposed to maximizing selections within the experiment
 
     // to do that, we combine all retention times together in one list
-    val rtsAcrossAllExpr: List[RetentionTime] = peaksToRtForThisMz.flatten.sortWith(RetentionTime.ascender)
+    val rtsAcrossAllExpr: List[RetentionTime] = peaksToRtForThisMz.flatten.sortWith(RetentionTime.isLt)
     // for each element in the list, calculate the number of other elements it is equal to O(n^2)
     val numElemsEqual: List[Int] = rtsAcrossAllExpr.map(t => rtsAcrossAllExpr.count(r => r.equals(t)))
     // order the retention times according to how many elements before and after they cover
@@ -703,7 +703,8 @@ object UntargetedMetabolomics {
   def main(args: Array[String]) {
     val className = this.getClass.getCanonicalName
     val opts = List(optOutFile, optControls, optHypotheses, optDoIons, optRestrictIons, optMultiIonsRankHigher, 
-                    optToStructUsingList, optToFormulaUsingList, optToFormulaUsingSolver, optGetDifferentialFromDL, optRunTests)
+                    optToStructUsingList, optToFormulaUsingList, optToFormulaUsingSolver, optGetDifferentialFromDL, 
+                    optFilterRtRegions, optRunTests)
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
     // read the command line options
@@ -719,6 +720,7 @@ object UntargetedMetabolomics {
     val inchiListFile = cmdLine get optToStructUsingList
     val formulaListFile = cmdLine get optToFormulaUsingList
     val dlDifferentials = cmdLine get optGetDifferentialFromDL
+    val filterRtRegions = cmdLine getMany optFilterRtRegions
 
     val out: PrintWriter = {
       if (cmdLine has optOutFile) 
@@ -783,14 +785,25 @@ object UntargetedMetabolomics {
         experiment.analyze()
       }
     }
+    
+    val diffFiltered = if (filterRtRegions == null) {
+      differential
+    } else {
+      val regions = filterRtRegions.map(s => { 
+        val spl = s.split("-")
+        val (l, h) = (spl(0), spl(1))
+        (new RetentionTime(l.toDouble), new RetentionTime(h.toDouble))
+      })
+      RemoveGradientBoundaries.filter(differential, regions.toSet)
+    }
  
     val rslt = if (!mapToMassAndIons) {
-      differential
+      diffFiltered
     } else {
       // map the peaks to candidate molecule masses
       val candidateMols = restrictedIons match {
-        case null => MultiIonHits.convertToMolHits(rawPeaks = differential, lookForMultipleIons = rankMultipleIons)
-        case _ => MultiIonHits.convertToMolHits(rawPeaks = differential, ionOpts = restrictedIons.toSet, lookForMultipleIons = rankMultipleIons)
+        case null => MultiIonHits.convertToMolHits(rawPeaks = diffFiltered, lookForMultipleIons = rankMultipleIons)
+        case _ => MultiIonHits.convertToMolHits(rawPeaks = diffFiltered, ionOpts = restrictedIons.toSet, lookForMultipleIons = rankMultipleIons)
       }
       candidateMols
     }
@@ -914,6 +927,13 @@ object UntargetedMetabolomics {
                              |and differentialData is the called differential peaks from deep learning.""".stripMargin,
                     isReqd = false, hasArg = true)
 
+  val optFilterRtRegions = new OptDesc(
+                    param = "R",
+                    longParam = "filter-rt-regions",
+                    name = "[low-high,]+",
+                    desc = """A set of retention time regions that should be ignored in the output""".stripMargin,
+                    isReqd = false, hasArgs = true)
+
   val optRunTests = new OptDesc(
                     param = "t",
                     longParam = "run-tests-from",
@@ -1025,10 +1045,21 @@ object UntargetedMetabolomics {
   }
 }
 
+object RemoveGradientBoundaries {
+  def filter(pks: PeakHits, rmRanges: Set[(RetentionTime, RetentionTime)]) = {
+    def isInRng(p: Peak) = !rmRanges.exists{ case (l, h) => RetentionTime.isLt(l, p.rt) && RetentionTime.isLt(p.rt, h) }
+    val outsideOfGradientBoundaries: Set[Peak] = pks.peakSpectra.peaks.filter(isInRng)
+    val provenance = new ComputedData(sources = List(pks.origin))
+    new RemoveGradientBoundaries(new RawPeaks(provenance, new PeakSpectra(outsideOfGradientBoundaries)))
+  }
+}
+
+class RemoveGradientBoundaries(val peaks: PeakHits) extends PeakHits(peaks.origin, peaks.peakSpectra)
+
 object MultiIonHits {
 
   def convertToMolHits(
-    rawPeaks: RawPeaks,
+    rawPeaks: PeakHits,
     ionOpts: Set[String] = Set("M+H", "M+Na"),
     lookForMultipleIons: Boolean = false): MultiIonHits = {
 
