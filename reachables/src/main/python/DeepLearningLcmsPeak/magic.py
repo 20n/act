@@ -4,14 +4,14 @@ from __future__ import absolute_import, division, print_function
 Deep.py Default Values
 """
 cluster_number = 200
-mz_split = 0.01
-encoding_size = 2
-window_size = 10
+mz_split = 0.05
+encoding_size = 4
+window_size = 40
 mz_min = 49
 mz_max = 951
 time_min = 0
 time_max = 450
-time_step = 2.5
+time_step = 0.75
 
 """
 Lcms_Autoencoder.py Default Values

@@ -90,17 +90,16 @@ if __name__ == "__main__":
         min_stacked = np.dstack([a.get_array() for a in scans])
         min_representation = np.min(min_stacked, axis=2)
 
-        # Prevent very small values from have a disproportionate effect
-
         bucket_list = [scan.get_bucket_mz() for scan in scans]
 
         mz_index_of_mins = np.argmin(min_stacked, axis=2)
         mz_buckets = np.zeros(bucket_list[0].shape)
         for index, bucket in enumerate(bucket_list):
-            # Where the index arg is equal to the current index we find the m/z
-            # of the value that will be used moving forward.
+            # Where the index arg is equal to the current index we find the m/z value that will be used moving forward.
             bucket_mask = mz_index_of_mins == index
             mz_buckets[bucket_mask] = bucket[bucket_mask]
+
+        # Prevent very small values from have a disproportionate effect
         min_representation[min_representation <= 10] = 1
 
         return LcmsScan(min_representation, mz_buckets)
@@ -151,7 +150,10 @@ if __name__ == "__main__":
     with open(os.path.join(output_directory, "differential_expression_run_summary.txt"), "w") as f:
         json.dump(summary_dict, f)
 
-    with open(model_location, "w") as f:
-        # Complex objects require more recursive steps to pickle.
-        sys.setrecursionlimit(10000)
-        pickle.dump(autoencoder, f)
+    if not model_location:
+        model_location = os.path.join(output_directory, "differential_expression.model")
+
+        with open(model_location, "w") as f:
+            # Complex objects require more recursive steps to pickle.
+            sys.setrecursionlimit(10000)
+            pickle.dump(autoencoder, f)
