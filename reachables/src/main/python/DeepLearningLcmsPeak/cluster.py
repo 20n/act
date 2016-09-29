@@ -80,10 +80,11 @@ class LcmsClusterer:
                     row[str(time_number)] = raw_normalized_data[i][time_number]
 
                 # Which m/z bucket
-                row["mz"] = row_to_mz(row_in_array, self.mz_split, self.mz_min)
+                # call it in the middle
+                row["mz"] = row_to_mz(row_in_array, self.mz_split, self.mz_min) + 0.5 * self.mz_split
                 # Min and max within window
-                row["mzmin"] = row["mz"]
-                row["mzmax"] = row["mz"] + self.mz_split
+                row["mzmin"] = row_to_mz(row_in_array, self.mz_split, self.mz_min)
+                row["mzmax"] = row_to_mz(row_in_array, self.mz_split, self.mz_min) + self.mz_split
 
                 # Largest intensity value is where we call the retention time at
                 row["rt"] = column_number_to_time(time_index + max_value_index, magic.time_step, magic.time_min)
