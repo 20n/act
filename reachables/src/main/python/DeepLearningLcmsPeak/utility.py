@@ -4,7 +4,7 @@ import math
 
 
 def row_to_mz(row, mz_division, min_mz):
-    return row * mz_division + min_mz
+    return row * mz_division + min_mz - mz_division * 0.5
 
 
 # Fill numpy array with appropriate values
@@ -14,7 +14,7 @@ def assign_row_by_mz(mz, mz_split, mz_min):
         raise RuntimeError("M/Z assignment was less than 0. M/Z "
                            "value supplied was {}, granularity was {}, "
                            "min M/Z value was {}".format(mz, mz_split, mz_min))
-    return int(math.floor(mz_row_assignment))
+    return int(round(mz_row_assignment))
 
 
 def assign_column_by_time(time, time_step, time_min):
