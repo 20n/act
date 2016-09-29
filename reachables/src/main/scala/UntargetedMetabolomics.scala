@@ -138,7 +138,7 @@ sealed class PeakHits(val origin: Provenance, val peakSpectra: PeakSpectra) {
       // 2. replication aggregation
       // 3. outlier detection
       src match {
-        case file: RawData => List(Map("filename" -> new File(file.source).getName.replace("tsv","nc")))
+        case file: RawData => List(Map("filename" -> new File(file.source).getName.replace(".tsv",".nc")))
         case nested: ComputedData => {
           nested.sources.map(o => getPlates(o)).flatten
         }
@@ -718,7 +718,7 @@ object UntargetedMetabolomics {
     val mapToFormulaUsingSolver = cmdLine has optToFormulaUsingSolver
     val inchiListFile = cmdLine get optToStructUsingList
     val formulaListFile = cmdLine get optToFormulaUsingList
-    val dlDifferentialFile = cmdLine get optGetDifferentialFromDL
+    val dlDifferentials = cmdLine get optGetDifferentialFromDL
 
     val out: PrintWriter = {
       if (cmdLine has optOutFile) 
@@ -741,11 +741,20 @@ object UntargetedMetabolomics {
       new RawPeaks(srcOrigin, PeakSpectra.fromCalledPeaks(file))
     }
 
+    def fromDeepLearnDiff(kv: String) = {
+      val spl = kv.split("=")
+      val (srcFilesJson, deepCalledPeaks) = (spl(0), spl(1))
+      // TODO @MichaelLampe20n: convert srcFilesJson to src such as below
+      val srcs = List("Plate13873_G3_0421201601.nc", "Plate13873_G9_0421201601.nc", "Plate13873_A5_0421201601.nc", "Plate13873_A11_0421201601.nc")
+      val srcFiles = srcs.map(s => new RawData(source = s))
+      val provenance = new ComputedData(sources = srcFiles)
+      new RawPeaks(provenance, PeakSpectra.fromDeepLearnt(deepCalledPeaks))
+    }
+
     val differential: RawPeaks = {
       if (cmdLine has optGetDifferentialFromDL) {
         assert(controls == null && hypotheses == null)
-        val srcOrigin = new RawData(source = dlDifferentialFile)
-        new RawPeaks(srcOrigin, PeakSpectra.fromDeepLearnt(dlDifferentialFile))
+        fromDeepLearnDiff(dlDifferentials)
       } else {
         // deep learning only provided us with the peak calls, not the differential :(
         // compute the differentials manually ourselves
@@ -880,9 +889,11 @@ object UntargetedMetabolomics {
   val optGetDifferentialFromDL = new OptDesc(
                     param = "D",
                     longParam = "get-differential-from-deep-learning",
-                    name = "diff-file",
+                    name = "layoutJson=diffData",
                     desc = """Instead of doing the ratio_lines(min_replicates(max_sample)) manually,
-                             |we can take the input differential from deep learning""".stripMargin,
+                             |we can take the input differential from deep learning. The input here takes the form
+                             |of jsonfile=differentialData, where jsonfile contains the original 01.nc filenames
+                             |and differentialData is the called differential peaks from deep learning.""".stripMargin,
                     isReqd = false, hasArg = true)
 
   val optRunTests = new OptDesc(
