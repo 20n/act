@@ -2,10 +2,6 @@ import os
 
 import pandas as pd
 
-# plates = ["Plate13873_A11_0421201601", "Plate13873_A5_0421201601", "Plate13873_G3_0421201601", "Plate13873_G9_0421201601", "Plate14870_A1_0501201601", "Plate14870_A2_0501201601"]
-#
-# input_directory = "/Volumes/shared-data/Michael/OptimizationDeepLearning/Predictions/"
-# output_directory = os.path.join(input_directory, "Filtered_15rt/")
 plates = ["differential_expression"]
 input_directory = "/Volumes/shared-data-1/Michael/DifferentialExpressionDeepLearning/PerlsteinKnockoutYeastModel/"
 output_directory = os.path.join(input_directory, "Filtered_By_Cluster/")
