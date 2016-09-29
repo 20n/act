@@ -3,17 +3,18 @@ from __future__ import absolute_import, division, print_function
 import operator
 import os
 
-import defaults
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from cluster import LcmsClusterer
 from keras.callbacks import EarlyStopping
 from keras.layers import Input, Dense
 from keras.models import Model
 from keras.optimizers import RMSprop
-from netcdf_parser import load_lcms_trace
 from tqdm import tqdm
+
+import defaults
+from cluster import LcmsClusterer
+from netcdf_parser import load_lcms_trace
 from utility import assign_row_by_mz
 
 
@@ -35,7 +36,7 @@ class LcmsAutoencoder:
         :param encoding_size:       How large the encoding is.
         :param number_of_clusters:  Number of kMeans clusters to put the encoding into.
         :param block_size:          The size of a LCMS window in trace time units. 15 time units ~ 3 seconds.
-        :param mz_split:             The step size of the M/Z buckets.
+        :param mz_split:            The step size of the M/Z buckets.
                                     Examples:
 
                                     mz_step = 0.1 results in 49, 49.1, 49.2, 49.3
@@ -77,17 +78,17 @@ class LcmsAutoencoder:
             os.makedirs(self.output_directory)
         self.clusterer.set_output_directory(output_directory)
 
-    def process_lcms_trace(self, lcms_directory, lcms_plate_filename):
+    def process_lcms_trace(self, lcms_directory, scan_filename):
         # Plate file stuff
         lcms_directory = os.path.join(lcms_directory, '')
-        lcms_plate_name = lcms_plate_filename.split(".nc")[0]
-        assert lcms_plate_name.endswith("01"), "This module only processes MS1 data which should always have a " \
-                                               "file ending of '01'.  Your supplied file " \
-                                               "was {}".format(lcms_plate_filename)
-        current_trace_file = os.path.join(lcms_directory, lcms_plate_filename)
+        scan_name = scan_filename.split(".nc")[0]
+        assert scan_name.endswith("01"), "This module only processes MS1 data which should always have a " \
+                                         "file ending of '01'.  Your supplied file " \
+                                         "was {}".format(scan_filename)
+        current_trace_file = os.path.join(lcms_directory, scan_filename)
         assert os.path.exists(current_trace_file), "The trace file at {} does not exist.".format(current_trace_file)
 
-        saved_array_name = lcms_plate_name + "_mz_split_" + str(self.mz_split) + ".npy"
+        saved_array_name = scan_name + "_mz_split_" + str(self.mz_split) + ".npy"
 
         processed_file_name = os.path.join(self.output_directory, saved_array_name)
         retention_time_file_name = os.path.join(self.output_directory,
@@ -252,26 +253,35 @@ class LcmsAutoencoder:
 
                     window_max_index = 20
 
-                    That means are window is currently 100 + 120, or the first value of our window would be the
-                    max_value.
+                    That means our window is currently 100 + 20, or the first value of our window would be the
+                    max_value (Which is position 120).
 
                     We shift it back so that the max_value is centered by subtracting the center (30/2 == 15).
 
                     120 - 15 = 105, making our window 105-135, thus centering 120.
                     """
-                    centered_time = int(i + window_max_index - center)
-                    max_centered_window = np.asarray(single_row[centered_time: (centered_time + self.block_size)])
+                    # The case where this is < 0 will be handled below in
+                    # if len(normalized_window) == self.block_size
+                    start_index_of_centered_window = int(i + window_max_index - center)
+                    if self.debug and start_index_of_centered_window < 0:
+                        print("Start index is less than 0, array will likely be empty.")
+
+                    end_index_of_centered_window = start_index_of_centered_window + self.block_size
+
+                    max_centered_window = \
+                        np.asarray(single_row[start_index_of_centered_window: end_index_of_centered_window])
 
                     # By dividing by the max, we normalize the entire window to our max value that we previously found.
                     normalized_window = max_centered_window / float(window_max)
 
                     # Handle edge cases that can corrupt our numpy array.
+                    # This will occur if start_index_of_centered_window is less than 0
                     if len(normalized_window) == self.block_size:
                         # TODO: This should be fixed so that we better handle this situation.
                         # It could cause us to lose some double peaks. (The max(normalized_window) <= 1 part)
                         if max(normalized_window) <= 1:
                             thresholded_groups.append(normalized_window)
-                            row_index_and_max.append([row_number, centered_time, window_max])
+                            row_index_and_max.append([row_number, start_index_of_centered_window, window_max])
                         else:
                             print("Skipping window as another, larger peak was found nearby.")
 

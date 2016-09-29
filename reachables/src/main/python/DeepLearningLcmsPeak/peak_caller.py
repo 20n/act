@@ -1,8 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import argparse
-
-import dill
+import pickle
 
 """
 This is the primary control file.  Run new Deep processings from here.
@@ -24,10 +23,8 @@ if __name__ == "__main__":
     peaks = args.validPeaks
     output_directory = args.outputDirectory
 
-    autoencoder = None
-    with open(model) as f:
-        autoencoder = dill.loads("".join(f.readlines()))
-        autoencoder.set_output_directory(output_directory)
+    autoencoder = pickle.load(open(model, "rb"))
+    autoencoder.set_output_directory(output_directory)
 
     row_matrix, retention_times = autoencoder.process_lcms_trace(lcms_directory, lcms_plate_name)
 
