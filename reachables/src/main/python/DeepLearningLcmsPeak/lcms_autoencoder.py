@@ -35,7 +35,7 @@ class LcmsAutoencoder:
         :param encoding_size:       How large the encoding is.
         :param number_of_clusters:  Number of kMeans clusters to put the encoding into.
         :param block_size:          The size of a LCMS window in trace time units. 15 time units ~ 3 seconds.
-        :param mz_split:             The step size of the M/Z buckets.
+        :param mz_split:            The step size of the M/Z buckets.
                                     Examples:
 
                                     mz_step = 0.1 results in 49, 49.1, 49.2, 49.3

@@ -73,8 +73,6 @@ class LcmsClusterer:
                 row = {}
 
                 # Get the max intensity index.  Additionally, assign the row values.
-                # We don't use the trick operator trick here because we still want to do work while
-                # getting the max index
                 max_value_index = 0
                 for time_number in range(0, len(raw_normalized_data[i])):
                     if abs(raw_normalized_data[i][time_number]) == 1:
