@@ -108,10 +108,8 @@ sealed class PeakHits(val origin: Provenance, val peakSpectra: PeakSpectra) {
     val (overExprMissingInSome, underExprMissingInSome) = peaksMissingInSome.partition(signalMissingInHypOverExpr)
 
     val sizes = Map(
-      "overExprPresentInAll" -> overExprPresentInAll.size,
-      "underExprPresentInAll" -> underExprPresentInAll.size,
-      "overExprMissingInSome" -> overExprMissingInSome.size,
-      "underExprMissingInSome" -> underExprMissingInSome.size
+      "over-expressed" -> (overExprPresentInAll.size + overExprMissingInSome.size),
+      "under-expressed" -> (underExprPresentInAll.size + underExprMissingInSome.size)
     )
 
     sizes
