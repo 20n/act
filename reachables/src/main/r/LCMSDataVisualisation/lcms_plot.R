@@ -1,10 +1,12 @@
 # Plotting modules
 
+# Module output function
 lcmsPlotOutput <- function(id, ...) {
   ns <- NS(id)
   plotOutput(ns("plot"), ...)
 }
 
+# Module server function
 lcmsPlot <- function(input, output, session, plot.data, plot.parameters) {
   output$plot <- renderPlot({
     plot.data <- plot.data()
@@ -14,6 +16,7 @@ lcmsPlot <- function(input, output, session, plot.data, plot.parameters) {
   })
 }
 
+# Module server function
 lcmsPlotWithNorm <- function(input, output, session, plot.data, plot.parameters, i, max.intensity, normalize) {
   output$plot <- renderPlot({
     plot.data <- plot.data()[[i]]

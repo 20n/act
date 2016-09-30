@@ -1,3 +1,6 @@
+# LCMS visualisation module for multi plate data
+
+# Module input function
 lcmsMultiPlateInput <- function(id, label = "LCMS multi plate") {
   # Create a namespace function using the provided id
   ns <- NS(id)
@@ -15,6 +18,7 @@ lcmsMultiPlateInput <- function(id, label = "LCMS multi plate") {
   )
 }
 
+# Module UI function
 lcmsMultiPlateUI <- function(id) {
   ns <- NS(id)
   tagList(

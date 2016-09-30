@@ -1,3 +1,5 @@
+# Plot parameters module
+
 plotParametersInput <- function(id) {
   ns <- NS(id)
   tagList(

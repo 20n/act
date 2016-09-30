@@ -1,3 +1,6 @@
+# LCMS visualisation single plate module
+
+# Module Input function
 lcmsSinglePlateInput <- function(id, label = "LCMS single plate") {
   # Create a namespace function using the provided id
   ns <- NS(id)
@@ -14,7 +17,7 @@ lcmsSinglePlateInput <- function(id, label = "LCMS single plate") {
   )
 }
 
-
+# module UI function
 lcmsSinglePlateUI <- function(id) {
   ns <- NS(id)
   tagList(
@@ -48,7 +51,6 @@ lcmsSinglePlate <- function(input, output, session) {
   plot.data <- callModule(lcmsSinglePlateData, "plate", reactive(input$filename), 
                           reactive(input$retention.time.range), target.mz, 
                           reactive(mz.scope$mz.band.halfwidth), reactive(input$load))
-  
   plot.parameters <- callModule(plotParameters, "plot.parameters")
   callModule(lcmsPlot, "plot", plot.data, plot.parameters)
   

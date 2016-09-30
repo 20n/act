@@ -1,3 +1,6 @@
+# Modules for compute LCMS plates data
+
+# lcmsSinglePlateData module server function
 lcmsSinglePlateData <- function(input, output, session, platename, retention.time.range, target.mz, mz.band.halfwidth, load) {
   
   plate <- reactive({
@@ -24,9 +27,10 @@ lcmsSinglePlateData <- function(input, output, session, platename, retention.tim
     memGetPeaksInScope(scans, target.mz, mz.band.halfwidth)
   })
   
-  return(peaks)
+  peaks
 }
 
+# lcmsPlatesData module server function
 lcmsPlatesData <- function(input, output, session, platenames, retention.time.range, target.mz, mz.band.halfwidth) {
   
   plates <- reactive({
@@ -51,5 +55,5 @@ lcmsPlatesData <- function(input, output, session, platenames, retention.time.ra
     lapply(scans(), function(x) memGetPeaksInScope(x, target.mz, mz.band.halfwidth))
   })
   
-  return(peaks)
+  peaks
 }

@@ -1,5 +1,8 @@
+# Module for rendering molecule structures
+
 kMolStructureCacheFolder <- "/home/thomas/data/mol-structure-cache/"
 
+# Module server function
 moleculeRenderer <- function(input, output, session, inchiString, height) {
   
   imageFilepath <- reactive({
@@ -12,7 +15,6 @@ moleculeRenderer <- function(input, output, session, inchiString, height) {
   })
   
   output$molecule <- renderImage({
-    
     list(src = imageFilepath(),
          contentType = "image/png",
          height = height,
@@ -20,6 +22,7 @@ moleculeRenderer <- function(input, output, session, inchiString, height) {
   }, deleteFile = FALSE)
 }
 
+# Module UI function
 moleculeRendererUI <- function(id) {
   ns <- NS(id)
   imageOutput(ns("molecule"))

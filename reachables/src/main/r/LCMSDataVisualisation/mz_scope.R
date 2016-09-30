@@ -1,3 +1,5 @@
+# MZ scope module
+
 kModes <- c("M (use mass as target mz value)", "M+H", "M-H", "M+Na", "M+Li", "M+H-H2O")
 kDefaultMzValue <- 463.184234
 kDefaultMzBandwidthValue <- 0.01
