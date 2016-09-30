@@ -141,7 +141,7 @@ if __name__ == "__main__":
 
     # This currently also does the writing
     autoencoder.predict_clusters(encoded_samples, processed_samples, auxilariy_information,
-                                 "differential_expression", [row_matrix1, row_matrix2], drop_rt=15)
+                                 "differential_expression", [row_matrix1, row_matrix2], drop_rt=0)
 
     if not model_location or not os.path.exists(model_location):
         autoencoder.visualize("differential_expression", lower_axis=-1)
