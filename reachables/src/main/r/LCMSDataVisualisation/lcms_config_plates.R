@@ -49,7 +49,7 @@ lcmsConfigPlates <- function(input, output, session) {
   mz.band.halfwidth <- reactive(input$mz.band.halfwidth)
   normalize <- reactive(input$normalize)
   retention.time.range <- reactive(input$retention.time.range)
-  has.mol.mass <- reactive(input$as.mol.mass)
+  has.mol.mass <- reactive(input$has.mol.mass)
   
   output$ui.peaks <- renderUI({
     peaks <- peaks() %>% 
