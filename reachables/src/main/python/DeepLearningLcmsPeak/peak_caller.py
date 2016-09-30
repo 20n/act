@@ -23,8 +23,9 @@ if __name__ == "__main__":
     peaks = args.validPeaks
     output_directory = args.outputDirectory
 
-    autoencoder = pickle.load(open(model, "rb"))
-    autoencoder.set_output_directory(output_directory)
+    with open(model, "rb") as f:
+        autoencoder = pickle.load(f)
+        autoencoder.set_output_directory(output_directory)
 
     row_matrix, retention_times = autoencoder.process_lcms_trace(lcms_directory, lcms_plate_name)
 
