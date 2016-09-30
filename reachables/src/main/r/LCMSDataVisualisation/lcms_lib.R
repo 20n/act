@@ -174,6 +174,9 @@ drawScatterplot <- function(plot.data, plot.parameters, ...) {
   #   plot.data: list: filename, peaks, retention.time.range, mz.range
   #   plot.parameters: list of theta and phi angles (in degrees)
   #   ... (zlim, clim): intensity and color scale - used when normalizing graphs
+  shiny::validate(
+    need(nrow(plot.data$peaks) > 0, "There are 0 peaks to plot plate and scope.")
+  )
   with(plot.data, {
     scatter3D(peaks$retention.time, peaks$mz, peaks$intensity, 
               # pch: plotting symbol, cex: label magnification factor
