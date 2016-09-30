@@ -147,10 +147,10 @@ lcmsConfigPlates <- function(input, output, session) {
     plot.indexes <- split(1:n, layout$nrow)
     
     fluidPage(
-      do.call(fluidRow, plot_output_list[plot.indexes[1]]),
-      do.call(fluidRow, plot_output_list[plot.indexes[2]]),
+      do.call(fluidRow, plot_output_list[plot.indexes[[1]]]),
+      do.call(fluidRow, plot_output_list[plot.indexes[[2]]]),
       if (layout$nrow == 3) {
-        do.call(fluidRow, plot_output_list[plot.indexes[3]])
+        do.call(fluidRow, plot_output_list[plot.indexes[[3]]])
       }        
     )
   })
