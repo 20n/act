@@ -5,6 +5,7 @@ source("mz_scope.R")
 source("plot_parameters.R")
 source("lcms_data.R")
 source("lcms_plot.R")
+source("molecule_renderer.R")
 source("lcms_single_plate.R")
 source("lcms_multi_plate.R")
 source("lcms_config_plates.R")
@@ -40,7 +41,7 @@ server <- function(input, output, session) {
   
   callModule(lcmsSinglePlate, "simple")
   callModule(lcmsMultiPlate, "multi")
-  callModule(lcmsConfigPlates, "config", plot.parameters)
+  callModule(lcmsConfigPlates, "config")
 }
 
 

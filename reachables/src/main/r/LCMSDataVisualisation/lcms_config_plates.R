@@ -4,7 +4,7 @@ lcmsConfigPlatesInput <- function(id, label = "LCMS config plates") {
   tagList(
     h3("Input configuration"),
     fileInput(ns("config.file"), label = "Choose a configuration file", accept=c("application/json")),
-    p("Example config: '/shared-data/Thomas/lcms_viz/FR_config_file/sample_config.json'"),
+    p("Sample config: /shared-data/Thomas/lcms_viz/FR_config_file/sample_config.json"),
     h3("Peak selection"),
     uiOutput(ns("ui.peaks")),
     em("Peak format is {mz-value} - {retention-time} - {rank-factor}"),
@@ -16,10 +16,20 @@ lcmsConfigPlatesInput <- function(id, label = "LCMS config plates") {
 
 lcmsConfigPlatesUI <- function(id) {
   ns <- NS(id)
-  uiOutput(ns("plots"))
+  fluidPage(
+    fluidRow(
+      h4("Matching molecules"),
+      em("Please scroll to display all"),
+      uiOutput(ns("structures"))
+    ),
+    fluidRow(
+      h4("3D scatterplots"),
+      uiOutput(ns("plots"))    
+    )
+  )
 }
 
-lcmsConfigPlates <- function(input, output, session, plot.parameters) {
+lcmsConfigPlates <- function(input, output, session) {
   
   ns <- session$ns
   
@@ -57,7 +67,7 @@ lcmsConfigPlates <- function(input, output, session, plot.parameters) {
     rt.val <- as.numeric(splits[2])
     peak <- peaks() %>% dplyr::filter(round(mz, 2) == mz.val, round(rt, 2) == rt.val)
     shiny::validate(
-      need(nrow(peak) == 1, "Less or more than one peak")
+      need(nrow(peak) == 1, "Less or more than one peak. `mz` values have to be unique accross peaks!")
     )
     peak
   })
@@ -75,6 +85,38 @@ lcmsConfigPlates <- function(input, output, session, plot.parameters) {
     )
   })
   
+  
+  matching.inchis <- reactive({
+    selected.peak <- selected.peak()
+    matching.inchis.code <- selected.peak$matching_inchis
+    config <- config()
+    matching.inchis <- with(config$matching_inchi_hashes, {
+      unlist(vals[code == matching.inchis.code]) 
+    })
+    shiny::validate(
+      need(length(matching.inchis) > 0, "No matching molecule for this peak...")
+    )
+    matching.inchis
+  })
+  
+  output$structures <- renderUI({
+    matching.inchis <- matching.inchis()
+    n <- length(matching.inchis)
+    for (i in 1:n) {
+      local({
+        my_i <- i
+        callModule(moleculeRenderer, paste0("plot", my_i), reactive(matching.inchis[my_i]), "200px")
+      })
+    }
+    plot_output_list <- lapply(1:n, function(i) {
+      plotname <- paste0("plot", i)
+      div(style="display:inline-block", moleculeRendererUI(ns(plotname)))
+    })
+    uiStructures <- do.call(tagList, plot_output_list)
+    div(style="height: 200px; overflow-x: auto; white-space: nowrap", uiStructures)    
+  })
+  
+  
   plot.data <- callModule(lcmsPlatesData, "plates", platenames, retention.time.range, target.mz, mz.band.halfwidth)
   
   max.int <- reactive({
@@ -84,54 +126,40 @@ lcmsConfigPlates <- function(input, output, session, plot.parameters) {
   
   plot.parameters <- callModule(plotParameters, "plot.parameters")
   
-  callModule(lcmsPlotWithNorm, "plot1", plot.data, plot.parameters, 1, max.int, normalize)
-  callModule(lcmsPlotWithNorm, "plot2", plot.data, plot.parameters, 2, max.int, normalize)
-  callModule(lcmsPlotWithNorm, "plot3", plot.data, plot.parameters, 3, max.int, normalize)
-  callModule(lcmsPlotWithNorm, "plot4", plot.data, plot.parameters, 4, max.int, normalize)
-  callModule(lcmsPlotWithNorm, "plot5", plot.data, plot.parameters, 5, max.int, normalize)
-  callModule(lcmsPlotWithNorm, "plot6", plot.data, plot.parameters, 6, max.int, normalize)
-  callModule(lcmsPlotWithNorm, "plot7", plot.data, plot.parameters, 7, max.int, normalize)
-  callModule(lcmsPlotWithNorm, "plot8", plot.data, plot.parameters, 8, max.int, normalize)
-  callModule(lcmsPlotWithNorm, "plot9", plot.data, plot.parameters, 9, max.int, normalize)
+  observe({
+    for (i in 1:length(platenames())) {
+      local({
+        my_i <- i
+        callModule(lcmsPlotWithNorm, paste0("plot", my_i), plot.data, plot.parameters, my_i, max.int, normalize)
+      })
+    }  
+  })
   
   output$plots <- renderUI({
     layout <- layout()
+    n <- layout$nrow * layout$ncol
+    colWidth <- 12 / layout$ncol
+
+    plot_output_list <- lapply(1:n, function(i) {
+      plotname <- paste0("plot", i)
+      column(width = colWidth, lcmsPlotOutput(ns(plotname)))
+    })
+    
     if (layout$ncol == 2) {
       fluidPage(
-        fluidRow(
-          column(width = 6, lcmsPlotOutput(ns("plot1"))),
-          column(width = 6, lcmsPlotOutput(ns("plot2")))
-        ),
-        fluidRow(
-          column(width = 6, lcmsPlotOutput(ns("plot3"))),
-          column(width = 6, lcmsPlotOutput(ns("plot4")))
-        ),
+        do.call(fluidRow, plot_output_list[1:2]),
+        do.call(fluidRow, plot_output_list[3:4]),
         if (layout$nrow == 3) {
-          fluidRow(
-            column(width = 6, lcmsPlotOutput(ns("plot5"))),
-            column(width = 6, lcmsPlotOutput(ns("plot6")))
-          )
+          do.call(fluidRow, plot_output_list[5:6])
         }        
       )
     } else if (layout$ncol == 3) {
       fluidPage(
-        fluidRow(
-          column(width = 4, lcmsPlotOutput(ns("plot1"))),
-          column(width = 4, lcmsPlotOutput(ns("plot2"))),
-          column(width = 4, lcmsPlotOutput(ns("plot3")))
-        ),
-        fluidRow(
-          column(width = 4, lcmsPlotOutput(ns("plot4"))),
-          column(width = 4, lcmsPlotOutput(ns("plot5"))),
-          column(width = 4, lcmsPlotOutput(ns("plot6")))
-        ),
+        do.call(fluidRow, plot_output_list[1:3]),
+        do.call(fluidRow, plot_output_list[4:6]),
         if (layout$nrow == 3) {
-          fluidRow(
-            column(width = 4, lcmsPlotOutput(ns("plot7"))),
-            column(width = 4, lcmsPlotOutput(ns("plot8"))),
-            column(width = 4, lcmsPlotOutput(ns("plot9")))
-          )
-        }
+          do.call(fluidRow, plot_output_list[7:9])
+        }        
       )
     }
   })

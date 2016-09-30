@@ -6,14 +6,16 @@ library(classInt)
 library(jsonlite)
 library(logging)
 library(rscala)
+library(digest)
 
 kPeakDisplaySep <- " - "
-kLCMSDataLocation <- "/Volumes/data-level1/lcms-ms1/"
-kLCMSDataCacheLocation <- "/Volumes/data-level1/lcms-ms1-rcache/"
+kLCMSDataLocation <- "/mnt/data-level1/lcms-ms1/"
+kLCMSDataCacheLocation <- "/mnt/data-level1/lcms-ms1-rcache/"
 kIntensityThreshold <- 10000
 kSSRatio <- 20
 kFatJarLocation <- "reachables-assembly-0.1.jar"
 
+basicConfig()
 loginfo("Loading Scala interpreter from fat jar at %s.", kFatJarLocation)
 kScalaInterpreter=scalaInterpreter(kFatJarLocation)
 loginfo("Done loading Scala interpreter.")
@@ -21,9 +23,14 @@ loginfo("Done loading Scala interpreter.")
 saveMoleculeStructure <- {
   importMoleculeImporter <- 'import com.act.analysis.chemicals.molecules.MoleculeImporter'
   importReactionRenderer <- 'import com.act.biointerpretation.mechanisminspection.ReactionRenderer'
+  importFile <- 'import java.io.File'
+  declareNewReactionRenderer <- 'val reactionRenderer: ReactionRenderer = new ReactionRenderer'
   kScalaInterpreter%~%importMoleculeImporter
   kScalaInterpreter%~%importReactionRenderer
-  getSaveMolStructFunctionDef <- 'ReactionRenderer.drawMolecule(MoleculeImporter.importMolecule(inchiString), file)'
+  kScalaInterpreter%~%importFile
+  kScalaInterpreter%~%declareNewReactionRenderer
+  getSaveMolStructFunctionDef <- 'reactionRenderer.drawMolecule(MoleculeImporter.importMolecule(inchiString), new File(file))'
+  intpDef(kScalaInterpreter, 'inchiString: String, file: String', getSaveMolStructFunctionDef) 
 }
 
 getIonMz <- {
