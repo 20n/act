@@ -153,7 +153,7 @@ lcmsConfigPlates <- function(input, output, session) {
     layout <- layout()
     colWidth <- 12 / layout$ncol
     
-    n <- length(filenames())
+    n <- length(platenames())
     plot_output_list <- lapply(1:n, function(i) {
       plotname <- paste0("plot", i)
       column(width = colWidth, lcmsPlotOutput(ns(plotname)))
