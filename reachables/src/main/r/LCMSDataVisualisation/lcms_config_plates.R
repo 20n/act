@@ -57,6 +57,8 @@ lcmsConfigPlates <- function(input, output, session) {
       mutate(rank_metric_signif = signif(rank_metric, 3)) %>%
       arrange(desc(rank_metric_signif))
     if (has.mol.mass()) {
+      peaks <- peaks %>% 
+        mutate_each(funs(round(.,2)), moleculeMass) %>%
       labels <- apply(peaks[, c("mz", "rt", "rank_metric_signif", "moleculeMass")], 1, function(x) paste0(x, collapse = kPeakDisplaySep))
     } else {
       labels <- apply(peaks[, c("mz", "rt", "rank_metric_signif")], 1, function(x) paste0(x, collapse = kPeakDisplaySep))
@@ -72,7 +74,7 @@ lcmsConfigPlates <- function(input, output, session) {
     mz.val <- as.numeric(splits[1])
     rt.val <- as.numeric(splits[2])
     if (has.mol.mass()) {
-      mo.mass <- as.numeric(splits[4])
+      mol.mass <- as.numeric(splits[4])
       peak <- peaks() %>% 
         dplyr::filter(round(mz, 2) == mz.val, round(rt, 2) == rt.val, round(moleculeMass, 2) == mol.mass)  
     } else {
