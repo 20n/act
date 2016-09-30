@@ -18,7 +18,7 @@ lcmsPlotWithNorm <- function(input, output, session, plot.data, plot.parameters,
       logdebug("Maximum intensity found for %s was %.1f", plot.data$filename, max.intensity)
       zlim <- c(0, max.intensity)
       clim <- c(0, max.intensity)
-      drawScatterplot(plot.data, plot.parameters, zlim, clim)
+      drawScatterplot(plot.data, plot.parameters, zlim = zlim, clim = clim)
     } else {
       drawScatterplot(plot.data, plot.parameters)
     }
