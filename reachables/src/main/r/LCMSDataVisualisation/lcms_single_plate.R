@@ -30,8 +30,8 @@ lcmsSinglePlateUI <- function(id) {
 
 # Module server function
 lcmsSinglePlate <- function(input, output, session) {
-  
-  mz.scope <- callModule(mzScope, "mz.scope")
+  mzScopeId <- "mz.scope"
+  mz.scope <- callModule(mzScope, mzScopeId)
   
   target.mz <- reactive({
     shiny::validate(
@@ -61,7 +61,6 @@ lcmsSinglePlate <- function(input, output, session) {
     detectPeaks(plot.data$peaks)
   }, digits = c(0, 6, 2, 0))
   
-  #TODO (test this)
   observe({
     query <- parseQueryString(session$clientData$url_search)
     filename <- query[['filename']]
@@ -74,15 +73,15 @@ lcmsSinglePlate <- function(input, output, session) {
       updateTextInput(session, "filename", value = filename)
     }
     if (!is.null(mode)) {
-      updateSelectInput(session, "mode", selected = mode)
+      updateSelectInput(session, paste(mzScopeId, "mode", sep = "-"), selected = mode)
     }
     if (!is.null(target.mz)) {
       target.mz <- as.double(target.mz)
-      updateNumericInput(session, "target.monoisotopic.mass", value = target.mz)
+      updateNumericInput(session, paste(mzScopeId, "target.monoisotopic.mass", sep = "-"), value = target.mz)
     }
     if (!is.null(mz.band)) {
       mz.band <- as.double(mz.band)
-      updateNumericInput(session, "mz.band.halfwidth", value = mz.band)
+      updateNumericInput(session, paste(mzScopeId, "mz.band.halfwidth", sep = "-"), value = mz.band)
     }
     if (!is.null(rt.min) && !is.null(rt.max)) {
       rt.min <- as.double(rt.min)

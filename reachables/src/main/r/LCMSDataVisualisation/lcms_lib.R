@@ -1,21 +1,14 @@
-library(plot3D)
-library(shiny)
-library(mzR)
-library(dplyr)
-library(classInt)
-library(jsonlite)
-library(logging)
-library(rscala)
-library(digest)
+# Main library. Contains useful functions likely to be re-used elsewhere.
 
 kPeakDisplaySep <- " - "
 kLCMSDataLocation <- "/mnt/data-level1/lcms-ms1/"
 kLCMSDataCacheLocation <- "/mnt/data-level1/lcms-ms1-rcache/"
 kIntensityThreshold <- 10000
 kSSRatio <- 20
+
+# reachables-assembly-0.1.jar -> symlink to a "fat jar" created through sbt assembly
 kFatJarLocation <- "reachables-assembly-0.1.jar"
 
-basicConfig('DEBUG')
 loginfo("Loading Scala interpreter from fat jar at %s.", kFatJarLocation)
 kScalaInterpreter=scalaInterpreter(kFatJarLocation)
 loginfo("Done loading Scala interpreter.")
@@ -117,9 +110,9 @@ drawScatterplot <- function(plot.data, plot.parameters, ...) {
   with(plot.data, {
     logdebug("Plotting %d peaks from plate %s with angles (azimuthal: %d, colatitude: %d).", 
              nrow(peaks), filename, plot.parameters$angle.theta, plot.parameters$angle.phi)  
-    scatter3D(peaks$retention.time, peaks$mz, peaks$intensity, pch = 16, cex = 1.5, type = "h", main = filename,
+    scatter3D(peaks$retention.time, peaks$mz, peaks$intensity, pch = 16, cex = 1.5, type = "h", 
               colkey = list(side = 1, length = 0.5, width = 0.5, cex.clab = 0.75), expand = 0.5,
-              zlab = "Intensity", xlab = "Retention time (sec)", ylab = "m/z (Da)",
+              main = filename, zlab = "Intensity", xlab = "Retention time (sec)", ylab = "m/z (Da)",
               theta = plot.parameters$angle.theta, phi = plot.parameters$angle.phi, ticktype = "detailed", 
               xlim = retention.time.range, ylim = mz.range, ...)
   })
@@ -158,9 +151,9 @@ getAndValidateConfigFile <- function(inFile) {
   layout <- json.file$layout
   platenames <- json.file$plates$filename
   shiny::validate(
-    need(layout$nrow * layout$ncol == length(platenames), "Too many or not enough plates for input layout. Please double check the layout."), 
-    need(layout$nrow >= 2 && layout$nrow <= 3, "Number of rows in the layout should be in {2, 3}"),
-    need(layout$ncol >= 2 && layout$nrow <= 3, "Number of cols in the layout should be in {2, 3}")
+    need(layout$nrow * layout$ncol >= length(platenames), "Too many or not enough plates for input layout. Please double check the layout."), 
+    need(layout$nrow >= 1 && layout$nrow <= 3, "Number of rows in the layout should be in the range [1, 3]"),
+    need(layout$ncol >= 1 && layout$nrow <= 3, "Number of cols in the layout should be in the range [1, 3]")
   )
   json.file
 }

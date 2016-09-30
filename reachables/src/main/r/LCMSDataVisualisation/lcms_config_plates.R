@@ -10,7 +10,8 @@ lcmsConfigPlatesInput <- function(id, label = "LCMS config plates") {
     em("Peak format is {mz-value} - {retention-time} - {rank-factor}"),
     uiOutput(ns("ui.rt.mz.scope")),
     plotParametersInput(ns("plot.parameters")),
-    checkboxInput(ns("normalize"), "Normalize values", value = TRUE)
+    checkboxInput(ns("normalize"), "Normalize values", value = TRUE),
+    checkboxInput(ns("has.mol.mass"), "Expect multiple mz per peak", value = FALSE)
   )
 }
 
@@ -48,13 +49,18 @@ lcmsConfigPlates <- function(input, output, session) {
   mz.band.halfwidth <- reactive(input$mz.band.halfwidth)
   normalize <- reactive(input$normalize)
   retention.time.range <- reactive(input$retention.time.range)
+  has.mol.mass <- reactive(input$as.mol.mass)
   
   output$ui.peaks <- renderUI({
     peaks <- peaks() %>% 
       mutate_each(funs(round(.,2)), mz, rt) %>%
       mutate(rank_metric_signif = signif(rank_metric, 3)) %>%
       arrange(desc(rank_metric_signif))
-    labels <- apply(peaks[, c("mz", "rt", "rank_metric_signif")], 1, function(x) paste0(x, collapse = kPeakDisplaySep))
+    if (has.mol.mass()) {
+      labels <- apply(peaks[, c("mz", "rt", "rank_metric_signif", "moleculeMass")], 1, function(x) paste0(x, collapse = kPeakDisplaySep))
+    } else {
+      labels <- apply(peaks[, c("mz", "rt", "rank_metric_signif")], 1, function(x) paste0(x, collapse = kPeakDisplaySep))
+    }
     selectizeInput(ns("peaks"), "Choose a peak to visualize", choices = unname(labels), options = list(maxOptions = 30000))
   })
   
@@ -65,9 +71,17 @@ lcmsConfigPlates <- function(input, output, session) {
     splits <- unlist(strsplit(input$peaks, kPeakDisplaySep))
     mz.val <- as.numeric(splits[1])
     rt.val <- as.numeric(splits[2])
-    peak <- peaks() %>% dplyr::filter(round(mz, 2) == mz.val, round(rt, 2) == rt.val)
+    if (has.mol.mass()) {
+      mo.mass <- as.numeric(splits[4])
+      peak <- peaks() %>% 
+        dplyr::filter(round(mz, 2) == mz.val, round(rt, 2) == rt.val, round(moleculeMass, 2) == mol.mass)  
+    } else {
+      peak <- peaks() %>% 
+        dplyr::filter(round(mz, 2) == mz.val, round(rt, 2) == rt.val)
+    }
+    
     shiny::validate(
-      need(nrow(peak) == 1, "Less or more than one peak. `mz` values have to be unique accross peaks!")
+      need(nrow(peak) == 1, "Less or more than one peak. Try using the 'expect multiple mz values' checkbox!")
     )
     peak
   })
@@ -137,21 +151,16 @@ lcmsConfigPlates <- function(input, output, session) {
   
   output$plots <- renderUI({
     layout <- layout()
-    n <- layout$nrow * layout$ncol
     colWidth <- 12 / layout$ncol
-
+    
+    n <- length(filenames())
     plot_output_list <- lapply(1:n, function(i) {
       plotname <- paste0("plot", i)
       column(width = colWidth, lcmsPlotOutput(ns(plotname)))
     })
     plot.indexes <- split(1:n, ceiling(1:n /layout$nrow))
-    
-    fluidPage(
-      do.call(fluidRow, plot_output_list[plot.indexes[[1]]]),
-      do.call(fluidRow, plot_output_list[plot.indexes[[2]]]),
-      if (layout$nrow == 3) {
-        do.call(fluidRow, plot_output_list[plot.indexes[[3]]])
-      }        
-    )
+    do.call(fluidPage, 
+            lapply(1:length(plot.indexes), 
+                   function(x) do.call(fluidRow, plot_output_list[plot.indexes[[x]]])))
   })
 }
