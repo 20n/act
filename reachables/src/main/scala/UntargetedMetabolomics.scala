@@ -45,7 +45,7 @@ object MagicParams {
 
   // to keep the output file for visualization smaller, we disable outputing raw mz and raw rt
   // values. this flag controls that.
-  val _outputRawPeakData = false
+  val _outputRawPeakData = true
 }
 
 object RetentionTime {
