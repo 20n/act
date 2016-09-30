@@ -144,7 +144,7 @@ lcmsConfigPlates <- function(input, output, session) {
       plotname <- paste0("plot", i)
       column(width = colWidth, lcmsPlotOutput(ns(plotname)))
     })
-    plot.indexes <- split(1:n, layout$nrow)
+    plot.indexes <- split(1:n, ceiling(1:n /layout$nrow))
     
     fluidPage(
       do.call(fluidRow, plot_output_list[plot.indexes[[1]]]),
