@@ -918,7 +918,7 @@ object UntargetedMetabolomics {
                     longParam = "restrict-ions",
                     name = "M",
                     desc = """Only consider limited set of ions, e.g., M+H,M+Na,M+H-H2O,M+Li,M+K.
-                             |If this option is omitted system defaults to M+H,M+Na""".stripMargin,
+                             |If this option is omitted system defaults to M+H,M+Na,M+K""".stripMargin,
                     isReqd = false, hasArgs = true)
 
   val optMultiIonsRankHigher = new OptDesc(
@@ -1100,7 +1100,7 @@ object MultiIonHits {
 
   def convertToMolHits(
     rawPeaks: PeakHits,
-    ionOpts: Set[String] = Set("M+H", "M+Na"),
+    ionOpts: Set[String] = Set("M+H", "M+Na", "M+K"),
     lookForMultipleIons: Boolean = false): MultiIonHits = {
 
     // helper function to take each mz to Map(mass_i -> (ion_i, mz))
