@@ -122,7 +122,6 @@ drawScatterplot <- function(plot.data, plot.parameters, ...) {
               zlab = "Intensity", xlab = "Retention time (sec)", ylab = "m/z (Da)",
               theta = plot.parameters$angle.theta, phi = plot.parameters$angle.phi, ticktype = "detailed", 
               xlim = retention.time.range, ylim = mz.range, ...)
-    ### zlim = c(0, max.intensity), clim = c(0, max.intensity)
   })
 }
 

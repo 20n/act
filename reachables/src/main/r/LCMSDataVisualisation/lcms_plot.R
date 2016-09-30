@@ -5,20 +5,20 @@ lcmsPlotOutput <- function(id, ...) {
 
 lcmsPlot <- function(input, output, session, plot.data, plot.parameters) {
   output$plot <- renderPlot({
-    plot.data <- plot.data()
-    max.int <- max(plot.data$peaks$intensity)
-    drawScatterplot(plot.data, plot.parameters, max.int)
+    drawScatterplot(plot.data(), plot.parameters)
   })
 }
 
-lcmsPlotWithNorm <- function(input, output, session, plot.data, plot.parameters, i, max.int, normalize) {
+lcmsPlotWithNorm <- function(input, output, session, plot.data, plot.parameters, i, max.intensity, normalize) {
   output$plot <- renderPlot({
     plot.data <- plot.data()[[i]]
     if (normalize()) {
-      max.int <- max.int()
+      max.intensity <- max.intensity()
+      zlim <- c(0, max.intensity)
+      clim <- c(0, max.intensity)
+      drawScatterplot(plot.data, plot.parameters, zlim, clim)
     } else {
-      max.int <- max(plot.data$peaks$intensity)
+      drawScatterplot(plot.data, plot.parameters)
     }
-    drawScatterplot(plot.data, plot.parameters, max.int)
   })
 }
