@@ -3,7 +3,7 @@ lcmsConfigPlatesInput <- function(id, label = "LCMS config plates") {
   ns <- NS(id)
   tagList(
     h3("Input configuration"),
-    fileInput(ns("config.file"), label = "Choose a configuration file", accept=c("application/json")),
+    fileInput(ns("config.file"), label = "Choose a configuration file"),
     p("Sample config: /shared-data/Thomas/lcms_viz/FR_config_file/sample_config.json"),
     h3("Peak selection"),
     uiOutput(ns("ui.peaks")),
@@ -144,23 +144,14 @@ lcmsConfigPlates <- function(input, output, session) {
       plotname <- paste0("plot", i)
       column(width = colWidth, lcmsPlotOutput(ns(plotname)))
     })
+    plot.indexes <- split(1:n, layout$nrow)
     
-    if (layout$ncol == 2) {
-      fluidPage(
-        do.call(fluidRow, plot_output_list[1:2]),
-        do.call(fluidRow, plot_output_list[3:4]),
-        if (layout$nrow == 3) {
-          do.call(fluidRow, plot_output_list[5:6])
-        }        
-      )
-    } else if (layout$ncol == 3) {
-      fluidPage(
-        do.call(fluidRow, plot_output_list[1:3]),
-        do.call(fluidRow, plot_output_list[4:6]),
-        if (layout$nrow == 3) {
-          do.call(fluidRow, plot_output_list[7:9])
-        }        
-      )
-    }
+    fluidPage(
+      do.call(fluidRow, plot_output_list[plot.indexes[1]]),
+      do.call(fluidRow, plot_output_list[plot.indexes[2]]),
+      if (layout$nrow == 3) {
+        do.call(fluidRow, plot_output_list[plot.indexes[3]])
+      }        
+    )
   })
 }
