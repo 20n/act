@@ -73,7 +73,7 @@ if __name__ == "__main__":
         autoencoder.set_output_directory(output_directory)
     else:
         autoencoder = LcmsAutoencoder(output_directory, block_size, encoding_size,
-                                      number_clusters, mz_division, mz_min, mz_max)
+                                      number_clusters, mz_division, mz_min, mz_max, debug=True)
 
 
     def merge_lcms_replicates(samples):
@@ -86,9 +86,27 @@ if __name__ == "__main__":
         """
         scans = [autoencoder.process_lcms_trace(lcms_directory, plate) for plate in samples]
 
+        # # Widen the peaks
+        # filter_size = 3
+        # for scan in scans:
+        #
+        #     kernel = np.array([[0.5, 0.5, 0.5], [0.5, 0.75, 0.5], [0.5, 0.5, 0.5]])
+        #     kernal_sum_normalization = np.sum(kernel)
+        #     mz_filter = 3
+        #     rt_filter = 3
+        #
+        #     replacement_array = np.zeros(scan.get_array().shape)
+        #     scan_array = scan.get_array()
+        #     for i in tqdm(range(0, scan_array.shape[0] - filter_size)):
+        #         for j in range(0, scan_array.shape[1] - filter_size):
+        #             # applied_kernel = np.sum(scan_array[i: i + kernel.shape[0], j+kernel.shape[1]]*kernel)/kernal_sum_normalization
+        #             applied_kernel = np.max(scan_array[i: i + mz_filter, j: j+rt_filter])
+        #             replacement_array[i, j] = applied_kernel
+        #     scan.processed_array = replacement_array
+
         # Get the min
         min_stacked = np.dstack([a.get_array() for a in scans])
-        min_representation = np.min(min_stacked, axis=2)
+        min_representation = np.average(min_stacked, axis=2)
 
         bucket_list = [scan.get_bucket_mz() for scan in scans]
 
@@ -129,7 +147,8 @@ if __name__ == "__main__":
                     np.min(np.dstack((row_matrix1.get_array(), row_matrix2.get_array())), axis=2))
     np.seterr(divide=None)
 
-    processed_samples, auxilariy_information = autoencoder.prepare_matrix_for_encoding(row_matrix, snr=snr)
+    processed_samples, auxilariy_information = autoencoder.prepare_matrix_for_encoding(row_matrix, row_matrix1,
+                                                                                       row_matrix2, snr=snr)
     summary_dict["number_of_valid_windows"] = len(processed_samples)
 
     if not model_location or not os.path.exists(model_location):

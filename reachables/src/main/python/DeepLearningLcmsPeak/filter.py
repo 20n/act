@@ -16,7 +16,7 @@ def filter_by_valid_clusters(input_dir):
         in_fi = os.path.join(input_dir, in_fi_name)
 
         df = pd.read_csv(in_fi, sep="\t")
-        df = df[df.cluster.isin([0, 1, 3, 4, 11, 12, 13, 16, 18, 19])]
+        df = df[df.cluster.isin([0, 1, 3, 4, 5, 6, 8, 10, 18, 17, 15, 14, 13, 11])]
 
         df.to_csv(os.path.join(output_directory, in_fi_name), sep="\t", index=False)
 

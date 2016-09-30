@@ -15,7 +15,7 @@ from tqdm import tqdm
 import magic
 from cluster import LcmsClusterer
 from netcdf_parser import load_lcms_trace
-from utility import assign_row_by_mz, assign_column_by_time
+from utility import assign_row_by_mz, assign_column_by_time, column_number_to_time, row_to_mz
 
 
 class LcmsAutoencoder:
@@ -217,7 +217,7 @@ class LcmsAutoencoder:
 
             return LcmsScan(processing_array, exact_mz_array)
 
-    def prepare_matrix_for_encoding(self, input_matrix, lowest_max_value=magic.lowest_encoded_window_max_value,
+    def prepare_matrix_for_encoding(self, input_matrix, r1, r2, lowest_max_value=magic.lowest_encoded_window_max_value,
                                     snr=None):
         """
         The goal of this function is to window and threshold an input matrix such that the output
@@ -235,16 +235,16 @@ class LcmsAutoencoder:
         training_file_name = os.path.join(self.output_directory, LcmsAutoencoder.INPUT_TRAINING_FILE_NAME)
         row_numbers_file = os.path.join(self.output_directory, LcmsAutoencoder.TRAINING_OUTPUT_ROW_NUMBERS_FILE_NAME)
 
-        # Check for cached version.
-        if os.path.exists(training_file_name) and os.path.exists(row_numbers_file):
-            if self.verbose:
-                print("Using cached prepared matrix.")
-            training = np.load(training_file_name)
-            row_numbers = np.load(row_numbers_file)
-
-            # Don't use this one if the block size differs between cached and desired versions.
-            if training.shape[1] == self.block_size:
-                return training, row_numbers
+        # # Check for cached version.
+        # if os.path.exists(training_file_name) and os.path.exists(row_numbers_file):
+        #     if self.verbose:
+        #         print("Using cached prepared matrix.")
+        #     training = np.load(training_file_name)
+        #     row_numbers = np.load(row_numbers_file)
+        #
+        #     # Don't use this one if the block size differs between cached and desired versions.
+        #     if training.shape[1] == self.block_size:
+        #         return training, row_numbers
 
         """
         Create intervals of size {block_size}
@@ -316,28 +316,44 @@ class LcmsAutoencoder:
 
                     # Handle edge cases that can corrupt our numpy array.
                     if len(normalized_window) == self.block_size:
-                        if abs(max(normalized_window, key=abs)) <= 1:
-                            thresholded_groups.append(normalized_window)
-                            extra_info = [row_number, centered_time, window_max]
 
-                            if snr is not None:
-                                """
-                                One problem that can occur here is when the window is off-center.
-                                We see that the off-centering tends to happen a couple seconds apart.
-                                We try to fix this by taking the using the difference between the most
-                                negative and most positive SN values as our actual SN value.
-                                If we saw two widely different, oppositely signed SN values in a single window,
-                                we'd likely assume that a shift is just causing one peak to look like two.
-                                """
-                                signed_snr = \
-                                    np.sign(max_centered_window) * \
-                                    snr[row_number][centered_time: (centered_time + self.block_size)]
+                        single_exp_max = np.max(
+                            r1.get_array()[row_number, centered_time: (centered_time + self.block_size)])
+                        single_ctrl_max = np.max(
+                            r2.get_array()[row_number, centered_time: (centered_time + self.block_size)])
 
-                                max_signed = max(signed_snr)
-                                min_signed = abs(min(signed_snr))
+                        local_exp_max = np.max(r1.get_array()[row_number - 3: row_number + 3,
+                                               centered_time: (centered_time + self.block_size)])
+                        local_ctrl_max = np.max(r2.get_array()[row_number - 3: row_number + 3,
+                                                centered_time: (centered_time + self.block_size)])
+                        if single_exp_max == local_exp_max or single_ctrl_max == local_ctrl_max:
+                            if abs(max(normalized_window, key=abs)) <= 1:
+                                if self.debug:
+                                    print("Found differential peak at m/z {} and retention time {}".format(row_to_mz(
+                                        row_number, mz_division=magic.mz_split, min_mz=magic.mz_min),
+                                        column_number_to_time(centered_time + self.block_size / 2, magic.time_step,
+                                                              magic.time_min)))
+                                thresholded_groups.append(normalized_window)
+                                extra_info = [row_number, centered_time, window_max]
 
-                                extra_info.append(max_signed - min_signed)
-                            row_index_and_max.append(extra_info)
+                                if snr is not None:
+                                    """
+                                    One problem that can occur here is when the window is off-center.
+                                    We see that the off-centering tends to happen a couple seconds apart.
+                                    We try to fix this by taking the using the difference between the most
+                                    negative and most positive SN values as our actual SN value.
+                                    If we saw two widely different, oppositely signed SN values in a single window,
+                                    we'd likely assume that a shift is just causing one peak to look like two.
+                                    """
+                                    signed_snr = \
+                                        np.sign(max_centered_window) * \
+                                        snr[row_number][centered_time: (centered_time + self.block_size)]
+
+                                    max_signed = max(signed_snr)
+                                    min_signed = abs(min(signed_snr))
+
+                                    extra_info.append(max_signed - min_signed)
+                                row_index_and_max.append(extra_info)
                         else:
                             if self.debug:
                                 print("Skipping window as another, larger peak was found nearby.")
