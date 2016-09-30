@@ -326,13 +326,14 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
   def pickMin(a: Double, b: Double) = math.min(a, b)
   // we use ratio to identify differentially expressed peaks
   def ratio(a: Double, b: Double) = {
-    //// // Neither `a` nor `b` can be zero. That would represent a missing peak in either the control/hypotheses
-    //// // Missing peaks are either removed (when doing replicate analysis) or replaced with `missingPk` when
-    //// // checking for outliers. This means we can safely take the ratio without a NaN or 0.0 result
-    //// if (a == 0.0 && b == 0.0)
-    ////   0.0 // this case happens when we combine snr's which can be both 0.0
-    //// else
+    // there are fields (think, snr) that can come in as both being 0.0. equate 0.0/0.0
+    // in that case to 0.0. Rest of the time we do not expect either of the values to be zero.
+    if (a == 0.0 && b == 0.0) {
+      0.0 
+    } else {
+      assert(a != 0.0 && b != 0.0)
       a/b
+    }
   }
   def missingPk(mz: MonoIsotopicMass, rt: RetentionTime) = {
     val defaultv = MagicParams._missingPeakVal
@@ -543,7 +544,12 @@ class UntargetedMetabolomics(val controls: List[RawPeaks], val hypotheses: List[
     val rtsInMaxCoverOrder = rtsAcrossAllExpr
                               .zip(numElemsEqual)
                               .sortWith{ 
-                                case ((rt1, n1), (rt2, n2)) => if (n1 == n2) RetentionTime.isLt(rt1, rt2) else n1 > n2
+                                case ((rt1, n1), (rt2, n2)) => {
+                                  if (n1 == n2)
+                                    RetentionTime.isLt(rt1, rt2)
+                                  else
+                                    n1 > n2
+                                }
                               }
     // now start from head and pick retention times eliminating candidates as you go down the list
     @tailrec
@@ -1068,8 +1074,8 @@ object UntargetedMetabolomics {
         outStream.flush
       }
       val numPeaks = analysisRslt.numPeaks
-      val numPeaksPresentAllOverUnder = numPeaks("overExprPresentInAll") + numPeaks("underExprPresentInAll")
-      if (!(numPeaksPresentAllOverUnder >= peakMinCnt && numPeaksPresentAllOverUnder <= peakMaxCnt)) {
+      val numDifferential = numPeaks("over-expressed") + numPeaks("under-expressed")
+      if (!(numDifferential >= peakMinCnt && numDifferential <= peakMaxCnt)) {
         outStream.println(s"Failed test ${testID}, unexpected peak count: $numPeaks != [$peakMinCnt, $peakMaxCnt]")
         outStream.flush
         assert(false)
@@ -1171,6 +1177,11 @@ trait ChemicalFormulae {
   type ChemicalFormula = Map[Atom, Int]
 }
 
+// TODO: @thomas-20n will pull all this peak -> structure matching into its own module.
+// @mark-20n says: All of this peak to structure matching scaffolding deserves its own 
+//                 module. The API for this is something we should stabilize ASAP so
+//                 that we can iterate on it separately from the cross-replicate/negative
+//                 analysis and get it talking with the upcoming L2/L4-derived network analysis.
 trait LookupInEnumeratedList extends CanReadTSV {
   type T // the output type, InChI: String or Formula: ChemicalFormula
   type H = TSVHdr // headers are inchi, formula, mass
