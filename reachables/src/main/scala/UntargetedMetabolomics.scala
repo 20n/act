@@ -179,10 +179,7 @@ class Peak(
   val snr: Double
 ) {
   override def toString = {
-    val intensity = String.format("%.2f", integratedInt: java.lang.Double)
-    val max = String.format("%.2f", maxInt: java.lang.Double)
-    val snrs = String.format("%.2f", snr: java.lang.Double)
-    s"($intensity, $max, $snrs) @ mzrt($mz, $rt) "
+    f"($integratedInt%.2f, $maxInt%.2f, $snr%.2f)" + s" @ mzrt($mz, $rt) "
   }
 
   def getHdrVal(hdr: TSVHdr): Double = hdr match {
@@ -1064,6 +1061,7 @@ object UntargetedMetabolomics {
 
       val controls = controlsF.map(readSpectra)
       val hypotheses = hypothesesF.map(readSpectra)
+      controls.foreach(_.peakSpectra.peaks.foreach(p => println(p)))
       val experiment = new UntargetedMetabolomics(controls = controls, hypotheses = hypotheses)
       val analysisRslt = experiment.analyze()
       val candidateMols = MultiIonHits.convertToMolHits(rawPeaks = analysisRslt, lookForMultipleIons = true)
