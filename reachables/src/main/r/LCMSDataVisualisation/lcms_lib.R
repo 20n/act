@@ -15,7 +15,7 @@ kIntensityThreshold <- 10000
 kSSRatio <- 20
 kFatJarLocation <- "reachables-assembly-0.1.jar"
 
-basicConfig()
+basicConfig('DEBUG')
 loginfo("Loading Scala interpreter from fat jar at %s.", kFatJarLocation)
 kScalaInterpreter=scalaInterpreter(kFatJarLocation)
 loginfo("Done loading Scala interpreter.")
