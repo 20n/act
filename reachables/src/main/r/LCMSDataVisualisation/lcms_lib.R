@@ -167,9 +167,6 @@ getPeaksInScope <- function(scans.with.time, target.mz.value, mz.band.halfwidth)
        retention.time.range = scans.with.time$retention.time.range, mz.range = c(min.ionic.mass, max.ionic.mass))
 }
 
-# memoise the function `getPeaksInScope` since it is repreatedly called with the same parameters
-memGetPeaksInScope <- memoise(getPeaksInScope)
-
 drawScatterplot <- function(plot.data, plot.parameters, ...) {
   # Draw a 3D scatterplot of the data with given angle parameters
   #
