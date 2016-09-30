@@ -7,11 +7,12 @@ lcmsConfigPlatesInput <- function(id, label = "LCMS config plates") {
     p("Sample config: /shared-data/Thomas/lcms_viz/FR_config_file/sample_config.json"),
     h3("Peak selection"),
     uiOutput(ns("ui.peaks")),
-    em("Peak format is {mz-value} - {retention-time} - {rank-factor}"),
+    em("Peak format is {mz-value} - {retention-time} - {rank-factor} - {molecular-mass (optional)}"),
     uiOutput(ns("ui.rt.mz.scope")),
     plotParametersInput(ns("plot.parameters")),
     checkboxInput(ns("normalize"), "Normalize values", value = TRUE),
-    checkboxInput(ns("has.mol.mass"), "Expect multiple mz per peak", value = FALSE)
+    checkboxInput(ns("has.mol.mass"), "Expect multiple m/z values per peak (-M option)", value = FALSE),
+    actionButton(ns("wait"), "Waiting button (press if you're bored)")
   )
 }
 
@@ -126,7 +127,8 @@ lcmsConfigPlates <- function(input, output, session) {
     }
     plot_output_list <- lapply(1:n, function(i) {
       plotname <- paste0("plot", i)
-      div(style="display:inline-block", moleculeRendererUI(ns(plotname)))
+      chemSpiderUrl <- sprintf("http://www.chemspider.com/Search.aspx?q=%s", matching.inchis[i])
+      div(style="display:inline-block", tags$a(moleculeRendererUI(ns(plotname)), href = chemSpiderUrl))
     })
     uiStructures <- do.call(tagList, plot_output_list)
     div(style="height: 200px; overflow-x: auto; white-space: nowrap", uiStructures)    

@@ -21,7 +21,7 @@ lcmsSinglePlateData <- function(input, output, session, platename, retention.tim
       need(!is.null(mz.band.halfwidth), "m/z band halfwidth is missing.")
     )
     scans <- scans()
-    getPeaksInScope(scans, target.mz, mz.band.halfwidth)
+    memGetPeaksInScope(scans, target.mz, mz.band.halfwidth)
   })
   
   return(peaks)
@@ -48,7 +48,7 @@ lcmsPlatesData <- function(input, output, session, platenames, retention.time.ra
       need(!is.null(target.mz), "Target m/z is missing."),
       need(!is.null(mz.band.halfwidth), "m/z band halfwidth is missing.")
     )
-    lapply(scans(), function(x) getPeaksInScope(x, target.mz, mz.band.halfwidth))
+    lapply(scans(), function(x) memGetPeaksInScope(x, target.mz, mz.band.halfwidth))
   })
   
   return(peaks)

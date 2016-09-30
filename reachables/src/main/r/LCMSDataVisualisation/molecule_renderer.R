@@ -1,5 +1,4 @@
 kMolStructureCacheFolder <- "/home/thomas/data/mol-structure-cache/"
-#kMolStructureCacheFolder <- "/Users/tom/20n-plots/mol-structure-cache/"
 
 moleculeRenderer <- function(input, output, session, inchiString, height) {
   

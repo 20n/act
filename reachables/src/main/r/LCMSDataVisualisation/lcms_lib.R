@@ -106,6 +106,8 @@ getPeaksInScope <- function(scans.with.time, target.mz.value, mz.band.halfwidth)
        retention.time.range = scans.with.time$retention.time.range, mz.range = c(min.ionic.mass, max.ionic.mass))
 }
 
+memGetPeaksInScope <- memoise(getPeaksInScope)
+
 drawScatterplot <- function(plot.data, plot.parameters, ...) {
   with(plot.data, {
     logdebug("Plotting %d peaks from plate %s with angles (azimuthal: %d, colatitude: %d).", 
