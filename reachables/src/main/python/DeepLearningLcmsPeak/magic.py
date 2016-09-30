@@ -3,15 +3,15 @@ from __future__ import absolute_import, division, print_function
 """
 Deep.py Default Values
 """
-cluster_number = 200
-mz_split = 0.05
-encoding_size = 4
-window_size = 40
+cluster_number = 20
+mz_split = 0.01
+encoding_size = 2  # Meaning we can visualize it on a 2D plot!!
+window_size = 10
 mz_min = 49
 mz_max = 951
 time_min = 0
 time_max = 450
-time_step = 0.75
+time_step = 2.5  # Seconds
 
 """
 Lcms_Autoencoder.py Default Values
