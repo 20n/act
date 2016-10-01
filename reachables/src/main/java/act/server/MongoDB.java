@@ -2002,6 +2002,16 @@ public class MongoDB {
     return convertDBObjectToCofactor(o);
   }
 
+  public Organism getNextOrganism(DBIterator iterator) {
+    if (!iterator.hasNext()) {
+      iterator.close();
+      return null;
+    }
+
+    DBObject o = iterator.next();
+    return convertDBObjectToOrg(o);
+  }
+
   public DBIterator getIteratorOverCofactors() {
     DBCursor cursor = constructCursorForAllCofactors();
     return new DBIterator(cursor);
