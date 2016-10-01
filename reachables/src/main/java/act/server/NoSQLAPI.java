@@ -58,7 +58,7 @@ public class NoSQLAPI {
 
   // Thin wrapper around getIteratorOverReactions that returns actual Reaction objects.
   public Iterator<Reaction> readRxnsFromInKnowledgeGraph() {
-    final DBIterator iter = this.readDB.getIteratorOverReactions(false);
+    final DBIterator iter = this.readDB.getIteratorOverReactions(true);
 
     return new Iterator<Reaction>() {
       @Override
