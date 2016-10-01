@@ -3160,7 +3160,7 @@ public class MongoDB {
       BasicDBObject query = new BasicDBObject("_id", id);
       BasicDBObject update = new BasicDBObject("$set",
           new BasicDBObject("xref.CHEBI.metadata.applications",
-              applicationSet.getBasicDBObject()));
+              applicationSet.toBasicDBObject()));
       this.dbChemicals.update(query, update);
     }
   }

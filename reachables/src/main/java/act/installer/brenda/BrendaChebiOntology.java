@@ -108,7 +108,7 @@ public class BrendaChebiOntology {
           resultSet.getString(3));
     }
 
-    public BasicDBObject getBasicDBObject() {
+    public BasicDBObject toBasicDBObject() {
       BasicDBObject o = new BasicDBObject();
       o.put("chebi_id", getChebiId());
       o.put("term", getTerm());
@@ -189,15 +189,15 @@ public class BrendaChebiOntology {
       return directApplications;
     }
 
-    public BasicDBObject getBasicDBObject() {
+    public BasicDBObject toBasicDBObject() {
       BasicDBObject o = new BasicDBObject();
       BasicDBList directApplications = new BasicDBList();
       BasicDBList mainApplications = new BasicDBList();
       for (BrendaChebiOntology.ChebiOntology directApplication : getDirectApplications()) {
-        directApplications.add(directApplication.getBasicDBObject());
+        directApplications.add(directApplication.toBasicDBObject());
       }
       for (BrendaChebiOntology.ChebiOntology mainApplication : getMainApplications()) {
-        mainApplications.add(mainApplication.getBasicDBObject());
+        mainApplications.add(mainApplication.toBasicDBObject());
       }
       o.put("direct_applications", directApplications);
       o.put("main_applications", mainApplications);
