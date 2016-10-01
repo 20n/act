@@ -11,11 +11,11 @@ lcmsConfigPlatesInput <- function(id, label = "LCMS config plates") {
     h3("Peak selection"),
     uiOutput(ns("ui.peaks")),
     em("Peak format is {mz-value} - {retention-time} - {rank-factor} - {molecular-mass (optional)}"),
+    checkboxInput(ns("has.mol.mass"), "Expect multiple m/z values per peak (-M option)", value = FALSE),
     uiOutput(ns("ui.rt.mz.scope")),
     plotParametersInput(ns("plot.parameters")),
     checkboxInput(ns("normalize"), "Normalize values", value = TRUE),
-    checkboxInput(ns("has.mol.mass"), "Expect multiple m/z values per peak (-M option)", value = FALSE),
-    actionButton(ns("wait"), "Waiting button (press if you're bored)")
+    actionButton(ns("wait"), "Michael's button (press if you're bored)")
   )
 }
 
@@ -139,7 +139,8 @@ lcmsConfigPlates <- function(input, output, session) {
       plotname <- paste0("plot", i)
       chemSpiderUrl <- sprintf("http://www.chemspider.com/Search.aspx?q=%s", matching.inchis[i])
       # CSS tag `display:inline-block` allows to display all structures on one line
-      div(style="display:inline-block", tags$a(moleculeRendererUI(ns(plotname)), href = chemSpiderUrl))
+      div(style="display:inline-block", 
+          tags$a(moleculeRendererUI(ns(plotname)), href = chemSpiderUrl, target="_blank"))
     })
     # wrap these in a tagList()
     uiStructures <- do.call(tagList, molecule_output_list)
@@ -174,7 +175,8 @@ lcmsConfigPlates <- function(input, output, session) {
     # split into a list of indexes for each line
     # example: split(1:5, ceiling(1:5 / 2)) returns a list(c(1,2), c(3,4), 5)
     #          split(1:5, ceiling(1:5 / 3)) returns a list(c(1,2,3), c(4,5))
-    plot.indexes <- split(1:n, ceiling(1:n /layout$nrow))
+    plot.indexes <- split(1:n, ceiling(1:n /layout$ncol))
+    
     do.call(fluidPage, 
             lapply(1:length(plot.indexes), 
                    function(x) do.call(fluidRow, plot_output_list[plot.indexes[[x]]])))
