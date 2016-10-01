@@ -292,8 +292,9 @@ public class MockedNoSQLAPI {
     doAnswer(new Answer() {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable {
-        Long id = writtenOrganismNames.size() + 1L;
-        writtenOrganismNames.put(id, invocation.getArgumentAt(0, Organism.class).getName());
+        Organism org = invocation.getArgumentAt(0, Organism.class);
+        // IDs aren't incrementally or randomly generated--make sure we reuse the old ones.
+        writtenOrganismNames.put(org.getUUID(), org.getName());
         return null;
       }
     }).when(mockWriteMongoDB).submitToActOrganismNameDB(any(Organism.class));
@@ -301,7 +302,10 @@ public class MockedNoSQLAPI {
     doAnswer(new Answer() {
       @Override
       public Long answer(InvocationOnMock invocation) throws Throwable {
-        Long id = writtenOrganismNames.size() + 1L;
+        Long id = writtenOrganismNames.size() + MongoDB.ORG_ID_BASE;
+        while (writtenOrganismNames.containsKey(id)) {
+          id += 1L; // Avoid collisions as best we can.  Or maybe this is a terrible idea.
+        }
         writtenOrganismNames.put(id, invocation.getArgumentAt(0, String.class));
         return id;
       }

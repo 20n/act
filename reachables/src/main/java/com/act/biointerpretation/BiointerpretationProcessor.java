@@ -399,13 +399,20 @@ public abstract class BiointerpretationProcessor {
     // With help from http://stackoverflow.com/questions/12809779/how-do-i-clone-an-org-json-jsonobject-in-java.
     JSONObject newProtein = new JSONObject(oldProtein, JSONObject.getNames(oldProtein));
 
-    /* Metacyc entries write an array of NCBI organism ids per protein, but do not reference organism name collection
-     * entries.  Only worry about the "organism" field, which refers to the ID of an organism name entry. */
     if (oldProtein.has("organism")) {
       // BRENDA protein entries just have one organism, so the migration is a little easier.
       Long oldOrganismId = oldProtein.getLong("organism");
       Long newOrganismId = migrateOrganism(oldOrganismId);
       newProtein.put("organism", newOrganismId);
+    } else if (oldProtein.has("organisms")) {
+      JSONArray oldOrganisms = oldProtein.getJSONArray("organisms");
+      List<Long> newOrganisms = new ArrayList<>(oldOrganisms.length());
+      for (int i = 0; i < oldOrganisms.length(); i++) {
+        Long oldOrganismId = oldOrganisms.getLong(i);
+        Long newOrganismId = migrateOrganism(oldOrganismId);
+        newOrganisms.add(newOrganismId);
+      }
+      newProtein.put("organisms", new JSONArray(newOrganisms));
     }
     // TODO: unify the Protein object schema so this sort of handling isn't necessary.
 

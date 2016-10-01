@@ -52,7 +52,7 @@ import java.util.regex.Pattern;
 
 public class MongoDB {
 
-  private static final long ORG_ID_BASE = 5000000000L;
+  public static final long ORG_ID_BASE = 5000000000L;
 
   private static ObjectMapper mapper = new ObjectMapper();
 
@@ -2762,7 +2762,7 @@ public class MongoDB {
     BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
     DBObject obj = this.dbSeq.findOne(query);
     obj.put("rxn_refs", seq.getReactionsCatalyzed());
-    this.dbReactions.update(query, obj);
+    this.dbSeq.update(query, obj);
   }
 
     /*
