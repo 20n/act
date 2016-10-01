@@ -124,30 +124,50 @@ object ChemicalSymbols {
   val AllAminoAcids = List(Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser,
                            Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg)
 
-  class MonoIsotopicMass(val initMass: Double) {
+  object MonoIsotopicMass {
     // tolerate differences in the last decimal place at which monoIsotopicMasses specified
     // i.e., we consider masses upto 0.001 away from each other to be identical
     // note that the mass of an electron is 5.5e-4 Da, so we allow upto around an electron mass
-    private val defaultNumPlaces = 3
+    val defaultNumPlaces = 2
+    def tolerance(numDec: Int = defaultNumPlaces): Double = math.pow(10, -numDec)
+    def isLt(a: MonoIsotopicMass, b: MonoIsotopicMass) = a.initMass < b.initMass
+  }
 
-    // `` holds the value of initMass rounded to integers and scaled by 10^defaultNumPlaces
+  class MonoIsotopicMass(val initMass: Double) {
+
+    // `scaled` holds the value of initMass rounded to integers and scaled by 10^defaultNumPlaces
     // Reason we keep the scaling (and not just the truncated double value) is that allows us to
     // get away from floating point rounding errors. With the scaled value, we also get to keep
     // the type as `Long`. With all of that `hashCode` and `equals` are proper and don't introduce
     // errors. We were seeing values such as 5.944444444444445 and 100.07600000000001 in the output
-    // when `truncated` was typed as `Double` instead of `Long`. 
-    private val truncated = roundedAndScaled()
+    // when `scaled` was typed as `Double` instead of `Long`. 
+    private val scaled = roundedAndScaled()
 
-    def rounded(numDec: Int = defaultNumPlaces): Double = roundedAndScaled(numDec) * tolerance(numDec)
-    def roundedAndScaled(numDec: Int = defaultNumPlaces): Long = math round (initMass/tolerance(numDec))
-    def tolerance(numDec: Int): Double = math.pow(10, -numDec)
+    def rounded(numDec: Int = MonoIsotopicMass.defaultNumPlaces): Double = roundedAndScaled(numDec) * MonoIsotopicMass.tolerance(numDec)
+    def roundedAndScaled(numDec: Int = MonoIsotopicMass.defaultNumPlaces): Long = math round (initMass / MonoIsotopicMass.tolerance(numDec))
 
+    // This function is a helper to `equals`
+    // It tests whether two values are within the range of experimental drift we allow
+    private def withinDriftWindow(a: Double, b: Double) = (math abs (a - b)) < MonoIsotopicMass.tolerance()
+
+    // we allow for times to drift by driftTolerated, and so equals matches times that only that apart
     override def equals(that: Any) = that match { 
-      case that: MonoIsotopicMass => this.truncated.equals(that.truncated)
+      case that: MonoIsotopicMass => withinDriftWindow(this.initMass, that.initMass)
       case _ => false
     }
-    override def hashCode() = truncated.hashCode
-    override def toString(): String = this.rounded().toString
+
+    // We deliberately cause hash collisions on *all* MonoIsotopicMass objects. That is because the original
+    // code was using a hashcode implementation that was `roundedAndScaled.hashCode`, i.e., converting to
+    // rounded integers and taking their hashcode. That causes problems at the bucket boundaries of the 
+    // masses. And that cannot be resolved with higher num decimals being hashed, as there will always be
+    // bucket boundaries at that precision that will fail.
+    // TODO: fix this: We need to go through the code and wherever MonoIsotopicMass objects are compared
+    // or put into hashmaps we need to change that into an explicit equality comparison
+    override def hashCode() = 1
+
+    override def toString(): String = {
+      String.format(s"%3.${MonoIsotopicMass.defaultNumPlaces}f", this.rounded(): java.lang.Double)
+    }
 
     // case when we might want to add: set of atoms together in a formula. need its full mass
     def +(that: MonoIsotopicMass) = new MonoIsotopicMass(this.initMass + that.initMass)
@@ -155,6 +175,8 @@ object ChemicalSymbols {
     def -(that: MonoIsotopicMass) = new MonoIsotopicMass(this.initMass - that.initMass)
     // case when we might need to multiply by an integer: k molecules together. need combined mass
     def *(num: Int) = new MonoIsotopicMass(this.initMass * num)
+
+    def isIn(low: Double, high: Double): Boolean = rounded() >= low && rounded() <= high
   }
 
   object Helpers {

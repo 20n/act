@@ -325,11 +325,11 @@ class MassToFormula(private val atomSpace: List[Atom] = AllAtoms) {
   }
 
   def buildChemFormulaA(soln: ChemicalFormula) = {
-    val hillOrder = hillSystemOrder(elements, soln(C) != 0)
+    val hillOrder = hillSystemOrder(elements, soln.contains(C) && soln(C) != 0)
     hillOrder.map(a => {
-        soln(a) match {
-          case 1 => a.symbol.toString
-          case 0 => ""
+        soln.get(a) match {
+          case None | Some(0) => ""
+          case Some(1) => a.symbol.toString
           case _ => a.symbol.toString + soln(a)
         }
       }
