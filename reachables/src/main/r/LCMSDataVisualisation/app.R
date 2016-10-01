@@ -30,8 +30,6 @@ library(logging)
 library(rscala)
 # Basic hashing package
 library(digest)
-# Memoisation package
-library(memoise)
 
 # Set logging level
 basicConfig('DEBUG')
