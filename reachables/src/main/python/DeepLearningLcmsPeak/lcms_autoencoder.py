@@ -337,7 +337,15 @@ class LcmsAutoencoder:
                                         column_number_to_time(centered_time + self.block_size / 2, magic.time_step,
                                                               magic.time_min)))
                                 thresholded_groups.append(normalized_window)
-                                extra_info = [row_number, centered_time, window_max]
+
+                                exp_std = r1.get_std_deviation(row_number, centered_time + center)
+                                ctrl_std = r2.get_std_deviation(row_number, centered_time + center)
+
+                                extra_info = {"row": row_number,
+                                              "time": centered_time,
+                                              "maxo": window_max,
+                                              "exp_std_dev": exp_std,
+                                              "ctrl_std_dev": ctrl_std}
 
                                 if snr is not None:
                                     """
@@ -355,7 +363,7 @@ class LcmsAutoencoder:
                                     max_signed = max(signed_snr)
                                     min_signed = abs(min(signed_snr))
 
-                                    extra_info.append(max_signed - min_signed)
+                                    extra_info.update({"sn": max_signed - min_signed})
                                 row_index_and_max.append(extra_info)
                         else:
                             if self.debug:
@@ -551,15 +559,22 @@ class LcmsAutoencoder:
 
 
 class LcmsScan:
-    def __init__(self, processed_array, max_mz_array):
+    def __init__(self, processed_array, max_mz_array, std_deviation=None):
         self.processed_array = processed_array
         self.max_mz_array = max_mz_array
+        self.std_deviation = std_deviation
 
     def get_array(self):
         return self.processed_array
 
     def get_bucket_mz(self):
         return self.max_mz_array
+
+    def get_std_deviation(self, row, column):
+        if self.std_deviation:
+            return self.std_deviation[row, column]
+        else:
+            return None
 
     def normalize_array(self, normalizer):
         self.processed_array /= normalizer

@@ -58,7 +58,8 @@ class LcmsClusterer:
             print("Writing results to file")
 
         with open(os.path.join(self.output_directory, output_tsv_file_name + ".tsv"), "w") as f:
-            header = ["mz", "mzmin", "mzmax", "rt", "rtmin", "rtmax", "into", "maxo", "sn", "abs_sn", "cluster"] + \
+            header = ["mz", "mzmin", "mzmax", "rt", "rtmin", "rtmax", "into",
+                      "maxo", "sn", "abs_sn", "cluster", "exp_std_dev", "ctrl_std_dev"] + \
                      [str(x) for x in range(0, self.block_size)]
 
             writer = csv.DictWriter(f, header, delimiter=magic.separator)
@@ -66,9 +67,9 @@ class LcmsClusterer:
 
             # For each original window
             for i in tqdm(range(0, len(raw_normalized_data))):
-                max_intensity_value = extra_information[i][2]
-                row_in_array = extra_information[i][0]
-                time_index = int(extra_information[i][1])
+                max_intensity_value = extra_information[i]["maxo"]
+                row_in_array = extra_information[i]["row"]
+                time_index = int(extra_information[i]["time"])
 
                 row = {}
 
@@ -96,8 +97,8 @@ class LcmsClusterer:
                 row["maxo"] = max_intensity_value
                 row["cluster"] = str(clusters[i])
 
-                if len(extra_information[i]) > 3:
-                    row["sn"] = extra_information[i][3]
+                if extra_information[i].get("sn"):
+                    row["sn"] = extra_information[i]["sn"]
                 else:
                     row["sn"] = 1
 
@@ -114,6 +115,9 @@ class LcmsClusterer:
                 # Min and max within window
                 row["mzmin"] = row_to_mz(row_in_array, self.mz_split, self.mz_min)
                 row["mzmax"] = row_to_mz(row_in_array, self.mz_split, self.mz_min) + self.mz_split
+
+                row["exp_std_dev"] = extra_information[i]["exp_std_dev"]
+                row["ctrl_std_dev"] = extra_information[i]["ctrl_std_dev"]
 
                 # Check if it is in the valid peaks or if no valid peaks were supplied.
                 if (valid_peaks and clusters[i] in valid_peaks) or not valid_peaks:

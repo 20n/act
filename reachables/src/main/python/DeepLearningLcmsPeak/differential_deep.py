@@ -86,24 +86,6 @@ if __name__ == "__main__":
         """
         scans = [autoencoder.process_lcms_trace(lcms_directory, plate) for plate in samples]
 
-        # # Widen the peaks
-        # filter_size = 3
-        # for scan in scans:
-        #
-        #     kernel = np.array([[0.5, 0.5, 0.5], [0.5, 0.75, 0.5], [0.5, 0.5, 0.5]])
-        #     kernal_sum_normalization = np.sum(kernel)
-        #     mz_filter = 3
-        #     rt_filter = 3
-        #
-        #     replacement_array = np.zeros(scan.get_array().shape)
-        #     scan_array = scan.get_array()
-        #     for i in tqdm(range(0, scan_array.shape[0] - filter_size)):
-        #         for j in range(0, scan_array.shape[1] - filter_size):
-        #             # applied_kernel = np.sum(scan_array[i: i + kernel.shape[0], j+kernel.shape[1]]*kernel)/kernal_sum_normalization
-        #             applied_kernel = np.max(scan_array[i: i + mz_filter, j: j+rt_filter])
-        #             replacement_array[i, j] = applied_kernel
-        #     scan.processed_array = replacement_array
-
         # Normalize within replicates
         first_scan_sum = np.sum(scans[0].get_array())
         for i in range(1, len(scans)):
@@ -113,12 +95,16 @@ if __name__ == "__main__":
             scans[i].normalize_array(normalized_value)
 
         # Get the min
-        min_stacked = np.dstack([a.get_array() for a in scans])
-        min_representation = np.min(min_stacked, axis=2)
+        stacked_replicates = np.dstack([a.get_array() for a in scans])
+
+        standard_deviations = np.std(stacked_replicates, axis=2)
+        # To do: Add elementwise statistics on the std dev.
+
+        min_representation = np.max(stacked_replicates, axis=2)
 
         bucket_list = [scan.get_bucket_mz() for scan in scans]
 
-        mz_index_of_mins = np.argmin(min_stacked, axis=2)
+        mz_index_of_mins = np.argmax(stacked_replicates, axis=2)
         mz_buckets = np.zeros(bucket_list[0].shape)
         for index, bucket in enumerate(bucket_list):
             # Where the index arg is equal to the current index we find the m/z value that will be used moving forward.
@@ -128,7 +114,7 @@ if __name__ == "__main__":
         # Prevent very small values from have a disproportionate effect
         min_representation[min_representation <= 10] = 1
 
-        return LcmsScan(min_representation, mz_buckets)
+        return LcmsScan(min_representation, mz_buckets, standard_deviations)
 
 
     row_matrix1 = merge_lcms_replicates(experimental_samples)
