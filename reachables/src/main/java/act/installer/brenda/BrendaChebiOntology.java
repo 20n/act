@@ -20,7 +20,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 
 public class BrendaChebiOntology {
@@ -355,7 +357,6 @@ public class BrendaChebiOntology {
       ChebiOntology currentApplication = applicationsToVisit.get(currentIndex);
       Set<ChebiOntology> subApplications = isSubtypeOfRelationships.get(currentApplication);
       if (subApplications != null) {
-        applicationsToVisit.addAll(subApplications);
         for (ChebiOntology subApplication : subApplications) {
           Set<ChebiOntology> mainApplicationsSet = applicationToMainApplicationsMap.get(subApplication);
           if (mainApplicationsSet == null) {
@@ -364,9 +365,13 @@ public class BrendaChebiOntology {
           }
           mainApplicationsSet.addAll(applicationToMainApplicationsMap.get(currentApplication));
         }
+        subApplications.removeAll(applicationToMainApplicationsMap.keySet());
+        applicationsToVisit.addAll(subApplications);
+
       }
       currentIndex++;
     }
+    
     /*
      * Fetch the set of direct applications for each ontology that has a role (aka is a chemical entity).
      */
