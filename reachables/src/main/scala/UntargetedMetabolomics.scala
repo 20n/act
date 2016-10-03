@@ -822,7 +822,7 @@ object UntargetedMetabolomics {
       }
     }
     
-    val diffFiltered = if (filterRtRegions == null) {
+    val diffFiltered: RawPeaks = if (filterRtRegions == null) {
       differential
     } else {
       val regions = filterRtRegions.map(s => { 
@@ -833,7 +833,7 @@ object UntargetedMetabolomics {
       RemoveGradientBoundaries.filter(differential, regions.toSet)
     }
  
-    val rslt = if (!mapToMassAndIons) {
+    val rslt: PeakHits = if (!mapToMassAndIons) {
       diffFiltered
     } else {
       // map the peaks to candidate molecule masses
@@ -844,7 +844,7 @@ object UntargetedMetabolomics {
       candidateMols
     }
 
-    val inchis = if (!mapToInChIsUsingList) {
+    val inchis: PeakHits = if (!mapToInChIsUsingList) {
       rslt
     } else {
       println(s"Mapping to structures using inchi list")
@@ -852,14 +852,14 @@ object UntargetedMetabolomics {
       StructureHits.toStructureHitsUsingLists(rslt, inchiListFile)
     }
 
-    val formulae = if (!mapToFormulaUsingList) {
+    val formulae: PeakHits = if (!mapToFormulaUsingList) {
       inchis
     } else {
       println(s"Mapping to formula using list")
       FormulaHits.toFormulaHitsUsingLists(inchis, formulaListFile)
     }
 
-    val formulaeWithSolver = if (!mapToFormulaUsingSolver) {
+    val formulaeWithSolver: PeakHits = if (!mapToFormulaUsingSolver) {
       formulae
     } else {
       FormulaHits.toFormulaHitsUsingSolver(formulae)
@@ -869,11 +869,19 @@ object UntargetedMetabolomics {
       val (k, v) = kv
       Map("code" -> k.toJson, "vals" -> v.toJson)
     }
-    val metaForInChIs = inchis.extraCodes.map(codesToJson)
-    val metaForFormulae = formulae.extraCodes.map(codesToJson)
+    val metaForInChIs = if (!mapToInChIsUsingList) {
+      List()
+    } else {
+      inchis.extraCodes.map(codesToJson)
+    }
+    val metaForFormulae = if (!mapToFormulaUsingList) {
+      List()
+    } else {
+      formulae.extraCodes.map(codesToJson)
+    }
 
-    val extraMetaData = Map("matching_inchi_hashes" -> metaForInChIs) ++ 
-                        Map("matching_formulae_hashes" -> metaForFormulae)
+    val extraMetaData = Map("matching_inchi_hashes" -> metaForInChIs) ++
+      Map("matching_formulae_hashes" -> metaForFormulae)
     val extraMetaJson = extraMetaData.mapValues(_.toJson)
     val json = formulaeWithSolver.toJsonFormat(extraMetaJson)
 
@@ -1168,7 +1176,6 @@ class MultiIonHits(val peaks: PeakHits, val toOriginalMzIon: Map[Peak, (MetlinIo
     // ("ion" -> metlinIon.getName)
     basic + ("moleculeMass" -> p.mz.initMass) 
   }
-
 }
 
 trait ChemicalFormulae {
@@ -1280,11 +1287,14 @@ class FormulaHits(val peaks: PeakHits, val toFormulae: Map[Peak, List[Map[Atom, 
 
   def toReadable(f: ChemicalFormula): String = m2f.buildChemFormulaA(f)
 
-  val _missing = List().hashCode.toDouble
+  val _missing = -1
 
   def code(f: Option[List[ChemicalFormula]]): (Double, List[String]) = {
     val forms = f.getOrElse(List())
-    val hcode = forms.hashCode.toDouble
+    val hcode = f match {
+      case None => -1
+      case Some(_) => forms.hashCode.toDouble
+    }
     (hcode, forms.map(toReadable))
   }
 
@@ -1329,11 +1339,15 @@ object StructureHits extends LookupInEnumeratedList {
 class StructureHits(val peaks: PeakHits, val toInChI: Map[Peak, List[String]]) extends
   PeakHits(peaks.origin, peaks.peakSpectra) {
 
-  val _missing = List().hashCode.toDouble
+  val _missing = -1
 
   def code(i: Option[List[String]]): (Double, List[String]) = {
+
     val inchis = i.getOrElse(List())
-    val hcode = inchis.hashCode.toDouble
+    val hcode = i match {
+      case None => -1
+      case Some(_) => inchis.hashCode.toDouble
+    }
     (hcode, inchis)
   }
 
