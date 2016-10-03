@@ -7,7 +7,8 @@ import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, AminoAcid, AllAminoAc
 import act.shared.ChemicalSymbols.{Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser} 
 import act.shared.ChemicalSymbols.{Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg}
 import act.shared.ChemicalSymbols.MonoIsotopicMass
-import act.shared.ChemicalSymbols.Helpers.{fromSymbol, computeMassFromAtomicFormula, computeFormulaFromElements}
+import act.shared.ChemicalSymbols.Helpers.{fromSymbol, computeChemicalFormulaFromAAFormula, computeMassFromAtomicFormula, computeFormulaFromElements}
+import act.shared.MassToFormula
 
 object EnumPolyPeptides {
   // This class enumerates all polypeptides upto a certain mass.
@@ -30,16 +31,22 @@ object EnumPolyPeptides {
     val mass: MonoIsotopicMass)
 
   class PeptideMass(val representative: List[AminoAcid],
+                    val formula: Map[Atom, Int],
                     val mass: MonoIsotopicMass,
                     val ionMasses: List[(MetlinIonMass, MonoIsotopicMass)]) {
+    // need an instance of the class to call Map[Atom, Int] -> String
+    val m2f = new MassToFormula
+
     override def toString() = {
       // convert the representative to a string, DPPSAT
       val reprSymbol = representative.map(_.symbol.toString).reduce(_ + _)
+      // convert the formula to string representation using the Hill System
+      val formulaStr = m2f.buildChemFormulaA(formula)
 
       // note that here we assume that the list stays ordered the same way the header was computed for `tsvHdrs`
       // both are computed from ionDeltas and so there should be no reordering of the lists
       val ionMzs = ionMasses.map{ case (ion, mz) => mz.toString }
-      val together = List(reprSymbol, mass.toString) ++ ionMzs
+      val together = List(formulaStr, reprSymbol, mass.toString(6)) ++ ionMzs
       together.mkString("\t")
     }
   }
@@ -71,9 +78,12 @@ object EnumPolyPeptides {
   // b) a representative amino acid with that peptide mass
   // c) masses of metlin ions corresponding to that peptide mass 
   def toPeptideMassRow(formula: Map[AminoAcid, Int], ions: Option[List[String]]): PeptideMass = {
+    val aaList = formulaToListAAs(formula)
+    val chemFormula = computeChemicalFormulaFromAAFormula(formula)
     val mass = computeMonoIsotopicMass(formula)
+    val ionMasses = computeMetlinIonMasses(mass, ions)
 
-    new PeptideMass(formulaToListAAs(formula), mass, computeMetlinIonMasses(mass, ions))
+    new PeptideMass(aaList, chemFormula, mass, ionMasses)
   }
 
   def getAminoAcidCombinations(maxLen: Int): Iterator[List[AminoAcid]] = {
@@ -133,7 +143,7 @@ object EnumPolyPeptides {
 
   def getTSVHdr(ions: Option[List[String]]) = {
     val ionHeaders: List[(String, MS1.IonMode)] = getMetlinIons(ions).map(ion => (ion.getName, ion.getMode)).toList
-    val tsvHdrs = List("Representative", "M") ++ ionHeaders.map{ case (ionName, mode) => ionName + "/" + mode }
+    val tsvHdrs = List("formula", "rep_aa_formula", "mass") ++ ionHeaders.map{ case (ionName, mode) => ionName + "/" + mode }
     tsvHdrs
   }
 

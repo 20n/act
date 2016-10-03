@@ -165,8 +165,10 @@ object ChemicalSymbols {
     // or put into hashmaps we need to change that into an explicit equality comparison
     override def hashCode() = 1
 
-    override def toString(): String = {
-      String.format(s"%3.${MonoIsotopicMass.defaultNumPlaces}f", this.rounded(): java.lang.Double)
+    override def toString = toString()
+
+    def toString(numDecimals: Int = MonoIsotopicMass.defaultNumPlaces): String = {
+      String.format(s"%.${numDecimals}f", this.rounded(numDecimals): java.lang.Double)
     }
 
     // case when we might want to add: set of atoms together in a formula. need its full mass
@@ -208,6 +210,21 @@ object ChemicalSymbols {
       // for each pair such as (C, 2) specified in the elemental composition of an AA, first convert
       // it `massOf(C) * 2` (the `.map` below), and then add them together (the `.reduce` below)
       elems.map{ case (atom, num) => atom.mass * num }.reduce(_ + _)
+    }
+
+    def computeChemicalFormulaFromAAFormula(aaForm: Map[AminoAcid, Int]): Map[Atom, Int] = {
+      def multiply(es: Map[Atom, Int], times: Int) = es.mapValues(v => v * times)
+
+      def combineElems(e1s: Map[Atom, Int], e2s: Map[Atom, Int]): Map[Atom, Int] = {
+        val allAtoms = e1s.keySet ++ e2s.keySet
+        val added = allAtoms.map(a => (a, e1s.getOrElse(a, 0) + e2s.getOrElse(a, 0))).toMap
+        added
+      }
+
+      // for each aminoacid in the aminoacid formula, get its atomic composition (aa.elems)
+      // and multiply it by the number of times that amino acid appears, and then combine
+      // all the resulting chemical formulae
+      aaForm.map{ case (aa, n) => multiply(aa.elems, n) }.reduce(combineElems)
     }
   }
 }
