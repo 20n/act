@@ -145,6 +145,13 @@ public class ErosCorpus implements Iterable<Ero> {
   }
 
   /**
+   * Retain only ROs with a name in this corpus.
+   */
+  public void retainSelectedRos(Set<Integer> roIds) {
+    ros.removeIf(ro -> !roIds.contains(ro.getId()));
+  }
+
+  /**
    * Gets the ERO with the given roId from the corpus.
    *
    * @param roId The ro id.

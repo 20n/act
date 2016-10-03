@@ -8,12 +8,13 @@ import chemaxon.struc.Molecule
 import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
+import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Option => CliOption, Options, ParseException}
 import org.apache.logging.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
 import org.joda.time.{DateTime, DateTimeZone}
 
+import scala.collection.JavaConversions
 import scala.collection.JavaConverters._
 import scala.io.Source
 
@@ -84,6 +85,7 @@ object SparkSingleSubstrateROProjector {
   val OPTION_OUTPUT_DIRECTORY = "o"
   val OPTION_FILTER_FOR_SPECTROMETERY = "s"
   val OPTION_FILTER_REQUIRE_RO_NAMES = "n"
+  val OPTION_FILTER_BY_RO_IDS = "r"
 
   def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -112,6 +114,12 @@ object SparkSingleSubstrateROProjector {
       CliOption.builder(OPTION_FILTER_REQUIRE_RO_NAMES).
         longOpt("only-named-eros").
         desc("Only apply EROs from the validation corpus that have assigned names"),
+
+      CliOption.builder(OPTION_FILTER_BY_RO_IDS).
+        longOpt("project-stated-ro-ids").
+        desc("Only apply EROs whose ids correspond to the input set").
+        hasArgs().
+        valueSeparator(','),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -181,6 +189,14 @@ object SparkSingleSubstrateROProjector {
       LOGGER.info("Filtering down to only ROs with names.");
       eros.retainNamedRos()
     }
+
+    if (cl.hasOption(OPTION_FILTER_BY_RO_IDS)) {
+      LOGGER.info("Filtering down to only ROs with the input ids.")
+      eros.retainSelectedRos(
+        JavaConversions.setAsJavaSet(cl.getOptionValues(OPTION_FILTER_BY_RO_IDS).
+          map(eroString => eroString.toInt.asInstanceOf[Integer]).toSet))
+    }
+
     val erosList = eros.getRos.asScala
     LOGGER.info(s"Reduction in ERO list size: ${fullErosList.size} -> ${erosList.size}")
 
