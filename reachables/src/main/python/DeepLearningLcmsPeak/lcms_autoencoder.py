@@ -411,7 +411,7 @@ class LcmsAutoencoder:
             if self.verbose:
                 print("Cluster {}".format(ci))
             just_time_values = \
-                cluster.drop(["mz", "mzmin", "mzmax", "rt", "rtmin", "rtmax", "into", "maxo", "cluster"], 1)
+                cluster.drop(["mz", "mzmin", "mzmax", "rt", "rtmin", "rtmax", "into", "maxo", "sn", "cluster"], 1)
 
             if self.verbose:
                 print("Creating plot")
