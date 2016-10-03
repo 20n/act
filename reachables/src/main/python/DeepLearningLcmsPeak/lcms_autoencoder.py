@@ -326,8 +326,11 @@ class LcmsAutoencoder:
                                                centered_time: (centered_time + self.block_size)])
                         local_ctrl_max = np.max(r2.get_array()[row_number - 3: row_number + 3,
                                                 centered_time: (centered_time + self.block_size)])
+
+                        level_of_difference = abs((local_exp_max - local_ctrl_max) / max(local_exp_max, local_ctrl_max))
+
                         if single_exp_max == local_exp_max or single_ctrl_max == local_ctrl_max:
-                            if abs(max(normalized_window, key=abs)) <= 1:
+                            if abs(max(normalized_window, key=abs)) <= 1 and level_of_difference > 0.2:
                                 if self.debug:
                                     print("Found differential peak at m/z {} and retention time {}".format(row_to_mz(
                                         row_number, mz_division=magic.mz_split, min_mz=magic.mz_min),

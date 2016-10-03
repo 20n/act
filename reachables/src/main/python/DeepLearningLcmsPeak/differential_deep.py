@@ -104,9 +104,17 @@ if __name__ == "__main__":
         #             replacement_array[i, j] = applied_kernel
         #     scan.processed_array = replacement_array
 
+        # Normalize within replicates
+        first_scan_sum = np.sum(scans[0].get_array())
+        for i in range(1, len(scans)):
+            this_array_sum = np.sum(scans[i].get_array())
+
+            normalized_value = float(first_scan_sum) / this_array_sum
+            scans[i].normalize_array(normalized_value)
+
         # Get the min
         min_stacked = np.dstack([a.get_array() for a in scans])
-        min_representation = np.average(min_stacked, axis=2)
+        min_representation = np.min(min_stacked, axis=2)
 
         bucket_list = [scan.get_bucket_mz() for scan in scans]
 
