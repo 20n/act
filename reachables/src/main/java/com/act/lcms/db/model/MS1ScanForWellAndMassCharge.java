@@ -342,12 +342,12 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
     if (result == null) {
       // couldn't find entry in the cache
       MS1ScanForWellAndMassCharge construct = getMS1(lcmsFile.getAbsolutePath(), metlinIons);
-//      construct.setPlateCoordinates(plate.getId(), well.getPlateRow(), well.getPlateColumn());
-//      construct.setScanFilePath(scanFile.getFilename());
-//      construct.setUseSnr(useSnr);
-//      construct.setMetlinIons(ions);
-//      construct.setChemicalName(chemicalName);
-      return construct;
+      construct.setPlateCoordinates(plate.getId(), well.getPlateRow(), well.getPlateColumn());
+      construct.setScanFilePath(scanFile.getFilename());
+      construct.setUseSnr(useSnr);
+      construct.setMetlinIons(ions);
+      construct.setChemicalName(chemicalName);
+      return insert(db, construct);
     } else {
       return result;
     }
