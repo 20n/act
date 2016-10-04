@@ -427,7 +427,7 @@ public class StandardIonAnalysis {
       if (inputChemicals != null && !inputChemicals.equals("")) {
         String[] chemicals;
 
-        inputChemicals = inputChemicals.replace("\"", "");
+        inputChemicals = inputChemicals.replace("\'", "");
 
         if (!inputChemicals.contains(";")) {
           chemicals = new String[1];
