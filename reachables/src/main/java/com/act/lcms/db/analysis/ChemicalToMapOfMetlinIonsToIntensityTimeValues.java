@@ -99,7 +99,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
         metlinMasses.put(chemical, searchMz.getValue());
       }
 
-      String relativePath = searchMz.getLeft() + "_" + indexedPath.toString() + "_" + ion;
+      String relativePath = searchMz.getLeft() + "_" + indexedPath.hashCode() + "_" + ion;
 
       File absolutePathFileWithoutExtension = new File(plottingDirectory, relativePath);
       String absolutePathWithoutExtension = absolutePathFileWithoutExtension.getAbsolutePath();
