@@ -23,8 +23,10 @@ public class NetworkNode {
   private IonAnalysisInterchangeModel.LCMS_RESULT lcmsResult;
 
   public NetworkNode(Metabolite metabolite) {
-    this();
+    this.outEdges = new ArrayList<>();
+    this.inEdges = new ArrayList<>();
     this.metabolite = metabolite;
+    this.lcmsResult = IonAnalysisInterchangeModel.LCMS_RESULT.NO_DATA;
   }
 
   public Metabolite getMetabolite() {
@@ -67,8 +69,6 @@ public class NetworkNode {
 
   // For JSON SerDe
   private NetworkNode() {
-    this.outEdges = new ArrayList<>();
-    this.inEdges = new ArrayList<>();
-    this.lcmsResult = IonAnalysisInterchangeModel.LCMS_RESULT.NO_DATA;
+    this(null);
   }
 }
