@@ -38,10 +38,6 @@ public class NetworkStats implements JavaRunnable {
     LOGGER.info("Total nodes: %d", network.getNodes().size());
     LOGGER.info("Total edges: %d", network.getEdges().size());
 
-    LOGGER.info("Total LCMS hits: %d", network.getNodes().stream()
-        .filter(node -> node.getLcmsResult().equals(IonAnalysisInterchangeModel.LCMS_RESULT.HIT))
-        .count());
-
     LOGGER.info("Complete!");
   }
 }

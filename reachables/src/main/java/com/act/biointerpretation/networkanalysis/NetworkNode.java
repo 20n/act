@@ -20,13 +20,10 @@ public class NetworkNode {
 
   private List<NetworkEdge> inEdges;
 
-  private IonAnalysisInterchangeModel.LCMS_RESULT lcmsResult;
-
   public NetworkNode(Metabolite metabolite) {
     this.outEdges = new ArrayList<>();
     this.inEdges = new ArrayList<>();
     this.metabolite = metabolite;
-    this.lcmsResult = IonAnalysisInterchangeModel.LCMS_RESULT.NO_DATA;
   }
 
   public Metabolite getMetabolite() {
@@ -57,14 +54,6 @@ public class NetworkNode {
 
   public void addInEdge(NetworkEdge edge) {
     this.inEdges.add(edge);
-  }
-
-  public IonAnalysisInterchangeModel.LCMS_RESULT getLcmsResult() {
-    return lcmsResult;
-  }
-
-  public void setLcmsResult(IonAnalysisInterchangeModel.LCMS_RESULT lcmsResult) {
-    this.lcmsResult = lcmsResult;
   }
 
   // For JSON SerDe
