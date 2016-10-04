@@ -280,7 +280,8 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
       } else {
         computedResult.setNegativeWellIds(negativeWellIds);
         computedResult.setManualOverrideId(null);
-        return insert(db, computedResult);
+        //return insert(db, computedResult);
+        return computedResult;
       }
     } else {
       return cachedResult;
