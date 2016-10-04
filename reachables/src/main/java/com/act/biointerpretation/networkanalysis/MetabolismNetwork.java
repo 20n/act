@@ -18,8 +18,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -101,6 +103,23 @@ public class MetabolismNetwork {
       .collect(Collectors.toList());
   }
 
+  public MetabolismNetwork getPrecursorSubgraph(NetworkNode startNode, int numSteps) {
+    MetabolismNetwork subgraph = new MetabolismNetwork();
+    Set<NetworkNode> frontier = new HashSet<>();
+    frontier.add(startNode);
+    subgraph.addNode(startNode);
+
+    for (int n = 0; n < numSteps; n++) {
+      frontier = frontier.stream().flatMap(node -> getPrecursors(node).stream())
+        .collect(Collectors.toSet());
+
+      frontier.forEach(node -> subgraph.addNode(node));
+      frontier.forEach(node -> node.getOutEdges().forEach(e -> subgraph.addEdge(e)));
+    }
+
+    return subgraph;
+  }
+
   /**
    * Load an edge into the network from a reaction in our reactions DB.
    *
@@ -171,6 +190,13 @@ public class MetabolismNetwork {
     } else { // If there is an equivalent edge, merge the data into that edge.
       equivalentEdges.get(0).addDataFrom(edge);
     }
+  }
+
+  /**
+   * Adds a node keyed by inchi, ovewriting any existing node with the same inchi.
+   */
+  public void addNode(NetworkNode node) {
+    nodes.put(node.getMetabolite().getInchi(), node);
   }
 
   /**
