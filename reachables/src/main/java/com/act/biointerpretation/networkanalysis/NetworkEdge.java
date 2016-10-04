@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -11,11 +12,11 @@ import java.util.Set;
  */
 public class NetworkEdge {
 
-  @JsonProperty("substrate")
-  private String substrate;
+  @JsonProperty("substrates")
+  private List<String> substrates;
 
-  @JsonProperty("product")
-  private String product;
+  @JsonProperty("products")
+  private List<String> products;
 
   @JsonProperty("reaction_ids")
   Set<Integer> reactionIds;
@@ -27,11 +28,11 @@ public class NetworkEdge {
     this(null, null);
   }
 
-  public NetworkEdge(String substrate, String product) {
+  public NetworkEdge(List<String> substrates, List<String> products) {
     reactionIds = new HashSet<>();
     projectorNames = new HashSet<>();
-    this.substrate = substrate;
-    this.product = product;
+    this.substrates = substrates;
+    this.products = products;
   }
 
   /**
@@ -54,15 +55,15 @@ public class NetworkEdge {
    * @return True if same.
    */
   public boolean hasSameChemicals(NetworkEdge edge) {
-    return this.substrate.equals(edge.getSubstrate()) && this.product.equals(edge.getProduct());
+    return this.substrates.equals(edge.getSubstrates()) && this.products.equals(edge.getProducts());
   }
 
-  public String getSubstrate() {
-    return substrate;
+  public List<String> getSubstrates() {
+    return substrates;
   }
 
-  public String getProduct() {
-    return product;
+  public List<String> getProducts() {
+    return products;
   }
 
   public Set<Integer> getReactionIds() {

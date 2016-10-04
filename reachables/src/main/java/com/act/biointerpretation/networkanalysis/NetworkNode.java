@@ -13,8 +13,8 @@ import java.util.List;
  */
 public class NetworkNode {
 
-  @JsonProperty("inchi")
-  private String inchi;
+  @JsonProperty("metabolite")
+  private Metabolite metabolite;
 
   private List<NetworkEdge> outEdges;
 
@@ -22,17 +22,13 @@ public class NetworkNode {
 
   private IonAnalysisInterchangeModel.LCMS_RESULT lcmsResult;
 
-  public NetworkNode(String inchi) {
+  public NetworkNode(Metabolite metabolite) {
     this();
-    this.inchi = inchi;
+    this.metabolite = metabolite;
   }
 
-  public String getInchi() {
-    return inchi;
-  }
-
-  public void setInchi(String inchi) {
-    this.inchi = inchi;
+  public Metabolite getMetabolite() {
+    return metabolite;
   }
 
   @JsonIgnore

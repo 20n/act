@@ -28,6 +28,8 @@ public class MetabolismNetwork {
   private static transient final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final Logger LOGGER = LogManager.getFormatterLogger(MetabolismNetwork.class);
 
+  // Map from inchis to nodes.
+  // TODO: generalize to case when we no longer exclusively use inchis
   @JsonProperty("nodes")
   Map<String, NetworkNode> nodes;
 
@@ -70,7 +72,10 @@ public class MetabolismNetwork {
    * @return The list of potential product nodes.
    */
   public List<NetworkNode> getDerivatives(NetworkNode node) {
-    return node.getOutEdges().stream().map(edge -> getNode(edge.getProduct())).collect(Collectors.toList());
+    return node.getOutEdges().stream()
+      .flatMap(edge -> edge.getProducts().stream()
+        .map(product -> getNode(product)))
+      .collect(Collectors.toList());
   }
 
   /**
@@ -81,33 +86,31 @@ public class MetabolismNetwork {
    * @return The list of potential substrate nodes.
    */
   public List<NetworkNode> getPrecursors(NetworkNode node) {
-    return node.getInEdges().stream().map(edge -> getNode(edge.getSubstrate())).collect(Collectors.toList());
+    return node.getInEdges().stream()
+      .flatMap(edge -> edge.getSubstrates().stream()
+        .map(substrate -> getNode(substrate)))
+      .collect(Collectors.toList());
   }
 
   /**
    * Load an edge into the network from a reaction in our reactions DB.
-   * Only works on single-substrate reactions. For a reaction with multiple products, one edge is loaded into the
-   * network for each product.  i.e. the reaction A -> (B,C) creates two edges: (A->B) and (A->C).
    *
    * @param db    The DB to look in.
    * @param rxnId The reaction ID.
    */
   public void loadEdgeFromReaction(MongoDB db, long rxnId) {
     Reaction reaction = db.getReactionFromUUID(rxnId);
-    if (reaction.getSubstrates().length != 1) {
-      LOGGER.warn("Can only load edge from reaction with one substrate. Refusing to load.");
-      return;
-    }
+    List<Long> substrateIds = Arrays.asList(reaction.getSubstrates());
+    List<String> substrates = substrateIds.stream().map(id -> db.getChemicalFromChemicalUUID(id).getInChI())
+      .collect(Collectors.toList());
 
-    Long substrateId = reaction.getSubstrates()[0];
-    String substrateInchi = db.getChemicalFromChemicalUUID(substrateId).getInChI();
+    List<Long> productIds = Arrays.asList(reaction.getProducts());
+    List<String> products = productIds.stream().map(id -> db.getChemicalFromChemicalUUID(id).getInChI())
+      .collect(Collectors.toList());
 
-    for (Long productId : reaction.getProducts()) {
-      String productInchi = db.getChemicalFromChemicalUUID(productId).getInChI();
-      NetworkEdge edge = new NetworkEdge(substrateInchi, productInchi);
-      edge.addReactionId(reaction.getUUID());
-      addEdge(edge);
-    }
+    NetworkEdge edge = new NetworkEdge(substrates, products);
+    edge.addReactionId(reaction.getUUID());
+    addEdge(edge);
   }
 
   /**
@@ -115,31 +118,22 @@ public class MetabolismNetwork {
    *
    * @param predictionCorpus
    */
-  public void loadSingleSubstratePredictions(L2PredictionCorpus predictionCorpus) {
+  public void loadPredictions(L2PredictionCorpus predictionCorpus) {
     predictionCorpus.getCorpus().forEach(prediction -> loadEdgeFromPrediction(prediction));
   }
 
   /**
    * Loads a single prediction into the graph as an edge or edges.
-   * Only works on single-substrate predictions.  For a prediction with multiple products, one edge is loaded into the
-   * network for each product. i.e. the prediction A -> (B,C) creates two edges: (A->B), (A->C).
-   * TODO: generalize to multiple substrates by generalizing edge data structure
    *
    * @param prediction The prediction to load.
    */
   public void loadEdgeFromPrediction(L2Prediction prediction) {
-    if (prediction.getSubstrateInchis().size() != 1) {
-      LOGGER.warn("Can only load edge from prediction with one substrate. Refusing to load.");
-      return;
-    }
+    List<String> substrates= prediction.getSubstrateInchis();
+    List<String> products = prediction.getProductInchis();
 
-    String substrateInchi = prediction.getSubstrateInchis().get(0);
-
-    for (String productInchi : prediction.getProductInchis()) {
-      NetworkEdge edge = new NetworkEdge(substrateInchi, productInchi);
-      edge.addProjectorName(prediction.getProjectorName());
-      addEdge(edge);
-    }
+    NetworkEdge edge = new NetworkEdge(substrates, products);
+    edge.addProjectorName(prediction.getProjectorName());
+    addEdge(edge);
   }
 
   /**
@@ -152,18 +146,18 @@ public class MetabolismNetwork {
    */
   public void addEdge(NetworkEdge edge) {
 
-    createNodeIfNoneExists(edge.getSubstrate());
-    createNodeIfNoneExists(edge.getProduct());
+    edge.getSubstrates().forEach(s -> createNodeIfNoneExists(s));
+    edge.getProducts().forEach(p -> createNodeIfNoneExists(p));
 
-    NetworkNode substrateNode = getNode(edge.getSubstrate());
+    NetworkNode substrateNode = getNode(edge.getSubstrates().get(0));
     List<NetworkEdge> equivalentEdges = substrateNode.getOutEdges().stream()
         .filter(e -> e.hasSameChemicals(edge))
         .collect(Collectors.toList());
     assert (equivalentEdges.size() <= 1); // Should be at most one edge with a given substrate, product pair
 
     if (equivalentEdges.isEmpty()) { // If no equivalent edge exists, add the new edge
-      getNode(edge.getProduct()).addInEdge(edge);
-      getNode(edge.getSubstrate()).addOutEdge(edge);
+      edge.getProducts().forEach(product -> getNode(product).addInEdge(edge));
+      edge.getSubstrates().forEach(substrate -> getNode(substrate).addInEdge(edge));
       edges.add(edge);
     } else { // If there is an equivalent edge, merge the data into that edge.
       equivalentEdges.get(0).addDataFrom(edge);
@@ -173,6 +167,7 @@ public class MetabolismNetwork {
   /**
    * Checks if a node with a given inchi is already in the map.  If so, returns the node. If not, creates a new node
    * with that inchi and returns it.
+   * TODO: generalize this to handle metabolites rather than just inchis
    *
    * @param inchi The inchi.
    * @return The node.
@@ -180,7 +175,7 @@ public class MetabolismNetwork {
   private NetworkNode createNodeIfNoneExists(String inchi) {
     NetworkNode node = nodes.get(inchi);
     if (node == null) {
-      node = nodes.put(inchi, new NetworkNode(inchi));
+      node = nodes.put(inchi, new NetworkNode(new Metabolite(inchi)));
     }
     return node;
   }
@@ -195,11 +190,6 @@ public class MetabolismNetwork {
     MetabolismNetwork networkFromFile = OBJECT_MAPPER.readValue(inputFile, MetabolismNetwork.class);
 
     this.nodes = networkFromFile.nodes;
-    this.edges = networkFromFile.edges;
-
-    for (NetworkEdge edge : edges) {
-      getNode(edge.getSubstrate()).addOutEdge(edge);
-      getNode(edge.getProduct()).addInEdge(edge);
-    }
+    edges.forEach(e -> addEdge(e));
   }
 }

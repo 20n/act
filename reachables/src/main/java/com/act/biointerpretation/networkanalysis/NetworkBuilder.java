@@ -58,7 +58,7 @@ public class NetworkBuilder implements JavaRunnable {
 
     // Set up network object, and loading predictions from corpuses into network edges.
     MetabolismNetwork network = new MetabolismNetwork();
-    corpuses.forEach(corpus -> network.loadSingleSubstratePredictions(corpus));
+    corpuses.forEach(corpus -> network.loadPredictions(corpus));
     LOGGER.info("Loaded corpuses. Writing network to file.");
 
     // Write network out

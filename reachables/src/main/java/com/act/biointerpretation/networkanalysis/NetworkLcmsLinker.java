@@ -39,7 +39,7 @@ public class NetworkLcmsLinker implements JavaRunnable {
     network.loadFromJsonFile(networkFile);
 
     // Add LCMS results to network
-    network.getNodes().forEach(node -> node.setLcmsResult(lcmsResults.isMoleculeAHit(node.getInchi())));
+    network.getNodes().forEach(node -> node.setLcmsResult(lcmsResults.isMoleculeAHit(node.getMetabolite().getInchi())));
 
     // Write out final network with LCMS data to file
     network.writeToJsonFile(outputFile);
