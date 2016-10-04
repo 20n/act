@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -48,8 +49,12 @@ public class MetabolismNetwork {
     edges = new ArrayList<>();
   }
 
-  public boolean containsNode(String inchi) {
-    return nodes.get(inchi) != null;
+  public Optional<NetworkNode> getNodeOption(String inchi) {
+    NetworkNode node = nodes.get(inchi);
+    if (node != null) {
+      return Optional.of(node);
+    }
+    return Optional.empty();
   }
 
   public NetworkNode getNode(String inchi) {
