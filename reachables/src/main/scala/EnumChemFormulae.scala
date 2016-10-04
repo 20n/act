@@ -31,6 +31,8 @@ class EnumChemFormulae(maxElemCounts: String = "C30H100N30O30P30S30", maxMass: M
         out.println(outformat(Some((mass, formulaStr))))
       }
     }
+    // shall we close the file after running for a 100 years? Maybe, maybe not. :p
+    out close
   }
 
   def outformat(massFormula: Option[(MonoIsotopicMass, String)]): String = {
