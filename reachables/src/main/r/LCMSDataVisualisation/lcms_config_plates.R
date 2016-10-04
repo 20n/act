@@ -131,7 +131,7 @@ lcmsConfigPlates <- function(input, output, session) {
       unlist(vals[code == matching.formulae.code]) 
     })
     shiny::validate(
-      need(length(matching.formulae) > 0, "No matching formulas for this peak...")
+      need(length(matching.formulae) > 0, "No matching formulae for this peak...")
     )
     matching.formulae
   })
@@ -167,7 +167,7 @@ lcmsConfigPlates <- function(input, output, session) {
   
   output$formulae <- renderUI({
     tagList(
-      h4("Matching formulaes"),
+      h4("Matching formulae"),
       p(paste(matching.formulae(), collapse = " - "))
     )
   })
