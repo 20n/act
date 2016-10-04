@@ -822,7 +822,7 @@ object UntargetedMetabolomics {
       }
     }
     
-    val diffFiltered: RawPeaks = if (filterRtRegions == null) {
+    val diffFiltered = if (filterRtRegions == null) {
       differential
     } else {
       val regions = filterRtRegions.map(s => { 
@@ -881,7 +881,7 @@ object UntargetedMetabolomics {
     }
 
     val extraMetaData = Map("matching_inchi_hashes" -> metaForInChIs) ++
-      Map("matching_formulae_hashes" -> metaForFormulae)
+                        Map("matching_formulae_hashes" -> metaForFormulae)
     val extraMetaJson = extraMetaData.mapValues(_.toJson)
     val json = formulaeWithSolver.toJsonFormat(extraMetaJson)
 
@@ -1287,8 +1287,6 @@ class FormulaHits(val peaks: PeakHits, val toFormulae: Map[Peak, List[Map[Atom, 
 
   def toReadable(f: ChemicalFormula): String = m2f.buildChemFormulaA(f)
 
-  val _missing = -1
-
   def code(f: Option[List[ChemicalFormula]]): (Double, List[String]) = {
     val forms = f.getOrElse(List())
     val hcode = f match {
@@ -1338,8 +1336,6 @@ object StructureHits extends LookupInEnumeratedList {
 
 class StructureHits(val peaks: PeakHits, val toInChI: Map[Peak, List[String]]) extends
   PeakHits(peaks.origin, peaks.peakSpectra) {
-
-  val _missing = -1
 
   def code(i: Option[List[String]]): (Double, List[String]) = {
 
