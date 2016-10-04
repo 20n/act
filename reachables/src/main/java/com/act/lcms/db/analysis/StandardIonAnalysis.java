@@ -415,7 +415,7 @@ public class StandardIonAnalysis {
     }
 
     try (DB db = DB.openDBFromCLI(cl)) {
-      ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
+      //ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
       StandardIonAnalysis analysis = new StandardIonAnalysis();
       HashMap<Integer, Plate> plateCache = new HashMap<>();
 
@@ -426,11 +426,14 @@ public class StandardIonAnalysis {
       // If standard chemical is specified, do standard LCMS ion selection analysis
       if (inputChemicals != null && !inputChemicals.equals("")) {
         String[] chemicals;
-        if (!inputChemicals.contains(",")) {
+
+        inputChemicals = inputChemicals.replace("\"", "");
+
+        if (!inputChemicals.contains(";")) {
           chemicals = new String[1];
           chemicals[0] = inputChemicals;
         } else {
-          chemicals = inputChemicals.split(",");
+          chemicals = inputChemicals.split(";");
         }
 
         String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + CSV_FORMAT;
