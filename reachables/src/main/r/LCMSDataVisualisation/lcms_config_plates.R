@@ -24,9 +24,10 @@ lcmsConfigPlatesUI <- function(id) {
   ns <- NS(id)
   fluidPage(
     fluidRow(
-      h4("Matching molecules"),
-      em("Please scroll to display all"),
       uiOutput(ns("structures"))
+    ),
+    fluidRow(
+      uiOutput(ns("formulae"))
     ),
     fluidRow(
       h4("3D scatterplots"),
@@ -123,6 +124,18 @@ lcmsConfigPlates <- function(input, output, session) {
     matching.inchis
   })
   
+  matching.formulae <- reactive({
+    matching.formulae.code <- selected.peak()$matching_formulae
+    # get the  the matching inchis for this hashcode
+    matching.formulae <- with(config()$matching_formulae_hashes, {
+      unlist(vals[code == matching.formulae.code]) 
+    })
+    shiny::validate(
+      need(length(matching.formulae) > 0, "No matching formulas for this peak...")
+    )
+    matching.formulae
+  })
+  
   output$structures <- renderUI({
     matching.inchis <- matching.inchis()
     n <- length(matching.inchis)
@@ -145,7 +158,18 @@ lcmsConfigPlates <- function(input, output, session) {
     # wrap these in a tagList()
     uiStructures <- do.call(tagList, molecule_output_list)
     # wrap in div tag, with some cool CSS tags to fix height and allow overflowing on the x axis
-    div(style="height: 200px; overflow-x: auto; white-space: nowrap", uiStructures)    
+    tagList(
+      h4("Matching molecules"),
+      em("Please scroll horizontally to display all"),
+      div(style="height: 200px; overflow-x: auto; white-space: nowrap", uiStructures)  
+    )
+  })
+  
+  output$formulae <- renderUI({
+    tagList(
+      h4("Matching formulaes"),
+      p(paste(matching.formulae(), collapse = " - "))
+    )
   })
   
   plot.data <- callModule(lcmsPlatesData, "plates", platenames, retention.time.range, target.mz, mz.band.halfwidth)
