@@ -14,7 +14,12 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -39,6 +44,10 @@ public class MetabolismNetwork {
   public MetabolismNetwork() {
     nodes = new ConcurrentHashMap<>();
     edges = new ArrayList<>();
+  }
+
+  public boolean containsNode(String inchi) {
+    return nodes.get(inchi) != null;
   }
 
   public NetworkNode getNode(String inchi) {
