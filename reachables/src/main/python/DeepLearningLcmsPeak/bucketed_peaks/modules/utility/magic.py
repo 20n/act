@@ -4,7 +4,7 @@ from __future__ import absolute_import, division, print_function
 Deep.py Default Values
 """
 cluster_number = 20
-mz_split = 0.01
+mz_split = 0.003
 encoding_size = 2  # Meaning we can visualize it on a 2D plot!!
 window_size = 10
 mz_min = 49
