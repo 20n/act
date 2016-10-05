@@ -1,19 +1,18 @@
-# Modules for compute LCMS plates data
+# Modules related to LCMS traces data
 
-# lcmsSinglePlateData module server function
-lcmsSinglePlateData <- function(input, output, session, platename, retention.time.range, target.mz, mz.band.halfwidth, load) {
+# lcmsSingleTracePeaks module server function
+lcmsSingleTracePeaks <- function(input, output, session, scan.filename, retention.time.range, target.mz, mz.band.halfwidth, load) {
   
-  plate <- reactive({
-    getAndCachePlate(platename())
+  scan.file <- reactive({
+    getAndCacheScanFile(scan.filename())
   })
   
   scans <- eventReactive(load(), {
     retention.time.range <- retention.time.range()
-    plate <- plate()
     shiny::validate(
       need(!is.null(retention.time.range), "Retention time range is missing.")
     )
-    getScans(plate, retention.time.range)
+    getScans(scan.file(), retention.time.range)
   })
   
   peaks <- reactive({
@@ -23,18 +22,17 @@ lcmsSinglePlateData <- function(input, output, session, platename, retention.tim
       need(!is.null(target.mz), "Target m/z is missing."),
       need(!is.null(mz.band.halfwidth), "m/z band halfwidth is missing.")
     )
-    scans <- scans()
-    getPeaksInScope(scans, target.mz, mz.band.halfwidth)
+    getPeaksInScope(scans(), target.mz, mz.band.halfwidth)
   })
   
   peaks
 }
 
-# lcmsPlatesData module server function
-lcmsPlatesData <- function(input, output, session, platenames, retention.time.range, target.mz, mz.band.halfwidth) {
+# lcmsTracesPeaks module server function
+lcmsTracesPeaks <- function(input, output, session, scan.filenames, retention.time.range, target.mz, mz.band.halfwidth) {
   
-  plates <- reactive({
-    lapply(platenames(), getAndCachePlate)
+  scan.files <- reactive({
+    lapply(scan.filenames(), getAndCacheScanFile)
   })
   
   scans <- reactive({
@@ -42,7 +40,7 @@ lcmsPlatesData <- function(input, output, session, platenames, retention.time.ra
     shiny::validate(
       need(!is.null(retention.time.range), "Retention time range is missing.")
     )
-    lapply(plates(), function(x) getScans(x, retention.time.range))
+    lapply(scan.files(), function(x) getScans(x, retention.time.range))
   })
   
   peaks <- reactive({

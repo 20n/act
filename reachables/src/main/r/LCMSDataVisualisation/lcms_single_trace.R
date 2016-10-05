@@ -1,7 +1,7 @@
-# LCMS visualisation single plate module
+# LCMS visualisation single trace module
 
 # Module Input function
-lcmsSinglePlateInput <- function(id, label = "LCMS single plate") {
+lcmsSingleTraceInput <- function(id, label = "LCMS single trace") {
   # Create a namespace function using the provided id
   ns <- NS(id)
   
@@ -18,7 +18,7 @@ lcmsSinglePlateInput <- function(id, label = "LCMS single plate") {
 }
 
 # module UI function
-lcmsSinglePlateUI <- function(id) {
+lcmsSingleTraceUI <- function(id) {
   ns <- NS(id)
   tagList(
     em("Disclaimer: the peak detection will only detect peaks of intensity more than 1e4 and can't (by design) detect more than 2 peaks."),
@@ -32,7 +32,7 @@ lcmsSinglePlateUI <- function(id) {
 }
 
 # Module server function
-lcmsSinglePlate <- function(input, output, session) {
+lcmsSingleTrace <- function(input, output, session) {
   mzScopeId <- "mz.scope"
   mz.scope <- callModule(mzScope, mzScopeId)
   
@@ -48,7 +48,7 @@ lcmsSinglePlate <- function(input, output, session) {
     }
   })
   
-  plot.data <- callModule(lcmsSinglePlateData, "plate", reactive(input$filename), 
+  plot.data <- callModule(lcmsSingleTraceData, "trace", reactive(input$filename), 
                           reactive(input$retention.time.range), target.mz, 
                           reactive(mz.scope$mz.band.halfwidth), reactive(input$load))
   plot.parameters <- callModule(plotParameters, "plot.parameters")

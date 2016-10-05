@@ -23,7 +23,8 @@ saveMoleculeStructure <- {
   kScalaInterpreter%~%'import com.act.analysis.chemicals.molecules.MoleculeImporter'
   kScalaInterpreter%~%'import com.act.biointerpretation.mechanisminspection.ReactionRenderer'
   kScalaInterpreter%~%'import java.io.File'
-  kScalaInterpreter%~%'val reactionRenderer: ReactionRenderer = new ReactionRenderer'
+  defineReactionRenderer <- 'val reactionRenderer: ReactionRenderer = new ReactionRenderer'
+  kScalaInterpreter%~%defineReactionRenderer
   getSaveMolStructFunctionDef <- 'reactionRenderer.drawMolecule(MoleculeImporter.importMolecule(inchiString), new File(file))'
   intpDef(kScalaInterpreter, 'inchiString: String, file: String', getSaveMolStructFunctionDef) 
 }
@@ -43,54 +44,55 @@ getIonMz <- {
   intpDef(kScalaInterpreter, 'mass: Double, mode: String', getIonMzFunctionDef) 
 }
 
-getAndCachePlate <- function(filename) {
-  # Get and serialize a netCDF plate. 
+getAndCacheScanFile <- function(filename) {
+  # Get and serialize a netCDF scan file. 
   #
   # Args:
-  #   filename: input filename (Assumes input files are in `kLCMSDataLocation`)
+  #   scan.file.name: input scan file name (relative to `kLCMSDataLocation`)
   #
   # Returns:
-  #   a list of three objects: filename, hd, ms1.scans
+  #   a list of three objects: scan.file.name, hd, ms1.scans
   
   # Parameters validation
   shiny::validate(
-    need(filename != "", "Please choose an input file!")
+    need(scan.file.name != "", "Please choose an input file!")
   )
-  filepath <- paste0(kLCMSDataLocation, filename)
-  cachename <- gsub(".nc", ".rds", filename)
+  filepath <- paste0(kLCMSDataLocation, scan.file.name)
+  cachename <- gsub(".nc", ".rds", scan.file.name)
   cachepath <- paste0(kLCMSDataCacheLocation, cachename)
   
   if (file.exists(cachepath)) {
-    loginfo("Reading plate (%s) from cache at %s.", filename, cachepath)
-    plate <- readRDS(cachepath)
+    loginfo("Reading scan file (%s) from cache at %s.", scan.file.name, cachepath)
+    scan.file <- readRDS(cachepath)
     shiny::validate(
-      need(plate$filename == filename, 
-           sprintf("Oops, the cached plate (%s) was found with an incorrect filename (%s).",
-                   cachepath, plate$filename))
+      need(scan.file$filename == scan.file.name, 
+           sprintf("Oops, the cached scan file (%s) was found with an incorrect filename (%s).",
+                   cachepath, scan.file$filename))
     )
-    loginfo("Done reading plate (%s) from cache at %s.", filename, cachepath)
+    loginfo("Done reading scan file (%s) from cache at %s.", scan.file.name, cachepath)
   } else {
     shiny::validate(
-      need(file.exists(filepath), "Input plate was not found in the cache or in default directory (NAS/data-level1/lcms-ms1/)")
+      need(file.exists(filepath), 
+           sprintf("Input scan file was not found in the cache or in default directory (%s)", kLCMSDataLocation))
     )
-    loginfo("Reading plate (%s) from disk at %s.", filename, filepath)
+    loginfo("Reading scan file (%s) from disk at %s.", scan.file.name, filepath)
     msfile <- openMSfile(filepath, backend="netCDF")
     hd <- header(msfile)
     ms1 <- which(hd$msLevel == 1)
     ms1.scans <- peaks(msfile, ms1)
-    plate <- list(filename = filename, hd = hd, ms1.scans = ms1.scans)
-    loginfo("Saving plate (%s) in the cache at %s.", filename, cachepath)
-    saveRDS(plate, file = cachepath)
-    loginfo("Done saving plate (%s) in the cache.", filename)
+    scan.file <- list(filename = scan.file.name, hd = hd, ms1.scans = ms1.scans)
+    loginfo("Saving scan file (%s) in the cache at %s.", scan.file.name, cachepath)
+    saveRDS(scan.file, file = cachepath)
+    loginfo("Done saving scan file (%s) in the cache.", scan.file.name)
   }
-  return(plate)
+  return(scan.file)
 }
 
-getScans <- function(plate, retention.time.range) {
+getScans <- function(scan.file, retention.time.range) {
   # Get scans corresponding to a time range
   #
   # Args:
-  #   plate: a list of three objects: filename, hd, ms1.scans
+  #   scan.file: a list of three objects: filename, hd, ms1.scans
   #   retention.time.range: tuple, retention time range selected
   #
   # Returns:
@@ -100,21 +102,21 @@ getScans <- function(plate, retention.time.range) {
   shiny::validate(
     need(length(retention.time.range) == 2, "Rentention time range is not a tuple. Please fix!"),
     need(is.numeric(retention.time.range), "Rentention time range was not numeric. Please fix!"),
-    need(length(plate$ms1.scans) > 0, "Found 0 scans in loaded data. Please check the input file or the cached data!")
+    need(length(scan.file$ms1.scans) > 0, "Found 0 scans in loaded scan file. Please check the input file or the cached data!")
   )
   min.rt <- retention.time.range[1]
   max.rt <- retention.time.range[2]
-  # Extract the relevant scans from the full dataset
-  header <- plate$hd
+  # Extract the relevant scans from the scan file
+  header <- scan.file$hd
   ms1 <- which(header$msLevel == 1)
   rtsel <- header$retentionTime[ms1] > min.rt & header$retentionTime[ms1] < max.rt # vector of boolean
-  loginfo("Found %d scans with retention time in range [%.1f, %.1f] for plate %s.", sum(rtsel), min.rt, max.rt, plate$filename)
-  scans <- plate$ms1.scans[rtsel]
+  loginfo("Found %d scans with retention time in range [%.1f, %.1f] for scan file %s.", sum(rtsel), min.rt, max.rt, scan.file$filename)
+  scans <- scan.file$ms1.scans[rtsel]
   
   # We need to replicate the retention time as many times as the length of each scan
-  scan.lengths <- unlist(lapply(scans, nrow))
-  retention.time <- rep(header$retentionTime[rtsel], scan.lengths)
-  list(filename = plate$filename, scans = scans, retention.time = retention.time, retention.time.range = retention.time.range)
+  scans.lengths <- unlist(lapply(scans, nrow))
+  retention.time <- rep(header$retentionTime[rtsel], scans.lengths)
+  list(filename = scan.file$filename, scans = scans, retention.time = retention.time, retention.time.range = retention.time.range)
 }
 
 getPeaksInScope <- function(scans.with.time, target.mz.value, mz.band.halfwidth) {
@@ -149,7 +151,7 @@ getPeaksInScope <- function(scans.with.time, target.mz.value, mz.band.halfwidth)
   # now we can manipulate triples (retention.time, mz, intensity)
   peaks.in.scope <- peaks %>% 
     dplyr::filter(mz < max.ionic.mass & mz > min.ionic.mass)
-  loginfo("Found %d peaks in mz window [%.4f, %.4f] for plate %s.", 
+  loginfo("Found %d peaks in mz window [%.4f, %.4f] for scan file %s.", 
           nrow(peaks.in.scope), min.ionic.mass, max.ionic.mass, scans.with.time$filename)
   list(filename = scans.with.time$filename, peaks = peaks.in.scope, 
        retention.time.range = scans.with.time$retention.time.range, mz.range = c(min.ionic.mass, max.ionic.mass))
@@ -163,7 +165,7 @@ drawScatterplot <- function(plot.data, plot.parameters, ...) {
   #   plot.parameters: list of theta and phi angles (in degrees)
   #   ... (zlim, clim): intensity and color scale - used when normalizing graphs
   shiny::validate(
-    need(nrow(plot.data$peaks) > 0, "There are 0 peaks to plot plate and scope.")
+    need(nrow(plot.data$peaks) > 0, "There are 0 peaks to plot trace and scope.")
   )
   with(plot.data, {
     scatter3D(peaks$retention.time, peaks$mz, peaks$intensity, 
@@ -194,30 +196,30 @@ detectPeaks <- function(peaks) {
   #   one or two rows of the above dataframe
   
   # select peaks above intensity threshold
-  data <- peaks %>%
+  peak.set <- peaks %>%
     dplyr::filter(intensity > kIntensityThreshold)
   # if no peak meets that criterion, display error message
   shiny::validate(
-    need(nrow(data) > 0, sprintf("No peak found above the clustering threshold: %d", kIntensityThreshold))
+    need(nrow(peak.set) > 0, sprintf("No peak found above the clustering threshold: %d", kIntensityThreshold))
   )
   # set seed for reproducibility of the results
   set.seed(2016)
   # run kmeans with k=2
-  fit <- kmeans(data$mz, centers = 2)
+  fit <- kmeans(peak.set$mz, centers = 2)
   # assess separation of clusters (kSSRatio is experimental)
   if (fit$betweenss / fit$tot.withinss > kSSRatio) {
-    intervals <- classIntervals(data$mz, n = 2, style = "kmeans")  
+    intervals <- classIntervals(peak.set$mz, n = 2, style = "kmeans")  
     mean.mz.break <- intervals$brks[2]
-    peak1 <- data %>%
+    peak1 <- peak.set %>%
       dplyr::filter(mz < mean.mz.break) %>%
       top_n(1, intensity)
-    peak2 <- data %>%
+    peak2 <- peak.set %>%
       dplyr::filter(mz >= mean.mz.break) %>%
       top_n(1, intensity)
     # if clusters are separated well enough, return two peaks
     rbind(peak1, peak2)
   } else {
-    peak1 <- data %>%
+    peak1 <- peak.set %>%
       top_n(1, intensity)
     # otherwise return one peak
     peak1
@@ -237,12 +239,14 @@ getAndValidateConfigFile <- function(input.file) {
   )
   config <- fromJSON(file(input.file$datapath))
   layout <- config$layout
-  platenames <- config$plates$filename
+  scan.filenames <- config$scanfiles$filename
   shiny::validate(
-    need(layout$nrow * layout$ncol >= length(platenames), 
-         "Too many plates for input layout. Please double check the layout."), 
+    need(length(scan.filenames) > 0, 
+         "No scan file names found. Scan file names should be fed in 'scanfiles'"),
     need(layout$nrow >= 1 && layout$nrow <= 3, "Number of rows in the layout should be in the range [1, 3]"),
-    need(layout$ncol >= 1 && layout$nrow <= 3, "Number of cols in the layout should be in the range [1, 3]")
+    need(layout$ncol >= 1 && layout$nrow <= 3, "Number of cols in the layout should be in the range [1, 3]"),
+    need(layout$nrow * layout$ncol >= length(scan.filenames), 
+         "Too many scan files for input layout. Please double check the layout.")
   )
   config
 }

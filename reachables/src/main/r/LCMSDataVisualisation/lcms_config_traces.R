@@ -1,7 +1,7 @@
 # LCMS visualisation configuration-based module
 
 # Module Input function
-lcmsConfigPlatesInput <- function(id, label = "LCMS config plates") {
+lcmsConfigTracesInput <- function(id, label = "LCMS config traces") {
   # Create a namespace function using the provided id
   ns <- NS(id)
   tagList(
@@ -20,7 +20,7 @@ lcmsConfigPlatesInput <- function(id, label = "LCMS config plates") {
 }
 
 # Module UI function
-lcmsConfigPlatesUI <- function(id) {
+lcmsConfigTracesUI <- function(id) {
   ns <- NS(id)
   fluidPage(
     fluidRow(
@@ -37,13 +37,13 @@ lcmsConfigPlatesUI <- function(id) {
 }
 
 # Module server function
-lcmsConfigPlates <- function(input, output, session) {
+lcmsConfigTraces <- function(input, output, session) {
   
   ns <- session$ns
   
   # reactive values - re-evaluation is triggered upon input change
   config <- reactive(getAndValidateConfigFile(input$config.file))
-  platenames <- reactive(config()$plates$filename)
+  scan.filenames <- reactive(config()$scanfiles$filename)
   layout <- reactive(config()$layout)
   peaks <- reactive(config()$peaks)
   target.mz <- reactive(input$target.mz)
@@ -172,12 +172,12 @@ lcmsConfigPlates <- function(input, output, session) {
     )
   })
   
-  plot.data <- callModule(lcmsPlatesData, "plates", platenames, retention.time.range, target.mz, mz.band.halfwidth)
+  plot.data <- callModule(lcmsTracesData, "traces", scan.filenames, retention.time.range, target.mz, mz.band.halfwidth)
   plot.parameters <- callModule(plotParameters, "plot.parameters")
 
   output$plots <- renderUI({
     
-    n <- length(platenames())
+    n <- length(scan.filenames())
     
     # call modules for plot rendering
     for (i in 1:n) {

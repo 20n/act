@@ -4,7 +4,7 @@
 # - sourcing the modules
 # - defining the core UI and server functions
 
-# Note: Scala and a handful of R libraries should be installed on the server.
+# Note: Scala and a handful of R libraries should be installed on the machine running the server.
 # Please run in R:
 # install.packages(c("shiny", "rscala", "dplyr", "plot3D", "mzR", "classInt", "jsonlite", "logging", "digest"))
 # scalaInstall()
@@ -40,9 +40,9 @@ source("plot_parameters.R")
 source("lcms_data.R")
 source("lcms_plot.R")
 source("molecule_renderer.R")
-source("lcms_single_plate.R")
-source("lcms_multi_plate.R")
-source("lcms_config_plates.R")
+source("lcms_single_trace.R")
+source("lcms_multi_traces.R")
+source("lcms_config_traces.R")
 
 loginfo("Done loading libraries and sourcing modules")
 
@@ -72,9 +72,9 @@ server <- function(input, output, session) {
   }, deleteFile = FALSE)
   
   # Call the main modules
-  callModule(lcmsSinglePlate, "simple")
-  callModule(lcmsMultiPlate, "multi")
-  callModule(lcmsConfigPlates, "config")
+  callModule(lcmsSingleTrace, "simple")
+  callModule(lcmsMultiTraces, "multi")
+  callModule(lcmsConfigTraces, "config")
 }
 
 # The UI side defines the layout and display of the different app components.
@@ -95,16 +95,16 @@ ui <- fluidPage(
   navbarPage("Visualisation mode:", id = "main-navbar",
              selected = "config",
              tabPanel("Simple", value = "simple",
-                      sidebarPanel(lcmsSinglePlateInput("simple")),
-                      mainPanel(lcmsSinglePlateUI("simple"))
+                      sidebarPanel(lcmsSingleTraceInput("simple")),
+                      mainPanel(lcmsSingleTraceUI("simple"))
              ),
              tabPanel("Multi", value = "multi",
-                      sidebarPanel(lcmsMultiPlateInput("multi")),
-                      mainPanel(lcmsMultiPlateUI("multi"))
+                      sidebarPanel(lcmsMutliTracesInput("multi")),
+                      mainPanel(lcmsMutliTracesUI("multi"))
              ),
              tabPanel("Configuration-based", value = "config",
-                      sidebarPanel(lcmsConfigPlatesInput("config")),
-                      mainPanel(lcmsConfigPlatesUI("config"))
+                      sidebarPanel(lcmsConfigTracesInput("config")),
+                      mainPanel(lcmsConfigTracesUI("config"))
              )
   )
 )

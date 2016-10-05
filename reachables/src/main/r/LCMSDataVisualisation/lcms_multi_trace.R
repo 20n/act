@@ -1,14 +1,14 @@
-# LCMS visualisation module for multi plate data
+# LCMS visualisation module for multi trace data
 
 # Module input function
-lcmsMultiPlateInput <- function(id, label = "LCMS multi plate") {
+lcmsMultiTracesInput <- function(id, label = "LCMS multi traces") {
   # Create a namespace function using the provided id
   ns <- NS(id)
   tagList(
     h3("Scans selection"),
-    textInput(ns("filename1"), label = "Filename - Plate 1", value = "Plate_jaffna3_A1_0815201601.nc"),
-    textInput(ns("filename2"), label = "Filename - Plate 2", value = "Plate_jaffna3_B1_0815201601.nc"),
-    textInput(ns("filename3"), label = "Filename - Plate 3", value = "Plate_jaffna3_C1_0815201601.nc"),
+    textInput(ns("filename1"), label = "Filename - Scan 1", value = "Plate_jaffna3_A1_0815201601.nc"),
+    textInput(ns("filename2"), label = "Filename - Scan 2", value = "Plate_jaffna3_B1_0815201601.nc"),
+    textInput(ns("filename3"), label = "Filename - Scan 3", value = "Plate_jaffna3_C1_0815201601.nc"),
     sliderInput(ns("retention.time.range"), label = "Retention Time range",
                 min = 0, max = 450, value = c(130, 160), step = 5),
     actionButton(ns("load"), "Refresh scans!", icon("magic"), width = "100%", 
@@ -19,7 +19,7 @@ lcmsMultiPlateInput <- function(id, label = "LCMS multi plate") {
 }
 
 # Module UI function
-lcmsMultiPlateUI <- function(id) {
+lcmsMultiTracesUI <- function(id) {
   ns <- NS(id)
   tagList(
     h4("Target m/z value"),
@@ -32,7 +32,7 @@ lcmsMultiPlateUI <- function(id) {
 }
 
 # Module server function
-lcmsMultiPlate <- function(input, output, session, plot.parameters, mz.scope) {
+lcmsMultiTraces <- function(input, output, session, plot.parameters, mz.scope) {
   
   
   mz.scope <- callModule(mzScope, "mz.scope")
@@ -49,13 +49,13 @@ lcmsMultiPlate <- function(input, output, session, plot.parameters, mz.scope) {
     }
   })
   
-  plot.data1 <- callModule(lcmsSinglePlateData, "plate1", reactive(input$filename1), 
+  plot.data1 <- callModule(lcmsSingleTraceData, "trace1", reactive(input$filename1), 
                            reactive(input$retention.time.range), target.mz, 
                            reactive(mz.scope$mz.band.halfwidth), reactive(input$load))
-  plot.data2 <- callModule(lcmsSinglePlateData, "plate2", reactive(input$filename2), 
+  plot.data2 <- callModule(lcmsSingleTraceData, "trace2", reactive(input$filename2), 
                            reactive(input$retention.time.range), target.mz, 
                            reactive(mz.scope$mz.band.halfwidth), reactive(input$load))
-  plot.data3 <- callModule(lcmsSinglePlateData, "plate3", reactive(input$filename3), 
+  plot.data3 <- callModule(lcmsSingleTraceData, "trace3", reactive(input$filename3), 
                            reactive(input$retention.time.range), target.mz, 
                            reactive(mz.scope$mz.band.halfwidth), reactive(input$load))
   
