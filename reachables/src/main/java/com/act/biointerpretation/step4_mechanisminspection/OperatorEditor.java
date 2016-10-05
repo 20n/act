@@ -18,6 +18,8 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 
 /**
+ * mongod --dbpath /Users/jca20n/data/2015-10-01-new_metacyc_with_more_directions & disown %1
+ *
  * Created by jca20n on 1/6/16.
  */
 public class OperatorEditor extends JFrame {

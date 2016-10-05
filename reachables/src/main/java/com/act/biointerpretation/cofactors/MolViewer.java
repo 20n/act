@@ -5,6 +5,7 @@ import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
+import com.act.biointerpretation.utils.ChemAxonUtils;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -19,8 +20,9 @@ import java.io.InputStream;
  */
 public class MolViewer extends JPanel {
 
+    //C10H16N5O13P3
     static String molecule = "" +
-    "Nc1ccc(O)c(c1)C(O)=O.OC(=O)Cc1ccc(cc1)N(=O)=O>>Oc1ccc(cc1)N(=O)=O.CC(O)=Nc1ccc(O)c(c1)C(O)=O";
+    "C(=N)C(=N)C(=N)C(N)C(N)C(=O)C(=O)C(=O)C=COP(=O)(O)OP(=O)(O)OP(=O)(O)O";
 
     private BufferedImage bf;
     private JPanel resultPanel;
@@ -42,6 +44,7 @@ public class MolViewer extends JPanel {
             System.out.println("Is molecule");
             try {
                 mol = MolImporter.importMol(text);
+                System.out.println(ChemAxonUtils.SmilesToInchi(molecule));
             } catch (MolFormatException e) {
                 return false;
             }
