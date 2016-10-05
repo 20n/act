@@ -29,7 +29,7 @@ public class CrawlCarbons {
         CrawlCarbons abstractor = new CrawlCarbons();
         abstractor.initiate();
 
-//        Molecule mol = MolImporter.importMol("COCC");
+//        Molecule mol = MolImporter.importMol("CCCO");
 //        Molecule mol = MolImporter.importMol("InChI=1S/C4H10/c1-3-4-2/h3-4H2,1-2H3");
 //        Molecule mol = MolImporter.importMol("InChI=1S/C3H8O3/c4-1-3(6)2-5/h3-6H,1-2H2");
 //        Molecule mol = MolImporter.importMol("CCC(O)C(=O)C(N)CO");
@@ -44,6 +44,11 @@ public class CrawlCarbons {
     }
 
     public void printout() throws Exception {
+        System.out.println(this.zeroAdjC.size());
+        System.out.println(this.oneAdjC.size());
+        System.out.println(this.twoAdjC.size());
+
+
         StringBuilder output1 = new StringBuilder();
 
         output1.append(">zeroAdjC\n");
@@ -69,7 +74,7 @@ public class CrawlCarbons {
             Molecule amol = MolImporter.importMol(imol);
             output1.append(amol.getFormula()).append("\t");
 
-            Double dmass = amol.getExactMass() - 1.0 * 1.007276;
+            Double dmass = amol.getExactMass() - 1.0 * (12.000000 + 3*1.007276);
             output1.append(dmass).append("\n");
         }
 
@@ -82,7 +87,7 @@ public class CrawlCarbons {
             Molecule amol = MolImporter.importMol(imol);
             output1.append(amol.getFormula()).append("\t");
 
-            Double dmass = amol.getExactMass() - 2.0 * 1.007276;
+            Double dmass = amol.getExactMass() - 2.0 * (12.000000 + 3*1.007276);
             output1.append(dmass).append("\n");
         }
 
@@ -119,7 +124,7 @@ public class CrawlCarbons {
         }
     }
 
-    public void processMolecule(Molecule mol) {
+    public void processMolecule(Molecule mol) throws Exception {
         Hydrogenize.addHAtoms(mol);
 
         int count = mol.getAtomCount();
@@ -174,11 +179,20 @@ public class CrawlCarbons {
             Set<MolAtom> tossers = new HashSet<>();
             for(Integer ic1 : carbonIndices) {
                 MolAtom C1 = molclone.getAtom(ic1);
-                tossers.add(C1);
+                for(int x=0; x<C1.getBondCount(); x++) {
+                    MolBond b = C1.getBond(x);
+                    MolAtom C2 = b.getOtherAtom(C1);
+                    tossers.add(C2);
+                }
             }
+
             for(MolAtom C1 : tossers) {
+                if(C1.getAtomMap() == i) {
+                    continue;
+                }
                 molclone.removeAtom(C1);
             }
+
 
 //            System.out.println(">");
 //            System.out.println(ChemAxonUtils.toSmiles(mol));
@@ -212,7 +226,7 @@ public class CrawlCarbons {
                     carbcount++;
                 }
             }
-            if(carbcount > 1) {
+            if(carbcount > 1 + carbonIndices.size()) {
 //                System.out.println("frag has C's: " + ChemAxonUtils.toSmiles(Cfrag));
                 continue;
             }
@@ -223,6 +237,11 @@ public class CrawlCarbons {
 
             //Convert the Cfrag into an inchi for removal of mappings and consolidation
             String inchiFrag = ChemAxonUtils.toInchi(Cfrag);
+
+            if(inchiFrag == null) {
+                System.err.println("!!!! major error if inchifrag null");
+                throw new Exception();
+            }
 
             if(carbonIndices.size() == 0) {
                 zeroAdjC.add(inchiFrag);
