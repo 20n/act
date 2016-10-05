@@ -27,8 +27,8 @@ class NetworkAnalysisFlow extends Workflow with WorkingDirectoryUtility {
       CliOption.builder(OPTION_WORKING_DIRECTORY).
         hasArg.
         longOpt("working-directory").
-        desc("The directory in which to run and create all intermediate files. This directory will be created if it " +
-          "does not already exist.").
+        desc("""The directory in which to run and create all intermediate files. This directory will be created if it
+          |does not already exist.""".stripMargin).
         required(),
 
       CliOption.builder(OPTION_INPUT_NETWORK).

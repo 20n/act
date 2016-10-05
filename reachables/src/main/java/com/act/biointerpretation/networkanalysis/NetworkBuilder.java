@@ -19,16 +19,22 @@ public class NetworkBuilder implements JavaRunnable {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(NetworkBuilder.class);
 
+  private static final boolean FAIL_ON_INVALID_INPUT = false;
+
   private final List<File> corpusFiles;
   private final File outputFile;
-  // False if the builder should read in every valid input file even if some inputs are invalid.
-  // True if builder should crash on even a single invalid input file.
-  private final boolean failOnInvalidInput;
+  // True if the builder should read in every valid input file even if some inputs are invalid.
+  // False if builder should crash on even a single invalid input file.
+  private final boolean skipInvalidInputs;
 
-  public NetworkBuilder(List<File> corpusFiles, File outputFile, boolean failOnInvalidInput) {
+  public NetworkBuilder(List<File> corpusFiles, File outputFile) {
+    this(corpusFiles, outputFile, FAIL_ON_INVALID_INPUT);
+  }
+
+  public NetworkBuilder(List<File> corpusFiles, File outputFile, boolean skipInvalidInputs) {
     this.corpusFiles = corpusFiles;
     this.outputFile = outputFile;
-    this.failOnInvalidInput = failOnInvalidInput;
+    this.skipInvalidInputs = skipInvalidInputs;
   }
 
   @Override
@@ -48,10 +54,10 @@ public class NetworkBuilder implements JavaRunnable {
       try {
         corpuses.add(L2PredictionCorpus.readPredictionsFromJsonFile(file));
       } catch (IOException e) {
-        if (failOnInvalidInput) {
+        LOGGER.warn("Couldn't read file of name %s as input corpus; ignoring this file.", file.getName());
+        if (!skipInvalidInputs) {
           throw new IOException("Couldn't read input file " + file.getName() + ": " + e.getMessage());
         }
-        LOGGER.warn("Couldn't read file of name %s as input corpus; ignoring this file.", file.getName());
       }
     }
     LOGGER.info("Successfully read in %d input files. Loading edges into network.", corpuses.size());

@@ -31,18 +31,27 @@ public class NetworkEdge {
   public NetworkEdge(List<String> substrates, List<String> products) {
     reactionIds = new HashSet<>();
     projectorNames = new HashSet<>();
+
+    if (substrates == null || products == null) {
+      throw new IllegalArgumentException("Cannot create network edge with null substrates or products.");
+    }
+
     this.substrates = substrates;
     this.products = products;
   }
 
   /**
-   * Adds auxiliary data from another edge to this edge.
+   * Merges another edge into this one by adding the auxiliary data from the other edge to this edge.
    * This includes reaction IDs and projector names associated with the other edge.
-   * Used to merge two edges with the same substrate, product, but different auxiliary data.
+   * Ensures that the edges have the same chemicals; throws IllegalArgumentException otherwise.
    *
    * @param edge The edge whose data should be added.
+   * @throws IllegalArgumentException if the other edge has different chemicals from this one.
    */
-  public void addDataFrom(NetworkEdge edge) {
+  public void merge(NetworkEdge edge) {
+    if (!hasSameChemicals(edge)) {
+      throw new IllegalArgumentException("Can only merge two edges with the same chemicals.");
+    }
     this.reactionIds.addAll(edge.getReactionIds());
     this.projectorNames.addAll(edge.getProjectorNames());
   }

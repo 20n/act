@@ -28,8 +28,7 @@ import java.util.stream.Collectors;
 
 /**
  * Represents a metabolism network, cataloging all possible predicted chemical transformations that could be happening
- * in a given sample.  Currently all edges encode one-substrate-one-product transformations.
- * TODO: generalize the network to encapsulate multiple-substrate, multiple-product dependencies.
+ * in a given sample.
  */
 public class MetabolismNetwork {
 
@@ -42,7 +41,7 @@ public class MetabolismNetwork {
   Map<String, NetworkNode> nodes;
 
   @JsonProperty("edges")
-  Collection<NetworkEdge> edges;
+  List<NetworkEdge> edges;
 
   public MetabolismNetwork() {
     nodes = new ConcurrentHashMap<>();
@@ -62,8 +61,7 @@ public class MetabolismNetwork {
     if (node != null) {
       return node;
     }
-    LOGGER.warn("Couldn't get node with inchi %s", inchi);
-    return null;
+    throw new NullPointerException("Node not found! If you aren't sure if the node is there, use getNodeOption()");
   }
 
   @JsonIgnore
@@ -88,10 +86,11 @@ public class MetabolismNetwork {
    * @return The list of potential product nodes.
    */
   public List<NetworkNode> getDerivatives(NetworkNode node) {
-    return node.getOutEdges().stream()
-      .flatMap(edge -> edge.getProducts().stream()
-        .map(product -> getNode(product)))
-      .collect(Collectors.toList());
+    List<NetworkNode> derivatives = new ArrayList<>();
+    for (NetworkEdge edge : node.getOutEdges()) {
+      edge.getProducts().forEach(p -> derivatives.add(getNode(p)));
+    }
+    return derivatives;
   }
 
   /**
@@ -102,12 +101,21 @@ public class MetabolismNetwork {
    * @return The list of potential substrate nodes.
    */
   public List<NetworkNode> getPrecursors(NetworkNode node) {
-    return node.getInEdges().stream()
-      .flatMap(edge -> edge.getSubstrates().stream()
-        .map(substrate -> getNode(substrate)))
-      .collect(Collectors.toList());
+    List<NetworkNode> precursors = new ArrayList<>();
+    for (NetworkEdge edge : node.getInEdges()) {
+      edge.getSubstrates().forEach(s -> precursors.add(getNode(s)));
+    }
+    return precursors;
   }
 
+  /**
+   * Trace the pathway back from the given startNode for up to numSteps steps, and return the subgraph of all
+   * precursors found.  This is intended to supply explanatory pathways for the input node.
+   *
+   * @param startNode The node to explain.
+   * @param numSteps The number of steps back from the node to search.
+   * @return A subnetwork representing the precursors of the given starting metabolite.
+   */
   public MetabolismNetwork getPrecursorSubgraph(NetworkNode startNode, int numSteps) {
     MetabolismNetwork subgraph = new MetabolismNetwork();
     Set<NetworkNode> frontier = new HashSet<>();
@@ -115,8 +123,7 @@ public class MetabolismNetwork {
     subgraph.addNode(startNode);
 
     for (int n = 0; n < numSteps; n++) {
-      frontier = frontier.stream().flatMap(node -> getPrecursors(node).stream())
-        .collect(Collectors.toSet());
+      frontier = frontier.stream().flatMap(node -> getPrecursors(node).stream()).collect(Collectors.toSet());
 
       frontier.forEach(node -> subgraph.addNode(node));
       frontier.forEach(node -> node.getOutEdges().forEach(e -> subgraph.addEdge(e)));
@@ -128,7 +135,7 @@ public class MetabolismNetwork {
   /**
    * Load an edge into the network from a reaction in our reactions DB.
    *
-   * @param db    The DB to look in.
+   * @param db The DB to look in.
    * @param rxnId The reaction ID.
    */
   public void loadEdgeFromReaction(MongoDB db, long rxnId) {
@@ -186,14 +193,17 @@ public class MetabolismNetwork {
     List<NetworkEdge> equivalentEdges = substrateNode.getOutEdges().stream()
         .filter(e -> e.hasSameChemicals(edge))
         .collect(Collectors.toList());
-    assert (equivalentEdges.size() <= 1); // Should be at most one edge with a given substrate, product pair
+    if (equivalentEdges.size() <= 1) {
+      // Should be at most one edge with a given substrate, product pair
+      throw new IllegalStateException("Two edges with same substrates and products found in the same graph");
+    }
 
     if (equivalentEdges.isEmpty()) { // If no equivalent edge exists, add the new edge
       edge.getProducts().forEach(product -> getNode(product).addInEdge(edge));
       edge.getSubstrates().forEach(substrate -> getNode(substrate).addInEdge(edge));
       edges.add(edge);
     } else { // If there is an equivalent edge, merge the data into that edge.
-      equivalentEdges.get(0).addDataFrom(edge);
+      equivalentEdges.get(0).merge(edge);
     }
   }
 

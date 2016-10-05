@@ -30,6 +30,11 @@ public class NetworkNode {
     return metabolite;
   }
 
+  /**
+   * Get out edges.
+   * Don't need to explicitly serialize these because connectivity information is all contained in the edge -> node pointers.
+   * The node -> edge pointers can thus be reconstructed on deserialization.
+   */
   @JsonIgnore
   public List<NetworkEdge> getOutEdges() {
     return Collections.unmodifiableList(outEdges);
@@ -43,6 +48,11 @@ public class NetworkNode {
     this.outEdges.add(edge);
   }
 
+  /**
+   * Get in edges.
+   * Don't need to explicitly serialize these because connectivity information is all contained in the edge -> node pointers.
+   * The node -> edge pointers can thus be reconstructed on deserialization.
+   */
   @JsonIgnore
   public List<NetworkEdge> getInEdges() {
     return Collections.unmodifiableList(inEdges);
