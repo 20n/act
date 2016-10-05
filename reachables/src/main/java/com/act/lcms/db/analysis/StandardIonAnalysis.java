@@ -207,6 +207,7 @@ public class StandardIonAnalysis {
 
     // TODO: take availability of scan files into account here?
     List<StandardWell> candidates = new ArrayList<>();
+    int count = 0;
     for (StandardWell well : wellsFromSamePlate) {
       if (well.getChemical().equals(baseStandard.getChemical())) {
         continue; // Skip wells with the same chemical.
@@ -222,6 +223,12 @@ public class StandardIonAnalysis {
         continue; // Skip non-matching media if both wells define media type.
       }
       candidates.add(well);
+      count++;
+
+      if (count > 4) {
+        break;
+      }
+
     }
 
     return candidates;
@@ -508,6 +515,7 @@ public class StandardIonAnalysis {
                 snrRankingResults};
 
             printer.printRecord(resultSet);
+            printer.flush();
           }
         }
 
