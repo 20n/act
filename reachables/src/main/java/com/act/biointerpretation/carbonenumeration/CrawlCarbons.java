@@ -55,7 +55,7 @@ public class CrawlCarbons {
             Molecule amol = MolImporter.importMol(imol);
             output1.append(amol.getFormula()).append("\t");
 
-            Double dmass = amol.getExactMass() - 2.0 * 1.007276;
+            Double dmass = amol.getExactMass();
             output1.append(dmass).append("\n");
         }
 
@@ -69,7 +69,7 @@ public class CrawlCarbons {
             Molecule amol = MolImporter.importMol(imol);
             output1.append(amol.getFormula()).append("\t");
 
-            Double dmass = amol.getExactMass() - 2.0 * 1.007276;
+            Double dmass = amol.getExactMass() - 1.0 * 1.007276;
             output1.append(dmass).append("\n");
         }
 
