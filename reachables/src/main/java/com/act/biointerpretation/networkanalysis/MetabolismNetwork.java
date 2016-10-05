@@ -117,15 +117,17 @@ public class MetabolismNetwork {
    * @return A subnetwork representing the precursors of the given starting metabolite.
    */
   public MetabolismNetwork getPrecursorSubgraph(NetworkNode startNode, int numSteps) {
+    if (numSteps <= 0) {
+      throw new IllegalArgumentException("Precursor graph is only well-defined for numSteps > 0");
+    }
+
     MetabolismNetwork subgraph = new MetabolismNetwork();
     Set<NetworkNode> frontier = new HashSet<>();
     frontier.add(startNode);
-    subgraph.addNode(startNode);
 
     for (int n = 0; n < numSteps; n++) {
+      // Move frontier back, then add all new edges. Edge adding will add substrate and product nodes as necessary.
       frontier = frontier.stream().flatMap(node -> getPrecursors(node).stream()).collect(Collectors.toSet());
-
-      frontier.forEach(node -> subgraph.addNode(node));
       frontier.forEach(node -> node.getOutEdges().forEach(e -> subgraph.addEdge(e)));
     }
 
@@ -205,13 +207,6 @@ public class MetabolismNetwork {
     } else { // If there is an equivalent edge, merge the data into that edge.
       equivalentEdges.get(0).merge(edge);
     }
-  }
-
-  /**
-   * Adds a node keyed by inchi, ovewriting any existing node with the same inchi.
-   */
-  public void addNode(NetworkNode node) {
-    nodes.put(node.getMetabolite().getInchi(), node);
   }
 
   /**
