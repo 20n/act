@@ -13,18 +13,6 @@ loginfo("Loading Scala interpreter from fat jar at %s.", kFatJarLocation)
 kScalaInterpreter=scalaInterpreter(kFatJarLocation)
 loginfo("Done loading Scala interpreter.")
 
-
-# Saves a 
-#
-# Args:
-#   x: One of two vectors whose sample covariance is to be calculated.
-#   y: The other vector. x and y must have the same length, greater than one,
-#      with no missing values.
-#   verbose: If TRUE, prints sample covariance; if not, not. Default is TRUE.
-#
-# Returns:
-#   The sample covariance between x and y.
-
 saveMoleculeStructure <- {
   # Documentation for `saveMoleculeStructure`
   # Render a molecule's structure and saves a .png to file.
@@ -32,14 +20,10 @@ saveMoleculeStructure <- {
   # Args:
   #   inchiString: input inchi string 
   #   file: absolute file path for saving the structure image file
-  importMoleculeImporter <- 'import com.act.analysis.chemicals.molecules.MoleculeImporter'
-  importReactionRenderer <- 'import com.act.biointerpretation.mechanisminspection.ReactionRenderer'
-  importFile <- 'import java.io.File'
-  declareNewReactionRenderer <- 'val reactionRenderer: ReactionRenderer = new ReactionRenderer'
-  kScalaInterpreter%~%importMoleculeImporter
-  kScalaInterpreter%~%importReactionRenderer
-  kScalaInterpreter%~%importFile
-  kScalaInterpreter%~%declareNewReactionRenderer
+  kScalaInterpreter%~%'import com.act.analysis.chemicals.molecules.MoleculeImporter'
+  kScalaInterpreter%~%'import com.act.biointerpretation.mechanisminspection.ReactionRenderer'
+  kScalaInterpreter%~%'import java.io.File'
+  kScalaInterpreter%~%'val reactionRenderer: ReactionRenderer = new ReactionRenderer'
   getSaveMolStructFunctionDef <- 'reactionRenderer.drawMolecule(MoleculeImporter.importMolecule(inchiString), new File(file))'
   intpDef(kScalaInterpreter, 'inchiString: String, file: String', getSaveMolStructFunctionDef) 
 }
@@ -54,8 +38,7 @@ getIonMz <- {
   #
   # Returns:
   #   A Double representing the Ion m/z value
-  importMS1 <- 'import com.act.lcms.MS1'
-  kScalaInterpreter%~%importMS1
+  kScalaInterpreter%~%'import com.act.lcms.MS1'
   getIonMzFunctionDef <- 'MS1.computeIonMz(mass, MS1.ionDeltas.filter(i => i.getName.equals(mode)).head)'
   intpDef(kScalaInterpreter, 'mass: Double, mode: String', getIonMzFunctionDef) 
 }
@@ -80,6 +63,11 @@ getAndCachePlate <- function(filename) {
   if (file.exists(cachepath)) {
     loginfo("Reading plate (%s) from cache at %s.", filename, cachepath)
     plate <- readRDS(cachepath)
+    shiny::validate(
+      need(plate$filename == filename, 
+           sprintf("Oops, the cached plate (%s) was found with an incorrect filename (%s).",
+                   cachepath, plate$filename))
+    )
     loginfo("Done reading plate (%s) from cache at %s.", filename, cachepath)
   } else {
     shiny::validate(

@@ -46,7 +46,7 @@ source("lcms_config_plates.R")
 
 loginfo("Done loading libraries and sourcing modules")
 
-# 20nlogo -> symlink to the 20n logo in the resources directory
+# 20nlogo -> symlink to the 20n logo. Should be in the working directory of the server.
 k20logoLocation <- "20nlogo"
 
 # The server side performs the computations behind the scenes
