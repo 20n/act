@@ -1,7 +1,7 @@
 package com.act.biointerpretation.networkanalysis;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
+import org.apache.commons.collections4.CollectionUtils;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -58,22 +58,14 @@ public class NetworkEdge {
 
   /**
    * Tests if this edge should be considered the same as another. Returns true if substrate and product are the same,
-   * regardless of auxiliary data.
+   * regardless of auxiliary data. This takes into account both the identity and cardinality of each chemical in the lists.
    *
    * @param edge The edge to compare to.
    * @return True if same.
    */
   public boolean hasSameChemicals(NetworkEdge edge) {
-    return containSameChemicals(this.getSubstrates(), edge.getSubstrates())
-      && containSameChemicals(this.getProducts(), edge.getProducts());
-  }
-
-  /**
-   * Tests if two lists of chemicals have the same chemicals.
-   * TODO: generalize to case with chemicals occuring more than once in the list.
-   */
-  public boolean containSameChemicals(List<String> A, List<String> B) {
-    return A.containsAll(B) && B.containsAll(A);
+    return CollectionUtils.isEqualCollection(this.getSubstrates(), edge.getSubstrates())
+      && CollectionUtils.isEqualCollection(this.getProducts(), edge.getProducts());
   }
 
   public List<String> getSubstrates() {
