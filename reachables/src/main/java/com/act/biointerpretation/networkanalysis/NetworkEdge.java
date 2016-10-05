@@ -64,7 +64,16 @@ public class NetworkEdge {
    * @return True if same.
    */
   public boolean hasSameChemicals(NetworkEdge edge) {
-    return this.substrates.equals(edge.getSubstrates()) && this.products.equals(edge.getProducts());
+    return containSameChemicals(this.getSubstrates(), edge.getSubstrates())
+      && containSameChemicals(this.getProducts(), edge.getProducts());
+  }
+
+  /**
+   * Tests if two lists of chemicals have the same chemicals.
+   * TODO: generalize to case with chemicals occuring more than once in the list.
+   */
+  public boolean containSameChemicals(List<String> A, List<String> B) {
+    return A.containsAll(B) && B.containsAll(A);
   }
 
   public List<String> getSubstrates() {
