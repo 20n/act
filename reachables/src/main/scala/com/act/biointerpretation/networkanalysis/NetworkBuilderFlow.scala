@@ -35,7 +35,8 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility {
 
       CliOption.builder(OPTION_INPUT_DIRECTORIES).
         hasArgs.valueSeparator(',').
-        desc("The directories in which to find the input corpuses.").
+        desc("""The directories in which to find the input corpuses. The workflow will find all non-directory files that
+          |are directly contained in any of the supplied directories, and try to use them as input files.""".stripMargin).
         required(),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
