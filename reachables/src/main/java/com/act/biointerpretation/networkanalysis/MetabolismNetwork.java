@@ -6,6 +6,7 @@ import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
 public class MetabolismNetwork {
 
   private static transient final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
   private static final Logger LOGGER = LogManager.getFormatterLogger(MetabolismNetwork.class);
 
   // Map from inchis to nodes.
@@ -195,7 +197,7 @@ public class MetabolismNetwork {
     List<NetworkEdge> equivalentEdges = substrateNode.getOutEdges().stream()
         .filter(e -> e.hasSameChemicals(edge))
         .collect(Collectors.toList());
-    if (equivalentEdges.size() <= 1) {
+    if (equivalentEdges.size() > 1) {
       // Should be at most one edge with a given substrate, product pair
       throw new IllegalStateException("Two edges with same substrates and products found in the same graph");
     }
@@ -235,6 +237,6 @@ public class MetabolismNetwork {
     MetabolismNetwork networkFromFile = OBJECT_MAPPER.readValue(inputFile, MetabolismNetwork.class);
 
     this.nodes = networkFromFile.nodes;
-    edges.forEach(e -> addEdge(e));
+    networkFromFile.edges.forEach(e -> this.addEdge(e));
   }
 }

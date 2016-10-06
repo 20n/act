@@ -1,6 +1,7 @@
 package com.act.biointerpretation.networkanalysis;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import org.apache.commons.collections4.CollectionUtils;
 import java.util.Collections;
 import java.util.HashSet;
@@ -24,11 +25,10 @@ public class NetworkEdge {
   @JsonProperty("projector_names")
   Set<String> projectorNames;
 
-  public NetworkEdge() {
-    this(null, null);
-  }
-
-  public NetworkEdge(List<String> substrates, List<String> products) {
+  @JsonCreator
+  public NetworkEdge(
+      @JsonProperty("substrates") List<String> substrates,
+      @JsonProperty("products") List<String> products) {
     reactionIds = new HashSet<>();
     projectorNames = new HashSet<>();
 

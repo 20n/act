@@ -67,7 +67,7 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility {
     val outputFile = new File(workingDir, "networkOutput")
     verifyOutputFile(outputFile)
 
-    val networkBuilder = new NetworkBuilder(inputFiles.toList.asJava, outputFile, false)
+    val networkBuilder = new NetworkBuilder(inputFiles.toList.asJava, outputFile, true)
     headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("network builder", networkBuilder))
 
     val networkStats = new NetworkStats(outputFile);

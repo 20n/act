@@ -1,6 +1,7 @@
 package com.act.biointerpretation.networkanalysis;
 
 import com.act.lcms.db.io.report.IonAnalysisInterchangeModel;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -20,7 +21,8 @@ public class NetworkNode {
 
   private List<NetworkEdge> inEdges;
 
-  public NetworkNode(Metabolite metabolite) {
+  @JsonCreator
+  public NetworkNode(@JsonProperty("metabolite") Metabolite metabolite) {
     this.outEdges = new ArrayList<>();
     this.inEdges = new ArrayList<>();
     this.metabolite = metabolite;
@@ -64,10 +66,5 @@ public class NetworkNode {
 
   public void addInEdge(NetworkEdge edge) {
     this.inEdges.add(edge);
-  }
-
-  // For JSON SerDe
-  private NetworkNode() {
-    this(null);
   }
 }
