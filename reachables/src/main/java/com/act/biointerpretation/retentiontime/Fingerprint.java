@@ -3,6 +3,13 @@ package com.act.biointerpretation.retentiontime;
 import chemaxon.descriptors.CFParameters;
 import chemaxon.descriptors.GenerateMD;
 import chemaxon.descriptors.MDParameters;
+import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -12,6 +19,26 @@ import java.util.Arrays;
 import java.util.List;
 
 public class Fingerprint {
+
+  public static final String OPTION_INPUT_INCHIS = "i";
+  public static final String OPTION_OUTPUT_FINGERPRINT = "o";
+
+  public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {
+    {
+      add(Option.builder(OPTION_INPUT_INCHIS)
+          .argName("input inchis")
+          .desc("input inchis")
+          .hasArg().required()
+          .longOpt("input inchis")
+      );
+      add(Option.builder(OPTION_OUTPUT_FINGERPRINT)
+          .argName("output fingerprint")
+          .desc("output fingerprint")
+          .hasArg().required()
+          .longOpt("output fingerprint")
+      );
+    }
+  };
 
   public static void generate(String inputFile, String outputFile) throws Exception {
     GenerateMD generator = new GenerateMD(1);
@@ -52,7 +79,21 @@ public class Fingerprint {
   }
 
   public static void main(String[] args) throws Exception {
-    generate("/mnt/shared-data/Vijay/ret_time_prediction/test_inchis", "/mnt/shared-data/Vijay/ret_time_prediction/molecules.cfp");
-    compare("/mnt/shared-data/Vijay/ret_time_prediction/molecules.cfp");
+    Options opts = new Options();
+    for (Option.Builder b : OPTION_BUILDERS) {
+      opts.addOption(b.build());
+    }
+
+    CommandLine cl = null;
+    try {
+      CommandLineParser parser = new DefaultParser();
+      cl = parser.parse(opts, args);
+    } catch (ParseException e) {
+      System.err.format("Argument parsing failed: %s\n", e.getMessage());
+      System.exit(1);
+    }
+
+    generate(cl.getOptionValue(OPTION_INPUT_INCHIS), cl.getOptionValue(OPTION_OUTPUT_FINGERPRINT));
+    compare(cl.getOptionValue(OPTION_OUTPUT_FINGERPRINT));
   }
 }
