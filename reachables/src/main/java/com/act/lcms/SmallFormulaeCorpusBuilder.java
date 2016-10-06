@@ -66,7 +66,7 @@ public class SmallFormulaeCorpusBuilder {
           heapSize = Runtime.getRuntime().totalMemory();
           heapMaxSize = Runtime.getRuntime().maxMemory();
           LOGGER.info("Formulae processed so far: %d", i);
-          LOGGER.info("Memory used: %.3f out of %.3f max", heapSize, heapMaxSize);
+          LOGGER.info("Memory used: %d out of %d max", heapSize, heapMaxSize);
         }
 
         line = formulaeReader.readLine();
