@@ -23,8 +23,12 @@ import scala.reflect.runtime.{currentMirror => cm}
 sealed trait Expr
 case class Const(c: Int) extends Expr
 case class Var(val id: String) extends Expr
-case class Term(val c: Const, val v: Var) extends Expr
-case class LinExpr(val terms: List[Term]) extends Expr
+case class Term(val c: Const, val v: Var) extends Expr {
+  def +(other: Term): LinExpr = LinExpr(List(this, other))
+}
+case class LinExpr(val terms: List[Term]) extends Expr {
+  def +(term: Term): LinExpr = LinExpr(term :: this.terms)
+}
 
 // TODO: FIX ADT 
 // The structure below is not right. Done correctly, there should be case
@@ -358,8 +362,7 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
     // variable `one` whose numerical value "solves" to `1`. Then we can use that variable
     // in Term(c, one) and that Term will equal the value of the constant `c`.
     // (TODO: FIX ADT will get rid of this hack!)
-    val one  = Var("v=1")
-    val onec = LinIneq(one, Eq, Const(1))
+    val onec = LinIneq(MassToFormula.oneVar, Eq, Const(1))
 
     // instantiate upper and lower bounds on each variable
     // sat solvers, when asked to enumerate will absolutely find all solutions
@@ -389,7 +392,7 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
             // are in cases where all others are in a single line, e.g., alcohols
             val others = elements.filter(!_.equals(H))
             val ts = others.map( a => Term(Const(a.maxValency), varsForAtoms(a)) )
-            val lineBonds = Term(Const(-others.size), one)
+            val lineBonds = Term(Const(-others.size), MassToFormula.oneVar)
             LinExpr(lineBonds :: ts)
           }
           case _ => Const(max)
@@ -414,6 +417,9 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
 
 object MassToFormula {
   def atomToVar(a: Atom) = Var(a.symbol.toString)
+  def oneVar  = Var("v=1")
+  def term(c: Int) = Term(Const(c), oneVar)
+  def term(c: Int, a: Atom) = Term(Const(c), MassToFormula.atomToVar(a))
 
   // These can be overwritten by command line arguments to specific files
   // We can pass them around as arguments, but it was getting very painful.
@@ -858,10 +864,13 @@ sealed trait Specials {
   def constraints(): Set[LinIneq]
   def describe(): String
 
+  def t(c: Int, a: Atom) = MassToFormula.term(c, a)
+  def t(a: Atom) = MassToFormula.term(1, a)
+  def t(c: Int) = MassToFormula.term(c)
+
   def moreOf(xCnt: (Int, Atom), yCnt: (Int, Atom)): LinIneq = {
     val (cntx, x) = xCnt
     val (cnty, y) = yCnt
-    def t(c: Int, a: Atom) = Term(Const(c), MassToFormula.atomToVar(a))
     LinIneq(t(cntx, x), Ge, t(cnty, y))
   }
 
@@ -881,4 +890,42 @@ class MoreHThanC extends Specials {
 class LessThan3xH extends Specials {
   def describe() = "3C>=H"
   def constraints() = Set() + moreOf((3, C), (1, H))
+}
+
+class OrganicLimited extends Specials {
+  def describe() = "Communication JCA SS 10/06"
+
+  def constraints() = {
+    // int C //the number of carbons
+    // int N, int S, int O //the number of nitrogen, sulfur, and oxygen, respectively
+    // int H //number of hydrogens
+    // int Pi //number of phosphates OP(=O)O
+
+    // For the fully reduced molecule, the number of unoccupied bonds is:
+    // int Cbonds = (C-2)*2 + 6 = 2C + 2
+    val cBonds = t(2, C) + t(2)
+
+    // Assuming we only allow heteroatoms to be directly attached to a carbon, then:
+    // int numHetero = N+S+O;
+    val numHetero = t(N) + t(S) + t(O)
+
+    // numHetero <= Cbonds;
+    val c1 = LinIneq(numHetero, Le, cBonds)
+
+    // The maximal value for H is given by:
+    // Hmax = N*2  + S + O + Cbonds - numHetero;
+    // TODO
+
+    // The permitted values of H are given by:
+    // for(int H=Hmax; H>=0; H=H-2)
+    // TODO
+
+    // The permitted values for Pi are given by:
+    // if(O>1) {
+    //   for(int Pi=0; Pi<5; Pi++)
+    // }
+    // TODO
+
+    Set() + c1
+  }
 }
