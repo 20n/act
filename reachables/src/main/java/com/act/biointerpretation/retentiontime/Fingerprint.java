@@ -1,21 +1,60 @@
 package com.act.biointerpretation.retentiontime;
 
+import chemaxon.descriptors.CFParameters;
+import chemaxon.descriptors.GenerateMD;
+import chemaxon.descriptors.MDParameters;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 public class Fingerprint {
 
-  public static String printMol(String inchi) throws Exception {
-    Molecule a = MolImporter.importMol(inchi);
-    return MolExporter.exportToFormat(a, "mol");
+  public static void generate(String inputFile, String outputFile) throws Exception {
+    GenerateMD generator = new GenerateMD(1);
+    MDParameters cfpConfig = new CFParameters( new File("/Volumes/shared-data/Vijay/ret_time_prediction/config/cfp.xml"));
+    generator.setInput(inputFile);
+    generator.setDescriptor(0, outputFile, "CF", cfpConfig, "");
+    generator.setBinaryOutput(true);
+    generator.init();
+    generator.run();
+    generator.close();
+  }
+
+  public static void compare() throws Exception {
+    BufferedReader reader = new BufferedReader(new FileReader("/Users/vijaytramakrishnan/act/reachables/molecules.cfp"));
+
+    String line = null;
+    List<List<String>> binaryValues = new ArrayList<>();
+    while ((line = reader.readLine()) != null) {
+      binaryValues.add(Arrays.asList(line.split("|")));
+    }
+
+    // Compare
+    int differenceInBits = 0;
+    int total = 0;
+    for (int i = 0; i < binaryValues.get(0).size(); i++) {
+      String firstBinary = binaryValues.get(0).get(i);
+      String secondBinary = binaryValues.get(1).get(i);
+      for (int j = 0; j < firstBinary.length(); j++) {
+        total++;
+        if (firstBinary.charAt(j) != secondBinary.charAt(j)) {
+          differenceInBits++;
+        }
+      }
+    }
+
+    System.out.println(differenceInBits);
+    System.out.println(total);
   }
 
   public static void main(String[] args) throws Exception {
-    System.out.println(printMol("InChI=1S/C2H4/c1-2/h1-2H2"));
-    System.out.println(printMol("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)"));
-    System.out.println(printMol("InChI=1S/C8H11NO2/c9-4-3-6-1-2-7(10)8(11)5-6/h1-2,5,10-11H,3-4,9H2"));
-    System.out.println(printMol("InChI=1S/C3H7NO3/c4-2(1-5)3(6)7/h2,5H,1,4H2,(H,6,7)"));
-    System.out.println(printMol("InChI=1S/C10H12N2O/c11-4-3-7-6-12-10-2-1-8(13)5-9(7)10/h1-2,5-6,12-13H,3-4,11H2"));
+    generate("/Volumes/shared-data/Vijay/ret_time_prediction/test_inchis", "/Volumes/shared-data/Vijay/ret_time_prediction/molecules.cfp");
   }
 }
