@@ -18,20 +18,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+// Usage sbt "runMain com.act.lcms.SmallFormulaeCorpusBuilder"
+
+
 public class SmallFormulaeCorpusBuilder {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(SmallFormulaeCorpusBuilder.class);
 
   private static final String DEFAULT_INPUT_FILE = "/mnt/shared-data/Saurabh/PR466/small-formulae-enumeration.tsv";
 
-  private static final String OPTION_INPUT_FILE = "n";
+  private static final String OPTION_INPUT_FILE = "i";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_INPUT_FILE)
-        .argName("organism prefix")
-        .desc("Organism prefix to use when filtering reactions")
-        .hasArg().required()
-        .longOpt("organism")
+        .argName("input file")
+        .desc("Input file containing mass to formula enumeration")
+        .hasArg()
+        .longOpt("input")
     );
   }};
   private static final String HELP_MESSAGE = StringUtils.join(new String[] {
