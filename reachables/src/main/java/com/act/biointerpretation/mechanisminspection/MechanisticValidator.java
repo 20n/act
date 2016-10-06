@@ -255,7 +255,10 @@ public class MechanisticValidator extends BiointerpretationProcessor {
     }
 
     TreeMap<Integer, List<Ero>> scoreToListOfRos = new TreeMap<>(Collections.reverseOrder());
+    List<Pair<Long, Integer>> eroRuntimes = new ArrayList<>(reactors.size());
+    long startTime = System.currentTimeMillis();
     for (Map.Entry<Ero, Reactor> entry : reactors.entrySet()) {
+      long roStartTime = System.currentTimeMillis();
       Integer score =
           scoreReactionBasedOnRO(entry.getValue(), substrateMolecules, expectedProducts, entry.getKey(), newRxnId);
       if (score > ROScore.DEFAULT_UNMATCH_SCORE.getScore()) {
@@ -266,6 +269,15 @@ public class MechanisticValidator extends BiointerpretationProcessor {
         }
         vals.add(entry.getKey());
       }
+      long roEndTime = System.currentTimeMillis();
+      eroRuntimes.add(Pair.of(roEndTime - roStartTime, entry.getKey().getId()));
+    }
+    long endTime = System.currentTimeMillis();
+    LOGGER.info("Full validator runtime for %d: %d ms", rxn.getUUID(), endTime - startTime);
+    Collections.sort(eroRuntimes, (a, b) -> a.getLeft().compareTo(b.getLeft()));
+    LOGGER.info("Top RO runtimes:");
+    for (int i = 0; i < 5 && i < eroRuntimes.size(); i++) {
+      LOGGER.info("  %d: %d ms", eroRuntimes.get(i).getRight(), eroRuntimes.get(i).getLeft());
     }
 
     // Cache results for any future similar reactions.
