@@ -2,6 +2,7 @@ package com.act.biointerpretation.carbonenumeration;
 
 import act.api.NoSQLAPI;
 import act.shared.Chemical;
+import act.shared.Reaction;
 import chemaxon.calculations.hydrogenize.Hydrogenize;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.MolAtom;
@@ -106,21 +107,41 @@ public class CrawlCarbons {
     }
 
     public void run() throws Exception {
-        Iterator<Chemical> iterator = api.readChemsFromInKnowledgeGraph();
-        while(iterator.hasNext()) {
-            Chemical achem = iterator.next();
-            try {
-                //Load the next molecule
-                long id = achem.getUuid();
-                String inchi = achem.getInChI();
-                Molecule mol = MolImporter.importMol(inchi);
+        int limit = 50000;
+        int count = 0;
 
-                processMolecule(mol);
-
-
-            } catch(Exception err) {
-                System.out.println("dud" + achem.getUuid());
+        Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
+        outer: while(iterator.hasNext()) {
+            Reaction rxn = iterator.next();
+            Set<Long> chemIds = new HashSet<>();
+            for(Long chemid : rxn.getSubstrates()) {
+                chemIds.add(chemid);
             }
+            for(Long chemid : rxn.getProducts()) {
+                chemIds.add(chemid);
+            }
+
+            for(Long chemid : chemIds) {
+                Chemical achem = null;
+                try {
+                    achem = api.readChemicalFromInKnowledgeGraph(chemid);
+                    String inchi = achem.getInChI();
+                    Molecule mol = MolImporter.importMol(inchi);
+
+                    processMolecule(mol);
+
+                    count++;
+                    System.out.println("count: " + count);
+                    if(count>limit) {
+                        break outer;
+                    }
+
+                } catch(Exception err) {
+                    System.out.println("dud" + achem.getUuid());
+                }
+            }
+
+
         }
     }
 
@@ -231,7 +252,7 @@ public class CrawlCarbons {
                 continue;
             }
 
-            System.out.println("frag good: " + ChemAxonUtils.toSmiles(Cfrag));
+//            System.out.println("frag good: " + ChemAxonUtils.toSmiles(Cfrag));
 
 
 
