@@ -3,9 +3,6 @@ package com.act.biointerpretation.retentiontime;
 import chemaxon.descriptors.CFParameters;
 import chemaxon.descriptors.GenerateMD;
 import chemaxon.descriptors.MDParameters;
-import chemaxon.formats.MolExporter;
-import chemaxon.formats.MolImporter;
-import chemaxon.struc.Molecule;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -18,7 +15,7 @@ public class Fingerprint {
 
   public static void generate(String inputFile, String outputFile) throws Exception {
     GenerateMD generator = new GenerateMD(1);
-    MDParameters cfpConfig = new CFParameters( new File("/Volumes/shared-data/Vijay/ret_time_prediction/config/cfp.xml"));
+    MDParameters cfpConfig = new CFParameters( new File("/mnt/shared-data/Vijay/ret_time_prediction/config/cfp.xml"));
     generator.setInput(inputFile);
     generator.setDescriptor(0, outputFile, "CF", cfpConfig, "");
     generator.setBinaryOutput(true);
@@ -27,8 +24,8 @@ public class Fingerprint {
     generator.close();
   }
 
-  public static void compare() throws Exception {
-    BufferedReader reader = new BufferedReader(new FileReader("/Users/vijaytramakrishnan/act/reachables/molecules.cfp"));
+  public static void compare(String input) throws Exception {
+    BufferedReader reader = new BufferedReader(new FileReader(input));
 
     String line = null;
     List<List<String>> binaryValues = new ArrayList<>();
@@ -55,6 +52,7 @@ public class Fingerprint {
   }
 
   public static void main(String[] args) throws Exception {
-    generate("/Volumes/shared-data/Vijay/ret_time_prediction/test_inchis", "/Volumes/shared-data/Vijay/ret_time_prediction/molecules.cfp");
+    generate("/mnt/shared-data/Vijay/ret_time_prediction/test_inchis", "/mnt/shared-data/Vijay/ret_time_prediction/molecules.cfp");
+    compare("/mnt/shared-data/Vijay/ret_time_prediction/molecules.cfp");
   }
 }
