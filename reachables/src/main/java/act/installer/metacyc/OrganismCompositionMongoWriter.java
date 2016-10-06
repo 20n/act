@@ -99,10 +99,10 @@ public class OrganismCompositionMongoWriter {
   }
 
   /**
-   * Each Metacyc biopax file contains collections of reactions and chemicals, organized by mostRecentOrganismName.
+   * Each Metacyc biopax file contains collections of reactions and chemicals, organized by organism name.
    * The reactions reference the chemicals using biopax-specific (or Metacyc-specific?) identifiers that don't match
    * our internal id scheme (for good reason--our identifier approach is far less complex!).  This method writes the
-   * contents of one mostRecentOrganismName's reactions and chemicals to the DB.  The chemicals are written first so that we can
+   * contents of one organism's reactions and chemicals to the DB.  The chemicals are written first so that we can
    * accumulate a mapping of Metacyc small molecule reference ids to our DB's chemical ids.  The reactions' substrates
    * and products are then written to the DB using our internal chemical IDs, allowing us to unify Metacyc's chemical
    * and reaction data with whatever has already been written. */
@@ -308,7 +308,7 @@ public class OrganismCompositionMongoWriter {
   }
 
   /* Add a reaction to the DB based on a complete Catalysis.  This will extract the underlying Conversion and append
-   * available sequence/mostRecentOrganismName data.  This is preferred over the Conversion variant of this function as we want the
+   * available sequence/organism data.  This is preferred over the Conversion variant of this function as we want the
    * extra data to appear in the DB. */
   private Reaction addReaction(Catalysis c, HashMap<String, Long> rdfID2MongoID, StepDirection pathwayStepDirection) {
     // using the map of chemical rdfID->mongodb id, construct a Reaction object
@@ -344,11 +344,11 @@ public class OrganismCompositionMongoWriter {
     return rxn;
   }
 
-  // Add a Conversion to the DB without sequence or mostRecentOrganismName data.
+  // Add a Conversion to the DB without sequence or organism data.
   private Reaction addReaction(Conversion c, HashMap<String, Long> rdfID2MongoID, StepDirection pathwayStepDirection) {
     Reaction rxn = constructReaction(c, rdfID2MongoID, pathwayStepDirection);
     rxn.setDataSource(Reaction.RxnDataSource.METACYC);
-    // There's no mostRecentOrganismName/sequence information available on Conversions, so just write the reaction without it.
+    // There's no organism/sequence information available on Conversions, so just write the reaction without it.
     int rxnid = db.submitToActReactionDB(rxn);
     db.updateActReaction(rxn, rxnid);
 
@@ -391,7 +391,7 @@ public class OrganismCompositionMongoWriter {
       idlist.put(chemID);
     } else {
       // a ref exists, maybe it is from installing this exact same chem,
-      // or from a replicate chemical from another mostRecentOrganismName. add the DB's ID
+      // or from a replicate chemical from another organism. add the DB's ID
       // to the chemical's xref field
       idlist = ref.has("id") ? (JSONArray)ref.get("id") : new JSONArray();
       boolean contains = false;
