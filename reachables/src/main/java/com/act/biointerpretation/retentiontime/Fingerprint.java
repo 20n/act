@@ -8,6 +8,7 @@ public class Fingerprint {
   public static void main(String[] args) throws Exception {
     String inchi = "InChI=1S/C2H4/c1-2/h1-2H2";
     Molecule a = MolImporter.importMol(inchi);
+    System.out.println("hella");
     System.out.println(MolExporter.exportToFormat(a, "smiles"));
   }
 }
