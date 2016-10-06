@@ -99,7 +99,7 @@ public class OrganismCompositionMongoWriter {
   }
 
   /**
-   * Each Metacyc biopax file contains collections of reactions and chemicals, organized by organism name.
+   * Each Metacyc biopax file contains collections of reactions and chemicals, organized by organism.
    * The reactions reference the chemicals using biopax-specific (or Metacyc-specific?) identifiers that don't match
    * our internal id scheme (for good reason--our identifier approach is far less complex!).  This method writes the
    * contents of one organism's reactions and chemicals to the DB.  The chemicals are written first so that we can
