@@ -59,7 +59,6 @@ public class OrganismCompositionMongoWriter {
   boolean debugFails = false;
 
   // Cache these values as they'll base the same throughout.
-  // TODO: consider using a LinkedHashMap-based LRU cache to keep track of multiple organisms.
   private Map<String, Long> organismNameToIdCache = new LinkedHashMap<String, Long>(101, 1.0f, true) {
     // Believe it or not, this is all that is required to create an LRU cache!
     @Override
