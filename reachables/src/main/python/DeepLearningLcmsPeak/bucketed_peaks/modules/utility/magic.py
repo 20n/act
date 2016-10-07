@@ -3,10 +3,10 @@ from __future__ import absolute_import, division, print_function
 """
 Deep.py Default Values
 """
-cluster_number = 20
+cluster_number = 40
 mz_split = 0.003
-encoding_size = 2  # Meaning we can visualize it on a 2D plot!!
-window_size = 10
+encoding_size = 10  # Meaning we can visualize it on a 2D plot!!
+window_size = 100
 mz_min = 49
 mz_max = 951
 time_min = 0
@@ -23,7 +23,7 @@ threshold = 1e4
 loss_function = "mse"
 metrics = ["accuracy"]
 training_split = 0.9
-batch_size = 10000
+batch_size = 100
 
 """
 Cluster.py Default Values
