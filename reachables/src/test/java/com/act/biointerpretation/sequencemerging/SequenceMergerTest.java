@@ -1,5 +1,6 @@
 package com.act.biointerpretation.sequencemerging;
 
+import act.server.MongoDB;
 import act.server.NoSQLAPI;
 import act.shared.Organism;
 import act.shared.Reaction;
@@ -254,7 +255,7 @@ public class SequenceMergerTest {
 
     metadata.put("source_sequence_ids", Arrays.asList(84321, 7589L, 85932));
 
-    Seq mergedSeq = new Seq(1L, "1.1.1.1", 1L, "Mus musculus", "AJKFLGKJDFS", references,
+    Seq mergedSeq = new Seq(1L, "1.1.1.1", MongoDB.ORG_ID_BASE, "Mus musculus", "AJKFLGKJDFS", references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     mergedSeq.addReactionsCatalyzed(1L);
@@ -268,7 +269,7 @@ public class SequenceMergerTest {
     Set<Long> sequenceSet = new HashSet<>(Arrays.asList(1L, 2L));
 
     proteinData.put("sequences", sequenceSet);
-    proteinData.put("organism", 1L);
+    proteinData.put("organism", MongoDB.ORG_ID_BASE);
     proteinData.put("source_reaction_id", 789345L);
 
     reaction.addProteinData(proteinData);
@@ -276,7 +277,7 @@ public class SequenceMergerTest {
     proteinData = new JSONObject();
     sequenceSet = new HashSet<>(Collections.singletonList(1L));
     proteinData.put("sequences", sequenceSet);
-    proteinData.put("organism", 1L);
+    proteinData.put("organism", MongoDB.ORG_ID_BASE);
     proteinData.put("source_reaction_id", 789345L);
 
     reaction.addProteinData(proteinData);
@@ -298,10 +299,10 @@ public class SequenceMergerTest {
   public void testOrgPrefixMatching() {
     List<Organism> organismList = new ArrayList<>();
 
-    Organism musMusculus = new Organism(1L, "Mus musculus");
+    Organism musMusculus = new Organism(0L + MongoDB.ORG_ID_BASE, "Mus musculus");
     organismList.add(musMusculus);
 
-    Organism homoSapiens = new Organism(2L, "Homo sapiens");
+    Organism homoSapiens = new Organism(1L + MongoDB.ORG_ID_BASE, "Homo sapiens");
     organismList.add(homoSapiens);
 
     Map<Long, String> writtenOrganisms = mockAPI.getWrittenOrganismNames();

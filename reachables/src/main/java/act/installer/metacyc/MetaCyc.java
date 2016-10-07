@@ -82,7 +82,7 @@ public class MetaCyc {
   // process only the source file whose names are passed
   public void process(List<String> files) {
     for (String file : files) {
-      final File INPUT_FILE = new File(this.sourceDir, file);
+      final File INPUT_FILE = new File(file);
 
       System.out.format("Processing biopax file %s\n", INPUT_FILE.getAbsolutePath());
       HashMap<String, String> uniqueKeyToInChIMap = generateUniqueKeyToInChIMapping(INPUT_FILE);
@@ -360,8 +360,10 @@ public class MetaCyc {
 
     List<String> allL3 = new ArrayList<>();
     for (String subdir : new File(dir).list(subdirfltr)) {
-      for (String owlfile : new File(dir, subdir).list(owlfltr)) {
-        allL3.add(new File(subdir, owlfile).getAbsolutePath());
+      File parent = new File(dir, subdir);
+      for (String owlfile : parent.list(owlfltr)) {
+        System.out.format("  Found OWL file: %s\n", new File(parent, owlfile).getAbsolutePath());
+        allL3.add(new File(parent, owlfile).getAbsolutePath());
       }
     }
 

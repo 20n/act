@@ -52,7 +52,7 @@ import java.util.regex.Pattern;
 
 public class MongoDB {
 
-  private static final long ORG_ID_BASE = 5000000000L;
+  public static final long ORG_ID_BASE = 5000000000L;
 
   private static ObjectMapper mapper = new ObjectMapper();
 
@@ -1070,6 +1070,7 @@ public class MongoDB {
     BasicDBObject doc = new BasicDBObject();
     doc.put("org_id", o.getUUID());
     doc.put("name", o.getName());
+    // TODO: support NCBI ids too.
     if(this.dbOrganismNames == null) {
       System.out.print("Organism: " + o);
     } else {
@@ -1087,6 +1088,7 @@ public class MongoDB {
     Long id = this.dbOrganismNames.count() + ORG_ID_BASE;
     doc.put("org_id", id);
     doc.put("name", name);
+    // TODO: support NCBI ids too.
     if (this.dbOrganismNames == null) {
       System.out.print("Organism: " + name);
       return null;
@@ -2000,6 +2002,16 @@ public class MongoDB {
     return convertDBObjectToCofactor(o);
   }
 
+  public Organism getNextOrganism(DBIterator iterator) {
+    if (!iterator.hasNext()) {
+      iterator.close();
+      return null;
+    }
+
+    DBObject o = iterator.next();
+    return convertDBObjectToOrg(o);
+  }
+
   public DBIterator getIteratorOverCofactors() {
     DBCursor cursor = constructCursorForAllCofactors();
     return new DBIterator(cursor);
@@ -2760,7 +2772,7 @@ public class MongoDB {
     BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
     DBObject obj = this.dbSeq.findOne(query);
     obj.put("rxn_refs", seq.getReactionsCatalyzed());
-    this.dbReactions.update(query, obj);
+    this.dbSeq.update(query, obj);
   }
 
     /*

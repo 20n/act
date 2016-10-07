@@ -26,6 +26,7 @@ import com.ggasoftware.indigo.IndigoObject;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.biopax.paxtools.model.level3.CatalysisDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;
@@ -37,10 +38,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -56,8 +59,13 @@ public class OrganismCompositionMongoWriter {
   boolean debugFails = false;
 
   // Cache these values as they'll base the same throughout.
-  private String organism = null;
-  private Long organismDbId = null;
+  private Map<String, Long> organismNameToIdCache = new LinkedHashMap<String, Long>(101, 1.0f, true) {
+    // Believe it or not, this is all that is required to create an LRU cache!
+    @Override
+    protected boolean removeEldestEntry(Map.Entry eldest) {
+      return this.size() > 100; // Retain last 100 used organisms.
+    }
+  };
 
   // metacyc id's are in Unification DB=~name of origin, ID.matches(METACYC_URI_PREFIX)
   String METACYC_URI_IDS = "^[A-Z0-9-]+$"; //
@@ -311,9 +319,8 @@ public class OrganismCompositionMongoWriter {
     int rxnid = db.submitToActReactionDB(rxn);
 
     // construct protein info object to be installed into the rxn
-    Long[] orgIDs = getOrganismIDs(c);
-    Long[] seqs = createCatalyzingSequences(c, rxn, rxnid);
-    JSONObject proteinInfo = constructProteinInfo(c, orgIDs, seqs);
+    Pair<List<Long>, List<Long>> seqAndOrgIds = createCatalyzingSequences(c, rxn, rxnid);
+    JSONObject proteinInfo = constructProteinInfo(c, seqAndOrgIds.getRight(), seqAndOrgIds.getLeft());
 
     // add it to the in-memory object
     rxn.addProteinData(proteinInfo);
@@ -347,7 +354,7 @@ public class OrganismCompositionMongoWriter {
     return rxn;
   }
 
-  private JSONObject constructProteinInfo(Catalysis c, Long[] orgs, Long[] seqs) {
+  private JSONObject constructProteinInfo(Catalysis c, List<Long> orgs, List<Long> seqs) {
     JSONObject protein = new JSONObject();
     JSONArray orglist = new JSONArray();
     for (Long o : orgs) orglist.put(o);
@@ -748,87 +755,113 @@ public class OrganismCompositionMongoWriter {
     return coeff;
   }
 
-  Long getOrganismID(BPElement organism) {
-    // orgID = organism.xref(type Unification Xref).{ db: "NCBI Taxonomy", id: ID }
-    for (BPElement bpe : this.src.resolve(organism.getXrefs())) {
-      Unification u = (Unification)bpe;
-      if (u.getUnifID() != null && u.getUnifDB().equals("NCBI Taxonomy"))
-        return Long.parseLong(u.getUnifID());
+  private Long getOrganismNameIdByNameFromDB(String organismName) {
+    // Try the cache first.
+    if (this.organismNameToIdCache.containsKey(organismName)) {
+      return this.organismNameToIdCache.get(organismName);
     }
 
-    return null;
+    // Fall back to the DB.
+    Long id = db.getOrganismId(organismName);
+    // Create a new entry if missing.
+    if (id == null || id == -1) {
+      id = db.submitToActOrganismNameDB(organismName);
+    }
+    // Write through to cache.
+    this.organismNameToIdCache.put(organismName, id);
+    return id;
   }
 
-  Long[] getOrganismIDs(Catalysis c) {
-    // orgIDs = c.controller(type Protein).proteinRef(type ProteinRNARef).organism(type BioSource).xref(type Unification Xref).{ db : "NCBI Taxonomy", id: ID) -- that ID is to be sent in orgIDs
-    List<Long> orgs = new ArrayList<Long>();
-    List<NXT> path = Arrays.asList(NXT.controller, NXT.ref, NXT.organism);
-    for (BPElement biosrc : this.src.traverse(c, path)) {
+  /**
+   * Extracts organism names from a BP element at some sub path, submits them to the DB, and returns a mapping of their
+   * names to DB ids.  **Does not do anything with NCBI ids at this time**.
+   * @param rootElement The root path from which to search.
+   * @param path The sub path to search for organisms.
+   * @return A map from organism name to organism name DB id.
+   */
+  private Map<String, Long> extractOrganismsAtPath(BPElement rootElement, List<NXT> path) {
+    Set<String> organismNames = new HashSet<>();
+    for (BPElement biosrc : this.src.traverse(rootElement, path)) {
       if (biosrc == null) {
-        System.err.format("WARNING: got null organism for %s\n", c.getID());
+        System.err.format("WARNING: got null organism for %s\n", rootElement.getID());
         continue;
       }
-      for (BPElement bpe : this.src.resolve(biosrc.getXrefs())) {
-        Unification u = (Unification)bpe;
-        if (u.getUnifID() != null && u.getUnifDB().equals("NCBI Taxonomy"))
-          orgs.add(Long.parseLong(u.getUnifID()));
+
+      if (biosrc instanceof BioSource) {
+        BioSource bs = (BioSource) biosrc;
+        if (bs.getName().size() != 1) {
+          // Assume only one name per BioSource entity.
+          System.err.format("WARNING: found a BioSource with multiple names (%s): %s\n",
+              bs.getID(), StringUtils.join(bs.getName(), ", "));
+        }
+        organismNames.addAll(bs.getName());
+      } else {
+        System.err.format("WARNING: found a non-BioSource organism (%s) for %s, using anyway\n",
+            biosrc.getID(), rootElement.getID());
+        organismNames.addAll(biosrc.getName());
       }
+      // Ignore NCBI Taxonomy x-refs for now, as we don't have any use for them in our current model.
     }
-    return orgs.toArray(new Long[0]);
+
+    Map<String, Long> results = new HashMap<>();
+    organismNames.forEach(name -> results.put(name, this.getOrganismNameIdByNameFromDB(name)));
+    return results;
   }
 
-  Long[] createCatalyzingSequences(Catalysis c, Reaction rxn, long rxnid) {
-    // c.controller(type: Protein).proteinRef(type ProteinRNARef).sequence
-    // c.controller(type: Complex).component(type: Protein) .. as above
-    List<NXT> proteinPath = Arrays.asList( NXT.controller, NXT.ref );
-    List<NXT> complexPath = Arrays.asList( NXT.controller, NXT.components, NXT.ref );
+  private static final String DEFAULT_ORG_NAME = "Unknown";
+  private Map<String, Long> ensureNonEmptyOrganismSet(Map<String, Long> orgsToTest) {
+    return orgsToTest.size() > 0 ?
+        orgsToTest :
+        Collections.singletonMap(DEFAULT_ORG_NAME, this.getOrganismNameIdByNameFromDB(DEFAULT_ORG_NAME));
+  }
 
-    Set<Long> seqs = new HashSet<Long>();
+  // Note: this is not code!  This is the path through the biopax schema to protein data.  Keep this around!
+  // c.controller(type: Protein).proteinRef(type ProteinRNARef).sequence
+  // c.controller(type: Complex).component(type: Protein) .. as above
+  final List<NXT> proteinPath = Collections.unmodifiableList(Arrays.asList(NXT.controller, NXT.ref));
+  final List<NXT> complexPath = Collections.unmodifiableList(Arrays.asList(NXT.controller, NXT.components, NXT.ref));
+  final List<NXT> organismSubPath = Collections.unmodifiableList(Collections.singletonList(NXT.organism));
+
+  /**
+   * Installs sequences for a reaction, collecting sequence and organism ids as it goes.
+   * @param c The catalysis whose sequences to extract.
+   * @param rxn The reaction object that will represent that catalysis.
+   * @param rxnid The id of that reaction object.
+   * @return A list of sequence ids and a list of organism ids (in that order) collected for the specified catalysis.
+   */
+  Pair<List<Long>, List<Long>> createCatalyzingSequences(Catalysis c, Reaction rxn, long rxnid) {
+
+    Set<Long> seqs = new TreeSet<>(); // Preserve order for sanity's sake.
+    Set<Long> orgs = new TreeSet<>();
 
     // extract the sequence of proteins that control the rxn
     for (BPElement seqRef : this.src.traverse(c, proteinPath)) {
-      //  String seq = ((ProteinRNARef)seqRef).getSeq();
-      //  if (seq == null) continue;
-      seqs.add(writeCatalyzingSequenceToDb(c, (ProteinRNARef) seqRef, rxn, rxnid));
+      Map<String, Long> organisms = ensureNonEmptyOrganismSet(extractOrganismsAtPath(seqRef, organismSubPath));
+      TreeSet<Long> uniqueOrgs = new TreeSet<>(organisms.values());
+      orgs.addAll(uniqueOrgs);
+      seqs.addAll(writeCatalyzingSequenceToDb(c, (ProteinRNARef) seqRef, rxn, rxnid, uniqueOrgs));
     }
     // extract the sequences of proteins that make up complexes that control the rxn
     for (BPElement seqRef : this.src.traverse(c, complexPath)) {
-      //  String seq = ((ProteinRNARef)seqRef).getSeq();
-      //  if (seq == null) continue;
-      seqs.add(writeCatalyzingSequenceToDb(c, (ProteinRNARef) seqRef, rxn, rxnid));
+      Map<String, Long> organisms = ensureNonEmptyOrganismSet(extractOrganismsAtPath(seqRef, organismSubPath));
+      TreeSet<Long> uniqueOrgs = new TreeSet<>(organisms.values());
+      orgs.addAll(uniqueOrgs);
+      seqs.addAll(writeCatalyzingSequenceToDb(c, (ProteinRNARef) seqRef, rxn, rxnid, uniqueOrgs));
     }
 
-    return seqs.toArray(new Long[0]);
+    return Pair.of(new ArrayList<>(seqs), new ArrayList<>(orgs));
   }
 
-  Long writeCatalyzingSequenceToDb(Catalysis c, ProteinRNARef seqRef, Reaction rxn, long rxnid) {
+  List<Long> writeCatalyzingSequenceToDb(Catalysis c, ProteinRNARef seqRef, Reaction rxn, long rxnid, Set<Long> orgIds) {
     // the Catalysis object has ACTIVATION/INHIBITION and L->R or R->L annotations
     // put them alongside the sequence that controls the Conversion
-    org.biopax.paxtools.model.level3.ControlType act_inhibit = c.getControlType();
+    org.biopax.paxtools.model.level3.ControlType actInhibit = c.getControlType();
     org.biopax.paxtools.model.level3.CatalysisDirectionType direction = c.getDirection();
     String seq = seqRef.getSeq();
     Resource org = seqRef.getOrg();
     Set<String> comments = seqRef.getComments();
     String name = seqRef.getStandardName();
     Set<JSONObject> refs = toJSONObject(seqRef.getRefs()); // this contains things like UniProt accession#s, other db references etc.
-
-    // Submit the name to the organism database if it doesn't exist.
-    if (organism == null) {
-      HashMap bioSourceMap = this.src.getMap(BioSource.class);
-      if (bioSourceMap.size() != 1) {
-        throw new RuntimeException(
-                String.format("Incorrect number of BioSources found. Set was of size %d", bioSourceMap.size()));
-      }
-
-      BioSource s = (BioSource) bioSourceMap.get(bioSourceMap.keySet().iterator().next());
-
-      this.organism = s.getName().iterator().next();
-
-      this.organismDbId = db.getOrganismId(this.organism);
-      if (this.organismDbId == -1) {
-        this.organismDbId = db.submitToActOrganismNameDB(this.organism);
-      }
-    }
 
     String ecnum = null;
     if (name != null) {
@@ -840,12 +873,24 @@ public class OrganismCompositionMongoWriter {
       }
     }
 
-    String dir = direction == null ? "NULL" : direction.toString();
-    String act_inh = act_inhibit == null ? "NULL" : act_inhibit.toString();
-    SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, this.organismDbId, name, ecnum, comments, refs, rxnid, rxn, act_inh, dir);
-    long seqid = entry.writeToDB(db, Seq.AccDB.metacyc);
+    if (orgIds.size() > 1) {
+      System.err.format("WARNING: found multiple organisms for sequence %s: %s",
+          seqRef.getID(), StringUtils.join(orgIds, ", "));
+    }
+    if (orgIds.size() == 0) {
+      throw new RuntimeException(
+          String.format("ERROR: no organisms found for sequence %s, should not be possible", seqRef.getID()));
+    }
 
-    return seqid;
+    List<Long> seqIds = new ArrayList<>(orgIds.size());
+    for (Long orgId : orgIds) {
+      String dir = direction == null ? "NULL" : direction.toString();
+      String actInh = actInhibit == null ? "NULL" : actInhibit.toString();
+      SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, orgId, name, ecnum, comments, refs, rxnid, rxn, actInh, dir);
+      seqIds.add(Long.valueOf(entry.writeToDB(db, Seq.AccDB.metacyc)));
+    }
+
+    return seqIds;
   }
 
   Set<JSONObject> toJSONObject(Set<Resource> resources) {
