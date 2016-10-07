@@ -1,5 +1,6 @@
 package com.act.biointerpretation.retentiontime;
 
+import chemaxon.calculations.clean.Cleaner;
 import chemaxon.descriptors.CFParameters;
 import chemaxon.descriptors.ChemicalFingerprint;
 import chemaxon.descriptors.GenerateMD;
@@ -7,6 +8,7 @@ import chemaxon.descriptors.MDParameters;
 import chemaxon.formats.MolImporter;
 import chemaxon.marvin.io.formats.mdl.MolImport;
 import chemaxon.struc.Molecule;
+import chemaxon.struc.MoleculeGraph;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import org.apache.commons.cli.CommandLine;
@@ -84,6 +86,16 @@ public class Fingerprint {
     System.out.println(total);
   }
 
+  public static Molecule cleanMol(Molecule molecule) {
+    // We had to clean the molecule after importing since based on our testing, the RO only matched the molecule
+    // once we cleaned it. Else, the RO did not match the chemical.
+    Cleaner.clean(molecule, 2);
+
+    // We had to aromatize the molecule so that aliphatic related ROs do not match with aromatic compounds.
+    molecule.aromatize(MoleculeGraph.AROM_BASIC);
+    return molecule;
+  }
+
   public static void main(String[] args) throws Exception {
 //    Options opts = new Options();
 //    for (Option.Builder b : OPTION_BUILDERS) {
@@ -99,16 +111,16 @@ public class Fingerprint {
 //      System.exit(1);
 //    }
 
+
     CFParameters params = new CFParameters(new File("/mnt/shared-data/Vijay/ret_time_prediction/config/cfp.xml"));
 
     ChemicalFingerprint apapFingerprintInchi = new ChemicalFingerprint(params);
-    Molecule apap = MolImporter.importMol("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)", "inchi");
+    Molecule apap = cleanMol(MolImporter.importMol("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)", "inchi"));
     apapFingerprintInchi.generate(apap);
 
     ChemicalFingerprint otherFingerprint = new ChemicalFingerprint(params);
-    Molecule otherChem = MolImporter.importMol("InChI=1S/C8H11NO/c1-2-9-7-3-5-8(10)6-4-7/h3-6,9-10H,2H2,1H3", "inchi");
+    Molecule otherChem = cleanMol(MolImporter.importMol("InChI=1S/C8H11NO/c1-2-9-7-3-5-8(10)6-4-7/h3-6,9-10H,2H2,1H3", "inchi"));
     otherFingerprint.generate(otherChem);
-
 
     System.out.println(params.getBitCount());
 
@@ -143,11 +155,11 @@ public class Fingerprint {
 
 
     ChemicalFingerprint apapFingerprintSmiles = new ChemicalFingerprint(params);
-    Molecule apapSmiles = MolImporter.importMol("CC(=O)Nc1ccc(cc1)O", "smiles");
+    Molecule apapSmiles = cleanMol(MolImporter.importMol("CC(=O)Nc1ccc(cc1)O", "smiles"));
     apapFingerprintSmiles.generate(apapSmiles);
 
     ChemicalFingerprint otherFingerprintSmiles = new ChemicalFingerprint(params);
-    Molecule otherChem2 = MolImporter.importMol("CCNc1ccc(cc1)O", "smiles");
+    Molecule otherChem2 = cleanMol(MolImporter.importMol("CCNc1ccc(cc1)O", "smiles"));
     otherFingerprintSmiles.generate(otherChem2);
 
     // 51
