@@ -1,9 +1,14 @@
 package com.act.biointerpretation.retentiontime;
 
 import chemaxon.descriptors.CFParameters;
+import chemaxon.descriptors.ChemicalFingerprint;
 import chemaxon.descriptors.GenerateMD;
 import chemaxon.descriptors.MDParameters;
-import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
+import chemaxon.formats.MolImporter;
+import chemaxon.marvin.io.formats.mdl.MolImport;
+import chemaxon.struc.Molecule;
+import com.act.analysis.chemicals.molecules.MoleculeExporter;
+import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -79,21 +84,33 @@ public class Fingerprint {
   }
 
   public static void main(String[] args) throws Exception {
-    Options opts = new Options();
-    for (Option.Builder b : OPTION_BUILDERS) {
-      opts.addOption(b.build());
-    }
+//    Options opts = new Options();
+//    for (Option.Builder b : OPTION_BUILDERS) {
+//      opts.addOption(b.build());
+//    }
+//
+//    CommandLine cl = null;
+//    try {
+//      CommandLineParser parser = new DefaultParser();
+//      cl = parser.parse(opts, args);
+//    } catch (ParseException e) {
+//      System.err.format("Argument parsing failed: %s\n", e.getMessage());
+//      System.exit(1);
+//    }
 
-    CommandLine cl = null;
-    try {
-      CommandLineParser parser = new DefaultParser();
-      cl = parser.parse(opts, args);
-    } catch (ParseException e) {
-      System.err.format("Argument parsing failed: %s\n", e.getMessage());
-      System.exit(1);
-    }
+    CFParameters params = new CFParameters(new File("/mnt/shared-data/Vijay/ret_time_prediction/config/cfp.xml"));
+    ChemicalFingerprint apapFingerprint = new ChemicalFingerprint(params);
+    Molecule apap = MoleculeImporter.importMolecule("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)");
+    apapFingerprint.generate(apap);
 
-    generate(cl.getOptionValue(OPTION_INPUT_INCHIS), cl.getOptionValue(OPTION_OUTPUT_FINGERPRINT));
-    compare(cl.getOptionValue(OPTION_OUTPUT_FINGERPRINT));
+    ChemicalFingerprint otherFingerprint = new ChemicalFingerprint(params);
+    Molecule otherChem = MoleculeImporter.importMolecule("InChI=1S/C8H11NO/c1-2-9-7-3-5-8(10)6-4-7/h3-6,9-10H,2H2,1H3");
+    otherFingerprint.generate(otherChem);
+
+    System.out.println(apapFingerprint.getCommonBitCount(otherFingerprint));
+
+
+//    generate(cl.getOptionValue(OPTION_INPUT_INCHIS), cl.getOptionValue(OPTION_OUTPUT_FINGERPRINT));
+//    compare(cl.getOptionValue(OPTION_OUTPUT_FINGERPRINT));
   }
 }
