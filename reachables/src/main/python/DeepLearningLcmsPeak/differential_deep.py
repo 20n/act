@@ -10,7 +10,6 @@ import sys
 import numpy as np
 
 
-
 def align_replicates(mz_lists):
     def check_tolerance(items, func, tolerance):
         return (func(max(items, key=func)) - func(min(items, key=func))) <= tolerance
