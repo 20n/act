@@ -46,7 +46,6 @@ object Default {
       ReactionRoAssignment.assignRoToReactions(
         projectionOutputFile,
         reactionListOutputFile, roAssignmentOutputFile) _
-    ScalaJobWrapper.wrapScalaFunction("Ro Assignment to Reactions", reactionAssigner)
 
     val startJob = ScalaJobWrapper.wrapScalaFunction("getConcreteChemicals", appliedFunction)
     startJob.thenRun(roProjection)
