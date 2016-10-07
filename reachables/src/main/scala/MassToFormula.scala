@@ -180,7 +180,7 @@ object Solver {
     // extract the solved variables from the model and return the map
     m match {
       case Some(model) => {
-        val kvs = for (v <- model.getDecls if vars(v) != Var("v=1")) yield {
+        val kvs = for (v <- model.getDecls if vars(v) != MassToFormula.oneVar) yield {
           val cnst = model getConstInterp v
           val num = solved(cnst, model)
           vars(v) -> num
@@ -859,8 +859,10 @@ object MassToFormula {
 }
 
 sealed trait Specials {
+  type ChemicalFormula = Map[Atom, Int]
   def constraints(): BooleanExpr
   def describe(): String
+  def check(f: ChemicalFormula): Boolean
 
   def t(c: Int, a: Atom) = MassToFormula.term(c, a)
   def t(a: Atom) = MassToFormula.term(1, a)
@@ -880,60 +882,100 @@ class MostlyCarbons extends Specials {
     val cp = e(C) >= e(P)
     cn and co and cs and cp
   }
+  def check(f: ChemicalFormula) = {
+    val cn = f(C) >= f(N)
+    val co = f(C) >= f(O)
+    val cs = f(C) >= f(S)
+    val cp = f(C) >= f(P)
+    cn && co && cs && cp
+  }
 }
 
 class MoreHThanC extends Specials {
   def describe() = "H>=C"
   def constraints() = e(H) >= e(C)
+  def check(f: ChemicalFormula) = f(H) >= f(C)
 }
 
 class LessThan3xH extends Specials {
   def describe() = "3C>=H"
   def constraints() = e(3, C) >= e(H)
+  def check(f: ChemicalFormula) = 3 * f(C) >= f(H)
 }
 
 class StableChemicalFormulae extends Specials {
   def describe() = "Stable chemical formulae"
 
-  def constraints() = {
+  //
     // These constraints describe the space of stable organic chemical formulae
+    // As described in Issue #463 and PR #473 discussions
 
+    // **************** Constraint c1 *******************
     // For the fully reduced molecule, the number of unoccupied bonds is:
     // cBonds = (C-2)*2 + 6 = 2C + 2
-    val cBonds = e(2, C) + e(2)
-
     // Assuming we only allow heteroatoms to be directly attached to a carbon, then:
     // numHetero = N+S+O;
-    val numHetero = e(N) + e(S) + e(O)
-    val negNumHetero = e(-1, N) + e(-1, S) + e(-1, O)
-
     // numHetero <= cBonds;
-    val c1 = numHetero <= cBonds
-
+    // **************** Constraint c2 *******************
     // The maximal value for H is given by:
     // hMax = 2N  + S + O + Cbonds - numHetero;
-    val hMax = e(2, N) + e(S) + e(O) + cBonds + negNumHetero
-
     // The permitted values of H are given by:
     // for(int H=Hmax; H>=0; H=H-2)
     // hMax is 2N+S+O+cBonds-negNumHetero = 2N+S+O+(2C+2)-(N+S+O) = N+2C+2
-    // ensuring that N+2C+2-H is even can be done in two ways: 1) mod2=0
-    // or 2) create a new free variable `Z` and say 2Z = N+2C+2-H, Z>=0
-    // [ TODO later ]
+    // ensuring H is moves in exactly 2 increments requires creating another
+    // free variable `Z` such that H = N+2C+2 - 2*Z, where Z >= 0. That is
+    // more complicated. [ TODO later ]
+    // **************** Constraint c3 *******************
     // For now we just ensure 0 <= H <= hMax
-    val c2 = e(H) >= e(0) and e(H) <= hMax
-
     // If `ph` represents the number of phosphate groups in the molecule:
     // There must be at least one O already present.
     // The total number of O's present must be greater than 3*P.
+    // **************** Constraint c4 *******************
+    // TODO: implement halogen constraints:
+    // int halogensAndHydrogens = H + Cl + Br + I + F //For the final formula
+    // halogensAndHydrogens <= Hmax
+    // halogensAndHydrogens %2 == Hmax % 2
+  //
+
+  def constraints() = {
+    // constraint c1 above
+    val cBonds = e(2, C) + e(2)
+    val numHetero = e(N) + e(S) + e(O)
+    val c1 = numHetero <= cBonds
+
+    // constraint c2 above
+    val negNumHetero = e(-1, N) + e(-1, S) + e(-1, O)
+    val hMax = e(2, N) + e(S) + e(O) + cBonds + negNumHetero
+    val c2 = e(H) >= e(0) and e(H) <= hMax
+
+    // constraint c3 above
     val c3 = e(P) < e(5) and (e(P) > e(0) implies e(O) > e(3, P))
 
-    // TODO: implement halogen constraints:
-    // numHalogen = Cl+Br+I
-    // numHalogen <= H
-    // H = H - numHalogen
+    // constraint c4 above
+    val c4 = e(1) == e(1) // TODO: need to add constraint on halogens
 
-    val constraint = c1 and c2 and c3
+    val constraint = c1 and c2 and c3 and c4
+    constraint
+  }
+
+  def check(f: ChemicalFormula) = {
+    // constraint c1 above
+    val cBonds = 2 * f(C) + 2
+    val numHetero = f(N) + f(S) + f(O)
+    val c1 = numHetero <= cBonds
+
+    // constraint c2 above
+    val negNumHetero = -f(N) + -f(S) + -f(O)
+    val hMax = 2 * f(N) + f(S) + f(O) + cBonds + negNumHetero
+    val c2 = f(H) >= 0 && f(H) <= hMax
+
+    // constraint c3 above
+    val c3 = f(P) < 5 && ( !(f(P) > 0) || (f(O) > 3 * f(P)))
+
+    // constraint c4 above
+    val c4 = true // TODO: need to add constraint on halogens
+
+    val constraint = c1 && c2 && c3 && c4
     constraint
   }
 }
