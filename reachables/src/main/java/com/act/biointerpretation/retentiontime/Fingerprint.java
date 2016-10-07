@@ -168,7 +168,7 @@ public class Fingerprint {
       for (int j = 0; j < firstBinary.length(); j++) {
         total++;
         if (firstBinary.charAt(j) != secondBinary.charAt(j)) {
-          differenceInBits++;
+          differenceInBitss++;
         }
       }
     }
