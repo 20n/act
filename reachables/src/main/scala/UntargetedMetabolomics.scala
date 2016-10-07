@@ -9,7 +9,6 @@ import scala.io.Source
 import act.shared.ChemicalSymbols.{AllAminoAcids, MonoIsotopicMass}
 import com.act.lcms.MS1.MetlinIonMass
 
-import scala.collection.JavaConversions._
 
 // @mark-20n @MichaelLampe20n: help resolve this to specific imports; please!
 import spray.json._
@@ -892,8 +891,6 @@ object UntargetedMetabolomics {
     }
     val metaForFormulae = if (!mapToFormulaUsingList && !mapToFormulaUsingNavigableMap) {
       List()
-    } else if (!mapToFormulaUsingNavigableMap) {
-      // formulae.extraCodes.map(codesWithNamesToJson)
     } else {
       println(formulae)
       formulae.extraCodes.map(codesToJson)

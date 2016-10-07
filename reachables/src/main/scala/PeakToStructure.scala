@@ -119,6 +119,7 @@ class PeakToStructure {
         val lowerBoundMass: java.lang.Float = peak.mz.rounded(6).toFloat - precision
         val upperBoundMass: java.lang.Float = peak.mz.rounded(6).toFloat + precision
         val results = smallFormulaMap.subMap(lowerBoundMass, true, upperBoundMass, true)
+        println(s"Found results ${results.toString} for lower b: ${lowerBoundMass} and upper b: ${upperBoundMass}")
         results.values.map(toFormula).toList
       }
 
