@@ -116,8 +116,8 @@ class PeakToStructure {
       def toFormula(s: String): ChemicalFormula = MassToFormula.getFormulaMap(s)
 
       def bestFormulaeMatches(peak: Peak): List[ChemicalFormula] = {
-        val lowerBoundMass: java.lang.Float = peak.mz.rounded(6).toFloat - precision
-        val upperBoundMass: java.lang.Float = peak.mz.rounded(6).toFloat + precision
+        val lowerBoundMass: java.lang.Float = peak.mz.rounded(6).toFloat - precision / 2
+        val upperBoundMass: java.lang.Float = peak.mz.rounded(6).toFloat + precision / 2
         val results = smallFormulaMap.subMap(lowerBoundMass, true, upperBoundMass, true)
         println(s"Found results ${results.toString} for lower b: ${lowerBoundMass} and upper b: ${upperBoundMass}")
         results.values.map(toFormula).toList
