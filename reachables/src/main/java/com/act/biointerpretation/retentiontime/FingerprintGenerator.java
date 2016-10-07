@@ -54,7 +54,7 @@ public class FingerprintGenerator {
 
         Map<String, String> row = new HashMap<>();
         row.put("SMILE", smilesChemical);
-        row.put("Fingerprint", fingerprint.toBinaryString());
+        row.put("Fingerprint", fingerprint.toBinaryString().replace("|", ""));
         writer.append(row);
         writer.flush();
       } catch (Exception e) {
