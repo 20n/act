@@ -26,7 +26,7 @@ object Default {
     val appliedFunction: () => Unit = individualSubstrateFunction(substrateListOutputFile, reactionListOutputFile, 1)
 
     val singleSubstrateRoProjectorClassPath = "com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector"
-    val sparkMaster = "spark://10.0.20.19:7077"
+    val sparkMaster = "spark://spark-master:7077"
 
     val roProjectionArgs = List(
       "--substrates-list", substrateListOutputFile.getAbsolutePath,
