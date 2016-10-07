@@ -856,7 +856,7 @@ object UntargetedMetabolomics {
       new PeakToStructure().StructureHits.toStructureHitsUsingLists(rslt, inchiListFile)
     }
 
-    val formulae: PeakHits = if (!mapToFormulaUsingList && !mapToFormulaUsingList) {
+    val formulae: PeakHits = if (!mapToFormulaUsingList && !mapToFormulaUsingNavigableMap) {
       inchis
     } else if (!mapToFormulaUsingNavigableMap) {
       println(s"Mapping to formula using list")
