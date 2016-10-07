@@ -27,7 +27,7 @@ object ConcreteChemicals {
 
       Query: All elements that contain "R" in their SMILES and "FAKE" in their InChI
      */
-    val query = Mongo.createDbObject(ChemicalKeywords.INCHI, Mongo.defineMongoNot(Mongo.defineMongoRegex("FAKE")))
+    val query = Mongo.createDbObject(ChemicalKeywords.INCHI, Mongo.defineMongoNot("/FAKE/"))
     val filter = Mongo.createDbObject(ChemicalKeywords.INCHI, 1)
     val result: ParSeq[DBObject] = Mongo.mongoQueryChemicals(mongoDb)(query, filter, notimeout = true).toStream.par
 
