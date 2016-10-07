@@ -928,6 +928,11 @@ class StableChemicalFormulae extends Specials {
     // The total number of O's present must be greater than 3*P.
     val c3 = e(P) < e(5) and (e(P) > e(0) implies e(O) > e(3, P))
 
+    // TODO: implement halogen constraints:
+    // numHalogen = Cl+Br+I
+    // numHalogen <= H
+    // H = H - numHalogen
+
     val constraint = c1 and c2 and c3
     constraint
   }
