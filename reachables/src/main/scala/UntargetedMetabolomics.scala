@@ -879,14 +879,23 @@ object UntargetedMetabolomics {
       val (k, v) = kv
       Map("code" -> k.toJson, "vals" -> v.toJson)
     }
+
+    def codesWithNamesToJson(kv: (Double, Map[String, String])): Map[String, JsValue] = {
+      val (k, v) = kv
+      Map("code" -> k.toJson, "vals" -> v.toJson)
+    }
+
     val metaForInChIs = if (!mapToInChIsUsingList) {
       List()
     } else {
       inchis.extraCodes.map(codesToJson)
     }
-    val metaForFormulae = if (!mapToFormulaUsingList) {
+    val metaForFormulae = if (!mapToFormulaUsingList && !mapToFormulaUsingNavigableMap) {
       List()
+    } else if (!mapToFormulaUsingNavigableMap) {
+      // formulae.extraCodes.map(codesWithNamesToJson)
     } else {
+      println(formulae)
       formulae.extraCodes.map(codesToJson)
     }
 

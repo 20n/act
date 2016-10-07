@@ -123,7 +123,7 @@ class PeakToStructure {
       }
 
       val peakToFormula = (peakSet map { peak => peak -> bestFormulaeMatches(peak) }).toMap
-
+      println(peakToFormula.toString)
       new FormulaHits(peaks, peakToFormula)
     }
 
