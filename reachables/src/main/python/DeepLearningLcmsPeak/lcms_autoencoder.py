@@ -79,7 +79,7 @@ class LcmsAutoencoder:
         self.clusterer.set_output_directory(output_directory)
 
     def process_lcms_trace(self, lcms_directory, scan_filename):
-        # Plate file stuff
+        # Scan file stuff
         lcms_directory = os.path.join(lcms_directory, '')
         scan_name = scan_filename.split(".nc")[0]
         assert scan_name.endswith("01"), "This module only processes MS1 data which should always have a " \
@@ -393,13 +393,13 @@ class LcmsAutoencoder:
         self.clusterer.predict(training_output, training_input, row_numbers, retention_times, output_tsv_file_name,
                                valid_peak_array)
 
-    def visualize(self, lcms_plate):
+    def visualize(self, lcms_scan):
         visualization_path = os.path.join(self.output_directory, "Visualizations")
         if not os.path.exists(visualization_path):
             os.makedirs(visualization_path)
         if self.verbose:
             print("Loading large CSV into dataframe")
-        df = pd.DataFrame.from_csv(os.path.join(self.output_directory, lcms_plate + ".tsv"),
+        df = pd.DataFrame.from_csv(os.path.join(self.output_directory, lcms_scan + ".tsv"),
                                    index_col=None,
                                    sep=defaults.separator)
 

@@ -13,8 +13,8 @@ This is the primary control file.  Run new Deep processings from here.
 """
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("lcmsDirectory", help="The LCMS plate directory.")
-    parser.add_argument("lcmsPlateName", help="The name of the LCMS plate file.  Currently supports '.nc' format.")
+    parser.add_argument("lcmsDirectory", help="The LCMS scan directory.")
+    parser.add_argument("lcmsScanFileName", help="The name of the LCMS scan file.  Currently supports '.nc' format.")
     parser.add_argument("outputDirectory", help="Where to save all intermediate and final files.")
 
     parser.add_argument("-w", "--lcmsWindowSize",
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     lcms_directory = args.lcmsDirectory
-    lcms_plate_name = args.lcmsPlateName
+    lcms_scan_file_name = args.lcmsScanFileName
     output_directory = args.outputDirectory
 
     block_size = args.lcmsWindowSize
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     autoencoder = LcmsAutoencoder(output_directory, block_size, encoding_size,
                                   number_clusters, mz_division, mz_min, mz_max)
 
-    row_matrix, retention_times = autoencoder.process_lcms_trace(lcms_directory, lcms_plate_name)
+    row_matrix, retention_times = autoencoder.process_lcms_trace(lcms_directory, lcms_scan_file_name)
 
     processed_samples, auxilariy_information = autoencoder.prepare_matrix_for_encoding(row_matrix)
 
@@ -65,11 +65,11 @@ if __name__ == "__main__":
 
     # This currently also does the writing
     autoencoder.predict_clusters(encoded_samples, processed_samples, auxilariy_information, retention_times,
-                                 lcms_plate_name.split(".nc")[0])
+                                 lcms_scan_file_name.split(".nc")[0])
 
-    autoencoder.visualize(lcms_plate_name.split(".nc")[0])
+    autoencoder.visualize(lcms_scan_file_name.split(".nc")[0])
 
-    with open(os.path.join(output_directory, lcms_plate_name + ".model"), "w") as f:
+    with open(os.path.join(output_directory, lcms_scan_file_name + ".model"), "w") as f:
         # Complex objects require more recursive steps to pickle.
         sys.setrecursionlimit(10000)
         pickle.dump(autoencoder, f)
