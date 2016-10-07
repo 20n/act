@@ -111,7 +111,7 @@ public class SmallFormulaeCorpusBuilder {
 
     // Assert we can find acetaminophen
     // 151.163
-    LOGGER.info("Floor entry for key 151.16: (%f,%s)", massToFormulaMap.ceilingEntry(151.16F).getKey(), massToFormulaMap.ceilingEntry(151.16F).getValue());
-    LOGGER.info("Ceiling entry for key 151.17: (%f,%s)", massToFormulaMap.ceilingEntry(151.17F).getKey(), massToFormulaMap.ceilingEntry(151.17F).getValue());
+    LOGGER.info("Ceiling entry for key 151.162: (%f,%s)", massToFormulaMap.ceilingEntry(151.162F).getKey(), massToFormulaMap.ceilingEntry(151.16F).getValue());
+    LOGGER.info("Floor entry for key 151.173: (%f,%s)", massToFormulaMap.floorEntry(151.163F).getKey(), massToFormulaMap.ceilingEntry(151.17F).getValue());
   }
 }
