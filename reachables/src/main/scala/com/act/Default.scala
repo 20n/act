@@ -13,6 +13,7 @@ object Default {
   def main(args: Array[String]) {
 
     val substrateListOutputFile = new File("/home/michael/TestValidator/substrateList")
+    val mySubstrateListOutputFile = new File("/home/michael/TestValidator/mySubstrateList")
     val reactionListOutputFile = new File("/home/michael/TestValidator/reactionList")
     val projectionOutputFile = new File("/home/michael/TestValidator/ResultsDir/")
     val roAssignmentOutputFile = new File("/home/michael/TestValidator/ResultsDir/roAssignment")
@@ -29,7 +30,7 @@ object Default {
     val sparkMaster = "spark://spark-master:7077"
 
     val roProjectionArgs = List(
-      "--substrates-list", substrateListOutputFile.getAbsolutePath,
+      "--substrates-list", mySubstrateListOutputFile.getAbsolutePath,
       "-o", projectionOutputFile.getAbsolutePath,
       "-l", "/mnt/shared-data/3rdPartySoftware/Chemaxon/license_Start-up.cxl",
       "-v", MoleculeFormat.stdInchi.toString
