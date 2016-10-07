@@ -1,7 +1,7 @@
 package act.shared
 
 import act.shared.{CmdLineParser, OptDesc}
-import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, AllAtoms, AminoAcid, AllAminoAcids, MonoIsotopicMass}
+import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, Br, Cl, I, F, AllAtoms, AminoAcid, AllAminoAcids, MonoIsotopicMass}
 import act.shared.ChemicalSymbols.{Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser}
 import act.shared.ChemicalSymbols.{Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg}
 import act.shared.ChemicalSymbols.Helpers.{fromSymbol, computeMassFromAtomicFormula, computeFormulaFromElements}
@@ -333,8 +333,8 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
     hillOrder.map(a => {
         soln.get(a) match {
           case None | Some(0) => ""
-          case Some(1) => a.symbol.toString
-          case _ => a.symbol.toString + soln(a)
+          case Some(1) => a.symbol
+          case _ => a.symbol + soln(a)
         }
       }
     ).reduce(_+_)
@@ -414,7 +414,7 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
 }
 
 object MassToFormula {
-  def atomToVar(a: Atom) = Var(a.symbol.toString)
+  def atomToVar(a: Atom) = Var(a.symbol)
   def term(c: Int) = Term(Const(c), oneVar)
   def term(c: Int, a: Atom) = Term(Const(c), MassToFormula.atomToVar(a))
   // See comment on `onec` in `buildConstraintOverInts` for how we use `oneVar`
@@ -606,6 +606,7 @@ object MassToFormula {
 
   def runAllUnitTests() {
     println(s"${Console.BLUE}Running all tests!")
+    testMultiCharAtoms
     unitTestIntegralSolns()
     testDBChemicals(n = 10000, maxMz = 200.00)
     testAcetaminophen
@@ -626,6 +627,15 @@ object MassToFormula {
     )
 
     apapCases foreach solveNCheck
+  }
+
+  def testMultiCharAtoms() {
+    assert(getFormulaMap("C20BrCl2").equals(Map(C->20, Br->1, Cl->2)))
+    assert(getFormulaMap("BrCl2").equals(Map(Br->1, Cl->2)))
+    assert(getFormulaMap("BrC2").equals(Map(Br->1, C->2)))
+    assert(getFormulaMap("CCl").equals(Map(C->1, Cl->1)))
+    assert(getFormulaMap("ClC").equals(Map(C->1, Cl->1)))
+    assert(getFormulaMap("IFClH20CBrN1OP2").equals(Map(C->1, H->20, N->1, O->1, P->2, Cl->1, Br->1, I->1, F ->1)))
   }
 
   def formulaFromInChI(i: String) = {
@@ -676,11 +686,12 @@ object MassToFormula {
 
   def getAtomAtHead(f: String): (Atom, String) = {
     def doMove(hd: String, c: Char) = {
-      val isHeadAlreadyAtom = AllAtoms.exists(_.symbol.toString.equals(hd))
-      !isHeadAlreadyAtom && c.isLetter
+      val isHeadAlreadyAtom = AllAtoms.exists(_.symbol.equals(hd))
+      val lookAheadIsAtom = AllAtoms.exists(_.symbol.equals(hd + c))
+      lookAheadIsAtom || !isHeadAlreadyAtom
     }
     val (nStr, tail) = headExtractHelper("", f, doMove)
-    val maybeAtom = AllAtoms.find(_.symbol.toString.equals(nStr))
+    val maybeAtom = AllAtoms.find(_.symbol.equals(nStr))
     maybeAtom match {
       case Some(atom) => (atom, tail)
       case None => throw new Exception(s"${nStr} not recognized as atom")
@@ -693,7 +704,7 @@ object MassToFormula {
   }
 
   def headExtractHelper(head: String, tail: String, doMove: (String, Char) => Boolean): (String, String) = {
-    val stop = tail.isEmpty || doMove(head, tail(0)) == false
+    val stop = tail.isEmpty || !doMove(head, tail(0))
     if (stop) {
       (head, tail)
     } else {
@@ -751,7 +762,7 @@ object MassToFormula {
       if {
         // We only test over formulae that:
         //    1) have at least all of CHO in them
-        //    2) no atoms outside of `AllAtoms` (CHNOPS for now)
+        //    2) no atoms outside of `AllAtoms`
         //    3) is not a salt
         //    4)  a) inchi can be loaded, and mass calculated by `MassCalculator`
         //        b) mass < 200Da (most of our standards were <200Da. Can go higher but solving takes long then!)
