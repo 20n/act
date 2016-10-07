@@ -56,6 +56,7 @@ object ConcreteChemicals {
     if (inchi.toLowerCase.contains("trna")) return None
     if (inchi.toLowerCase.contains("protein")) return None
     if (inchi.toLowerCase.contains("nucleobase")) return None
+    if (inchi.toLowerCase.contains("fake")) return None
 
     /*
       Try to import the SMILES field as a Smarts representation of the molecule.
@@ -69,7 +70,7 @@ object ConcreteChemicals {
         logger.debug(s"Tried converting molecule to smarts, but failed.  Molecule's chemical ID is ${chemicalId.toInt}.")
         None
       case e: MolFormatException =>
-        logger.debug(s"Tried to import SMARTS value $inchi, but failed.")
+        logger.debug(s"Tried to import InChI value $inchi, but failed.")
         None
     }
   }
