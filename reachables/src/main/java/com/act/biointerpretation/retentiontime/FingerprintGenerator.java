@@ -43,18 +43,23 @@ public class FingerprintGenerator {
 
     String inchi = null;
     while ((inchi = reader.readLine()) != null) {
-      Molecule moleculeInchi = cleanMol(MolImporter.importMol(inchi, "inchi"));
-      String smilesChemical = (String)MolExporter.exportToObject(moleculeInchi, "smiles:a");
-      Molecule moleculeSmiles = cleanMol(MolImporter.importMol(smilesChemical, "smiles"));
 
-      ChemicalFingerprint fingerprint = new ChemicalFingerprint(params);
-      fingerprint.generate(moleculeSmiles);
+      try {
+        Molecule moleculeInchi = cleanMol(MolImporter.importMol(inchi, "inchi"));
+        String smilesChemical = (String)MolExporter.exportToObject(moleculeInchi, "smiles:a");
+        Molecule moleculeSmiles = cleanMol(MolImporter.importMol(smilesChemical, "smiles"));
 
-      Map<String, String> row = new HashMap<>();
-      row.put("SMILE", smilesChemical);
-      row.put("Fingerprint", fingerprint.toBinaryString());
-      writer.append(row);
-      writer.flush();
+        ChemicalFingerprint fingerprint = new ChemicalFingerprint(params);
+        fingerprint.generate(moleculeSmiles);
+
+        Map<String, String> row = new HashMap<>();
+        row.put("SMILE", smilesChemical);
+        row.put("Fingerprint", fingerprint.toBinaryString());
+        writer.append(row);
+        writer.flush();
+      } catch (Exception e) {
+        System.out.println(e.getLocalizedMessage());
+      }
     }
 
     writer.close();
