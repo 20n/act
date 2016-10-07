@@ -39,7 +39,7 @@ public class FingerprintGenerator {
     headers.add("Fingerprint");
 
     TSVWriter<String, String> writer = new TSVWriter<>(headers);
-    writer.open(new File("/mnt/shared-data/Vijay/ret_time_prediction/l2_fingerprints"));
+    writer.open(new File("/mnt/shared-data/Vijay/ret_time_prediction/l2_fingerprints.tsv"));
 
     String inchi = null;
     while ((inchi = reader.readLine()) != null) {
