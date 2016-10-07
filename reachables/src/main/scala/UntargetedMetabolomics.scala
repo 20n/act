@@ -6,11 +6,10 @@ import java.util.NavigableMap
 import act.shared.{CmdLineParser, OptDesc}
 
 import scala.io.Source
-import act.shared.ChemicalSymbols.{AllAminoAcids, Atom, MonoIsotopicMass}
+import act.shared.ChemicalSymbols.{AllAminoAcids, MonoIsotopicMass}
 import com.act.lcms.MS1.MetlinIonMass
-import act.shared.MassToFormula
-import act.shared.ChemicalSymbols.Helpers.computeMassFromAtomicFormula
-import com.act.lcms.MassCalculator.calculateMass
+
+import scala.collection.JavaConversions._
 
 // @mark-20n @MichaelLampe20n: help resolve this to specific imports; please!
 import spray.json._
@@ -862,12 +861,11 @@ object UntargetedMetabolomics {
     } else if (!mapToFormulaUsingNavigableMap) {
       println(s"Mapping to formula using list")
       new PeakToStructure().FormulaHits.toFormulaHitsUsingLists(inchis, formulaListFile)
-    } else if (!mapToFormulaUsingList) {
+    } else {
       val builder = new SmallFormulaeCorpusBuilder()
       builder.populateMapFromFile(new File(formulaNavMapFile))
       val smallFormulaMap: NavigableMap[java.lang.Float, String] = builder.getMassToFormulaMap
-      val precision: Double = 0.01
-      new PeakToStructure().FormulaHits.toFormulaHitsUsingTreeMap(inchis, smallFormulaMap, precision)
+      new PeakToStructure().FormulaHits.toFormulaHitsUsingTreeMap(inchis, smallFormulaMap, 0.01F)
     }
 
     val formulaeWithSolver: PeakHits = if (!mapToFormulaUsingSolver) {

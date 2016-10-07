@@ -8,6 +8,7 @@ import com.act.lcms.MassCalculator.calculateMass
 import act.shared.ChemicalSymbols.{Atom, MonoIsotopicMass}
 import act.shared.MassToFormula
 
+import scala.collection.JavaConversions._
 
 class PeakToStructure {
 
@@ -108,15 +109,22 @@ class PeakToStructure {
 
     def toFormulaHitsUsingTreeMap(peaks: PeakHits,
                                   smallFormulaMap: NavigableMap[java.lang.Float, String],
-                                  precision: Double): FormulaHits = {
+                                  precision: Float): FormulaHits = {
+
       val peakSet: Set[Peak] = peaks.peakSpectra.peaks
 
-      // TODO fill this function (peak -> best formula matches within precision (list of form ulas))
-      def closestHit:
-      
-      // TODO return with map closestHit
-      new FormulaHits(peaks, findHits(peaks, new Map[MonoIsotopicMass, List[ChemicalFormula]]))
+      def toFormula(s: String): ChemicalFormula = MassToFormula.getFormulaMap(s)
 
+      def bestFormulaeMatches(peak: Peak): List[ChemicalFormula] = {
+        val lowerBoundMass: java.lang.Float = peak.mz.rounded(6).toFloat - precision
+        val upperBoundMass: java.lang.Float = peak.mz.rounded(6).toFloat + precision
+        val results = smallFormulaMap.subMap(lowerBoundMass, true, upperBoundMass, true)
+        results.values.map(toFormula).toList
+      }
+
+      val peakToFormula = (peakSet map { peak => peak -> bestFormulaeMatches(peak) }).toMap
+
+      new FormulaHits(peaks, peakToFormula)
     }
 
     def toFormulaHitsUsingSolver(peaks: PeakHits) = {
