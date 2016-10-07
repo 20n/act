@@ -815,6 +815,7 @@ public class OrganismCompositionMongoWriter {
         Collections.singletonMap(DEFAULT_ORG_NAME, this.getOrganismNameIdByNameFromDB(DEFAULT_ORG_NAME));
   }
 
+  // Note: this is not code!  This is the path through the biopax schema to protein data.  Keep this around!
   // c.controller(type: Protein).proteinRef(type ProteinRNARef).sequence
   // c.controller(type: Complex).component(type: Protein) .. as above
   final List<NXT> proteinPath = Collections.unmodifiableList(Arrays.asList(NXT.controller, NXT.ref));
