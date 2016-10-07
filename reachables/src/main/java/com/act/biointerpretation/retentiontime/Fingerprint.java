@@ -15,6 +15,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.configuration.SystemConfiguration;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -105,8 +106,11 @@ public class Fingerprint {
     apapFingerprintInchi.generate(apap);
 
     ChemicalFingerprint otherFingerprint = new ChemicalFingerprint(params);
-    Molecule otherChem = MolImporter.importMol("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)", "inchi");
+    Molecule otherChem = MolImporter.importMol("InChI=1S/C8H11NO/c1-2-9-7-3-5-8(10)6-4-7/h3-6,9-10H,2H2,1H3", "inchi");
     otherFingerprint.generate(otherChem);
+
+
+    System.out.println(params.getBitCount());
 
     // 35
     System.out.println(apapFingerprintInchi.getCommonBitCount(otherFingerprint));
