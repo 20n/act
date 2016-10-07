@@ -40,7 +40,7 @@ public class FingerprintGenerator {
         String smilesChemical = (String)MolExporter.exportToObject(moleculeInchi, "smiles:a");
         System.out.println(smilesChemical);
       } catch (Exception e) {
-
+        System.out.println(e.getLocalizedMessage());
       }
     }
 
