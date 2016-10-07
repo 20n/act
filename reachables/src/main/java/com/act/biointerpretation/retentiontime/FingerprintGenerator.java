@@ -35,9 +35,13 @@ public class FingerprintGenerator {
 
     String line = null;
     while ((line = reader.readLine()) != null) {
-      Molecule moleculeInchi = cleanMol(MolImporter.importMol(line, "inchi"));
-      String smilesChemical = (String)MolExporter.exportToObject(moleculeInchi, "smiles:a");
-      System.out.println(smilesChemical);
+      try {
+        Molecule moleculeInchi = cleanMol(MolImporter.importMol(line, "inchi"));
+        String smilesChemical = (String)MolExporter.exportToObject(moleculeInchi, "smiles:a");
+        System.out.println(smilesChemical);
+      } catch (Exception e) {
+
+      }
     }
 
 
