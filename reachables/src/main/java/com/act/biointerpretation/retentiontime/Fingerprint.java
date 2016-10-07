@@ -115,14 +115,12 @@ public class Fingerprint {
     CFParameters params = new CFParameters(new File("/mnt/shared-data/Vijay/ret_time_prediction/config/cfp.xml"));
 
     ChemicalFingerprint apapFingerprintInchi = new ChemicalFingerprint(params);
-    Molecule apap = cleanMol(MolImporter.importMol("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)", "inchi"));
+    Molecule apap = cleanMol(MolImporter.importMol("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)", "inchi:AuxNone,SNon"));
     apapFingerprintInchi.generate(apap);
 
     ChemicalFingerprint otherFingerprint = new ChemicalFingerprint(params);
-    Molecule otherChem = cleanMol(MolImporter.importMol("InChI=1S/C8H11NO/c1-2-9-7-3-5-8(10)6-4-7/h3-6,9-10H,2H2,1H3", "inchi"));
+    Molecule otherChem = cleanMol(MolImporter.importMol("InChI=1S/C8H11NO/c1-2-9-7-3-5-8(10)6-4-7/h3-6,9-10H,2H2,1H3", "inchi:AuxNone,SNon"));
     otherFingerprint.generate(otherChem);
-
-    System.out.println(params.getBitCount());
 
     // 35
     System.out.println(apapFingerprintInchi.getCommonBitCount(otherFingerprint));
