@@ -31,37 +31,49 @@ public class FingerprintGenerator {
 
   public static void main(String[] args) throws Exception {
 
-    CFParameters params = new CFParameters(new File("/mnt/shared-data/Vijay/ret_time_prediction/config/cfp.xml"));
-    BufferedReader reader = new BufferedReader(new FileReader("/mnt/shared-data/Gil/resources/reachables_list"));
+    BufferedReader reader = new BufferedReader(new FileReader("/Users/vijaytramakrishnan/Desktop/inchis.txt"));
 
-    List<String> headers = new ArrayList<>();
-    headers.add("SMILE");
-    headers.add("Fingerprint");
-
-    TSVWriter<String, String> writer = new TSVWriter<>(headers);
-    writer.open(new File("/mnt/shared-data/Vijay/ret_time_prediction/l2_fingerprints.tsv"));
-
-    String inchi = null;
-    while ((inchi = reader.readLine()) != null) {
-
-      try {
-        Molecule moleculeInchi = cleanMol(MolImporter.importMol(inchi, "inchi"));
-        String smilesChemical = (String)MolExporter.exportToObject(moleculeInchi, "smiles:a");
-        Molecule moleculeSmiles = cleanMol(MolImporter.importMol(smilesChemical, "smiles"));
-
-        ChemicalFingerprint fingerprint = new ChemicalFingerprint(params);
-        fingerprint.generate(moleculeSmiles);
-
-        Map<String, String> row = new HashMap<>();
-        row.put("SMILE", smilesChemical);
-        row.put("Fingerprint", fingerprint.toBinaryString().replace("|", ""));
-        writer.append(row);
-        writer.flush();
-      } catch (Exception e) {
-        System.out.println(e.getLocalizedMessage());
-      }
+    String line = null;
+    while ((line = reader.readLine()) != null) {
+      Molecule moleculeInchi = cleanMol(MolImporter.importMol(line, "inchi"));
+      String smilesChemical = (String)MolExporter.exportToObject(moleculeInchi, "smiles:a");
+      System.out.println(smilesChemical);
     }
 
-    writer.close();
+
+
+
+//    CFParameters params = new CFParameters(new File("/mnt/shared-data/Vijay/ret_time_prediction/config/cfp.xml"));
+//    BufferedReader reader = new BufferedReader(new FileReader("/mnt/shared-data/Gil/resources/reachables_list"));
+//
+//    List<String> headers = new ArrayList<>();
+//    headers.add("SMILE");
+//    headers.add("Fingerprint");
+//
+//    TSVWriter<String, String> writer = new TSVWriter<>(headers);
+//    writer.open(new File("/mnt/shared-data/Vijay/ret_time_prediction/l2_fingerprints.tsv"));
+//
+//    String inchi = null;
+//    while ((inchi = reader.readLine()) != null) {
+//
+//      try {
+//        Molecule moleculeInchi = cleanMol(MolImporter.importMol(inchi, "inchi"));
+//        String smilesChemical = (String)MolExporter.exportToObject(moleculeInchi, "smiles:a");
+//        Molecule moleculeSmiles = cleanMol(MolImporter.importMol(smilesChemical, "smiles"));
+//
+//        ChemicalFingerprint fingerprint = new ChemicalFingerprint(params);
+//        fingerprint.generate(moleculeSmiles);
+//
+//        Map<String, String> row = new HashMap<>();
+//        row.put("SMILE", smilesChemical);
+//        row.put("Fingerprint", fingerprint.toBinaryString().replace("|", ""));
+//        writer.append(row);
+//        writer.flush();
+//      } catch (Exception e) {
+//        System.out.println(e.getLocalizedMessage());
+//      }
+//    }
+//
+//    writer.close();
   }
 }
