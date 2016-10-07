@@ -862,6 +862,7 @@ object UntargetedMetabolomics {
       println(s"Mapping to formula using list")
       new PeakToStructure().FormulaHits.toFormulaHitsUsingLists(inchis, formulaListFile)
     } else {
+      println(s"Mapping to formula using nav map")
       val builder = new SmallFormulaeCorpusBuilder()
       builder.populateMapFromFile(new File(formulaNavMapFile))
       val smallFormulaMap: NavigableMap[java.lang.Float, String] = builder.getMassToFormulaMap
