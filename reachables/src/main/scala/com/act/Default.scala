@@ -31,7 +31,7 @@ object Default {
     val roProjectionArgs = List(
       "--substrates-list", substrateListOutputFile.getAbsolutePath,
       "-o", projectionOutputFile.getAbsolutePath,
-      "-l", "/Volumes/shared-data/3rdPartySoftware/Chemaxon/license_Start-up.cxl",
+      "-l", "/mnt/shared-data/3rdPartySoftware/Chemaxon/license_Start-up.cxl",
       "-v", MoleculeFormat.stdInchi.toString
     )
 
@@ -46,6 +46,8 @@ object Default {
       ReactionRoAssignment.assignRoToReactions(
         projectionOutputFile,
         reactionListOutputFile, roAssignmentOutputFile) _
+
+
 
     val startJob = ScalaJobWrapper.wrapScalaFunction("getConcreteChemicals", appliedFunction)
     startJob.thenRun(roProjection)
