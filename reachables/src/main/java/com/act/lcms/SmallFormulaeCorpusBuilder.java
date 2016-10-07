@@ -16,6 +16,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.TreeMap;
 
 // Usage sbt "runMain com.act.lcms.SmallFormulaeCorpusBuilder"
@@ -41,16 +42,18 @@ public class SmallFormulaeCorpusBuilder {
       "Test whether we can fill all the small formulae in a mapp"
   }, "");
 
-  Map<Float, String> massToFormulaMap;
+  NavigableMap<Float, String> massToFormulaMap;
+
+  public NavigableMap<Float, String> getMassToFormulaMap() {
+    return massToFormulaMap;
+  }
 
   public SmallFormulaeCorpusBuilder() {
     massToFormulaMap = new TreeMap<>();
   }
 
-  public void loadCorpus(File inputFile) throws IOException {
+  public void populateMapFromFile(File inputFile) throws IOException {
 
-    long heapSize;
-    long heapMaxSize;
     Float mass;
     String formula;
     String line;
@@ -63,10 +66,9 @@ public class SmallFormulaeCorpusBuilder {
       while (formulaeReader.ready()) {
 
         if (i % 1000000 == 0) {
-          heapSize = Runtime.getRuntime().totalMemory();
-          heapMaxSize = Runtime.getRuntime().maxMemory();
-          LOGGER.info("Formulae processed so far: %d", i);
-          LOGGER.info("Memory used: %d out of %d max", heapSize, heapMaxSize);
+          LOGGER.debug("Formulae processed so far: %d", i);
+          LOGGER.debug("Heap space used: %d out of %d max",
+              Runtime.getRuntime().totalMemory(), Runtime.getRuntime().maxMemory());
         }
 
         line = formulaeReader.readLine();
@@ -97,6 +99,19 @@ public class SmallFormulaeCorpusBuilder {
     String inputFile = cl.getOptionValue(OPTION_INPUT_FILE, DEFAULT_INPUT_FILE);
 
     SmallFormulaeCorpusBuilder builder = new SmallFormulaeCorpusBuilder();
-    builder.loadCorpus(new File(inputFile));
+    builder.populateMapFromFile(new File(inputFile));
+
+    NavigableMap<Float, String> massToFormulaMap = builder.getMassToFormulaMap();
+    LOGGER.info("Constructed map of size %d. Printing its first elements...", massToFormulaMap.size());
+
+    // Assert some values are present
+    assert massToFormulaMap.get(172.868180F).equals("CHS5");
+    assert massToFormulaMap.get(972.169955F).equals("CHS30");
+    assert massToFormulaMap.get(976.826451F).equals("C30H100N30O4S");
+
+    // Assert we can find acetaminophen
+    // 151.163
+    LOGGER.info("Floor entry for key 151.16: (%f,%s)", massToFormulaMap.ceilingEntry(151.16F).getKey(), massToFormulaMap.ceilingEntry(151.16F).getValue());
+    LOGGER.info("Ceiling entry for key 151.17: (%f,%s)", massToFormulaMap.ceilingEntry(151.17F).getKey(), massToFormulaMap.ceilingEntry(151.17F).getValue());
   }
 }
