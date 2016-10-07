@@ -917,9 +917,9 @@ class StableChemicalFormulae extends Specials {
     // The permitted values of H are given by:
     // for(int H=Hmax; H>=0; H=H-2)
     // hMax is 2N+S+O+cBonds-negNumHetero = 2N+S+O+(2C+2)-(N+S+O) = N+2C+2
-    // ensuring H is moves in exactly 2 increments requires creating another
-    // free variable `Z` such that H = N+2C+2 - 2*Z, where Z >= 0. That is
-    // more complicated. [ TODO later ]
+    // ensuring that N+2C+2-H is even can be done in two ways: 1) mod2=0
+    // or 2) create a new free variable `Z` and say 2Z = N+2C+2-H, Z>=0
+    // [ TODO later ]
     // For now we just ensure 0 <= H <= hMax
     val c2 = e(H) >= e(0) and e(H) <= hMax
 
