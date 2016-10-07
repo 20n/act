@@ -83,6 +83,10 @@ trait MongoWorkflowUtilities {
     createDbObject(MongoKeywords.EXISTS, true)
   }
 
+  def createDbObject(key: Keyword, value: Any): BasicDBObject = {
+    new BasicDBObject(key.toString, value)
+  }
+
   /**
     * Creates a new query that checks if something doesn't exist
     * True: Doesn't exist
@@ -113,6 +117,10 @@ trait MongoWorkflowUtilities {
   /*
     General Mongo functionality
    */
+
+  def defineMongoNot(truthValue: BasicDBObject): BasicDBObject = {
+    createDbObject(MongoKeywords.NOT, truthValue)
+  }
 
   /**
     * Truth value that returns true if all members of the truthValueList evaluate to true
@@ -224,16 +232,20 @@ trait MongoWorkflowUtilities {
     createDbObject(MongoKeywords.UNWIND, dollarString(listName))
   }
 
-  def defineMongoGroup(nameOfGroupingValue: Keyword, outputListName: Keyword): BasicDBObject = {
-    defineMongoGroup(nameOfGroupingValue.toString, outputListName.toString)
-  }
-
   /*
    Mongo aggregation handling.
    */
 
+  def defineMongoGroup(nameOfGroupingValue: Keyword, outputListName: Keyword): BasicDBObject = {
+    defineMongoGroup(nameOfGroupingValue.toString, outputListName.toString)
+  }
+
   def defineMongoGroup(nameOfGroupingValue: String, outputListName: Keyword): BasicDBObject = {
     defineMongoGroup(nameOfGroupingValue, outputListName.toString)
+  }
+
+  def defineMongoGroup(nameOfGroupingValue: Keyword, outputListName: String): BasicDBObject = {
+    defineMongoGroup(nameOfGroupingValue.toString, outputListName)
   }
 
   /**
@@ -267,10 +279,6 @@ trait MongoWorkflowUtilities {
     createDbObject(MongoKeywords.GROUP, groupMap)
   }
 
-  def createDbObject(key: Keyword, value: Any): BasicDBObject = {
-    new BasicDBObject(key.toString, value)
-  }
-
   private def dollarString(inputKeyword: Keyword): String = {
     dollarString(inputKeyword.value)
   }
@@ -293,10 +301,6 @@ trait MongoWorkflowUtilities {
 
   def appendKeyToDbObject(currentObject: BasicDBObject, key: Keyword, value: Any): BasicDBObject = {
     currentObject.append(key.value, value)
-  }
-
-  def defineMongoGroup(nameOfGroupingValue: Keyword, outputListName: String): BasicDBObject = {
-    defineMongoGroup(nameOfGroupingValue.toString, outputListName)
   }
 
   def getWithDefault(document: DBObject, key: Keyword, default: String): String = {

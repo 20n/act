@@ -3,7 +3,7 @@ package com.act.biointerpretation.rsmiles
 import java.io.File
 
 import com.act.analysis.chemicals.molecules.MoleculeFormat
-import com.act.biointerpretation.rsmiles.concrete_chemicals.ConcreteReactions
+import com.act.biointerpretation.rsmiles.chemicals.concrete_chemicals.ConcreteReactions
 import com.act.biointerpretation.rsmiles.sar_construction.ConstructSarsFromPredictionCorpus
 import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.tool_wrappers.{ScalaJobWrapper, SparkWrapper}
