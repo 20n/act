@@ -2,15 +2,19 @@ package act.shared
 
 object ChemicalSymbols {
 
-  sealed trait Atom { def symbol: Char; def mass: MonoIsotopicMass; def maxValency: Int }
-  case object C extends Atom { val symbol = 'C'; val mass = new MonoIsotopicMass(12.000000); val maxValency = 4  }
-  case object H extends Atom { val symbol = 'H'; val mass = new MonoIsotopicMass( 1.007825); val maxValency = 1  }
-  case object O extends Atom { val symbol = 'O'; val mass = new MonoIsotopicMass(15.994915); val maxValency = 2  }
-  case object N extends Atom { val symbol = 'N'; val mass = new MonoIsotopicMass(14.003074); val maxValency = 4  }
-  case object P extends Atom { val symbol = 'P'; val mass = new MonoIsotopicMass(30.973761); val maxValency = 2  }
-  case object S extends Atom { val symbol = 'S'; val mass = new MonoIsotopicMass(31.972071); val maxValency = 6  }
+  sealed trait Atom { def symbol: String; def mass: MonoIsotopicMass; def maxValency: Int }
+  case object C extends Atom { val symbol = "C"; val mass = new MonoIsotopicMass(12.000000); val maxValency = 4  }
+  case object H extends Atom { val symbol = "H"; val mass = new MonoIsotopicMass( 1.007825); val maxValency = 1  }
+  case object O extends Atom { val symbol = "O"; val mass = new MonoIsotopicMass(15.994915); val maxValency = 2  }
+  case object N extends Atom { val symbol = "N"; val mass = new MonoIsotopicMass(14.003074); val maxValency = 4  }
+  case object P extends Atom { val symbol = "P"; val mass = new MonoIsotopicMass(30.973761); val maxValency = 2  }
+  case object S extends Atom { val symbol = "S"; val mass = new MonoIsotopicMass(31.972071); val maxValency = 6  }
+  case object I extends Atom { val symbol = "I"; val mass = new MonoIsotopicMass(126.904457); val maxValency = 1 }
+  case object F extends Atom { val symbol = "F"; val mass = new MonoIsotopicMass(18.998404); val maxValency = 1 }
+  case object Cl extends Atom { val symbol = "Cl"; val mass = new MonoIsotopicMass(34.968853); val maxValency = 1 }
+  case object Br extends Atom { val symbol = "Br"; val mass = new MonoIsotopicMass(78.918327); val maxValency = 1 }
 
-  val AllAtoms = List(C, H, O, N, P, S)
+  val AllAtoms = List(C, H, O, N, P, S, Cl, Br, I, F)
   
   abstract class AminoAcid {
     def name: String
@@ -193,7 +197,7 @@ object ChemicalSymbols {
       // for a pair such as (C, 2) or (N, 5), this fn will convert it to `C2` or `N5`
       def elemnum(atom: Atom, num: Int) = (atom, num) match {
         case (_, 0) => ""
-        case (atom, 1) => atom.symbol.toString
+        case (atom, 1) => atom.symbol
         case (atom, num) => atom.symbol + num.toString
       }
 
