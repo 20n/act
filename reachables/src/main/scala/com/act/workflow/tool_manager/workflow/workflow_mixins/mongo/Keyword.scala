@@ -17,6 +17,10 @@ object MongoKeywords {
     val value = "$exists"
   }
 
+  case object NOT extends Keyword {
+    val value = "$not"
+  }
+
   case object OR extends Keyword {
     val value = "$or"
   }

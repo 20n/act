@@ -3,7 +3,7 @@ package com.act.biointerpretation.rsmiles.processing
 import act.server.MongoDB
 import chemaxon.formats.MolFormatException
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
-import com.act.biointerpretation.rsmiles.abstract_chemicals.AbstractChemicals.ChemicalInformation
+import com.act.biointerpretation.rsmiles.chemicals.Information.{ChemicalInformation, ReactionInformation}
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities, ReactionKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
@@ -75,14 +75,6 @@ object ReactionProcessing {
 
     val molecule = MoleculeImporter.importMolecule(inchi, moleculeFormat)
     List.fill(coefficient)(new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportMolecule(molecule, moleculeFormat)))
-  }
-
-  case class ReactionInformation(reactionId: Int, substrates: List[ChemicalInformation], products: List[ChemicalInformation]) {
-    def getReactionId: Int = reactionId
-
-    def getSubstrates: List[ChemicalInformation] = substrates
-
-    def getProducts: List[ChemicalInformation] = products
   }
 
   object Mongo extends MongoWorkflowUtilities {}

@@ -4,8 +4,7 @@ import java.io.{BufferedWriter, File, FileWriter}
 
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus
 import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
-import com.act.biointerpretation.rsmiles.abstract_chemicals.AbstractChemicals.ChemicalInformation
-import com.act.biointerpretation.rsmiles.processing.ReactionProcessing.ReactionInformation
+import com.act.biointerpretation.rsmiles.chemicals.Information.{ChemicalInformation, ReactionInformation}
 import org.apache.log4j.LogManager
 import spray.json._
 

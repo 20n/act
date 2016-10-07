@@ -1,12 +1,11 @@
-package com.act.biointerpretation.rsmiles.abstract_chemicals
-
-import java.io.Serializable
+package com.act.biointerpretation.rsmiles.chemicals.abstract_chemicals
 
 import act.server.MongoDB
 import chemaxon.formats.MolFormatException
 import chemaxon.marvin.io.MolExportException
 import com.act.analysis.chemicals.molecules.MoleculeFormat.CleaningOptions
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
+import com.act.biointerpretation.rsmiles.chemicals.Information.ChemicalInformation
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities}
 import com.mongodb.DBObject
 import org.apache.log4j.LogManager
@@ -78,12 +77,6 @@ object AbstractChemicals {
         logger.debug(s"Tried to import SMARTS value $replacedSmarts, but failed.")
         None
     }
-  }
-
-  case class ChemicalInformation(chemicalId: Int, chemicalAsString: String) extends Serializable {
-    def getChemicalId: Int = chemicalId
-
-    def getString: String = chemicalAsString
   }
 
   object Mongo extends MongoWorkflowUtilities {}
