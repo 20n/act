@@ -111,11 +111,11 @@ public class Fingerprint {
 
 
     ChemicalFingerprint apapFingerprint2 = new ChemicalFingerprint(params);
-    Molecule apap2 = MoleculeImporter.importMolecule("CC(=O)Nc1ccc(cc1)O");
+    Molecule apap2 = MolImporter.importMol("CC(=O)Nc1ccc(cc1)O", "smiles");
     apapFingerprint2.generate(apap2);
 
     ChemicalFingerprint otherFingerprint2 = new ChemicalFingerprint(params);
-    Molecule otherChem2 = MoleculeImporter.importMolecule("CCNc1ccc(cc1)O");
+    Molecule otherChem2 = MolImporter.importMol("CCNc1ccc(cc1)O", "smiles");
     otherFingerprint2.generate(otherChem2);
 
     System.out.println(apapFingerprint2.getCommonBitCount(otherFingerprint2));
