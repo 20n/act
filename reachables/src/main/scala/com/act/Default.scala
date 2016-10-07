@@ -13,7 +13,7 @@ object Default {
   def main(args: Array[String]) {
 
     val substrateListOutputFile = new File("/home/michael/TestValidator/substrateList")
-    val reactionListOutputFile = new File("/home/michael/TestValidator/SubstrateFile/reactionList")
+    val reactionListOutputFile = new File("/home/michael/TestValidator/reactionList")
     val projectionOutputFile = new File("/home/michael/TestValidator/ResultsDir/")
     val roAssignmentOutputFile = new File("/home/michael/TestValidator/ResultsDir/roAssignment")
 
