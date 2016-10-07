@@ -273,7 +273,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
       eroRuntimes.add(Pair.of(roEndTime - roStartTime, entry.getKey().getId()));
     }
     long endTime = System.currentTimeMillis();
-    LOGGER.info("Full validator runtime for %d: %d ms", rxn.getUUID(), endTime - startTime);
+    LOGGER.info("Full validator runtime for %d: %d ms", newRxnId, endTime - startTime);
     Collections.sort(eroRuntimes, (a, b) -> b.getLeft().compareTo(a.getLeft()));
     LOGGER.info("Top RO runtimes:");
     for (int i = 0; i < 5 && i < eroRuntimes.size(); i++) {
