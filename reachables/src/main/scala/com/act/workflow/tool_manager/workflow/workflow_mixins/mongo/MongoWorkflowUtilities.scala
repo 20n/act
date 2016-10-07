@@ -118,7 +118,7 @@ trait MongoWorkflowUtilities {
     General Mongo functionality
    */
 
-  def defineMongoNot(truthValue: BasicDBObject): BasicDBObject = {
+  def defineMongoNot(truthValue: String): BasicDBObject = {
     createDbObject(MongoKeywords.NOT, truthValue)
   }
 
@@ -244,10 +244,6 @@ trait MongoWorkflowUtilities {
     defineMongoGroup(nameOfGroupingValue, outputListName.toString)
   }
 
-  def defineMongoGroup(nameOfGroupingValue: Keyword, outputListName: String): BasicDBObject = {
-    defineMongoGroup(nameOfGroupingValue.toString, outputListName)
-  }
-
   /**
     * Groups documents together by some given value.
     * Requires an ID field and then accumulates any other fields indicating in the accumulator.
@@ -301,6 +297,10 @@ trait MongoWorkflowUtilities {
 
   def appendKeyToDbObject(currentObject: BasicDBObject, key: Keyword, value: Any): BasicDBObject = {
     currentObject.append(key.value, value)
+  }
+
+  def defineMongoGroup(nameOfGroupingValue: Keyword, outputListName: String): BasicDBObject = {
+    defineMongoGroup(nameOfGroupingValue.toString, outputListName)
   }
 
   def getWithDefault(document: DBObject, key: Keyword, default: String): String = {
