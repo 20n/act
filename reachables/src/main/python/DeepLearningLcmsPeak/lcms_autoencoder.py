@@ -571,8 +571,8 @@ class LcmsScan:
         return self.max_mz_array
 
     def get_std_deviation(self, row, column):
-        if self.std_deviation:
-            return self.std_deviation[row, column]
+        if self.std_deviation is not None:
+            return self.std_deviation[int(row), int(column)]
         else:
             return None
 
