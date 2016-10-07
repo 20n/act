@@ -404,7 +404,7 @@ public abstract class BiointerpretationProcessor {
       Long oldOrganismId = oldProtein.getLong("organism");
       Long newOrganismId = migrateOrganism(oldOrganismId);
       newProtein.put("organism", newOrganismId);
-    } else if (oldProtein.has("organisms")) {
+    } else if (oldProtein.has("organisms")) { // Metacyc proteins use the plural "organisms."  Unclear why, but oh well.
       JSONArray oldOrganisms = oldProtein.getJSONArray("organisms");
       List<Long> newOrganisms = new ArrayList<>(oldOrganisms.length());
       for (int i = 0; i < oldOrganisms.length(); i++) {

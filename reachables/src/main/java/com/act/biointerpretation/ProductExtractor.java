@@ -48,19 +48,32 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 
-
+/**
+ * This class extracts all product chemicals from reactions in an installer DB that contain proteins belonging to a
+ * class of user-specified organisms.  Cofactors are included in the products extracted by this class.  The
+ * type of organism to extract is defined by an organism name prefix: any reaction that contains a protein that
+ * references an organism whose name begins with the specified prefix is considered for extraction.
+ *
+ * Why would we want to extract just the products of reactions?  Doing so allows us to produce a superset of all
+ * L2 molecules that we might see in the metabolome of an organism like humans or yeast.  While we may not be able to
+ * explicitly declare that all of the extracted molecules are bio-reachable, their characterization in relation to a
+ * host organism gives us some evidence that we might see them in an LCMS scan.
+ */
 public class ProductExtractor {
   private static final Logger LOGGER = LogManager.getFormatterLogger(ProductExtractor.class);
 
   private static final String OPTION_ORGANISM_PREFIX = "r";
   private static final String OPTION_OUTPUT_FILE = "o";
   private static final String OPTION_DB_NAME = "n";
+  private static final String DEFAULT_DB_HOST = "localhost";
+  private static final Integer DEFAULT_DB_PORT = 27017;
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_ORGANISM_PREFIX)
         .argName("organism prefix")
         .desc("Organism prefix to use when filtering reactions")
-        .hasArg().required()
+        .hasArg()
+        .required()
         .longOpt("organism")
     );
     add(Option.builder(OPTION_OUTPUT_FILE)
@@ -89,7 +102,7 @@ public class ProductExtractor {
     String orgPrefix = cl.getOptionValue(OPTION_ORGANISM_PREFIX);
     LOGGER.info("Using organism prefix %s", orgPrefix);
 
-    MongoDB db = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB_NAME));
+    MongoDB db = new MongoDB(DEFAULT_DB_HOST, DEFAULT_DB_PORT, cl.getOptionValue(OPTION_DB_NAME));
 
     Map<Long, String> validOrganisms = new TreeMap<>();
     DBIterator orgIter = db.getDbIteratorOverOrgs();

@@ -775,15 +775,15 @@ public class OrganismCompositionMongoWriter {
   /**
    * Extracts organism names from a BP element at some sub path, submits them to the DB, and returns a mapping of their
    * names to DB ids.  **Does not do anything with NCBI ids at this time**.
-   * @param e The root path from which to search.
+   * @param rootElement The root path from which to search.
    * @param path The sub path to search for organisms.
    * @return A map from organism name to organism name DB id.
    */
-  private Map<String, Long> extractOrganismsAtPath(BPElement e, List<NXT> path) {
+  private Map<String, Long> extractOrganismsAtPath(BPElement rootElement, List<NXT> path) {
     Set<String> organismNames = new HashSet<>();
-    for (BPElement biosrc : this.src.traverse(e, path)) {
+    for (BPElement biosrc : this.src.traverse(rootElement, path)) {
       if (biosrc == null) {
-        System.err.format("WARNING: got null organism for %s\n", e.getID());
+        System.err.format("WARNING: got null organism for %s\n", rootElement.getID());
         continue;
       }
 
@@ -797,7 +797,7 @@ public class OrganismCompositionMongoWriter {
         organismNames.addAll(bs.getName());
       } else {
         System.err.format("WARNING: found a non-BioSource organism (%s) for %s, using anyway\n",
-            biosrc.getID(), e.getID());
+            biosrc.getID(), rootElement.getID());
         organismNames.addAll(biosrc.getName());
       }
       // Ignore NCBI Taxonomy x-refs for now, as we don't have any use for them in our current model.
@@ -854,7 +854,7 @@ public class OrganismCompositionMongoWriter {
   List<Long> writeCatalyzingSequenceToDb(Catalysis c, ProteinRNARef seqRef, Reaction rxn, long rxnid, Set<Long> orgIds) {
     // the Catalysis object has ACTIVATION/INHIBITION and L->R or R->L annotations
     // put them alongside the sequence that controls the Conversion
-    org.biopax.paxtools.model.level3.ControlType act_inhibit = c.getControlType();
+    org.biopax.paxtools.model.level3.ControlType actInhibit = c.getControlType();
     org.biopax.paxtools.model.level3.CatalysisDirectionType direction = c.getDirection();
     String seq = seqRef.getSeq();
     Resource org = seqRef.getOrg();
@@ -877,14 +877,15 @@ public class OrganismCompositionMongoWriter {
           seqRef.getID(), StringUtils.join(orgIds, ", "));
     }
     if (orgIds.size() == 0) {
-      System.err.format("WARNING: unable to find organisms for sequence %s", seqRef.getID());
+      throw new RuntimeException(
+          String.format("ERROR: no organisms found for sequence %s, should not be possible", seqRef.getID()));
     }
 
     List<Long> seqIds = new ArrayList<>(orgIds.size());
     for (Long orgId : orgIds) {
       String dir = direction == null ? "NULL" : direction.toString();
-      String act_inh = act_inhibit == null ? "NULL" : act_inhibit.toString();
-      SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, orgId, name, ecnum, comments, refs, rxnid, rxn, act_inh, dir);
+      String actInh = actInhibit == null ? "NULL" : actInhibit.toString();
+      SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, orgId, name, ecnum, comments, refs, rxnid, rxn, actInh, dir);
       seqIds.add(Long.valueOf(entry.writeToDB(db, Seq.AccDB.metacyc)));
     }
 
