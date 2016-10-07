@@ -9,7 +9,8 @@ import sys
 import numpy as np
 
 import magic
-from lcms_autoencoder import LcmsAutoencoder, LcmsScan
+from lcms_autoencoder import LcmsAutoencoder
+from preprocessing import LcmsPreprocessing
 
 """
 This is the primary control file.  Run new Deep processings from here.
@@ -114,7 +115,7 @@ if __name__ == "__main__":
         # Prevent very small values from have a disproportionate effect
         min_representation[min_representation <= 10] = 1
 
-        return LcmsScan(min_representation, mz_buckets, standard_deviations)
+        return LcmsPreprocessing.LcmsScan(min_representation, mz_buckets, standard_deviations)
 
 
     row_matrix1 = merge_lcms_replicates(experimental_samples)
@@ -141,27 +142,27 @@ if __name__ == "__main__":
                     np.min(np.dstack((row_matrix1.get_array(), row_matrix2.get_array())), axis=2))
     np.seterr(divide=None)
 
-    processed_samples, auxilariy_information = autoencoder.prepare_matrix_for_encoding(row_matrix, row_matrix1,
-                                                                                       row_matrix2, snr=snr)
-    summary_dict["number_of_valid_windows"] = len(processed_samples)
+    named_windows = LcmsPreprocessing.ScanWindower.prepare_matrix_for_encoding(row_matrix, row_matrix1, row_matrix2,
+                                                                               magic.threshold)
+    summary_dict["number_of_valid_windows"] = len(named_windows)
 
     if not model_location or not os.path.exists(model_location):
-        autoencoder.train(processed_samples)
-    encoded_samples = autoencoder.predict(processed_samples)
+        autoencoder.train(named_windows.window)
+    encoded_samples = autoencoder.predict(named_windows.window)
 
     if not model_location or not os.path.exists(model_location):
         autoencoder.fit_clusters(encoded_samples)
 
     # This currently also does the writing
-    autoencoder.predict_clusters(encoded_samples, processed_samples, auxilariy_information,
-                                 "differential_expression", [row_matrix1, row_matrix2], drop_rt=0)
+    autoencoder.predict_clusters(encoded_samples, named_windows, "differential_expression", [row_matrix1, row_matrix2],
+                                 drop_rt=0)
 
     if not model_location or not os.path.exists(model_location):
         autoencoder.visualize("differential_expression", lower_axis=-1)
 
     # Write run summary information
-    with open(os.path.join(output_directory, "differential_expression_run_summary.txt"), "w") as f:
-        json.dump(summary_dict, f)
+    with open(os.path.join(output_directory, "differential_expression_run_summary.json"), "w") as f:
+        json.dump(summary_dict, f, indent=4, sort_keys=True)
 
     if not model_location:
         model_location = os.path.join(output_directory, "differential_expression.model")

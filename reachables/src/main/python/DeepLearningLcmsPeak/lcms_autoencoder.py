@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-import operator
 import os
 
 import numpy as np
@@ -10,12 +9,11 @@ from keras.callbacks import EarlyStopping
 from keras.layers import Input, Dense
 from keras.models import Model
 from keras.optimizers import RMSprop
-from tqdm import tqdm
 
 import magic
 from cluster import LcmsClusterer
-from netcdf_parser import load_lcms_trace
-from utility import assign_row_by_mz, assign_column_by_time, column_number_to_time, row_to_mz
+from preprocessing import LcmsPreprocessing
+from preprocessing import netcdf_parser
 
 
 class LcmsAutoencoder:
@@ -85,7 +83,7 @@ class LcmsAutoencoder:
             os.makedirs(self.output_directory)
         self.clusterer.set_output_directory(output_directory)
 
-    def process_lcms_trace(self, lcms_directory, scan_file_name):
+    def process_lcms_scan(self, lcms_directory, scan_file_name):
         """
         The goal of this function is to take in a raw LCMS trace and convert it into a time
         and m/z aligned matrix that we can do later processing on.
@@ -114,279 +112,19 @@ class LcmsAutoencoder:
         if os.path.exists(processed_file_name) and os.path.exists(saved_mz_file_name):
             if self.verbose:
                 print("Using cached version of the LCMS trace at {}.".format(scan_file_name))
-            return LcmsScan(np.load(processed_file_name), np.load(saved_mz_file_name))
+            return LcmsPreprocessing.LcmsScan(np.load(processed_file_name), np.load(saved_mz_file_name))
         else:
-            """
-            The process:
-            Step 1) Load the LCMS file using the netcdf_parser
-            Step 2) Bucket every value by time and m/z value
-            Step 3) Apply a smoothing to the buckets such that if a value is 0, but the flanking values
-                    are non-zero, we say that the 0 value is actually the average of the flanking values.
-            Step 4) Save processed file for later reuse.
-            """
-            # Step 1
-            loaded_triples = load_lcms_trace(current_trace_file)
-
-            # Add 1 to make inclusive bounds.
-            row_count = assign_row_by_mz(self.mz_max, self.mz_split, self.mz_min) + 1
-            column_count = assign_column_by_time(magic.time_max, magic.time_step, magic.time_min)
-
-            # We initialize the array as all 0s because merging a bunch of arrays is slow in numpy
-            processing_array = np.zeros((row_count, column_count))
-            # Holds the absolute m/z of a given bucket where the max value resides.
-            exact_mz_array = np.zeros((row_count, column_count))
-            if self.verbose:
-                print("LCMS array has shape {}".format(processing_array.shape))
-            """
-            General structure:
-
-            Row = M/Z, Column = Time
-
-            The time has no strict meaning, but we'll deal with that later.
-
-                  1   2   3   4   5   6 ... 1910
-            49
-            49.1
-            49.2
-            49.3
-            ...
-            950
-            """
-            # Step 2
-            for triple in tqdm(loaded_triples):
-                """
-                We place each triple into a matrix at the assigned location and
-                also keep track of how many values we placed there.
-                """
-
-                # List of M/Z values
-                mass_list = triple["mz"]
-
-                # List of Intensities aligned with M/Z value (Index 1 in M/Z == Index 1 in Intensity)
-                intensity_list = triple["intensity"]
-
-                # The current relative time, based on the index in the triples array
-                # (Each index has one time, though they are not equally spaced/distributed).
-                sample_time = assign_column_by_time(triple["time"], magic.time_step, magic.time_min)
-
-                for mz_index in range(0, len(triple["mz"])):
-                    current_mz = mass_list[mz_index]
-                    row = assign_row_by_mz(current_mz, self.mz_split, self.mz_min)
-
-                    intensity_value = float(intensity_list[mz_index])
-
-                    """
-                    Take the max of what is currently there and the new value we found so that
-                    each bucket contains the highest value found within that bucket as the intensity.
-                    """
-                    if intensity_value > processing_array[row, sample_time]:
-                        processing_array[row, sample_time] = intensity_value
-                        exact_mz_array[row, sample_time] = current_mz
-
-            # Fill in blanks with interpolated values after getting the first pass values in.
-            # TODO: Evaluate if this is effective and useful.
-
-            # Step 3
-            for row in tqdm(range(0, len(processing_array))):
-                """
-                Don't try to interpolate the first and last values, but try to correct
-                them initial to the value next to them if they are 0.
-                """
-                if processing_array[row][0] == 0:
-                    processing_array[row][0] = processing_array[row][1]
-                if processing_array[row][-1] == 0:
-                    processing_array[row][-1] = processing_array[row][-2]
-
-                """
-                Go through all the other columns and convert 0s to the average of the two flanking values.
-                This helps fix holes that would otherwise occur.
-                """
-                for column in range(1, len(processing_array[row]) - 1):
-                    # If unassigned, interpolate.  Unassigned values are always 0 because we initialize the array to 0.
-                    if processing_array[row][column] == 0:
-                        # We really only want to do this while traversing up a peak, not to augment the noise floor.
-                        # This single statement increases the number of iterations we can do each second by roughly 55%.
-                        before_and_after_sum = processing_array[row][column - 1] + processing_array[row][column + 1]
-                        processing_array[row][column] = float(before_and_after_sum) / 2.0
-
-            # Step 4
-            processing_array = np.nan_to_num(processing_array)
-
-            np.save(processed_file_name, processing_array)
-            np.save(saved_mz_file_name, exact_mz_array)
-
-            return LcmsScan(processing_array, exact_mz_array)
-
-    def prepare_matrix_for_encoding(self, input_matrix, r1, r2, lowest_max_value=magic.lowest_encoded_window_max_value,
-                                    snr=None):
-        """
-        The goal of this function is to window and threshold an input matrix such that the output
-        can be directly used by the autoencoder to learn.
-
-        :param input_matrix:        Processed LCMS matrix
-        :param lowest_max_value:    The lowest maximum value that a window can have and still be considered
-        :param snr:                 A SNR calculation supplied from outside that should be used if a window is valid.
-                                    The SNR output value here is the highest - lowest SNR in a window.
-        :return:                    A vector of valid windows.
-        """
-        if self.verbose:
-            print("Checking if prepared matrix already exists.")
-
-        training_file_name = os.path.join(self.output_directory, LcmsAutoencoder.INPUT_TRAINING_FILE_NAME)
-        row_numbers_file = os.path.join(self.output_directory, LcmsAutoencoder.TRAINING_OUTPUT_ROW_NUMBERS_FILE_NAME)
-
-        # # Check for cached version.
-        # if os.path.exists(training_file_name) and os.path.exists(row_numbers_file):
-        #     if self.verbose:
-        #         print("Using cached prepared matrix.")
-        #     training = np.load(training_file_name)
-        #     row_numbers = np.load(row_numbers_file)
-        #
-        #     # Don't use this one if the block size differs between cached and desired versions.
-        #     if training.shape[1] == self.block_size:
-        #         return training, row_numbers
-
-        """
-        Create intervals of size {block_size}
-        """
-        if self.verbose:
-            print("Generating intervals from input m/z rows (One row is all the time values for a given m/z slice)")
-        thresholded_groups = []
-        row_index_and_max = []
-
-        # Center is the middle of the block_size
-        center = self.block_size / 2
-
-        # For each sample
-        for row_number in tqdm(range(0, len(input_matrix))):
-            # Windows within sample
-            single_row = input_matrix[row_number]
-
-            """
-            The windowing algorithm
-
-            Goes through all the times, sampling windows.  If there is no value above our threshold we ignore it.
-
-            We only take windows that, when centered the value in the middle is the max.
-            If you wish to detect peaks that are more closely clustered, decrease the block size so
-            that fewer values are looked at.
-            """
-            max_window_start = len(single_row) - self.block_size
-            i = 0
-            while i < max_window_start:
-                window = single_row[i:(i + self.block_size)]
-
-                # Get both index and value of max
-                window_max_index, window_max = max(enumerate(window), key=operator.itemgetter(1))
-                window_min_index, window_min = min(enumerate(window), key=operator.itemgetter(1))
-
-                # Special case when doing differential analysis which can be negative.
-                # Iff all values are positive this will never be true (Aka non-differential time).
-                if abs(window_min) > window_max:
-                    window_max_index = window_min_index
-                    window_max = window_min
-
-                if abs(window_max) > lowest_max_value:
-                    """
-                    We center the window onto the max value we just found.
-                    We do this by taking the current index, adding whichever index the max_index was in
-                    the previous window, and then subtracting the center value.
-
-                    For example, let's say we are at index 100 with a window size of 30.
-                    Thus, our previous window stretched from 100-130.
-
-                    i = 100
-
-                    We find the max value at the 20th index of the window, so
-
-                    window_max_index = 20
-
-                    That means are window is currently 100 + 120, or the first value of our window would be the
-                    max_value.
-
-                    We shift it back so that the max_value is centered by subtracting the center (30/2 == 15).
-
-                    120 - 15 = 105, making our window 105-135, thus centering 120.
-                    """
-                    centered_time = int(i + window_max_index - center)
-                    max_centered_window = np.asarray(single_row[centered_time: (centered_time + self.block_size)])
-
-                    # By dividing by the max, we normalize the entire window to our max value that we previously found.
-                    normalized_window = max_centered_window / abs(float(window_max))
-
-                    # Handle edge cases that can corrupt our numpy array.
-                    if len(normalized_window) == self.block_size:
-
-                        single_exp_max = np.max(
-                            r1.get_array()[row_number, centered_time: (centered_time + self.block_size)])
-                        single_ctrl_max = np.max(
-                            r2.get_array()[row_number, centered_time: (centered_time + self.block_size)])
-
-                        local_exp_max = np.max(r1.get_array()[row_number - 3: row_number + 3,
-                                               centered_time: (centered_time + self.block_size)])
-                        local_ctrl_max = np.max(r2.get_array()[row_number - 3: row_number + 3,
-                                                centered_time: (centered_time + self.block_size)])
-
-                        level_of_difference = abs((local_exp_max - local_ctrl_max) / max(local_exp_max, local_ctrl_max))
-
-                        if single_exp_max == local_exp_max or single_ctrl_max == local_ctrl_max:
-                            if abs(max(normalized_window, key=abs)) <= 1 and level_of_difference > 0.2:
-                                if self.debug:
-                                    print("Found differential peak at m/z {} and retention time {}".format(row_to_mz(
-                                        row_number, mz_division=magic.mz_split, min_mz=magic.mz_min),
-                                        column_number_to_time(centered_time + self.block_size / 2, magic.time_step,
-                                                              magic.time_min)))
-                                thresholded_groups.append(normalized_window)
-
-                                exp_std = r1.get_std_deviation(row_number, centered_time + center)
-                                ctrl_std = r2.get_std_deviation(row_number, centered_time + center)
-
-                                extra_info = {"row": row_number,
-                                              "time": centered_time,
-                                              "maxo": window_max,
-                                              "exp_std_dev": exp_std,
-                                              "ctrl_std_dev": ctrl_std}
-
-                                if snr is not None:
-                                    """
-                                    One problem that can occur here is when the window is off-center.
-                                    We see that the off-centering tends to happen a couple seconds apart.
-                                    We try to fix this by taking the using the difference between the most
-                                    negative and most positive SN values as our actual SN value.
-                                    If we saw two widely different, oppositely signed SN values in a single window,
-                                    we'd likely assume that a shift is just causing one peak to look like two.
-                                    """
-                                    signed_snr = \
-                                        np.sign(max_centered_window) * \
-                                        snr[row_number][centered_time: (centered_time + self.block_size)]
-
-                                    max_signed = max(signed_snr)
-                                    min_signed = abs(min(signed_snr))
-
-                                    extra_info.update({"sn": max_signed - min_signed})
-                                row_index_and_max.append(extra_info)
-                        else:
-                            if self.debug:
-                                print("Skipping window as another, larger peak was found nearby.")
-
-                    # We take one step here to not miss anything
-                    i += window_max_index + 1
-                else:
-                    # There were no valid points (Points greater than our min threshold) in this block,
-                    # so we can just skip all the points in this block.
-                    i += self.block_size
-
-        # Convert to array
-        samples = np.asarray(thresholded_groups)
-
-        # Extra information == row number, index of time, and max window value.
-        extra_information = np.asarray(row_index_and_max)
-
-        # Save for future use.
-        np.save(row_numbers_file, extra_information)
-        np.save(training_file_name, samples)
-
-        return samples, extra_information
+            loaded_triples = netcdf_parser.load_lcms_trace(current_trace_file)
+            grid, exact_mz = LcmsPreprocessing.ScanConverter.process_lcms_trace(loaded_triples,
+                                                                                magic.mz_min, magic.mz_max,
+                                                                                magic.mz_split,
+                                                                                magic.time_min, magic.time_max,
+                                                                                magic.time_step,
+                                                                                self.verbose)
+            # Cache for later
+            np.save(processed_file_name, grid)
+            np.save(saved_mz_file_name, exact_mz)
+            return LcmsPreprocessing.LcmsScan(grid, exact_mz)
 
     def compile_model(self, loss_function=magic.loss_function):
         """
@@ -556,25 +294,3 @@ class LcmsAutoencoder:
             # Make sure to clear after creating each figure.
             sns.plt.cla()
             sns.plt.clf()
-
-
-class LcmsScan:
-    def __init__(self, processed_array, max_mz_array, std_deviation=None):
-        self.processed_array = processed_array
-        self.max_mz_array = max_mz_array
-        self.std_deviation = std_deviation
-
-    def get_array(self):
-        return self.processed_array
-
-    def get_bucket_mz(self):
-        return self.max_mz_array
-
-    def get_std_deviation(self, row, column):
-        if self.std_deviation is not None:
-            return self.std_deviation[int(row), int(column)]
-        else:
-            return None
-
-    def normalize_array(self, normalizer):
-        self.processed_array /= normalizer

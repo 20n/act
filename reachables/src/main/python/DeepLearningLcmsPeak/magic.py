@@ -12,12 +12,13 @@ mz_max = 951
 time_min = 0
 time_max = 450
 time_step = 2.5  # Seconds
+local_area_band_halfwidth = 3
 
 """
 Lcms_Autoencoder.py Default Values
 """
 # The lowest max value a window can have before we drop that window.
-lowest_encoded_window_max_value = 1e4
+threshold = 1e4
 
 loss_function = "mse"
 metrics = ["accuracy"]
