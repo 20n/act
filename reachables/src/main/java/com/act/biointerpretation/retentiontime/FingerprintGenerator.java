@@ -31,7 +31,7 @@ public class FingerprintGenerator {
 
   public static void main(String[] args) throws Exception {
 
-    BufferedReader reader = new BufferedReader(new FileReader("/Users/vijaytramakrishnan/Desktop/inchis.txt"));
+    BufferedReader reader = new BufferedReader(new FileReader("/home/vijay/inchis.txt"));
 
     String line = null;
     while ((line = reader.readLine()) != null) {
