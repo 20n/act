@@ -110,6 +110,20 @@ public class Fingerprint {
     System.out.println(apapFingerprint.getCommonBitCount(otherFingerprint));
 
 
+    ChemicalFingerprint apapFingerprint2 = new ChemicalFingerprint(params);
+    Molecule apap2 = MoleculeImporter.importMolecule("CC(=O)Nc1ccc(cc1)O");
+    apapFingerprint2.generate(apap2);
+
+    ChemicalFingerprint otherFingerprint2 = new ChemicalFingerprint(params);
+    Molecule otherChem2 = MoleculeImporter.importMolecule("CCNc1ccc(cc1)O");
+    otherFingerprint2.generate(otherChem2);
+
+    System.out.println(apapFingerprint2.getCommonBitCount(otherFingerprint2));
+
+
+
+
+
 //    generate(cl.getOptionValue(OPTION_INPUT_INCHIS), cl.getOptionValue(OPTION_OUTPUT_FINGERPRINT));
 //    compare(cl.getOptionValue(OPTION_OUTPUT_FINGERPRINT));
   }
