@@ -415,9 +415,12 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
 
 object MassToFormula {
   def atomToVar(a: Atom) = Var(a.symbol.toString)
-  def oneVar  = Var("v=1")
   def term(c: Int) = Term(Const(c), oneVar)
   def term(c: Int, a: Atom) = Term(Const(c), MassToFormula.atomToVar(a))
+  // See comment on `onec` in `buildConstraintOverInts` for how we use `oneVar`
+  // to anchor constants, by being able to put them in terms that need to be of
+  // the form Constant x Variable.
+  def oneVar  = Var("v=1")
 
   // These can be overwritten by command line arguments to specific files
   // We can pass them around as arguments, but it was getting very painful.
