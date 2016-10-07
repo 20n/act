@@ -23,11 +23,15 @@ import scala.reflect.runtime.{currentMirror => cm}
 sealed trait Expr
 case class Const(c: Int) extends Expr
 case class Var(val id: String) extends Expr
-case class Term(val c: Const, val v: Var) extends Expr {
-  def +(other: Term): LinExpr = LinExpr(List(this, other))
-}
+case class Term(val c: Const, val v: Var) extends Expr
 case class LinExpr(val terms: List[Term]) extends Expr {
   def +(term: Term): LinExpr = LinExpr(term :: this.terms)
+  def +(other: LinExpr): LinExpr = LinExpr(this.terms ++ other.terms)
+  def <=(other: LinExpr): LinIneq = LinIneq(this, Le, other)
+  def <(other: LinExpr): LinIneq = LinIneq(this, Lt, other)
+  def >=(other: LinExpr): LinIneq = LinIneq(this, Ge, other)
+  def >(other: LinExpr): LinIneq = LinIneq(this, Gt, other)
+  def ==(other: LinExpr): LinIneq = LinIneq(this, Eq, other)
 }
 
 // TODO: FIX ADT 
@@ -45,9 +49,13 @@ case object And extends BoolOp
 case object Or extends BoolOp
 case object Not extends BoolOp
 
-sealed trait BooleanExpr
+sealed trait BooleanExpr {
+  def and(other: BooleanExpr): BooleanExpr = Multi(And, List(this, other))
+  def or(other: BooleanExpr): BooleanExpr = Multi(Or, List(this, other))
+  def implies(other: BooleanExpr) = Multi(Or, List(this.not, other))
+  def not = Unary(Not, this)
+}
 case class LinIneq(val lhs: Expr, val ineq: CompareOp, val rhs: Expr) extends BooleanExpr
-case class Binary(val a: BooleanExpr, val op: BoolOp, val b: BooleanExpr) extends BooleanExpr
 case class Multi(val op: BoolOp, val b: List[BooleanExpr]) extends BooleanExpr
 case class Unary(val op: BoolOp, val a: BooleanExpr) extends BooleanExpr
 
@@ -100,44 +108,37 @@ object Solver {
     }
   }
 
-  def mkClause(eq: BooleanExpr): SMTBoolExprVars = eq match {
-    case LinIneq(lhs, op, rhs) => {
-      val compareFn = op match {
-        case Lt => ctx.mkBVSLT _
-        case Gt => ctx.mkBVSGT _
-        case Ge => ctx.mkBVSGE _
-        case Le => ctx.mkBVSLE _
-        case Eq => ctx.mkEq _
+  def mkClause(eq: BooleanExpr): SMTBoolExprVars = {
+    eq match {
+      case LinIneq(lhs, op, rhs) => {
+        val compareFn = op match {
+          case Lt => ctx.mkBVSLT _
+          case Gt => ctx.mkBVSGT _
+          case Ge => ctx.mkBVSGE _
+          case Le => ctx.mkBVSLE _
+          case Eq => ctx.mkEq _
+        }
+        val (lExpr, varsLhs) = mkExpr(lhs)
+        val (rExpr, varsRhs) = mkExpr(rhs)
+        (compareFn(lExpr, rExpr), varsLhs ++ varsRhs)
       }
-      val (lExpr, varsLhs) = mkExpr(lhs)
-      val (rExpr, varsRhs) = mkExpr(rhs)
-      (compareFn(lExpr, rExpr), varsLhs ++ varsRhs)
-    }
-    case Binary(e1, op, e2) => {
-      val boolFn = op match {
-        case And => ctx.mkAnd _
-        case Or  => ctx.mkOr _
+      case Unary(op, e) => {
+        val boolFn = op match {
+          case Not => ctx.mkNot _
+        }
+        val (expr, vars) = mkClause(e)
+        (boolFn(expr), vars)
       }
-      val (lhs, varsLhs) = mkClause(e1)
-      val (rhs, varsRhs) = mkClause(e2)
-      (boolFn(lhs, rhs), varsLhs ++ varsRhs)
-    }
-    case Unary(op, e) => {
-      val boolFn = op match {
-        case Not => ctx.mkNot _
+      case Multi(op, es) => {
+        val (exprs, varsLists) = es.map(mkClause).unzip
+        // exprs is a list, but we need to pass it to a vararg function, hence the `:_*`
+        // if we just write boolFn(exprs) it expects a `boolFn(List[T])`, while the available is `boolFn(T*)`
+        val boolExpr = op match {
+          case And => ctx.mkAnd(exprs:_*)
+          case Or  => ctx.mkOr(exprs:_*)
+        }
+        (boolExpr, varsLists.reduce(_++_))
       }
-      val (expr, vars) = mkClause(e)
-      (boolFn(expr), vars)
-    }
-    case Multi(op, es) => {
-      val (exprs, varsLists) = es.map(mkClause).unzip
-      // exprs is a list, but we need to pass it to a vararg function, hence the `:_*`
-      // if we just write boolFn(exprs) it expects a `boolFn(List[T])`, while the available is `boolFn(T*)`
-      val boolExpr = op match {
-        case And => ctx.mkAnd(exprs:_*)
-        case Or  => ctx.mkOr(exprs:_*)
-      }
-      (boolExpr, varsLists.reduce(_++_))
     }
   }
 
@@ -151,9 +152,6 @@ object Solver {
   def getVars(eq: BooleanExpr): Set[Var] = eq match {
     case LinIneq(lhs, _, rhs) => {
       getVars(lhs) ++ getVars(rhs)
-    }
-    case Binary(e1, _, e2) => {
-      getVars(e1) ++ getVars(e2)
     }
     case Unary(_, e) => {
       getVars(e)
@@ -300,7 +298,7 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
 
     val candidateFormulae = RHSints.map( intMz => {
       val constraints = buildConstraintOverInts(intMz)
-      val specializations = specials.map(_.constraints).flatten
+      val specializations = specials.map(_.constraints)
       val sat = Solver.solveMany(constraints ++ specializations)
       val formulae = sat.map(soln => soln.map(toChemicalFormula))
       formulae
@@ -861,71 +859,76 @@ object MassToFormula {
 }
 
 sealed trait Specials {
-  def constraints(): Set[LinIneq]
+  def constraints(): BooleanExpr
   def describe(): String
 
   def t(c: Int, a: Atom) = MassToFormula.term(c, a)
   def t(a: Atom) = MassToFormula.term(1, a)
   def t(c: Int) = MassToFormula.term(c)
-
-  def moreOf(xCnt: (Int, Atom), yCnt: (Int, Atom)): LinIneq = {
-    val (cntx, x) = xCnt
-    val (cnty, y) = yCnt
-    LinIneq(t(cntx, x), Ge, t(cnty, y))
-  }
-
-  def moreOf(x: Atom, y: Atom): LinIneq = moreOf((1, x), (1, y))
+  def toExpr(t: Term) = LinExpr(List(t))
+  def e(c: Int, a: Atom) = toExpr(t(c, a))
+  def e(a: Atom) = toExpr(t(a))
+  def e(c: Int) = toExpr(t(c))
 }
 
 class MostlyCarbons extends Specials {
   def describe() = "C>=N + C>=O + C>=S + C>=P"
-  def constraints() = Set() + (moreOf(C, N), moreOf(C, O), moreOf(C, S), moreOf(C, P))
+  def constraints() = {
+    val cn = e(C) >= e(N)
+    val co = e(C) >= e(O)
+    val cs = e(C) >= e(S)
+    val cp = e(C) >= e(P)
+    cn and co and cs and cp
+  }
 }
 
 class MoreHThanC extends Specials {
   def describe() = "H>=C"
-  def constraints() = Set() + moreOf(H, C)
+  def constraints() = e(H) >= e(C)
 }
 
 class LessThan3xH extends Specials {
   def describe() = "3C>=H"
-  def constraints() = Set() + moreOf((3, C), (1, H))
+  def constraints() = e(3, C) >= e(H)
 }
 
-class OrganicLimited extends Specials {
-  def describe() = "Communication JCA SS 10/06"
+class StableChemicalFormulae extends Specials {
+  def describe() = "Stable chemical formulae"
 
   def constraints() = {
-    // int C //the number of carbons
-    // int N, int S, int O //the number of nitrogen, sulfur, and oxygen, respectively
-    // int H //number of hydrogens
-    // int Pi //number of phosphates OP(=O)O
+    // These constraints describe the space of stable organic chemical formulae
 
     // For the fully reduced molecule, the number of unoccupied bonds is:
-    // int Cbonds = (C-2)*2 + 6 = 2C + 2
-    val cBonds = t(2, C) + t(2)
+    // cBonds = (C-2)*2 + 6 = 2C + 2
+    val cBonds = e(2, C) + e(2)
 
     // Assuming we only allow heteroatoms to be directly attached to a carbon, then:
-    // int numHetero = N+S+O;
-    val numHetero = t(N) + t(S) + t(O)
+    // numHetero = N+S+O;
+    val numHetero = e(N) + e(S) + e(O)
+    val negNumHetero = e(-1, N) + e(-1, S) + e(-1, O)
 
-    // numHetero <= Cbonds;
-    val c1 = LinIneq(numHetero, Le, cBonds)
+    // numHetero <= cBonds;
+    val c1 = numHetero <= cBonds
 
     // The maximal value for H is given by:
-    // Hmax = N*2  + S + O + Cbonds - numHetero;
-    // TODO
+    // hMax = 2N  + S + O + Cbonds - numHetero;
+    val hMax = e(2, N) + e(S) + e(O) + cBonds + negNumHetero
 
     // The permitted values of H are given by:
     // for(int H=Hmax; H>=0; H=H-2)
-    // TODO
+    // hMax is 2N+S+O+cBonds-negNumHetero = 2N+S+O+(2C+2)-(N+S+O) = N+2C+2
+    // ensuring H is moves in exactly 2 increments requires creating another
+    // free variable `Z` such that H = N+2C+2 - 2*Z, where Z >= 0. That is
+    // more complicated. [ TODO later ]
+    // For now we just ensure 0 <= H <= hMax
+    val c2 = e(H) >= e(0) and e(H) <= hMax
 
-    // The permitted values for Pi are given by:
-    // if(O>1) {
-    //   for(int Pi=0; Pi<5; Pi++)
-    // }
-    // TODO
+    // If `ph` represents the number of phosphate groups in the molecule:
+    // There must be at least one O already present.
+    // The total number of O's present must be greater than 3*P.
+    val c3 = e(P) < e(5) and (e(P) > e(0) implies e(O) > e(3, P))
 
-    Set() + c1
+    val constraint = c1 and c2 and c3
+    constraint
   }
 }
