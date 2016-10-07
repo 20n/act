@@ -6,6 +6,7 @@ import chemaxon.descriptors.ChemicalFingerprint;
 import chemaxon.descriptors.GenerateMD;
 import chemaxon.descriptors.MDParameters;
 import chemaxon.formats.MolImporter;
+import chemaxon.marvin.io.formats.mdl.MolExport;
 import chemaxon.marvin.io.formats.mdl.MolImport;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.MoleculeGraph;
@@ -115,11 +116,11 @@ public class Fingerprint {
     CFParameters params = new CFParameters(new File("/mnt/shared-data/Vijay/ret_time_prediction/config/cfp.xml"));
 
     ChemicalFingerprint apapFingerprintInchi = new ChemicalFingerprint(params);
-    Molecule apap = cleanMol(MolImporter.importMol("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)", "inchi:AuxNone,SNon"));
+    Molecule apap = cleanMol(MolImporter.importMol("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)", "inchi"));
     apapFingerprintInchi.generate(apap);
 
     ChemicalFingerprint otherFingerprint = new ChemicalFingerprint(params);
-    Molecule otherChem = cleanMol(MolImporter.importMol("InChI=1S/C8H11NO/c1-2-9-7-3-5-8(10)6-4-7/h3-6,9-10H,2H2,1H3", "inchi:AuxNone,SNon"));
+    Molecule otherChem = cleanMol(MolImporter.importMol("InChI=1S/C8H11NO/c1-2-9-7-3-5-8(10)6-4-7/h3-6,9-10H,2H2,1H3", "inchi"));
     otherFingerprint.generate(otherChem);
 
     // 35
