@@ -1,7 +1,7 @@
 # Main library. Contains functions related to LCMS data processing likely to be re-used.
 
-kLCMSDataLocation <- "/mnt/data-level1/lcms-ms1/"
-kLCMSDataCacheLocation <- "/mnt/data-level1/lcms-ms1-rcache/"
+kLCMSDataLocation <- "/Volumes/data-level1/lcms-ms1/"
+kLCMSDataCacheLocation <- "/Volumes/data-level1/lcms-ms1-rcache/"
 kPeakDisplaySep <- " - "
 kIntensityThreshold <- 10000
 kSSRatio <- 20
