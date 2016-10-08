@@ -124,15 +124,24 @@ lcmsConfigTraces <- function(input, output, session) {
     
     logdebug("Extracting matching inchis hashes object: %s", config()$matching_inchi_hashes)
     
-    matching.inchis <- with(config()$matching_inchi_hashes, {
-      logdebug("Applying mask")
-      logdebug(lapply(l, function(x) x$code == matching.inchis.code))
-      logdebug("Got sublist")
-      logdebug(l[lapply(l, function(x) x$code == matching.inchis.code)])
-      logdebug("extracting vals")
-      logdebug(l[lapply(l, function(x) x$code == matching.inchis.code)]$vals)
-      l[lapply(l, function(x) x$code == matching.inchis.code)]$vals
-    })
+    
+    l <- config()$matching_inchi_hashes
+    codes <- l[[1]]
+    logdebug("Extracted codes")
+    logdebug(codes)
+    
+    named.inchis <- l[[2]]
+    logdebug("Extracted named inchis")
+    logdebug(named.inchis)
+    which.code <- which(codes == matching.inchis.code)
+    logdebug("Which code")
+    logdebug(which.code)
+    matching.inchis <- named.inchis[which.code]
+    logdebug("MAtching inchis")
+    logdebug(matching.inchis)
+    
+    matching.inchis <- lapply(matching.inchis, specialSplit)
+    logdebug(matching.inchis)
     shiny::validate(
       need(length(matching.inchis) > 0, "No matching molecule for this peak...")
     )
@@ -141,6 +150,10 @@ lcmsConfigTraces <- function(input, output, session) {
   
   matching.formulae <- reactive({
     matching.formulae.code <- selected.peak()$matching_formulae
+    
+    shiny::validate(
+      need(length(config()$matching_formulae_hashes) > 0, "Matching formulae have not been computed...")
+    )
     
     # get the  the matching formulae for this hashcode
     matching.formulae <- with(config()$matching_formulae_hashes, {
