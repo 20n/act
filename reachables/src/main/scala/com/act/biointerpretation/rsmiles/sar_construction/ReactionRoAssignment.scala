@@ -104,8 +104,8 @@ object ReactionRoAssignment {
     val predictionSubstrateInchis: List[Set[String]] =
       roPrediction.getCorpus.asScala.map(prediction => {
         val productSet = prediction.getSubstrateInchis.asScala.toSet
-        productSet.map(x => MoleculeExporter.exportMolecule(
-          MoleculeImporter.importMolecule(x,
+        productSet.map(moleculeString => MoleculeExporter.exportMolecule(
+          MoleculeImporter.importMolecule(moleculeString,
             MoleculeFormatType(MoleculeFormat.stdInchi.value,
               List(MoleculeFormat.CleaningOptions.clean2d,
                 MoleculeFormat.CleaningOptions.neutralize,
@@ -123,10 +123,20 @@ object ReactionRoAssignment {
 
 
     /*
-      Step 3 - Filter reactions so that all the products match a projectino
+      Step 3 - Filter reactions so that all the products match a projection
      */
     val predictionProductInchis: List[Set[String]] =
-      roPrediction.getCorpus.asScala.map(prediction => prediction.getProductInchis.asScala.toSet).toList
+      roPrediction.getCorpus.asScala.map(prediction => {
+        val productSet = prediction.getProductInchis.asScala.toSet
+        productSet.map(moleculeString => MoleculeExporter.exportMolecule(
+          MoleculeImporter.importMolecule(moleculeString,
+            MoleculeFormatType(MoleculeFormat.stdInchi.value,
+              List(MoleculeFormat.CleaningOptions.clean2d,
+                MoleculeFormat.CleaningOptions.neutralize,
+                MoleculeFormat.CleaningOptions.aromatize))
+          ),
+          MoleculeFormat.stdInchi))
+      }).toList
 
     val reactionsThatMatchThisRo = validSubstrateReactions.filter(
       // For each reaction
