@@ -44,8 +44,8 @@ getIonMz <- {
   intpDef(kScalaInterpreter, 'mass: Double, mode: String', getIonMzFunctionDef) 
 }
 
-getAndCacheScanFile <- function(filename) {
-  # Get and serialize a netCDF scan file. 
+getAndCacheScanFile <- function(scan.file.name) {
+  # Get and serialize a netCDF scan file.
   #
   # Args:
   #   scan.file.name: input scan file name (relative to `kLCMSDataLocation`)

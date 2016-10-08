@@ -17,7 +17,7 @@ moleculeRenderer <- function(input, output, session, inchi, height) {
     inchiHash <- digest(inchi.string())
     filepath <- paste0(c(kMolStructureCacheFolder, inchiHash, ".png"), collapse = "")
     if (!file.exists(filepath)) {
-      saveMoleculeStructure(inchiString(), filepath)
+      saveMoleculeStructure(inchi.string(), filepath)
     }
     filepath
   })
