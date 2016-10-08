@@ -172,7 +172,7 @@ lcmsConfigTraces <- function(input, output, session) {
     )
   })
   
-  plot.data <- callModule(lcmsTracesData, "traces", scan.filenames, retention.time.range, target.mz, mz.band.halfwidth)
+  plot.data <- callModule(lcmsTracesPeaks, "traces", scan.filenames, retention.time.range, target.mz, mz.band.halfwidth)
   plot.parameters <- callModule(plotParameters, "plot.parameters")
 
   output$plots <- renderUI({

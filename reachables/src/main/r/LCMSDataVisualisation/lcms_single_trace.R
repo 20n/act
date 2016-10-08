@@ -48,7 +48,7 @@ lcmsSingleTrace <- function(input, output, session) {
     }
   })
   
-  plot.data <- callModule(lcmsSingleTraceData, "trace", reactive(input$filename), 
+  plot.data <- callModule(lcmsSingleTracePeaks, "trace", reactive(input$filename), 
                           reactive(input$retention.time.range), target.mz, 
                           reactive(mz.scope$mz.band.halfwidth), reactive(input$load))
   plot.parameters <- callModule(plotParameters, "plot.parameters")
