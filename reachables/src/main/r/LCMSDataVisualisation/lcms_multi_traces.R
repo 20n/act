@@ -49,13 +49,13 @@ lcmsMultiTraces <- function(input, output, session, plot.parameters, mz.scope) {
     }
   })
   
-  plot.data1 <- callModule(lcmsSingleTraceData, "trace1", reactive(input$filename1), 
+  plot.data1 <- callModule(lcmsSingleTracePeaks, "trace1", reactive(input$filename1), 
                            reactive(input$retention.time.range), target.mz, 
                            reactive(mz.scope$mz.band.halfwidth), reactive(input$load))
-  plot.data2 <- callModule(lcmsSingleTraceData, "trace2", reactive(input$filename2), 
+  plot.data2 <- callModule(lcmsSingleTracePeaks, "trace2", reactive(input$filename2), 
                            reactive(input$retention.time.range), target.mz, 
                            reactive(mz.scope$mz.band.halfwidth), reactive(input$load))
-  plot.data3 <- callModule(lcmsSingleTraceData, "trace3", reactive(input$filename3), 
+  plot.data3 <- callModule(lcmsSingleTracePeaks, "trace3", reactive(input$filename3), 
                            reactive(input$retention.time.range), target.mz, 
                            reactive(mz.scope$mz.band.halfwidth), reactive(input$load))
   

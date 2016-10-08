@@ -44,8 +44,8 @@ getIonMz <- {
   intpDef(kScalaInterpreter, 'mass: Double, mode: String', getIonMzFunctionDef) 
 }
 
-getAndCacheScanFile <- function(filename) {
-  # Get and serialize a netCDF scan file. 
+getAndCacheScanFile <- function(scan.file.name) {
+  # Get and serialize a netCDF scan file.
   #
   # Args:
   #   scan.file.name: input scan file name (relative to `kLCMSDataLocation`)
@@ -249,4 +249,9 @@ getAndValidateConfigFile <- function(input.file) {
          "Too many scan files for input layout. Please double check the layout.")
   )
   config
+}
+
+specialSplit <- function(a) {
+  split.seq <- rep(rep(1:(length(a)/2)),2)
+  split(a, split.seq)
 }
