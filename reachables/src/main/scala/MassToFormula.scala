@@ -925,7 +925,7 @@ object MassToFormula {
       assert(parsed.isDefined, s"Failed: $name, Invalid InChI: $inchi")
       val formula = parsed match { case Some((str, form)) => form }
       val passes = stableCnstr.isValid(formula)
-      val msg = s"Failed: $name, Mass: $mass, Formula: $formula"
+      val msg = (if (passes) "Validated: " else "Failed: ") + s"$name, Mass: $mass, Formula: $formula"
       if (abortIfFail) assert(passes, msg) else println(msg)
     }
   }
@@ -1003,13 +1003,12 @@ class StableChemicalFormulae extends Specials {
     // ensuring H is moves in exactly 2 increments requires creating another
     // free variable `Z` such that H = N+2C+2 - 2*Z, where Z >= 0. That is
     // more complicated. [ TODO later ]
-    // **************** Constraint c3 *******************
     // For now we just ensure 0 <= H <= hMax
+    // **************** Constraint c3 *******************
     // If `ph` represents the number of phosphate groups in the molecule:
     // There must be at least one O already present.
     // The total number of O's present must be greater than 3*P.
     // **************** Constraint c4 *******************
-    // TODO: implement halogen constraints:
     // int halogensAndHydrogens = H + Cl + Br + I + F //For the final formula
     // halogensAndHydrogens <= Hmax
     // halogensAndHydrogens %2 == Hmax % 2
