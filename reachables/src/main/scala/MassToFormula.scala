@@ -20,19 +20,25 @@ import java.io.PrintWriter
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.{currentMirror => cm}
 
-sealed trait Expr
+sealed trait Expr {
+  def <=(other: Expr): LinIneq = LinIneq(this, Le, other)
+  def <(other: Expr): LinIneq = LinIneq(this, Lt, other)
+  def >=(other: Expr): LinIneq = LinIneq(this, Ge, other)
+  def >(other: Expr): LinIneq = LinIneq(this, Gt, other)
+  def ==(other: Expr): LinIneq = LinIneq(this, Eq, other)
+  def +(other: Expr): Expr = ArithExpr(Add, List(this, other))
+  def -(other: Expr): Expr = ArithExpr(Sub, List(this, other))
+  def *(other: Expr): Expr = ArithExpr(Mul, List(this, other))
+  def /(other: Expr): Expr = ArithExpr(Div, List(this, other))
+  def mod(other: Expr): Expr = ArithExpr(Mod, List(this, other))
+}
 case class Const(c: Int) extends Expr
 case class Var(val id: String) extends Expr
 case class Term(val c: Const, val v: Var) extends Expr
 case class LinExpr(val terms: List[Term]) extends Expr {
   def +(term: Term): LinExpr = LinExpr(term :: this.terms)
-  def +(other: LinExpr): LinExpr = LinExpr(this.terms ++ other.terms)
-  def <=(other: LinExpr): LinIneq = LinIneq(this, Le, other)
-  def <(other: LinExpr): LinIneq = LinIneq(this, Lt, other)
-  def >=(other: LinExpr): LinIneq = LinIneq(this, Ge, other)
-  def >(other: LinExpr): LinIneq = LinIneq(this, Gt, other)
-  def ==(other: LinExpr): LinIneq = LinIneq(this, Eq, other)
 }
+case class ArithExpr(val op: ArithmeticOp, val terms: List[Expr]) extends Expr
 
 // TODO: FIX ADT 
 // The structure below is not right. Done correctly, there should be case
@@ -48,6 +54,13 @@ sealed trait BoolOp
 case object And extends BoolOp
 case object Or extends BoolOp
 case object Not extends BoolOp
+
+sealed trait ArithmeticOp
+case object Mod extends ArithmeticOp
+case object Add extends ArithmeticOp
+case object Sub extends ArithmeticOp
+case object Mul extends ArithmeticOp
+case object Div extends ArithmeticOp
 
 sealed trait BooleanExpr {
   def and(other: BooleanExpr): BooleanExpr = Multi(And, List(this, other))
@@ -102,6 +115,20 @@ object Solver {
       // otherwise the reduce below is unable to infer the type and defaults to `Any` causing compile failure
       val fn: (SMTExprVars, SMTExprVars) => SMTExprVars = {
         case ((bv1, vars1), (bv2, vars2)) => (ctx.mkBVAdd(bv1, bv2), vars1 ++ vars2)
+      }
+      val terms = ts.map(mkExpr)
+      terms.reduce(fn)
+    }
+    case ArithExpr(op, ts) => {
+      val operation = op match {
+        case Add => ctx.mkBVAdd _
+        case Sub => ctx.mkBVSub _
+        case Mul => ctx.mkBVMul _
+        case Div => ctx.mkBVSDiv _
+        case Mod => ctx.mkBVSMod _
+      }
+      val fn: (SMTExprVars, SMTExprVars) => SMTExprVars = {
+        case ((bv1, vars1), (bv2, vars2)) => (operation(bv1, bv2), vars1 ++ vars2)
       }
       val terms = ts.map(mkExpr)
       terms.reduce(fn)
@@ -313,7 +340,7 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
     // formulae as as true solution
     val matchingFormulae = candidateFormulae.filter( computedMass(_).equals(mass) )
     val preciseMassSatFormulae = matchingFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
-    MassToFormula.reportPass(s"\t Precise match soln: $preciseMassSatFormulae")
+    MassToFormula.reportPass(s"\t Matching formulae[${preciseMassSatFormulae.size}] = $preciseMassSatFormulae")
 
     matchingFormulae
   }
@@ -607,6 +634,7 @@ object MassToFormula {
   def runAllUnitTests() {
     println(s"${Console.BLUE}Running all tests!")
     testMultiCharAtoms
+    testStableFormulaEdgeCases
     unitTestIntegralSolns()
     testDBChemicals(n = 10000, maxMz = 200.00)
     testAcetaminophen
@@ -870,6 +898,38 @@ object MassToFormula {
     }
   }
 
+  def testStableFormulaEdgeCases() = {
+    // These test cases comes from https://github.com/20n/act/pull/473#issuecomment-252290577
+    val edgeCases = Map(
+      "atp"     -> (506.995758, "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1"),
+      "choline" -> (104.106987, "InChI=1S/C5H14NO/c1-6(2,3)4-5-7/h7H,4-5H2,1-3H3/q+1"), // Choline will likely to cause problems due to quaternary ammonium
+      "glucopyranose" -> (180.063385, "InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5-,6-/m1/s1"),
+      "acetone" -> (58.041866, "InChI=1S/C3H6O/c1-3(2)4/h1-2H3"),
+      "lysine"  -> (146.10553, "InChI=1S/C6H14N2O2/c7-4-2-1-3-5(8)6(9)10/h5H,1-4,7-8H2,(H,9,10)/t5-/m0/s1"),
+      "cumene"  -> (120.093903, "InChI=1S/C9H12/c1-8(2)9-6-4-3-5-7-9/h3-8H,1-2H3"),
+      "trichloroacetic acid" -> (161.904205, "InChI=1S/C2HCl3O2/c3-2(4,5)1(6)7/h(H,6,7)"),
+      "foa"     -> (413.973694, "InChI=1S/C8HF15O2/c9-2(10,1(24)25)3(11,12)4(13,14)5(15,16)6(17,18)7(19,20)8(21,22)23/h(H,24,25)"), //has fluorines
+      "ppGpp"   -> (602.95697, "InChI=1S/C10H17N5O17P4/c11-10-13-7-4(8(17)14-10)12-2-15(7)9-5(16)6(30-36(26,27)32-34(21,22)23)3(29-9)1-28-35(24,25)31-33(18,19)20/h2-3,5-6,9,16H,1H2,(H,24,25)(H,26,27)(H2,18,19,20)(H2,21,22,23)(H3,11,13,14,17)"), 
+      "erythronolide B" -> (402.261749, "InChI=1S/C21H38O7/c1-8-15-11(3)17(23)12(4)16(22)10(2)9-21(7,27)19(25)13(5)18(24)14(6)20(26)28-15/h10-15,17-19,23-25,27H,8-9H2,1-7H3/t10-,11+,12+,13+,14-,15-,17+,18+,19-,21-/m1/s1"),
+      "calicheamicin" -> (1367.27417, "InChI=1S/C55H74IN3O21S4/c1-12-57-30-24-73-35(22-34(30)68-6)78-48-43(63)40(26(3)75-53(48)77-33-17-15-13-14-16-19-55(67)23-32(61)41(58-54(66)72-10)38(33)29(55)18-20-82-84-81-11)59-80-36-21-31(60)50(28(5)74-36)83-51(65)37-25(2)39(56)46(49(71-9)45(37)69-7)79-52-44(64)47(70-8)42(62)27(4)76-52/h13-14,18,26-28,30-31,33-36,40,42-44,47-48,50,52-53,57,59-60,62-64,67H,12,20-24H2,1-11H3,(H,58,66)/b14-13-,29-18+/t26-,27+,28-,30+,31+,33+,34+,35+,36+,40-,42+,43+,44-,47-,48-,50-,52+,53+,55-/m1/s1"),  //Will possibly cause problems due to unusual trifulfide group
+      "chloramphenicol" -> (322.012329, "InChI=1S/C11H12Cl2N2O5/c12-10(13)11(18)14-8(5-16)9(17)6-1-3-7(4-2-6)15(19)20/h1-4,8-10,16-17H,5H2,(H,14,18)/t8-,9-/m1/s1"),
+      "teixobactin" -> (1241.713257, "InChI=1S/C58H95N15O15/c1-12-28(5)42(70-49(79)37(61-11)23-34-19-17-16-18-20-34)53(83)67-39(26-74)51(81)65-36(21-22-41(59)76)48(78)69-44(30(7)14-3)55(85)71-43(29(6)13-2)54(84)68-40(27-75)52(82)73-46-33(10)88-57(87)45(31(8)15-4)72-50(80)38(24-35-25-62-58(60)64-35)66-47(77)32(9)63-56(46)86/h16-20,28-33,35-40,42-46,61,74-75H,12-15,21-27H2,1-11H3,(H2,59,76)(H,63,86)(H,65,81)(H,66,77)(H,67,83)(H,68,84)(H,69,78)(H,70,79)(H,71,85)(H,72,80)(H,73,82)(H3,60,62,64)/t28-,29-,30-,31-,32-,33-,35-,36+,37+,38-,39-,40-,42-,43-,44+,45-,46+/m0/s1")  
+    )
+
+    val abortIfFail = false
+
+    val stableCnstr = new StableChemicalFormulae
+    for ((name, massInChI) <- edgeCases) {
+      val (mass, inchi) = massInChI
+      val parsed: Option[(String, Map[Atom, Int])] = formulaFromInChI(inchi)
+      assert(parsed.isDefined, s"Failed: $name, Invalid InChI: $inchi")
+      val formula = parsed match { case Some((str, form)) => form }
+      val passes = stableCnstr.isValid(formula)
+      val msg = s"Failed: $name, Mass: $mass, Formula: $formula"
+      if (abortIfFail) assert(passes, msg) else println(msg)
+    }
+  }
+
 }
 
 sealed trait Specials {
@@ -877,6 +937,10 @@ sealed trait Specials {
   def constraints(): BooleanExpr
   def describe(): String
   def check(f: ChemicalFormula): Boolean
+  def isValid(f: ChemicalFormula): Boolean = {
+    val fillOut = AllAtoms.filterNot(f contains _).map(a => a -> 0).toMap
+    check(f ++ fillOut)
+  }
 
   def t(c: Int, a: Atom) = MassToFormula.term(c, a)
   def t(a: Atom) = MassToFormula.term(1, a)
@@ -966,7 +1030,9 @@ class StableChemicalFormulae extends Specials {
     val c3 = e(P) < e(5) and (e(P) > e(0) implies e(O) > e(3, P))
 
     // constraint c4 above
-    val c4 = e(1) == e(1) // TODO: need to add constraint on halogens
+    val halogensAndH = e(H) + e(Cl) + e(Br) + e(I) + e(F)
+    val mod2Equals = (halogensAndH mod e(2)) == (hMax mod e(2))
+    val c4 = halogensAndH <= hMax and mod2Equals
 
     val constraint = c1 and c2 and c3 and c4
     constraint
@@ -987,7 +1053,8 @@ class StableChemicalFormulae extends Specials {
     val c3 = f(P) < 5 && ( !(f(P) > 0) || (f(O) > 3 * f(P)))
 
     // constraint c4 above
-    val c4 = true // TODO: need to add constraint on halogens
+    val halogensAndH = f(H) + f(Cl) + f(Br) + f(I) + f(F)
+    val c4 = halogensAndH <= hMax && halogensAndH % 2 == hMax % 2
 
     val constraint = c1 && c2 && c3 && c4
     constraint
