@@ -8,6 +8,7 @@ moleculeRenderer <- function(input, output, session, inchi, height) {
   inchi.string <- reactive({
     inchi <- inchi()
     inchi.string <- inchi[1]
+    logdebug(inchi.string)
     shiny::validate(
       need(startsWith(inchi.string, "InChI="), "Should start with InChI")
     )
