@@ -103,7 +103,7 @@ class PeakHits(val origin: Provenance, val peakSpectra: PeakSpectra) {
   // a peak we need to output more than a double, we need a way of storing them elsewhere. What we do
   // is output a double (hashCode) in the peak map, basically an ID that can then be located in another
   // place in the output json. That "another" place are the `extraCodes`
-  def extraCodes(): Map[Double, List[String]] = Map()
+  def extraCodes(): Map[Double, List[(String, Option[String])]] = Map()
 
   // when we take the ratio (and install -1.0 missing peaks), the output metrics will be such:
   // (+1.0,\inf): if signals present in ALL samples and OVER expressed in hypotheses vs controls
@@ -244,6 +244,7 @@ object HdrMolIon extends TSVHdr("ion")  // if we map to molecules, the ion of wh
 object HdrMolFormula extends TSVHdr("formula") // if we map to formula, the formula of the molecule
 object HdrMolInChI extends TSVHdr("inchi") // if we map to InChI, the inchi of the molecule
 object HdrMolHitSource extends TSVHdr("hitsrc") // if we map to formula/inchi, where the hit was found & DB ID
+object HdrName extends TSVHdr("name") // if we map to formula/inchi, the name of the formula/inchi
 
 trait CanReadTSV {
   type H <: HasId // head types in the first row
@@ -810,7 +811,7 @@ object UntargetedMetabolomics {
       new RawPeaks(provenance, PeakSpectra.fromDeepLearnt(deepCalledPeaks))
     }
 
-    val differential: RawPeaks = {
+    val differential = {
       if (cmdLine has optGetDifferentialFromDL) {
         assert(controls == null && hypotheses == null)
         fromDeepLearnDiff(dlDifferentials)
@@ -836,7 +837,7 @@ object UntargetedMetabolomics {
       RemoveGradientBoundaries.filter(differential, regions.toSet)
     }
  
-    val rslt: PeakHits = if (!mapToMassAndIons) {
+    val rslt = if (!mapToMassAndIons) {
       diffFiltered
     } else {
       // map the peaks to candidate molecule masses
@@ -847,7 +848,7 @@ object UntargetedMetabolomics {
       candidateMols
     }
 
-    val inchis: PeakHits = if (!mapToInChIsUsingList) {
+    val inchis = if (!mapToInChIsUsingList) {
       rslt
     } else {
       println(s"Mapping to structures using inchi list")
@@ -855,7 +856,7 @@ object UntargetedMetabolomics {
       new PeakToStructure().StructureHits.toStructureHitsUsingLists(rslt, inchiListFile)
     }
 
-    val formulae: PeakHits = if (!mapToFormulaUsingList && !mapToFormulaUsingNavigableMap) {
+    val formulae = if (!mapToFormulaUsingList && !mapToFormulaUsingNavigableMap) {
       inchis
     } else if (!mapToFormulaUsingNavigableMap) {
       println(s"Mapping to formula using list")
@@ -874,12 +875,7 @@ object UntargetedMetabolomics {
       new PeakToStructure().FormulaHits.toFormulaHitsUsingSolver(formulae)
     }
 
-    def codesToJson(kv: (Double, List[String])): Map[String, JsValue] = {
-      val (k, v) = kv
-      Map("code" -> k.toJson, "vals" -> v.toJson)
-    }
-
-    def codesWithNamesToJson(kv: (Double, Map[String, String])): Map[String, JsValue] = {
+    def codesToJson(kv: (Double, List[(String, Option[String])])): Map[String, JsValue] = {
       val (k, v) = kv
       Map("code" -> k.toJson, "vals" -> v.toJson)
     }
@@ -892,7 +888,6 @@ object UntargetedMetabolomics {
     val metaForFormulae = if (!mapToFormulaUsingList && !mapToFormulaUsingNavigableMap) {
       List()
     } else {
-      println(formulae)
       formulae.extraCodes.map(codesToJson)
     }
 
