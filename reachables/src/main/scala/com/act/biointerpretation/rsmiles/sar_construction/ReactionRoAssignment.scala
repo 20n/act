@@ -2,6 +2,7 @@ package com.act.biointerpretation.rsmiles.sar_construction
 
 import java.io.{BufferedWriter, File, FileWriter}
 
+import com.act.analysis.chemicals.molecules.MoleculeFormat.MoleculeFormatType
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus
 import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
@@ -103,7 +104,14 @@ object ReactionRoAssignment {
     val predictionSubstrateInchis: List[Set[String]] =
       roPrediction.getCorpus.asScala.map(prediction => {
         val productSet = prediction.getSubstrateInchis.asScala.toSet
-        productSet.map(x => MoleculeExporter.exportMolecule(MoleculeImporter.importMolecule(x), MoleculeFormat.stdInchi))
+        productSet.map(x => MoleculeExporter.exportMolecule(
+          MoleculeImporter.importMolecule(x,
+            MoleculeFormatType(MoleculeFormat.stdInchi.value,
+              List(MoleculeFormat.CleaningOptions.clean2d,
+                MoleculeFormat.CleaningOptions.neutralize,
+                MoleculeFormat.CleaningOptions.aromatize))
+          ),
+          MoleculeFormat.stdInchi))
       }).toList
 
     // Only get reactions with matching input substrates.  We use a set so that the order doesn't matter.
