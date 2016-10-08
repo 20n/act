@@ -144,7 +144,7 @@ lcmsConfigTraces <- function(input, output, session) {
       # `local` evaluates an expression in a local environment
       local({
         my_i <- i
-        callModule(moleculeRenderer, paste0("plot", my_i), reactive(matching.inchis[my_i]), "200px")
+        callModule(moleculeRenderer, paste0("plot", my_i), reactive(matching.inchis[my_i]), reactive(matching.inchis[my_i]), "200px")
       })
     }
     # get a list of rendered molecule
