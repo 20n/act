@@ -6,6 +6,7 @@ kMolStructureCacheFolder <- "/home/thomas/data/mol-structure-cache/"
 moleculeRenderer <- function(input, output, session, inchi, height) {
   
   inchi.string <- reactive({
+    logdebug(inchi())
     inchi.string <- inchi()[1]
     shiny::validate(
       need(startsWith(inchi.string, "InChI="), "Should start with InChI")
