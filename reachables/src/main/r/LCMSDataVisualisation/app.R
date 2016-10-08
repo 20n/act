@@ -99,8 +99,8 @@ ui <- fluidPage(
                       mainPanel(lcmsSingleTraceUI("simple"))
              ),
              tabPanel("Multi", value = "multi",
-                      sidebarPanel(lcmsMutliTracesInput("multi")),
-                      mainPanel(lcmsMutliTracesUI("multi"))
+                      sidebarPanel(lcmsMultiTracesInput("multi")),
+                      mainPanel(lcmsMultiTracesUI("multi"))
              ),
              tabPanel("Configuration-based", value = "config",
                       sidebarPanel(lcmsConfigTracesInput("config")),
