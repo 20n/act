@@ -127,6 +127,7 @@ lcmsConfigTraces <- function(input, output, session) {
   matching.formulae <- reactive({
     matching.formulae.code <- selected.peak()$matching_formulae
     # get the  the matching inchis for this hashcode
+    print(config()$matching_formulae_hashes)
     matching.formulae <- with(config()$matching_formulae_hashes, {
       unlist(vals[code == matching.formulae.code]) 
     })
