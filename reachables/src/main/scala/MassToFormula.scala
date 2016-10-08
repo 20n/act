@@ -332,7 +332,6 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
     }).flatten
 
     val approxMassSat = candidateFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
-    MassToFormula.reportPass(s"\t Int match soln with +-${delta}: ${approxMassSat.size}")
 
     // candidateFormulae has all formulae for deltas to the closest int mass
     // For each formula that we get, we need to calculate whether this is truly the right
@@ -340,7 +339,9 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
     // formulae as as true solution
     val matchingFormulae = candidateFormulae.filter( computedMass(_).equals(mass) )
     val preciseMassSatFormulae = matchingFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
-    MassToFormula.reportPass(s"\t Matching formulae[${preciseMassSatFormulae.size}] = $preciseMassSatFormulae")
+
+    println(s"\t Int match soln with +-${delta}: ${approxMassSat.size}")
+    println(s"\t Matching formulae[${preciseMassSatFormulae.size}] = $preciseMassSatFormulae")
 
     matchingFormulae
   }
@@ -440,232 +441,7 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
 
 }
 
-object MassToFormula {
-  def atomToVar(a: Atom) = Var(a.symbol)
-  def term(c: Int) = Term(Const(c), oneVar)
-  def term(c: Int, a: Atom) = Term(Const(c), MassToFormula.atomToVar(a))
-  // See comment on `onec` in `buildConstraintOverInts` for how we use `oneVar`
-  // to anchor constants, by being able to put them in terms that need to be of
-  // the form Constant x Variable.
-  def oneVar  = Var("v=1")
-
-  // These can be overwritten by command line arguments to specific files
-  // We can pass them around as arguments, but it was getting very painful.
-  // So we chicken-ed out and used `var`s
-  var outStream = new PrintWriter(System.out)
-  var errStream = new PrintWriter(System.err)
-  var errStreamToConsole = true
-  var outStreamToConsole = true
-
-  val allSpecials = typeOf[Specials].typeSymbol.asClass.knownDirectSubclasses
-  val allSpecialNm = allSpecials.map(_.toString.stripPrefix("class "))
-
-  def main(args: Array[String]) {
-    val className = this.getClass.getCanonicalName
-    val opts = List(optMz, optMassFile, optOutputFile, optOutFailedTests, optRunTests, optSpecials)
-    val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
-
-    outStream = {
-      if (cmdLine has optOutputFile) {
-        outStreamToConsole = false
-        new PrintWriter(cmdLine get optOutputFile)
-      } else {
-        new PrintWriter(System.out)
-      }
-    }
-
-    errStream = {
-      if (cmdLine has optOutFailedTests) {
-        errStreamToConsole = false
-        new PrintWriter(cmdLine get optOutFailedTests)
-      } else {
-        new PrintWriter(System.err)
-      }
-    }
-
-    val specials: Set[Specials] = {
-      if (cmdLine has optSpecials) {
-        val spls = (cmdLine getMany optSpecials).toSet
-        // check if the provided specialization is valid, before loading it as a class
-        if (!spls.forall(s => allSpecialNm.contains(s))) {
-          errStream.println("Invalid specialization provided.")
-          errStream.println("Specializations of solver supported: " + allSpecialNm.mkString(", "))
-          errStream.flush
-          System.exit(1)
-        }
-        def nameToClass(s: String) = {
-          val fullyQualifiedName = this.getClass.getPackage.getName + "." + s
-          Class.forName(fullyQualifiedName)
-          .newInstance
-          .asInstanceOf[Specials]
-        }
-        val splConstraints = spls.map(nameToClass)
-        splConstraints
-      } else {
-        Set()
-      }
-    }
-
-    if (cmdLine has optRunTests) {
-      // TODO: Eventually, move to scalatest.
-      runAllUnitTests
-    } else if ((cmdLine has optMz) && !(cmdLine has optMassFile)) {
-      val mass = (cmdLine get optMz).toDouble
-      solve(specials)(List(mass))
-    } else if ((cmdLine has optMassFile) && !(cmdLine has optMz)) {
-      val source = scala.io.Source.fromFile(cmdLine get optMassFile)
-      val massStrs = try source.getLines.toList finally source.close()
-      // expect input lines to be tab separated with the first column the mass
-      // and the rest can have meta data with them (e.g., the err output file)
-      // we split by tabs and then pick the first element to convert to double
-      solve(specials)(massStrs.map(_.split("\t")(0).toDouble))
-    } else {
-      // we cannot handle both a single mass and a mass file on the command line
-      // so write a snarky message to user, and abort! Ouch.
-      errStream.println(s"You specified both a single mass and a mass file as input. Is one or the other? Aborting.")
-      System.exit(-1)
-    }
-
-  }
-
-  def solve(specials: Set[Specials])(masses: List[Double]): Unit = {
-    val f = new MassToFormula(specials)
-    masses.foreach( m => {
-      val solns = f.solve(new MonoIsotopicMass(m))
-      val allChemicalFormulae = solns.map(f.buildChemFormulaA)
-      outStream.write(m + "\t" + allChemicalFormulae.mkString("\t") + "\n")
-      outStream.flush
-    })
-  }
-
-  def solveNCheck(test: (Double, List[Atom], Map[Atom, Int], String)) {
-    val (mass, atoms, expected, inchi) = test
-    val formulator = new MassToFormula(atomSpace = atoms)
-
-    val atomsInt = atoms.map(a => a.mass.rounded(0) * expected(a)).sum
-    val massRounded = math round mass
-    val solnsFound = formulator.solve(new MonoIsotopicMass(mass))
-    val timeTaken = Solver.getLastSolveTimeTaken / 1000000.0 // ns to milliseconds
-    val isPass = solnsFound.contains(expected)
-    val passFail = if (isPass) "PASS" else "FAIL"
-
-    val log = List(s"$mass",
-                      s"$atoms",
-                      s"${formulator.buildChemFormulaA(expected)}",
-                      s"rounded(mass)=$massRounded",
-                      s"rounded(atoms)=$atomsInt",
-                      s"$inchi",
-                      s"$passFail",
-                      s"$timeTaken").mkString("\t")
-
-    if (isPass)
-      reportPass(s"$log")
-    else
-      reportFail(s"$log")
-  }
-
-  // Do not write color codes if we are writing to files
-  // But when writing to screen it is good to see visual indicators
-  def reportFail(s: String) = reportHelper(s, errStream, if (errStreamToConsole) Console.RED else "")
-  def reportPass(s: String) = reportHelper(s, outStream, if (outStreamToConsole) Console.GREEN else "")
-
-  def reportHelper(s: String, stream: PrintWriter, color: String): Unit = {
-    stream.write(color)
-    stream.write(s)
-    stream.println()
-    stream.flush
-  }
-
-  val optMz = new OptDesc(
-                    param = "m",
-                    longParam = "mass",
-                    name = "monoIsotopic value",
-                    desc = """Given a single monoisotopic mass, compute possible chemical formulae.""",
-                    isReqd = false, hasArg = true)
-
-  val optMassFile = new OptDesc(
-                    param = "i",
-                    longParam = "file-of-masses",
-                    name = "filename",
-                    desc = """Input file with one line per mass. It can have other metadata
-                             |associated with that mass in TSV form after the mass. Just ensure
-                             |that the monoIsotopic mass is the first column. This goes hand in
-                             |hand with the output of err-logfile. We can feed the output failed
-                             |solvings back as input and iteratively improve the algorithm until
-                             |it can solve all masses.""".stripMargin,
-                    isReqd = false, hasArg = true)
-
-  val optSpecials = new OptDesc(
-                    param = "s",
-                    longParam = "specials",
-                    name = "restrictions",
-                    desc = s"""Do solving in a specialized, i.e., restricted space of solutions
-                             |For example, under a setting where the num carbons dominates.
-                             |To specialize the solver to that, pass it MostlyCarbons.
-                             |Any of the following, or a comma separated list of multiple are
-                             |supported: ${allSpecialNm}.""".stripMargin,
-                    isReqd = false, hasArgs = true)
-
-  val optOutputFile = new OptDesc(
-                    param = "o",
-                    longParam = "formulae-outfiles",
-                    name = "filename",
-                    desc = """Output file with one line for each input monoIsotopic mass,
-                             |Each line is tab separated list of formulas for that mass.""".stripMargin,
-                    isReqd = false, hasArg = true)
-
-  val optOutFailedTests = new OptDesc(
-                    param = "l",
-                    longParam = "err-logfile",
-                    name = "filename",
-                    desc = """There are a few knobs in solving (delta, atoms, decimal),
-                             |We also run tests by pulling from the DB. So we log cases
-                             |where the solving fails to compute the candidate formula.
-                             |We log `mass inchi delta atomset otherknobs..` in TSV form.""".stripMargin,
-                    isReqd = false, hasArg = true)
-
-  val optRunTests = new OptDesc(
-                    param = "t",
-                    longParam = "run-tests",
-                    name = "run regression tests",
-                    desc = """Run regression tests. This will take some time.""",
-                    isReqd = false, hasArg = false)
-
-  def runAllUnitTests() {
-    println(s"${Console.BLUE}Running all tests!")
-    testMultiCharAtoms
-    testStableFormulaEdgeCases
-    unitTestIntegralSolns()
-    testDBChemicals(n = 10000, maxMz = 200.00)
-    testAcetaminophen
-  }
-
-  def testAcetaminophen() {
-    val apapSoln: Map[Atom, Int] = Map(C->8, H->9, N->1, O->2, S->0, P->0)
-    val inchi = "InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)"
-    val apapCases = Set[(Double, List[Atom], Map[Atom, Int], String)](
-      // the formula has to be specified to at least a certain # digits of precision
-      // the number of digits of precision required is specified under MonoIsotopicMass
-      // One case that is well used is 3 digits of precision. If you specify less,
-      // e.g., 151.06 instead of 151.063 for apap, a valid solution will not be found
-      (151.063324, List(C, H, N, O), apapSoln - (S, P), inchi),
-      (151.063,    List(C, H, N, O), apapSoln - (S, P), inchi),
-      (151.063324, AllAtoms, apapSoln, inchi),
-      (151.063,    AllAtoms, apapSoln, inchi)
-    )
-
-    apapCases foreach solveNCheck
-  }
-
-  def testMultiCharAtoms() {
-    assert(getFormulaMap("C20BrCl2").equals(Map(C->20, Br->1, Cl->2)))
-    assert(getFormulaMap("BrCl2").equals(Map(Br->1, Cl->2)))
-    assert(getFormulaMap("BrC2").equals(Map(Br->1, C->2)))
-    assert(getFormulaMap("CCl").equals(Map(C->1, Cl->1)))
-    assert(getFormulaMap("ClC").equals(Map(C->1, Cl->1)))
-    assert(getFormulaMap("IFClH20CBrN1OP2").equals(Map(C->1, H->20, N->1, O->1, P->2, Cl->1, Br->1, I->1, F ->1)))
-  }
-
+trait HandleFormula {
   def formulaFromInChI(i: String) = {
     try {
       // This extracts the formula string specified in the InChI.
@@ -766,6 +542,366 @@ object MassToFormula {
       val map = curr + (atom -> atomCnt)
       getFormulaMapStep(rest2, map)
     }
+  }
+}
+
+object MassToFormula extends HandleFormula {
+  def atomToVar(a: Atom) = Var(a.symbol)
+  def term(c: Int) = Term(Const(c), oneVar)
+  def term(c: Int, a: Atom) = Term(Const(c), MassToFormula.atomToVar(a))
+  // See comment on `onec` in `buildConstraintOverInts` for how we use `oneVar`
+  // to anchor constants, by being able to put them in terms that need to be of
+  // the form Constant x Variable.
+  def oneVar  = Var("v=1")
+
+  // These can be overwritten by command line arguments to specific files
+  // We can pass them around as arguments, but it was getting very painful.
+  // So we chicken-ed out and used `var`s
+  var outStream = new PrintWriter(System.out)
+  var errStream = new PrintWriter(System.err)
+  var errStreamToConsole = true
+  var outStreamToConsole = true
+
+  val allSpecials = typeOf[Specials].typeSymbol.asClass.knownDirectSubclasses
+  val allSpecialNm = allSpecials.map(_.toString.stripPrefix("class "))
+
+  def main(args: Array[String]) {
+    val className = this.getClass.getCanonicalName
+    val opts = List(optMz, optMassFile, optOutputFile, optOutFailedTests, optRunTests, optSpecials)
+    val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
+
+    outStream = {
+      if (cmdLine has optOutputFile) {
+        outStreamToConsole = false
+        new PrintWriter(cmdLine get optOutputFile)
+      } else {
+        new PrintWriter(System.out)
+      }
+    }
+
+    errStream = {
+      if (cmdLine has optOutFailedTests) {
+        errStreamToConsole = false
+        new PrintWriter(cmdLine get optOutFailedTests)
+      } else {
+        new PrintWriter(System.err)
+      }
+    }
+
+    val specials: Set[Specials] = {
+      if (cmdLine has optSpecials) {
+        val spls = (cmdLine getMany optSpecials).toSet
+        // check if the provided specialization is valid, before loading it as a class
+        if (!spls.forall(s => allSpecialNm.contains(s))) {
+          errStream.println("Invalid specialization provided.")
+          errStream.println("Specializations of solver supported: " + allSpecialNm.mkString(", "))
+          errStream.flush
+          System.exit(1)
+        }
+        def nameToClass(s: String) = {
+          val fullyQualifiedName = this.getClass.getPackage.getName + "." + s
+          Class.forName(fullyQualifiedName)
+          .newInstance
+          .asInstanceOf[Specials]
+        }
+        val splConstraints = spls.map(nameToClass)
+        splConstraints
+      } else {
+        Set()
+      }
+    }
+
+    if (cmdLine has optRunTests) {
+      // TODO: Eventually, move to scalatest.
+      new TestMassToFormula(outStreamToConsole, outStream, errStreamToConsole, errStream).runAllUnitTests
+    } else if ((cmdLine has optMz) && !(cmdLine has optMassFile)) {
+      val mass = (cmdLine get optMz).toDouble
+      solve(specials)(List(mass))
+    } else if ((cmdLine has optMassFile) && !(cmdLine has optMz)) {
+      val source = scala.io.Source.fromFile(cmdLine get optMassFile)
+      val massStrs = try source.getLines.toList finally source.close()
+      // expect input lines to be tab separated with the first column the mass
+      // and the rest can have meta data with them (e.g., the err output file)
+      // we split by tabs and then pick the first element to convert to double
+      solve(specials)(massStrs.map(_.split("\t")(0).toDouble))
+    } else {
+      // we cannot handle both a single mass and a mass file on the command line
+      // so write a snarky message to user, and abort! Ouch.
+      errStream.println(s"You specified both a single mass and a mass file as input. Is one or the other? Aborting.")
+      System.exit(-1)
+    }
+
+  }
+
+  def solve(specials: Set[Specials])(masses: List[Double]): Unit = {
+    val f = new MassToFormula(specials)
+    masses.foreach( m => {
+      val solns = f.solve(new MonoIsotopicMass(m))
+      val allChemicalFormulae = solns.map(f.buildChemFormulaA)
+      outStream.write(m + "\t" + allChemicalFormulae.mkString("\t") + "\n")
+      outStream.flush
+    })
+  }
+
+  val optMz = new OptDesc(
+                    param = "m",
+                    longParam = "mass",
+                    name = "monoIsotopic value",
+                    desc = """Given a single monoisotopic mass, compute possible chemical formulae.""",
+                    isReqd = false, hasArg = true)
+
+  val optMassFile = new OptDesc(
+                    param = "i",
+                    longParam = "file-of-masses",
+                    name = "filename",
+                    desc = """Input file with one line per mass. It can have other metadata
+                             |associated with that mass in TSV form after the mass. Just ensure
+                             |that the monoIsotopic mass is the first column. This goes hand in
+                             |hand with the output of err-logfile. We can feed the output failed
+                             |solvings back as input and iteratively improve the algorithm until
+                             |it can solve all masses.""".stripMargin,
+                    isReqd = false, hasArg = true)
+
+  val optSpecials = new OptDesc(
+                    param = "s",
+                    longParam = "specials",
+                    name = "restrictions",
+                    desc = s"""Do solving in a specialized, i.e., restricted space of solutions
+                             |For example, under a setting where the num carbons dominates.
+                             |To specialize the solver to that, pass it MostlyCarbons.
+                             |Any of the following, or a comma separated list of multiple are
+                             |supported: ${allSpecialNm}.""".stripMargin,
+                    isReqd = false, hasArgs = true)
+
+  val optOutputFile = new OptDesc(
+                    param = "o",
+                    longParam = "formulae-outfiles",
+                    name = "filename",
+                    desc = """Output file with one line for each input monoIsotopic mass,
+                             |Each line is tab separated list of formulas for that mass.""".stripMargin,
+                    isReqd = false, hasArg = true)
+
+  val optOutFailedTests = new OptDesc(
+                    param = "l",
+                    longParam = "err-logfile",
+                    name = "filename",
+                    desc = """There are a few knobs in solving (delta, atoms, decimal),
+                             |We also run tests by pulling from the DB. So we log cases
+                             |where the solving fails to compute the candidate formula.
+                             |We log `mass inchi delta atomset otherknobs..` in TSV form.""".stripMargin,
+                    isReqd = false, hasArg = true)
+
+  val optRunTests = new OptDesc(
+                    param = "t",
+                    longParam = "run-tests",
+                    name = "run regression tests",
+                    desc = """Run regression tests. This will take some time.""",
+                    isReqd = false, hasArg = false)
+
+}
+
+sealed trait Specials {
+  type ChemicalFormula = Map[Atom, Int]
+  def constraints(): BooleanExpr
+  def describe(): String
+  def check(f: ChemicalFormula): Boolean
+  def isValid(f: ChemicalFormula): Boolean = {
+    val fillOut = AllAtoms.filterNot(f contains _).map(a => a -> 0).toMap
+    check(f ++ fillOut)
+  }
+
+  def t(c: Int, a: Atom) = MassToFormula.term(c, a)
+  def t(a: Atom) = MassToFormula.term(1, a)
+  def t(c: Int) = MassToFormula.term(c)
+  def toExpr(t: Term) = LinExpr(List(t))
+  def e(c: Int, a: Atom) = toExpr(t(c, a))
+  def e(a: Atom) = toExpr(t(a))
+  def e(c: Int) = toExpr(t(c))
+}
+
+class MostlyCarbons extends Specials {
+  def describe() = "C>=N + C>=O + C>=S + C>=P"
+  def constraints() = {
+    val cn = e(C) >= e(N)
+    val co = e(C) >= e(O)
+    val cs = e(C) >= e(S)
+    val cp = e(C) >= e(P)
+    cn and co and cs and cp
+  }
+  def check(f: ChemicalFormula) = {
+    val cn = f(C) >= f(N)
+    val co = f(C) >= f(O)
+    val cs = f(C) >= f(S)
+    val cp = f(C) >= f(P)
+    cn && co && cs && cp
+  }
+}
+
+class MoreHThanC extends Specials {
+  def describe() = "H>=C"
+  def constraints() = e(H) >= e(C)
+  def check(f: ChemicalFormula) = f(H) >= f(C)
+}
+
+class LessThan3xH extends Specials {
+  def describe() = "3C>=H"
+  def constraints() = e(3, C) >= e(H)
+  def check(f: ChemicalFormula) = 3 * f(C) >= f(H)
+}
+
+class StableChemicalFormulae extends Specials {
+  def describe() = "Stable chemical formulae"
+
+  //
+    // These constraints describe the space of stable organic chemical formulae
+    // As described in Issue #463 and PR #473 discussions
+
+    // **************** Constraint c1 *******************
+    // For the fully reduced molecule, the number of unoccupied bonds is:
+    // cBonds = (C-2)*2 + 6 = 2C + 2
+    // Assuming we only allow heteroatoms to be directly attached to a carbon, then:
+    // numHetero = N+S+O;
+    // numHetero <= cBonds;
+    // **************** Constraint c2 *******************
+    // The maximal value for H is given by:
+    // hMax = 2N  + S + O + Cbonds - numHetero;
+    // The permitted values of H are given by:
+    // for(int H=Hmax; H>=0; H=H-2)
+    // hMax is 2N+S+O+cBonds-negNumHetero = 2N+S+O+(2C+2)-(N+S+O) = N+2C+2
+    // ensuring H is moves in exactly 2 increments requires creating another
+    // free variable `Z` such that H = N+2C+2 - 2*Z, where Z >= 0. That is
+    // more complicated. [ TODO later ]
+    // **************** Constraint c3 *******************
+    // For now we just ensure 0 <= H <= hMax
+    // If `ph` represents the number of phosphate groups in the molecule:
+    // There must be at least one O already present.
+    // The total number of O's present must be greater than 3*P.
+    // **************** Constraint c4 *******************
+    // TODO: implement halogen constraints:
+    // int halogensAndHydrogens = H + Cl + Br + I + F //For the final formula
+    // halogensAndHydrogens <= Hmax
+    // halogensAndHydrogens %2 == Hmax % 2
+  //
+
+  def constraints() = {
+    // constraint c1 above
+    val cBonds = e(2, C) + e(2)
+    val numHetero = e(N) + e(S) + e(O)
+    val c1 = numHetero <= cBonds
+
+    // constraint c2 above
+    val negNumHetero = e(-1, N) + e(-1, S) + e(-1, O)
+    val hMax = e(2, N) + e(S) + e(O) + cBonds + negNumHetero
+    val c2 = e(H) >= e(0) and e(H) <= hMax
+
+    // constraint c3 above
+    val c3 = e(P) < e(5) and (e(P) > e(0) implies e(O) > e(3, P))
+
+    // constraint c4 above
+    val halogensAndH = e(H) + e(Cl) + e(Br) + e(I) + e(F)
+    val mod2Equals = (halogensAndH mod e(2)) == (hMax mod e(2))
+    val c4 = halogensAndH <= hMax and mod2Equals
+
+    val constraint = c1 and c2 and c3 and c4
+    constraint
+  }
+
+  def check(f: ChemicalFormula) = {
+    // constraint c1 above
+    val cBonds = 2 * f(C) + 2
+    val numHetero = f(N) + f(S) + f(O)
+    val c1 = numHetero <= cBonds
+
+    // constraint c2 above
+    val negNumHetero = -f(N) + -f(S) + -f(O)
+    val hMax = 2 * f(N) + f(S) + f(O) + cBonds + negNumHetero
+    val c2 = f(H) >= 0 && f(H) <= hMax
+
+    // constraint c3 above
+    val c3 = f(P) < 5 && ( !(f(P) > 0) || (f(O) > 3 * f(P)))
+
+    // constraint c4 above
+    val halogensAndH = f(H) + f(Cl) + f(Br) + f(I) + f(F)
+    val c4 = halogensAndH <= hMax && halogensAndH % 2 == hMax % 2
+
+    val constraint = c1 && c2 && c3 && c4
+    constraint
+  }
+}
+
+class TestMassToFormula(outToConsole: Boolean, out: PrintWriter, errToConsole: Boolean, err: PrintWriter) extends HandleFormula {
+
+  def runAllUnitTests() {
+    println(s"${Console.BLUE}Running all tests!")
+    testMultiCharAtoms
+    testStableFormulaEdgeCases
+    unitTestIntegralSolns()
+    testDBChemicals(n = 10000, maxMz = 200.00)
+    testAcetaminophen
+  }
+
+  def solveNCheck(test: (Double, List[Atom], Map[Atom, Int], String)) {
+    val (mass, atoms, expected, inchi) = test
+    val formulator = new MassToFormula(atomSpace = atoms)
+
+    val atomsInt = atoms.map(a => a.mass.rounded(0) * expected(a)).sum
+    val massRounded = math round mass
+    val solnsFound = formulator.solve(new MonoIsotopicMass(mass))
+    val timeTaken = Solver.getLastSolveTimeTaken / 1000000.0 // ns to milliseconds
+    val isPass = solnsFound.contains(expected)
+    val passFail = if (isPass) "PASS" else "FAIL"
+
+    val log = List(s"$mass",
+                      s"$atoms",
+                      s"${formulator.buildChemFormulaA(expected)}",
+                      s"rounded(mass)=$massRounded",
+                      s"rounded(atoms)=$atomsInt",
+                      s"$inchi",
+                      s"$passFail",
+                      s"$timeTaken").mkString("\t")
+
+    if (isPass)
+      reportPass(s"$log")
+    else
+      reportFail(s"$log")
+  }
+
+  // Do not write color codes if we are writing to files
+  // But when writing to screen it is good to see visual indicators
+  def reportFail(s: String) = reportHelper(s, err, if (errToConsole) Console.RED else "")
+  def reportPass(s: String) = reportHelper(s, out, if (outToConsole) Console.GREEN else "")
+
+  def reportHelper(s: String, stream: PrintWriter, color: String): Unit = {
+    stream.write(color)
+    stream.write(s)
+    stream.println()
+    stream.flush
+  }
+
+  def testAcetaminophen() {
+    val apapSoln: Map[Atom, Int] = Map(C->8, H->9, N->1, O->2, S->0, P->0)
+    val inchi = "InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)"
+    val apapCases = Set[(Double, List[Atom], Map[Atom, Int], String)](
+      // the formula has to be specified to at least a certain # digits of precision
+      // the number of digits of precision required is specified under MonoIsotopicMass
+      // One case that is well used is 3 digits of precision. If you specify less,
+      // e.g., 151.06 instead of 151.063 for apap, a valid solution will not be found
+      (151.063324, List(C, H, N, O), apapSoln - (S, P), inchi),
+      (151.063,    List(C, H, N, O), apapSoln - (S, P), inchi),
+      (151.063324, AllAtoms, apapSoln, inchi),
+      (151.063,    AllAtoms, apapSoln, inchi)
+    )
+
+    apapCases foreach solveNCheck
+  }
+
+  def testMultiCharAtoms() {
+    assert(getFormulaMap("C20BrCl2").equals(Map(C->20, Br->1, Cl->2)))
+    assert(getFormulaMap("BrCl2").equals(Map(Br->1, Cl->2)))
+    assert(getFormulaMap("BrC2").equals(Map(Br->1, C->2)))
+    assert(getFormulaMap("CCl").equals(Map(C->1, Cl->1)))
+    assert(getFormulaMap("ClC").equals(Map(C->1, Cl->1)))
+    assert(getFormulaMap("IFClH20CBrN1OP2").equals(Map(C->1, H->20, N->1, O->1, P->2, Cl->1, Br->1, I->1, F ->1)))
   }
 
   def testDBChemicals(n: Int, maxMz: Double) {
@@ -930,133 +1066,4 @@ object MassToFormula {
     }
   }
 
-}
-
-sealed trait Specials {
-  type ChemicalFormula = Map[Atom, Int]
-  def constraints(): BooleanExpr
-  def describe(): String
-  def check(f: ChemicalFormula): Boolean
-  def isValid(f: ChemicalFormula): Boolean = {
-    val fillOut = AllAtoms.filterNot(f contains _).map(a => a -> 0).toMap
-    check(f ++ fillOut)
-  }
-
-  def t(c: Int, a: Atom) = MassToFormula.term(c, a)
-  def t(a: Atom) = MassToFormula.term(1, a)
-  def t(c: Int) = MassToFormula.term(c)
-  def toExpr(t: Term) = LinExpr(List(t))
-  def e(c: Int, a: Atom) = toExpr(t(c, a))
-  def e(a: Atom) = toExpr(t(a))
-  def e(c: Int) = toExpr(t(c))
-}
-
-class MostlyCarbons extends Specials {
-  def describe() = "C>=N + C>=O + C>=S + C>=P"
-  def constraints() = {
-    val cn = e(C) >= e(N)
-    val co = e(C) >= e(O)
-    val cs = e(C) >= e(S)
-    val cp = e(C) >= e(P)
-    cn and co and cs and cp
-  }
-  def check(f: ChemicalFormula) = {
-    val cn = f(C) >= f(N)
-    val co = f(C) >= f(O)
-    val cs = f(C) >= f(S)
-    val cp = f(C) >= f(P)
-    cn && co && cs && cp
-  }
-}
-
-class MoreHThanC extends Specials {
-  def describe() = "H>=C"
-  def constraints() = e(H) >= e(C)
-  def check(f: ChemicalFormula) = f(H) >= f(C)
-}
-
-class LessThan3xH extends Specials {
-  def describe() = "3C>=H"
-  def constraints() = e(3, C) >= e(H)
-  def check(f: ChemicalFormula) = 3 * f(C) >= f(H)
-}
-
-class StableChemicalFormulae extends Specials {
-  def describe() = "Stable chemical formulae"
-
-  //
-    // These constraints describe the space of stable organic chemical formulae
-    // As described in Issue #463 and PR #473 discussions
-
-    // **************** Constraint c1 *******************
-    // For the fully reduced molecule, the number of unoccupied bonds is:
-    // cBonds = (C-2)*2 + 6 = 2C + 2
-    // Assuming we only allow heteroatoms to be directly attached to a carbon, then:
-    // numHetero = N+S+O;
-    // numHetero <= cBonds;
-    // **************** Constraint c2 *******************
-    // The maximal value for H is given by:
-    // hMax = 2N  + S + O + Cbonds - numHetero;
-    // The permitted values of H are given by:
-    // for(int H=Hmax; H>=0; H=H-2)
-    // hMax is 2N+S+O+cBonds-negNumHetero = 2N+S+O+(2C+2)-(N+S+O) = N+2C+2
-    // ensuring H is moves in exactly 2 increments requires creating another
-    // free variable `Z` such that H = N+2C+2 - 2*Z, where Z >= 0. That is
-    // more complicated. [ TODO later ]
-    // **************** Constraint c3 *******************
-    // For now we just ensure 0 <= H <= hMax
-    // If `ph` represents the number of phosphate groups in the molecule:
-    // There must be at least one O already present.
-    // The total number of O's present must be greater than 3*P.
-    // **************** Constraint c4 *******************
-    // TODO: implement halogen constraints:
-    // int halogensAndHydrogens = H + Cl + Br + I + F //For the final formula
-    // halogensAndHydrogens <= Hmax
-    // halogensAndHydrogens %2 == Hmax % 2
-  //
-
-  def constraints() = {
-    // constraint c1 above
-    val cBonds = e(2, C) + e(2)
-    val numHetero = e(N) + e(S) + e(O)
-    val c1 = numHetero <= cBonds
-
-    // constraint c2 above
-    val negNumHetero = e(-1, N) + e(-1, S) + e(-1, O)
-    val hMax = e(2, N) + e(S) + e(O) + cBonds + negNumHetero
-    val c2 = e(H) >= e(0) and e(H) <= hMax
-
-    // constraint c3 above
-    val c3 = e(P) < e(5) and (e(P) > e(0) implies e(O) > e(3, P))
-
-    // constraint c4 above
-    val halogensAndH = e(H) + e(Cl) + e(Br) + e(I) + e(F)
-    val mod2Equals = (halogensAndH mod e(2)) == (hMax mod e(2))
-    val c4 = halogensAndH <= hMax and mod2Equals
-
-    val constraint = c1 and c2 and c3 and c4
-    constraint
-  }
-
-  def check(f: ChemicalFormula) = {
-    // constraint c1 above
-    val cBonds = 2 * f(C) + 2
-    val numHetero = f(N) + f(S) + f(O)
-    val c1 = numHetero <= cBonds
-
-    // constraint c2 above
-    val negNumHetero = -f(N) + -f(S) + -f(O)
-    val hMax = 2 * f(N) + f(S) + f(O) + cBonds + negNumHetero
-    val c2 = f(H) >= 0 && f(H) <= hMax
-
-    // constraint c3 above
-    val c3 = f(P) < 5 && ( !(f(P) > 0) || (f(O) > 3 * f(P)))
-
-    // constraint c4 above
-    val halogensAndH = f(H) + f(Cl) + f(Br) + f(I) + f(F)
-    val c4 = halogensAndH <= hMax && halogensAndH % 2 == hMax % 2
-
-    val constraint = c1 && c2 && c3 && c4
-    constraint
-  }
 }
