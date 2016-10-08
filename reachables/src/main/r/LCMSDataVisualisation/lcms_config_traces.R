@@ -173,13 +173,13 @@ lcmsConfigTraces <- function(input, output, session) {
       # `local` evaluates an expression in a local environment
       local({
         my_i <- i
-        callModule(moleculeRenderer, paste0("plot", my_i), reactive(matching.inchis[my_i]), "200px")
+        callModule(moleculeRenderer, paste0("plot", my_i), reactive(matching.inchis[[my_i]]), "200px")
       })
     }
     # get a list of rendered molecule
     molecule_output_list <- lapply(1:n, function(i) {
       plotname <- paste0("plot", i)
-      chemSpiderUrl <- sprintf("http://www.chemspider.com/Search.aspx?q=%s", matching.inchis[i][1])
+      chemSpiderUrl <- sprintf("http://www.chemspider.com/Search.aspx?q=%s", matching.inchis[[i]][1])
       # CSS tag `display:inline-block` allows to display all structures on one line
       div(style="display:inline-block", 
           tags$a(moleculeRendererUI(ns(plotname)), href = chemSpiderUrl, target="_blank"))
