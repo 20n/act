@@ -38,8 +38,8 @@ moleculeRenderer <- function(input, output, session, inchi, height) {
   }, deleteFile = FALSE)
   
   output$molecule.name <- renderText({
-    if (!is.na(inchi.name)) {
-     inchi.name 
+    if (!is.na(inchi.name())) {
+     inchi.name()
     }
   })
 }
