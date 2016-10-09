@@ -114,34 +114,33 @@ lcmsConfigTraces <- function(input, output, session) {
   
   matching.inchis <- reactive({
     matching.inchis.code <- selected.peak()$matching_inchis
-        
-    logdebug("Found corresponding matching_inchis_hash: %s", matching.inchis.code)
-    # get the  the matching inchis for this hashcode
+    matching.inchi.hashes <- config()$matching_inchi_hashes
+    logdebug("Found corresponding matching_inchis_code:")
+    logdebug(str(matching.inchis.code))
     
     shiny::validate(
-      need(length(config()$matching_inchi_hashes) > 0, "Matching molecules have not been computed...")
+      need(length(matching_inchi_hashes) > 0, "Matching molecules have not been computed...")
     )
+    logdebug("Found corresponding matching_inchis_hashes:")
+    lodebug(str(matching_inchi_hashes))
     
-    logdebug("Extracting matching inchis hashes object: %s", config()$matching_inchi_hashes)
-    
-    
-    l <- config()$matching_inchi_hashes
-    codes <- l[[1]]
+    codes <- matching.inchi.hashes[[1]]
     logdebug("Extracted codes")
-    logdebug(codes)
+    logdebug(str(codes))
     
-    named.inchis <- l[[2]]
+    named.inchis <- matching.inchi.hashes[[2]]
     logdebug("Extracted named inchis")
-    logdebug(named.inchis)
+    logdebug(str(named.inchis))
     which.code <- which(codes == matching.inchis.code)
     logdebug("Which code")
     logdebug(which.code)
     matching.inchis <- named.inchis[which.code]
-    logdebug("MAtching inchis")
-    logdebug(matching.inchis)
+    logdebug("Matching inchis")
+    logdebug(str(matching.inchis))
     
     matching.inchis <- lapply(matching.inchis, specialSplit)
-    logdebug(matching.inchis)
+    logdebug(str(matching.inchis))
+
     shiny::validate(
       need(length(matching.inchis) > 0, "No matching molecule for this peak...")
     )
@@ -167,7 +166,7 @@ lcmsConfigTraces <- function(input, output, session) {
   
   output$structures <- renderUI({
     matching.inchis <- matching.inchis()
-    logdebug("Printing matching inchis")
+    logdebug("Printing matching inchis -- RENDER UI")
     logdebug(str(matching.inchis))
     n <- length(matching.inchis)
     for (i in 1:n) {
