@@ -38,8 +38,13 @@ moleculeRenderer <- function(input, output, session, inchi, height) {
   }, deleteFile = FALSE)
   
   output$molecule.name <- renderText({
-    if (!is.na(inchi.name())) {
-     inchi.name()
+    inchi.name <- inchi.name()
+    if (!is.na(inchi.name)) {
+      if (nchar(inchi.name) > 30) {
+        paste0(strtrim(inchi.name, 30), "...")
+      } else {
+        inchi.name
+      }
     }
   })
 }
@@ -47,8 +52,10 @@ moleculeRenderer <- function(input, output, session, inchi, height) {
 # Module UI function
 moleculeRendererUI <- function(id) {
   ns <- NS(id)
-  tagList(
-    textOutput(ns("molecule.name")),
-    imageOutput(ns("molecule"))  
+  fluidRow(
+    column(10, align="center",
+           textOutput(ns("molecule.name")),
+           imageOutput(ns("molecule"))  
+    )
   )
 }
