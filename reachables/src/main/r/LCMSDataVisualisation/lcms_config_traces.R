@@ -119,10 +119,10 @@ lcmsConfigTraces <- function(input, output, session) {
     logdebug(str(matching.inchis.code))
     
     shiny::validate(
-      need(length(matching_inchi_hashes) > 0, "Matching molecules have not been computed...")
+      need(length(matching.inchi.hashes) > 0, "Matching molecules have not been computed...")
     )
     logdebug("Found corresponding matching_inchis_hashes:")
-    lodebug(str(matching_inchi_hashes))
+    lodebug(str(matching.inchi.hashes))
     
     codes <- matching.inchi.hashes[[1]]
     logdebug("Extracted codes")
