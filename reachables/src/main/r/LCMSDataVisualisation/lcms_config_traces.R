@@ -114,36 +114,32 @@ lcmsConfigTraces <- function(input, output, session) {
   
   matching.inchis <- reactive({
     matching.inchis.code <- selected.peak()$matching_inchis
-    matching.inchi.hashes <- config()$matching_inchi_hashes
-    logdebug("Found corresponding matching_inchis_code:")
-    logdebug(str(matching.inchis.code))
     
+    shiny::validate(
+      need(matching.inchis.code >= 0, "No matching molecule for this peak...")
+    )
+    
+    matching.inchi.hashes <- config()$matching_inchi_hashes
+
     shiny::validate(
       need(length(matching.inchi.hashes) > 0, "Matching molecules have not been computed...")
     )
     logdebug("Found corresponding matching_inchis_hashes:")
     logdebug(str(matching.inchi.hashes))
     
-    codes <- matching.inchi.hashes[[1]]
+    codes <- matching.inchi.hashes$code
     logdebug("Extracted codes")
     logdebug(str(codes))
     
-    named.inchis <- matching.inchi.hashes[[2]]
+    named.inchis <- matching.inchi.hashes$vals
     logdebug("Extracted named inchis")
     logdebug(str(named.inchis))
     which.code <- which(codes == matching.inchis.code)
     logdebug("Which code")
     logdebug(which.code)
-    matching.inchis <- named.inchis[which.code]
+    matching.inchis <- named.inchis[[which.code]]
     logdebug("Matching inchis")
     logdebug(str(matching.inchis))
-    
-    matching.inchis <- lapply(matching.inchis, specialSplit)
-    logdebug(str(matching.inchis))
-
-    shiny::validate(
-      need(length(matching.inchis) > 0, "No matching molecule for this peak...")
-    )
     matching.inchis
   })
   
