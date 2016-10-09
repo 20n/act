@@ -184,7 +184,7 @@ lcmsConfigTraces <- function(input, output, session) {
         my_i <- i
         logdebug("Printing matching inchi for molecule renderer call")
         logdebug(str(matching.inchis[my_i, ]))
-        callModule(moleculeRenderer, paste0("plot", my_i), reactive(matching.inchis[my_i,]), "200px")
+        callModule(moleculeRenderer, paste0("plot", my_i), reactive(matching.inchis[my_i, ]), "200px")
       })
     }
     # get a list of rendered molecule
