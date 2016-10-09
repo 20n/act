@@ -250,8 +250,3 @@ getAndValidateConfigFile <- function(input.file) {
   )
   config
 }
-
-specialSplit <- function(a) {
-  split.seq <- rep(rep(1:(length(a)/2)),2)
-  split(a, split.seq)
-}

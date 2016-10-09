@@ -14,8 +14,7 @@ lcmsConfigTracesInput <- function(id, label = "LCMS config traces") {
     checkboxInput(ns("has.mol.mass"), "Expect multiple m/z values per peak (-M option)", value = FALSE),
     uiOutput(ns("ui.rt.mz.scope")),
     plotParametersInput(ns("plot.parameters")),
-    checkboxInput(ns("normalize"), "Normalize values", value = TRUE),
-    actionButton(ns("wait"), "Michael's button (press if you're bored)")
+    checkboxInput(ns("normalize"), "Normalize values", value = TRUE)
   )
 }
 
@@ -147,16 +146,29 @@ lcmsConfigTraces <- function(input, output, session) {
     matching.formulae.code <- selected.peak()$matching_formulae
     
     shiny::validate(
+      need(matching.formulae.code >= 0, "No matching formulae for this peak...")
+    )
+    
+    matching.formulae.hashes <- config()$matching_formulae_hashes
+    
+    shiny::validate(
       need(length(config()$matching_formulae_hashes) > 0, "Matching formulae have not been computed...")
     )
     
-    # get the  the matching formulae for this hashcode
-    matching.formulae <- with(config()$matching_formulae_hashes, {
-      l[lapply(l, function(x) x$code == matching.formulae.code)]$vals
-    })
-    shiny::validate(
-      need(length(matching.formulae) > 0, "No matching formulae for this peak...")
-    )
+    codes <- matching.formulae.hashes$code
+    logdebug("Extracted codes")
+    logdebug(str(codes))
+    
+    named.formulae <- matching.formulae.hashes$vals
+    logdebug("Extracted named formulae")
+    logdebug(str(named.formulae))
+    which.code <- which(codes == matching.formulae.code)
+    logdebug("Which code")
+    logdebug(which.code)
+    matching.formulae <- named.formulae[[which.code]]
+    logdebug("Matching formulae")
+    logdebug(str(matching.formulae))
+
     matching.formulae
   })
   
@@ -193,10 +205,12 @@ lcmsConfigTraces <- function(input, output, session) {
     )
   })
   
+  
   output$formulae <- renderUI({
+    named.formulae <- apply(matching.formulae(), 2, function(x) paste(x, collapse = ": "))
     tagList(
       h4("Matching formulae"),
-      p(paste(matching.formulae(), collapse = " - "))
+      p(paste(named.formulae, collapse = " - "))
     )
   })
   
