@@ -47,6 +47,8 @@ moleculeRenderer <- function(input, output, session, inchi, height) {
 # Module UI function
 moleculeRendererUI <- function(id) {
   ns <- NS(id)
-  textOutput(ns("molecule.name"))
-  imageOutput(ns("molecule"))
+  tagList(
+    textOutput(ns("molecule.name")),
+    imageOutput(ns("molecule"))  
+  )
 }
