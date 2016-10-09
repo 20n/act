@@ -164,16 +164,15 @@ lcmsConfigTraces <- function(input, output, session) {
     matching.inchis <- matching.inchis()
     logdebug("Printing matching inchis -- RENDER UI")
     logdebug(str(matching.inchis))
-    n <- length(matching.inchis)
+    n <- nrow(matching.inchis)
     for (i in 1:n) {
       # we need to call `local` since we don't know when the call will be made
       # `local` evaluates an expression in a local environment
       local({
         my_i <- i
         logdebug("Printing matching inchi for molecule renderer call")
-        logdebug(str(matching.inchis[my_i]))
-        logdebug(str(matching.inchis[[my_i]]))
-        callModule(moleculeRenderer, paste0("plot", my_i), reactive(matching.inchis[[my_i]]), "200px")
+        logdebug(str(matching.inchis[my_i, ]))
+        callModule(moleculeRenderer, paste0("plot", my_i), reactive(matching.inchis[my_i,]), "200px")
       })
     }
     # get a list of rendered molecule
