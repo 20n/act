@@ -866,7 +866,7 @@ object UntargetedMetabolomics {
       val builder = new SmallFormulaeCorpusBuilder()
       builder.populateMapFromFile(new File(formulaNavMapFile))
       val smallFormulaMap: NavigableMap[java.lang.Float, String] = builder.getMassToFormulaMap
-      new PeakToStructure().FormulaHits.toFormulaHitsUsingTreeMap(inchis, smallFormulaMap, 0.001F)
+      new PeakToStructure().FormulaHits.toFormulaHitsUsingTreeMap(inchis, smallFormulaMap, 0.01F)
     }
 
     val formulaeWithSolver: PeakHits = if (!mapToFormulaUsingSolver) {
