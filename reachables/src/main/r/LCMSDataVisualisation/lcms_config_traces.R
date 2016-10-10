@@ -132,7 +132,7 @@ lcmsConfigTraces <- function(input, output, session) {
   matching.formulae <- reactive({
     matching.formulae.code <- selected.peak()$matching_formulae
     shiny::validate(
-      need(matching.formulae.code != 473519988, "No matching formulae for this peak...")
+      need(matching.formulae.code != -1, "No matching formulae for this peak...")
     )
     matching.formulae.hashes <- config()$matching_formulae_hashes
     shiny::validate(
