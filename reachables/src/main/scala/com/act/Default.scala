@@ -39,7 +39,7 @@ object Default {
       singleSubstrateRoProjectorClassPath,
       sparkMaster,
       roProjectionArgs,
-      memory = "4G"
+      memory = "12G"
     )
 
     val reactionAssigner =
