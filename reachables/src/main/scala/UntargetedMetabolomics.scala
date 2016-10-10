@@ -161,7 +161,7 @@ class PeakHits(val origin: Provenance, val peakSpectra: PeakSpectra) {
     val layout = Map("nrow" -> nrows, "ncol" -> ncols)
     val output = Map(
       "peaks" -> peakSummaries.toJson,      // List[Map[String, Double]]
-      "plates" -> plateNames.toJson,        // List[Map[String, String]]
+      "scanfiles" -> plateNames.toJson,        // List[Map[String, String]]
       "num_peaks" -> numPeaks.toJson,       // Map[String, Int]
       "layout" -> layout.toJson             // Map[String, Int]
     ) ++ extra
