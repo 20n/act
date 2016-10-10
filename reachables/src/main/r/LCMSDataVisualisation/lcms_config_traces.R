@@ -117,7 +117,7 @@ lcmsConfigTraces <- function(input, output, session) {
     matching.inchis.code <- selected.peak()$matching_inchis
     
     shiny::validate(
-      need(matching.inchis.code >= 0, "No matching molecule for this peak...")
+      need(matching.inchis.code != -1, "No matching molecule for this peak...")
     )
     
     matching.inchi.hashes <- config()$matching_inchi_hashes
@@ -148,7 +148,7 @@ lcmsConfigTraces <- function(input, output, session) {
     matching.formulae.code <- selected.peak()$matching_formulae
     
     shiny::validate(
-      need(matching.formulae.code >= 0, "No matching formulae for this peak...")
+      need(matching.formulae.code != 473519988, "No matching formulae for this peak...")
     )
     
     matching.formulae.hashes <- config()$matching_formulae_hashes
