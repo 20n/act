@@ -135,7 +135,7 @@ class PeakToMolecule {
         val results = smallFormulaMap.subMap(lowerBoundMass, true, upperBoundMass, true)
 
         def toNamed(s: String) = {
-          (toFormula(s), null)
+          (toFormula(s), None)
         }
         results.values.map(toNamed).toList
       }
