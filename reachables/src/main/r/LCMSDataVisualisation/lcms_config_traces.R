@@ -207,10 +207,13 @@ lcmsConfigTraces <- function(input, output, session) {
   
   
   output$formulae <- renderUI({
-    named.formulae <- apply(matching.formulae(), 1, function(x) paste(x, collapse = " - "))
+    shiny::validate(
+      need(dim(matching.formulae()) > 0, "No matching formulae for this peak...")
+    )
+    named.formulae <- apply(matching.formulae(), 1, function(x) paste(x[!is.na(x)], collapse = " - "))
     tagList(
       h4("Matching formulae"),
-      p(paste(named.formulae, collapse = " ::: "))
+      p(paste(named.formulae, collapse = ", "))
     )
   })
   
