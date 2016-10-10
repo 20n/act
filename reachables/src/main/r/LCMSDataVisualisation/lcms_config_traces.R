@@ -115,77 +115,44 @@ lcmsConfigTraces <- function(input, output, session) {
   
   matching.inchis <- reactive({
     matching.inchis.code <- selected.peak()$matching_inchis
-    
     shiny::validate(
       need(matching.inchis.code != -1, "No matching molecule for this peak...")
     )
-    
     matching.inchi.hashes <- config()$matching_inchi_hashes
-
     shiny::validate(
       need(length(matching.inchi.hashes) > 0, "Matching molecules have not been computed...")
     )
-    logdebug("Found corresponding matching_inchis_hashes:")
-    logdebug(str(matching.inchi.hashes))
-    
     codes <- matching.inchi.hashes$code
-    logdebug("Extracted codes")
-    logdebug(str(codes))
-    
     named.inchis <- matching.inchi.hashes$vals
-    logdebug("Extracted named inchis")
-    logdebug(str(named.inchis))
     which.code <- which(codes == matching.inchis.code)
-    logdebug("Which code")
-    logdebug(which.code)
     matching.inchis <- named.inchis[[which.code]]
-    logdebug("Matching inchis")
-    logdebug(str(matching.inchis))
     matching.inchis
   })
   
   matching.formulae <- reactive({
     matching.formulae.code <- selected.peak()$matching_formulae
-    
     shiny::validate(
       need(matching.formulae.code != 473519988, "No matching formulae for this peak...")
     )
-    
     matching.formulae.hashes <- config()$matching_formulae_hashes
-    
     shiny::validate(
-      need(length(config()$matching_formulae_hashes) > 0, "Matching formulae have not been computed...")
+      need(length(matching.formulae.hashes) > 0, "Matching formulae have not been computed...")
     )
-    
     codes <- matching.formulae.hashes$code
-    logdebug("Extracted codes")
-    logdebug(str(codes))
-    
     named.formulae <- matching.formulae.hashes$vals
-    logdebug("Extracted named formulae")
-    logdebug(str(named.formulae))
     which.code <- which(codes == matching.formulae.code)
-    logdebug("Which code")
-    logdebug(which.code)
     matching.formulae <- named.formulae[[which.code]]
-    logdebug("Matching formulae")
-    logdebug(str(matching.formulae))
-
     matching.formulae
   })
   
   output$structures <- renderUI({
     matching.inchis <- matching.inchis()
-    logdebug("Printing matching inchis -- RENDER UI")
-    logdebug(str(matching.inchis))
     n <- nrow(matching.inchis)
     for (i in 1:n) {
       # we need to call `local` since we don't know when the call will be made
       # `local` evaluates an expression in a local environment
       local({
         my_i <- i
-        logdebug("Printing matching inchi for molecule renderer call")
-        logdebug(str(matching.inchis[my_i, ]))
         callModule(moleculeRenderer, paste0("plot", my_i), reactive(matching.inchis[my_i, ]), "200px")
       })
     }

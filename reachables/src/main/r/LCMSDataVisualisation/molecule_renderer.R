@@ -7,13 +7,10 @@ moleculeRenderer <- function(input, output, session, inchi, height) {
   
   inchi.string <- reactive({
     inchi <- inchi()
-    inchi.string <- inchi[1]
-    logdebug(str(inchi))
-    logdebug(str(inchi.string))
     shiny::validate(
-      need(startsWith(inchi.string, "InChI="), "Should start with InChI")
+      need(startsWith(inchi[1], "InChI="), "Should start with InChI")
     )
-    inchi.string
+    inchi[1]
   })
   
   inchi.name <- reactive({
@@ -39,7 +36,9 @@ moleculeRenderer <- function(input, output, session, inchi, height) {
   
   output$molecule.name <- renderText({
     inchi.name <- inchi.name()
+    # Ensure name is not empty
     if (!is.na(inchi.name)) {
+      # Trim name if too long
       if (nchar(inchi.name) > 30) {
         paste0(strtrim(inchi.name, 30), "...")
       } else {
