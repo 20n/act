@@ -23,9 +23,11 @@ lcmsConfigTracesUI <- function(id) {
   ns <- NS(id)
   fluidPage(
     fluidRow(
+      h4("Matching molecules"),
       uiOutput(ns("structures"))
     ),
     fluidRow(
+      h4("Matching formulae"),
       uiOutput(ns("formulae"))
     ),
     fluidRow(
@@ -199,7 +201,6 @@ lcmsConfigTraces <- function(input, output, session) {
     uiStructures <- do.call(tagList, molecule_output_list)
     # wrap in div tag, with some cool CSS tags to fix height and allow overflowing on the x axis
     tagList(
-      h4("Matching molecules"),
       em("Please scroll horizontally to display all"),
       div(style="height: 200px; overflow-x: auto; white-space: nowrap", uiStructures)  
     )
@@ -211,10 +212,7 @@ lcmsConfigTraces <- function(input, output, session) {
       need(dim(matching.formulae()) > 0, "No matching formulae for this peak...")
     )
     named.formulae <- apply(matching.formulae(), 1, function(x) paste(x[!is.na(x)], collapse = " - "))
-    tagList(
-      h4("Matching formulae"),
-      p(paste(named.formulae, collapse = ", "))
-    )
+    p(paste(named.formulae, collapse = ", "))
   })
   
   plot.data <- callModule(lcmsTracesPeaks, "traces", scan.filenames, retention.time.range, target.mz, mz.band.halfwidth)
