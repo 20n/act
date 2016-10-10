@@ -173,11 +173,13 @@ lcmsConfigTraces <- function(input, output, session) {
     )
   })
   
-  
   output$formulae <- renderUI({
     shiny::validate(
       need(dim(matching.formulae()) > 0, "No matching formulae for this peak...")
     )
+    # At this point, matching.formulae is a reactive value containing a matrix with n rows x 2 columns. 
+    # where n is the number of matching formulae, the first column holds the formula and the second holds a potential formula name
+    # The following line concatenates the formula and the name -> "formula - name" into a list of strings.
     named.formulae <- apply(matching.formulae(), 1, function(x) paste(x[!is.na(x)], collapse = " - "))
     formulae <- p(paste(named.formulae, collapse = ", "))
     div(style="height: 50px; overflow-x: auto; white-space: nowrap", formulae) 
