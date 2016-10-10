@@ -212,7 +212,8 @@ lcmsConfigTraces <- function(input, output, session) {
       need(dim(matching.formulae()) > 0, "No matching formulae for this peak...")
     )
     named.formulae <- apply(matching.formulae(), 1, function(x) paste(x[!is.na(x)], collapse = " - "))
-    p(paste(named.formulae, collapse = ", "))
+    formulae <- p(paste(named.formulae, collapse = ", "))
+    div(style="height: 50px; overflow-x: auto; white-space: nowrap", formulae) 
   })
   
   plot.data <- callModule(lcmsTracesPeaks, "traces", scan.filenames, retention.time.range, target.mz, mz.band.halfwidth)
