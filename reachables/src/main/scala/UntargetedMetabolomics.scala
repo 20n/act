@@ -47,6 +47,9 @@ object MagicParams {
   // to keep the output file for visualization smaller, we disable outputing raw mz and raw rt
   // values. this flag controls that.
   val _outputRawPeakData = true
+
+  // precision of lookup in enumerated formulae list
+  val _precisionFormulaeLookup = 0.01F
 }
 
 object RetentionTime {
@@ -853,26 +856,27 @@ object UntargetedMetabolomics {
     } else {
       println(s"Mapping to structures using inchi list")
       // map the peaks to candidate structures if they appear in the lists (from HMDB, ROs, etc)
-      new PeakToStructure().StructureHits.toStructureHitsUsingLists(rslt, inchiListFile)
+      new PeakToMolecule().StructureHits.toStructureHitsUsingLists(rslt, inchiListFile)
     }
 
     val formulae = if (!mapToFormulaUsingList && !mapToFormulaUsingNavigableMap) {
       inchis
     } else if (!mapToFormulaUsingNavigableMap) {
       println(s"Mapping to formula using list")
-      new PeakToStructure().FormulaHits.toFormulaHitsUsingLists(inchis, formulaListFile)
+      new PeakToMolecule().FormulaHits.toFormulaHitsUsingLists(inchis, formulaListFile)
     } else {
-      println(s"Mapping to formula using nav map")
+      println(s"Mapping to formula using large enumerated list")
       val builder = new SmallFormulaeCorpusBuilder()
       builder.populateMapFromFile(new File(formulaNavMapFile))
       val smallFormulaMap: NavigableMap[java.lang.Float, String] = builder.getMassToFormulaMap
-      new PeakToStructure().FormulaHits.toFormulaHitsUsingTreeMap(inchis, smallFormulaMap, 0.01F)
+      new PeakToMolecule().FormulaHits.toFormulaHitsUsingTreeMap(
+        inchis, smallFormulaMap, MagicParams._precisionFormulaeLookup)
     }
 
     val formulaeWithSolver: PeakHits = if (!mapToFormulaUsingSolver) {
       formulae
     } else {
-      new PeakToStructure().FormulaHits.toFormulaHitsUsingSolver(formulae)
+      new PeakToMolecule().FormulaHits.toFormulaHitsUsingSolver(formulae)
     }
 
     def codesToJson(kv: (Double, List[(String, Option[String])])): Map[String, JsValue] = {

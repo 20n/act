@@ -9,7 +9,7 @@ import act.shared.MassToFormula
 
 import scala.collection.JavaConversions._
 
-class PeakToStructure {
+class PeakToMolecule {
 
   trait ChemicalFormulae {
     type ChemicalFormula = Map[Atom, Int]
@@ -133,16 +133,16 @@ class PeakToStructure {
         val lowerBoundMass: java.lang.Float = peak.mz.rounded(6).toFloat - precision / 2
         val upperBoundMass: java.lang.Float = peak.mz.rounded(6).toFloat + precision / 2
         val results = smallFormulaMap.subMap(lowerBoundMass, true, upperBoundMass, true)
-        println(s"Found results ${results.toString} for lower b: ${lowerBoundMass} and upper b: ${upperBoundMass}")
+
         def toNamed(s: String) = {
-          (toFormula(s), None)
+          (toFormula(s), null)
         }
         results.values.map(toNamed).toList
       }
 
       val peakToFormula = (peakSet map { peak => peak -> bestFormulaeMatches(peak) }).toMap
-      println(peakToFormula.toString)
-      new FormulaHits(peaks, peakToFormula)
+      val peakToFormulaWithHits = peakToFormula.filter((x) => x._2 != List())
+      new FormulaHits(peaks, peakToFormulaWithHits)
     }
 
     def toFormulaHitsUsingSolver(peaks: PeakHits) = {
