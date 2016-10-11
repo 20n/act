@@ -66,7 +66,7 @@ server <- function(input, output, session) {
 
   observe({
     # periodically perform garbage collection
-    invalidateLater(1000,session)
+    invalidateLater(1000, session)
     gc()
   })
     
