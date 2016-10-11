@@ -1,7 +1,7 @@
 package act.shared
 
 import act.shared.{CmdLineParser, OptDesc}
-import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, AllAtoms, AminoAcid, AllAminoAcids, MonoIsotopicMass}
+import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, Br, Cl, I, F, AllAtoms, AminoAcid, AllAminoAcids, MonoIsotopicMass}
 import act.shared.ChemicalSymbols.{Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser}
 import act.shared.ChemicalSymbols.{Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg}
 import act.shared.ChemicalSymbols.Helpers.{fromSymbol, computeMassFromAtomicFormula, computeFormulaFromElements}
@@ -20,19 +20,25 @@ import java.io.PrintWriter
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.{currentMirror => cm}
 
-sealed trait Expr
+sealed trait Expr {
+  def <=(other: Expr): LinIneq = LinIneq(this, Le, other)
+  def <(other: Expr): LinIneq = LinIneq(this, Lt, other)
+  def >=(other: Expr): LinIneq = LinIneq(this, Ge, other)
+  def >(other: Expr): LinIneq = LinIneq(this, Gt, other)
+  def ==(other: Expr): LinIneq = LinIneq(this, Eq, other)
+  def +(other: Expr): Expr = ArithExpr(Add, List(this, other))
+  def -(other: Expr): Expr = ArithExpr(Sub, List(this, other))
+  def *(other: Expr): Expr = ArithExpr(Mul, List(this, other))
+  def /(other: Expr): Expr = ArithExpr(Div, List(this, other))
+  def mod(other: Expr): Expr = ArithExpr(Mod, List(this, other))
+}
 case class Const(c: Int) extends Expr
 case class Var(val id: String) extends Expr
 case class Term(val c: Const, val v: Var) extends Expr
 case class LinExpr(val terms: List[Term]) extends Expr {
   def +(term: Term): LinExpr = LinExpr(term :: this.terms)
-  def +(other: LinExpr): LinExpr = LinExpr(this.terms ++ other.terms)
-  def <=(other: LinExpr): LinIneq = LinIneq(this, Le, other)
-  def <(other: LinExpr): LinIneq = LinIneq(this, Lt, other)
-  def >=(other: LinExpr): LinIneq = LinIneq(this, Ge, other)
-  def >(other: LinExpr): LinIneq = LinIneq(this, Gt, other)
-  def ==(other: LinExpr): LinIneq = LinIneq(this, Eq, other)
 }
+case class ArithExpr(val op: ArithmeticOp, val terms: List[Expr]) extends Expr
 
 // TODO: FIX ADT 
 // The structure below is not right. Done correctly, there should be case
@@ -48,6 +54,13 @@ sealed trait BoolOp
 case object And extends BoolOp
 case object Or extends BoolOp
 case object Not extends BoolOp
+
+sealed trait ArithmeticOp
+case object Mod extends ArithmeticOp
+case object Add extends ArithmeticOp
+case object Sub extends ArithmeticOp
+case object Mul extends ArithmeticOp
+case object Div extends ArithmeticOp
 
 sealed trait BooleanExpr {
   def and(other: BooleanExpr): BooleanExpr = Multi(And, List(this, other))
@@ -102,6 +115,20 @@ object Solver {
       // otherwise the reduce below is unable to infer the type and defaults to `Any` causing compile failure
       val fn: (SMTExprVars, SMTExprVars) => SMTExprVars = {
         case ((bv1, vars1), (bv2, vars2)) => (ctx.mkBVAdd(bv1, bv2), vars1 ++ vars2)
+      }
+      val terms = ts.map(mkExpr)
+      terms.reduce(fn)
+    }
+    case ArithExpr(op, ts) => {
+      val operation = op match {
+        case Add => ctx.mkBVAdd _
+        case Sub => ctx.mkBVSub _
+        case Mul => ctx.mkBVMul _
+        case Div => ctx.mkBVSDiv _
+        case Mod => ctx.mkBVSMod _
+      }
+      val fn: (SMTExprVars, SMTExprVars) => SMTExprVars = {
+        case ((bv1, vars1), (bv2, vars2)) => (operation(bv1, bv2), vars1 ++ vars2)
       }
       val terms = ts.map(mkExpr)
       terms.reduce(fn)
@@ -305,7 +332,6 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
     }).flatten
 
     val approxMassSat = candidateFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
-    MassToFormula.reportPass(s"\t Int match soln with +-${delta}: ${approxMassSat.size}")
 
     // candidateFormulae has all formulae for deltas to the closest int mass
     // For each formula that we get, we need to calculate whether this is truly the right
@@ -313,7 +339,10 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
     // formulae as as true solution
     val matchingFormulae = candidateFormulae.filter( computedMass(_).equals(mass) )
     val preciseMassSatFormulae = matchingFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
-    MassToFormula.reportPass(s"\t Precise match soln: $preciseMassSatFormulae")
+
+    val debug = false
+    if (debug) 
+      MassToFormula.reportPass(s"Integral solution ${approxMassSat.size}. Precise matches ${preciseMassSatFormulae.size} = $preciseMassSatFormulae")
 
     matchingFormulae
   }
@@ -333,8 +362,8 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
     hillOrder.map(a => {
         soln.get(a) match {
           case None | Some(0) => ""
-          case Some(1) => a.symbol.toString
-          case _ => a.symbol.toString + soln(a)
+          case Some(1) => a.symbol
+          case _ => a.symbol + soln(a)
         }
       }
     ).reduce(_+_)
@@ -414,7 +443,7 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
 }
 
 object MassToFormula {
-  def atomToVar(a: Atom) = Var(a.symbol.toString)
+  def atomToVar(a: Atom) = Var(a.symbol)
   def term(c: Int) = Term(Const(c), oneVar)
   def term(c: Int, a: Atom) = Term(Const(c), MassToFormula.atomToVar(a))
   // See comment on `onec` in `buildConstraintOverInts` for how we use `oneVar`
@@ -435,7 +464,7 @@ object MassToFormula {
 
   def main(args: Array[String]) {
     val className = this.getClass.getCanonicalName
-    val opts = List(optMz, optMassFile, optOutputFile, optOutFailedTests, optRunTests, optSpecials)
+    val opts = List(optMz, optMassFile, optOutputFile, optOutFailedTests, optRunUnits, optRunDBTests, optSpecials)
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
     outStream = {
@@ -479,9 +508,14 @@ object MassToFormula {
       }
     }
 
-    if (cmdLine has optRunTests) {
+    if (cmdLine has optRunUnits) {
       // TODO: Eventually, move to scalatest.
-      runAllUnitTests
+      runAllUnitTests()
+    } else if (cmdLine has optRunDBTests) {
+      // TODO: Eventually, move to scalatest.
+      val spl = cmdLine getMany optRunDBTests
+      val (n, maxMz, doSolve) = (spl(0).toInt, spl(1).toDouble, spl(2).toBoolean)
+      runDBChemicalsTests(n, maxMz, doSolve)
     } else if ((cmdLine has optMz) && !(cmdLine has optMassFile)) {
       val mass = (cmdLine get optMz).toDouble
       solve(specials)(List(mass))
@@ -597,35 +631,72 @@ object MassToFormula {
                              |We log `mass inchi delta atomset otherknobs..` in TSV form.""".stripMargin,
                     isReqd = false, hasArg = true)
 
-  val optRunTests = new OptDesc(
+  val optRunUnits = new OptDesc(
                     param = "t",
-                    longParam = "run-tests",
-                    name = "run regression tests",
-                    desc = """Run regression tests. This will take some time.""",
+                    longParam = "run-unit-tests",
+                    name = "tests",
+                    desc = """Run unit tests. This will take some time.""",
                     isReqd = false, hasArg = false)
 
-  def runAllUnitTests() {
-    println(s"${Console.BLUE}Running all tests!")
-    unitTestIntegralSolns()
-    testDBChemicals(n = 10000, maxMz = 200.00)
-    testAcetaminophen
+  val optRunDBTests = new OptDesc(
+                    param = "d",
+                    longParam = "run-db-tests",
+                    name = "<n,maxMz,solveAsWell>",
+                    desc = """Run tests by pulling chemicals from DB. 
+                             |n = num of chemicals to pull, maxMz = max size in Da,
+                             |solveAsWell = boolean `true` or `false` if SAT solver to be checked.""".stripMargin,
+                    isReqd = false, hasArgs = true)
+
+  def runAllUnitTests(tryToSolve: Boolean = false) {
+    reportPass(s"Running all unit tests!")
+    testMultiCharAtoms
+    testStableFormulaEdgeCases
+
+    if (tryToSolve) {
+      testSolvingIntegralSolns
+      solveAcetaminophen
+    }
   }
 
-  def testAcetaminophen() {
-    val apapSoln: Map[Atom, Int] = Map(C->8, H->9, N->1, O->2, S->0, P->0)
+  def runDBChemicalsTests(n: Int = 1000, maxMz: Double = 200.0, tryToSolve: Boolean = false) {
+    reportPass(s"Running tests on chemicals from DB.")
+    reportPass(s"Retrieving $n chemicals from DB ..")
+    val dbChems = getDBChemicals(n, maxMz)
+    reportPass(s".. Finished retrieving chemicals from DB.")
+    testDBChemsStableFormula(dbChems)
+    reportPass(s"Done checking all stable formulae.")
+
+    if (tryToSolve) {
+      solveFormulaeUsingSolver(dbChems)
+      reportPass(s"Done solving for formulae using SAT solver..")
+    }
+  }
+
+  def solveAcetaminophen() {
+    val apapSolnLimitedAtoms: Map[Atom, Int] = getFormulaMap("C8H9NO2", fillToAllAtom = false)
+    val apapSoln: Map[Atom, Int] = getFormulaMap("C8H9NO2", fillToAllAtom = true)
     val inchi = "InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)"
     val apapCases = Set[(Double, List[Atom], Map[Atom, Int], String)](
       // the formula has to be specified to at least a certain # digits of precision
       // the number of digits of precision required is specified under MonoIsotopicMass
       // One case that is well used is 3 digits of precision. If you specify less,
       // e.g., 151.06 instead of 151.063 for apap, a valid solution will not be found
-      (151.063324, List(C, H, N, O), apapSoln - (S, P), inchi),
-      (151.063,    List(C, H, N, O), apapSoln - (S, P), inchi),
+      (151.063324, apapSolnLimitedAtoms.keys.toList, apapSolnLimitedAtoms, inchi),
+      (151.063,    apapSolnLimitedAtoms.keys.toList, apapSolnLimitedAtoms, inchi),
       (151.063324, AllAtoms, apapSoln, inchi),
       (151.063,    AllAtoms, apapSoln, inchi)
     )
 
     apapCases foreach solveNCheck
+  }
+
+  def testMultiCharAtoms() {
+    assert(getFormulaMap("C20BrCl2").equals(Map(C->20, Br->1, Cl->2)))
+    assert(getFormulaMap("BrCl2").equals(Map(Br->1, Cl->2)))
+    assert(getFormulaMap("BrC2").equals(Map(Br->1, C->2)))
+    assert(getFormulaMap("CCl").equals(Map(C->1, Cl->1)))
+    assert(getFormulaMap("ClC").equals(Map(C->1, Cl->1)))
+    assert(getFormulaMap("IFClH20CBrN1OP2").equals(Map(C->1, H->20, N->1, O->1, P->2, Cl->1, Br->1, I->1, F ->1)))
   }
 
   def formulaFromInChI(i: String) = {
@@ -663,9 +734,7 @@ object MassToFormula {
   ////
   // TODO: Replace below with Chemaxon.Molecule.getAtomCount(atomicNumber)
   // Function `getFormulaMap: String -> Map[Atom, Int]` and helpers `getFormulaMapStep`,
-  // `get{Num, Atom}AtHead`, and `headExtractHelper` won't be needed. That will take care
-  // of fixing the greedy approach here that only works for single char atoms 
-  // (Line: `!isHeadAlreadyAtom && c.isLetter`)
+  // `get{Num, Atom}AtHead`, and `headExtractHelper` won't be needed.
   //
   // Considerations that will need to be tested before the move:
   // 1. Chemaxon license?
@@ -676,11 +745,12 @@ object MassToFormula {
 
   def getAtomAtHead(f: String): (Atom, String) = {
     def doMove(hd: String, c: Char) = {
-      val isHeadAlreadyAtom = AllAtoms.exists(_.symbol.toString.equals(hd))
-      !isHeadAlreadyAtom && c.isLetter
+      val isHeadAlreadyAtom = AllAtoms.exists(_.symbol.equals(hd))
+      val lookAheadIsAtom = AllAtoms.exists(_.symbol.equals(hd + c))
+      lookAheadIsAtom || !isHeadAlreadyAtom
     }
     val (nStr, tail) = headExtractHelper("", f, doMove)
-    val maybeAtom = AllAtoms.find(_.symbol.toString.equals(nStr))
+    val maybeAtom = AllAtoms.find(_.symbol.equals(nStr))
     maybeAtom match {
       case Some(atom) => (atom, tail)
       case None => throw new Exception(s"${nStr} not recognized as atom")
@@ -693,12 +763,18 @@ object MassToFormula {
   }
 
   def headExtractHelper(head: String, tail: String, doMove: (String, Char) => Boolean): (String, String) = {
-    val stop = tail.isEmpty || doMove(head, tail(0)) == false
+    val stop = tail.isEmpty || !doMove(head, tail(0))
     if (stop) {
       (head, tail)
     } else {
       headExtractHelper(head + tail(0), tail.substring(1), doMove)
     }
+  }
+
+  def getFormulaMap(formula: String, fillToAllAtom: Boolean = false): Map[Atom, Int] = {
+    val f = getFormulaMap(formula)
+    val filled: Map[Atom, Int] = AllAtoms.filterNot(f contains _).map(a => a -> 0).toMap
+    if (fillToAllAtom) f ++ filled else f
   }
 
   def getFormulaMap(f: String): Map[Atom, Int] = getFormulaMapStep(f, Map())
@@ -729,8 +805,8 @@ object MassToFormula {
     }
   }
 
-  def testDBChemicals(n: Int, maxMz: Double) {
-    val db = new MongoDB("localhost", 27017, "actv01")
+  def getDBChemicals(n: Int, maxMz: Double, server: String = "localhost", port: Int = 27017, dbs: String = "actv01") = {
+    val db = new MongoDB(server, port, dbs)
     val dbCur = db.getIteratorOverChemicals
     val chems = for(i <- 0 until n) yield db.getNextChemical(dbCur)
 
@@ -750,15 +826,15 @@ object MassToFormula {
 
       if {
         // We only test over formulae that:
-        //    1) have at least all of CHO in them
-        //    2) no atoms outside of `AllAtoms` (CHNOPS for now)
+        //    1) have at least all of C in them
+        //    2) no atoms outside of `AllAtoms`
         //    3) is not a salt
         //    4)  a) inchi can be loaded, and mass calculated by `MassCalculator`
         //        b) mass < 200Da (most of our standards were <200Da. Can go higher but solving takes long then!)
         // below we construct booleans for each of these four tests.
 
         // Condition "1)"
-        val allMainAtomsPresent = List(C, H, O).forall(formulaMap.contains)
+        val allMainAtomsPresent = List(C).forall(formulaMap.contains)
 
         // Condition "2)"
         // We need to check if all atom symbols present in the string are ones we know about.
@@ -788,11 +864,22 @@ object MassToFormula {
       }
     }
 
-    val dbCases = testformulae.toSet
-    dbCases foreach solveNCheck
+    testformulae.toSet
   }
 
-  def unitTestIntegralSolns() {
+  def testDBChemsStableFormula(chems: Set[(Double, List[Atom], Map[Atom, Int], String)]) {
+    val stableCnstr = new StableChemicalFormulae
+    for ((mass, elems, formula, inchi) <- chems) {
+      val passes = stableCnstr.isValid(formula)
+      if (!passes) reportFail(s"FAIL: $formula, $inchi")
+    }
+  }
+
+  def solveFormulaeUsingSolver(chems: Set[(Double, List[Atom], Map[Atom, Int], String)]) {
+    chems foreach solveNCheck
+  }
+
+  def testSolvingIntegralSolns() {
     // The type parameter is needed or else the compiler fails to infer
     // the right type for the tuple elements. we can specify it as a type on the variable,
     // or parameter to the constructor. The latter looks more readable.
@@ -859,6 +946,36 @@ object MassToFormula {
     }
   }
 
+  def testStableFormulaEdgeCases() = {
+    // These test cases comes from https://github.com/20n/act/pull/473#issuecomment-252290577
+    val edgeCases = Map(
+      "atp"     -> (506.995758, "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1"),
+      "choline" -> (104.106987, "InChI=1S/C5H14NO/c1-6(2,3)4-5-7/h7H,4-5H2,1-3H3/q+1"), // Choline will likely to cause problems due to quaternary ammonium
+      "glucopyranose" -> (180.063385, "InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5-,6-/m1/s1"),
+      "acetone" -> (58.041866, "InChI=1S/C3H6O/c1-3(2)4/h1-2H3"),
+      "lysine"  -> (146.10553, "InChI=1S/C6H14N2O2/c7-4-2-1-3-5(8)6(9)10/h5H,1-4,7-8H2,(H,9,10)/t5-/m0/s1"),
+      "cumene"  -> (120.093903, "InChI=1S/C9H12/c1-8(2)9-6-4-3-5-7-9/h3-8H,1-2H3"),
+      "trichloroacetic acid" -> (161.904205, "InChI=1S/C2HCl3O2/c3-2(4,5)1(6)7/h(H,6,7)"),
+      "foa"     -> (413.973694, "InChI=1S/C8HF15O2/c9-2(10,1(24)25)3(11,12)4(13,14)5(15,16)6(17,18)7(19,20)8(21,22)23/h(H,24,25)"), //has fluorines
+      "ppGpp"   -> (602.95697, "InChI=1S/C10H17N5O17P4/c11-10-13-7-4(8(17)14-10)12-2-15(7)9-5(16)6(30-36(26,27)32-34(21,22)23)3(29-9)1-28-35(24,25)31-33(18,19)20/h2-3,5-6,9,16H,1H2,(H,24,25)(H,26,27)(H2,18,19,20)(H2,21,22,23)(H3,11,13,14,17)"), 
+      "erythronolide B" -> (402.261749, "InChI=1S/C21H38O7/c1-8-15-11(3)17(23)12(4)16(22)10(2)9-21(7,27)19(25)13(5)18(24)14(6)20(26)28-15/h10-15,17-19,23-25,27H,8-9H2,1-7H3/t10-,11+,12+,13+,14-,15-,17+,18+,19-,21-/m1/s1"),
+      "calicheamicin" -> (1367.27417, "InChI=1S/C55H74IN3O21S4/c1-12-57-30-24-73-35(22-34(30)68-6)78-48-43(63)40(26(3)75-53(48)77-33-17-15-13-14-16-19-55(67)23-32(61)41(58-54(66)72-10)38(33)29(55)18-20-82-84-81-11)59-80-36-21-31(60)50(28(5)74-36)83-51(65)37-25(2)39(56)46(49(71-9)45(37)69-7)79-52-44(64)47(70-8)42(62)27(4)76-52/h13-14,18,26-28,30-31,33-36,40,42-44,47-48,50,52-53,57,59-60,62-64,67H,12,20-24H2,1-11H3,(H,58,66)/b14-13-,29-18+/t26-,27+,28-,30+,31+,33+,34+,35+,36+,40-,42+,43+,44-,47-,48-,50-,52+,53+,55-/m1/s1"),  //Will possibly cause problems due to unusual trifulfide group
+      "chloramphenicol" -> (322.012329, "InChI=1S/C11H12Cl2N2O5/c12-10(13)11(18)14-8(5-16)9(17)6-1-3-7(4-2-6)15(19)20/h1-4,8-10,16-17H,5H2,(H,14,18)/t8-,9-/m1/s1"),
+      "teixobactin" -> (1241.713257, "InChI=1S/C58H95N15O15/c1-12-28(5)42(70-49(79)37(61-11)23-34-19-17-16-18-20-34)53(83)67-39(26-74)51(81)65-36(21-22-41(59)76)48(78)69-44(30(7)14-3)55(85)71-43(29(6)13-2)54(84)68-40(27-75)52(82)73-46-33(10)88-57(87)45(31(8)15-4)72-50(80)38(24-35-25-62-58(60)64-35)66-47(77)32(9)63-56(46)86/h16-20,28-33,35-40,42-46,61,74-75H,12-15,21-27H2,1-11H3,(H2,59,76)(H,63,86)(H,65,81)(H,66,77)(H,67,83)(H,68,84)(H,69,78)(H,70,79)(H,71,85)(H,72,80)(H,73,82)(H3,60,62,64)/t28-,29-,30-,31-,32-,33-,35-,36+,37+,38-,39-,40-,42-,43-,44+,45-,46+/m0/s1")  
+    )
+
+    val stableCnstr = new StableChemicalFormulae
+    for ((name, massInChI) <- edgeCases) {
+      val (mass, inchi) = massInChI
+      val parsed: Option[(String, Map[Atom, Int])] = formulaFromInChI(inchi)
+      assert(parsed.isDefined, s"Failed: $name, Invalid InChI: $inchi")
+      val formula = parsed match { case Some((str, form)) => form }
+      val passes = stableCnstr.isValid(formula)
+      if (!passes) reportFail(s"FAIL: $name, $formula, $inchi")
+    }
+    reportPass("Finished running testStableFormulaEdgeCases")
+  }
+
 }
 
 sealed trait Specials {
@@ -866,6 +983,10 @@ sealed trait Specials {
   def constraints(): BooleanExpr
   def describe(): String
   def check(f: ChemicalFormula): Boolean
+  final def isValid(f: ChemicalFormula): Boolean = {
+    val fillOut = AllAtoms.filterNot(f contains _).map(a => a -> 0).toMap
+    check(f ++ fillOut)
+  }
 
   def t(c: Int, a: Atom) = MassToFormula.term(c, a)
   def t(a: Atom) = MassToFormula.term(1, a)
@@ -928,16 +1049,15 @@ class StableChemicalFormulae extends Specials {
     // ensuring H is moves in exactly 2 increments requires creating another
     // free variable `Z` such that H = N+2C+2 - 2*Z, where Z >= 0. That is
     // more complicated. [ TODO later ]
+    // For now we just ensure 0 <= H <= hMax + N (coz the N can have an extra charge)
     // **************** Constraint c3 *******************
-    // For now we just ensure 0 <= H <= hMax
     // If `ph` represents the number of phosphate groups in the molecule:
     // There must be at least one O already present.
     // The total number of O's present must be greater than 3*P.
     // **************** Constraint c4 *******************
-    // TODO: implement halogen constraints:
     // int halogensAndHydrogens = H + Cl + Br + I + F //For the final formula
-    // halogensAndHydrogens <= Hmax
-    // halogensAndHydrogens %2 == Hmax % 2
+    // halogensAndHydrogens <= Hmax + N (since the N can have a + on it)
+    // if (N <= 0) halogensAndHydrogens %2 == Hmax % 2 (since any single N's can break mod)
   //
 
   def constraints() = {
@@ -949,13 +1069,17 @@ class StableChemicalFormulae extends Specials {
     // constraint c2 above
     val negNumHetero = e(-1, N) + e(-1, S) + e(-1, O)
     val hMax = e(2, N) + e(S) + e(O) + cBonds + negNumHetero
-    val c2 = e(H) >= e(0) and e(H) <= hMax
+    val c2 = e(H) >= e(0) and e(H) <= hMax + e(N)
 
     // constraint c3 above
     val c3 = e(P) < e(5) and (e(P) > e(0) implies e(O) > e(3, P))
 
     // constraint c4 above
-    val c4 = e(1) == e(1) // TODO: need to add constraint on halogens
+    val halogensAndH = e(H) + e(Cl) + e(Br) + e(I) + e(F)
+    val mod2Equals = (halogensAndH mod e(2)) == (hMax mod e(2))
+    val c4part1 = halogensAndH <= hMax + e(N)
+    val c4part2 = e(N) > e(0) or mod2Equals
+    val c4 = c4part1 and c4part2
 
     val constraint = c1 and c2 and c3 and c4
     constraint
@@ -970,13 +1094,16 @@ class StableChemicalFormulae extends Specials {
     // constraint c2 above
     val negNumHetero = -f(N) + -f(S) + -f(O)
     val hMax = 2 * f(N) + f(S) + f(O) + cBonds + negNumHetero
-    val c2 = f(H) >= 0 && f(H) <= hMax
+    val c2 = f(H) >= 0 && f(H) <= hMax + f(N)
 
     // constraint c3 above
     val c3 = f(P) < 5 && ( !(f(P) > 0) || (f(O) > 3 * f(P)))
 
     // constraint c4 above
-    val c4 = true // TODO: need to add constraint on halogens
+    val halogensAndH = f(H) + f(Cl) + f(Br) + f(I) + f(F)
+    val c4part1 = halogensAndH <= hMax + f(N)
+    val c4part2 = f(N) > 0 || halogensAndH % 2 == hMax % 2
+    val c4 = c4part1 && c4part2
 
     val constraint = c1 && c2 && c3 && c4
     constraint
