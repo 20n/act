@@ -31,7 +31,7 @@ public class FingerprintGenerator {
 
   public static void main(String[] args) throws Exception {
 
-    CFParameters params = new CFParameters(new File("/mnt/shared-data/Vijay/ret_time_prediction/config/cfp.xml"));
+    CFParameters params = new CFParameters(new File("/mnt/shared-data/Vijay/ret_time_prediction/config/cfp_2.xml"));
     BufferedReader reader = new BufferedReader(new FileReader("/home/vijay/inchis.txt"));
 
     List<String> headers = new ArrayList<>();
@@ -39,7 +39,7 @@ public class FingerprintGenerator {
     headers.add("Fingerprint");
 
     TSVWriter<String, String> writer = new TSVWriter<>(headers);
-    writer.open(new File("/mnt/shared-data/Vijay/ret_time_prediction/labelled_fingerprints.tsv"));
+    writer.open(new File("/mnt/shared-data/Vijay/ret_time_prediction/labelled_fingerprints_2.tsv"));
 
     String inchi = null;
     while ((inchi = reader.readLine()) != null) {
