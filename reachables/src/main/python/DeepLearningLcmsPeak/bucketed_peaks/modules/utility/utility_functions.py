@@ -45,7 +45,7 @@ def output_analysis_summary(output_directory, output_descriptor, summary_diction
 
 
 def save_model(model_directory, model_name, model):
-    model_location = os.path.join(model_directory, model_name)
+    model_location = os.path.join(model_directory, model_name + ".model")
 
     with open(model_location, "w") as f:
         # Complex objects require more recursive steps to pickle.

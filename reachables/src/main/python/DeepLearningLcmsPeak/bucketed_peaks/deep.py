@@ -14,7 +14,7 @@ This is the primary control file.  Run new Deep processings from here.
 """
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("lcmsDirectory", help="The LCMS plate directory.")
+    parser.add_argument("lcmsDirectory", help="The LCMS scan directory.")
     parser.add_argument("lcmsScanName", help="The name of the LCMS scan file.  Currently supports '.nc' format.")
     parser.add_argument("outputDirectory", help="Where to save all intermediate and final files.")
 
@@ -96,7 +96,7 @@ if __name__ == "__main__":
         autoencoder.visualize(output_descriptor, lower_axis=-1)
 
     # Write the summary information out for later analysis of what occurred.
-    utility_functions.output_analysis_summary(output_descriptor, output_descriptor, summary_dict)
+    utility_functions.output_analysis_summary(output_directory, output_descriptor, summary_dict)
 
     if not model_location:
-        utility_functions.save_model(output_directory, "{}.model".format(output_descriptor), autoencoder)
+        utility_functions.save_model(output_directory, output_descriptor, autoencoder)

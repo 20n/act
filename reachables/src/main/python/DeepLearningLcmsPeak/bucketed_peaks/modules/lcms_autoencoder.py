@@ -92,7 +92,7 @@ class LcmsAutoencoder:
         :param scan_file_name:  Actual LCMS scan file.
         :return:                Prepared matrix
         """
-        # Plate file stuff
+        # Scan file stuff
         lcms_directory = os.path.join(lcms_directory, '')
         lcms_scan_name = utility_functions.parse_lcms_scan_file_name(scan_file_name)
         assert lcms_scan_name.endswith("01"), "This module only processes MS1 data which should always have a " \
