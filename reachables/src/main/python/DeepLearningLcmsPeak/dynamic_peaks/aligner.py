@@ -51,10 +51,11 @@ def align_old_alignment_to_new_sample(previous_alignment, sample_two, tolerance_
     aligned_peaks = []
 
     i = 0
+    trailing_tracker = 0
     while i < len(previous_alignment):
         sample_one_peak = previous_alignment[i]
 
-        j = 0
+        j = trailing_tracker
         while j < len(sample_two):
             sample_two_peak = sample_two[j]
 
@@ -65,10 +66,14 @@ def align_old_alignment_to_new_sample(previous_alignment, sample_two, tolerance_
                     break
             elif mz_closeness < -tolerance_mz:
                 j = len(sample_two)
+            elif j != 0 and \
+                    (sample_one_peak.get_mz() - sample_two[j - 1].get_mz() > tolerance_mz) and \
+                    (sample_one_peak.get_mz() - sample_two[j].get_mz() <= tolerance_mz):
+                trailing_tracker = j
 
             j += 1
-
-        i += 1
+        else:
+            i += 1
 
     unaligned = [[] for _ in range(0, len(previous_alignment[0]))]
     for peak in previous_alignment:
@@ -84,32 +89,34 @@ def two_sample_alignment(sample_one, sample_two, tolerance_mz, tolerance_time):
     aligned_peaks = []
 
     i = 0
+    trailing_tracker = 0
     while i < len(sample_one):
         sample_one_peak = sample_one[i]
 
-        j = 0
+        j = trailing_tracker
         while j < len(sample_two):
             sample_two_peak = sample_two[j]
 
             mz_closeness = sample_one_peak.get_mz() - sample_two_peak.get_mz()
-            if abs(mz_closeness) <= tolerance_mz:
-                if abs(sample_one_peak.get_rt() - sample_two_peak.get_rt()) <= tolerance_time:
-                    aligned_peaks.append([sample_one.pop(i), sample_two.pop(j)])
-                    break
+            rt_closeness = abs(sample_one_peak.get_rt() - sample_two_peak.get_rt())
+            if abs(mz_closeness) <= tolerance_mz and rt_closeness <= tolerance_time:
+                aligned_peaks.append([sample_one.pop(i), sample_two.pop(j)])
+                break
             elif mz_closeness < -tolerance_mz:
                 j = len(sample_two)
+            elif j != 0 and \
+                    (sample_one_peak.get_mz() - sample_two[j - 1].get_mz() > tolerance_mz) and \
+                    (sample_one_peak.get_mz() - sample_two[j].get_mz() <= tolerance_mz):
+                trailing_tracker = j
 
             j += 1
-
-        i += 1
+        else:
+            i += 1
 
     return aligned_peaks, [sample_one, sample_two]
 
 
 def iterative_alignment(unaligned_samples):
-    if len(unaligned_samples) <= 1:
-        return unaligned_samples, []
-
     initial_two = unaligned_samples[0:2]
     anything_after = unaligned_samples[2:]
 
@@ -129,6 +136,7 @@ def iterative_alignment(unaligned_samples):
 
 
 def create_differential_peak_windows(exp, ctrl):
+    print("Aligning the experimental to the control samples.")
     aligned_peaks, unaligned_peaks = iterative_alignment([exp, ctrl])
 
     extra_info = []
