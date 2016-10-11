@@ -169,7 +169,7 @@ def create_differential_peak_windows(exp, ctrl):
         infos = {}
         infos["exp_std_dev"] = 0
         infos["ctrl_std_dev"] = 0
-        infos["sn"] = 0
+        infos["sn"] = peaks.get_maxo() / 1000.0
         infos["rtmin"] = peaks.get_rtmin()
         infos["rtmax"] = peaks.get_rtmax()
         infos["rt"] = peaks.get_rt()
@@ -184,7 +184,7 @@ def create_differential_peak_windows(exp, ctrl):
         infos = {}
         infos["exp_std_dev"] = 0
         infos["ctrl_std_dev"] = 0
-        infos["sn"] = 0
+        infos["sn"] = peaks.get_maxo() / 1000.0
         infos["rtmin"] = peaks.get_rtmin()
         infos["rtmax"] = peaks.get_rtmax()
         infos["rt"] = peaks.get_rt()
