@@ -16,7 +16,7 @@ This is the primary control file.  Run new Deep processings from here.
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--lcmsDirectory", help="The LCMS plate directory.")
-    parser.add_argument("--experimental", help="List of names of experimental files.", nargs='*')
+    parser.add_argument("--experimental", help="List of names of experimental files.", nargs='+')
     parser.add_argument("--control", help="List of names of control files.", nargs='*')
     parser.add_argument("--outputDirectory", help="Where to save all intermediate and final files.")
 
@@ -48,8 +48,6 @@ if __name__ == "__main__":
     mz_max = args.mzMax
     number_clusters = args.clusterNumber
 
-    # model_location = os.path.join(output_directory, "differential_expression" + ".model")
-
     # Copy of args dictionary, vars converts args from Namespace => dictionary
     summary_dict = {}
     summary_dict.update(vars(args))
@@ -61,11 +59,13 @@ if __name__ == "__main__":
         autoencoder = pickle.load(open(model_location, "rb"))
         autoencoder.set_output_directory(output_directory)
     else:
-        autoencoder = LcmsAutoencoder(output_directory, encoding_size, int(magic.max_seconds / magic.seconds_interval),
+        autoencoder = LcmsAutoencoder(output_directory, int(magic.max_seconds / magic.seconds_interval), encoding_size,
                                       number_clusters, mz_min, mz_max, debug=False)
 
-    experimental_peaks = aligner.merge_lcms_replicates(experimental_samples, "experimental_condition")
-    ctrl_peaks = aligner.merge_lcms_replicates(control_samples, "ctrl_condition")
+    experimental_peaks = aligner.merge_lcms_replicates(autoencoder, lcms_directory, output_directory,
+                                                       experimental_samples, "experimental_condition")
+    ctrl_peaks = aligner.merge_lcms_replicates(autoencoder, lcms_directory, output_directory, control_samples,
+                                               "ctrl_condition")
 
     processed_samples, aux_info = aligner.create_differential_peak_windows(experimental_peaks, ctrl_peaks)
     summary_dict["number_of_valid_windows"] = len(processed_samples)
@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
     # This currently also does the writing
     autoencoder.predict_clusters(encoded_samples, processed_samples, aux_info,
-                                 "differential_expression", [experimental_peaks, ctrl_peaks], drop_rt=0)
+                                 "differential_expression", drop_rt=0)
 
     if not model_location or not os.path.exists(model_location):
         autoencoder.visualize("differential_expression", lower_axis=-1)

@@ -1,3 +1,11 @@
+import csv
+import os
+
+import numpy as np
+
+from modules.utility import magic
+
+
 def align_replicates(mz_lists):
     aligned, unaligned = iterative_alignment(mz_lists)
     return aligned, unaligned
@@ -15,13 +23,14 @@ def stepwise_alignment(initial_samples, min_mz, mz_step, max_mz, min_time, time_
         unaligned = initial_samples
     else:
         unaligned = [previous_alignment, initial_samples]
-        aligned_peaks, unaligned = twoD_alignmentWithPrevious(unaligned[0], unaligned[1], mz_tolerance, time_tolerance)
+        aligned_peaks, unaligned = align_old_alignment_to_new_sample(unaligned[0], unaligned[1], mz_tolerance,
+                                                                     time_tolerance)
         aligned.extend(aligned_peaks)
 
     while time_tolerance < max_time or mz_tolerance < max_mz:
 
         print("Aligning peaks.  Number of input peaks is {}".format(len(unaligned[0]) + len(unaligned[1])))
-        aligned_peaks, unaligned = twoD_alignment(unaligned[0], unaligned[1], mz_tolerance, time_tolerance)
+        aligned_peaks, unaligned = two_sample_alignment(unaligned[0], unaligned[1], mz_tolerance, time_tolerance)
 
         if len(aligned_peaks) != 0:
             aligned.extend(aligned_peaks)
@@ -36,7 +45,7 @@ def stepwise_alignment(initial_samples, min_mz, mz_step, max_mz, min_time, time_
     return aligned, unaligned
 
 
-def twoD_alignmentWithPrevious(previous_alignment, sample_two, tolerance_mz, tolerance_time):
+def align_old_alignment_to_new_sample(previous_alignment, sample_two, tolerance_mz, tolerance_time):
     previous_alignment = sorted(previous_alignment, key=lambda data: data[0].get_mz())
     sample_two = sorted(sample_two, key=lambda data: data.get_mz())
     aligned_peaks = []
@@ -69,7 +78,7 @@ def twoD_alignmentWithPrevious(previous_alignment, sample_two, tolerance_mz, tol
     return aligned_peaks, unaligned + sample_two
 
 
-def twoD_alignment(sample_one, sample_two, tolerance_mz, tolerance_time):
+def two_sample_alignment(sample_one, sample_two, tolerance_mz, tolerance_time):
     sample_one = sorted(sample_one, key=lambda data: data.get_mz())
     sample_two = sorted(sample_two, key=lambda data: data.get_mz())
     aligned_peaks = []
@@ -99,7 +108,7 @@ def twoD_alignment(sample_one, sample_two, tolerance_mz, tolerance_time):
 
 def iterative_alignment(unaligned_samples):
     if len(unaligned_samples) <= 1:
-        return unaligned_samples
+        return unaligned_samples, []
 
     initial_two = unaligned_samples[0:2]
     anything_after = unaligned_samples[2:]
@@ -191,7 +200,7 @@ def normalize(first, second):
         return np.divide(peaks_subtracted, 1)
 
 
-def merge_lcms_replicates(samples, cond):
+def merge_lcms_replicates(autoencoder, lcms_directory, output_directory, samples, cond):
     # Returns a list of replicates
     scans = [autoencoder.process_lcms_trace(lcms_directory, plate) for plate in samples]
 
@@ -203,7 +212,7 @@ def merge_lcms_replicates(samples, cond):
                                             [peak[str(k)] for k in range(0, 150)]))
         all_peaks.append(single_sample_peaks)
 
-    aligned_windows, unaligned_windows = aligner.align_replicates(all_peaks)
+    aligned_windows, unaligned_windows = align_replicates(all_peaks)
 
     if len(unaligned_windows) > 0:
         with open(os.path.join(output_directory, cond + "_unaligned_peaks" + ".tsv"), "w") as f:

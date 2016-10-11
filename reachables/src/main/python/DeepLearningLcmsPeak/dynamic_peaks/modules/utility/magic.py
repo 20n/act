@@ -11,7 +11,7 @@ time_min = 0
 time_max = 450
 
 # Aligner settings
-rounding_level = 3
+rounding_level = 2
 max_seconds = 15
 seconds_interval = 0.1
 threshold = 1000.0

@@ -124,7 +124,6 @@ class LcmsAutoencoder:
 
         return row
 
-    # terminate when stops finding things
     def all_peaks_at_rt(self, smoothed_window, rounding_level, centered_mz_key, threshold, max_seconds,
                         seconds_interval, called_window_values):
         """
@@ -139,9 +138,8 @@ class LcmsAutoencoder:
         if maxo_for_current_mz[0] < threshold:
             return
 
-        # Don't let a point far away cause our model to miss.
         peaks_nearby_in_time = [(i, point) for i, point in enumerate(smoothed_window) if
-                                (point[2] - maxo_for_current_mz[2]) <= max_seconds]
+                                abs(point[2] - maxo_for_current_mz[2]) <= max_seconds / 2.0]
         max_index, max_peak_within_time_window = max(peaks_nearby_in_time, key=operator.itemgetter(1))
 
         if max_index == 0:
@@ -166,7 +164,6 @@ class LcmsAutoencoder:
         Figure out how wide we want to make the peak by looking left and right and
         taking values until they are significantly below the threshold or our max window size is reached.
         """
-
         width = 0
         stop_looking = threshold / 2
         while (max_index - width > 0) and (max_index + width < len(smoothed_window) - 1):
@@ -188,8 +185,9 @@ class LcmsAutoencoder:
             final_peaks = [peak for peak in final_peaks if
                            abs(smoothed_window[max_index][2] - peak[2]) < math.floor(max_seconds / 2.0)]
 
-        called_window_values.append(
-            self.call_peak(smoothed_window, final_peaks, threshold, max_seconds, seconds_interval, max_index))
+        if (max(smoothed_window)[0] - min(smoothed_window)[0]) / max(smoothed_window)[0] > 0.3:
+            called_window_values.append(
+                self.call_peak(smoothed_window, final_peaks, threshold, max_seconds, seconds_interval, max_index))
 
         self.all_peaks_at_rt(smoothed_window[:max_index - width], rounding_level, centered_mz_key, threshold,
                              max_seconds, seconds_interval, called_window_values)
@@ -449,7 +447,7 @@ class LcmsAutoencoder:
         """
         self.clusterer.fit(encoded_matrix)
 
-    def predict_clusters(self, training_output, training_input, row_numbers, output_tsv_file_name, row_matrices,
+    def predict_clusters(self, training_output, training_input, row_numbers, output_tsv_file_name,
                          valid_peak_array=None, drop_rt=None):
         """
         Takes all the necessary parameters to cluster an encoding and output
@@ -463,8 +461,8 @@ class LcmsAutoencoder:
         :param valid_peak_array:        List of clusters that may be supplied as valid.
                                         This effectively filters by cluster.
         """
-        self.clusterer.predict(training_output, training_input, row_numbers, output_tsv_file_name, row_matrices,
-                               valid_peak_array, drop_rt)
+        self.clusterer.predict(training_output, training_input, row_numbers, output_tsv_file_name, valid_peak_array,
+                               drop_rt)
 
     def visualize(self, tsv_name, lower_axis=0, higher_axis=1):
         """

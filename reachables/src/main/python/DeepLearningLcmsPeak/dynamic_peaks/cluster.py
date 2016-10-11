@@ -37,8 +37,8 @@ class LcmsClusterer:
         except ValueError:
             self.kmeans = None
 
-    def predict(self, encoded_data, raw_normalized_data, extra_information, output_tsv_file_name, row_matrices,
-                valid_peaks=None, drop_rt=None):
+    def predict(self, encoded_data, raw_normalized_data, extra_information, output_tsv_file_name, valid_peaks=None,
+                drop_rt=None):
         """
         :param encoded_data:            The encoded version of the original matrix.  Size (# Samples x Encoding Length)
         :param raw_normalized_data:     The raw, normalized version of the
@@ -48,7 +48,6 @@ class LcmsClusterer:
                                         1) The information is (Row number in the original matrix,
                                         2) Time point window was centered on,
                                         3) Maximum value of the window [What it was normalized by]
-        :param retention_times:         Retention time of each time index.  Size (# Of time points x 1)
         :param output_tsv_file_name:    Name of the output file
         :param valid_peaks:             A list, if provided, of clusters containing valid peaks.
                                         If not provided, all clusters are written to file.
@@ -78,11 +77,7 @@ class LcmsClusterer:
 
                 row = {}
 
-                # Get the max intensity index.  Additionally, assign the row values.
-                max_value_index = 0
                 for time_number in range(0, len(raw_normalized_data[i])):
-                    if abs(raw_normalized_data[i][time_number]) == 1:
-                        max_value_index = time_number
                     row[str(time_number)] = raw_normalized_data[i][time_number]
 
                 # Largest intensity value is where we call the retention time at
