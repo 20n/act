@@ -118,6 +118,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     add(HEADER_ION);
     add(HEADER_MASS);
     add(HEADER_MZ);
+    add("Retention Time");
   }};
 
   /**
@@ -144,6 +145,7 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
           row.put(HEADER_ION, molecule.getIon());
           row.put(HEADER_MASS, MassCalculator.calculateMass(molecule.getInchi()).toString());
           row.put(HEADER_MZ, resultForMZ.getMz().toString());
+          row.put("Retention Time", molecule.getTime().toString());
           writer.append(row);
           writer.flush();
         }
