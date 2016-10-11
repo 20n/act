@@ -79,7 +79,7 @@ lcmsConfigTraces <- function(input, output, session) {
   
   selected.peak <- reactive({
     shiny::validate(
-      need(!is.null(input$peaks), "Waiting for peak selection...")
+      need(!is.null(input$peaks), "Waiting for peak selection!")
     )
     splits <- unlist(strsplit(input$peaks, kPeakDisplaySep))
     mz.val <- as.numeric(splits[1])
@@ -116,11 +116,11 @@ lcmsConfigTraces <- function(input, output, session) {
   matching.inchis <- reactive({
     matching.inchis.code <- selected.peak()$matching_inchis
     shiny::validate(
-      need(matching.inchis.code != -1, "No matching molecule for this peak...")
+      need(matching.inchis.code != -1, "No matching molecule for this peak!")
     )
     matching.inchi.hashes <- config()$matching_inchi_hashes
     shiny::validate(
-      need(length(matching.inchi.hashes) > 0, "Matching molecules have not been computed...")
+      need(length(matching.inchi.hashes) > 0, "Matching molecules have not been computed!")
     )
     codes <- matching.inchi.hashes$code
     named.inchis <- matching.inchi.hashes$vals
@@ -132,11 +132,11 @@ lcmsConfigTraces <- function(input, output, session) {
   matching.formulae <- reactive({
     matching.formulae.code <- selected.peak()$matching_formulae
     shiny::validate(
-      need(matching.formulae.code != -1, "No matching formulae for this peak...")
+      need(matching.formulae.code != -1, "No matching formulae for this peak!")
     )
     matching.formulae.hashes <- config()$matching_formulae_hashes
     shiny::validate(
-      need(length(matching.formulae.hashes) > 0, "Matching formulae have not been computed...")
+      need(length(matching.formulae.hashes) > 0, "Matching formulae have not been computed!")
     )
     codes <- matching.formulae.hashes$code
     named.formulae <- matching.formulae.hashes$vals
@@ -153,6 +153,8 @@ lcmsConfigTraces <- function(input, output, session) {
       # `local` evaluates an expression in a local environment
       local({
         my_i <- i
+        # At this point, matching.inchis contains a matrix with n rows x 2 columns. 
+        # where n is the number of matching inchis, the first column holds the inchi string and the second holds a potential name
         callModule(moleculeRenderer, paste0("plot", my_i), reactive(matching.inchis[my_i, ]), "200px")
       })
     }
@@ -175,7 +177,7 @@ lcmsConfigTraces <- function(input, output, session) {
   
   output$formulae <- renderUI({
     shiny::validate(
-      need(dim(matching.formulae()) > 0, "No matching formulae for this peak...")
+      need(dim(matching.formulae()) > 0, "No matching formulae for this peak!")
     )
     # At this point, matching.formulae is a reactive value containing a matrix with n rows x 2 columns. 
     # where n is the number of matching formulae, the first column holds the formula and the second holds a potential formula name
