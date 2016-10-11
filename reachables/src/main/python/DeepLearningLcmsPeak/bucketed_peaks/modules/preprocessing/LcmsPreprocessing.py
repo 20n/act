@@ -134,7 +134,7 @@ class LcmsScan:
 class ScanWindower:
     @staticmethod
     def prepare_matrix_for_encoding(input_matrix, experimental_grid, control_grid, threshold, block_size,
-                                    local_halfwidth, verbose=False):
+                                    local_halfwidth, verbose=False, snr=None):
         """
         The goal of this function is to window and threshold an input matrix such that the output
         can be directly used by the autoencoder to learn.
@@ -245,10 +245,14 @@ class ScanWindower:
                                                                "exp_std_dev",
                                                                "ctrl_std_dev",
                                                                ])
+                                sn = 1
+                                if snr is not None:
+                                    sn = snr[row_number, int(centered_time + center)]
+
                                 formatted_window = Window(window=normalized_window,
                                                           row=row_number,
                                                           time=centered_time,
-                                                          sn=1,
+                                                          sn=sn,
                                                           maxo=window_max,
                                                           exp_std_dev=exp_std,
                                                           ctrl_std_dev=ctrl_std)

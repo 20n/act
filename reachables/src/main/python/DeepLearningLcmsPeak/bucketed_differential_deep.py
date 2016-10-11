@@ -5,9 +5,9 @@ import os
 
 import numpy as np
 
-from modules.lcms_autoencoder import LcmsAutoencoder
-from modules.preprocessing import LcmsPreprocessing
-from modules.utility import magic, utility_functions
+from bucketed_peaks.modules.lcms_autoencoder import LcmsAutoencoder
+from bucketed_peaks.modules.preprocessing import LcmsPreprocessing
+from bucketed_peaks.modules.utility import magic, utility_functions
 
 """
 This is the primary control file.  Run new Deep processings from here.
@@ -64,7 +64,6 @@ if __name__ == "__main__":
     # Copy of args dictionary, vars converts args from Namespace => dictionary
     summary_dict = {}
     summary_dict.update(vars(args))
-    summary_dict["model_location"] = model_location
 
     # Train matrix
     if model_location and os.path.exists(model_location):
@@ -142,12 +141,14 @@ if __name__ == "__main__":
     named_windows = LcmsPreprocessing.ScanWindower.prepare_matrix_for_encoding(row_matrix, row_matrix1, row_matrix2,
                                                                                magic.threshold,
                                                                                block_size,
-                                                                               magic.local_area_band_halfwidth)
+                                                                               magic.local_area_band_halfwidth, snr=snr)
     summary_dict["number_of_valid_windows"] = len(named_windows)
 
+    training_data = np.vstack([w.window for w in named_windows])
+
     if not model_location or not os.path.exists(model_location):
-        autoencoder.train(named_windows.window)
-    encoded_samples = autoencoder.predict(named_windows.window)
+        autoencoder.train(training_data)
+    encoded_samples = autoencoder.predict(training_data)
 
     if not model_location or not os.path.exists(model_location):
         autoencoder.fit_clusters(encoded_samples)
@@ -159,8 +160,8 @@ if __name__ == "__main__":
     if not model_location or not os.path.exists(model_location):
         autoencoder.visualize(output_descriptor, lower_axis=-1)
 
+    if not model_location:
+        summary_dict["model_location"] = utility_functions.save_model(output_directory, output_descriptor, autoencoder)
+
     # Write the summary information out for later analysis of what occurred.
     utility_functions.output_analysis_summary(output_directory, output_descriptor, summary_dict)
-
-    if not model_location:
-        utility_functions.save_model(output_directory, output_descriptor, autoencoder)

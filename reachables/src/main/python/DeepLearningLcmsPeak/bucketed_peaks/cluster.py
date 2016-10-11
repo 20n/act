@@ -6,7 +6,7 @@ import os
 from sklearn.cluster import MiniBatchKMeans
 from tqdm import tqdm
 
-from modules.utility import magic, utility_functions
+from bucketed_peaks.modules.utility import magic, utility_functions
 
 
 class LcmsClusterer:
@@ -73,7 +73,7 @@ class LcmsClusterer:
 
                 # Get the max intensity index.  Additionally, assign the row values.
                 max_value_index = 0
-                for time_number in range(0, len(named_windows[i])):
+                for time_number in range(0, len(named_windows[i].window)):
                     if abs(named_windows[i].window[time_number]) == 1:
                         max_value_index = time_number
                     row[str(time_number)] = named_windows[i].window[time_number]
@@ -104,8 +104,8 @@ class LcmsClusterer:
                 # Which m/z bucket
                 # call it in the middle
                 which_sample = 0 if row["sn"] > 0 else 1
-                row["mz"] = \
-                    row_matrices[which_sample].get_bucket_mz()[int(row_in_array), int(time_index + max_value_index)]
+                row["mz"] = row_matrices[which_sample].get_bucket_mz()[
+                    int(row_in_array), int(time_index + max_value_index)]
                 if row["mz"] == 0:
                     # So we don't get 0 if something messes up.
                     row["mz"] = utility_functions.row_to_mz(row_in_array, self.mz_split,

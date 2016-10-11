@@ -4,7 +4,6 @@ import argparse
 import os
 
 import numpy as np
-
 from modules.lcms_autoencoder import LcmsAutoencoder
 from modules.preprocessing.LcmsPreprocessing import ScanWindower
 from modules.utility import magic, utility_functions
@@ -95,8 +94,8 @@ if __name__ == "__main__":
     if not model_location or not os.path.exists(model_location):
         autoencoder.visualize(output_descriptor, lower_axis=-1)
 
+    if not model_location:
+        summary_dict["model_location"] = utility_functions.save_model(output_directory, output_descriptor, autoencoder)
+
     # Write the summary information out for later analysis of what occurred.
     utility_functions.output_analysis_summary(output_directory, output_descriptor, summary_dict)
-
-    if not model_location:
-        utility_functions.save_model(output_directory, output_descriptor, autoencoder)

@@ -10,10 +10,10 @@ from keras.layers import Input, Dense
 from keras.models import Model
 from keras.optimizers import RMSprop
 
-from cluster import LcmsClusterer
-from modules.preprocessing import LcmsPreprocessing
-from modules.preprocessing import netcdf_parser
-from modules.utility import magic, utility_functions
+from bucketed_peaks.cluster import LcmsClusterer
+from bucketed_peaks.modules.preprocessing import LcmsPreprocessing
+from bucketed_peaks.modules.utility import magic, utility_functions
+from netcdf import netcdf_parser
 
 
 class LcmsAutoencoder:
@@ -273,9 +273,15 @@ class LcmsAutoencoder:
             cluster = df[df["cluster"] == ci]
             if self.verbose:
                 print("Cluster {}".format(ci))
-            just_time_values = \
-                cluster.drop(["mz", "mzmin", "mzmax", "rt", "rtmin",
-                              "rtmax", "into", "maxo", "cluster", "sn", "abs_sn"], 1)
+
+            drop_headers = []
+            for header in df.columns.values:
+                try:
+                    int(header)
+                except ValueError:
+                    drop_headers.append(header)
+
+            just_time_values = cluster.drop(drop_headers, 1)
 
             if self.verbose:
                 print("Creating plot")

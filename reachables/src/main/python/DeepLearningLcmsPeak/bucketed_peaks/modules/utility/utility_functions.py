@@ -52,6 +52,8 @@ def save_model(model_directory, model_name, model):
         sys.setrecursionlimit(10000)
         pickle.dump(model, f)
 
+    return model_location
+
 
 def load_previous_model(model_location, output_directory):
     print("Using previously created model at {}".format(model_location))
