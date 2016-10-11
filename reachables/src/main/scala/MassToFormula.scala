@@ -1051,15 +1051,15 @@ class StableChemicalFormulae extends Specials {
     // ensuring H is moves in exactly 2 increments requires creating another
     // free variable `Z` such that H = N+2C+2 - 2*Z, where Z >= 0. That is
     // more complicated. [ TODO later ]
-    // For now we just ensure 0 <= H <= hMax
+    // For now we just ensure 0 <= H <= hMax + N (coz the N can have an extra charge)
     // **************** Constraint c3 *******************
     // If `ph` represents the number of phosphate groups in the molecule:
     // There must be at least one O already present.
     // The total number of O's present must be greater than 3*P.
     // **************** Constraint c4 *******************
     // int halogensAndHydrogens = H + Cl + Br + I + F //For the final formula
-    // halogensAndHydrogens <= Hmax
-    // halogensAndHydrogens %2 == Hmax % 2
+    // halogensAndHydrogens <= Hmax + N (since the N can have a + on it)
+    // if (N <= 0) halogensAndHydrogens %2 == Hmax % 2 (since any number of N's can break
   //
 
   def constraints() = {
@@ -1071,7 +1071,7 @@ class StableChemicalFormulae extends Specials {
     // constraint c2 above
     val negNumHetero = e(-1, N) + e(-1, S) + e(-1, O)
     val hMax = e(2, N) + e(S) + e(O) + cBonds + negNumHetero
-    val c2 = e(H) >= e(0) and e(H) <= hMax
+    val c2 = e(H) >= e(0) and e(H) <= hMax + e(N)
 
     // constraint c3 above
     val c3 = e(P) < e(5) and (e(P) > e(0) implies e(O) > e(3, P))
@@ -1079,7 +1079,9 @@ class StableChemicalFormulae extends Specials {
     // constraint c4 above
     val halogensAndH = e(H) + e(Cl) + e(Br) + e(I) + e(F)
     val mod2Equals = (halogensAndH mod e(2)) == (hMax mod e(2))
-    val c4 = halogensAndH <= hMax and mod2Equals
+    val c4part1 = halogensAndH <= hMax + e(N)
+    val c4part2 = e(N) > e(0) or mod2Equals
+    val c4 = c4part1 and c4part2
 
     val constraint = c1 and c2 and c3 and c4
     constraint
