@@ -14,8 +14,7 @@ lcmsConfigTracesInput <- function(id, label = "LCMS config traces") {
     checkboxInput(ns("has.mol.mass"), "Expect multiple m/z values per peak (-M option)", value = FALSE),
     uiOutput(ns("ui.rt.mz.scope")),
     plotParametersInput(ns("plot.parameters")),
-    checkboxInput(ns("normalize"), "Normalize values", value = TRUE),
-    actionButton(ns("wait"), "Michael's button (press if you're bored)")
+    checkboxInput(ns("normalize"), "Normalize values", value = TRUE)
   )
 }
 
@@ -24,9 +23,11 @@ lcmsConfigTracesUI <- function(id) {
   ns <- NS(id)
   fluidPage(
     fluidRow(
+      h4("Matching molecules"),
       uiOutput(ns("structures"))
     ),
     fluidRow(
+      h4("Matching formulae"),
       uiOutput(ns("formulae"))
     ),
     fluidRow(
@@ -78,7 +79,7 @@ lcmsConfigTraces <- function(input, output, session) {
   
   selected.peak <- reactive({
     shiny::validate(
-      need(!is.null(input$peaks), "Waiting for peak selection...")
+      need(!is.null(input$peaks), "Waiting for peak selection!")
     )
     splits <- unlist(strsplit(input$peaks, kPeakDisplaySep))
     mz.val <- as.numeric(splits[1])
@@ -114,43 +115,53 @@ lcmsConfigTraces <- function(input, output, session) {
   
   matching.inchis <- reactive({
     matching.inchis.code <- selected.peak()$matching_inchis
-    # get the  the matching inchis for this hashcode
-    matching.inchis <- with(config()$matching_inchi_hashes, {
-      unlist(vals[code == matching.inchis.code]) 
-    })
     shiny::validate(
-      need(length(matching.inchis) > 0, "No matching molecule for this peak...")
+      need(matching.inchis.code != -1, "No matching molecule for this peak!")
     )
+    matching.inchi.hashes <- config()$matching_inchi_hashes
+    shiny::validate(
+      need(length(matching.inchi.hashes) > 0, "Matching molecules have not been computed!")
+    )
+    codes <- matching.inchi.hashes$code
+    named.inchis <- matching.inchi.hashes$vals
+    which.code <- which(codes == matching.inchis.code)
+    matching.inchis <- named.inchis[[which.code]]
     matching.inchis
   })
   
   matching.formulae <- reactive({
     matching.formulae.code <- selected.peak()$matching_formulae
-    # get the  the matching inchis for this hashcode
-    matching.formulae <- with(config()$matching_formulae_hashes, {
-      unlist(vals[code == matching.formulae.code]) 
-    })
     shiny::validate(
-      need(length(matching.formulae) > 0, "No matching formulae for this peak...")
+      need(matching.formulae.code != -1, "No matching formulae for this peak!")
     )
+    matching.formulae.hashes <- config()$matching_formulae_hashes
+    shiny::validate(
+      need(length(matching.formulae.hashes) > 0, "Matching formulae have not been computed!")
+    )
+    codes <- matching.formulae.hashes$code
+    named.formulae <- matching.formulae.hashes$vals
+    which.code <- which(codes == matching.formulae.code)
+    matching.formulae <- named.formulae[[which.code]]
     matching.formulae
   })
   
   output$structures <- renderUI({
     matching.inchis <- matching.inchis()
-    n <- length(matching.inchis)
+    n <- nrow(matching.inchis)
     for (i in 1:n) {
       # we need to call `local` since we don't know when the call will be made
       # `local` evaluates an expression in a local environment
       local({
         my_i <- i
-        callModule(moleculeRenderer, paste0("plot", my_i), reactive(matching.inchis[my_i]), "200px")
+        # At this point, matching.inchis contains a matrix with n rows x 2 columns. 
+        # where n is the number of matching inchis, the first column holds the inchi string and the second holds a potential name
+        callModule(moleculeRenderer, paste0("plot", my_i), reactive(matching.inchis[my_i, ]), "200px")
       })
     }
     # get a list of rendered molecule
     molecule_output_list <- lapply(1:n, function(i) {
       plotname <- paste0("plot", i)
-      chemSpiderUrl <- sprintf("http://www.chemspider.com/Search.aspx?q=%s", matching.inchis[i])
+      chemSpiderUrl <- sprintf("http://www.chemspider.com/Search.aspx?q=%s", matching.inchis[[i]][1])
       # CSS tag `display:inline-block` allows to display all structures on one line
       div(style="display:inline-block", 
           tags$a(moleculeRendererUI(ns(plotname)), href = chemSpiderUrl, target="_blank"))
@@ -159,20 +170,24 @@ lcmsConfigTraces <- function(input, output, session) {
     uiStructures <- do.call(tagList, molecule_output_list)
     # wrap in div tag, with some cool CSS tags to fix height and allow overflowing on the x axis
     tagList(
-      h4("Matching molecules"),
       em("Please scroll horizontally to display all"),
       div(style="height: 200px; overflow-x: auto; white-space: nowrap", uiStructures)  
     )
   })
   
   output$formulae <- renderUI({
-    tagList(
-      h4("Matching formulae"),
-      p(paste(matching.formulae(), collapse = " - "))
+    shiny::validate(
+      need(dim(matching.formulae()) > 0, "No matching formulae for this peak!")
     )
+    # At this point, matching.formulae is a reactive value containing a matrix with n rows x 2 columns. 
+    # where n is the number of matching formulae, the first column holds the formula and the second holds a potential formula name
+    # The following line concatenates the formula and the name -> "formula - name" into a list of strings.
+    named.formulae <- apply(matching.formulae(), 1, function(x) paste(x[!is.na(x)], collapse = " - "))
+    formulae <- p(paste(named.formulae, collapse = ", "))
+    div(style="height: 50px; overflow-x: auto; white-space: nowrap", formulae) 
   })
   
-  plot.data <- callModule(lcmsTracesData, "traces", scan.filenames, retention.time.range, target.mz, mz.band.halfwidth)
+  plot.data <- callModule(lcmsTracesPeaks, "traces", scan.filenames, retention.time.range, target.mz, mz.band.halfwidth)
   plot.parameters <- callModule(plotParameters, "plot.parameters")
 
   output$plots <- renderUI({

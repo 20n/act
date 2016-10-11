@@ -63,7 +63,13 @@ server <- function(input, output, session) {
       logdebug("Active tab was updated to %s", window)
     }
   })
-  
+
+  observe({
+    # periodically perform garbage collection
+    invalidateLater(1000, session)
+    gc()
+  })
+    
   # Render 20n logo
   output$logo <- renderImage({
     list(src = k20logoLocation, contentType = "image/png",
@@ -99,8 +105,8 @@ ui <- fluidPage(
                       mainPanel(lcmsSingleTraceUI("simple"))
              ),
              tabPanel("Multi", value = "multi",
-                      sidebarPanel(lcmsMutliTracesInput("multi")),
-                      mainPanel(lcmsMutliTracesUI("multi"))
+                      sidebarPanel(lcmsMultiTracesInput("multi")),
+                      mainPanel(lcmsMultiTracesUI("multi"))
              ),
              tabPanel("Configuration-based", value = "config",
                       sidebarPanel(lcmsConfigTracesInput("config")),
