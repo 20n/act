@@ -64,6 +64,12 @@ server <- function(input, output, session) {
     }
   })
   
+  observe({
+    # periodically perform garbage collection
+    invalidateLater(1000,session)
+    gc()
+  })
+  
   # Render 20n logo
   output$logo <- renderImage({
     list(src = k20logoLocation, contentType = "image/png",
