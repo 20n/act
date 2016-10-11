@@ -6,7 +6,7 @@ Deep.py Default Values
 cluster_number = 40
 mz_split = 0.003
 encoding_size = 10  # Meaning we can visualize it on a 2D plot!!
-window_size = 100
+window_size = 150
 mz_min = 49
 mz_max = 951
 time_min = 0
