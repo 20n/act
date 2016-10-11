@@ -35,3 +35,4 @@ kmeans_random_state = 1337
 *SV file separator (Default tsv)
 """
 separator = "\t"
+default_output_file_ending = ".tsv"

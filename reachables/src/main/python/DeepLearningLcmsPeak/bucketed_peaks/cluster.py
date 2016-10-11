@@ -6,8 +6,8 @@ import os
 from sklearn.cluster import MiniBatchKMeans
 from tqdm import tqdm
 
-import magic
-from utility import row_to_mz, column_number_to_time
+from bucketed_peaks.utility import magic
+from bucketed_peaks.utility import utility_functions
 
 
 class LcmsClusterer:
@@ -81,12 +81,14 @@ class LcmsClusterer:
                     row[str(time_number)] = raw_normalized_data[i][time_number]
 
                 # Largest intensity value is where we call the retention time at
-                row["rt"] = column_number_to_time(time_index + max_value_index, magic.time_step, magic.time_min)
+                row["rt"] = utility_functions.column_number_to_time(time_index + max_value_index, magic.time_step,
+                                                                    magic.time_min)
                 if drop_rt and row["rt"] <= drop_rt:
                     continue
 
-                row["rtmin"] = column_number_to_time(time_index, magic.time_step, magic.time_min)
-                row["rtmax"] = column_number_to_time(time_index + len(raw_normalized_data[i]) - 1, magic.time_step,
+                row["rtmin"] = utility_functions.column_number_to_time(time_index, magic.time_step, magic.time_min)
+                row["rtmax"] = utility_functions.column_number_to_time(time_index + len(raw_normalized_data[i]) - 1,
+                                                                       magic.time_step,
                                                      magic.time_min)
 
                 # Sum of all points aprox of AUTC
@@ -111,10 +113,11 @@ class LcmsClusterer:
                     row_matrices[which_sample].get_bucket_mz()[int(row_in_array), int(time_index + max_value_index)]
                 if row["mz"] == 0:
                     # So we don't get 0 if something messes up.
-                    row["mz"] = row_to_mz(row_in_array, self.mz_split, self.mz_min) + 0.5 * self.mz_split
+                    row["mz"] = utility_functions.row_to_mz(row_in_array, self.mz_split,
+                                                            self.mz_min) + 0.5 * self.mz_split
                 # Min and max within window
-                row["mzmin"] = row_to_mz(row_in_array, self.mz_split, self.mz_min)
-                row["mzmax"] = row_to_mz(row_in_array, self.mz_split, self.mz_min) + self.mz_split
+                row["mzmin"] = utility_functions.row_to_mz(row_in_array, self.mz_split, self.mz_min)
+                row["mzmax"] = utility_functions.row_to_mz(row_in_array, self.mz_split, self.mz_min) + self.mz_split
 
                 row["exp_std_dev"] = extra_information[i]["exp_std_dev"]
                 row["ctrl_std_dev"] = extra_information[i]["ctrl_std_dev"]

@@ -4,7 +4,7 @@ from collections import namedtuple
 import numpy as np
 from tqdm import tqdm
 
-from utility import assign_row_by_mz, assign_column_by_time
+from bucketed_peaks.utility import assign_row_by_mz, assign_column_by_time
 
 
 class ScanConverter:
@@ -217,7 +217,7 @@ class ScanWindower:
                     120 - 15 = 105, making our window 105-135, thus centering 120.
                     """
                     centered_time = int(i + window_max_index - center)
-                    max_centered_window = np.asarray(single_row[centered_time: (centered_time + self.block_size)])
+                    max_centered_window = np.asarray(single_row[centered_time: (centered_time + block_size)])
 
                     # By dividing by the max, we normalize the entire window to our max value that we previously found.
                     normalized_window = max_centered_window / abs(float(window_max))
@@ -248,15 +248,12 @@ class ScanWindower:
                                                           exp_std_dev=exp_std,
                                                           ctrl_std_dev=ctrl_std)
                                 thresholded_groups.append(formatted_window)
-                        else:
-                            if self.debug:
-                                print("Skipping window as another, larger value was found nearby.")
 
                     # We take one step here to not miss anything
                     i += window_max_index + 1
                 else:
                     # There were no valid points (Points greater than our min threshold) in this block,
                     # so we can just skip all the points in this block.
-                    i += self.block_size
+                    i += block_size
 
         return thresholded_groups

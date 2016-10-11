@@ -10,10 +10,10 @@ from keras.layers import Input, Dense
 from keras.models import Model
 from keras.optimizers import RMSprop
 
-import magic
-from cluster import LcmsClusterer
-from preprocessing import LcmsPreprocessing
-from preprocessing import netcdf_parser
+from bucketed_peaks.cluster import LcmsClusterer
+from bucketed_peaks.preprocessing import LcmsPreprocessing
+from bucketed_peaks.preprocessing import netcdf_parser
+from bucketed_peaks.utility import magic, utility_functions
 
 
 class LcmsAutoencoder:
@@ -94,16 +94,16 @@ class LcmsAutoencoder:
         """
         # Plate file stuff
         lcms_directory = os.path.join(lcms_directory, '')
-        lcms_plate_name = scan_file_name.split(".nc")[0]
-        assert lcms_plate_name.endswith("01"), "This module only processes MS1 data which should always have a " \
-                                               "file ending of '01'.  Your supplied file " \
-                                               "was {}".format(scan_file_name)
+        lcms_scan_name = utility_functions.parse_lcms_scan_file_name(scan_file_name)
+        assert lcms_scan_name.endswith("01"), "This module only processes MS1 data which should always have a " \
+                                              "file ending of '01'.  Your supplied file " \
+                                              "was {}".format(scan_file_name)
 
         current_trace_file = os.path.join(lcms_directory, scan_file_name)
         assert os.path.exists(current_trace_file), "The trace file at {} does not exist.".format(current_trace_file)
 
-        saved_array_name = lcms_plate_name + "_mz_split_" + str(self.mz_split) + ".npy"
-        saved_mz_name = lcms_plate_name + "_mz_split_" + str(self.mz_split) + "_mz_" + ".npy"
+        saved_array_name = lcms_scan_name + "_mz_split_" + str(self.mz_split) + ".npy"
+        saved_mz_name = lcms_scan_name + "_mz_split_" + str(self.mz_split) + "_mz_" + ".npy"
 
         processed_file_name = os.path.join(self.output_directory, saved_array_name)
         saved_mz_file_name = os.path.join(self.output_directory, saved_mz_name)
@@ -242,6 +242,8 @@ class LcmsAutoencoder:
         :param output_tsv_file_name:    Name of output file
         :param valid_peak_array:        List of clusters that may be supplied as valid.
                                         This effectively filters by cluster.
+        :param row_matrices:            Extra information that is add to the output TSV files.
+        :param drop_rt:                 Any values under this retention time will not be written to the output file.
         """
         self.clusterer.predict(training_output, training_input, row_numbers, output_tsv_file_name, row_matrices,
                                valid_peak_array, drop_rt)
@@ -260,7 +262,7 @@ class LcmsAutoencoder:
             os.makedirs(visualization_path)
         if self.verbose:
             print("Loading large CSV into dataframe")
-        df = pd.DataFrame.from_csv(os.path.join(self.output_directory, tsv_name + ".tsv"),
+        df = pd.DataFrame.from_csv(os.path.join(self.output_directory, tsv_name + magic.default_output_file_ending),
                                    index_col=None,
                                    sep=magic.separator)
 
@@ -288,7 +290,7 @@ class LcmsAutoencoder:
                 print("Saving plot at {}".format(save_location))
 
             sns.plt.ylim(lower_axis, higher_axis)
-            sns.plt.title("Cluster {} : Count {}".format(ci, len(cluster)))
+            sns.plt.title("Cluster Number {} - Count {}".format(ci, len(cluster)))
             sns.plt.savefig(save_location)
 
             # Make sure to clear after creating each figure.

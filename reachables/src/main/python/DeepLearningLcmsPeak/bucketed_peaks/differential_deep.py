@@ -1,16 +1,13 @@
 from __future__ import absolute_import, division, print_function
 
 import argparse
-import json
 import os
-import pickle
-import sys
 
 import numpy as np
 
-import magic
-from lcms_autoencoder import LcmsAutoencoder
-from preprocessing import LcmsPreprocessing
+from bucketed_peaks.lcms_autoencoder import LcmsAutoencoder
+from bucketed_peaks.preprocessing import LcmsPreprocessing
+from bucketed_peaks.utility import magic, utility_functions
 
 """
 This is the primary control file.  Run new Deep processings from here.
@@ -41,6 +38,9 @@ if __name__ == "__main__":
                         help="Number of kMeans clusters to cluster on.",
                         default=magic.cluster_number)
 
+    parser.add_argument("-d", "--outputDescriptor", help="The label output files should be labeled with",
+                        default="differential_expression")
+
     parser.add_argument("-n", "--mzMin", type=int, help="The lowest M/Z value allowed.", default=magic.mz_min)
     parser.add_argument("-x", "--mzMax", type=int, help="The highest M/Z value allowed.", default=magic.mz_max)
 
@@ -52,6 +52,7 @@ if __name__ == "__main__":
     output_directory = args.outputDirectory
 
     model_location = args.previousModelLocation
+    output_descriptor = args.outDescriptor
 
     block_size = args.lcmsWindowSize
     encoding_size = args.encodingSize
@@ -60,8 +61,6 @@ if __name__ == "__main__":
     mz_max = args.mzMax
     number_clusters = args.clusterNumber
 
-    # model_location = os.path.join(output_directory, "differential_expression" + ".model")
-
     # Copy of args dictionary, vars converts args from Namespace => dictionary
     summary_dict = {}
     summary_dict.update(vars(args))
@@ -69,9 +68,7 @@ if __name__ == "__main__":
 
     # Train matrix
     if model_location and os.path.exists(model_location):
-        print("Using previously created model at {}".format(model_location))
-        autoencoder = pickle.load(open(model_location, "rb"))
-        autoencoder.set_output_directory(output_directory)
+        autoencoder = utility_functions.load_previous_model(model_location, output_directory)
     else:
         autoencoder = LcmsAutoencoder(output_directory, block_size, encoding_size,
                                       number_clusters, mz_division, mz_min, mz_max, debug=True)
@@ -154,20 +151,14 @@ if __name__ == "__main__":
         autoencoder.fit_clusters(encoded_samples)
 
     # This currently also does the writing
-    autoencoder.predict_clusters(encoded_samples, named_windows, "differential_expression", [row_matrix1, row_matrix2],
-                                 drop_rt=0)
+    autoencoder.predict_clusters(encoded_samples, named_windows, output_descriptor,
+                                 [row_matrix1, row_matrix2], drop_rt=0, row_matrices=[row_matrix1, row_matrix2])
 
     if not model_location or not os.path.exists(model_location):
-        autoencoder.visualize("differential_expression", lower_axis=-1)
+        autoencoder.visualize(output_descriptor, lower_axis=-1)
 
-    # Write run summary information
-    with open(os.path.join(output_directory, "differential_expression_run_summary.json"), "w") as f:
-        json.dump(summary_dict, f, indent=4, sort_keys=True)
+    # Write the summary information out for later analysis of what occurred.
+    utility_functions.output_analysis_summary(output_descriptor, output_descriptor, summary_dict)
 
     if not model_location:
-        model_location = os.path.join(output_directory, "differential_expression.model")
-
-        with open(model_location, "w") as f:
-            # Complex objects require more recursive steps to pickle.
-            sys.setrecursionlimit(10000)
-            pickle.dump(autoencoder, f)
+        utility_functions.save_model(output_directory, "{}.model".format(output_descriptor), autoencoder)
