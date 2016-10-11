@@ -116,79 +116,27 @@ public class Fingerprint {
     CFParameters params = new CFParameters(new File("/mnt/shared-data/Vijay/ret_time_prediction/config/cfp.xml"));
 
     ChemicalFingerprint apapFingerprintInchi = new ChemicalFingerprint(params);
-    Molecule apap = cleanMol(MolImporter.importMol("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)", "inchi"));
+    Molecule apap = MolImporter.importMol("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)", "inchi");
     apapFingerprintInchi.generate(apap);
 
     ChemicalFingerprint otherFingerprint = new ChemicalFingerprint(params);
-    Molecule otherChem = cleanMol(MolImporter.importMol("InChI=1S/C8H11NO/c1-2-9-7-3-5-8(10)6-4-7/h3-6,9-10H,2H2,1H3", "inchi"));
+    Molecule otherChem = MolImporter.importMol("InChI=1S/C8H11NO/c1-2-9-7-3-5-8(10)6-4-7/h3-6,9-10H,2H2,1H3", "inchi");
     otherFingerprint.generate(otherChem);
 
-    // 35
+    // common bit count of 35
     System.out.println(apapFingerprintInchi.getCommonBitCount(otherFingerprint));
-
-    List<String> apapS = new ArrayList<>();
-    apapS.add(apapFingerprintInchi.toBinaryString());
-
-    List<String> otherS = new ArrayList<>();
-    otherS.add(otherFingerprint.toBinaryString());
-
-    List<List<String>> diff = new ArrayList<>();
-    diff.add(apapS);
-    diff.add(otherS);
-    
-    // Compare
-    int differenceInBits = 0;
-    int total = 0;
-    for (int i = 0; i < diff.get(0).size(); i++) {
-      String firstBinary = diff.get(0).get(i);
-      String secondBinary = diff.get(1).get(i);
-      for (int j = 0; j < firstBinary.length(); j++) {
-        total++;
-        if (firstBinary.charAt(j) != secondBinary.charAt(j)) {
-          differenceInBits++;
-        }
-      }
-    }
-
-    System.out.println(differenceInBits);
 
 
     ChemicalFingerprint apapFingerprintSmiles = new ChemicalFingerprint(params);
-    Molecule apapSmiles = cleanMol(MolImporter.importMol("CC(=O)Nc1ccc(cc1)O", "smiles"));
+    Molecule apapSmiles = MolImporter.importMol("CC(=O)Nc1ccc(cc1)O", "smiles");
     apapFingerprintSmiles.generate(apapSmiles);
 
     ChemicalFingerprint otherFingerprintSmiles = new ChemicalFingerprint(params);
-    Molecule otherChem2 = cleanMol(MolImporter.importMol("CCNc1ccc(cc1)O", "smiles"));
+    Molecule otherChem2 = MolImporter.importMol("CCNc1ccc(cc1)O", "smiles");
     otherFingerprintSmiles.generate(otherChem2);
 
-    // 51
+    // common bit count of 51
     System.out.println(apapFingerprintSmiles.getCommonBitCount(otherFingerprintSmiles));
-
-
-    List<String> apapSS = new ArrayList<>();
-    apapSS.add(apapFingerprintSmiles.toBinaryString());
-
-    List<String> otherSS = new ArrayList<>();
-    otherSS.add(otherFingerprintSmiles.toBinaryString());
-
-    List<List<String>> diff2 = new ArrayList<>();
-    diff2.add(apapSS);
-    diff2.add(otherSS);
-
-    // Compare
-    int differenceInBitss = 0;
-    for (int i = 0; i < diff2.get(0).size(); i++) {
-      String firstBinary = diff2.get(0).get(i);
-      String secondBinary = diff2.get(1).get(i);
-      for (int j = 0; j < firstBinary.length(); j++) {
-        total++;
-        if (firstBinary.charAt(j) != secondBinary.charAt(j)) {
-          differenceInBitss++;
-        }
-      }
-    }
-
-    System.out.println(differenceInBitss);
 
 
 
