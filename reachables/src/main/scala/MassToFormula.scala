@@ -734,9 +734,7 @@ object MassToFormula {
   ////
   // TODO: Replace below with Chemaxon.Molecule.getAtomCount(atomicNumber)
   // Function `getFormulaMap: String -> Map[Atom, Int]` and helpers `getFormulaMapStep`,
-  // `get{Num, Atom}AtHead`, and `headExtractHelper` won't be needed. That will take care
-  // of fixing the greedy approach here that only works for single char atoms 
-  // (Line: `!isHeadAlreadyAtom && c.isLetter`)
+  // `get{Num, Atom}AtHead`, and `headExtractHelper` won't be needed.
   //
   // Considerations that will need to be tested before the move:
   // 1. Chemaxon license?
@@ -1059,7 +1057,7 @@ class StableChemicalFormulae extends Specials {
     // **************** Constraint c4 *******************
     // int halogensAndHydrogens = H + Cl + Br + I + F //For the final formula
     // halogensAndHydrogens <= Hmax + N (since the N can have a + on it)
-    // if (N <= 0) halogensAndHydrogens %2 == Hmax % 2 (since any number of N's can break
+    // if (N <= 0) halogensAndHydrogens %2 == Hmax % 2 (since any single N's can break mod)
   //
 
   def constraints() = {
