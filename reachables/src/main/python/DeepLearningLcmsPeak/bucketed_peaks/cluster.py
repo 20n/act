@@ -6,8 +6,7 @@ import os
 from sklearn.cluster import MiniBatchKMeans
 from tqdm import tqdm
 
-from bucketed_peaks.utility import magic
-from bucketed_peaks.utility import utility_functions
+from modules.utility import magic, utility_functions
 
 
 class LcmsClusterer:
@@ -36,18 +35,16 @@ class LcmsClusterer:
             print("Clustering")
         self.kmeans.fit(training_output)
 
-    def predict(self, encoded_data, raw_normalized_data, extra_information, output_tsv_file_name, row_matrices,
-                valid_peaks=None, drop_rt=None):
+    def predict(self, encoded_data, named_windows, output_tsv_file_name, row_matrices, valid_peaks=None, drop_rt=None):
         """
         :param encoded_data:            The encoded version of the original matrix.  Size (# Samples x Encoding Length)
-        :param raw_normalized_data:     The raw, normalized version of the
+        :param named_windows:     The raw, normalized version of the
                                         input matrix. Size (# Samples x # time points)
         :param extra_information:       A matrix that carries extra information on.  The three fields in order are:
 
                                         1) The information is (Row number in the original matrix,
                                         2) Time point window was centered on,
                                         3) Maximum value of the window [What it was normalized by]
-        :param retention_times:         Retention time of each time index.  Size (# Of time points x 1)
         :param output_tsv_file_name:    Name of the output file
         :param valid_peaks:             A list, if provided, of clusters containing valid peaks.
                                         If not provided, all clusters are written to file.
@@ -57,7 +54,8 @@ class LcmsClusterer:
         if self.verbose:
             print("Writing results to file")
 
-        with open(os.path.join(self.output_directory, output_tsv_file_name + ".tsv"), "w") as f:
+        with open(os.path.join(self.output_directory, output_tsv_file_name + magic.default_output_file_ending),
+                  "w") as f:
             header = ["mz", "mzmin", "mzmax", "rt", "rtmin", "rtmax", "into",
                       "maxo", "sn", "abs_sn", "cluster", "exp_std_dev", "ctrl_std_dev"] + \
                      [str(x) for x in range(0, self.block_size)]
@@ -66,19 +64,19 @@ class LcmsClusterer:
             writer.writeheader()
 
             # For each original window
-            for i in tqdm(range(0, len(raw_normalized_data))):
-                max_intensity_value = extra_information[i]["maxo"]
-                row_in_array = extra_information[i]["row"]
-                time_index = int(extra_information[i]["time"])
+            for i in tqdm(range(0, len(named_windows))):
+                max_intensity_value = named_windows[i].maxo
+                row_in_array = named_windows[i].row
+                time_index = int(named_windows[i].time)
 
                 row = {}
 
                 # Get the max intensity index.  Additionally, assign the row values.
                 max_value_index = 0
-                for time_number in range(0, len(raw_normalized_data[i])):
-                    if abs(raw_normalized_data[i][time_number]) == 1:
+                for time_number in range(0, len(named_windows[i])):
+                    if abs(named_windows[i].window[time_number]) == 1:
                         max_value_index = time_number
-                    row[str(time_number)] = raw_normalized_data[i][time_number]
+                    row[str(time_number)] = named_windows[i].window[time_number]
 
                 # Largest intensity value is where we call the retention time at
                 row["rt"] = utility_functions.column_number_to_time(time_index + max_value_index, magic.time_step,
@@ -87,22 +85,19 @@ class LcmsClusterer:
                     continue
 
                 row["rtmin"] = utility_functions.column_number_to_time(time_index, magic.time_step, magic.time_min)
-                row["rtmax"] = utility_functions.column_number_to_time(time_index + len(raw_normalized_data[i]) - 1,
+                row["rtmax"] = utility_functions.column_number_to_time(time_index + len(named_windows[i]) - 1,
                                                                        magic.time_step,
-                                                     magic.time_min)
+                                                                       magic.time_min)
 
                 # Sum of all points aprox of AUTC
                 # into == integrated intensity of original raw peak
-                row["into"] = sum(raw_normalized_data[i]) * max_intensity_value
+                row["into"] = sum(named_windows[i].window) * max_intensity_value
 
                 # We normalize by max value so this works out.
                 row["maxo"] = max_intensity_value
                 row["cluster"] = str(clusters[i])
 
-                if extra_information[i].get("sn"):
-                    row["sn"] = extra_information[i]["sn"]
-                else:
-                    row["sn"] = 1
+                row["sn"] = named_windows[i].sn
 
                 row["abs_sn"] = abs(row["sn"])
 
@@ -119,8 +114,8 @@ class LcmsClusterer:
                 row["mzmin"] = utility_functions.row_to_mz(row_in_array, self.mz_split, self.mz_min)
                 row["mzmax"] = utility_functions.row_to_mz(row_in_array, self.mz_split, self.mz_min) + self.mz_split
 
-                row["exp_std_dev"] = extra_information[i]["exp_std_dev"]
-                row["ctrl_std_dev"] = extra_information[i]["ctrl_std_dev"]
+                row["exp_std_dev"] = named_windows[i].exp_std_dev
+                row["ctrl_std_dev"] = named_windows[i].ctrl_std_dev
 
                 # Check if it is in the valid peaks or if no valid peaks were supplied.
                 if (valid_peaks and clusters[i] in valid_peaks) or not valid_peaks:

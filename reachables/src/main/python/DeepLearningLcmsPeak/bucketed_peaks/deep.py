@@ -3,9 +3,11 @@ from __future__ import absolute_import, division, print_function
 import argparse
 import os
 
-from bucketed_peaks.lcms_autoencoder import LcmsAutoencoder
-from bucketed_peaks.preprocessing.LcmsPreprocessing import ScanWindower, LcmsScan
-from bucketed_peaks.utility import magic, utility_functions
+import numpy as np
+
+from modules.lcms_autoencoder import LcmsAutoencoder
+from modules.preprocessing.LcmsPreprocessing import ScanWindower
+from modules.utility import magic, utility_functions
 
 """
 This is the primary control file.  Run new Deep processings from here.
@@ -37,6 +39,9 @@ if __name__ == "__main__":
                         help="Number of kMeans clusters to cluster on.",
                         default=magic.cluster_number)
 
+    parser.add_argument("-d", "--outputDescriptor", help="The label output files should be labeled with",
+                        default="differential_expression")
+
     parser.add_argument("-n", "--mzMin", type=int, help="The lowest M/Z value allowed.", default=magic.mz_min)
     parser.add_argument("-x", "--mzMax", type=int, help="The highest M/Z value allowed.", default=magic.mz_max)
 
@@ -47,6 +52,7 @@ if __name__ == "__main__":
     output_directory = args.outputDirectory
 
     model_location = args.previousModelLocation
+    output_descriptor = args.outputDescriptor
 
     block_size = args.lcmsWindowSize
     encoding_size = args.encodingSize
@@ -54,6 +60,10 @@ if __name__ == "__main__":
     mz_min = args.mzMin
     mz_max = args.mzMax
     number_clusters = args.clusterNumber
+
+    summary_dict = {}
+    summary_dict.update(vars(args))
+    summary_dict["model_location"] = model_location
 
     if model_location and os.path.exists(model_location):
         autoencoder = utility_functions.load_previous_model(model_location, output_directory)
@@ -63,24 +73,30 @@ if __name__ == "__main__":
 
     row_matrix = autoencoder.process_lcms_scan(lcms_directory, lcms_scan_name)
 
-    processed_samples, auxilariy_information = ScanWindower.prepare_matrix_for_encoding(row_matrix)
+    named_windows = ScanWindower.prepare_matrix_for_encoding(row_matrix.get_array(), row_matrix, row_matrix,
+                                                             magic.threshold, block_size,
+                                                             magic.local_area_band_halfwidth)
 
-    if model_location is None:
-        autoencoder.train(processed_samples)
-    encoded_samples = autoencoder.predict(processed_samples)
+    training_data = np.vstack([w.window for w in named_windows])
 
-    if model_location is None:
+    summary_dict["number_of_valid_windows"] = len(named_windows)
+
+    if not model_location or not os.path.exists(model_location):
+        autoencoder.train(training_data)
+    encoded_samples = autoencoder.predict(training_data)
+
+    if not model_location or not os.path.exists(model_location):
         autoencoder.fit_clusters(encoded_samples)
 
     # This currently also does the writing
-    autoencoder.predict_clusters(encoded_samples,
-                                 processed_samples,
-                                 auxilariy_information,
-                                 utility_functions.parse_lcms_scan_file_name(lcms_scan_name),
-                                 [LcmsScan(row_matrix, row_matrix)])
+    autoencoder.predict_clusters(encoded_samples, named_windows, output_descriptor,
+                                 [row_matrix], drop_rt=0)
 
-    if model_location is None:
-        autoencoder.visualize(utility_functions.parse_lcms_scan_file_name(lcms_scan_name))
+    if not model_location or not os.path.exists(model_location):
+        autoencoder.visualize(output_descriptor, lower_axis=-1)
 
-    utility_functions.save_model(
-        output_directory, utility_functions.parse_lcms_scan_file_name(lcms_scan_name), autoencoder)
+    # Write the summary information out for later analysis of what occurred.
+    utility_functions.output_analysis_summary(output_descriptor, output_descriptor, summary_dict)
+
+    if not model_location:
+        utility_functions.save_model(output_directory, "{}.model".format(output_descriptor), autoencoder)

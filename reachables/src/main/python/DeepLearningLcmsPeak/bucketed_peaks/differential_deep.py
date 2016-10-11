@@ -5,9 +5,9 @@ import os
 
 import numpy as np
 
-from bucketed_peaks.lcms_autoencoder import LcmsAutoencoder
-from bucketed_peaks.preprocessing import LcmsPreprocessing
-from bucketed_peaks.utility import magic, utility_functions
+from modules.lcms_autoencoder import LcmsAutoencoder
+from modules.preprocessing import LcmsPreprocessing
+from modules.utility import magic, utility_functions
 
 """
 This is the primary control file.  Run new Deep processings from here.
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     output_directory = args.outputDirectory
 
     model_location = args.previousModelLocation
-    output_descriptor = args.outDescriptor
+    output_descriptor = args.outputDescriptor
 
     block_size = args.lcmsWindowSize
     encoding_size = args.encodingSize
@@ -140,7 +140,9 @@ if __name__ == "__main__":
     np.seterr(divide=None)
 
     named_windows = LcmsPreprocessing.ScanWindower.prepare_matrix_for_encoding(row_matrix, row_matrix1, row_matrix2,
-                                                                               magic.threshold)
+                                                                               magic.threshold,
+                                                                               block_size,
+                                                                               magic.local_area_band_halfwidth)
     summary_dict["number_of_valid_windows"] = len(named_windows)
 
     if not model_location or not os.path.exists(model_location):
@@ -152,7 +154,7 @@ if __name__ == "__main__":
 
     # This currently also does the writing
     autoencoder.predict_clusters(encoded_samples, named_windows, output_descriptor,
-                                 [row_matrix1, row_matrix2], drop_rt=0, row_matrices=[row_matrix1, row_matrix2])
+                                 [row_matrix1, row_matrix2], drop_rt=0)
 
     if not model_location or not os.path.exists(model_location):
         autoencoder.visualize(output_descriptor, lower_axis=-1)

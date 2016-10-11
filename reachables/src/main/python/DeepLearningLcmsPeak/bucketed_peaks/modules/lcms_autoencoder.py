@@ -10,10 +10,10 @@ from keras.layers import Input, Dense
 from keras.models import Model
 from keras.optimizers import RMSprop
 
-from bucketed_peaks.cluster import LcmsClusterer
-from bucketed_peaks.preprocessing import LcmsPreprocessing
-from bucketed_peaks.preprocessing import netcdf_parser
-from bucketed_peaks.utility import magic, utility_functions
+from cluster import LcmsClusterer
+from modules.preprocessing import LcmsPreprocessing
+from modules.preprocessing import netcdf_parser
+from modules.utility import magic, utility_functions
 
 
 class LcmsAutoencoder:
@@ -229,7 +229,7 @@ class LcmsAutoencoder:
         """
         self.clusterer.fit(encoded_matrix)
 
-    def predict_clusters(self, training_output, training_input, row_numbers, output_tsv_file_name, row_matrices,
+    def predict_clusters(self, training_output, training_input, output_tsv_file_name, row_matrices,
                          valid_peak_array=None, drop_rt=None):
         """
         Takes all the necessary parameters to cluster an encoding and output
@@ -245,7 +245,7 @@ class LcmsAutoencoder:
         :param row_matrices:            Extra information that is add to the output TSV files.
         :param drop_rt:                 Any values under this retention time will not be written to the output file.
         """
-        self.clusterer.predict(training_output, training_input, row_numbers, output_tsv_file_name, row_matrices,
+        self.clusterer.predict(training_output, training_input, output_tsv_file_name, row_matrices,
                                valid_peak_array, drop_rt)
 
     def visualize(self, tsv_name, lower_axis=0, higher_axis=1):

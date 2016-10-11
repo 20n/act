@@ -1,10 +1,12 @@
+from __future__ import absolute_import, division, print_function
+
 import operator
 from collections import namedtuple
 
 import numpy as np
 from tqdm import tqdm
 
-from bucketed_peaks.utility import assign_row_by_mz, assign_column_by_time
+from ..utility.utility_functions import assign_row_by_mz, assign_column_by_time
 
 
 class ScanConverter:
@@ -139,18 +141,19 @@ class ScanWindower:
 
         :param input_matrix:        Processed LCMS matrix
         :param threshold:    The lowest maximum value that a window can have and still be considered
-        :param snr:                 A SNR calculation supplied from outside that should be used if a window is valid.
-                                    The SNR output value here is the highest - lowest SNR in a window.
         :return:                    A vector of valid windows.
         """
 
         # Handle edge cases that can corrupt our numpy array.
         def get_grid_max(grid, width=0):
             assert width >= 0, "Unsupported negative width of {} when trying to determine a sub-area max.".format(width)
-            mz_start, mz_end = row_number - width, row_number + width
+            mz_start, mz_end = row_number - width, row_number + width + 1
             rt_start, rt_end = centered_time, centered_time + block_size
 
-            grid_slice = grid.get_array()[mz_start, mz_end, rt_start, rt_end]
+            grid_slice = grid.get_array()[mz_start:mz_end, rt_start:rt_end]
+            if grid_slice.shape[0] <= 0 or grid_slice.shape[1] <= 0:
+                return 0
+
             return np.max(grid_slice)
 
         if verbose:
@@ -238,12 +241,14 @@ class ScanWindower:
                                                                "row",
                                                                "time",
                                                                "maxo",
+                                                               "sn",
                                                                "exp_std_dev",
                                                                "ctrl_std_dev",
                                                                ])
                                 formatted_window = Window(window=normalized_window,
                                                           row=row_number,
                                                           time=centered_time,
+                                                          sn=1,
                                                           maxo=window_max,
                                                           exp_std_dev=exp_std,
                                                           ctrl_std_dev=ctrl_std)
