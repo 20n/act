@@ -40,17 +40,26 @@ class PeakToMolecule {
       def getSortedHits(peak: Peak) = {
         def sortByMz(a: (MonoIsotopicMass, List[(T, Option[String])]),
                      b: (MonoIsotopicMass, List[(T, Option[String])])) = {
-          a._1.percentCompare(peak.mz) > b._1.percentCompare(peak.mz)
+          a._1.percentCompare(peak.mz) < b._1.percentCompare(peak.mz)
         }
 
-        enumerated.filterKeys(mass => mass.equals(peak.mz)).toList.sortWith(sortByMz).map(_._2).flatten
+
+        println("peak")
+        println(peak)
+        println("filtered map")
+        println(enumerated.filterKeys(mass => mass.equals(peak.mz)))
+        println("filtered list")
+        println(enumerated.filterKeys(mass => mass.equals(peak.mz)).toList)
+        println("filtered list ordered")
+        println(enumerated.filterKeys(mass => mass.equals(peak.mz)).toList.sortWith(sortByMz))
+        println("filtered flatmap")
+        println(enumerated.filterKeys(mass => mass.equals(peak.mz)).toList.sortWith(sortByMz).flatMap(_._2))
+        enumerated.filterKeys(mass => mass.equals(peak.mz)).toList.sortWith(sortByMz).flatMap(_._2)
       }
 
       val x = haveHits.map(p => p -> getSortedHits(p)).toMap
       val y = haveHits.map(p => p -> enumerated(p.mz)).toMap
-      println(x.toString())
-      println(y.toString())
-      x
+      haveHits.map(p => p -> getSortedHits(p)).toMap
     }
 
     def assumeUniqT(tsv: List[Map[TSVHdr, String]], hdrForT: TSVHdr): Map[(String, Option[String]), Option[String]] = {
