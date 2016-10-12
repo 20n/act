@@ -20,9 +20,8 @@ import java.io.InputStream;
  */
 public class MolViewer extends JPanel {
 
-    //C10H16N5O13P3
     static String molecule = "" +
-    "C(=N)C(=N)C(=N)C(N)C(N)C(=O)C(=O)C(=O)C=COP(=O)(O)OP(=O)(O)OP(=O)(O)O";
+    "CC=O";
 
     private BufferedImage bf;
     private JPanel resultPanel;

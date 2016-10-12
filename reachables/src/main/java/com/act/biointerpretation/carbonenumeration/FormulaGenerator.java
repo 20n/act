@@ -1,12 +1,17 @@
 package com.act.biointerpretation.carbonenumeration;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Created by jca20n on 10/6/16.
  */
 public class FormulaGenerator {
 
-    private static final int MIN_C = 50;  //The maximumum number of carbons to consider
-    private static final int MAX_C = 50;  //The maximumum number of carbons to consider
+    private static final int MIN_C = 4;  //The minimum number of carbons to consider
+    private static final int MAX_C = 4;  //The maximumum number of carbons to consider
+
+    private List<Formula> terminalCarbons;
 
     private class Formula {
         int C;
@@ -39,6 +44,52 @@ public class FormulaGenerator {
 
             return out;
         }
+    }
+
+    public FormulaGenerator() {
+        terminalCarbons = new ArrayList<>();
+
+        //-CH3
+        Formula aform = new Formula();
+        aform.C = 1;
+        aform.H = 3;
+        terminalCarbons.add(aform);
+
+        //-CH2OH
+        aform = new Formula();
+        aform.C = 1;
+        aform.H = 3;
+        aform.O = 1;
+        terminalCarbons.add(aform);
+
+        //-CH2NH2
+        aform = new Formula();
+        aform.C = 1;
+        aform.H = 4;
+        aform.N = 1;
+        terminalCarbons.add(aform);
+
+        //-CH2SH
+        aform = new Formula();
+        aform.C = 1;
+        aform.H = 3;
+        aform.S = 1;
+        terminalCarbons.add(aform);
+
+        //-C(=O)OH
+        aform = new Formula();
+        aform.C = 1;
+        aform.H = 1;
+        aform.O = 2;
+        terminalCarbons.add(aform);
+
+        //-C(=O)NH2
+        aform = new Formula();
+        aform.C = 1;
+        aform.H = 2;
+        aform.O = 1;
+        aform.N = 1;
+        terminalCarbons.add(aform);
     }
 
     public static void main(String[] args) {
