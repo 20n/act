@@ -49,6 +49,9 @@ loginfo("Done loading libraries and sourcing modules")
 # 20nlogo -> symlink to the 20n logo. Should be in the working directory of the server.
 k20logoLocation <- "20nlogo"
 
+# allows uploading of files up to 30MB
+options(shiny.maxRequestSize=30*1024^2) 
+
 # The server side performs the computations behind the scenes
 # It collects a list of inputs from ui.R and produces a list of output
 # Here, the logic is mainly delegated to the modules
