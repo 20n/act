@@ -128,7 +128,7 @@ object ChemicalSymbols {
     // tolerate differences in the last decimal place at which monoIsotopicMasses specified
     // i.e., we consider masses upto 0.001 away from each other to be identical
     // note that the mass of an electron is 5.5e-4 Da, so we allow upto around an electron mass
-    val defaultNumPlaces = 3
+    val defaultNumPlaces = 2
     def tolerance(numDec: Int = defaultNumPlaces): Double = math.pow(10, -numDec)
     def isLt(a: MonoIsotopicMass, b: MonoIsotopicMass) = a.initMass < b.initMass
   }
