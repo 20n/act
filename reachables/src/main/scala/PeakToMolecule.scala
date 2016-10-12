@@ -40,7 +40,7 @@ class PeakToMolecule {
       def getSortedHits(peak: Peak) = {
         def sortByMz(a: (MonoIsotopicMass, List[(T, Option[String])]),
                      b: (MonoIsotopicMass, List[(T, Option[String])])) = {
-          a._1.percentCompare(peak.mz) < b._1.percentCompare(peak.mz)
+          a._1.percentCompare(peak.mz) > b._1.percentCompare(peak.mz)
         }
 
         enumerated.filterKeys(mass => mass.equals(peak.mz)).toList.sortWith(sortByMz).map(_._2).flatten
