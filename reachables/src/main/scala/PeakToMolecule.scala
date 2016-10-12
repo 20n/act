@@ -47,7 +47,7 @@ class PeakToMolecule {
       }
 
       val x = haveHits.map(p => p -> getSortedHits(p)).toMap
-      val y = haveHits.map(p => enumerated(p.mz)).toMap
+      val y = haveHits.map(p => p -> enumerated(p.mz)).toMap
       println(x.toString())
       println(y.toString())
       x
