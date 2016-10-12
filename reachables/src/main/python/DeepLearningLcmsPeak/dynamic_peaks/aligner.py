@@ -28,7 +28,6 @@ def stepwise_alignment(initial_samples, min_mz, mz_step, max_mz, min_time, time_
         aligned.extend(aligned_peaks)
 
     while time_tolerance < max_time or mz_tolerance < max_mz:
-
         print("Aligning peaks.  Number of input peaks is {}".format(len(unaligned[0]) + len(unaligned[1])))
         aligned_peaks, unaligned = two_sample_alignment(unaligned[0], unaligned[1], mz_tolerance, time_tolerance)
 
@@ -67,8 +66,8 @@ def align_old_alignment_to_new_sample(previous_alignment, sample_two, tolerance_
             elif mz_closeness < -tolerance_mz:
                 j = len(sample_two)
             elif j != 0 and \
-                    (sample_one_peak.get_mz() - sample_two[j - 1].get_mz() > tolerance_mz) and \
-                    (sample_one_peak.get_mz() - sample_two[j].get_mz() <= tolerance_mz):
+                    (sample_one_peak[0].get_mz() - sample_two[j - 1].get_mz() > tolerance_mz) and \
+                    (sample_one_peak[0].get_mz() - sample_two[j].get_mz() <= tolerance_mz):
                 trailing_tracker = j
 
             j += 1
@@ -119,7 +118,6 @@ def two_sample_alignment(sample_one, sample_two, tolerance_mz, tolerance_time):
 def iterative_alignment(unaligned_samples):
     initial_two = unaligned_samples[0:2]
     anything_after = unaligned_samples[2:]
-
     aligned, unaligned = stepwise_alignment(initial_two,
                                             min_mz=0.001, mz_step=0.001, max_mz=0.01,
                                             min_time=1, time_step=0.5, max_time=5)
@@ -162,14 +160,14 @@ def create_differential_peak_windows(exp, ctrl):
 
         extra_info.append(infos)
 
-    noise_window = [500] * len(aligned_peaks[0][0].get_intensity_window())
+    noise_window = [magic.threshold] * len(aligned_peaks[0][0].get_intensity_window())
 
     for peaks in unaligned_peaks[0]:
         prepared_peaks.append(normalize(peaks.get_intensity_window(), noise_window))
         infos = {}
         infos["exp_std_dev"] = 0
         infos["ctrl_std_dev"] = 0
-        infos["sn"] = peaks.get_maxo() / 1000.0
+        infos["sn"] = peaks.get_maxo() / magic.threshold
         infos["rtmin"] = peaks.get_rtmin()
         infos["rtmax"] = peaks.get_rtmax()
         infos["rt"] = peaks.get_rt()
@@ -184,7 +182,7 @@ def create_differential_peak_windows(exp, ctrl):
         infos = {}
         infos["exp_std_dev"] = 0
         infos["ctrl_std_dev"] = 0
-        infos["sn"] = peaks.get_maxo() / 1000.0
+        infos["sn"] = - peaks.get_maxo() / magic.threshold
         infos["rtmin"] = peaks.get_rtmin()
         infos["rtmax"] = peaks.get_rtmax()
         infos["rt"] = peaks.get_rt()
