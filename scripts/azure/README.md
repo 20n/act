@@ -13,7 +13,7 @@ Follow the prompts to authenticate your host via a web browser.
 Each of the script contains documentation regarding its usage.
 
 
-## SSH onfiguration
+## SSH Configuration
 
 The `twentyn-worker` VM cluster is protected behind a "bastion" host,
 which obviates the need for machines with potentially sensitive data
