@@ -146,11 +146,16 @@ public class MetabolismNetwork {
     Reaction reaction = db.getReactionFromUUID(rxnId);
     List<Long> substrateIds = Arrays.asList(reaction.getSubstrates());
     List<String> substrates = substrateIds.stream().map(id -> db.getChemicalFromChemicalUUID(id).getInChI())
-      .collect(Collectors.toList());
+        .collect(Collectors.toList());
 
     List<Long> productIds = Arrays.asList(reaction.getProducts());
     List<String> products = productIds.stream().map(id -> db.getChemicalFromChemicalUUID(id).getInChI())
-      .collect(Collectors.toList());
+        .collect(Collectors.toList());
+
+    if (products.isEmpty() || substrates.isEmpty()) {
+      LOGGER.warn("Discarding reaction with empty substrates or products: %d", rxnId);
+      return;
+    }
 
     NetworkEdge edge = new NetworkEdge(substrates, products);
     edge.addReactionId(reaction.getUUID());
@@ -172,7 +177,7 @@ public class MetabolismNetwork {
    * @param prediction The prediction to load.
    */
   public void loadEdgeFromPrediction(L2Prediction prediction) {
-    List<String> substrates= prediction.getSubstrateInchis();
+    List<String> substrates = prediction.getSubstrateInchis();
     List<String> products = prediction.getProductInchis();
 
     NetworkEdge edge = new NetworkEdge(substrates, products);
