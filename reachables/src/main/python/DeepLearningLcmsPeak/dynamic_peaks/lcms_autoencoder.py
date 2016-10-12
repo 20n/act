@@ -5,8 +5,11 @@ import math
 import operator
 import os
 
+import matplotlib
 import numpy as np
 import pandas as pd
+
+matplotlib.use('Agg')
 import seaborn as sns
 from keras.callbacks import EarlyStopping
 from keras.layers import Input, Dense
