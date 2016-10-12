@@ -40,7 +40,7 @@ class PeakToMolecule {
       def getSortedHits(peak: Peak) = {
         def sortByMz(a: (MonoIsotopicMass, List[(T, Option[String])]),
                      b: (MonoIsotopicMass, List[(T, Option[String])])) = {
-          a._1.percentCompare(peak.mz) < b._1.percentCompare(peak.mz)
+          a._1.compare(peak.mz) < b._1.compare(peak.mz)
         }
 
 
@@ -48,6 +48,8 @@ class PeakToMolecule {
         println(peak)
         println("filtered map")
         println(enumerated.filterKeys(mass => mass.equals(peak.mz)))
+        println("previous filtered map")
+        println(enumerated(peak.mz))
         println("filtered list")
         println(enumerated.filterKeys(mass => mass.equals(peak.mz)).toList)
         println("filtered list ordered")

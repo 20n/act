@@ -146,8 +146,8 @@ object ChemicalSymbols {
     def rounded(numDec: Int = MonoIsotopicMass.defaultNumPlaces): Double = roundedAndScaled(numDec) * MonoIsotopicMass.tolerance(numDec)
     def roundedAndScaled(numDec: Int = MonoIsotopicMass.defaultNumPlaces): Long = math round (initMass / MonoIsotopicMass.tolerance(numDec))
 
-    def percentCompare(that: MonoIsotopicMass, numDec: Int = MonoIsotopicMass.defaultNumPlaces) = {
-      math.abs(that.initMass - this.initMass) / MonoIsotopicMass.tolerance(numDec)
+    def compare(that: MonoIsotopicMass) = {
+      math abs (that.initMass - this.initMass)
     }
 
     // This function is a helper to `equals`
