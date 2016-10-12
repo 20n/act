@@ -855,8 +855,8 @@ object UntargetedMetabolomics {
       println(s"Mapping to structures using inchi list")
       // map the peaks to candidate structures if they appear in the lists (from HMDB, ROs, etc)
       val parser = new LargeMassToMoleculeMapParser()
-      parser.parseNamedInchis(new File(inchiListFile))
       parser.setNamesHeader("name")
+      parser.parseNamedInchis(new File(inchiListFile))
       val smallFormulaMap: LargeMassToMoleculeMap  = parser.getMassToMoleculeMap
       new PeakToMolecule().StructureHits.toStructureHitsUsingLargeMap(
         rslt, smallFormulaMap, MagicParams._precisionFormulaeLookup)
