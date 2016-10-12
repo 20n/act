@@ -164,7 +164,9 @@ public class Fingerprint {
       String inchi = row.get("Molecule");
       Molecule moleculeInchi = cleanMol(MolImporter.importMol(inchi, "inchi"));
       plugin.setMolecule(moleculeInchi);
-      System.out.println(plugin.getlogPTrue());
+      plugin.run();
+      System.out.println(String.format("%d  %d", plugin.getlogPTrue(), plugin.getlogPMicro()));
+
 
 
 //      Set<String> includeIons = new HashSet<>();
