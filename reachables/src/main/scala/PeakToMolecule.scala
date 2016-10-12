@@ -33,7 +33,20 @@ class PeakToMolecule {
       // now that we have filtered to those that are guaranteed to have a hit, we can just
       // look them up in a map and not have it fail (instead of doing a get which return Option[T])
 
-      haveHits.map(p => p -> enumerated(p.mz)).toMap
+      // haveHits contains a set of peaks
+      // each peak in this set has to be compared to other Monoisotopic mass later
+      // given one peak in haveHits, how to compare it to the others in the map
+
+      def getSortedHits(peak: Peak) = {
+        def sortByMz(a: (MonoIsotopicMass, List[(T, Option[String])]),
+                     b: (MonoIsotopicMass, List[(T, Option[String])])) = {
+          a._1.percentCompare(peak.mz) < b._1.percentCompare(peak.mz)
+        }
+
+        enumerated.filterKeys(mass => mass.equals(peak.mz)).toList.sortWith(sortByMz).map(_._2).flatten
+      }
+
+      haveHits.map(p => p -> getSortedHits(p)).toMap
     }
 
     def assumeUniqT(tsv: List[Map[TSVHdr, String]], hdrForT: TSVHdr): Map[(String, Option[String]), Option[String]] = {
