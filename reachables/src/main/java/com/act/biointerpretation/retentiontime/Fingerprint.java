@@ -6,12 +6,17 @@ import chemaxon.descriptors.ChemicalFingerprint;
 import chemaxon.descriptors.GenerateMD;
 import chemaxon.descriptors.MDParameters;
 import chemaxon.formats.MolImporter;
+import chemaxon.marvin.calculations.logPPlugin;
 import chemaxon.marvin.io.formats.mdl.MolExport;
 import chemaxon.marvin.io.formats.mdl.MolImport;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.MoleculeGraph;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
+import com.act.lcms.MS1;
+import com.act.lcms.MassCalculator;
+import com.act.lcms.db.analysis.Utils;
+import com.act.utils.TSVParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -25,7 +30,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class Fingerprint {
 
@@ -113,35 +121,69 @@ public class Fingerprint {
 //    }
 
 
-    CFParameters params = new CFParameters(new File("/mnt/shared-data/Vijay/ret_time_prediction/config/cfp.xml"));
+//    CFParameters params = new CFParameters(new File("/mnt/shared-data/Vijay/ret_time_prediction/config/cfp.xml"));
+//
+//    ChemicalFingerprint apapFingerprintInchi = new ChemicalFingerprint(params);
+//    Molecule apap = MolImporter.importMol("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)", "inchi");
+//    apapFingerprintInchi.generate(apap);
+//
+//    System.out.println(apapFingerprintInchi.toBinaryString());
+//
+//    ChemicalFingerprint otherFingerprint = new ChemicalFingerprint(params);
+//    Molecule otherChem = MolImporter.importMol("InChI=1S/C8H11NO/c1-2-9-7-3-5-8(10)6-4-7/h3-6,9-10H,2H2,1H3", "inchi");
+//    otherFingerprint.generate(otherChem);
+//
+//    System.out.println(otherFingerprint.toBinaryString());
+//
+//
+//    // common bit count of 35
+//    System.out.println(apapFingerprintInchi.getCommonBitCount(otherFingerprint));
+//
+//
+//    ChemicalFingerprint apapFingerprintSmiles = new ChemicalFingerprint(params);
+//    Molecule apapSmiles = MolImporter.importMol("CC(=O)Nc1ccc(cc1)O", "smiles");
+//    apapFingerprintSmiles.generate(apapSmiles);
+//
+//    ChemicalFingerprint otherFingerprintSmiles = new ChemicalFingerprint(params);
+//    Molecule otherChem2 = MolImporter.importMol("CCNc1ccc(cc1)O", "smiles");
+//    otherFingerprintSmiles.generate(otherChem2);
+//
+//    // common bit count of 51
+//    System.out.println(apapFingerprintSmiles.getCommonBitCount(otherFingerprintSmiles));
 
-    ChemicalFingerprint apapFingerprintInchi = new ChemicalFingerprint(params);
-    Molecule apap = MolImporter.importMol("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)", "inchi");
-    apapFingerprintInchi.generate(apap);
-
-    System.out.println(apapFingerprintInchi.toBinaryString());
-
-    ChemicalFingerprint otherFingerprint = new ChemicalFingerprint(params);
-    Molecule otherChem = MolImporter.importMol("InChI=1S/C8H11NO/c1-2-9-7-3-5-8(10)6-4-7/h3-6,9-10H,2H2,1H3", "inchi");
-    otherFingerprint.generate(otherChem);
-
-    System.out.println(otherFingerprint.toBinaryString());
 
 
-    // common bit count of 35
-    System.out.println(apapFingerprintInchi.getCommonBitCount(otherFingerprint));
+    logPPlugin plugin = new logPPlugin();
 
 
-    ChemicalFingerprint apapFingerprintSmiles = new ChemicalFingerprint(params);
-    Molecule apapSmiles = MolImporter.importMol("CC(=O)Nc1ccc(cc1)O", "smiles");
-    apapFingerprintSmiles.generate(apapSmiles);
 
-    ChemicalFingerprint otherFingerprintSmiles = new ChemicalFingerprint(params);
-    Molecule otherChem2 = MolImporter.importMol("CCNc1ccc(cc1)O", "smiles");
-    otherFingerprintSmiles.generate(otherChem2);
+    TSVParser parser = new TSVParser();
+    parser.parse(new File("/mnt/shared-data/Vijay/ret_time_prediction/manisa_confident.txt"));
 
-    // common bit count of 51
-    System.out.println(apapFingerprintSmiles.getCommonBitCount(otherFingerprintSmiles));
+    for (Map<String, String> row : parser.getResults()) {
+      String inchi = row.get("Molecule");
+      Molecule moleculeInchi = cleanMol(MolImporter.importMol(inchi, "inchi"));
+      plugin.setMolecule(moleculeInchi);
+      System.out.println(plugin.getlogPTrue());
+
+
+//      Set<String> includeIons = new HashSet<>();
+//      includeIons.add("M+H");
+//
+//      String inchi = row.get("InChI");
+//
+//      Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(row.get("InChI")), MS1.IonMode.POS);
+//      Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
+//
+//      System.out.println(metlinMasses.get("M+H"));
+    }
+
+
+
+
+
+
+
 
 
 
