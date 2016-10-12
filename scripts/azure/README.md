@@ -78,10 +78,11 @@ Connecting to azure via ssh is made easy with ssh config files, but
 doing the same with a browser is slightly more complicated.  We would
 like to be able to transparently connect to any host in a particular
 Azure region without having to create a new ssh tunnel for every host
-and port.  Fortunately, ssh suports SOCKS-based proxying, which can
-perform DNS lookups and traffic proxying on the *remote* side of a
-tunnel.  We can convince our browser to direct traffic through this
-tunnel by installing a proxy-autoconfig file on our local machines.
+and port.  Fortunately, we can open an ssh tunnel that points at a
+remote HTTP proxy process, which can perform DNS lookups and traffic
+proxying on the *remote* side of a tunnel.  We can convince our
+browser to direct traffic through this tunnel by installing a
+proxy-autoconfig file on our local machines.
 
 On OS X, navigate to `System Preferences -> Network -> Advanced -> Proxies`,
 check the box next to "Automatic Proxy Configuration," and input a URL
@@ -103,12 +104,12 @@ to each region like so (assuming you have acces to our private DNS
 server, such as when you are in the office or connected to the VPN):
 ```
 # Open a tunnel to central-us, for connecting to twentyn-* hosts
-$ ssh -D 127.0.0.1:20141 azure-central-us
+$ ssh -L 20141:127.0.0.1:3128 azure-central-us
 # Open a tunnel to west-us-2 hosts, for connecting to Spark
-$ ssh -D 127.0.0.1:20142 azure-west-us-2
+$ ssh -L 20142:127.0.0.1:3128 azure-west-us-2
 # Open a tunnel to south-central-us hosts, for connecting to a
 # GPU-enabled host
-$ ssh -D 127.0.0.1:20143 azure-south-central-us
+$ ssh -L 20143:127.0.0.1:3128 azure-south-central-us
 ```
 
 If it becomes convenient to do so, we can use `autossh` to establish

@@ -10,10 +10,10 @@
  * with the appropriate port below.  For instance, when using our
  * internal DNS you can connect to the west-us-2 cluster, run this
  * command:
- * $ ssh -D 127.0.0.1:20141 azure-west-us-2
- * A SOCKS5 tunnel will be openend between your host and the west2
- * bastion, allowing transparent HTTP proxying once this config file
- * is installed.
+ * $ ssh -L 20142:127.0.0.1:3128 azure-west-us-2
+ * A tunnel will be openend between your host and an HTTP proxy running on
+ * the west2 bastion, allowing transparent HTTP proxying once this config
+ * file is installed.
  *
  * TODO: use an auto-ssh config to maintain persistent proxy tunnels
  * to the various remote regions.
@@ -28,13 +28,13 @@ function FindProxyForURL(url, host) {
     if (isInNet(host, "10.20.0.0", "255.255.0.0") || host.match("^twentyn-")) {
         // Azure central-us
         // TODO: update naming scheme to match other regions.
-        return "SOCKS5 127.0.0.1:20141";
-    } else if (isInNet(host, "10.21.0.0", "255.255.0.0") || host.match("-west2^")) {
+        return "PROXY 127.0.0.1:20141";
+    } else if (isInNet(host, "10.21.0.0", "255.255.0.0") || host.match("-west2$")) {
         // Azure west-us-2
-        return "SOCKS5 127.0.0.1:20142";
-    } else if (isInNet(host, "10.22.0.0", "255.255.0.0") || host.match("-scus^")) {
+        return "PROXY 127.0.0.1:20142";
+    } else if (isInNet(host, "10.22.0.0", "255.255.0.0") || host.match("-scus$")) {
         // Azure south-central-us
-        return "SOCKS5 127.0.0.1:20144";
+        return "PROXY 127.0.0.1:20144";
     }
 
     return "DIRECT";
