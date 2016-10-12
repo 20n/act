@@ -1,11 +1,8 @@
 package com.act.lcms
 
-import java.util.NavigableMap
-
-import act.shared.ChemicalSymbols.Helpers.computeMassFromAtomicFormula
-import com.act.lcms.MassCalculator.calculateMass
-import act.shared.ChemicalSymbols.{Atom, MonoIsotopicMass}
+import act.shared.ChemicalSymbols.Atom
 import act.shared.MassToFormula
+import com.act.lcms.v3.{LargeMassToMoleculeMap, NamedMolecule}
 
 import scala.collection.JavaConversions._
 
@@ -13,109 +10,6 @@ class PeakToMolecule {
 
   trait ChemicalFormulae {
     type ChemicalFormula = Map[Atom, Int]
-  }
-
-
-
-  // @mark-20n says: All of this peak to structure matching scaffolding deserves its own
-  //                 module. The API for this is something we should stabilize ASAP so
-  //                 that we can iterate on it separately from the cross-replicate/negative
-  //                 analysis and get it talking with the upcoming L2/L4-derived network analysis.
-  trait LookupInEnumeratedList extends CanReadTSV {
-    type T // the output type, InChI: String or Formula: ChemicalFormula
-    type H = TSVHdr // headers are inchi, formula, mass
-    type V = String // row values read from TSV have String as cell elements (either InChI, formula, or Mass)
-
-
-    def findHits(hits: PeakHits, enumerated: Map[MonoIsotopicMass, List[(T, Option[String])]]): Map[Peak, List[(T, Option[String])]] = {
-      val pks: Set[Peak] = hits.peakSpectra.peaks
-      val haveHits = pks.filter(p => enumerated.contains(p.mz))
-      // now that we have filtered to those that are guaranteed to have a hit, we can just
-      // look them up in a map and not have it fail (instead of doing a get which return Option[T])
-
-      // haveHits contains a set of peaks
-      // each peak in this set has to be compared to other Monoisotopic mass later
-      // given one peak in haveHits, how to compare it to the others in the map
-
-      def getSortedHits(peak: Peak) = {
-        def sortByMz(a: (MonoIsotopicMass, List[(T, Option[String])]),
-                     b: (MonoIsotopicMass, List[(T, Option[String])])) = {
-          a._1.compare(peak.mz) < b._1.compare(peak.mz)
-        }
-
-        def withinRange(a: MonoIsotopicMass, b: MonoIsotopicMass) = {
-          math.abs(a.rounded(3) - b.rounded(3)) < 0.01
-        }
-
-
-        println("peak")
-        println(peak)
-        println("filtered map")
-        println(enumerated.filterKeys(mass => withinRange(mass, peak.mz)))
-        println("previous filtered map")
-        println(enumerated(peak.mz))
-        println("filtered list")
-        println(enumerated.filterKeys(mass => mass.equals(peak.mz)).toList)
-        println("filtered list ordered")
-        println(enumerated.filterKeys(mass => mass.equals(peak.mz)).toList.sortWith(sortByMz))
-        println("filtered flatmap")
-        println(enumerated.filterKeys(mass => mass.equals(peak.mz)).toList.sortWith(sortByMz).flatMap(_._2))
-        enumerated.filterKeys(mass => mass.equals(peak.mz)).toList.sortWith(sortByMz).flatMap(_._2)
-      }
-
-      val x = haveHits.map(p => p -> getSortedHits(p)).toMap
-      val y = haveHits.map(p => p -> enumerated(p.mz)).toMap
-      haveHits.map(p => p -> getSortedHits(p)).toMap
-    }
-
-    def assumeUniqT(tsv: List[Map[TSVHdr, String]], hdrForT: TSVHdr): Map[(String, Option[String]), Option[String]] = {
-      val massHdr: TSVHdr = HdrMolMass
-      val moleculeHdr: TSVHdr = hdrForT
-      val nameHdr: TSVHdr = HdrName
-      def tsvRowToKV(row: Map[TSVHdr, String]): ((String, Option[String]), Option[String]) = {
-        val k = row(moleculeHdr)
-        val n = if (row contains nameHdr) Some(row(nameHdr)) else None
-        val v = if (row contains massHdr) Some(row(massHdr)) else None
-        (k, n) -> v
-      }
-      tsv.map(tsvRowToKV).toMap
-    }
-
-    def grpByMass(toMass: Map[(T, Option[String]), MonoIsotopicMass]): Map[MonoIsotopicMass, List[(T, Option[String])]] = {
-      val grouped: Map[MonoIsotopicMass, List[((T, Option[String]), MonoIsotopicMass)]] = toMass.toList.groupBy{ case ((t, n), m) => m }
-      val mass2Ts: Map[MonoIsotopicMass, List[(T, Option[String])]] = grouped.map{ case (m, listTM) => (m, listTM.unzip._1) }
-      mass2Ts
-    }
-
-    def readEnumeratedList(file: String, hdrT: TSVHdr, containsName: Boolean, semanticizer: String => T, masser: T => MonoIsotopicMass):
-    Map[(T, Option[String]), MonoIsotopicMass] = {
-      // get all the rows as maps from string (formula or inchi) to mass (optional, if specified)
-      // if mass is not specified, each of the values in the map are `None` and the data in the
-      // map is just the list of keys
-      val hdrName = HdrName
-      val hdrs = if (!containsName) {
-        List(HdrMolMass, hdrT)
-      } else {
-        List(HdrMolMass, hdrName, hdrT)
-      }
-      val tsv: List[Map[TSVHdr, String]] = readTSV(file, hdrs, identity)
-      val rows: Map[(String, Option[String]), Option[String]] = assumeUniqT(tsv, hdrT)
-      val semanticized: Map[(T, Option[String]), Option[String]] = rows.map{
-        case ((k, n), v) => (semanticizer(k), n) -> v }
-
-      // if mass column does not exist then call MassCalculator
-      def fillMass(kv: ((T, Option[String]), Option[String])): ((T, Option[String]), MonoIsotopicMass) = {
-        val ((k, n), v) = kv
-        val mass = v match {
-          case None => masser(k)
-          case Some(massStr) => new MonoIsotopicMass(massStr.toDouble)
-        }
-        (k, n) -> mass
-      }
-      val withMasses: Map[(T, Option[String]), MonoIsotopicMass] = semanticized map fillMass
-
-      withMasses
-    }
   }
 
   trait SolveUsingSMTSolver extends ChemicalFormulae {
@@ -138,43 +32,27 @@ class PeakToMolecule {
     }
   }
 
-  object FormulaHits extends LookupInEnumeratedList with SolveUsingSMTSolver with ChemicalFormulae {
-    type T = ChemicalFormula
+  object FormulaHits extends ChemicalFormulae with SolveUsingSMTSolver {
 
-    def toFormulaHitsUsingLists(peaks: PeakHits, source: String): FormulaHits = {
-      // to deconstruct the chemical element composition from the formula string such as `C9H10NO2`
-      def toFormula(s: String): ChemicalFormula = MassToFormula.getFormulaMap(s)
-      def toMass(f: ChemicalFormula): MonoIsotopicMass = computeMassFromAtomicFormula(f)
-      val sourceList: Map[(T, Option[String]), MonoIsotopicMass] = readEnumeratedList(source, HdrMolFormula, true, toFormula _, toMass _)
-      toFormulaHitsUsingLists(peaks, grpByMass(sourceList))
-    }
-
-    def toFormulaHitsUsingLists(peaks: PeakHits, sourceList: Map[MonoIsotopicMass, List[(T, Option[String])]]) = {
-      new FormulaHits(peaks, findHits(peaks, sourceList))
-    }
-
-    def toFormulaHitsUsingTreeMap(peaks: PeakHits,
-                                  smallFormulaMap: NavigableMap[java.lang.Float, String],
-                                  precision: Float): FormulaHits = {
+    def toFormulaHitsUsingLargeMap(peaks: PeakHits,
+                                   smallFormulaMap: LargeMassToMoleculeMap,
+                                   precision: Float): FormulaHits = {
 
       val peakSet: Set[Peak] = peaks.peakSpectra.peaks
 
-      def toFormula(s: String): ChemicalFormula = MassToFormula.getFormulaMap(s)
+      def toFormula(n: NamedMolecule): (ChemicalFormula, Option[String]) = {
+
+        (MassToFormula.getFormulaMap(n.getMolecule), Option(n.getName))
+      }
 
       def bestFormulaeMatches(peak: Peak): List[(ChemicalFormula, Option[String])] = {
-        val lowerBoundMass: java.lang.Float = peak.mz.rounded(6).toFloat - precision / 2
-        val upperBoundMass: java.lang.Float = peak.mz.rounded(6).toFloat + precision / 2
-        val results = smallFormulaMap.subMap(lowerBoundMass, true, upperBoundMass, true)
-
-        def toNamed(s: String) = {
-          (toFormula(s), None)
-        }
-        results.values.map(toNamed).toList
+        val results = smallFormulaMap.getSortedFromCenter(peak.mz.initMass.toFloat, precision)
+        val formulae = results.toList.map(toFormula)
+        formulae
       }
 
       val peakToFormula = (peakSet map { peak => peak -> bestFormulaeMatches(peak) }).toMap
-      val peakToFormulaWithHits = peakToFormula.filter((x) => x._2 != List())
-      new FormulaHits(peaks, peakToFormulaWithHits)
+      new FormulaHits(peaks, peakToFormula)
     }
 
     def toFormulaHitsUsingSolver(peaks: PeakHits) = {
@@ -195,9 +73,9 @@ class PeakToMolecule {
 
     def code(f: Option[List[(ChemicalFormula, Option[String])]]): (Double, List[(String, Option[String])]) = {
       val forms = f.getOrElse(List())
-      val hcode = f match {
-        case None => -1
-        case Some(_) => forms.hashCode.toDouble
+      val hcode = forms match {
+        case List() => -1
+        case _ => forms.hashCode.toDouble
       }
       (hcode, forms.map(toReadable))
     }
@@ -222,21 +100,27 @@ class PeakToMolecule {
     }
   }
 
-  object StructureHits extends LookupInEnumeratedList {
-    type T = String
+  object StructureHits {
 
-    def toStructureHitsUsingLists(peaks: PeakHits, source: String): StructureHits = {
-      def toInChI(s: String): String = { assert(s startsWith "InChI="); s }
-      def toMass(inchi: String): MonoIsotopicMass = {
-        val mass = try { calculateMass(inchi).doubleValue } catch { case _: Exception => 0.0 }
-        new MonoIsotopicMass(mass)
+    def toStructureHitsUsingLargeMap(peaks: PeakHits,
+                                   smallInchisMap: LargeMassToMoleculeMap,
+                                   precision: Float): StructureHits = {
+
+      val peakSet: Set[Peak] = peaks.peakSpectra.peaks
+
+      def toInchi(n: NamedMolecule): (String, Option[String]) = {
+        (n.getMolecule, Option(n.getName))
       }
-      val sourceList = readEnumeratedList(source, HdrMolInChI, true, toInChI _, toMass _)
-      toStructureHitsUsingLists(peaks, grpByMass(sourceList))
-    }
 
-    def toStructureHitsUsingLists(peaks: PeakHits, sourceList: Map[MonoIsotopicMass, List[(String, Option[String])]]): StructureHits = {
-      new StructureHits(peaks, findHits(peaks, sourceList))
+      def bestInchisMatches(peak: Peak): List[(String, Option[String])] = {
+        val results = smallInchisMap.getSortedFromCenter(peak.mz.initMass.toFloat, precision)
+        val inchis = results.toList.map(toInchi)
+        inchis
+      }
+
+      val peakToInchis = (peakSet map { peak => peak -> bestInchisMatches(peak) }).toMap
+
+      new StructureHits(peaks, peakToInchis)
     }
   }
 
@@ -246,9 +130,9 @@ class PeakToMolecule {
     def code(i: Option[List[(String, Option[String])]]): (Double, List[(String, Option[String])]) = {
 
       val inchis = i.getOrElse(List())
-      val hcode = i match {
-        case None => -1
-        case Some(_) => inchis.hashCode.toDouble
+      val hcode = inchis match {
+        case List() => -1
+        case _ => inchis.hashCode.toDouble
       }
       (hcode, inchis)
     }

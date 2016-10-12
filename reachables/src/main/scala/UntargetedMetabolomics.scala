@@ -1,13 +1,13 @@
 package com.act.lcms
 
 import java.io.{File, PrintWriter}
-import java.util.NavigableMap
 
 import act.shared.{CmdLineParser, OptDesc}
 
 import scala.io.Source
 import act.shared.ChemicalSymbols.{AllAminoAcids, MonoIsotopicMass}
 import com.act.lcms.MS1.MetlinIonMass
+import com.act.lcms.v3.{LargeMassToMoleculeMap, LargeMassToMoleculeMapParser}
 
 
 // @mark-20n @MichaelLampe20n: help resolve this to specific imports; please!
@@ -741,7 +741,7 @@ object UntargetedMetabolomics {
   def main(args: Array[String]) {
     val className = this.getClass.getCanonicalName
     val opts = List(optOutFile, optControls, optHypotheses, optDoIons, optRestrictIons, optMultiIonsRankHigher, 
-                    optToStructUsingList, optToFormulaUsingList, optToFormulaUsingNavigableMap, optToFormulaUsingSolver,
+                    optToStructUsingList, optToFormulaUsingList, optToFormulaUsingSolver,
                     optGetDifferentialFromDL, optFilterRtRegions, optRunTests)
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
@@ -754,11 +754,9 @@ object UntargetedMetabolomics {
     val rankMultipleIons = cmdLine has optMultiIonsRankHigher
     val mapToInChIsUsingList = cmdLine has optToStructUsingList
     val mapToFormulaUsingList = cmdLine has optToFormulaUsingList
-    val mapToFormulaUsingNavigableMap = cmdLine has optToFormulaUsingNavigableMap
     val mapToFormulaUsingSolver = cmdLine has optToFormulaUsingSolver
     val inchiListFile = cmdLine get optToStructUsingList
     val formulaListFile = cmdLine get optToFormulaUsingList
-    val formulaNavMapFile = cmdLine get optToFormulaUsingNavigableMap
     val dlDifferentials = cmdLine get optGetDifferentialFromDL
     val filterRtRegions = cmdLine getMany optFilterRtRegions
 
@@ -856,20 +854,21 @@ object UntargetedMetabolomics {
     } else {
       println(s"Mapping to structures using inchi list")
       // map the peaks to candidate structures if they appear in the lists (from HMDB, ROs, etc)
-      new PeakToMolecule().StructureHits.toStructureHitsUsingLists(rslt, inchiListFile)
+      val parser = new LargeMassToMoleculeMapParser()
+      parser.parseNamedInchis(new File(inchiListFile))
+      val smallFormulaMap: LargeMassToMoleculeMap  = parser.getMassToMoleculeMap
+      new PeakToMolecule().StructureHits.toStructureHitsUsingLargeMap(
+        rslt, smallFormulaMap, MagicParams._precisionFormulaeLookup)
     }
 
-    val formulae = if (!mapToFormulaUsingList && !mapToFormulaUsingNavigableMap) {
+    val formulae = if (!mapToFormulaUsingList) {
       inchis
-    } else if (!mapToFormulaUsingNavigableMap) {
-      println(s"Mapping to formula using list")
-      new PeakToMolecule().FormulaHits.toFormulaHitsUsingLists(inchis, formulaListFile)
     } else {
       println(s"Mapping to formula using large enumerated list")
-      val builder = new SmallFormulaeCorpusBuilder()
-      builder.populateMapFromFile(new File(formulaNavMapFile))
-      val smallFormulaMap: NavigableMap[java.lang.Float, String] = builder.getMassToFormulaMap
-      new PeakToMolecule().FormulaHits.toFormulaHitsUsingTreeMap(
+      val parser = new LargeMassToMoleculeMapParser("formula", "mass")
+      parser.parse(new File(formulaListFile))
+      val smallFormulaMap: LargeMassToMoleculeMap  = parser.getMassToMoleculeMap
+      new PeakToMolecule().FormulaHits.toFormulaHitsUsingLargeMap(
         inchis, smallFormulaMap, MagicParams._precisionFormulaeLookup)
     }
 
@@ -889,7 +888,7 @@ object UntargetedMetabolomics {
     } else {
       inchis.extraCodes.map(codesToJson)
     }
-    val metaForFormulae = if (!mapToFormulaUsingList && !mapToFormulaUsingNavigableMap) {
+    val metaForFormulae = if (!mapToFormulaUsingList) {
       List()
     } else {
       formulae.extraCodes.map(codesToJson)
@@ -965,14 +964,6 @@ object UntargetedMetabolomics {
                               |TSV file with one formula per line, and optionally tab separated column of
                               |monoisotopic mass for that formula. If missing it is computed online. The TSV
                               |hdrs need be `${HdrMolFormula.toString}` and `${HdrMolMass.toString}`""".stripMargin,
-                    isReqd = false, hasArg = true)
-
-  val optToFormulaUsingNavigableMap = new OptDesc(
-                    param = "N",
-                    longParam = "structures-using-navmap",
-                    name = "file",
-                    // TODO: fill this
-                    desc = s"""TODO""".stripMargin,
                     isReqd = false, hasArg = true)
 
   val optToFormulaUsingSolver = new OptDesc(
