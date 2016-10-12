@@ -152,7 +152,7 @@ object ChemicalSymbols {
 
     // This function is a helper to `equals`
     // It tests whether two values are within the range of experimental drift we allow
-    private def withinDriftWindow(a: Double, b: Double) = (math abs (a - b)) < MonoIsotopicMass.tolerance(2)
+    private def withinDriftWindow(a: Double, b: Double) = (math abs (a - b)) < MonoIsotopicMass.tolerance()
 
     // we allow for times to drift by driftTolerated, and so equals matches times that only that apart
     override def equals(that: Any) = that match { 

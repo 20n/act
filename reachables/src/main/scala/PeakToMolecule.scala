@@ -43,11 +43,15 @@ class PeakToMolecule {
           a._1.compare(peak.mz) < b._1.compare(peak.mz)
         }
 
+        def withinRange(a: MonoIsotopicMass, b: MonoIsotopicMass) = {
+          math.abs(a.rounded(3) - b.rounded(3)) < 0.01
+        }
+
 
         println("peak")
         println(peak)
         println("filtered map")
-        println(enumerated.filterKeys(mass => mass.equals(peak.mz)))
+        println(enumerated.filterKeys(mass => withinRange(mass, peak.mz)))
         println("previous filtered map")
         println(enumerated(peak.mz))
         println("filtered list")
