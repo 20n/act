@@ -128,7 +128,7 @@ object ChemicalSymbols {
     // tolerate differences in the last decimal place at which monoIsotopicMasses specified
     // i.e., we consider masses upto 0.001 away from each other to be identical
     // note that the mass of an electron is 5.5e-4 Da, so we allow upto around an electron mass
-    val defaultNumPlaces = 2
+    val defaultNumPlaces = 3
     def tolerance(numDec: Int = defaultNumPlaces): Double = math.pow(10, -numDec)
     def isLt(a: MonoIsotopicMass, b: MonoIsotopicMass) = a.initMass < b.initMass
   }
@@ -145,14 +145,14 @@ object ChemicalSymbols {
 
     def rounded(numDec: Int = MonoIsotopicMass.defaultNumPlaces): Double = roundedAndScaled(numDec) * MonoIsotopicMass.tolerance(numDec)
     def roundedAndScaled(numDec: Int = MonoIsotopicMass.defaultNumPlaces): Long = math round (initMass / MonoIsotopicMass.tolerance(numDec))
-    
+
     def percentCompare(that: MonoIsotopicMass, numDec: Int = MonoIsotopicMass.defaultNumPlaces) = {
       math.abs(that.initMass - this.initMass) / MonoIsotopicMass.tolerance(numDec)
     }
 
     // This function is a helper to `equals`
     // It tests whether two values are within the range of experimental drift we allow
-    private def withinDriftWindow(a: Double, b: Double) = (math abs (a - b)) < MonoIsotopicMass.tolerance()
+    private def withinDriftWindow(a: Double, b: Double) = (math abs (a - b)) < MonoIsotopicMass.tolerance(2)
 
     // we allow for times to drift by driftTolerated, and so equals matches times that only that apart
     override def equals(that: Any) = that match { 
