@@ -40,7 +40,7 @@ class PeakToMolecule {
       def getSortedHits(peak: Peak) = {
         def sortByMz(a: (MonoIsotopicMass, List[(T, Option[String])]),
                      b: (MonoIsotopicMass, List[(T, Option[String])])) = {
-          a._1.percentCompare(peak.mz) < b._1.percentCompare(peak.mz)
+          a._1.percentCompare(peak.mz, 6) < b._1.percentCompare(peak.mz, 6)
         }
 
 
