@@ -165,7 +165,7 @@ public class Fingerprint {
       Molecule moleculeInchi = cleanMol(MolImporter.importMol(inchi, "inchi"));
       plugin.setMolecule(moleculeInchi);
       plugin.run();
-      System.out.println(String.format("%d  %d", plugin.getlogPTrue(), plugin.getlogPMicro()));
+      System.out.println(String.format("%f  %f", plugin.getlogPTrue(), plugin.getlogPMicro()));
 
 
 
