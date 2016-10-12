@@ -46,7 +46,11 @@ class PeakToMolecule {
         enumerated.filterKeys(mass => mass.equals(peak.mz)).toList.sortWith(sortByMz).map(_._2).flatten
       }
 
-      haveHits.map(p => p -> getSortedHits(p)).toMap
+      val x = haveHits.map(p => p -> getSortedHits(p)).toMap
+      val y = haveHits.map(p => enumerated(p.mz)).toMap
+      println(x.toString())
+      println(y.toString())
+      x
     }
 
     def assumeUniqT(tsv: List[Map[TSVHdr, String]], hdrForT: TSVHdr): Map[(String, Option[String]), Option[String]] = {
