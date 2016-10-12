@@ -89,7 +89,7 @@ public class LargeMassToMoleculeMapParser {
         namedMolecule = new NamedMolecule();
 
         if (i % 1000000 == 0) {
-          LOGGER.debug("Formulae processed so far: %d", i);
+          LOGGER.info("Formulae processed so far: %d", i);
         }
 
         line = formulaeReader.readLine();
@@ -142,7 +142,7 @@ public class LargeMassToMoleculeMapParser {
         namedMolecule = new NamedMolecule();
 
         if (i % 1000000 == 0) {
-          LOGGER.debug("Formulae processed so far: %d", i);
+          LOGGER.info("Structure processed so far: %d", i);
         }
 
         line = formulaeReader.readLine();

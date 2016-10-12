@@ -27,14 +27,11 @@ public class LargeMassToMoleculeMap {
 
   public void add(Float mass, NamedMolecule molecule) {
     List<NamedMolecule> matchingMolecules = massToMoleculeMap.get(mass);
-    LOGGER.info("Getting matching molecules for mass %f", mass);
     if (matchingMolecules == null) {
       matchingMolecules = new ArrayList<>();
       massToMoleculeMap.put(mass, matchingMolecules);
     }
     matchingMolecules.add(molecule);
-    LOGGER.info("Final set");
-    LOGGER.info(matchingMolecules.toString());
   }
 
   public Map<Float, List<NamedMolecule>> getMassWindow(Float fromKey, Float toKey) {
@@ -53,11 +50,6 @@ public class LargeMassToMoleculeMap {
     }
     List<NamedMolecule> l = new ArrayList<>();
     newMap.values().forEach(l::addAll);
-    LOGGER.info("Query - center: %f, windowSize: %f.", center, windowSize);
-    LOGGER.info("Results:");
-    LOGGER.info(l.toString());
-    LOGGER.info("Original Submap");
-    LOGGER.info(subMap.toString());
     return l;
   }
 }
