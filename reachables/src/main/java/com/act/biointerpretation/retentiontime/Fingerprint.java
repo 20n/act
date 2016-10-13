@@ -154,7 +154,7 @@ public class Fingerprint {
 
 
     TSVParser parser = new TSVParser();
-    parser.parse(new File("/Users/vijaytramakrishnan/Desktop/ret_time_results/manisa_confident.txt"));
+    parser.parse(new File("/mnt/shared-data/Vijay/ret_time_prediction/manisa_confident.txt"));
 
     for (Map<String, String> row : parser.getResults()) {
       String inchi = row.get("Molecule");
