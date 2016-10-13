@@ -49,7 +49,7 @@ object MagicParams {
   val _outputRawPeakData = true
 
   // precision of lookup in enumerated formulae list
-  val _precisionFormulaeLookup = 0.01F
+  val _precisionFormulaeLookup = 0.02F
 }
 
 object RetentionTime {
