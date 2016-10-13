@@ -6,8 +6,8 @@ import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -17,8 +17,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +34,10 @@ import java.util.stream.Collectors;
 public class MetabolismNetwork {
 
   private static transient final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+  static {
+    OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
+  }
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(MetabolismNetwork.class);
 
@@ -129,8 +133,8 @@ public class MetabolismNetwork {
 
     for (int n = 0; n < numSteps; n++) {
       // Move frontier back, then add all new edges. Edge adding will add substrate and product nodes as necessary.
+      frontier.forEach(node -> node.getInEdges().forEach(subgraph::addEdge));
       frontier = frontier.stream().flatMap(node -> getPrecursors(node).stream()).collect(Collectors.toSet());
-      frontier.forEach(node -> node.getOutEdges().forEach(e -> subgraph.addEdge(e)));
     }
 
     return subgraph;
@@ -195,8 +199,8 @@ public class MetabolismNetwork {
    */
   public void addEdge(NetworkEdge edge) {
 
-    edge.getSubstrates().forEach(s -> createNodeIfNoneExists(s));
-    edge.getProducts().forEach(p -> createNodeIfNoneExists(p));
+    edge.getSubstrates().forEach(this::createNodeIfNoneExists);
+    edge.getProducts().forEach(this::createNodeIfNoneExists);
 
     NetworkNode substrateNode = getNode(edge.getSubstrates().get(0));
     List<NetworkEdge> equivalentEdges = substrateNode.getOutEdges().stream()
@@ -209,7 +213,7 @@ public class MetabolismNetwork {
 
     if (equivalentEdges.isEmpty()) { // If no equivalent edge exists, add the new edge
       edge.getProducts().forEach(product -> getNode(product).addInEdge(edge));
-      edge.getSubstrates().forEach(substrate -> getNode(substrate).addInEdge(edge));
+      edge.getSubstrates().forEach(substrate -> getNode(substrate).addOutEdge(edge));
       edges.add(edge);
     } else { // If there is an equivalent edge, merge the data into that edge.
       equivalentEdges.get(0).merge(edge);
@@ -242,6 +246,6 @@ public class MetabolismNetwork {
     MetabolismNetwork networkFromFile = OBJECT_MAPPER.readValue(inputFile, MetabolismNetwork.class);
 
     this.nodes = networkFromFile.nodes;
-    networkFromFile.edges.forEach(e -> this.addEdge(e));
+    networkFromFile.edges.forEach(this::addEdge);
   }
 }
