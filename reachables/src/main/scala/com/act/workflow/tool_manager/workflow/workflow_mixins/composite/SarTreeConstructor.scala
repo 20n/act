@@ -5,8 +5,9 @@ import java.io.File
 import act.server.MongoDB
 import chemaxon.clustering.LibraryMCS
 import chemaxon.struc.Molecule
+import com.act.analysis.chemicals.ChemicalSimilarity
 import com.act.analysis.proteome.files.AlignedFastaFileParser
-import com.act.biointerpretation.l2expansion.{L2InchiCorpus, L2PredictionCorpus}
+import com.act.biointerpretation.l2expansion.L2InchiCorpus
 import com.act.biointerpretation.sarinference.{SarTree, SarTreeNode}
 import com.act.utils.TSVWriter
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.ReactionKeywords
@@ -18,6 +19,7 @@ import org.apache.spark.rdd.RDD
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.collection.immutable.ListMap
+import scala.collection.parallel.immutable.{ParMap, ParSeq}
 
 
 trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
@@ -44,11 +46,9 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
                                         kMeansNumberOfIterations: Int = 200,
                                         percentOfRowsThatAreNotZeroToKeep: Double = 30.0)(): Unit = {
 
-    val l2Corpus = L2PredictionCorpus.readPredictionsFromJsonFile(inchisToScore)
-    val corpy = l2Corpus.getCorpus
-    val hits = corpy filter (_.getProjectorName.contains("HIT"))
-
-    val inchis: Set[String] = hits flatMap (_.getProductInchis) toSet
+    val corpy = new L2InchiCorpus()
+    corpy.loadCorpus(inchisToScore)
+    val inchis = corpy.getInchiList
 
     if (inchis.isEmpty) throw new RuntimeException("After filtering for InChIs that were marked as hits, " +
       "we found no InChIs leftover.  Please ensure that your L2PredictionCorpus Projector Name " +
@@ -105,7 +105,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
      find similar products than to look at the substrates and expect to find them in a sample.
      */
     val sarCreator: ((List[Long]) => SarTree) =
-      createSarTreeFromSequencesIds(connectToMongoDatabase())(ReactionKeywords.PRODUCTS.toString) _
+      createSarTreeFromSequencesIds(connectToMongoDatabase(), ReactionKeywords.PRODUCTS.toString) _
 
     // Collect all the SAR trees that were successfully created.
     val clusteredSars: Map[Int, SarTree] = clusterMap mapValues sarCreator
@@ -122,18 +122,32 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     val writtenMap = ListMap(inchiScores.toSeq.sortBy(-_._2): _*)
 
     // Write to file, use TSV because InChIs don't play well with csvs
-    val writer = new TSVWriter[String, String](List("InChI", "Raw Score", "Score", "Rank"))
+    val Inchi = "InChI"
+    val RawScore = "Raw Score"
+    val RawLogScore = "Raw Log Score"
+    val NormalizedScore = "Normalized Score"
+    val NormalizedLogScore = "Normalized Log Score"
+    val Rank = "Rank"
+    val writer =
+      new TSVWriter[String, String](List(Inchi, RawScore, RawLogScore, NormalizedScore, NormalizedLogScore, Rank))
     writer.open(outputFile)
 
     val largestScore: Double = writtenMap.values.max
+    val largestLogScore: Double = Math.log(largestScore)
     var counter = 1
     for ((key, value) <- writtenMap) {
       // Normalize based on largest score to 100
+      val logValue = Math.log(value)
+
       val row = Map(
-        "InChI" -> key,
-        "Raw Score" -> f"$value%.6f",
-        "Score" -> f"${100.0 * value / largestScore}%.3f",
-        "Rank" -> s"$counter")
+        Inchi -> key,
+        RawScore -> f"$value%.6f",
+        RawLogScore -> f"$logValue%.6f",
+        NormalizedScore -> f"${100.0 * value / largestScore}%.6f",
+        NormalizedLogScore -> f"${100.0 * logValue / largestLogScore}%.6f",
+        Rank -> s"$counter"
+      )
+
       writer.append(row.asJava)
       counter += 1
     }
@@ -149,8 +163,7 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     *
     * @return
     */
-  def createSarTreeFromSequencesIds(mongoConnection: MongoDB)
-                                   (chemicalKeywordToLookAt: String)
+  def createSarTreeFromSequencesIds(mongoConnection: MongoDB, chemicalKeywordToLookAt: String)
                                    (sequenceIds: List[Long]): SarTree = {
     val inchis = sequencesIdsToInchis(mongoConnection)(sequenceIds.toSet, chemicalKeywordToLookAt)
     val clusterSarTree = new SarTree()
@@ -167,16 +180,22 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     * @return A map of Inchi -> Score, where the score is a single Double.
     */
   def scoreInchiCorpus(sarTreeClusters: Map[Int, SarTree], inchiCorpus: L2InchiCorpus): Map[String, Double] = {
-    val sarTrees = sarTreeClusters.values toList
-
     // Score each cluster and reduce the scoring down into the sum of all the clusters
-    val combinedInchiScore: List[Map[String, Double]] = sarTrees flatMap (scoreCorpusAgainstSarTree(_, inchiCorpus))
+    val combinedInchiScore: ParSeq[ParMap[String, Double]] = sarTreeClusters.par.map({ case (key, value) =>
+      logger.info(s"Started scoring corpus $key.")
+      val scores = scoreCorpusAgainstSarTree(value, inchiCorpus)
+      logger.info(s"Finished scoring corpus $key")
+      scores
+    }) toSeq
 
     // All keys are the same so we are safe to use just the first to merge on
-    combinedInchiScore.head.keys map { key =>
+    val combined = combinedInchiScore.head.keys map { key =>
       // Key + some aggregation of all the inchi scores
       (key, combinedInchiScore.flatMap(_.get(key)).sum)
     } toMap
+
+    // Convert back to non parallel form.
+    combined.seq
   }
 
   /**
@@ -187,16 +206,16 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     *
     * @return
     */
-  def scoreCorpusAgainstSarTree(sarTree: SarTree, inchiCorpus: L2InchiCorpus): Option[Map[String, Double]] = {
-    if (sarTree == null) return None
+  def scoreCorpusAgainstSarTree(sarTree: SarTree, inchiCorpus: L2InchiCorpus): ParMap[String, Double] = {
+    val inchiToMoleculeMap: Map[String, Molecule] = (inchiCorpus.getInchiList zip inchiCorpus.getMolecules) toMap
 
-    val inchiScores: List[Double] =
-      inchiCorpus.getMolecules map {
-        scoreInchiAgainstSarTree(sarTree, sarTree.getRootNodes toList, _)
-      } toList
+    val inchiScorer: Molecule => Double = scoreInchiAgainstSarSubtree(sarTree, sarTree.getRootNodes.toList) _
 
-    // Inchi -> Scoring Map
-    Option((inchiCorpus.getInchiList.toList zip inchiScores) toMap)
+    val scoredInchis: ParMap[String, Double] = inchiToMoleculeMap.par.map {
+      case (key, value) => (key, inchiScorer(value))
+    }
+
+    scoredInchis
   }
 
   /**
@@ -204,37 +223,43 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     *
     * @param sarTree          The input SarTree to check against
     * @param currentLevelList The remaining SarTreeNodes that haven't been invalidated.
-    * @param molecule         Which molecule to check against the Sar Tree
+    * @param queryMolecule    Which molecule to check against the Sar Tree
     *
     * @return
     */
-  def scoreInchiAgainstSarTree(sarTree: SarTree, currentLevelList: List[SarTreeNode], molecule: Molecule): Double = {
-    val nodesMatchingSar = currentLevelList filter (_.getSar.test(List[Molecule](molecule)))
-
+  def scoreInchiAgainstSarSubtree(sarTree: SarTree, currentLevelList: Seq[SarTreeNode])(queryMolecule: Molecule): Double = {
     // Arbitrary score value
     val baseAdd = 10.0
 
-    // No matches
-    nodesMatchingSar.isEmpty match {
-      case true => baseAdd
-      case false =>
-        // See how any remaining nodes score upon further traversal.
-        val deeperScores: List[Double] = nodesMatchingSar map (node =>
-          // Leaf Node
-          if (sarTree.getChildren(node).isEmpty) {
-            // Get really excited if we see an exact match
-            if (node.getSubstructure.equals(molecule)) {
-              baseAdd * baseAdd * baseAdd
-            } else {
-              // TODO Add a heuristic in to filter out REALLY REALLY large and general substrates.
-              // Slightly penalize if overshoot substrate
-              -baseAdd
-            }
-          } else {
-            // Nodes still remain, see how deep prior to hitting a nothing
-            scoreInchiAgainstSarTree(sarTree, sarTree.getChildren(node).toList, molecule)
-          })
-        baseAdd + deeperScores.sum
+    // Step 1: Figure out if a given node is a hit or a miss
+    def scoreMolecule(sarTreeNode: SarTreeNode): Double = {
+      val matchesSar = sarTreeNode.getSar.test(List[Molecule](queryMolecule))
+      baseAdd * (if (matchesSar) scoreHit(sarTreeNode) else scoreMiss(sarTreeNode))
     }
+
+    def scoreHit(sarTreeNode: SarTreeNode): Double = {
+      val similarity = ChemicalSimilarity.calculateSimilarity(queryMolecule, sarTreeNode.getSubstructure)
+
+      // If a tree node doesn't have children, it is a leaf and therefore a chemical used to construct the SAR tree.
+      val sarTreeChildren: Seq[SarTreeNode] = sarTree.getChildren(sarTreeNode).toList
+
+      // Handle the leaf node uniquely.  Leaf node occurs when the children are empty.
+      if (sarTreeChildren.isEmpty) {
+        // Similarity 1 means we give full points, otherwise we give a quickly
+        // decreasing amount as the molecules increase in distance from each other.
+        baseAdd * Math.pow(similarity, 2.0)
+      } else {
+        // Adding one adds a bit of weight to traversal (Deeper -> more score)
+        1 + scoreInchiAgainstSarSubtree(sarTree, sarTreeChildren)(queryMolecule)
+      }
+    }
+
+    // Score if SAR tree node is a miss
+    def scoreMiss(sarTreeNode: SarTreeNode): Double = {
+      ChemicalSimilarity.calculateSimilarity(queryMolecule, sarTreeNode.getSubstructure)
+    }
+
+    // Score every molecule and return the sum of their scores.
+    currentLevelList.map(scoreMolecule).sum
   }
 }
