@@ -185,6 +185,8 @@ public class Fingerprint {
 
 
 
+      System.out.println(MolExporter.exportToFormat(moleculeInchi, "inchi"));
+      
       Set<String> includeIons = new HashSet<>();
       includeIons.add(row.get("Ion"));
       Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(MolExporter.exportToFormat(moleculeInchi, "inchi")), MS1.IonMode.POS);
