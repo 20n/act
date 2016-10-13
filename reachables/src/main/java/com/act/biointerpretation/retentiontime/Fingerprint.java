@@ -176,17 +176,18 @@ public class Fingerprint {
     parser.parse(new File("/mnt/shared-data/Vijay/ret_time_prediction/combined_set.txt"));
 
     for (Map<String, String> row : parser.getResults()) {
-//      String inchi = row.get("Molecule");
-//      Molecule moleculeInchi = cleanMol(MolImporter.importMol(inchi, "smiles"));
+      String inchi = row.get("Molecule");
+      Molecule moleculeInchi = cleanMol(MolImporter.importMol(inchi, "smiles"));
 //      plugin.setMolecule(moleculeInchi);
 //      plugin.run();
 //      System.out.println(String.format("%f", plugin.getlogPTrue()));
 //
 
 
+
       Set<String> includeIons = new HashSet<>();
       includeIons.add(row.get("Ion"));
-      Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(row.get("Molecule")), MS1.IonMode.POS);
+      Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(MolExporter.exportToFormat(moleculeInchi, "inchi")), MS1.IonMode.POS);
       Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
       System.out.println(metlinMasses.get(row.get("Ion")));
     }
