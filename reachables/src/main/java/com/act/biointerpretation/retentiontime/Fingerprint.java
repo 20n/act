@@ -185,11 +185,11 @@ public class Fingerprint {
 
 
 
-      System.out.println(MolExporter.exportToFormat(moleculeInchi, "inchi"));
+      System.out.println(MolExporter.exportToFormat(moleculeInchi, "inchi:AuxNone,Woff"));
       
       Set<String> includeIons = new HashSet<>();
       includeIons.add(row.get("Ion"));
-      Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(MolExporter.exportToFormat(moleculeInchi, "inchi")), MS1.IonMode.POS);
+      Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(MolExporter.exportToFormat(moleculeInchi, "inchi:AuxNone,Woff")), MS1.IonMode.POS);
       Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
       System.out.println(metlinMasses.get(row.get("Ion")));
     }
