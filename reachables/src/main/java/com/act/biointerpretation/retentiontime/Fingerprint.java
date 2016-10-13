@@ -153,47 +153,47 @@ public class Fingerprint {
 //    System.out.println(apapFingerprintSmiles.getCommonBitCount(otherFingerprintSmiles));
 
 
-    TSVParser parser = new TSVParser();
-    parser.parse(new File("/mnt/shared-data/Vijay/ret_time_prediction/manisa_confident.txt"));
-
-    for (Map<String, String> row : parser.getResults()) {
-      String inchi = row.get("Molecule");
-      Molecule moleculeInchi = cleanMol(MolImporter.importMol(inchi, "inchi"));
-      System.out.println((String) MolExporter.exportToObject(moleculeInchi, "smiles:a"));
-    }
-
-
-
-
-
-
-
-//      logPPlugin plugin = new logPPlugin();
-//
-//
-//
 //    TSVParser parser = new TSVParser();
 //    parser.parse(new File("/mnt/shared-data/Vijay/ret_time_prediction/manisa_confident.txt"));
 //
 //    for (Map<String, String> row : parser.getResults()) {
 //      String inchi = row.get("Molecule");
 //      Molecule moleculeInchi = cleanMol(MolImporter.importMol(inchi, "inchi"));
-//      plugin.setMolecule(moleculeInchi);
-//      plugin.run();
-//      System.out.println(String.format("%f", plugin.getlogPTrue()));
-//
-//
-//
-////      Set<String> includeIons = new HashSet<>();
-////      includeIons.add("M+H");
-////
-////      String inchi = row.get("InChI");
-////
-////      Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(row.get("InChI")), MS1.IonMode.POS);
-////      Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
-////
-////      System.out.println(metlinMasses.get("M+H"));
+//      System.out.println((String) MolExporter.exportToObject(moleculeInchi, "smiles:a"));
 //    }
+
+
+
+
+
+
+
+      logPPlugin plugin = new logPPlugin();
+
+
+
+    TSVParser parser = new TSVParser();
+    parser.parse(new File("/mnt/shared-data/Vijay/ret_time_prediction/combined_set.txt"));
+
+    for (Map<String, String> row : parser.getResults()) {
+      String inchi = row.get("Molecule");
+      Molecule moleculeInchi = cleanMol(MolImporter.importMol(inchi, "smiles"));
+      plugin.setMolecule(moleculeInchi);
+      plugin.run();
+      System.out.println(String.format("%f", plugin.getlogPTrue()));
+
+
+
+//      Set<String> includeIons = new HashSet<>();
+//      includeIons.add("M+H");
+//
+//      String inchi = row.get("InChI");
+//
+//      Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(row.get("InChI")), MS1.IonMode.POS);
+//      Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
+//
+//      System.out.println(metlinMasses.get("M+H"));
+    }
 
 
 
