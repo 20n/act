@@ -38,11 +38,9 @@ object AbstractChemicalsToReactions {
 
   def writeSubstrateStringsForSubstrateCount(mongoDb: MongoDB)
                                             (reactions: List[ReactionInformation], outputFile: File): Unit = {
-    require(!outputFile.isDirectory, "The file you designated to output your files " +
-      "to is a directory and therefore is not a valid path.")
+    require(!outputFile.isDirectory, "The file you designated to output your files to is a directory and therefore is not a valid path.")
     // We need to make sure this is a set so that we remove as many duplicates as possible.
-    logger.info(s"Quickly checking for duplicate substrates to minimize the size of our substrate corpus.  " +
-      s"Current size is ${reactions.length}")
+    logger.info(s"Quickly checking for duplicate substrates to minimize the size of our substrate corpus.  Current size is ${reactions.length}")
     val substrates: Set[String] = reactions.flatMap(_.getSubstrates.map(_.getString)).seq.toSet
     logger.info(s"After removing duplicates, ${substrates.size} exist.")
     new L2InchiCorpus(substrates).writeToFile(outputFile)

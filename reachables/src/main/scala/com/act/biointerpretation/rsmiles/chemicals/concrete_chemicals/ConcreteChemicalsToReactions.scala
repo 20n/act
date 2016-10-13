@@ -21,10 +21,12 @@ object ConcreteChemicalsToReactions {
                                  (outputSubstrateFile: File, outputReactionCorpus: File, substrateCount: Int)
                                  (): Unit = {
     val db = Mongo.connectToMongoDatabase()
+
     val concreteChemicals = ConcreteChemicals.getConcreteChemicals(db, moleculeFormat)
     val concreteReactions = ConcreteReactions.getConcreteReactions(db, moleculeFormat, substrateCount)(concreteChemicals)
-    logger.info(s"Found ${concreteReactions.size} matching reactions with $substrateCount substrates. " +
-      s"Writing both the substrates and reactions to disk.")
+
+    logger.info(s"Found ${concreteReactions.size} matching reactions with $substrateCount substrates. Writing both the substrates and reactions to disk.")
+
     writeSubstrateStringsForSubstrateCount(db)(concreteReactions.seq.toList, outputSubstrateFile)
     writeAbstractReactionsToJsonCorpus(concreteReactions.seq.toList, outputReactionCorpus)
   }
@@ -38,13 +40,13 @@ object ConcreteChemicalsToReactions {
 
   def writeSubstrateStringsForSubstrateCount(mongoDb: MongoDB)
                                             (reactions: List[ReactionInformation], outputFile: File): Unit = {
-    require(!outputFile.isDirectory, "The file you designated to output your files " +
-      "to is a directory and therefore is not a valid path.")
+    require(!outputFile.isDirectory, "The file you designated to output your files to is a directory and therefore is not a valid path.")
+
     // We need to make sure this is a set so that we remove as many duplicates as possible.
-    logger.info(s"Quickly checking for duplicate substrates to minimize the size of our substrate corpus.  " +
-      s"Current size is ${reactions.length}")
+    logger.info(s"Quickly checking for duplicate substrates to minimize the size of our substrate corpus.  Current size is ${reactions.length}")
     val substrates: Set[String] = reactions.flatMap(_.getSubstrates.map(_.getString)).seq.toSet
     logger.info(s"After removing duplicates, ${substrates.size} exist.")
+
     new L2InchiCorpus(substrates).writeToFile(outputFile)
   }
 
