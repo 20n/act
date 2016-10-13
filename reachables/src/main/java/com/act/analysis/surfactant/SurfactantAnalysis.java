@@ -100,11 +100,14 @@ public class SurfactantAnalysis {
     /* Compute the logP surface of the molecule (seems to require a JFrame?), and collect those features.  We consider
      * the number of closest surface components to each atom so we can guess at how much interior atoms actually
      * contribute to the molecule's solubility. */
-    System.setProperty("java.awt.headless", "true");
-    JFrame jFrame = new JFrame();
-    jFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-    Map<FEATURES, Double> surfaceFeatures = surfactantAnalysis.computeSurfaceFeatures(jFrame, true);
-    features.putAll(surfaceFeatures);
+    if (display) {
+      JFrame jFrame = new JFrame();
+      jFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+      Map<FEATURES, Double> surfaceFeatures = surfactantAnalysis.computeSurfaceFeatures(jFrame, true);
+      features.putAll(surfaceFeatures);
+      jFrame.pack();
+      jFrame.setVisible(true);
+    }
 
     features.put(FEATURES.LOGP_TRUE, surfactantAnalysis.plugin.getlogPTrue()); // Save absolute logP since we calculated it.
     features.put(FEATURES.GEO_LV_FD_RATIO, maxDistToLongestVector / longestVectorLength);
@@ -121,12 +124,7 @@ public class SurfactantAnalysis {
     for (FEATURES f : sortedFeatures) {
       System.out.format("  %s = %f\n", f, features.get(f));
     }
-
-    if (display) {
-      jFrame.pack();
-      jFrame.setVisible(true);
-    }
-
+    
     return features;
   }
 
