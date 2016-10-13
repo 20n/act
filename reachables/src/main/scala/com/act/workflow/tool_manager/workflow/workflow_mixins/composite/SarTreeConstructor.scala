@@ -199,9 +199,6 @@ trait SarTreeConstructor extends SequenceIdToRxnInchis with SparkRdd {
     Option((inchiCorpus.getInchiList.toList zip inchiScores) toMap)
   }
 
-    scoredInchis
-  }
-
   /**
     * Score molecule based on SAR tree traversal.
     *

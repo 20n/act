@@ -236,6 +236,27 @@ trait MongoWorkflowUtilities {
    Mongo aggregation handling.
    */
 
+  private def dollarString(inputKeyword: Keyword): String = {
+    dollarString(inputKeyword.value)
+  }
+
+  /**
+    * Many Mongo queries require a dollar sign in front of the keyword.  Example: $exists
+    *
+    * The dollar sign is also used during aggregation to reference intermediate documents. Example: $_id
+    *
+    * Thus, this function changes f("String") -> "$String"
+    *
+    * @param inputString The string to be converted into dollar format
+    *
+    * @return Modified string
+    */
+  private def dollarString(inputString: String): String = {
+    // Escape one dollar and do the input as well
+    s"$$$inputString"
+  }
+
+
   def defineMongoGroup(nameOfGroupingValue: Keyword, outputListName: Keyword): BasicDBObject = {
     defineMongoGroup(nameOfGroupingValue.toString, outputListName.toString)
   }
@@ -273,26 +294,6 @@ trait MongoWorkflowUtilities {
 
     // Finally, we group everything together
     createDbObject(MongoKeywords.GROUP, groupMap)
-  }
-
-  private def dollarString(inputKeyword: Keyword): String = {
-    dollarString(inputKeyword.value)
-  }
-
-  /**
-    * Many Mongo queries require a dollar sign in front of the keyword.  Example: $exists
-    *
-    * The dollar sign is also used during aggregation to reference intermediate documents. Example: $_id
-    *
-    * Thus, this function changes f("String") -> "$String"
-    *
-    * @param inputString The string to be converted into dollar format
-    *
-    * @return Modified string
-    */
-  private def dollarString(inputString: String): String = {
-    // Escape one dollar and do the input as well
-    s"$$$inputString"
   }
 
   def appendKeyToDbObject(currentObject: BasicDBObject, key: Keyword, value: Any): BasicDBObject = {
