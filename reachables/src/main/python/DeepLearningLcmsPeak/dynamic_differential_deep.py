@@ -37,6 +37,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     lcms_directory = args.lcmsDirectory
+    # TODO Currently requires > 1 replicates for each, this should not be true.
     experimental_samples = args.experimental
     control_samples = args.control
     output_directory = args.outputDirectory

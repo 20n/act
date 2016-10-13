@@ -2,6 +2,7 @@ import csv
 import os
 
 import numpy as np
+from tqdm import tqdm
 
 from modules.utility import magic
 
@@ -64,7 +65,7 @@ def replacement_alignment(aligned_peaks, unaligned_peaks):
     print("Replacing peak alignments with superior ones if a larger peak can be found locally.")
     replacement_count = 0
     drop_count = 0
-    for unaligned_peaks_index in range(0, len(unaligned_peaks)):
+    for unaligned_peaks_index in tqdm(range(0, len(unaligned_peaks))):
         unaligned_peak_set = sorted(unaligned_peaks[unaligned_peaks_index], key=sort_ordering)
 
         for unaligned_peak in unaligned_peak_set:
@@ -81,7 +82,9 @@ def replacement_alignment(aligned_peaks, unaligned_peaks):
                         aligned_peaks[aligned_peak_index][unaligned_peaks_index] = unaligned_peak
                         replacement_count += 1
                     else:
+                        # Hit close, but was not a large peak in the area so is dropped.
                         drop_count += 1
+
                     # The else case is that this is a small duplicate peak.
                     break
             else:
@@ -94,32 +97,9 @@ def replacement_alignment(aligned_peaks, unaligned_peaks):
     print("Replaced {} peaks, while dropping {} local minimum peaks.  "
           "Number of aligned peaks is {}, number of unaligned peaks is {}".format(replacement_count, drop_count,
                                                                                   len(aligned_peaks), sum(
-            len(s) for s in still_unaligned_peaks)))
+            len(p) for p in still_unaligned_peaks)))
 
     return aligned_peaks, still_unaligned_peaks
-
-
-    # j = trailing_tracker
-    # while j < len(sample_two):
-    #     sample_two_peak = sample_two[j]
-    #
-    #     mz_closeness = sample_one_peak[0].get_mz() - sample_two_peak.get_mz()
-    #     if abs(mz_closeness) <= tolerance_mz:
-    #         if abs(sample_one_peak[0].get_rt() - sample_two_peak.get_rt()) <= tolerance_time:
-    #             aligned_peaks.append(previous_alignment.pop(i) + [sample_two.pop(j)])
-    #             break
-    #     elif mz_closeness < -tolerance_mz:
-    #         j = len(sample_two)
-    #     elif j != 0 and \
-    #             (sample_one_peak[0].get_mz() - sample_two[j - 1].get_mz() > tolerance_mz) and \
-    #             (sample_one_peak[0].get_mz() - sample_two[j].get_mz() <= tolerance_mz):
-    #         trailing_tracker = j
-    #
-    #     j += 1
-    # else:
-    #     i += 1
-
-
 
 def align_old_alignment_to_new_sample(previous_alignment, sample_two, tolerance_mz, tolerance_time):
     previous_alignment = sorted(previous_alignment, key=lambda data: data[0].get_mz())
@@ -195,19 +175,23 @@ def two_sample_alignment(sample_one, sample_two, tolerance_mz, tolerance_time):
 def iterative_alignment(unaligned_samples):
     initial_two = unaligned_samples[0:2]
     anything_after = unaligned_samples[2:]
+
+    print("Aligning samples 1 and 2.")
     aligned, unaligned = stepwise_alignment(initial_two,
                                             min_mz=0.001, mz_step=0.001, max_mz=0.01,
                                             min_time=1, time_step=0.5, max_time=5)
 
-    for sample in anything_after:
-        temp_aligned, temp_unaligned = stepwise_alignment(sample, previous_alignment=aligned,
+    for i, sample in enumerate(anything_after):
+        print("Aligning previous samples with sample {}".format(i + 2))
+        # TODO Make it so that we track unaligned when sample number is greater than 2
+        aligned, _ = stepwise_alignment(sample, previous_alignment=aligned,
                                                           min_mz=0.001, mz_step=0.001, max_mz=0.01,
                                                           min_time=0.1, time_step=0.2, max_time=5)
 
-        aligned = temp_aligned
-        unaligned.append(temp_unaligned)
-
-    return aligned, unaligned
+    if len(anything_after) == 0:
+        return aligned, unaligned
+    else:
+        return aligned, []
 
 
 def create_differential_peak_windows(exp, ctrl):
