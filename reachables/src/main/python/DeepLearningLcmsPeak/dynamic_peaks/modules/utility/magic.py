@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 """
 Deep.py Default Values
 """
-cluster_number = 20
+cluster_number = 200
 encoding_size = 10
 mz_min = 49
 mz_max = 951
@@ -11,11 +11,11 @@ time_min = 0
 time_max = 450
 
 # Aligner settings
-rounding_level = 2
-max_seconds = 15
+rounding_level = 3
+max_seconds = 50
 seconds_interval = 0.1
 threshold = 1000.0
-within_range = 0.005
+within_range = 0.004
 
 """
 Lcms_Autoencoder.py Default Values
@@ -38,3 +38,5 @@ kmeans_random_state = 1337
 *SV file separator (Default tsv)
 """
 separator = "\t"
+
+testing_value = 338.57

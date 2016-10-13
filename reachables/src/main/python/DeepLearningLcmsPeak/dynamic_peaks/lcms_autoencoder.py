@@ -82,7 +82,7 @@ class LcmsAutoencoder:
             os.makedirs(self.output_directory)
         self.clusterer.set_output_directory(output_directory)
 
-    def call_peak(self, sm_w, f_peaks, threshold, max_seconds, seconds_interval, max_index):
+    def call_peak(self, f_peaks, left_width, right_width):
         time_points = [c[2] for c in f_peaks]
         intensity_values = [c[0] for c in f_peaks]
 
@@ -91,37 +91,53 @@ class LcmsAutoencoder:
         interpolation = np.interp(
             np.linspace(smallest_timepoint,
                         largest_timepoint,
-                        int((largest_timepoint - smallest_timepoint) / seconds_interval)),
+                        int((largest_timepoint - smallest_timepoint) / magic.seconds_interval)),
             time_points,
             intensity_values,
-            left=threshold,
-            right=threshold)
+            left=magic.threshold,
+            right=magic.threshold)
 
-        # Ensure center value is still max
-        interpolation[int(len(interpolation) / 2)] = sm_w[max_index][0]
+        # TODO Add in some peak alignment stuff here so that the max values are always in the same spot.
 
         """
         Pad with noise-level so that we have constant width windows.  Each window has a max second size,
         but where those seconds are is undetermined.
         """
-        number_of_spots_to_fill = int(max_seconds / seconds_interval) - len(interpolation)
+        total_spots = int(magic.max_seconds / magic.seconds_interval)
+        number_of_spots_to_fill = total_spots - len(interpolation)
 
-        left_pad = ([threshold] * int(math.ceil(number_of_spots_to_fill / 2.0)))
-        right_pad = ([threshold] * (int(number_of_spots_to_fill / 2)))
+        # Too many points! Only take the ones close to the max,
+        # but bias which side we take based on the relative amount of points on each side.
+        if number_of_spots_to_fill < 0:
+            max_position = math.ceil((f_peaks[left_width][2] - smallest_timepoint) / float(magic.seconds_interval))
+
+            count_to_left = max_position
+            count_to_right = len(interpolation) - max_position
+
+            division_factor = (count_to_left + count_to_right) / total_spots
+            indexes_on_left = math.floor(count_to_left / division_factor)
+            indexes_on_right = math.floor(count_to_right / division_factor)
+
+            interpolation = [max_position - indexes_on_left, max_position + indexes_on_right + 1]
+
+            number_of_spots_to_fill = total_spots - len(interpolation)
+
+        left_pad = ([magic.threshold] * int(math.ceil(number_of_spots_to_fill / 2.0)))
+        right_pad = ([magic.threshold] * (int(number_of_spots_to_fill / 2)))
 
         final_result = left_pad + list(interpolation) + right_pad
 
         row = {
-            "maxo": sm_w[max_index][0],
-            "rt": sm_w[max_index][2],
+            "maxo": f_peaks[left_width][0],
+            "rt": f_peaks[left_width][2],
             "rtmin": f_peaks[0][2],
             "rtmax": f_peaks[-1][2],
-            "mz": sm_w[max_index][1],
+            "mz": f_peaks[left_width][1]
         }
 
         for i in range(0, len(final_result)):
-            if (final_result[i]) < threshold:
-                row[str(i)] = threshold
+            if (final_result[i]) < magic.threshold:
+                row[str(i)] = magic.threshold
             else:
                 row[str(i)] = final_result[i]
 
@@ -133,69 +149,62 @@ class LcmsAutoencoder:
         Found a larger value locally, so let's avoid writing two peaks right next to each other
         as this tends to just mean we are hititng the edge of a window
         """
-        all_for_this_mz = [i for i in smoothed_window if round(i[1], rounding_level) == centered_mz_key]
-        if len(all_for_this_mz) == 0:
+        if len(smoothed_window) <= 0:
             return
 
-        maxo_for_current_mz = max(all_for_this_mz)
-        if maxo_for_current_mz[0] < threshold:
+        values_for_this_mz = [i for i in smoothed_window if round(i[1], magic.rounding_level) == centered_mz_key]
+        if len(values_for_this_mz) <= 0:
             return
 
-        peaks_nearby_in_time = [(i, point) for i, point in enumerate(smoothed_window) if
-                                abs(point[2] - maxo_for_current_mz[2]) <= max_seconds / 2.0]
-        max_index, max_peak_within_time_window = max(peaks_nearby_in_time, key=operator.itemgetter(1))
+        max_for_this_mz = max(values_for_this_mz)[0]
 
-        if max_index == 0:
-            return
+        max_index, max_value = max(enumerate(smoothed_window), key=operator.itemgetter(1))
 
-        if max_peak_within_time_window[0] > maxo_for_current_mz[0]:
-            if self.debug:
-                print("Found larger max locally, skipping this one.  "
-                      "Local max was {}, mz window max was {}".format(max_peak_within_time_window, maxo_for_current_mz))
-            return
-
-        """
-        Nothing large enough to call in sample
-        """
-        if maxo_for_current_mz[0] < threshold:
-            if self.debug:
-                print("Discarding this m/z window as the called peak was below the threshold.  "
-                      "Threshold was {}, while called peak was {}".format(threshold, maxo_for_current_mz))
+        if max_value[0] <= threshold:
             return
 
         """
         Figure out how wide we want to make the peak by looking left and right and
         taking values until they are significantly below the threshold or our max window size is reached.
         """
-        width = 0
-        stop_looking = threshold / 2
-        while (max_index - width > 0) and (max_index + width < len(smoothed_window) - 1):
+        left_width = 0
+        stop_looking = threshold
+        while max_index - left_width > 0:
             # Keep looking as long as there are things to find so we grab all the elements
 
-            width += 1
-            left = smoothed_window[max_index - width]
-            right = smoothed_window[max_index + width]
+            left_width += 1
+            left = smoothed_window[max_index - left_width]
 
-            if left < stop_looking and right < stop_looking:
+            if left[0] <= stop_looking:
                 break
 
-        final_peaks = [x for x in smoothed_window[max_index - width: max_index + width + 1]]
+        right_width = 0
+        while max_index + right_width < len(smoothed_window) - 1:
+            # Keep looking as long as there are things to find so we grab all the elements
+
+            right_width += 1
+            right = smoothed_window[max_index + right_width]
+
+            if right[0] <= stop_looking:
+                break
+
+        final_peaks = smoothed_window[max_index - left_width: max_index + right_width + 1]
 
         # If we've found an incredibly large peak, it is likely just junk.
         # We filter it so that it is just peaks within our max time range around its max value,
         # as it could still be something, I guess
-        if math.ceil(smoothed_window[-1][2]) - math.floor(smoothed_window[0][2]) >= max_seconds:
-            final_peaks = [peak for peak in final_peaks if
-                           abs(smoothed_window[max_index][2] - peak[2]) < math.floor(max_seconds / 2.0)]
+        if abs(final_peaks[0][2] - final_peaks[-1][2]) < max_seconds and max_value[0] == max_for_this_mz:
+            called_window_values.append(self.call_peak(final_peaks, left_width, right_width))
 
-        if (max(smoothed_window)[0] - min(smoothed_window)[0]) / max(smoothed_window)[0] > 0.3:
-            called_window_values.append(
-                self.call_peak(smoothed_window, final_peaks, threshold, max_seconds, seconds_interval, max_index))
+        left_remainder = smoothed_window[:max_index - left_width]
+        if len(left_remainder) > 0:
+            self.all_peaks_at_rt(left_remainder, rounding_level, centered_mz_key, threshold,
+                                 max_seconds, seconds_interval, called_window_values)
 
-        self.all_peaks_at_rt(smoothed_window[:max_index - width], rounding_level, centered_mz_key, threshold,
-                             max_seconds, seconds_interval, called_window_values)
-        self.all_peaks_at_rt(smoothed_window[max_index + width + 1:], rounding_level, centered_mz_key, threshold,
-                             max_seconds, seconds_interval, called_window_values)
+        right_remainder = smoothed_window[max_index + right_width + 1:]
+        if len(right_remainder) > 0:
+            self.all_peaks_at_rt(right_remainder, rounding_level, centered_mz_key, threshold,
+                                 max_seconds, seconds_interval, called_window_values)
 
     def process_lcms_trace(self, lcms_directory, scan_file_name):
         """
@@ -285,7 +294,8 @@ class LcmsAutoencoder:
 
                 left_index = 1
                 left_key = mz_keys[mz_k_index]
-                while (abs(centered_mz_key - left_key) <= magic.within_range) and (mz_k_index - left_index >= 0):
+                while (round(abs(centered_mz_key - left_key), magic.rounding_level) < magic.within_range) and (
+                                mz_k_index - left_index >= 0):
                     left_key = mz_keys[mz_k_index - left_index]
                     current_mz_keys.append(left_key)
                     left_index += 1
@@ -294,7 +304,7 @@ class LcmsAutoencoder:
 
                 right_index = 1
                 right_key = mz_keys[mz_k_index]
-                while (abs(centered_mz_key - right_key) <= magic.within_range) and (
+                while (round(abs(centered_mz_key - right_key), magic.rounding_level) < magic.within_range) and (
                         mz_k_index + right_index < len(mz_keys)):
                     right_key = mz_keys[mz_k_index + right_index]
                     current_mz_keys.append(right_key)
@@ -303,36 +313,57 @@ class LcmsAutoencoder:
                 """
                 Get all the time values for any window placed nearby
                 """
-                time_key_set = {unique_time for mz in current_mz_keys for unique_time in mz_map[mz].keys()}
+                time_key_set = sorted(
+                    list({unique_time for mz in current_mz_keys for unique_time in mz_map[mz].keys()}))
 
-                """
-                Stack all the local time values together
-                """
+                this_mz_time_ordered = sorted(mz_map[centered_mz_key].values(), key=operator.itemgetter(2))
+
+                time_ordered_with_low_noise = []
+                current_lowest = 0
+                for value in this_mz_time_ordered:
+                    # We don't want lower values causing a lot of null peaks to be called.
+                    # This is way of smoothing bumpy areas that jump between being in and out,
+                    # when there still exist a good number of points that are at that level.
+                    if value[0] > magic.threshold:
+                        current_time = value[2]
+                        time_ordered_with_low_noise.extend((magic.threshold, value[1], before_time) for before_time in
+                                                           range(int(current_lowest) + 1,
+                                                                 int(math.floor(current_time))))
+                        time_ordered_with_low_noise.append(value)
+                        current_lowest = math.floor(current_time)
+
+                if len(time_ordered_with_low_noise) <= 0:
+                    continue
+
+                interpolation = np.interp(time_key_set,
+                                          [t[2] for t in time_ordered_with_low_noise],
+                                          [i[0] for i in time_ordered_with_low_noise],
+                                          left=magic.threshold,
+                                          right=magic.threshold)
+
                 window = []
-                sorted_keys = sorted(time_key_set)
-                for i, time in enumerate(sorted_keys):
+                for i, time in enumerate(time_key_set):
                     for mz in current_mz_keys:
                         if mz_map[mz].get(time) is not None:
-                            window.append(mz_map[mz][time])
+                            value = mz_map[mz][time]
+                            if value[0] >= interpolation[i]:
+                                window.append(mz_map[mz][time])
 
-                """
-                Remove really small values that we may have pulled in
-                """
-                smoothed_window = []
-                for i, sub_win in enumerate(window):
-                    # Keep all points in main
-                    if round(sub_win[1], magic.rounding_level) == centered_mz_key:
-                        smoothed_window.append(sub_win)
-                    else:
-                        # Add in points that could be part of this peak, aka are close
-                        if len(smoothed_window) > 0 and i < len(window) - 1:
-                            # Both are larger, this is just pulling and creating noise
-                            if window[i - 1][0] > sub_win[0] and window[i + 1][0] > sub_win[0]:
-                                continue
+                smoothed_window = sorted(window, key=operator.itemgetter(2))
 
-                        smoothed_window.append(sub_win)
+                smoothed_window_with_low_noise = []
+                current_lowest = math.floor(smoothed_window[0][2])
+                for value in smoothed_window:
+                    current_time = value[2]
+                    step = 2
+                    smoothed_window_with_low_noise.extend((magic.threshold, value[1], before_time) for before_time in
+                                                          range(int(current_lowest) + step,
+                                                                int(math.floor(current_time)), step))
+                    smoothed_window_with_low_noise.append(value)
+                    current_lowest = math.floor(current_time)
 
-                self.all_peaks_at_rt(smoothed_window, magic.rounding_level, centered_mz_key, magic.threshold,
+                self.all_peaks_at_rt(smoothed_window_with_low_noise, magic.rounding_level, centered_mz_key,
+                                     magic.threshold,
                                      magic.max_seconds, magic.seconds_interval, called_window_values)
 
             with open(output_tsv, "w") as f:

@@ -41,7 +41,84 @@ def stepwise_alignment(initial_samples, min_mz, mz_step, max_mz, min_time, time_
         if mz_tolerance <= max_mz:
             mz_tolerance += mz_step
 
+    aligned, unaligned = replacement_alignment(aligned, unaligned)
+
     return aligned, unaligned
+
+
+def replacement_alignment(aligned_peaks, unaligned_peaks):
+    """
+    See if a previously aligned pair of peaks might actually have a shifted maximum that was not aligned.
+    If that shifted, unaligned max exists, replace the current peak with that.
+
+    :param aligned_peaks:
+    :param unaligned_peaks:
+    :return:
+    """
+
+    def sort_ordering(data):
+        return data.get_mz(), data.get_rt()
+
+    still_unaligned_peaks = list()
+
+    print("Replacing peak alignments with superior ones if a larger peak can be found locally.")
+    replacement_count = 0
+    drop_count = 0
+    for unaligned_peaks_index in range(0, len(unaligned_peaks)):
+        unaligned_peak_set = sorted(unaligned_peaks[unaligned_peaks_index], key=sort_ordering)
+
+        for unaligned_peak in unaligned_peak_set:
+
+            for aligned_peak_index, aligned_peak_group in enumerate(aligned_peaks):
+                mz_difference = unaligned_peak.get_mz() - aligned_peak_group[unaligned_peaks_index].get_mz()
+                if mz_difference < -0.01:
+                    continue
+
+                rt_difference = unaligned_peak.get_rt() - aligned_peak_group[unaligned_peaks_index].get_rt()
+
+                if abs(rt_difference) <= 2 and abs(mz_difference) <= 0.01:
+                    if aligned_peak_group[unaligned_peaks_index].get_maxo() < unaligned_peak.get_maxo():
+                        aligned_peaks[aligned_peak_index][unaligned_peaks_index] = unaligned_peak
+                        replacement_count += 1
+                    else:
+                        drop_count += 1
+                    # The else case is that this is a small duplicate peak.
+                    break
+            else:
+                # Didn't find anything, readd to unaligned list
+                if len(still_unaligned_peaks) <= unaligned_peaks_index:
+                    still_unaligned_peaks.append([])
+
+                still_unaligned_peaks[unaligned_peaks_index].append(unaligned_peak)
+
+    print("Replaced {} peaks, while dropping {} local minimum peaks.  "
+          "Number of aligned peaks is {}, number of unaligned peaks is {}".format(replacement_count, drop_count,
+                                                                                  len(aligned_peaks), sum(
+            len(s) for s in still_unaligned_peaks)))
+
+    return aligned_peaks, still_unaligned_peaks
+
+
+    # j = trailing_tracker
+    # while j < len(sample_two):
+    #     sample_two_peak = sample_two[j]
+    #
+    #     mz_closeness = sample_one_peak[0].get_mz() - sample_two_peak.get_mz()
+    #     if abs(mz_closeness) <= tolerance_mz:
+    #         if abs(sample_one_peak[0].get_rt() - sample_two_peak.get_rt()) <= tolerance_time:
+    #             aligned_peaks.append(previous_alignment.pop(i) + [sample_two.pop(j)])
+    #             break
+    #     elif mz_closeness < -tolerance_mz:
+    #         j = len(sample_two)
+    #     elif j != 0 and \
+    #             (sample_one_peak[0].get_mz() - sample_two[j - 1].get_mz() > tolerance_mz) and \
+    #             (sample_one_peak[0].get_mz() - sample_two[j].get_mz() <= tolerance_mz):
+    #         trailing_tracker = j
+    #
+    #     j += 1
+    # else:
+    #     i += 1
+
 
 
 def align_old_alignment_to_new_sample(previous_alignment, sample_two, tolerance_mz, tolerance_time):
@@ -125,10 +202,10 @@ def iterative_alignment(unaligned_samples):
     for sample in anything_after:
         temp_aligned, temp_unaligned = stepwise_alignment(sample, previous_alignment=aligned,
                                                           min_mz=0.001, mz_step=0.001, max_mz=0.01,
-                                                          min_time=1, time_step=0.5, max_time=5)
+                                                          min_time=0.1, time_step=0.2, max_time=5)
 
         aligned = temp_aligned
-        unaligned_samples.append(temp_unaligned)
+        unaligned.append(temp_unaligned)
 
     return aligned, unaligned
 
@@ -214,8 +291,13 @@ def merge_lcms_replicates(autoencoder, lcms_directory, output_directory, samples
     for sample in scans:
         single_sample_peaks = []
         for peak in sample:
-            single_sample_peaks.append(Peak(peak["mz"], peak["rt"], peak["rtmin"], peak["rtmax"], peak["maxo"],
-                                            [peak[str(k)] for k in range(0, 150)]))
+            # TODO Remove by finding root cause
+            try:
+                single_sample_peaks.append(Peak(peak["mz"], peak["rt"], peak["rtmin"], peak["rtmax"], peak["maxo"],
+                                                [peak[str(k)] for k in
+                                                 range(0, int(magic.max_seconds / magic.seconds_interval))]))
+            except KeyError:
+                print peak
         all_peaks.append(single_sample_peaks)
 
     aligned_windows, unaligned_windows = align_replicates(all_peaks)
