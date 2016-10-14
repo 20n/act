@@ -118,7 +118,7 @@ class AbstractReactionsToL3ProjectionWorkflow extends Workflow {
      Setup Spark
      */
     val singleSubstrateRoProjectorClassPath = "com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector"
-    val sparkMaster = cl.getOptionValue(OPTION_SPARK_MASTER, "spark://10.0.20.19:7077")
+    val sparkMaster = cl.getOptionValue(OPTION_SPARK_MASTER, "spark://spark-master:7077")
     // Tries to assemble JAR for spark export.  Step 1 towards Skynet is self-assembly of jar files.
 
     /*

@@ -120,6 +120,7 @@ object SparkSingleSubstrateROProjector {
   val OPTION_FILTER_REQUIRE_RO_NAMES = "n"
   val OPTION_VALID_CHEMICAL_TYPE = "v"
   val OPTION_SAR_CORPUS_FILE = "c"
+  val OPTION_SPARK_MASTER = "m"
 
   def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -162,6 +163,11 @@ object SparkSingleSubstrateROProjector {
         hasArg.
         desc("A supplied file that contains a list of SARs.  " +
           "These SARs will be used to project the input substrate list with the ROs associated to them."),
+
+      CliOption.builder(OPTION_SPARK_MASTER).
+        longOpt("spark-master").
+        desc("Where to look for the spark master connection. " +
+          "Uses \"spark://spark-master:7077\" by default."),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -251,7 +257,7 @@ object SparkSingleSubstrateROProjector {
 
 
     // Don't set a master here, spark-submit will do that for us.
-    val conf = new SparkConf().setAppName("Spark RO Projection").setMaster("local")
+    val conf = new SparkConf().setAppName("Spark RO Projection").setMaster(cl.getOptionValue(OPTION_SPARK_MASTER, "spark://spark-master:7077"))
     conf.getAll.foreach(x => LOGGER.info(s"Spark config pair: ${x._1}: ${x._2}"))
     val spark = new SparkContext(conf)
 
