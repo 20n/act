@@ -349,22 +349,13 @@ object SparkSingleSubstrateROProjector {
 
     // TODO Add in the support for this file type in the ReactionAssigner
     // Stream output to file so that we can keep our memory footprint low, while still writing files efficiently.
-    resultsRDD.toLocalIterator.toStream.par.foreach(result => {
+    resultsRDD.toLocalIterator.toStream.foreach(result => {
       val cachedBuffered = outputFileCache.get(result.ros)
       if (cachedBuffered.isEmpty){
-        this.synchronized {
-          val returnVal = outputFileCache.putIfAbsent(result.ros,
-            new BufferedWriter(new FileWriter(new File(outputDir, result.ros))))
-          // Open the JSON array and write the first instance
-
-          if (returnVal.isDefined) {
-            returnVal.get.write(s",${result.toJson.prettyPrint}")
-          } else {
-            outputFileCache(result.ros).write(s"[${result.toJson.prettyPrint}")
-          }
-        }
+        val returnVal = outputFileCache.put(result.ros, new BufferedWriter(new FileWriter(new File(outputDir, result.ros))))
+        // Open the JSON array and write the first instance
+         outputFileCache(result.ros).write(s"[${result.toJson.prettyPrint}")
       } else {
-
         val outputFile = outputFileCache(result.ros)
         outputFile.write(s",${result.toJson.prettyPrint}")
       }
