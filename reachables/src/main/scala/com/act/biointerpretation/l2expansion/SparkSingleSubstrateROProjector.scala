@@ -2,24 +2,25 @@ package com.act.biointerpretation.l2expansion
 
 import java.io.{BufferedWriter, File, FileWriter}
 
-import chemaxon.formats.MolExporter
+import chemaxon.formats.MolFormatException
 import chemaxon.license.LicenseManager
-import chemaxon.marvin.io.MolExportException
+import chemaxon.reaction.Reactor
+import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector.InchiResult
-import com.act.biointerpretation.mechanisminspection.ErosCorpus
+import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.act.biointerpretation.sars.{CharacterizedGroup, SarCorpus}
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
-import spray.json._
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.io.Source
-import scala.collection.mutable.ListBuffer
+
+import spray.json._
 
 /**
   * A Spark job that will project the set of single-substrate validation EROs over a list of substrate InChIs.
@@ -60,7 +61,7 @@ object compute {
    *
    * TODO: try out other partitioning schemes and/or pre-compile and cache ERO Reactors for improved performance.
    */
-  def run(licenseFileName: String)(inchi: String): List[InchiResult] = {
+  def run(licenseFileName: String)(substrates: List[String]): Stream[InchiResult] = {
     // Load license file once
     if (this.localLicenseFile.isEmpty) {
       this.localLicenseFile = Option(SparkFiles.get(licenseFileName))
@@ -68,37 +69,42 @@ object compute {
       LicenseManager.setLicenseFile(SparkFiles.get(licenseFileName))
     }
 
+    val getAllResults: Ero => Stream[InchiResult] = getAllResultsForSubstrate(substrates)
+    val results: Stream[InchiResult] = this.eros.getRos.asScala.toStream.flatMap(getAllResults)
+
+    results
+  }
+
+  def getAllResultsForSubstrate(substrates: List[String])(ro: Ero): Stream[InchiResult] = {
     // React
-    val resultingReactions = ListBuffer[InchiResult]()
-    val results = this.eros.getRos.asScala.foreach(ro => {
-      val reactor = ro.getReactor
-      reactor.setReactants(List(MoleculeImporter.importMolecule(inchi)).toArray)
+    val reactor = ro.getReactor
 
-      var reactMore = true
-      while (reactMore) {
-        val products = reactor.react()
-        if (products == null) {
-          reactMore = false
-        } else {
-          try {
-            resultingReactions.append(
-              InchiResult(
-                List(inchi),
-                ro.getId.toString,
-                MoleculeExporter.exportMolecule(x, )
-                products.toList.map(x => MoleculeExporter.exportToFormat(x, "inchi:AuxNone,SAbs")))
-            )
-          } catch {
-            case e: MolExportException => None
-          }
-        }
-      }
+    // Get all permutations
+    val resultingReactions: Stream[InchiResult] = substrates.permutations.flatMap(substrateOrdering => {
 
+      reactor.setReactants(substrateOrdering.map(MoleculeImporter.importMolecule).toArray)
 
-    })
+      // Return results
+      val reactedValues: Stream[Array[Molecule]] = Stream.continually(reactorFunction(reactor)).flatMap(_.toStream)
+      val partiallyAppliedMapper: List[Molecule] => Option[InchiResult] = mapReactionsToResult(substrates, ro.getId.toString)
+      reactedValues.flatMap(potentialProducts => partiallyAppliedMapper(potentialProducts.toList))
+    }).toStream
 
     // Output list
-    resultingReactions.toList
+    resultingReactions
+  }
+
+  def reactorFunction(reactor: Reactor): Option[Array[Molecule]] = {
+    Option(reactor.react())
+  }
+
+  def mapReactionsToResult(substrates: List[String], roNumber: String)(potentialProducts: List[Molecule]): Option[InchiResult] = {
+    try {
+      val products = potentialProducts.map(x => MoleculeExporter.exportMolecule(x, MoleculeFormat.stdInchi))
+      Option(InchiResult(substrates, roNumber, products))
+    } catch {
+      case e: MolFormatException => None
+    }
   }
 }
 
@@ -219,14 +225,6 @@ object SparkSingleSubstrateROProjector {
       outputDir.mkdirs()
     }
 
-    // We set the global state for the exporter so we don't need to pass the format all the way down here.
-    // Determine which formats are being used.
-    val moleculeFormat: MoleculeFormat.MoleculeFormatType = if (cl.hasOption(OPTION_VALID_CHEMICAL_TYPE)) {
-      MoleculeFormat.getName(cl.getOptionValue(OPTION_VALID_CHEMICAL_TYPE))
-    } else {
-      MoleculeFormat.stdInchi
-    }
-
     val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)
     val inchiCorpus = new L2InchiCorpus()
     inchiCorpus.loadCorpus(new File(substratesListFile))
@@ -245,7 +243,7 @@ object SparkSingleSubstrateROProjector {
 
 
     // Don't set a master here, spark-submit will do that for us.
-    val conf = new SparkConf().setAppName("Spark RO Projection")
+    val conf = new SparkConf().setAppName("Spark RO Projection").setMaster("local")
     conf.getAll.foreach(x => LOGGER.info(s"Spark config pair: ${x._1}: ${x._2}"))
     val spark = new SparkContext(conf)
 
@@ -255,10 +253,6 @@ object SparkSingleSubstrateROProjector {
     LOGGER.info("Distributing license file to spark workers")
     spark.addFile(licenseFile)
     val licenseFileName = new File(licenseFile).getName
-
-
-
-
 
     /*
       Do either projection over ROs or over RO + SARs that have been supplied.
@@ -281,7 +275,8 @@ object SparkSingleSubstrateROProjector {
     } else {
       LOGGER.info("Building ERO RDD")
       val groupSize = 1000
-      val inchiRDD: RDD[String] = spark.makeRDD(validInchis, groupSize)
+      // TODO Add file parsing so that multiple substrate reactions can be loaded in
+      val inchiRDD: RDD[List[String]] = spark.makeRDD(validInchis.map(x => List(x)), groupSize)
 
       LOGGER.info("Starting execution")
       // PROJECT!  Run ERO projection over all InChIs.

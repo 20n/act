@@ -138,10 +138,13 @@ public class Ero implements Serializable {
 
   @JsonIgnore
   public Reactor getReactor() throws ReactionException {
-    if (reactor == null) {
-      reactor = new Reactor();
-      reactor.setReactionString(this.getRo());
-    }
+    /*
+      By creating a new one each time we can effectively do operations over multiple threads with a given RO.
+      Otherwise, we'd use the same reactor which means that we could have problems
+      multiple objects set the reactants to a single reference of this reactor.
+     */
+    Reactor reactor = new Reactor();
+    reactor.setReactionString(this.getRo());
     return reactor;
   }
 }
