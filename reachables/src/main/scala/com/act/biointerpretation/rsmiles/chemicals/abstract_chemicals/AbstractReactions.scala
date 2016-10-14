@@ -30,9 +30,6 @@ object AbstractReactions {
     */
   def getAbstractReactions(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.MoleculeFormatType, substrateCount: Int)
                           (abstractChemicals: ParMap[Long, ChemicalInformation]): ParSeq[ReactionInformation] = {
-    require(substrateCount > 0, s"A reaction must have at least one substrate.  " +
-      s"You are looking for reactions with $substrateCount substrates.")
-
     logger.info("Finding reactions that contain abstract chemicals.")
 
     /*
@@ -76,18 +73,19 @@ object AbstractReactions {
       ReactionProcessing.constructDbReaction(mongoDb, moleculeFormat)(abstractChemicals, substrateCount)
 
     val processCounter = new AtomicInteger()
-    val singleSubstrateReactions: ParSeq[ReactionInformation] = abstractReactions.flatMap(rxn => {
+    val reactions: ParSeq[ReactionInformation] = abstractReactions.flatMap(rxn => {
       val reaction = reactionConstructor(rxn)
 
       if (processCounter.incrementAndGet() % 10000 == 0) {
         logger.info(s"Total of ${processCounter.get} reactions have finished processing " +
-          s"so far for $substrateCount substrate${if (substrateCount > 1) "s" else ""}.")
+          s"so far for ${if (substrateCount > 0) substrateCount else "any number of"}" +
+          s" substrate${if (substrateCount != 1) "s" else ""}.")
       }
 
       reaction
     })
 
-    singleSubstrateReactions
+    reactions
   }
 
   object Mongo extends MongoWorkflowUtilities {}

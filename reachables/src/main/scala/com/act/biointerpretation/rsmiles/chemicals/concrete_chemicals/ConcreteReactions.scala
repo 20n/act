@@ -74,10 +74,7 @@ object ConcreteReactions extends QueryByRo {
     */
   def getConcreteReactions(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.MoleculeFormatType, substrateCount: Int)
                           (concreteChemicals: ParMap[Long, ChemicalInformation]): ParSeq[ReactionInformation] = {
-    require(substrateCount > 0, s"A reaction must have at least one substrate.  " +
-      s"You are looking for reactions with $substrateCount substrates.")
-
-    logger.info("Finding reactions that contain abstract chemicals.")
+    logger.info("Finding reactions that contain concrete chemicals.")
 
     /*
       Query Reaction DB for reactions w/ these chemicals
@@ -125,7 +122,8 @@ object ConcreteReactions extends QueryByRo {
 
       if (processCounter.incrementAndGet() % 10000 == 0) {
         logger.info(s"Total of ${processCounter.get} reactions have finished processing " +
-          s"so far for $substrateCount substrate${if (substrateCount > 1) "s" else ""}.")
+          s"so far for ${if (substrateCount > 0) substrateCount else "any number of"}" +
+          s" substrate${if (substrateCount != 1) "s" else ""}.")
       }
 
       reaction
