@@ -352,14 +352,16 @@ object SparkSingleSubstrateROProjector {
     resultsRDD.toLocalIterator.toStream.par.foreach(result => {
       val cachedBuffered = outputFileCache.get(result.ros)
       if (cachedBuffered.isEmpty){
-        val returnVal = outputFileCache.putIfAbsent(result.ros,
-          new BufferedWriter(new FileWriter(new File(outputDir, result.ros))))
-        // Open the JSON array and write the first instance
+        this.synchronized {
+          val returnVal = outputFileCache.putIfAbsent(result.ros,
+            new BufferedWriter(new FileWriter(new File(outputDir, result.ros))))
+          // Open the JSON array and write the first instance
 
-        if (returnVal.isDefined) {
-          returnVal.get.write(s",${result.toJson.prettyPrint}")
-        } else {
-          outputFileCache(result.ros).write(s"[${result.toJson.prettyPrint}")
+          if (returnVal.isDefined) {
+            returnVal.get.write(s",${result.toJson.prettyPrint}")
+          } else {
+            outputFileCache(result.ros).write(s"[${result.toJson.prettyPrint}")
+          }
         }
       } else {
 
