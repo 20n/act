@@ -258,6 +258,7 @@ object SparkSingleSubstrateROProjector {
 
     // Don't set a master here, spark-submit will do that for us.
     val conf = new SparkConf().setAppName("Spark RO Projection").setMaster(cl.getOptionValue(OPTION_SPARK_MASTER, "spark://spark-master:7077"))
+    conf.set("spark.scheduler.mode", "FAIR")
     conf.getAll.foreach(x => LOGGER.info(s"Spark config pair: ${x._1}: ${x._2}"))
     val spark = new SparkContext(conf)
 
