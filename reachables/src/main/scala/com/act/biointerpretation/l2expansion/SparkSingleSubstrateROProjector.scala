@@ -2,15 +2,13 @@ package com.act.biointerpretation.l2expansion
 
 import java.io.{BufferedWriter, File, FileWriter}
 
-import chemaxon.formats.MolFormatException
 import chemaxon.license.LicenseManager
-import chemaxon.reaction.Reactor
+import chemaxon.marvin.io.MolExportException
 import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector.InchiResult
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.act.biointerpretation.sars.{CharacterizedGroup, SarCorpus}
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
@@ -19,8 +17,11 @@ import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.io.Source
-
+import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
+import com.act.biointerpretation.rsmiles.chemicals.Information.ReactionInformation
 import spray.json._
+
+import scala.collection.concurrent.TrieMap
 
 /**
   * A Spark job that will project the set of single-substrate validation EROs over a list of substrate InChIs.
@@ -71,21 +72,24 @@ object compute {
 
     val getAllResults: Ero => Stream[InchiResult] = getAllResultsForSubstrate(substrates)
     val results: Stream[InchiResult] = this.eros.getRos.asScala.toStream.flatMap(getAllResults)
-
     results
   }
 
   def getAllResultsForSubstrate(substrates: List[String])(ro: Ero): Stream[InchiResult] = {
+    if (ro.getSubstrate_count != substrates.length){
+      return Stream()
+    }
+
     // React
     val reactor = ro.getReactor
 
     // Get all permutations
     val resultingReactions: Stream[InchiResult] = substrates.permutations.flatMap(substrateOrdering => {
 
-      reactor.setReactants(substrateOrdering.map(MoleculeImporter.importMolecule).toArray)
+      reactor.setReactants(substrateOrdering.map(MoleculeImporter.importMolecule(_, MoleculeFormat.strictNoStereoInchi)).toArray)
 
       // Return results
-      val reactedValues: Stream[Array[Molecule]] = Stream.continually(reactorFunction(reactor)).flatMap(_.toStream)
+      val reactedValues: Stream[Array[Molecule]] = Stream.continually(Option(reactor.react())).takeWhile(_.isDefined).flatMap(_.toStream)
       val partiallyAppliedMapper: List[Molecule] => Option[InchiResult] = mapReactionsToResult(substrates, ro.getId.toString)
       reactedValues.flatMap(potentialProducts => partiallyAppliedMapper(potentialProducts.toList))
     }).toStream
@@ -94,24 +98,18 @@ object compute {
     resultingReactions
   }
 
-  def reactorFunction(reactor: Reactor): Option[Array[Molecule]] = {
-    Option(reactor.react())
-  }
-
   def mapReactionsToResult(substrates: List[String], roNumber: String)(potentialProducts: List[Molecule]): Option[InchiResult] = {
     try {
-      val products = potentialProducts.map(x => MoleculeExporter.exportMolecule(x, MoleculeFormat.stdInchi))
+      val products = potentialProducts.map(x => MoleculeExporter.exportMolecule(x, MoleculeFormat.strictNoStereoInchi))
       Option(InchiResult(substrates, roNumber, products))
     } catch {
-      case e: MolFormatException => None
+      case e: MolExportException => None
     }
   }
 }
 
 object SparkSingleSubstrateROProjector {
   private val LOGGER = LogManager.getLogger(getClass)
-
-  private val OBJECT_MAPPER = new ObjectMapper()
 
   private val SPARK_LOG_LEVEL = "WARN"
 
@@ -237,8 +235,18 @@ object SparkSingleSubstrateROProjector {
     }
 
     // We filter, but don't actually import here.  If we imported we'd run out of memory way faster.
-    val validInchis = Source.fromFile(substratesListFile).getLines().
-      filter(x => try { MoleculeImporter.importMolecule(x); true } catch { case e : Exception => false }).toList
+    val substrateGroups = Source.fromFile(substratesListFile).getLines().mkString.parseJson.convertTo[Set[List[String]]]
+
+    val validInchis = substrateGroups.filter(group => {
+      try {
+        group.foreach(inchi => {
+          MoleculeImporter.importMolecule(inchi)
+        })
+        true
+      } catch {
+        case e : Exception => false
+      }})
+
     LOGGER.info(s"Loaded and validated ${validInchis.size} InChIs from source file at $substratesListFile")
 
 
@@ -274,13 +282,15 @@ object SparkSingleSubstrateROProjector {
       null
     } else {
       LOGGER.info("Building ERO RDD")
-      val groupSize = 1000
+      val groupSize = 100
       // TODO Add file parsing so that multiple substrate reactions can be loaded in
-      val inchiRDD: RDD[List[String]] = spark.makeRDD(validInchis.map(x => List(x)), groupSize)
+      val inchiRDD: RDD[List[String]] = spark.makeRDD(validInchis.toList, groupSize)
 
       LOGGER.info("Starting execution")
       // PROJECT!  Run ERO projection over all InChIs.
-      val resultsRDD: RDD[InchiResult] = inchiRDD.flatMap(inchi => compute.run(licenseFileName)(inchi))
+      val resultsRDD: RDD[InchiResult] = inchiRDD.flatMap(inchi => {
+        compute.run(licenseFileName)(inchi)
+      })
       resultsRDD
     }
 
@@ -329,25 +339,33 @@ object SparkSingleSubstrateROProjector {
     LOGGER.info(s"Projection completed with $resultCount results")
 
 
-    val outputFileCache: mutable.HashMap[String, BufferedWriter] = mutable.HashMap()
+    val outputFileCache: TrieMap[String, BufferedWriter] = TrieMap()
 
     // TODO Add in the support for this file type in the ReactionAssigner
-    // Stream output to file
-    resultsRDD.toLocalIterator.foreach(result => {
+    // Stream output to file so that we can keep our memory footprint low, while still writing files efficiently.
+    resultsRDD.toLocalIterator.toStream.par.foreach(result => {
       val cachedBuffered = outputFileCache.get(result.ros)
       if (cachedBuffered.isEmpty){
-        outputFileCache.put(result.ros, new BufferedWriter(new FileWriter(new File(outputDir, result.ros))))
+        val returnVal = outputFileCache.putIfAbsent(result.ros,
+          new BufferedWriter(new FileWriter(new File(outputDir, result.ros))))
+        // Open the JSON array and write the first instance
+
+        if (returnVal.isDefined) {
+          returnVal.get.write(s",${result.toJson.prettyPrint}")
+        } else {
+          outputFileCache(result.ros).write(s"[${result.toJson.prettyPrint}")
+        }
+      } else {
+
+        val outputFile = outputFileCache(result.ros)
+        outputFile.write(s",${result.toJson.prettyPrint}")
       }
-
-      val outputFile = outputFileCache(result.ros)
-
-      outputFile.write(result.toJson.prettyPrint + "\n")
     })
 
-    outputFileCache.values.foreach(_.close())
+    // Close the JSON array and close the file
+    outputFileCache.values.foreach(f => {f.write("]"); f.close()})
     resultsRDD.unpersist()
   }
 
   case class InchiResult(substrate: List[String], ros: String, products: List[String])
-
 }

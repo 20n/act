@@ -35,12 +35,12 @@ object Default {
       "-v", MoleculeFormat.stdInchi.toString
     )
 
-    val roProjection = SparkWrapper.runClassPath(
-      singleSubstrateRoProjectorClassPath,
+    val roProjection = SparkWrapper.runClassPath("target/scala-2.10/reachables-assembly-0.1.jar",
+      singleSubstrateRoProjectorClassPath)(
       sparkMaster,
-      roProjectionArgs,
-      memory = "12G"
-    )
+      roProjectionArgs)(
+      memory = "12G")
+
 
     val reactionAssigner =
       ReactionRoAssignment.assignRoToReactions(

@@ -4,13 +4,12 @@ import java.io.{BufferedWriter, File, FileWriter}
 
 import com.act.analysis.chemicals.molecules.MoleculeFormat.MoleculeFormatType
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
-import com.act.biointerpretation.l2expansion.L2PredictionCorpus
+import com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector.InchiResult
 import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
 import com.act.biointerpretation.rsmiles.chemicals.Information.{ChemicalInformation, ReactionInformation}
 import org.apache.log4j.LogManager
 import spray.json._
 
-import scala.collection.JavaConverters._
 import scala.collection.parallel.immutable.ParSeq
 
 object ReactionRoAssignment {
@@ -38,9 +37,8 @@ object ReactionRoAssignment {
 
 
     LOGGER.trace(s"Loading all predictions in.  Total of ${predictionFiles.length} prediction files are available.")
-    val roPredictions: List[(Int, L2PredictionCorpus)] = predictionFiles.map(file => {
-
-      val corpy = L2PredictionCorpus.readPredictionsFromJsonFile(file)
+    val roPredictions: List[(Int, List[InchiResult])] = predictionFiles.map(file => {
+      val corpy = scala.io.Source.fromFile(file).getLines().mkString.parseJson.convertTo[List[InchiResult]]
       val ro = file.getName.toInt
 
       (ro, corpy)
@@ -49,7 +47,7 @@ object ReactionRoAssignment {
       s"Assigning ROs based on these predictions to reactions now.")
 
     // Preapply the reactions as they stay constant
-    val reactionPredictor: L2PredictionCorpus => List[ReactionInformation] = evaluatePredictionAgainstReactions(reactions) _
+    val reactionPredictor: List[InchiResult] => List[ReactionInformation] = evaluatePredictionAgainstReactions(reactions) _
 
     LOGGER.info(s"Assigning ROs to ${reactions.length} reactions that may have a projected reaction from an RO.")
     val assignedRoPredictions: ParSeq[RoAssignments] = roPredictions.par.map(roPrediction => {
@@ -76,7 +74,7 @@ object ReactionRoAssignment {
     *
     * @return A list of reactions that are validated by the projection.
     */
-  private def evaluatePredictionAgainstReactions(inputReactions: List[ReactionInformation])(roPrediction: L2PredictionCorpus): List[ReactionInformation] = {
+  private def evaluatePredictionAgainstReactions(inputReactions: List[ReactionInformation])(roPrediction: List[InchiResult]): List[ReactionInformation] = {
     /*
       We do 3 filtering steps here to indicate that a projected reaction matches a db reaction,
       filtering at each step to reduce the number used in the next step.
@@ -87,14 +85,14 @@ object ReactionRoAssignment {
      */
 
     // No predictions for this RO
-    if (roPrediction.getCorpus.isEmpty) return List()
+    if (roPrediction.isEmpty) return List()
 
     /*
       Step 1 - Filter reactions so that they have the same number of substrates and products as the projection.
      */
-    val representativePrediction = roPrediction.getCorpus.asScala.head
-    val numberOfSubstrateAtoms = representativePrediction.getSubstrateInchis.size
-    val numberOfProductAtoms = representativePrediction.getProductInchis.size
+    val representativePrediction = roPrediction.head
+    val numberOfSubstrateAtoms = representativePrediction.substrate.length
+    val numberOfProductAtoms = representativePrediction.products.length
 
     val correctSizeReactions = inputReactions.filter(reaction =>
       (reaction.getSubstrates.length == numberOfSubstrateAtoms) && (reaction.getProducts.length == numberOfProductAtoms))
@@ -102,8 +100,9 @@ object ReactionRoAssignment {
       Step 2 - Filter reactions so that all the substrates match a projection
      */
     val predictionSubstrateInchis: List[Set[String]] =
-      roPrediction.getCorpus.asScala.map(prediction => {
-        val productSet = prediction.getSubstrateInchis.asScala.toSet
+      roPrediction.map(prediction => {
+        val productSet = prediction.substrate.toSet
+
         productSet.map(moleculeString => MoleculeExporter.exportMolecule(
           MoleculeImporter.importMolecule(moleculeString,
             MoleculeFormatType(MoleculeFormat.stdInchi.value,
@@ -112,7 +111,7 @@ object ReactionRoAssignment {
                 MoleculeFormat.CleaningOptions.aromatize))
           ),
           MoleculeFormat.stdInchi))
-      }).toList
+      })
 
     // Only get reactions with matching input substrates.  We use a set so that the order doesn't matter.
     // This could also, potentially, reduce the number of substrates.
@@ -126,8 +125,9 @@ object ReactionRoAssignment {
       Step 3 - Filter reactions so that all the products match a projection
      */
     val predictionProductInchis: List[Set[String]] =
-      roPrediction.getCorpus.asScala.map(prediction => {
-        val productSet = prediction.getProductInchis.asScala.toSet
+      roPrediction.map(prediction => {
+        val productSet = prediction.products.toSet
+
         productSet.map(moleculeString => MoleculeExporter.exportMolecule(
           MoleculeImporter.importMolecule(moleculeString,
             MoleculeFormatType(MoleculeFormat.stdInchi.value,
@@ -136,7 +136,7 @@ object ReactionRoAssignment {
                 MoleculeFormat.CleaningOptions.aromatize))
           ),
           MoleculeFormat.stdInchi))
-      }).toList
+      })
 
     val reactionsThatMatchThisRo = validSubstrateReactions.filter(
       // For each reaction
@@ -174,5 +174,4 @@ object ReactionRoAssignment {
   }
 
   case class RoAssignments(ro: Int, reactions: List[ReactionInformation]) {}
-
 }

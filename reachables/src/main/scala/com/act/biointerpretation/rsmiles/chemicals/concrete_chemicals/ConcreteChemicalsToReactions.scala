@@ -44,10 +44,12 @@ object ConcreteChemicalsToReactions {
 
     // We need to make sure this is a set so that we remove as many duplicates as possible.
     logger.info(s"Quickly checking for duplicate substrates to minimize the size of our substrate corpus.  Current size is ${reactions.length}")
-    val substrates: Set[String] = reactions.flatMap(_.getSubstrates.map(_.getString)).seq.toSet
+    val substrates: Set[List[String]] = reactions.map(_.getSubstrates.map(_.getString)).seq.toSet
     logger.info(s"After removing duplicates, ${substrates.size} exist.")
 
-    new L2InchiCorpus(substrates).writeToFile(outputFile)
+    val bufferedWriter = new BufferedWriter(new FileWriter(outputFile))
+    bufferedWriter.write(substrates.toJson.prettyPrint)
+    bufferedWriter.close()
   }
 
   object Mongo extends MongoWorkflowUtilities {}
