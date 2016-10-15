@@ -176,28 +176,28 @@ class ConcreteReactionsToL3ProjectionWorkflow extends Workflow {
 
       convertReactionsToRoAssignmentFormat.thenRun(constructedSarJob)
 
-      /*
-        Step 3: Project RO + SAR over L3
-
-        Don't cache this step as it is the last one and would make everything pointless otherwise.
-       */
-      val l3ProjectionOutputDirectory = new File(outputDirectory, "L3Projections")
-      if (!l3ProjectionOutputDirectory.exists()) l3ProjectionOutputDirectory.mkdirs()
-      val l3ProjectionArgs = List(
-        "--substrates-list", metaboliteFile.getAbsolutePath,
-        "-o", l3ProjectionOutputDirectory.getAbsolutePath,
-        "-l", chemaxonLicense.getAbsolutePath,
-        "-v", moleculeFormat.toString,
-        "-c", sarCorpusOutputFile.getAbsolutePath
-      )
-
-      val l3RoPlusSarProjection = SparkWrapper.runClassPath(
-        LOCAL_JAR_PATH, sparkMaster)(
-        singleSubstrateRoProjectorClassPath,
-        l3ProjectionArgs)(
-        memory = "4G")
-
-      convertReactionsToRoAssignmentFormat.thenRun(l3RoPlusSarProjection)
+//      /*
+//        Step 3: Project RO + SAR over L3
+//
+//        Don't cache this step as it is the last one and would make everything pointless otherwise.
+//       */
+//      val l3ProjectionOutputDirectory = new File(outputDirectory, "L3Projections")
+//      if (!l3ProjectionOutputDirectory.exists()) l3ProjectionOutputDirectory.mkdirs()
+//      val l3ProjectionArgs = List(
+//        "--substrates-list", metaboliteFile.getAbsolutePath,
+//        "-o", l3ProjectionOutputDirectory.getAbsolutePath,
+//        "-l", chemaxonLicense.getAbsolutePath,
+//        "-v", moleculeFormat.toString,
+//        "-c", sarCorpusOutputFile.getAbsolutePath
+//      )
+//
+//      val l3RoPlusSarProjection = SparkWrapper.runClassPath(
+//        LOCAL_JAR_PATH, sparkMaster)(
+//        singleSubstrateRoProjectorClassPath,
+//        l3ProjectionArgs)(
+//        memory = "4G")
+//
+//      convertReactionsToRoAssignmentFormat.thenRun(l3RoPlusSarProjection)
 
 
       convertReactionsToRoAssignmentFormat
