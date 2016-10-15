@@ -3,8 +3,9 @@ package com.act.biointerpretation.rsmiles
 import java.io.File
 
 import com.act.analysis.chemicals.molecules.MoleculeFormat
-import com.act.biointerpretation.rsmiles.chemicals.concrete_chemicals.ConcreteReactions
-import com.act.biointerpretation.rsmiles.sar_construction.ConstructSarsFromPredictionCorpus
+import com.act.analysis.chemicals.molecules.MoleculeFormat.MoleculeFormatType
+import com.act.biointerpretation.rsmiles.chemicals.concrete_chemicals.{ConcreteChemicalsToReactions, ConcreteReactions}
+import com.act.biointerpretation.rsmiles.sar_construction.{ConstructSarsFromPredictionCorpus, ReactionRoAssignment}
 import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.tool_wrappers.{ScalaJobWrapper, SparkWrapper}
 import com.act.workflow.tool_manager.workflow.Workflow
@@ -146,35 +147,78 @@ class ConcreteReactionsToL3ProjectionWorkflow extends Workflow {
         assignments format (This mainly standardizes the chemical format)
        */
 
-      val roAssignmentOutputFileName = new File(roAssignmentDirectory, s"$runId.RoAssignments.json")
-      val concreteReactionGrabber: () => Unit =
-        ConcreteReactions.groupConcreteReactionsByRo(database)(moleculeFormat, count, roAssignmentOutputFileName)
+      val outputSubstrateFile = new File(outputDirectory, "substrateFile.json")
+      val outputReactionFile = new File(outputDirectory, "reactionFile.json")
+      val concreteReactionGrabber: () => Unit = ConcreteChemicalsToReactions.calculateConcreteSubstrates(
+        MoleculeFormatType.apply(MoleculeFormat.withName(moleculeFormatString), List()))()(outputSubstrateFile, outputReactionFile, count)
 
 
       val convertReactionsToRoAssignmentFormat =
-        if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && roAssignmentOutputFileName.exists()){
+        if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && outputSubstrateFile.exists() && outputReactionFile.exists()){
           ScalaJobWrapper.wrapScalaFunction("Using cached Ro assignments.", () => Unit)
         } else {
           ScalaJobWrapper.wrapScalaFunction("Concrete Reaction Grabber", concreteReactionGrabber)
         }
+
+      val roProjectionsOutputFileDirectory = new File(outputDirectory, "roProjections")
+      // Step 2 -> Project current rxns
+      val roProjectionArgs = List(
+        "--substrates-list", outputSubstrateFile.getAbsolutePath,
+        "-o", roProjectionsOutputFileDirectory.getAbsolutePath,
+        "-l", chemaxonLicense.getAbsolutePath,
+        "-v", moleculeFormat.toString
+      )
+
+      // We assume files in = previous run
+      val hasCachedResultsAbstractRoProjection =
+        roProjectionsOutputFileDirectory.isDirectory &&
+          roProjectionsOutputFileDirectory.list() != null &&
+          roProjectionsOutputFileDirectory.list().length > 0
+
+      val sparkRoProjection = if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && hasCachedResultsAbstractRoProjection) {
+        ScalaJobWrapper.wrapScalaFunction("Using cached spark abstract reaction RO projections", () => Unit)
+      } else {
+        SparkWrapper.runClassPath(
+          LOCAL_JAR_PATH, sparkMaster)(
+          singleSubstrateRoProjectorClassPath,
+          roProjectionArgs)(
+          memory = "4G")
+      }
+
       /*
-        Step 2: Construct SARs from matching reactions
-       */
-      val sarCorpusDirectory = new File(outputDirectory, "SarCorpus")
-      if (!sarCorpusDirectory.exists()) sarCorpusDirectory.mkdirs()
-      val sarCorpusOutputFileName = s"$runId.sarCorpusOutput.json"
-      val sarCorpusOutputFile = new File(sarCorpusDirectory, sarCorpusOutputFileName)
-      val constructSars =
-        ConstructSarsFromPredictionCorpus.sarConstructor(moleculeFormat)(roAssignmentOutputFileName, sarCorpusOutputFile) _
+        Step 3: Spark submit match projections to input reactions
+      */
+      val roAssignmentDirectory = new File(outputDirectory, "RoAssignment")
 
-      val constructedSarJob =
-        if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && sarCorpusOutputFile.exists()) {
-          ScalaJobWrapper.wrapScalaFunction("Using cached SAR corpus.", () => Unit)
-        } else {
-          ScalaJobWrapper.wrapScalaFunction("Sar Constructor", constructSars)
-        }
+      val roAssignmentOutputFileName = new File(roAssignmentDirectory, s"$runId.RoAssignments.json")
+      
+      if (!roAssignmentDirectory.exists()) roAssignmentDirectory.mkdirs()
 
-      convertReactionsToRoAssignmentFormat.thenRun(constructedSarJob)
+      val reactionAssignJob = if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && roAssignmentDirectory.exists()) {
+        ScalaJobWrapper.wrapScalaFunction("Using cached ro assignments", () => Unit)
+      } else {
+        val reactionAssigner = ReactionRoAssignment.assignRoToReactions(roProjectionsOutputFileDirectory, outputReactionFile, roAssignmentOutputFileName) _
+        ScalaJobWrapper.wrapScalaFunction("Ro Assignment to Reactions", reactionAssigner)
+      }
+
+//      /*
+//        Step 2: Construct SARs from matching reactions
+//       */
+//      val sarCorpusDirectory = new File(outputDirectory, "SarCorpus")
+//      if (!sarCorpusDirectory.exists()) sarCorpusDirectory.mkdirs()
+//      val sarCorpusOutputFileName = s"$runId.sarCorpusOutput.json"
+//      val sarCorpusOutputFile = new File(sarCorpusDirectory, sarCorpusOutputFileName)
+//      val constructSars =
+//        ConstructSarsFromPredictionCorpus.sarConstructor(moleculeFormat)(roAssignmentOutputFileName, sarCorpusOutputFile) _
+//
+//      val constructedSarJob =
+//        if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && sarCorpusOutputFile.exists()) {
+//          ScalaJobWrapper.wrapScalaFunction("Using cached SAR corpus.", () => Unit)
+//        } else {
+//          ScalaJobWrapper.wrapScalaFunction("Sar Constructor", constructSars)
+//        }
+//
+//      convertReactionsToRoAssignmentFormat.thenRun(constructedSarJob)
 
 //      /*
 //        Step 3: Project RO + SAR over L3
