@@ -41,10 +41,12 @@ public class PrecursorAnalysis implements JavaRunnable {
     FileChecker.verifyInputFile(networkInput);
     FileChecker.verifyOrCreateDirectory(outputDirectory);
     FileChecker.verifyAndCreateOutputFile(targetIdFile);
+    LOGGER.info("Verified files. Loading network");
 
     // Get input network
     MetabolismNetwork network = new MetabolismNetwork();
     network.loadFromJsonFile(networkInput);
+    LOGGER.info("Loaded network from file. Running precursor analyses.");
 
     Map<String, Integer> targetIdMap = new HashMap<>();
     int id = 0;
@@ -64,6 +66,7 @@ public class PrecursorAnalysis implements JavaRunnable {
     }
 
     writeTargetIdMapToFile(targetIdMap, targetIdFile);
+    LOGGER.info("Complete! Output files live in directory %s", outputDirectory.getAbsolutePath());
   }
 
   private void writeTargetIdMapToFile(Map<String, Integer> targetIdMap, File targetIdFile) throws IOException {

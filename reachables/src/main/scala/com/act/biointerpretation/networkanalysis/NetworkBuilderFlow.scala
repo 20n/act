@@ -23,6 +23,7 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility with Mong
   override val HELP_MESSAGE = "Workflow to run basic build of a network from input corpuses."
 
   private val OPTION_WORKING_DIRECTORY = "w"
+  private val OPTION_BASE_NETWORK = "b"
   private val OPTION_INPUT_CORPUSES = "i"
   private val OPTION_REACTION_ID_FILES = "r"
   private val OPTION_MONGO_DB = "d"
@@ -37,6 +38,10 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility with Mong
           """The directory in which to run and create all intermediate files. This directory will be created if it
             |does not already exist.""".stripMargin).
         required(),
+
+      CliOption.builder(OPTION_BASE_NETWORK).
+        hasArg.
+        desc("A file containing a metabolism network to use as the base of the new network."),
 
       CliOption.builder(OPTION_INPUT_CORPUSES).
         hasArgs.valueSeparator(',').
@@ -72,8 +77,12 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility with Mong
       workingDir.mkdir()
     }
 
-    var inputCorpuses = List[File]()
+    var baseNetwork : Option[File] = Option.empty[File]
+    if (cl.hasOption(OPTION_BASE_NETWORK)) {
+      baseNetwork = Option(new File(cl.getOptionValue(OPTION_BASE_NETWORK)))
+    }
 
+    var inputCorpuses = List[File]()
     if (cl.hasOption(OPTION_INPUT_CORPUSES)) {
       val corpusDirs = cl.getOptionValues(OPTION_INPUT_CORPUSES).map(path => new File(path))
 
@@ -104,6 +113,7 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility with Mong
     }
 
     val networkBuilder = new NetworkBuilder(inputCorpuses.asJava, reactionFiles.asJava, mongoDb, outputFile, true)
+    baseNetwork.foreach(f => networkBuilder.setBaseNetwork(f))
     headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("network builder", networkBuilder))
 
     val networkStats = new NetworkStats(outputFile);

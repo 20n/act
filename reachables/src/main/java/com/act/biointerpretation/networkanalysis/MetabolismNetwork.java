@@ -1,5 +1,6 @@
 package com.act.biointerpretation.networkanalysis;
 
+import act.server.DBIterator;
 import act.server.MongoDB;
 import act.shared.Reaction;
 import com.act.biointerpretation.l2expansion.L2Prediction;
@@ -8,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.mongodb.DB;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -147,22 +149,24 @@ public class MetabolismNetwork {
    * @param rxnId The reaction ID.
    */
   public void loadEdgeFromReaction(MongoDB db, long rxnId) {
-    Reaction reaction = db.getReactionFromUUID(rxnId);
-    List<Long> substrateIds = Arrays.asList(reaction.getSubstrates());
-    List<String> substrates = substrateIds.stream().map(id -> db.getChemicalFromChemicalUUID(id).getInChI())
-        .collect(Collectors.toList());
+    loadEdgeFromReaction(db, rxnId, new HashSet<String>());
+  }
 
-    List<Long> productIds = Arrays.asList(reaction.getProducts());
-    List<String> products = productIds.stream().map(id -> db.getChemicalFromChemicalUUID(id).getInChI())
-        .collect(Collectors.toList());
+  /**
+   * Load an edge into the network from a reaction in our reactions DB.
+   *
+   * @param db The DB to look in.
+   * @param rxnId The reaction.
+   */
+  public void loadEdgeFromReaction(MongoDB db, long rxnId, Collection<String> orgs) {
+    NetworkEdge edge = NetworkEdge.buildEdgeFromReaction(db, rxnId);
 
-    if (products.isEmpty() || substrates.isEmpty()) {
+    if (edge.getSubstrates().isEmpty() || edge.getProducts().isEmpty()) {
       LOGGER.warn("Discarding reaction with empty substrates or products: %d", rxnId);
       return;
     }
 
-    NetworkEdge edge = new NetworkEdge(substrates, products);
-    edge.addReactionId(reaction.getUUID());
+    orgs.forEach(edge::addOrg);
     addEdge(edge);
   }
 
@@ -244,8 +248,8 @@ public class MetabolismNetwork {
 
   public void loadFromJsonFile(File inputFile) throws IOException {
     MetabolismNetwork networkFromFile = OBJECT_MAPPER.readValue(inputFile, MetabolismNetwork.class);
-
     this.nodes = networkFromFile.nodes;
     networkFromFile.edges.forEach(this::addEdge);
+    LOGGER.info("Loaded network with %d nodes.", this.getNodes().size());
   }
 }
