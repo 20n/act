@@ -1,6 +1,7 @@
 package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.chemical_db
 
 import act.server.MongoDB
+import chemaxon.formats.MolFormatException
 import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.MoleculeImporter
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities}
@@ -19,9 +20,13 @@ trait QueryChemicalInchi extends MongoWorkflowUtilities {
     val inchi = getChemicalInchiById(mongoConnection)(chemicalId)
 
     if (inchi.isDefined) {
-      Option(MoleculeImporter.importMolecule(inchi.get))
-    } else {
-      None
+      try {
+        return Option(MoleculeImporter.importMolecule(inchi.get))
+      } catch {
+        case e: MolFormatException =>
+      }
     }
+
+    None
   }
 }
