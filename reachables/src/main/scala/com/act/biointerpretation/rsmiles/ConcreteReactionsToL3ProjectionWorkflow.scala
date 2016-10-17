@@ -191,7 +191,7 @@ class ConcreteReactionsToL3ProjectionWorkflow extends Workflow {
       val roAssignmentDirectory = new File(outputDirectory, "RoAssignment")
 
       val roAssignmentOutputFileName = new File(roAssignmentDirectory, s"$runId.RoAssignments.json")
-      
+
       if (!roAssignmentDirectory.exists()) roAssignmentDirectory.mkdirs()
 
       val reactionAssignJob = if (cl.hasOption(OPTION_USE_CACHED_RESULTS) && roAssignmentDirectory.exists()) {
