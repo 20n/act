@@ -148,4 +148,3 @@ class OrganismBasedRoToLcmsScoring extends Workflow with RoToSequences with SarT
   }
 
 }
-

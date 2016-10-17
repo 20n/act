@@ -38,10 +38,6 @@ trait MongoWorkflowUtilities {
     new BasicDBObject(values map { case (key, value) => key.value -> value })
   }
 
-  def formatUnwoundName(listName: Keyword, valueName: Keyword): String = {
-    formatUnwoundName(listName.toString, valueName.toString)
-  }
-
   /**
     * Unwinding a list creates a value that can be found by the name <PreviousListName>.<ValueName>.
     * This function standardizes that naming procedure for use in querying unwound variables within lists.
@@ -65,6 +61,10 @@ trait MongoWorkflowUtilities {
 
   def formatUnwoundName(listName: String, valueName: Keyword): String = {
     formatUnwoundName(listName, valueName.toString)
+  }
+
+  def formatUnwoundName(listName: Keyword, valueName: Keyword): String = {
+    formatUnwoundName(listName.toString, valueName.toString)
   }
 
   def formatUnwoundName(listName: Keyword, valueName: String): String = {
@@ -262,7 +262,6 @@ trait MongoWorkflowUtilities {
     // Escape one dollar and do the input as well
     s"$$$inputString"
   }
-
 
   def defineMongoGroup(nameOfGroupingValue: Keyword, outputListName: Keyword): BasicDBObject = {
     defineMongoGroup(nameOfGroupingValue.toString, outputListName.toString)
