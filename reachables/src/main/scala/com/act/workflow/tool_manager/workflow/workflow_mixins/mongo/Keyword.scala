@@ -125,6 +125,10 @@ object ReactionKeywords {
     val value = "pubchem"
   }
 
+  case object COEFFICIENT extends Keyword {
+    val value = "coefficient"
+  }
+
 }
 
 object ChemicalKeywords {
