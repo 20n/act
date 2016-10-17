@@ -14,6 +14,8 @@ import org.apache.log4j.LogManager
 
 class AbstractReactionsToL3ProjectionWorkflow extends Workflow {
 
+  val LOCAL_JAR_PATH = "target/scala-2.10/reachables-assembly-0.1.jar"
+
   val OPTION_USE_CACHED_RESULTS = "c"
   val OPTION_DATABASE = "d"
   val OPTION_METABOLITE_FILE = "f"
@@ -118,8 +120,6 @@ class AbstractReactionsToL3ProjectionWorkflow extends Workflow {
      */
     val singleSubstrateRoProjectorClassPath = "com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector"
     val sparkMaster = cl.getOptionValue(OPTION_SPARK_MASTER, "spark://10.0.20.19:7077")
-    // Tries to assemble JAR for spark export.  Step 1 towards Skynet is self-assembly of jar files.
-    headerJob.thenRun(SparkWrapper.sbtAssembly(useCached = cl.hasOption(OPTION_USE_CACHED_RESULTS)))
 
     /*
       Format currently used for the molecular transitions
@@ -184,11 +184,8 @@ class AbstractReactionsToL3ProjectionWorkflow extends Workflow {
         ScalaJobWrapper.wrapScalaFunction("Using cached spark abstract reaction RO projections", () => Unit)
       } else {
         SparkWrapper.runClassPath(
-          singleSubstrateRoProjectorClassPath,
-          sparkMaster,
-          roProjectionArgs,
-          memory = "4G"
-        )
+          LOCAL_JAR_PATH,
+          singleSubstrateRoProjectorClassPath)(sparkMaster, roProjectionArgs)(memory = "4G")
       }
 
       abstractChemicalsToSubstrateListJob.thenRun(sparkRoProjection)
@@ -244,11 +241,9 @@ class AbstractReactionsToL3ProjectionWorkflow extends Workflow {
       )
 
       val l3RoPlusSarProjection = SparkWrapper.runClassPath(
-        singleSubstrateRoProjectorClassPath,
-        sparkMaster,
-        l3ProjectionArgs,
-        memory = "4G"
-      )
+        LOCAL_JAR_PATH,
+        singleSubstrateRoProjectorClassPath)(sparkMaster, l3ProjectionArgs)(memory = "4G")
+
       abstractChemicalsToSubstrateListJob.thenRun(l3RoPlusSarProjection)
 
 

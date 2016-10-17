@@ -2,15 +2,15 @@ package com.act.workflow.tool_manager.tool_wrappers
 
 import java.io.File
 
-import com.act.reachables.reachables
 import com.act.workflow.tool_manager.jobs.ShellJob
 import org.apache.log4j.LogManager
 
 object SparkWrapper extends ToolWrapper {
   private val LOGGER = LogManager.getLogger(getClass)
   def runClassPath(assembledJar: String, sparkMaster: String)
-                      (classPath: String, classArgs: List[String])
-                      (memory: String = "1G"): ShellJob = {
+                  (classPath: String, classArgs: List[String])
+                  (memory: String = "1G"): ShellJob = {
+
     // Check if class path exists.
     try {
       Class.forName(classPath)
@@ -31,7 +31,7 @@ object SparkWrapper extends ToolWrapper {
   }
 
   def assembleJarAtRuntime(assembledJarLocation: String, useCached: Boolean = false): ShellJob = {
-    if (useCached && new File(assembledJarLocation).exists()){
+    if (useCached && new File(assembledJarLocation).exists()) {
       // Placeholder
       val job = constructJob("Assembled JAR in Cache", None, args = List(""))
       job.doNotWriteOutputStream()
