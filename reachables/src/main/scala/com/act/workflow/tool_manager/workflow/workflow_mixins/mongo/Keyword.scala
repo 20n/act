@@ -127,8 +127,10 @@ object ReactionKeywords {
 
   case object ORGANISM extends Keyword{
     val value = "organism"
-  }
 
+  case object COEFFICIENT extends Keyword {
+    val value = "coefficient"
+  }
 }
 
 object ChemicalKeywords {
