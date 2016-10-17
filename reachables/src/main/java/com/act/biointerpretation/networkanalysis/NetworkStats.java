@@ -2,12 +2,13 @@ package com.act.biointerpretation.networkanalysis;
 
 import com.act.jobs.FileChecker;
 import com.act.jobs.JavaRunnable;
-import com.act.lcms.db.io.report.IonAnalysisInterchangeModel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Runnable class to print out statistics about a metabolic network.
@@ -37,6 +38,10 @@ public class NetworkStats implements JavaRunnable {
     // Print stats on network
     LOGGER.info("Total nodes: %d", network.getNodes().size());
     LOGGER.info("Total edges: %d", network.getEdges().size());
+
+    Set<String> orgs = new HashSet<String>();
+    network.getEdges().forEach(e -> orgs.addAll(e.getOrgs()));
+    LOGGER.info("Total organisms represented: %d", orgs.size());
 
     LOGGER.info("Complete!");
   }

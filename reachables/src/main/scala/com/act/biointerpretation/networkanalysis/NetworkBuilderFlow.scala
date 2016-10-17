@@ -22,7 +22,7 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility with Mong
 
   override val HELP_MESSAGE = "Workflow to run basic build of a network from input corpuses."
 
-  private val OPTION_WORKING_DIRECTORY = "w"
+  private val OPTION_OUTPUT_FILE = "o"
   private val OPTION_BASE_NETWORK = "b"
   private val OPTION_INPUT_CORPUSES = "i"
   private val OPTION_REACTION_ID_FILES = "r"
@@ -31,12 +31,10 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility with Mong
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
 
-      CliOption.builder(OPTION_WORKING_DIRECTORY).
+      CliOption.builder(OPTION_OUTPUT_FILE).
         hasArg.
-        longOpt("working-directory").
-        desc(
-          """The directory in which to run and create all intermediate files. This directory will be created if it
-            |does not already exist.""".stripMargin).
+        longOpt("output file path").
+        desc("The path to which to write the output network.").
         required(),
 
       CliOption.builder(OPTION_BASE_NETWORK).
@@ -71,13 +69,7 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility with Mong
 
   override def defineWorkflow(cl: CommandLine): Job = {
 
-    val workingDirPath = cl.getOptionValue(OPTION_WORKING_DIRECTORY, null)
-    val workingDir: File = new File(workingDirPath)
-    if (!workingDir.exists()) {
-      workingDir.mkdir()
-    }
-
-    var baseNetwork : Option[File] = Option.empty[File]
+    var baseNetwork: Option[File] = Option.empty[File]
     if (cl.hasOption(OPTION_BASE_NETWORK)) {
       baseNetwork = Option(new File(cl.getOptionValue(OPTION_BASE_NETWORK)))
     }
@@ -100,7 +92,7 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility with Mong
       reactionFiles = cl.getOptionValues(OPTION_REACTION_ID_FILES).toList.map(path => new File(path))
     }
 
-    val outputFile = new File(workingDir, "networkOutput")
+    val outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_FILE))
     verifyOutputFile(outputFile)
 
     var mongoDb: MongoDB = null

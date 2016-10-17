@@ -2,15 +2,14 @@ package com.act.biointerpretation.networkanalysis;
 
 import act.server.MongoDB;
 import act.shared.Reaction;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.collections4.CollectionUtils;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -37,17 +36,22 @@ public class NetworkEdge {
   @JsonCreator
   public NetworkEdge(
       @JsonProperty("substrates") List<String> substrates,
-      @JsonProperty("products") List<String> products) {
-    reactionIds = new HashSet<>();
-    projectorNames = new HashSet<>();
-    orgs = new HashSet<>();
-
+      @JsonProperty("products") List<String> products,
+      @JsonProperty("reaction_ids") Set<Integer> reactionIds,
+      @JsonProperty("projector_names") Set<String> projectorNames,
+      @JsonProperty("orgs") Set<String> orgs) {
     if (substrates == null || products == null) {
       throw new IllegalArgumentException("Cannot create network edge with null substrates or products.");
     }
-
     this.substrates = substrates;
     this.products = products;
+    this.reactionIds = reactionIds;
+    this.projectorNames = projectorNames;
+    this.orgs = orgs;
+  }
+
+  public NetworkEdge(List<String> substrates, List<String> products) {
+    this(substrates, products, new HashSet<Integer>(), new HashSet<String>(), new HashSet<String>());
   }
 
   public static NetworkEdge buildEdgeFromReaction(MongoDB db, long rxnId) {
@@ -90,7 +94,7 @@ public class NetworkEdge {
    */
   public boolean hasSameChemicals(NetworkEdge edge) {
     return CollectionUtils.isEqualCollection(this.getSubstrates(), edge.getSubstrates())
-      && CollectionUtils.isEqualCollection(this.getProducts(), edge.getProducts());
+        && CollectionUtils.isEqualCollection(this.getProducts(), edge.getProducts());
   }
 
   public List<String> getSubstrates() {

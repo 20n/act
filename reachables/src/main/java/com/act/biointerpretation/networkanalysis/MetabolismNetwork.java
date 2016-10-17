@@ -1,15 +1,12 @@
 package com.act.biointerpretation.networkanalysis;
 
-import act.server.DBIterator;
 import act.server.MongoDB;
-import act.shared.Reaction;
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.mongodb.DB;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -18,7 +15,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -162,7 +158,6 @@ public class MetabolismNetwork {
     NetworkEdge edge = NetworkEdge.buildEdgeFromReaction(db, rxnId);
 
     if (edge.getSubstrates().isEmpty() || edge.getProducts().isEmpty()) {
-      LOGGER.warn("Discarding reaction with empty substrates or products: %d", rxnId);
       return;
     }
 
