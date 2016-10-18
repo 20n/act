@@ -10,9 +10,12 @@ from bucketed_peaks.modules.utility import magic, utility_functions
 
 
 class LcmsClusterer:
-    def __init__(self, n_cluster, block_size, mz_split, mz_min, verbose=True):
-        self.verbose = verbose
+    """
+    This class is created by piping in 2D matrix of each sample's encodings to create a cluster fit,
+    followed by additional information indicated in predict.
+    """
 
+    def __init__(self, n_cluster, block_size, mz_split, mz_min):
         self.n_cluster = n_cluster
 
         self.kmeans = MiniBatchKMeans(n_clusters=self.n_cluster, random_state=magic.kmeans_random_state)
@@ -31,28 +34,28 @@ class LcmsClusterer:
             os.makedirs(self.output_directory)
 
     def fit(self, training_output):
-        if self.verbose:
-            print("Clustering")
+        print("Clustering")
         self.kmeans.fit(training_output)
 
     def predict(self, encoded_data, named_windows, output_tsv_file_name, row_matrices, valid_peaks=None, drop_rt=None):
         """
         :param encoded_data:            The encoded version of the original matrix.  Size (# Samples x Encoding Length)
-        :param named_windows:     The raw, normalized version of the
-                                        input matrix. Size (# Samples x # time points)
-        :param extra_information:       A matrix that carries extra information on.  The three fields in order are:
+                                        This is the output of lcms_autoencoder.py's autoencoder
 
-                                        1) The information is (Row number in the original matrix,
-                                        2) Time point window was centered on,
-                                        3) Maximum value of the window [What it was normalized by]
+        :param named_windows:           The raw, normalized version of the
+                                        input matrix. Size (# Samples x # time points)
+                                        This is the output of LcmsPreprocessing.ScanWindower.prepare_matrix_for_encoding
+
+        :param row_matrices             This is a list of all the matrices used to create the encoding
+                                        (Combined replicates count as 1 row_matrix).
+
         :param output_tsv_file_name:    Name of the output file
         :param valid_peaks:             A list, if provided, of clusters containing valid peaks.
                                         If not provided, all clusters are written to file.
         :param drop_rt:                 If a sample is under this retention time, we drop it.
         """
         clusters = self.kmeans.predict(encoded_data)
-        if self.verbose:
-            print("Writing results to file")
+        print("Writing results to file")
 
         with open(os.path.join(self.output_directory, output_tsv_file_name + magic.default_output_file_ending),
                   "w") as f:
@@ -71,12 +74,14 @@ class LcmsClusterer:
 
                 row = {}
 
-                # Get the max intensity index.  Additionally, assign the row values.
-                max_value_index = 0
+                """
+                For each column in the window containing the points that were used in the encoding,
+                we set them in order for this row so that we can print these to the output array.
+                """
                 for time_number in range(0, len(named_windows[i].window)):
-                    if abs(named_windows[i].window[time_number]) == 1:
-                        max_value_index = time_number
                     row[str(time_number)] = named_windows[i].window[time_number]
+
+                max_value_index, _ = max(enumerate(named_windows[i].window))
 
                 # Largest intensity value is where we call the retention time at
                 row["rt"] = utility_functions.column_number_to_time(time_index + max_value_index, magic.time_step,
@@ -91,6 +96,8 @@ class LcmsClusterer:
 
                 # Sum of all points aprox of AUTC
                 # into == integrated intensity of original raw peak
+                # The multiplication here removes the window normalization,
+                # as we've previously divided the entire window by the max value.
                 row["into"] = sum(named_windows[i].window) * max_intensity_value
 
                 # We normalize by max value so this works out.

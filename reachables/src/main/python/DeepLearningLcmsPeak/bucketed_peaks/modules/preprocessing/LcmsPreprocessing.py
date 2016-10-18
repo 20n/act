@@ -13,6 +13,18 @@ class ScanConverter:
     @staticmethod
     def process_lcms_trace(loaded_triples, mz_min, mz_max, mz_step, time_min, time_max, time_step, verbose=False):
         """
+
+        :param loaded_triples   A list of triples of LCMS points (Time, [M/Zs], [Intensities])
+
+        :param mz_min   Smallest m/z value expected
+        :param mz_max    Largest m/z value expected
+        :param mz_step  The bucket division between two m/z buckets.
+                        Step = 0.1 would mean we go in steps of 0.1 up to mz_max starting at mz_min
+        :param time_min    Smallest time value expected
+        :param time_max     Largest time value expected
+        :param time_step    Bucket division between two time points.
+                            Step = 2.5 would mean we go in steps of 2.5 up to time_max starting at time_min
+
         The process:
         Step 1) Load the LCMS file using the netcdf_parser
         Step 2) Bucket every value by time and m/z value
@@ -25,12 +37,12 @@ class ScanConverter:
         column_count = assign_column_by_time(time_max, time_step, time_min)
 
         # We initialize the array as all 0s because merging a bunch of arrays is slow in numpy
-        processing_array = np.zeros((row_count, column_count))
+        largest_intensity_array = np.zeros((row_count, column_count))
         # Holds the absolute m/z of a given bucket where the max value resides.
         exact_mz_array = np.zeros((row_count, column_count))
 
         if verbose:
-            print("LCMS array has shape {}".format(processing_array.shape))
+            print("LCMS array has shape {}".format(largest_intensity_array.shape))
         """
         General structure:
 
@@ -63,7 +75,7 @@ class ScanConverter:
             # (Each index has one time, though they are not equally spaced/distributed).
             sample_time = assign_column_by_time(triple["time"], time_step, time_min)
 
-            for mz_index in range(0, len(triple["mz"])):
+            for mz_index in range(0, len(mass_list)):
                 current_mz = mass_list[mz_index]
                 row = assign_row_by_mz(current_mz, mz_step, mz_min)
 
@@ -73,40 +85,41 @@ class ScanConverter:
                 Take the max of what is currently there and the new value we found so that
                 each bucket contains the highest value found within that bucket as the intensity.
                 """
-                if intensity_value > processing_array[row, sample_time]:
-                    processing_array[row, sample_time] = intensity_value
+                if intensity_value > largest_intensity_array[row, sample_time]:
+                    largest_intensity_array[row, sample_time] = intensity_value
                     exact_mz_array[row, sample_time] = current_mz
 
         # Fill in blanks with interpolated values after getting the first pass values in.
         # TODO: Evaluate if this is effective and useful.
-
         # Step 3
-        for row in tqdm(range(0, len(processing_array))):
+        for row in tqdm(range(0, len(largest_intensity_array))):
             """
             Don't try to interpolate the first and last values, but try to correct
             them initial to the value next to them if they are 0.
             """
-            if processing_array[row][0] == 0:
-                processing_array[row][0] = processing_array[row][1]
-            if processing_array[row][-1] == 0:
-                processing_array[row][-1] = processing_array[row][-2]
+            if largest_intensity_array[row][0] == 0:
+                largest_intensity_array[row][0] = largest_intensity_array[row][1]
+            if largest_intensity_array[row][-1] == 0:
+                largest_intensity_array[row][-1] = largest_intensity_array[row][-2]
 
             """
             Go through all the other columns and convert 0s to the average of the two flanking values.
             This helps fix holes that would otherwise occur.
             """
-            for column in range(1, len(processing_array[row]) - 1):
+            for column in range(1, len(largest_intensity_array[row]) - 1):
                 # If unassigned, interpolate.  Unassigned values are always 0 because we initialize the array to 0.
-                if processing_array[row][column] == 0:
-                    # We really only want to do this while traversing up a peak, not to augment the noise floor.
-                    # This single statement increases the number of iterations we can do each second by roughly 55%.
-                    before_and_after_sum = processing_array[row][column - 1] + processing_array[row][column + 1]
-                    processing_array[row][column] = float(before_and_after_sum) / 2.0
+                # We really only want to do this while traversing up a peak, not to augment the noise floor.
+                # The statement below increases the number of iterations we can do each second by roughly 55%.
+                if largest_intensity_array[row][column] == 0:
+                    before_and_after_sum = largest_intensity_array[row][column - 1] + \
+                                           largest_intensity_array[row][column + 1]
+                    largest_intensity_array[row][column] = float(before_and_after_sum) / 2.0
 
         # Step 4
-        processing_array = np.nan_to_num(processing_array)
+        # If we have any value that is a NAN after processing, convert it to 0.
+        largest_intensity_array = np.nan_to_num(largest_intensity_array)
 
-        return processing_array, exact_mz_array
+        return largest_intensity_array, exact_mz_array
 
 
 class LcmsScan:
@@ -143,6 +156,14 @@ class ScanWindower:
         :param threshold:    The lowest maximum value that a window can have and still be considered
         :return:                    A vector of valid windows.
         """
+        Window = namedtuple("Window", ["window",
+                                       "row",
+                                       "time",
+                                       "maxo",
+                                       "sn",
+                                       "exp_std_dev",
+                                       "ctrl_std_dev",
+                                       ])
 
         # Handle edge cases that can corrupt our numpy array.
         def get_grid_max(grid, width=0):
@@ -227,24 +248,18 @@ class ScanWindower:
 
                     if len(normalized_window) == block_size:
                         single_exp_max, single_ctrl_max = get_grid_max(experimental_grid), get_grid_max(control_grid)
-                        local_exp_max, local_ctrl_max = get_grid_max(experimental_grid,
-                                                                     width=local_halfwidth), get_grid_max(control_grid,
-                                                                                                          width=local_halfwidth)
+                        local_exp_max, local_ctrl_max = \
+                            get_grid_max(experimental_grid, width=local_halfwidth), \
+                            get_grid_max(control_grid, width=local_halfwidth)
 
+                        # This figures out if this is the max peak locally.
+                        # If it is, we call the peak, otherwise we skip it and grab the larger one later.
                         if single_exp_max == local_exp_max or single_ctrl_max == local_ctrl_max:
                             if abs(max(normalized_window, key=abs)) <= 1:
-                                exp_std, ctrl_std = experimental_grid.get_std_deviation(row_number,
-                                                                                        centered_time + center), control_grid.get_std_deviation(
-                                    row_number, centered_time + center)
+                                exp_std, ctrl_std = \
+                                    experimental_grid.get_std_deviation(row_number, centered_time + center), \
+                                    control_grid.get_std_deviation(row_number, centered_time + center)
 
-                                Window = namedtuple("Window", ["window",
-                                                               "row",
-                                                               "time",
-                                                               "maxo",
-                                                               "sn",
-                                                               "exp_std_dev",
-                                                               "ctrl_std_dev",
-                                                               ])
                                 sn = 1
                                 if snr is not None:
                                     sn = snr[row_number, int(centered_time + center)]

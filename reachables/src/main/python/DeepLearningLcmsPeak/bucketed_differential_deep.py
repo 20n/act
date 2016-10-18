@@ -14,10 +14,10 @@ This is the primary control file.  Run new Deep processings from here.
 """
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--lcmsDirectory", help="The LCMS scan directory.")
-    parser.add_argument("--experimental", help="List of names of experimental files.", nargs='*')
-    parser.add_argument("--control", help="List of names of control files.", nargs='*')
-    parser.add_argument("--outputDirectory", help="Where to save all intermediate and final files.")
+    parser.add_argument("lcmsDirectory", help="The LCMS scan directory.")
+    parser.add_argument("experimental", help="List of names of experimental files.", nargs='*')
+    parser.add_argument("control", help="List of names of control files.", nargs='*')
+    parser.add_argument("outputDirectory", help="Where to save all intermediate and final files.")
 
     parser.add_argument("--previousModelLocation", help="Location of a previously created model.")
 
@@ -68,6 +68,9 @@ if __name__ == "__main__":
     # Train matrix
     if model_location and os.path.exists(model_location):
         autoencoder = utility_functions.load_previous_model(model_location, output_directory)
+    elif model_location and not os.path.exists(model_location):
+        raise \
+            RuntimeError("Supplied a model location path of {}, but that model does not exist.".format(model_location))
     else:
         autoencoder = LcmsAutoencoder(output_directory, block_size, encoding_size,
                                       number_clusters, mz_division, mz_min, mz_max, debug=True)
@@ -83,7 +86,9 @@ if __name__ == "__main__":
         """
         scans = [autoencoder.process_lcms_scan(lcms_directory, scan) for scan in samples]
 
-        # Normalize within replicates
+        # Normalize within replicates.
+        # Each replicate is normalized to the first replicate such that
+        # each array has the same sum as the first replicate.
         first_scan_sum = np.sum(scans[0].get_array())
         for i in range(1, len(scans)):
             this_array_sum = np.sum(scans[i].get_array())
@@ -97,21 +102,26 @@ if __name__ == "__main__":
         standard_deviations = np.std(stacked_replicates, axis=2)
         # To do: Add elementwise statistics on the std dev.
 
-        min_representation = np.max(stacked_replicates, axis=2)
+        representation = np.max(stacked_replicates, axis=2)
 
         bucket_list = [scan.get_bucket_mz() for scan in scans]
 
-        mz_index_of_mins = np.argmax(stacked_replicates, axis=2)
+        mz_index_of_maxes = np.argmax(stacked_replicates, axis=2)
         mz_buckets = np.zeros(bucket_list[0].shape)
+
+        """
+        For each scan we create a mask such taht it only selects value where this bucket is the max intensity.
+        We then assign the m/z value at that max intensity point to be what the m/z value actually is.
+        """
         for index, bucket in enumerate(bucket_list):
             # Where the index arg is equal to the current index we find the m/z value that will be used moving forward.
-            bucket_mask = mz_index_of_mins == index
+            bucket_mask = mz_index_of_maxes == index
             mz_buckets[bucket_mask] = bucket[bucket_mask]
 
         # Prevent very small values from have a disproportionate effect
-        min_representation[min_representation <= 10] = 1
+        representation[representation <= 10] = 1
 
-        return LcmsPreprocessing.LcmsScan(min_representation, mz_buckets, standard_deviations)
+        return LcmsPreprocessing.LcmsScan(representation, mz_buckets, standard_deviations)
 
 
     row_matrix1 = merge_lcms_replicates(experimental_samples)
@@ -127,6 +137,11 @@ if __name__ == "__main__":
     np.seterr(divide="ignore")
     """
     Max(Value) * (Difference/Sum) == Good normalization
+    The goal is to do two things:
+    1) Accentuate differences in magnitude
+    2) Rank differences where very large magnitudes are different by the same ratio as smaller magnitudes higher
+    The above equation effectively accomplishes these two goals.
+
 
     Snr = Max/Min for each position
     """
@@ -158,7 +173,12 @@ if __name__ == "__main__":
                                  [row_matrix1, row_matrix2], drop_rt=0)
 
     if not model_location or not os.path.exists(model_location):
-        autoencoder.visualize(output_descriptor, lower_axis=-1)
+        try:
+            autoencoder.visualize(output_descriptor, lower_axis=-1)
+        except RuntimeError as e:
+            # We expect this to occur if the Display variable is not valid.
+            print("Unable to create visualizations due to runtime error of \n:{}".format(e.message))
+            pass
 
     if not model_location:
         summary_dict["model_location"] = utility_functions.save_model(output_directory, output_descriptor, autoencoder)

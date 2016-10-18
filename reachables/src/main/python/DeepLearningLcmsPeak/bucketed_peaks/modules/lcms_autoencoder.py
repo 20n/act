@@ -79,7 +79,7 @@ class LcmsAutoencoder:
         self.output_directory = os.path.join(output_directory, '')
         if not os.path.exists(self.output_directory):
             print("Creating {} as it did not previously exist.  "
-                  "This it the output directory.".format(self.output_directory))
+                  "This is the output directory.".format(self.output_directory))
             os.makedirs(self.output_directory)
         self.clusterer.set_output_directory(output_directory)
 
@@ -90,7 +90,7 @@ class LcmsAutoencoder:
 
         :param lcms_directory:  Directory of the LCMS file
         :param scan_file_name:  Actual LCMS scan file.
-        :return:                Prepared matrix
+        :return:                Prepared matrix : Dimensions = (Number of M/Z Steps, Number of Time Steps)
         """
         # Scan file stuff
         lcms_directory = os.path.join(lcms_directory, '')
@@ -128,9 +128,10 @@ class LcmsAutoencoder:
 
     def compile_model(self, loss_function=magic.loss_function):
         """
-        Takes the model we've created below and compiles it so that we can fit the model.
+        Takes the uncompiled model we've created below and creates a compiled model that we can actually use.
 
         :param loss_function:   The function that will be used to calculate loss.
+                                List of possible values can be found at https://keras.io/objectives/
         :return:                Two models, a full autoencoder and an encoder.  They use the same layers, so by
                                 training the autoencoder we can then encode any input in the same way the autoencoder
                                 is by simply passing the input to the encoder.
@@ -177,10 +178,6 @@ class LcmsAutoencoder:
                                 validation set to allow for early-stopping.
         :return:
         """
-        # TODO Random Sampling
-        training_samples = samples[0:int(len(samples) * training_split)]
-        validation_samples = samples[int(len(samples) * training_split):]
-
         """
         A brief overview of the model's params:
 
@@ -193,7 +190,7 @@ class LcmsAutoencoder:
         Batch_size: How many samples should be evaluated at one time.  This means that if we have many samples,
         we can train the network and calculate the gradients multiple times per iteration, increasing our convergence
         speed.  For example, if I had 10 samples and set batch_size to 2,
-        it would calculate the gradient (Modify the weights) 5 times, one for each batch on each iteration.
+        it would calculate the gradient (modify the weights) 5 times, one for each batch on each iteration.
 
         Nb_epoch: How many epochs to train for.  We just set this to a really high number
         and expect the callback to terminate prior.
@@ -205,8 +202,8 @@ class LcmsAutoencoder:
                             loss value and stop the model from training once the validation loss stops significantly
                             changing.
         """
-        self.model.fit(x=training_samples, y=training_samples,
-                       validation_data=(validation_samples, validation_samples),
+        self.model.fit(x=samples, y=samples,
+                       validation_split=1 - training_split,
                        batch_size=magic.batch_size,
                        nb_epoch=15000,
                        shuffle=True,
@@ -274,18 +271,21 @@ class LcmsAutoencoder:
             if self.verbose:
                 print("Cluster {}".format(ci))
 
+            # If a header cannot be imported as an int, we drop it.
+            # Therefore, any non-time headers in our current setup will be
+            # dropped leaving us with only the time headers.
             drop_headers = []
             for header in df.columns.values:
                 try:
                     int(header)
                 except ValueError:
                     drop_headers.append(header)
-
             just_time_values = cluster.drop(drop_headers, 1)
 
             if self.verbose:
                 print("Creating plot")
             if len(just_time_values) == 0:
+                print("Cluster {} contained no values, skipping.".format(ci))
                 continue
 
             sns.tsplot(just_time_values.as_matrix(), color="indianred", err_style="unit_traces")

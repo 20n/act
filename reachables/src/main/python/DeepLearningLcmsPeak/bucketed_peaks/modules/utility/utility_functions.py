@@ -49,8 +49,10 @@ def save_model(model_directory, model_name, model):
 
     with open(model_location, "w") as f:
         # Complex objects require more recursive steps to pickle.
+        previous_limit = sys.getrecursionlimit()
         sys.setrecursionlimit(10000)
         pickle.dump(model, f)
+        sys.setrecursionlimit(previous_limit)
 
     return model_location
 
