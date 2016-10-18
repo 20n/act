@@ -6,7 +6,6 @@ import com.act.lcms.db.io.report.IonAnalysisInterchangeModel;
 import org.junit.Test;
 
 import java.io.File;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -17,12 +16,9 @@ import static org.junit.Assert.assertEquals;
 public class IonAnalysisInterchangeModelTest {
 
   @Test
-  public void testFilterAndOperateOnMoleculesFromMultipleReplicateResultFilesPerformsThresholdingAnalysisOnSingleModel() throws Exception {
+  public void testFilterFunctionOnSingleModel() throws Exception {
     IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
     model.loadResultsFromFile(new File(getClass().getResource("sampleIonAnalysisInterchangeModel.json").toURI()));
-
-    List<IonAnalysisInterchangeModel> models = new ArrayList<>();
-    models.add(model);
 
     Set<String> ions = new HashSet<>();
     ions.add("M+H");
@@ -33,7 +29,7 @@ public class IonAnalysisInterchangeModelTest {
         new HitOrMissSingleSampleFilterAndTransformer(10000.0, 1000.0, 15.0, ions);
 
     IonAnalysisInterchangeModel outputModel =
-        IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(models, hitOrMissSingleSampleTransformer);
+        IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromModel(model, hitOrMissSingleSampleTransformer);
 
     int numHits = 0;
     for (IonAnalysisInterchangeModel.ResultForMZ resultForMZ : outputModel.getResults()) {
@@ -44,15 +40,15 @@ public class IonAnalysisInterchangeModelTest {
   }
 
   @Test
-  public void testFilterAndOperateOnMoleculesFromMultipleReplicateResultFilesPerformsMinAnalysisForMulitpleModels() throws Exception {
+  public void testFilterFunctionOnMultipleReplicateModels() throws Exception {
 
     /**
-     * In this test, we take in two models, which are almost identical except one hit exists in one model while the other
-     * does not have that. So, during the min analysis step, we will select the non-hit molecule since it will be the
-     * min of the two statistics and when we threshold, we should be throwing that molecule out, hence the expected
-     * number of hits will be one short.
+     * In this test, we take in two models, which are almost identical except one molecule has intensity, snr and time
+     * that do not pass the thresholds in one of the models (non-hit) while the other one does pass the threshold (hit).
+     * During the min analysis, the non-hit molecule is selected since it's statistics are the minimum for that molecule
+     * across all the replicates. So when we do the threshold analysis, we throw that molecule out since it will not
+     * pass the thresholds.
      */
-
 
     IonAnalysisInterchangeModel model1 = new IonAnalysisInterchangeModel();
     model1.loadResultsFromFile(new File(getClass().getResource("sampleIonAnalysisInterchangeModel.json").toURI()));
@@ -74,16 +70,13 @@ public class IonAnalysisInterchangeModelTest {
     HitOrMissReplicateFilterAndTransformer transformer = new HitOrMissReplicateFilterAndTransformer();
 
     IonAnalysisInterchangeModel minAnalysisOutput =
-        IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(models, transformer);
+        IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateModels(models, transformer);
 
     HitOrMissSingleSampleFilterAndTransformer hitOrMissSingleSampleTransformer =
         new HitOrMissSingleSampleFilterAndTransformer(10000.0, 1000.0, 15.0, ions);
 
-    List<IonAnalysisInterchangeModel> thresholdingModels = new ArrayList<>();
-    thresholdingModels.add(minAnalysisOutput);
-
     IonAnalysisInterchangeModel thresholdingOutputModel =
-        IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(thresholdingModels, hitOrMissSingleSampleTransformer);
+        IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromModel(minAnalysisOutput, hitOrMissSingleSampleTransformer);
 
     int numHits = 0;
     for (IonAnalysisInterchangeModel.ResultForMZ resultForMZ : thresholdingOutputModel.getResults()) {
