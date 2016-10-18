@@ -12,6 +12,8 @@ import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.helpers.P;
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.ChemicalKeywords;
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoKeywords;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoException;
@@ -1947,6 +1949,35 @@ public class MongoDB {
     }
 
     return new DBIterator(cursor); // DBIterator is just a wrapper class
+  }
+
+  public Iterator<Chemical> getJavaIteratorOverChemicals(BasicDBObject matchCriterion, boolean notimeout)  {
+    final DBIterator iter = getIteratorOverChemicals(matchCriterion, notimeout, null);
+
+    return new Iterator<Chemical>() {
+      @Override
+      public boolean hasNext() {
+        boolean hasNext = iter.hasNext();
+        if (!hasNext)
+          iter.close();
+        return hasNext;
+      }
+
+      @Override
+      public Chemical next() {
+        DBObject o = iter.next();
+        return convertDBObjectToChemical(o);
+      }
+    };
+  }
+
+  public Iterator<Chemical> getChemicalsbyIds(List<Long> ids, boolean notimeout){
+    BasicDBList queryList = new BasicDBList();
+    for (Long id : ids) {
+      queryList.add(new BasicDBObject(ChemicalKeywords.ID$.MODULE$.toString(), id));
+    }
+
+    return getJavaIteratorOverChemicals(new BasicDBObject(MongoKeywords.OR$.MODULE$.toString(), queryList), notimeout);
   }
 
   public DBIterator getIteratorOverReactions(boolean notimeout) {

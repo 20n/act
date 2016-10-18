@@ -143,4 +143,8 @@ object ChemicalKeywords {
     val value = "InChI"
   }
 
+  case object SMILES extends Keyword {
+    val value = "SMILES"
+  }
+
 }

@@ -2,14 +2,15 @@ package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.cross_db
 
 import act.server.MongoDB
 import chemaxon.struc.Molecule
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.chemical_db.QueryChemicalInchi
+import com.act.analysis.chemicals.molecules.MoleculeFormat
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.chemical_db.QueryChemicals
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities, ReactionKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
 
 import scala.collection.JavaConversions._
 
-trait ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities with QueryChemicalInchi {
+trait ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities with QueryChemicals {
   private val localLogger = LogManager.getLogger(getClass)
 
   def querySubstrateAndProductMoleculesByReactionIds(mongoConnection: MongoDB)(reactionIds: List[Long]): List[MoleculeReaction] ={
@@ -24,11 +25,11 @@ trait ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities with Query
 
       val substrateResult = enzSummary.get(ReactionKeywords.SUBSTRATES.toString).asInstanceOf[BasicDBList].toList.asInstanceOf[List[BasicDBObject]]
       val substrateMolecules = substrateResult.flatMap(r =>
-        List.fill(r.get(ReactionKeywords.COEFFICIENT.toString).toString.toInt)(chemicalQuery(r.get(ReactionKeywords.PUBCHEM.toString).toString.toInt)))
+        List.fill(r.get(ReactionKeywords.COEFFICIENT.toString).toString.toInt)(chemicalQuery(r.get(ReactionKeywords.PUBCHEM.toString).toString.toInt, MoleculeFormat.inchi)))
 
       val productResult = enzSummary.get(ReactionKeywords.PRODUCTS.toString).asInstanceOf[BasicDBList].toList.asInstanceOf[List[BasicDBObject]]
       val productMolecules = productResult.flatMap(r =>
-        List.fill(r.get(ReactionKeywords.COEFFICIENT.toString).toString.toInt)(chemicalQuery(r.get(ReactionKeywords.PUBCHEM.toString).toString.toInt))
+        List.fill(r.get(ReactionKeywords.COEFFICIENT.toString).toString.toInt)(chemicalQuery(r.get(ReactionKeywords.PUBCHEM.toString).toString.toInt, MoleculeFormat.inchi))
       )
 
       if (substrateMolecules.forall(_.isDefined) && productMolecules.forall(_.isDefined)){
@@ -46,7 +47,7 @@ trait ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities with Query
     // Now query for chemicals
     val dbReactionIdsIterator = getReactionsById(mongoConnection)(reactionIds)
 
-    val chemicalQuery = getChemicalsInchiById(mongoConnection)_
+    val chemicalQuery = getChemicalsStringById(mongoConnection)_
     val moleculeMap: List[InchiReaction] = dbReactionIdsIterator.toStream.par.flatMap(result => {
       val reactionId = result.get(ReactionKeywords.ID.toString)
 
@@ -55,11 +56,11 @@ trait ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities with Query
       val substrateResult = enzSummary.get(ReactionKeywords.SUBSTRATES.toString).asInstanceOf[BasicDBList].toList.asInstanceOf[List[BasicDBObject]]
 
       val substrateMolecules = substrateResult.flatMap(r =>
-        List.fill(r.get(ReactionKeywords.COEFFICIENT.toString).toString.toInt)(chemicalQuery(r.get(ReactionKeywords.PUBCHEM.toString).toString.toInt)))
+        List.fill(r.get(ReactionKeywords.COEFFICIENT.toString).toString.toInt)(chemicalQuery(r.get(ReactionKeywords.PUBCHEM.toString).toString.toInt, MoleculeFormat.inchi)))
 
       val productResult = enzSummary.get(ReactionKeywords.PRODUCTS.toString).asInstanceOf[BasicDBList].toList.asInstanceOf[List[BasicDBObject]]
       val productMolecules = productResult.flatMap(r =>
-        List.fill(r.get(ReactionKeywords.COEFFICIENT.toString).toString.toInt)(chemicalQuery(r.get(ReactionKeywords.PUBCHEM.toString).toString.toInt))
+        List.fill(r.get(ReactionKeywords.COEFFICIENT.toString).toString.toInt)(chemicalQuery(r.get(ReactionKeywords.PUBCHEM.toString).toString.toInt, MoleculeFormat.inchi))
       )
 
       if (substrateMolecules.forall(_.isDefined) && productMolecules.forall(_.isDefined)){
