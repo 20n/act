@@ -278,8 +278,8 @@ public class IonAnalysisInterchangeModel {
           // IonAnalysisInterchangeModel to be in the same order as other replicates. We check if the mass charges are the
           // same across the samples to make sure the replicates aligned correctly.
           if (!sampleRepresentativeMz.getMz().equals(representativeMassCharge)) {
-            throw new RuntimeException("The replicates are not ordered similarly. Please verify if the correct " +
-                "replicates are being used.");
+            throw new RuntimeException(String.format("The replicates are not ordered correctly since %f and %f are not " +
+                "the equal.", sampleRepresentativeMz.getMz(), representativeMassCharge));
           }
 
           HitOrMiss molecule = sampleRepresentativeMz.getMolecules().get(j);

@@ -184,8 +184,11 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
       HitOrMissReplicateFilterAndTransformer transformer = new HitOrMissReplicateFilterAndTransformer();
 
       List<IonAnalysisInterchangeModel> models = positiveReplicateResults.stream().map(file -> {
-        try { return IonAnalysisInterchangeModel.loadIonAnalysisInterchangeModelFromFile(file); }
-        catch (IOException e) { throw new UncheckedIOException(e); }
+        try {
+          return IonAnalysisInterchangeModel.loadIonAnalysisInterchangeModelFromFile(file);
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
       }).collect(Collectors.toList());
 
       IonAnalysisInterchangeModel transformedModel = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateModels(
@@ -200,10 +203,12 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     Double minTimeThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_TIME_THRESHOLD));
 
     if (cl.hasOption(OPTION_GET_IONS_SUPERSET)) {
-
       List<IonAnalysisInterchangeModel> models = positiveReplicateResults.stream().map(file -> {
-        try { return IonAnalysisInterchangeModel.loadIonAnalysisInterchangeModelFromFile(file); }
-        catch (IOException e) { throw new UncheckedIOException(e); }
+        try {
+          return IonAnalysisInterchangeModel.loadIonAnalysisInterchangeModelFromFile(file);
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
       }).collect(Collectors.toList());
 
       IonAnalysisInterchangeModel transformedModel = IonAnalysisInterchangeModel.getSupersetOfIonicVariants(
