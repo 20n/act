@@ -2361,6 +2361,34 @@ public class MongoDB {
     return convertDBObjectToReaction(o);
   }
 
+  public Iterator<Reaction> getReactionsIteratorById(List<Long> ids, boolean notimeout){
+    BasicDBList reactionList = new BasicDBList();
+
+    for (Long id: ids){
+      reactionList.add(new BasicDBObject(ChemicalKeywords.ID$.MODULE$.toString(), id));
+    }
+
+    BasicDBObject query = new BasicDBObject(MongoKeywords.OR$.MODULE$.toString(), reactionList);
+
+    final DBIterator iter = getIteratorOverReactions(query, notimeout, null);
+
+    return new Iterator<Reaction>() {
+      @Override
+      public boolean hasNext() {
+        boolean hasNext = iter.hasNext();
+        if (!hasNext)
+          iter.close();
+        return hasNext;
+      }
+
+      @Override
+      public Reaction next() {
+        DBObject o = iter.next();
+        return convertDBObjectToReaction(o);
+      }
+    };
+  }
+
   public BasicDBObject getRangeUUIDRestriction(Long lowUUID, Long highUUID) {
     BasicDBObject restrictTo = new BasicDBObject();
     // need to encode { "_id" : { $gte : lowUUID, $lte : highUUID } }

@@ -1,67 +1,49 @@
 package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.cross_db
 
 import act.server.MongoDB
+import act.shared.Reaction
 import chemaxon.struc.Molecule
-import com.act.analysis.chemicals.molecules.MoleculeFormat
+import com.act.analysis.chemicals.molecules.{MoleculeFormat, MoleculeImporter}
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.chemical_db.QueryChemicals
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities, ReactionKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
 
+import scala.collection.JavaConverters._
 import scala.collection.JavaConversions._
 
 trait ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities with QueryChemicals {
-  private val localLogger = LogManager.getLogger(getClass)
-
-  def querySubstrateAndProductMoleculesByReactionIds(mongoConnection: MongoDB)(reactionIds: List[Long]): List[MoleculeReaction] ={
-    val dbReactionIdsIterator = getReactionsById(mongoConnection)(reactionIds)
-
-    // Now query for chemicals
-    val chemicalQuery = getMoleculeById(mongoConnection)_
-    val moleculeMap: List[MoleculeReaction] = dbReactionIdsIterator.toStream.par.flatMap(result => {
-      val reactionId = result.get(ReactionKeywords.ID.toString)
-
-      val enzSummary = result.get(ReactionKeywords.ENZ_SUMMARY.toString).asInstanceOf[DBObject]
-
-      val substrateResult = enzSummary.get(ReactionKeywords.SUBSTRATES.toString).asInstanceOf[BasicDBList].toList.asInstanceOf[List[BasicDBObject]]
-      val substrateMolecules = substrateResult.flatMap(r =>
-        List.fill(r.get(ReactionKeywords.COEFFICIENT.toString).toString.toInt)(chemicalQuery(r.get(ReactionKeywords.PUBCHEM.toString).toString.toInt, MoleculeFormat.inchi)))
-
-      val productResult = enzSummary.get(ReactionKeywords.PRODUCTS.toString).asInstanceOf[BasicDBList].toList.asInstanceOf[List[BasicDBObject]]
-      val productMolecules = productResult.flatMap(r =>
-        List.fill(r.get(ReactionKeywords.COEFFICIENT.toString).toString.toInt)(chemicalQuery(r.get(ReactionKeywords.PUBCHEM.toString).toString.toInt, MoleculeFormat.inchi))
-      )
-
-      if (substrateMolecules.forall(_.isDefined) && productMolecules.forall(_.isDefined)){
-        Option(MoleculeReaction(reactionId.toString.toInt, substrateMolecules.map(_.get), productMolecules.map(_.get)))
+  def querySubstrateAndProductMoleculesByReactionIds(mongoConnection: MongoDB)(reactionIds: List[Long]): List[Option[MoleculeReaction]] ={
+    querySubstrateAndProductInchisByReactionIds(mongoConnection)(reactionIds).map(elem => {
+      if (elem.isDefined){
+        Option(inchiToMolecule(elem.get))
       } else {
-        println(reactionId.toString.toInt)
         None
       }
-    }).toList
-
-    moleculeMap
+    })
   }
 
-  def querySubstrateAndProductInchisByReactionIds(mongoConnection: MongoDB)(reactionIds: List[Long]): List[InchiReaction] ={
+  def querySubstrateAndProductInchisByReactionIds(mongoConnection: MongoDB)(reactionIds: List[Long]): List[Option[InchiReaction]] ={
     // Now query for chemicals
-    val dbReactionIdsIterator = getReactionsById(mongoConnection)(reactionIds)
+    val dbReactionIdsIterator: Option[Iterator[Reaction]] = getReactionsById(mongoConnection)(reactionIds)
+
+    if (dbReactionIdsIterator.isEmpty){
+      return List()
+    }
 
     val chemicalQuery = getChemicalsStringById(mongoConnection)_
-    val moleculeMap: List[InchiReaction] = dbReactionIdsIterator.toStream.par.flatMap(result => {
-      val reactionId = result.get(ReactionKeywords.ID.toString)
+    val moleculeMap: List[Option[InchiReaction]] = dbReactionIdsIterator.get.toStream.map(result => {
+      val reactionId = result.getUUID
 
-      val enzSummary = result.get(ReactionKeywords.ENZ_SUMMARY.toString).asInstanceOf[DBObject]
+      val enzSummary = result
 
-      val substrateResult = enzSummary.get(ReactionKeywords.SUBSTRATES.toString).asInstanceOf[BasicDBList].toList.asInstanceOf[List[BasicDBObject]]
+      val substrateMolecules: List[Option[String]] = result.getSubstrates.toList.flatMap(substrateId => {
+        List.fill(result.getSubstrateCoefficient(substrateId))(chemicalQuery(substrateId, MoleculeFormat.inchi))
+      })
 
-      val substrateMolecules = substrateResult.flatMap(r =>
-        List.fill(r.get(ReactionKeywords.COEFFICIENT.toString).toString.toInt)(chemicalQuery(r.get(ReactionKeywords.PUBCHEM.toString).toString.toInt, MoleculeFormat.inchi)))
-
-      val productResult = enzSummary.get(ReactionKeywords.PRODUCTS.toString).asInstanceOf[BasicDBList].toList.asInstanceOf[List[BasicDBObject]]
-      val productMolecules = productResult.flatMap(r =>
-        List.fill(r.get(ReactionKeywords.COEFFICIENT.toString).toString.toInt)(chemicalQuery(r.get(ReactionKeywords.PUBCHEM.toString).toString.toInt, MoleculeFormat.inchi))
-      )
+      val productMolecules: List[Option[String]] = result.getProducts.toList.flatMap(productId => {
+        List.fill(result.getProductCoefficient(productId))(chemicalQuery(productId, MoleculeFormat.inchi))
+      })
 
       if (substrateMolecules.forall(_.isDefined) && productMolecules.forall(_.isDefined)){
         Option(InchiReaction(reactionId.toString.toInt, substrateMolecules.map(_.get), productMolecules.map(_.get)))
@@ -73,31 +55,21 @@ trait ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities with Query
     moleculeMap
   }
 
-  def getReactionsById(mongoConnection: MongoDB)(reactionIds: List[Long]): Iterator[DBObject] ={
-    val reactionList = new BasicDBList()
-
-    reactionIds.foreach(x => reactionList.add(new BasicDBObject(ChemicalKeywords.ID.toString, x)))
-
-    // Setup the query and filter for just the reaction ID
-    val reactionIdQuery = defineMongoOr(reactionList)
-
-    // Create the return filter by adding all fields onto
-    val reactionReturnFilter = new BasicDBObject()
-
-    val substrateWord = s"${ReactionKeywords.ENZ_SUMMARY}.${ReactionKeywords.SUBSTRATES}"
-    val productWord = s"${ReactionKeywords.ENZ_SUMMARY}.${ReactionKeywords.PRODUCTS}"
-    reactionReturnFilter.put(substrateWord, true)
-    reactionReturnFilter.put(productWord, true)
-
-    // Deploy DB query w/ error checking to ensure we got something
-    localLogger.info(s"Running query $reactionIdQuery against DB.  Return filter is $reactionReturnFilter")
-
-    val r = mongoQueryReactions(mongoConnection)(reactionIdQuery, reactionReturnFilter)
-    localLogger.info("Finished querying by reactionId.")
-    r
+  def getReactionsById(mongoConnection: MongoDB)(reactionIds: List[Long]): Option[Iterator[Reaction]] ={
+    val maybeIterator = Option(mongoConnection.getReactionsIteratorById(reactionIds.map(java.lang.Long.valueOf).asJava, true))
+    if (maybeIterator.isEmpty){
+      return None
+    }
+    Option(maybeIterator.get.toIterator)
   }
 
 
   case class MoleculeReaction(id: Int, substrates: List[Molecule], products: List[Molecule])
+  implicit def inchiToMolecule(inchiReaction: InchiReaction): MoleculeReaction ={
+    MoleculeReaction(inchiReaction.id, inchiReaction.substrates, inchiReaction.products)
+  }
+  implicit def stringToMoleculeList(molecules: List[String]): List[Molecule] = {
+    molecules.map(MoleculeImporter.importMolecule)
+  }
   case class InchiReaction(id: Int, substrates: List[String], products: List[String])
 }

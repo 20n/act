@@ -1,7 +1,7 @@
 package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo
 
 import act.server.MongoDB
-import act.shared.Chemical
+import act.shared.{Chemical, Reaction}
 import com.mongodb.DBObject
 import com.mongodb.casbah.Imports.{BasicDBList, BasicDBObject}
 import org.apache.logging.log4j.LogManager
@@ -176,7 +176,7 @@ trait MongoWorkflowUtilities {
   }
 
   def mongoChemicalIterator(mongo: MongoDB)(key: BasicDBObject): Option[Iterator[Chemical]] = {
-    logger.debug(s"Querying reaction database with the query $key.")
+    logger.debug(s"Querying chemical database with the query $key.")
     Option(mongo.getJavaIteratorOverChemicals(key, false))
   }
 
