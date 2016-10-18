@@ -56,8 +56,9 @@ public class PrecursorAnalysis implements JavaRunnable {
       Optional<NetworkNode> targetNode = network.getNodeOption(target);
       if (targetNode.isPresent()) {
         MetabolismNetwork precursorNetwork = network.getPrecursorSubgraph(targetNode.get(), numSteps);
+        PrecursorReport report = new PrecursorReport(targetNode.get().getMetabolite(), precursorNetwork);
         File outputFile = new File(outputDirectory, "precursors_target_" + id);
-        precursorNetwork.writeToJsonFile(outputFile);
+        report.writeToJsonFile(outputFile);
         targetIdMap.put(target, id);
         id++;
       } else {

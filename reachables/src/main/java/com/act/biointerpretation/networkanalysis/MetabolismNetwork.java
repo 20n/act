@@ -3,6 +3,7 @@ package com.act.biointerpretation.networkanalysis;
 import act.server.MongoDB;
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,10 +34,6 @@ public class MetabolismNetwork {
 
   private static transient final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-  static {
-    OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
-  }
-
   private static final Logger LOGGER = LogManager.getFormatterLogger(MetabolismNetwork.class);
 
   // Map from inchis to nodes.
@@ -46,6 +43,14 @@ public class MetabolismNetwork {
 
   @JsonProperty("edges")
   List<NetworkEdge> edges;
+
+  @JsonCreator
+  private MetabolismNetwork(@JsonProperty("nodes") Map<String, NetworkNode> nodes,
+                            @JsonProperty("edges") List<NetworkEdge> edges) {
+    this();
+    this.nodes = nodes;
+    edges.forEach(this::addEdge);
+  }
 
   public MetabolismNetwork() {
     nodes = new ConcurrentHashMap<>();
