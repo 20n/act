@@ -183,7 +183,7 @@ public class MockedMongoDB {
     doAnswer(new Answer<Iterator<Chemical>>() {
       @Override
       public Iterator<Chemical> answer(InvocationOnMock invocation) throws Throwable {
-        List<Chemical> chemicals = new ArrayList<Chemical>();
+        List<Chemical> chemicals = new ArrayList<>();
         for (Long id: (List<Long>) invocation.getArgumentAt(0, List.class)){
           if (chemicalMap.get(id) == null) {
             return null;
@@ -194,6 +194,21 @@ public class MockedMongoDB {
         return chemicals.iterator();
       }
     }).when(mockMongoDB).getChemicalsbyIds(any(List.class), any(boolean.class));
+
+    doAnswer(new Answer<Iterator<Reaction>>() {
+      @Override
+      public Iterator<Reaction> answer(InvocationOnMock invocation) throws Throwable {
+        List<Reaction> reactions = new ArrayList<>();
+        for (Long id: (List<Long>) invocation.getArgumentAt(0, List.class)){
+          if (reactionMap.get(id) == null) {
+            return null;
+          }
+          reactions.add(reactionMap.get(id));
+        }
+
+        return reactions.iterator();
+      }
+    }).when(mockMongoDB).getReactionsIteratorById(any(List.class), any(boolean.class));
 
     doAnswer(new Answer<Long>() {
       @Override

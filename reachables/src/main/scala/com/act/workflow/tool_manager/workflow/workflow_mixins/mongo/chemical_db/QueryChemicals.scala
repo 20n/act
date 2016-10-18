@@ -11,8 +11,22 @@ import scala.collection.JavaConverters._
 
 trait QueryChemicals extends MongoWorkflowUtilities {
 
-  // Takes in a single ChemicalId and outputs the MoleculeFormat from the DB if available
-  def getChemicalsStringById(mongoConnection: MongoDB)(chemicalId: Long, moleculeFormat: MoleculeFormat.Value = MoleculeFormat.inchi): Option[String] = {
+  /**
+    * From a chemical ID, returns the Molecule format
+    */
+  def getMoleculeById(mongoConnection: MongoDB)
+                     (chemicalId: Long, moleculeFormat:
+                     MoleculeFormat.Value = MoleculeFormat.inchi): Option[Molecule] = {
+    val moleculeString = getChemicalsStringById(mongoConnection)(chemicalId, moleculeFormat)
+    maybeImportString(moleculeString, moleculeFormat)
+  }
+
+  /**
+    * Takes in a single ChemicalId and outputs the MoleculeFormat from the DB if available
+    */
+  def getChemicalsStringById(mongoConnection: MongoDB)
+                            (chemicalId: Long,
+                             moleculeFormat: MoleculeFormat.Value = MoleculeFormat.inchi): Option[String] = {
     val queryResult: List[Option[String]] = getChemicalsStringsByIds(mongoConnection)(List(chemicalId), moleculeFormat)
 
     if (queryResult.isEmpty) {
@@ -26,10 +40,19 @@ trait QueryChemicals extends MongoWorkflowUtilities {
     queryResult.head
   }
 
-  // From a chemical ID, returns the Molecule format
-  def getMoleculeById(mongoConnection: MongoDB)(chemicalId: Long, moleculeFormat: MoleculeFormat.Value = MoleculeFormat.inchi): Option[Molecule] = {
-    val moleculeString = getChemicalsStringById(mongoConnection)(chemicalId, moleculeFormat)
-    maybeImportString(moleculeString, moleculeFormat)
+  /**
+    * Get a single Molecule by ID
+    */
+  def getMoleculesById(mongoConnection: MongoDB)
+                      (chemicalIds: List[Long],
+                       moleculeFormat: MoleculeFormat.Value = MoleculeFormat.inchi): List[Option[Molecule]] = {
+    val chemicalStrings = getChemicalsStringsByIds(mongoConnection)(chemicalIds)
+
+    if (chemicalStrings.isEmpty) {
+      return List()
+    }
+
+    chemicalStrings.par.map(maybeString => maybeImportString(maybeString, moleculeFormat)).toList
   }
 
   // From a list of Chemical IDs, returns the string representations from teh database if available
@@ -46,40 +69,9 @@ trait QueryChemicals extends MongoWorkflowUtilities {
     queryResult.get.asScala.map(getFormatString(moleculeFormat, _)).toList
   }
 
-  // Get a single Molecule by ID
-  def getMoleculesById(mongoConnection: MongoDB)(chemicalIds: List[Long], moleculeFormat: MoleculeFormat.Value = MoleculeFormat.inchi): List[Option[Molecule]] = {
-    val chemicalStrings = getChemicalsStringsByIds(mongoConnection)(chemicalIds)
-
-    if (chemicalStrings.isEmpty) {
-      return List()
-    }
-
-    chemicalStrings.par.map(maybeString => maybeImportString(maybeString, moleculeFormat)).toList
-  }
-
-  // If the string exists, import it
-  private def maybeImportString(moleculeString: Option[String], moleculeFormat: MoleculeFormat.Value): Option[Molecule] = {
-    if (moleculeString.isDefined) {
-      try {
-        return Option(MoleculeImporter.importMolecule(moleculeString.get, moleculeFormat))
-      } catch {
-        case e: MolFormatException =>
-      }
-    }
-
-    None
-  }
-
-  // Determines if to use InChI or SMILES
-  private def determineFormat(moleculeFormat: MoleculeFormat.Value): String = {
-    if (MoleculeFormat.getImportString(moleculeFormat).contains("inchi")) {
-      ChemicalKeywords.INCHI.toString
-    } else {
-      ChemicalKeywords.SMILES.toString
-    }
-  }
-
-  // Returns the appropriate string, if exists.
+  /**
+    * Returns the appropriate string, if exists.
+    */
   private def getFormatString(moleculeFormat: MoleculeFormat.Value, result: Chemical): Option[String] = {
     if (Option(result).isEmpty) {
       return None
@@ -97,5 +89,32 @@ trait QueryChemicals extends MongoWorkflowUtilities {
     } else {
       Option(result.getSmiles)
     }
+  }
+
+  /**
+    * Determines if to use InChI or SMILES
+    */
+  private def determineFormat(moleculeFormat: MoleculeFormat.Value): String = {
+    if (MoleculeFormat.getImportString(moleculeFormat).contains("inchi")) {
+      ChemicalKeywords.INCHI.toString
+    } else {
+      ChemicalKeywords.SMILES.toString
+    }
+  }
+
+  /**
+    * If the string exists, import it
+    */
+  private def maybeImportString(moleculeString: Option[String],
+                                moleculeFormat: MoleculeFormat.Value): Option[Molecule] = {
+    if (moleculeString.isDefined) {
+      try {
+        return Option(MoleculeImporter.importMolecule(moleculeString.get, moleculeFormat))
+      } catch {
+        case e: MolFormatException =>
+      }
+    }
+
+    None
   }
 }

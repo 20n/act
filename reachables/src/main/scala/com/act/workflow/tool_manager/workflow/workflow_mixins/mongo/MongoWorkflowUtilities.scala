@@ -180,6 +180,7 @@ trait MongoWorkflowUtilities {
     Option(mongo.getJavaIteratorOverChemicals(key, false))
   }
 
+
   /**
     * A normal query against the sequences database.
     *
