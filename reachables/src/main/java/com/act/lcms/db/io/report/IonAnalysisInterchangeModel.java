@@ -303,8 +303,8 @@ public class IonAnalysisInterchangeModel {
   }
 
   /**
-   * This function takes in a single LCMS result  (in the IonAnalysisInterchangeModel format) and extracts all the
-   * molecule hits from the file and applies a filter function across the replicate hits.
+   * This function takes in a single LCMS result (in the IonAnalysisInterchangeModel format) and extracts all the
+   * molecule hits from the file and applies a filter function on the model.
    * @param replicateModel The IonAnalysisInterchangeModel to be analyzed
    * @param hitOrMissFilterAndTransformer This filter function takes in single/multiple HitOrMiss objects from replicates and
    *                                      performs a transformation operation on them to produce one HitOrMiss object
