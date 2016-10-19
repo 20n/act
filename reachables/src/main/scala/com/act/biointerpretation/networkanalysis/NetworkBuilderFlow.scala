@@ -14,13 +14,14 @@ import org.apache.logging.log4j.LogManager
 import scala.collection.JavaConverters._
 
 /**
-  * A Workflow to build a metabolism network from a set of prediction corpuses, and print out basic statistics on it.
+  * Builds a metabolism network and prints out basic statistics on it.
   */
 class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility with MongoWorkflowUtilities {
 
   val logger = LogManager.getLogger(getClass.getName)
 
-  override val HELP_MESSAGE = "Workflow to run basic build of a network from input corpuses."
+  override val HELP_MESSAGE = "Build of a metabolism network. A previously built network can be used as a starting " +
+    "point. From there, edges can be added from the reactions in a DB, or from predictions in a PredictionCorpus."
 
   private val OPTION_OUTPUT_FILE = "o"
   private val OPTION_BASE_NETWORK = "b"
@@ -108,7 +109,7 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility with Mong
     baseNetwork.foreach(f => networkBuilder.setBaseNetwork(f))
     headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("network builder", networkBuilder))
 
-    val networkStats = new NetworkStats(outputFile);
+    val networkStats = new NetworkStats(outputFile)
     headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("network stats", networkStats))
     headerJob
   }

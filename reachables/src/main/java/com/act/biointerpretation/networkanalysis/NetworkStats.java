@@ -31,9 +31,7 @@ public class NetworkStats implements JavaRunnable {
     LOGGER.info("Verified input file validity.");
 
     // Read in network from file
-    MetabolismNetwork network = new MetabolismNetwork();
-    network.loadFromJsonFile(inputFile);
-    LOGGER.info("Loaded network in from file.");
+    MetabolismNetwork network = MetabolismNetwork.getNetworkFromJsonFile(inputFile);
 
     // Print stats on network
     LOGGER.info("Total nodes: %d", network.getNodes().size());

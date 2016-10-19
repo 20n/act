@@ -2,6 +2,7 @@ package com.act.biointerpretation.networkanalysis
 
 import java.io.File
 
+import com.act.biointerpretation.networkanalysis.GraphViz.PrecursorVizBuilder
 import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.tool_wrappers.JavaJobWrapper
 import com.act.workflow.tool_manager.workflow.Workflow
@@ -13,10 +14,11 @@ class NetworkVisualizationFlow extends Workflow with WorkingDirectoryUtility {
 
   val logger = LogManager.getLogger(getClass.getName)
 
-  override val HELP_MESSAGE = "Workflow to read in a network and write out its GraphViz representation."
+  override val HELP_MESSAGE = "Reads in a metabolism network and writes out its GraphViz representation."
 
   private val OPTION_INPUT_NETWORK = "i"
   private val OPTION_OUTPUT_PATH = "o"
+  private val OPTION_ORG_STRING = "s"
 
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -30,6 +32,10 @@ class NetworkVisualizationFlow extends Workflow with WorkingDirectoryUtility {
         hasArg.
         desc("The path to write the output").
         required,
+
+      CliOption.builder(OPTION_ORG_STRING).
+        hasArg.
+        desc("A string representing the organism of interest. Edges with orgs containing this string are colored red."),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -50,6 +56,11 @@ class NetworkVisualizationFlow extends Workflow with WorkingDirectoryUtility {
     verifyOutputFile(outputFile)
 
     val networkViz = new PrecursorVizBuilder(inputNetworkFile, outputFile)
+
+    if (cl.hasOption(OPTION_ORG_STRING)) {
+      networkViz.setOrgOfInterest(cl.getOptionValue(OPTION_ORG_STRING))
+    }
+
     headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("graphViz", networkViz))
     headerJob
   }

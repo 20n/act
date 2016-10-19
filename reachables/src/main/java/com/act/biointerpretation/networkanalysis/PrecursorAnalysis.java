@@ -44,14 +44,13 @@ public class PrecursorAnalysis implements JavaRunnable {
     LOGGER.info("Verified files. Loading network");
 
     // Get input network
-    MetabolismNetwork network = new MetabolismNetwork();
-    network.loadFromJsonFile(networkInput);
+    MetabolismNetwork network = MetabolismNetwork.getNetworkFromJsonFile(networkInput);
     LOGGER.info("Loaded network from file. Running precursor analyses.");
 
     Map<String, Integer> targetIdMap = new HashMap<>();
     int id = 0;
 
-    // Do precursor analyses
+    // Do precursor analyses on each target.  Give each found target an ID so we can track which report is which.
     for (String target : targets) {
       Optional<NetworkNode> targetNode = network.getNodeOption(target);
       if (targetNode.isPresent()) {
@@ -66,10 +65,18 @@ public class PrecursorAnalysis implements JavaRunnable {
       }
     }
 
+    // Write out the target IDs to file for reference.
     writeTargetIdMapToFile(targetIdMap, targetIdFile);
     LOGGER.info("Complete! Output files live in directory %s", outputDirectory.getAbsolutePath());
   }
 
+  /**
+   * Write out the target ID map. This is a TSV file where each line contains the ID followed by the target's InChI.
+   *
+   * @param targetIdMap The map to write.
+   * @param targetIdFile The file to write to.
+   * @throws IOException
+   */
   private void writeTargetIdMapToFile(Map<String, Integer> targetIdMap, File targetIdFile) throws IOException {
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(targetIdFile))) {
       writer.write("TARGET_ID\tINCHI");

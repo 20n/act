@@ -8,11 +8,9 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.omg.SendingContext.RunTime;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -20,7 +18,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
  * Runnable class to build a metabolic network from a set of prediction corpuses.
@@ -113,10 +110,13 @@ public class NetworkBuilder implements JavaRunnable {
     LOGGER.info("Successfully read in input corpus files and reaction id files.  Building network.");
 
     // Set up network object, and load predictions and reactions into network edges.
-    MetabolismNetwork network = new MetabolismNetwork();
+    MetabolismNetwork network;
     if (seedNetwork.isPresent()) {
-      network.loadFromJsonFile(seedNetwork.get());
+      network = MetabolismNetwork.getNetworkFromJsonFile(seedNetwork.get());
+    } else {
+      network = new MetabolismNetwork();
     }
+
     corpuses.forEach(corpus -> network.loadPredictions(corpus));
     reactionInfoList.forEach(it -> it.forEachRemaining(pair ->
         network.loadEdgeFromReaction(db, pair.getLeft(), pair.getRight())));
@@ -127,6 +127,16 @@ public class NetworkBuilder implements JavaRunnable {
     LOGGER.info("Complete! Network has been written to %s", outputFile.getAbsolutePath());
   }
 
+  /**
+   * Gets a list of reactions and organisms from file.  The file format assumed for each line of the file is
+   * RXNID TAB ORG1 TAB ORG2 TAB ...
+   * Thus the return is an iterator of pairs, where each pair contains first the reaction ID, and then the list of
+   * organisms.
+   *
+   * @param file The file to read.
+   * @return An iterator over the reactions in the file, with org info.
+   * @throws IOException
+   */
   private Iterator<Pair<Long, List<String>>> getReactionInfoFromFile(File file) throws IOException {
 
     BufferedReader reader = new BufferedReader(new FileReader(file));

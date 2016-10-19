@@ -7,7 +7,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -154,18 +153,17 @@ public class MetabolismNetwork {
   }
 
   /**
-   * Load an edge into the network from a reaction in our reactions DB.
+   * Load an edge into the network from a reaction in our reactions DB. Discards the edge if the reaction has no
+   * substrates or no products.
    *
    * @param db The DB to look in.
    * @param rxnId The reaction.
    */
   public void loadEdgeFromReaction(MongoDB db, long rxnId, Collection<String> orgs) {
     NetworkEdge edge = NetworkEdge.buildEdgeFromReaction(db, rxnId);
-
     if (edge.getSubstrates().isEmpty() || edge.getProducts().isEmpty()) {
       return;
     }
-
     orgs.forEach(edge::addOrg);
     addEdge(edge);
   }
@@ -246,10 +244,7 @@ public class MetabolismNetwork {
     }
   }
 
-  public void loadFromJsonFile(File inputFile) throws IOException {
-    MetabolismNetwork networkFromFile = OBJECT_MAPPER.readValue(inputFile, MetabolismNetwork.class);
-    this.nodes = networkFromFile.nodes;
-    networkFromFile.edges.forEach(this::addEdge);
-    LOGGER.info("Loaded network with %d nodes.", this.getNodes().size());
+  public static MetabolismNetwork getNetworkFromJsonFile(File inputFile) throws IOException {
+    return OBJECT_MAPPER.readValue(inputFile, MetabolismNetwork.class);
   }
 }
