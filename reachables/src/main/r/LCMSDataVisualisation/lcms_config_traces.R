@@ -64,6 +64,7 @@ lcmsConfigTraces <- function(input, output, session) {
       # rank_metric_signif is simply rank_metric with 3 significant digits
       mutate(rank_metric_signif = signif(rank_metric, 3)) %>%
       arrange(desc(rank_metric_signif)) %>%
+      # add a flag character column: "F" for formulae matches, "S" for structures matches, "FS" for both, "" for none.
       mutate(flag = paste0(ifelse(matching_formulae != -1, "F", ""), ifelse(matching_inchis != -1, "S", "")))
     # add molecular mass in peak definition if user said so (checkbox)
     if (has.mol.mass()) {
