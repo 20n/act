@@ -60,7 +60,7 @@ class LcmsAutoencoder:
 
         self.clusterer = LcmsClusterer(self.number_of_clusters,
                                        self.block_size, self.mz_split,
-                                       self.mz_min, verbose=self.verbose)
+                                       self.mz_min)
 
         self.set_output_directory(output_directory)
 

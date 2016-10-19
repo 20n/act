@@ -14,10 +14,10 @@ This is the primary control file.  Run new Deep processings from here.
 """
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("lcmsDirectory", help="The LCMS scan directory.")
-    parser.add_argument("experimental", help="List of names of experimental files.", nargs='*')
-    parser.add_argument("control", help="List of names of control files.", nargs='*')
-    parser.add_argument("outputDirectory", help="Where to save all intermediate and final files.")
+    parser.add_argument("--lcmsDirectory", help="The LCMS scan directory.")
+    parser.add_argument("--experimental", help="List of names of experimental files.", nargs='*')
+    parser.add_argument("--control", help="List of names of control files.", nargs='*')
+    parser.add_argument("--outputDirectory", help="Where to save all intermediate and final files.")
 
     parser.add_argument("--previousModelLocation", help="Location of a previously created model.")
 
