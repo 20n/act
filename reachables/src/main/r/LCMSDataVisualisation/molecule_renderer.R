@@ -1,6 +1,6 @@
 # Module for rendering molecule structures
 
-kMolStructureCacheFolder <- "/home/thomas/data/mol-structure-cache/"
+kMolStructureCacheFolder <- "mol-structure-cache"
 
 # Module server function
 moleculeRenderer <- function(input, output, session, inchi, height) {
