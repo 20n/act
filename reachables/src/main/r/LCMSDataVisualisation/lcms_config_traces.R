@@ -11,6 +11,7 @@ lcmsConfigTracesInput <- function(id, label = "LCMS config traces") {
     h3("Peak selection"),
     uiOutput(ns("ui.peaks")),
     em("Peak format is {mz-value} - {retention-time} - {rank-factor} - {molecular-mass (optional)}"),
+    em("Flags are appended to the peak description: \"F\" for formulae hits, \"S\" for structure hits"),
     checkboxInput(ns("has.mol.mass"), "Expect multiple m/z values per peak (-M option)", value = FALSE),
     uiOutput(ns("ui.rt.mz.scope")),
     plotParametersInput(ns("plot.parameters")),
