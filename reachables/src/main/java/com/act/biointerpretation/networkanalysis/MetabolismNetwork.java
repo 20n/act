@@ -1,6 +1,8 @@
 package com.act.biointerpretation.networkanalysis;
 
+import act.server.DBIterator;
 import act.server.MongoDB;
+import act.shared.Reaction;
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -143,13 +145,16 @@ public class MetabolismNetwork {
   }
 
   /**
-   * Load an edge into the network from a reaction in our reactions DB.
+   * Load all reactions from a given DB into the network.
    *
-   * @param db The DB to look in.
-   * @param rxnId The reaction ID.
+   * @param db The DB.
    */
-  public void loadEdgeFromReaction(MongoDB db, long rxnId) {
-    loadEdgeFromReaction(db, rxnId, new HashSet<String>());
+  public void loadAllEdgesFromDb(MongoDB db) {
+    DBIterator iterator = db.getIteratorOverReactions(true);
+    Reaction reaction;
+    while ((reaction = db.getNextReaction(iterator)) != null) {
+      this.loadEdgeFromReaction(db, reaction);
+    }
   }
 
   /**
@@ -157,14 +162,13 @@ public class MetabolismNetwork {
    * substrates or no products.
    *
    * @param db The DB to look in.
-   * @param rxnId The reaction.
+   * @param reaction The reaction.
    */
-  public void loadEdgeFromReaction(MongoDB db, long rxnId, Collection<String> orgs) {
-    NetworkEdge edge = NetworkEdge.buildEdgeFromReaction(db, rxnId);
+  public void loadEdgeFromReaction(MongoDB db, Reaction reaction) {
+    NetworkEdge edge = NetworkEdge.buildEdgeFromReaction(db, reaction);
     if (edge.getSubstrates().isEmpty() || edge.getProducts().isEmpty()) {
       return;
     }
-    orgs.forEach(edge::addOrg);
     addEdge(edge);
   }
 

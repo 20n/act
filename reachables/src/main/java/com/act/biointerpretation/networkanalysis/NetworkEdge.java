@@ -5,6 +5,7 @@ import act.shared.Reaction;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.collections4.CollectionUtils;
+import org.json.JSONObject;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -17,6 +18,8 @@ import java.util.stream.Collectors;
  * Represents an edge, or reaction, in the metabolism network
  */
 public class NetworkEdge {
+
+  private static final String ORG_FIELD = "organism";
 
   @JsonProperty("substrates")
   private List<String> substrates;
@@ -54,8 +57,7 @@ public class NetworkEdge {
     this(substrates, products, new HashSet<Integer>(), new HashSet<String>(), new HashSet<String>());
   }
 
-  public static NetworkEdge buildEdgeFromReaction(MongoDB db, long rxnId) {
-    Reaction reaction = db.getReactionFromUUID(rxnId);
+  public static NetworkEdge buildEdgeFromReaction(MongoDB db, Reaction reaction) {
     List<Long> substrateIds = Arrays.asList(reaction.getSubstrates());
     List<String> substrates = substrateIds.stream().map(id -> db.getChemicalFromChemicalUUID(id).getInChI())
         .collect(Collectors.toList());
@@ -66,6 +68,13 @@ public class NetworkEdge {
 
     NetworkEdge edge = new NetworkEdge(substrates, products);
     edge.addReactionId(reaction.getUUID());
+
+    for (JSONObject protein : reaction.getProteinData()) {
+      if (protein.has(ORG_FIELD)) {
+        edge.addOrg(db.getOrganismNameFromId(protein.getLong(ORG_FIELD)));
+      }
+    }
+
     return edge;
   }
 

@@ -27,42 +27,23 @@ public class NetworkBuilder implements JavaRunnable {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(NetworkBuilder.class);
 
-  private static final boolean FAIL_ON_INVALID_INPUT = false;
-
-  private Optional<File> seedNetwork;
+  private final Optional<File> seedNetwork;
 
   private final List<File> corpusFiles;
-
-  private final List<File> reactionIdFiles;
-  private final MongoDB db;
+  private final Optional<MongoDB> db;
 
   private final File outputFile;
   // True if the builder should read in every valid input file even if some inputs are invalid.
   // False if builder should crash on even a single invalid input file.
   private final boolean skipInvalidInputs;
 
-  public NetworkBuilder(List<File> corpusFiles, List<File> reactionIdFile, MongoDB db, File outputFile) {
-    this(null, corpusFiles, reactionIdFile, db, outputFile, FAIL_ON_INVALID_INPUT);
-  }
-
   public NetworkBuilder(
-      List<File> corpusFiles, List<File> reactionIdFile, MongoDB db, File outputFile, boolean skipInvalidInputs) {
-    this(null, corpusFiles, reactionIdFile, db, outputFile, skipInvalidInputs);
-  }
-
-  public NetworkBuilder(
-      File seedNetwork, List<File> corpusFiles,
-      List<File> reactionIdFiles, MongoDB db, File outputFile, boolean skipInvalidInputs) {
-    this.seedNetwork = Optional.ofNullable(seedNetwork);
+      Optional<File> seedNetwork, List<File> corpusFiles, MongoDB db, File outputFile, boolean skipInvalidInputs) {
+    this.seedNetwork = seedNetwork;
     this.corpusFiles = corpusFiles;
-    this.reactionIdFiles = reactionIdFiles;
-    this.db = db;
+    this.db = Optional.ofNullable(db);
     this.outputFile = outputFile;
     this.skipInvalidInputs = skipInvalidInputs;
-  }
-
-  public void setBaseNetwork(File baseNetwork) {
-    this.seedNetwork = Optional.of(baseNetwork);
   }
 
   @Override
@@ -74,9 +55,6 @@ public class NetworkBuilder implements JavaRunnable {
       FileChecker.verifyInputFile(seedNetwork.get());
     }
     for (File file : corpusFiles) {
-      FileChecker.verifyInputFile(file);
-    }
-    for (File file : reactionIdFiles) {
       FileChecker.verifyInputFile(file);
     }
     FileChecker.verifyAndCreateOutputFile(outputFile);
@@ -95,20 +73,6 @@ public class NetworkBuilder implements JavaRunnable {
       }
     }
 
-    // Read in reaction ID files
-    List<Iterator<Pair<Long, List<String>>>> reactionInfoList = new ArrayList<>();
-    for (File file : reactionIdFiles) {
-      try {
-        reactionInfoList.add(getReactionInfoFromFile(file));
-      } catch (IOException e) {
-        LOGGER.warn("Couldn't read file of name %s as list of reaction IDs.", file.getName());
-        if (!skipInvalidInputs) {
-          throw new IOException("Couldn't read reaction ID file " + file.getName() + ": " + e.getMessage());
-        }
-      }
-    }
-    LOGGER.info("Successfully read in input corpus files and reaction id files.  Building network.");
-
     // Set up network object, and load predictions and reactions into network edges.
     MetabolismNetwork network;
     if (seedNetwork.isPresent()) {
@@ -116,66 +80,16 @@ public class NetworkBuilder implements JavaRunnable {
     } else {
       network = new MetabolismNetwork();
     }
+    LOGGER.info("Created starting network! Loading edges from DB.");
+
+    db.ifPresent(network::loadAllEdgesFromDb);
+    LOGGER.info("Done loading edges from DB, if any. Loading from corpuses.");
 
     corpuses.forEach(corpus -> network.loadPredictions(corpus));
-    reactionInfoList.forEach(it -> it.forEachRemaining(pair ->
-        network.loadEdgeFromReaction(db, pair.getLeft(), pair.getRight())));
-    LOGGER.info("Loaded predictions and reactions. Writing network to file.");
+    LOGGER.info("Done loading predictions from input corpuses. Writing network to file.");
 
     // Write network out
     network.writeToJsonFile(outputFile);
     LOGGER.info("Complete! Network has been written to %s", outputFile.getAbsolutePath());
   }
-
-  /**
-   * Gets a list of reactions and organisms from file.  The file format assumed for each line of the file is
-   * RXNID TAB ORG1 TAB ORG2 TAB ...
-   * Thus the return is an iterator of pairs, where each pair contains first the reaction ID, and then the list of
-   * organisms.
-   *
-   * @param file The file to read.
-   * @return An iterator over the reactions in the file, with org info.
-   * @throws IOException
-   */
-  private Iterator<Pair<Long, List<String>>> getReactionInfoFromFile(File file) throws IOException {
-
-    BufferedReader reader = new BufferedReader(new FileReader(file));
-
-    return new Iterator<Pair<Long, List<String>>>() {
-      String nextLine;
-
-      @Override
-      public boolean hasNext() {
-        if (nextLine == null) {
-          try {
-            nextLine = reader.readLine();
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-        }
-        return nextLine != null;
-      }
-
-      @Override
-      public Pair<Long, List<String>> next() {
-        // This call populates nextLine field, don't throw it away!
-        if (!hasNext()) {
-          throw new NoSuchElementException("Iterator has no more elements.");
-        }
-
-        String rxnInfo = nextLine;
-        nextLine = null;
-
-        String[] words = rxnInfo.split("\t");
-        Long rxnId = Long.parseLong(words[0]);
-        List<String> orgs = new ArrayList<>();
-        for (int i = 1; i < words.length; i++) {
-          orgs.add(words[i]);
-        }
-
-        return new ImmutablePair<>(rxnId, orgs);
-      }
-    };
-  }
-
 }

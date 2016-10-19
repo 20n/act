@@ -1,6 +1,7 @@
 package com.act.biointerpretation.networkanalysis
 
 import java.io.File
+import java.util.Optional
 
 import act.server.MongoDB
 import com.act.workflow.tool_manager.jobs.Job
@@ -105,8 +106,8 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility with Mong
       mongoDb = connectToMongoDatabase(cl.getOptionValue(OPTION_MONGO_DB))
     }
 
-    val networkBuilder = new NetworkBuilder(inputCorpuses.asJava, reactionFiles.asJava, mongoDb, outputFile, true)
-    baseNetwork.foreach(f => networkBuilder.setBaseNetwork(f))
+    val networkBuilder =
+      new NetworkBuilder(Optional.ofNullable(baseNetwork.orNull), inputCorpuses.asJava, mongoDb, outputFile, true)
     headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("network builder", networkBuilder))
 
     val networkStats = new NetworkStats(outputFile)
