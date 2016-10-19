@@ -11,6 +11,7 @@ lcmsConfigTracesInput <- function(id, label = "LCMS config traces") {
     h3("Peak selection"),
     uiOutput(ns("ui.peaks")),
     em("Peak format is {mz-value} - {retention-time} - {rank-factor} - {molecular-mass (optional)}"),
+    em("Flags are appended to the peak description: \"F\" for formulae hits, \"S\" for structure hits"),
     checkboxInput(ns("has.mol.mass"), "Expect multiple m/z values per peak (-M option)", value = FALSE),
     uiOutput(ns("ui.rt.mz.scope")),
     plotParametersInput(ns("plot.parameters")),
@@ -63,14 +64,16 @@ lcmsConfigTraces <- function(input, output, session) {
       mutate_each(funs(round(.,2)), mz, rt) %>%
       # rank_metric_signif is simply rank_metric with 3 significant digits
       mutate(rank_metric_signif = signif(rank_metric, 3)) %>%
-      arrange(desc(rank_metric_signif))
+      arrange(desc(rank_metric_signif)) %>%
+      # add a flag character column: "F" for formulae matches, "S" for structures matches, "FS" for both, "" for none.
+      mutate(flag = paste0(ifelse(matching_formulae != -1, "F", ""), ifelse(matching_inchis != -1, "S", "")))
     # add molecular mass in peak definition if user said so (checkbox)
     if (has.mol.mass()) {
       peaks <- peaks %>%
         mutate_each(funs(round(.,2)), moleculeMass)
-      labels <- apply(peaks[, c("mz", "rt", "rank_metric_signif", "moleculeMass")], 1, function(x) paste0(x, collapse = kPeakDisplaySep))
+      labels <- apply(peaks[, c("mz", "rt", "rank_metric_signif", "moleculeMass", "flag")], 1, function(x) paste0(x, collapse = kPeakDisplaySep))
     } else {
-      labels <- apply(peaks[, c("mz", "rt", "rank_metric_signif")], 1, function(x) paste0(x, collapse = kPeakDisplaySep))
+      labels <- apply(peaks[, c("mz", "rt", "rank_metric_signif", "flag")], 1, function(x) paste0(x, collapse = kPeakDisplaySep))
     }
     selectizeInput(ns("peaks"), "Choose a peak to visualize", choices = unname(labels), 
                    # maxOptions is the number of peaks to show in the drop-down menu

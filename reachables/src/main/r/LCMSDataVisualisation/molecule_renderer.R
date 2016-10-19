@@ -1,6 +1,10 @@
 # Module for rendering molecule structures
 
-kMolStructureCacheFolder <- "/home/thomas/data/mol-structure-cache/"
+# mol-structure-cache is a symlink, in the app's directory, pointing to the cache folder.
+# You will find such cache folders on speakeasy and anchor at /home/thomas/data/mol-structure-cache/
+# Prior to running the app, please create the appropriate symlink with
+# > ln -s absolute-path-to-cache-folder mol-structure-cache/
+kMolStructureCacheFolder <- "mol-structure-cache/"
 
 # Module server function
 moleculeRenderer <- function(input, output, session, inchi, height) {
