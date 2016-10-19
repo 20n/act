@@ -18,7 +18,7 @@ trait ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities with Query
                                                     (reactionIds: List[Long]): List[Option[MoleculeReaction]] = {
     querySubstrateAndProductInchisByReactionIds(mongoConnection)(reactionIds).map(elem => {
       if (elem.isDefined) {
-        Option(inchiToMolecule(elem.get))
+        Option(inchiReactionToMoleculeReaction(elem.get))
       } else {
         None
       }
@@ -39,18 +39,25 @@ trait ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities with Query
       return List()
     }
 
-    val chemicalQuery = getChemicalsStringById(mongoConnection) _
-    val moleculeMap: List[Option[InchiReaction]] = dbReactionIdsIterator.get.toStream.map(result => {
+    val rxnList = dbReactionIdsIterator.get.toList
+
+    // Get all chemicals in one query
+    val chemicals: List[Long] =
+      rxnList.flatMap(x => x.getProducts.toList.map(_.toLong) ::: x.getSubstrates.toList.map(_.toLong)).distinct
+    val chemicalInchis: Map[Long, Option[String]] = getChemicalsStringsByIds(mongoConnection)(chemicals)
+
+    val moleculeMap: List[Option[InchiReaction]] = rxnList.toStream.map(result => {
       val reactionId = result.getUUID
 
       val substrateMolecules: List[Option[String]] = result.getSubstrates.toList.flatMap(substrateId => {
-        List.fill(result.getSubstrateCoefficient(substrateId))(chemicalQuery(substrateId, MoleculeFormat.inchi))
+        List.fill(result.getSubstrateCoefficient(substrateId))(chemicalInchis(substrateId))
       })
 
       val productMolecules: List[Option[String]] = result.getProducts.toList.flatMap(productId => {
-        List.fill(result.getProductCoefficient(productId))(chemicalQuery(productId, MoleculeFormat.inchi))
+        List.fill(result.getProductCoefficient(productId))(chemicalInchis(productId))
       })
 
+      // This drops FAKE and Abstract InChIs.
       if (substrateMolecules.forall(_.isDefined) && productMolecules.forall(_.isDefined)) {
         Option(InchiReaction(reactionId.toString.toInt, substrateMolecules.map(_.get), productMolecules.map(_.get)))
       } else {
@@ -74,7 +81,7 @@ trait ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities with Query
     Option(maybeIterator.get.toIterator)
   }
 
-  implicit def inchiToMolecule(inchiReaction: InchiReaction): MoleculeReaction = {
+  implicit def inchiReactionToMoleculeReaction(inchiReaction: InchiReaction): MoleculeReaction = {
     MoleculeReaction(inchiReaction.id, inchiReaction.substrates, inchiReaction.products)
   }
 

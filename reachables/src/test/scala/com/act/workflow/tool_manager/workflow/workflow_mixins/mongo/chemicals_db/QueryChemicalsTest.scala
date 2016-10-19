@@ -12,7 +12,7 @@ import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
 
 import scala.collection.JavaConverters._
 
-class QueryChemicalsTest extends FlatSpec with Matchers with TimeLimitedTests with BeforeAndAfterEach{
+class QueryChemicalsTest extends FlatSpec with Matchers with TimeLimitedTests with BeforeAndAfterEach {
   override val defaultTestSignaler = ThreadSignaler
   val timeLimit = 15 seconds
 
@@ -60,9 +60,9 @@ class QueryChemicalsTest extends FlatSpec with Matchers with TimeLimitedTests wi
   "QueryChemicals" should "be able to query multiple chemical IDs at one time and " +
     "return an ordered result of InChIs." in {
     val multipleInchiQuery = TestObject.getChemicalsStringsByIds(mockDb.get)(List(0L, 1L))
-    multipleInchiQuery.length should be(2)
-    multipleInchiQuery(0) should be(Some(chemicals(0L)))
-    multipleInchiQuery(1) should be(Some(chemicals(1L)))
+    multipleInchiQuery.size should be(2)
+    multipleInchiQuery(0L) should be(Some(chemicals(0L)))
+    multipleInchiQuery(1L) should be(Some(chemicals(1L)))
   }
 
   "QueryChemicals" should "be able to import a molecule of the same format when implicitly supplied " in {
@@ -92,16 +92,16 @@ class QueryChemicalsTest extends FlatSpec with Matchers with TimeLimitedTests wi
   }
 
   "QueryChemicals" should "be able to import multiple molecules at one time" in {
-    TestObject.getMoleculesById(mockDb.get)(List(0L, 1L)) should contain
+    TestObject.getMoleculesById(mockDb.get)(List(0L, 1L)).values should contain
     Some(MoleculeImporter.importMolecule(chemicals(0L), MoleculeFormat.inchi))
-    TestObject.getMoleculesById(mockDb.get)(List(0L, 1L)) should contain
+    TestObject.getMoleculesById(mockDb.get)(List(0L, 1L)).values should contain
     Some(MoleculeImporter.importMolecule(chemicals(1L), MoleculeFormat.inchi))
   }
 
   "QueryChemicals" should "return a heterogeneous list if only a subset of the molecules can be imported" in {
-    TestObject.getMoleculesById(mockDb.get)(List(0L, 3L)) should contain
+    TestObject.getMoleculesById(mockDb.get)(List(0L, 3L)).values should contain
     Some(MoleculeImporter.importMolecule(chemicals(0L), MoleculeFormat.inchi))
-    TestObject.getMoleculesById(mockDb.get)(List(0L, 3L)) should contain (None)
+    TestObject.getMoleculesById(mockDb.get)(List(0L, 3L)).values should contain (None)
   }
 
   object TestObject extends QueryChemicals {}
