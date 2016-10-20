@@ -102,20 +102,27 @@ public class ManisaFormatting {
         Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(inchi), MS1.IonMode.POS);
         Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
 
-        List<com.act.analysis.similarity.Peak> peaks = new ArrayList<>();
+        List<VizRepresentation.VizPeak> peaks = new ArrayList<>();
         for (Map.Entry<String, Double> metlinMass : metlinMasses.entrySet()) {
-          com.act.analysis.similarity.Peak peak = new com.act.analysis.similarity.Peak(-1.0, -1.0, -1.0, -1.0, retentionTime, 0.02, metlinMass.getValue(), 5.0);
+          VizRepresentation.VizPeak peak = new VizRepresentation.VizPeak(-1.0, -1.0, -1.0, -1.0, retentionTime, 0.02, metlinMass.getValue(), 5.0);
           peaks.add(peak);
         }
 
         List<ScanFile> scanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(db, plateId, plateRow, plateCol);
         String scanFile = scanFiles.get(0).getFilename().split("/")[scanFiles.get(0).getFilename().split("/").length - 1];
+        VizRepresentation.VizScanFiles.FileName fileName = new VizRepresentation.VizScanFiles.FileName(scanFile);
+
+        List<VizRepresentation.VizScanFiles.FileName> fileNames = new ArrayList<>();
+        fileNames.add(fileName);
+
+        VizRepresentation.VizScanFiles vizScanFiles = new VizRepresentation.VizScanFiles(fileNames);
+
         List<String> scanFilesForViz = new ArrayList<>();
         scanFilesForViz.add(scanFile);
 
-        VizLayout layout = new VizLayout(includeIons.size(), 0);
+        VizRepresentation.VizLayout layout = new VizRepresentation.VizLayout(includeIons.size(), 0);
 
-        VizRepresentation representation = new VizRepresentation(scanFilesForViz, peaks, layout);
+        VizRepresentation representation = new VizRepresentation(vizScanFiles, peaks, layout);
 
         String path = "/mnt/shared-data/Vijay/manisa/";
         try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(path + row.get("Molecule") + ".json"))) {
