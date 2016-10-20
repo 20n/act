@@ -1,14 +1,13 @@
 package com.act.biointerpretation.networkanalysis.GraphViz;
 
 /**
- * A class to represent an edge in a GraphViz graph.
+ * An edge in a GraphViz graph.
  * The edge knows about its source node, sink node, color, and style, and can write out the appropriate DOT language
  * string to add itself to a graph.
- * TODO: Add support for variable node formatting.
  */
 public class DotEdge {
   private final String source;
-  private String sink;
+  private final String sink;
   private EdgeColor color;
   private EdgeStyle style;
 
@@ -24,7 +23,7 @@ public class DotEdge {
    *
    * @return The string.
    */
-  public String getDotLine() {
+  public String getDotString() {
     return new StringBuilder()
         .append(source)
         .append("->")
@@ -45,30 +44,40 @@ public class DotEdge {
   }
 
   /**
-   * Represents the possible colors of an edge.
+   * Possible colors of an edge.
    */
   public enum EdgeColor {
-    BLACK(""),
-    RED("[color=red]");
+    BLACK(),
+    RED("red"),
+    GREEN("green"),
+    YELLOW("yellow");
 
-    private String stringRep;
+    private final String stringRep;
+
+    EdgeColor() {
+      stringRep = "";
+    }
 
     EdgeColor(String color) {
-      this.stringRep = color;
+      this.stringRep = "[color=" + color + "]";
     }
   }
 
   /**
-   * Represents possible styles of an edge.
+   * Possible styles of an edge.
    */
   public enum EdgeStyle {
-    DEFAULT(""),
-    DOTTED("[style=dotted]");
+    DEFAULT(),
+    DOTTED("dotted");
 
     private String stringRep;
 
+    EdgeStyle() {
+      this.stringRep = "";
+    }
+
     EdgeStyle(String style) {
-      this.stringRep = style;
+      this.stringRep = "[style=" + style + "]";
     }
   }
 }

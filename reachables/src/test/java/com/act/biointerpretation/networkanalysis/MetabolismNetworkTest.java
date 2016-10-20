@@ -19,6 +19,7 @@ public class MetabolismNetworkTest {
   private static final String METABOLITE_3 = "C";
   private static final String METABOLITE_4 = "D";
   private static final String METABOLITE_5 = "E";
+  private static final String METABOLITE_6 = "F";
 
   private static final Integer RXN_1 = 100;
   private static final Integer RXN_2 = 102;
@@ -47,6 +48,10 @@ public class MetabolismNetworkTest {
     assertTrue("Edge's RO info should be empty", edge.getProjectorNames().isEmpty());
   }
 
+  /**
+   * Tests adding two edges with same substrates and products. Verifies that the edge is not duplicated,
+   * but the reaction and projection info from the edges is merged.
+   */
   @Test
   public void testAddNewRedundantEdge() {
     // Arrange
@@ -68,7 +73,6 @@ public class MetabolismNetworkTest {
 
     NetworkEdge edge = network.getEdges().iterator().next();
     assertEquals("Edge should have one substrate", 1, edge.getSubstrates().size());
-    ;
     assertEquals("Edge's substrate should be METABOLITE_1", METABOLITE_1, edge.getSubstrates().get(0));
     assertEquals("Edge should have one product", 1, edge.getProducts().size());
     assertEquals("Edge's product should be METABOLITE_2", METABOLITE_2, edge.getProducts().get(0));
@@ -118,7 +122,7 @@ public class MetabolismNetworkTest {
   }
 
   /**
-   * Test precursor subgraph level 1.
+   * Test precursor report of 1 level.
    * Adds one relevant inedge, one irrelevant outedge of the precursor, and two level 2 precursors.
    * Test verifies that only the substrates of the first inedge are included in the subgraph.
    */
@@ -133,40 +137,49 @@ public class MetabolismNetworkTest {
     NetworkNode e = network.getNode(METABOLITE_5);
 
     // Act
-    MetabolismNetwork precursors = network.getPrecursorSubgraph(e, 1);
+    PrecursorReport report = network.getPrecursorReport(e, 1);
 
     // Assert
-    assertEquals("Subgraph should contain three nodes", 3, precursors.getNodes().size());
-    assertEquals("Subgraph should contain one edge", 1, precursors.getEdges().size());
+    assertEquals("Report has correct target", e.getMetabolite(), report.getTarget());
 
-    assertTrue("Subgraph should contain query node", precursors.getNodeOption(METABOLITE_5).isPresent());
-    assertTrue("Subgraph should contain first precursor", precursors.getNodeOption(METABOLITE_3).isPresent());
-    assertTrue("Subgraph should contain second precursor", precursors.getNodeOption(METABOLITE_4).isPresent());
+    MetabolismNetwork precursorNetwork = report.getNetwork();
+    assertEquals("Subgraph should contain three nodes", 3, precursorNetwork.getNodes().size());
+    assertEquals("Subgraph should contain one edge", 1, precursorNetwork.getEdges().size());
+
+    assertTrue("Subgraph should contain query node", precursorNetwork.getNodeOption(METABOLITE_5).isPresent());
+    assertTrue("Subgraph should contain first precursor", precursorNetwork.getNodeOption(METABOLITE_3).isPresent());
+    assertTrue("Subgraph should contain second precursor", precursorNetwork.getNodeOption(METABOLITE_4).isPresent());
   }
 
-
+  /**
+   * Test precursor report of 2 levels.
+   * Adds one relevant inedge, one irrelevant outedge of a precursor, and two level 2 precursors.
+   * Test verifies that every metabolite except METABOLITE 6 is reported.
+   */
   @Test
   public void testPrecursorSubgraphN2() {
 
     // Arrange
     MetabolismNetwork network = new MetabolismNetwork();
     network.addEdge(new NetworkEdge(Arrays.asList(METABOLITE_3, METABOLITE_4), Arrays.asList(METABOLITE_5)));
+    network.addEdge(new NetworkEdge(Arrays.asList(METABOLITE_3, METABOLITE_4), Arrays.asList(METABOLITE_6)));
     network.addEdge(new NetworkEdge(Arrays.asList(METABOLITE_1), Arrays.asList(METABOLITE_3)));
     network.addEdge(new NetworkEdge(Arrays.asList(METABOLITE_2), Arrays.asList(METABOLITE_3)));
     NetworkNode e = network.getNode(METABOLITE_5);
 
     // Act
-    MetabolismNetwork precursors = network.getPrecursorSubgraph(e, 2);
+    PrecursorReport report = network.getPrecursorReport(e, 2);
 
     // Assert
-    assertEquals("Subgraph should contain five nodes", 5, precursors.getNodes().size());
-    assertEquals("Subgraph should contain three edges", 3, precursors.getEdges().size());
+    MetabolismNetwork precursorNetwork = report.getNetwork();
+    assertEquals("Subgraph should contain five nodes", 5, precursorNetwork.getNodes().size());
+    assertEquals("Subgraph should contain three edges", 3, precursorNetwork.getEdges().size());
 
-    assertTrue("Subgraph should contain query node", precursors.getNodeOption(METABOLITE_5).isPresent());
-    assertTrue("Subgraph should contain first n1 precursor", precursors.getNodeOption(METABOLITE_3).isPresent());
-    assertTrue("Subgraph should contain second n1 precursor", precursors.getNodeOption(METABOLITE_4).isPresent());
-    assertTrue("Subgraph should contain second n2 precursor", precursors.getNodeOption(METABOLITE_1).isPresent());
-    assertTrue("Subgraph should contain second n2 precursor", precursors.getNodeOption(METABOLITE_2).isPresent());
+    assertTrue("Subgraph should contain query node", precursorNetwork.getNodeOption(METABOLITE_5).isPresent());
+    assertTrue("Subgraph should contain first n1 precursor", precursorNetwork.getNodeOption(METABOLITE_3).isPresent());
+    assertTrue("Subgraph should contain second n1 precursor", precursorNetwork.getNodeOption(METABOLITE_4).isPresent());
+    assertTrue("Subgraph should contain second n2 precursor", precursorNetwork.getNodeOption(METABOLITE_1).isPresent());
+    assertTrue("Subgraph should contain second n2 precursor", precursorNetwork.getNodeOption(METABOLITE_2).isPresent());
   }
 
 }

@@ -124,9 +124,9 @@ public class MetabolismNetwork {
    *
    * @param startNode The node to explain.
    * @param numSteps The number of steps back from the node to search.
-   * @return A subnetwork representing the precursors of the given starting metabolite.
+   * @return A report representing the precursors of the given starting metabolite.
    */
-  public MetabolismNetwork getPrecursorSubgraph(NetworkNode startNode, int numSteps) {
+  public PrecursorReport getPrecursorReport(NetworkNode startNode, int numSteps) {
     if (numSteps <= 0) {
       throw new IllegalArgumentException("Precursor graph is only well-defined for numSteps > 0");
     }
@@ -141,7 +141,7 @@ public class MetabolismNetwork {
       frontier = frontier.stream().flatMap(node -> getPrecursors(node).stream()).collect(Collectors.toSet());
     }
 
-    return subgraph;
+    return new PrecursorReport(startNode.getMetabolite(), subgraph);
   }
 
   /**

@@ -12,14 +12,14 @@ import org.apache.logging.log4j.LogManager
 import scala.collection.JavaConverters._
 
 /**
-  * A workflow to read in a metabolism network from file, and do precursor calculations over it with respect to a set
-  * of input inchis.
+  * Read in a metabolism network from file, and do precursor calculations over it with respect to a set
+  * of target inchis.
   */
 class PrecursorAnalysisFlow extends Workflow with WorkingDirectoryUtility {
 
   val logger = LogManager.getLogger(getClass.getName)
 
-  override val HELP_MESSAGE = "Workflow to read in a network and get statistics about it."
+  override val HELP_MESSAGE = "Workflow for precursor analyses."
 
   private val OPTION_WORKING_DIRECTORY = "w"
   private val OPTION_INPUT_NETWORK = "i"
@@ -49,7 +49,7 @@ class PrecursorAnalysisFlow extends Workflow with WorkingDirectoryUtility {
 
       CliOption.builder(OPTION_NUM_STEPS).
         hasArg().
-        desc("The number of precursors to return").
+        desc("The number of levels of precursors to return").
         required,
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
@@ -74,8 +74,6 @@ class PrecursorAnalysisFlow extends Workflow with WorkingDirectoryUtility {
     verifyInputFile(inputNetworkFile)
 
     val numSteps = Integer.parseInt(cl.getOptionValue(OPTION_NUM_STEPS))
-
-    var i = 0
 
     val precursorAnalysis = new PrecursorAnalysis(
       inputNetworkFile, cl.getOptionValues(OPTION_TARGET_INCHIS).toList.asJava, numSteps, workingDir)

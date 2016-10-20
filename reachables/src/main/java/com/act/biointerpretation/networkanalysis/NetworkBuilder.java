@@ -4,24 +4,18 @@ import act.server.MongoDB;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
 import com.act.jobs.FileChecker;
 import com.act.jobs.JavaRunnable;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 
 /**
- * Runnable class to build a metabolic network from a set of prediction corpuses.
- * For maximum flexibility
+ * Builds a metabolic network from any of several sources. Can take edges from an existing network,
+ * a database of reactions, or prediction corpuses.
  */
 public class NetworkBuilder implements JavaRunnable {
 
@@ -33,13 +27,14 @@ public class NetworkBuilder implements JavaRunnable {
   private final Optional<MongoDB> db;
 
   private final File outputFile;
+
   // True if the builder should read in every valid input file even if some inputs are invalid.
   // False if builder should crash on even a single invalid input file.
   private final boolean skipInvalidInputs;
 
   public NetworkBuilder(
-      Optional<File> seedNetwork, List<File> corpusFiles, MongoDB db, File outputFile, boolean skipInvalidInputs) {
-    this.seedNetwork = seedNetwork;
+      File seedNetwork, List<File> corpusFiles, MongoDB db, File outputFile, boolean skipInvalidInputs) {
+    this.seedNetwork = Optional.ofNullable(seedNetwork);
     this.corpusFiles = corpusFiles;
     this.db = Optional.ofNullable(db);
     this.outputFile = outputFile;

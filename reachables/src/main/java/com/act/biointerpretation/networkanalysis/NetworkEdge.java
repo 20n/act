@@ -2,6 +2,7 @@ package com.act.biointerpretation.networkanalysis;
 
 import act.server.MongoDB;
 import act.shared.Reaction;
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.ReactionKeywords;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.collections4.CollectionUtils;
@@ -19,7 +20,7 @@ import java.util.stream.Collectors;
  */
 public class NetworkEdge {
 
-  private static final String ORG_FIELD = "organism";
+  private static final String ORG_FIELD = ReactionKeywords.ORGANISM$.MODULE$.toString();
 
   @JsonProperty("substrates")
   private List<String> substrates;

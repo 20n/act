@@ -7,6 +7,7 @@ import java.util.List;
 
 /**
  * Represents a GraphViz graph.
+ * TODO: Add support for variable node formatting.
  */
 public class DotGraph {
 
@@ -29,7 +30,7 @@ public class DotGraph {
   public void writeGraphToStream(OutputStreamWriter stream) throws IOException {
     stream.write("digraph G {\n");
     for (DotEdge edge : edges) {
-      stream.write(edge.getDotLine());
+      stream.write(edge.getDotString());
     }
     stream.write("}\n");
     stream.close();

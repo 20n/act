@@ -19,7 +19,7 @@ import java.util.Optional;
  */
 public class PrecursorAnalysis implements JavaRunnable {
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(NetworkBuilder.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(PrecursorAnalysis.class);
 
   private final File networkInput;
   private final List<String> targets;
@@ -49,13 +49,11 @@ public class PrecursorAnalysis implements JavaRunnable {
 
     Map<String, Integer> targetIdMap = new HashMap<>();
     int id = 0;
-
     // Do precursor analyses on each target.  Give each found target an ID so we can track which report is which.
     for (String target : targets) {
       Optional<NetworkNode> targetNode = network.getNodeOption(target);
       if (targetNode.isPresent()) {
-        MetabolismNetwork precursorNetwork = network.getPrecursorSubgraph(targetNode.get(), numSteps);
-        PrecursorReport report = new PrecursorReport(targetNode.get().getMetabolite(), precursorNetwork);
+        PrecursorReport report = network.getPrecursorReport(targetNode.get(), numSteps);
         File outputFile = new File(outputDirectory, "precursors_target_" + id);
         report.writeToJsonFile(outputFile);
         targetIdMap.put(target, id);

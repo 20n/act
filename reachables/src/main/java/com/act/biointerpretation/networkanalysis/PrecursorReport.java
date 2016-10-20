@@ -8,11 +8,10 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
- * Class to group all the data relating to a single precursor report
+ * Group all the data relating to a single precursor report
+ * TODO: add LCMS data to the report
  */
 public class PrecursorReport {
 
@@ -24,29 +23,12 @@ public class PrecursorReport {
   @JsonProperty("network")
   MetabolismNetwork precursors;
 
-  @JsonProperty("lcms_results")
-  Map<Metabolite, Boolean> lcmsResults;
-
-  public PrecursorReport() {
-    this(null, null, new HashMap<>());
-  }
-
-  public PrecursorReport(Metabolite target, MetabolismNetwork precursors) {
-    this(target, precursors, new HashMap<>());
-  }
-
   @JsonCreator
   public PrecursorReport(
       @JsonProperty("target") Metabolite target,
-      @JsonProperty("network") MetabolismNetwork precursors,
-      @JsonProperty("lcms_results") Map<Metabolite, Boolean> lcmsResults) {
+      @JsonProperty("network") MetabolismNetwork precursors) {
     this.target = target;
     this.precursors = precursors;
-    this.lcmsResults = lcmsResults;
-  }
-
-  public void populateLcmsResults() {
-
   }
 
   public Metabolite getTarget() {
@@ -63,10 +45,7 @@ public class PrecursorReport {
     }
   }
 
-  public void loadFromJsonFile(File inputFile) throws IOException {
-    PrecursorReport template = OBJECT_MAPPER.readValue(inputFile, PrecursorReport.class);
-    this.target = template.target;
-    this.precursors = template.precursors;
-    this.lcmsResults = template.lcmsResults;
+  public static PrecursorReport readFromJsonFile(File inputFile) throws IOException {
+    return OBJECT_MAPPER.readValue(inputFile, PrecursorReport.class);
   }
 }

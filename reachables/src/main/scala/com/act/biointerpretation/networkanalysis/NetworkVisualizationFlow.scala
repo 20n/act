@@ -2,7 +2,7 @@ package com.act.biointerpretation.networkanalysis
 
 import java.io.File
 
-import com.act.biointerpretation.networkanalysis.GraphViz.PrecursorVizBuilder
+import com.act.biointerpretation.networkanalysis.GraphViz.{DotEdge, PrecursorReportVisualizer}
 import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.tool_wrappers.JavaJobWrapper
 import com.act.workflow.tool_manager.workflow.Workflow
@@ -18,7 +18,7 @@ class NetworkVisualizationFlow extends Workflow with WorkingDirectoryUtility {
 
   private val OPTION_INPUT_NETWORK = "i"
   private val OPTION_OUTPUT_PATH = "o"
-  private val OPTION_ORG_STRING = "s"
+  private val OPTION_ORG_STRINGS = "s"
 
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -33,9 +33,11 @@ class NetworkVisualizationFlow extends Workflow with WorkingDirectoryUtility {
         desc("The path to write the output").
         required,
 
-      CliOption.builder(OPTION_ORG_STRING).
+      CliOption.builder(OPTION_ORG_STRINGS).
         hasArg.
-        desc("A string representing the organism of interest. Edges with orgs containing this string are colored red."),
+        desc(
+          """One or more strings representing organisms of interest. Edges with orgs containing
+            |these strings are colored in red.""".stripMargin),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -55,13 +57,15 @@ class NetworkVisualizationFlow extends Workflow with WorkingDirectoryUtility {
     val outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH))
     verifyOutputFile(outputFile)
 
-    val networkViz = new PrecursorVizBuilder(inputNetworkFile, outputFile)
-
-    if (cl.hasOption(OPTION_ORG_STRING)) {
-      networkViz.setOrgOfInterest(cl.getOptionValue(OPTION_ORG_STRING))
+    val networkViz = new PrecursorReportVisualizer()
+    if (cl.hasOption(OPTION_ORG_STRINGS)) {
+      for (x <- cl.getOptionValues(OPTION_ORG_STRINGS)) {
+        networkViz.addOrgOfInterest(x, DotEdge.EdgeColor.RED)
+      }
     }
 
-    headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("graphViz", networkViz))
+    val runnableViz = networkViz.getRunner(inputNetworkFile, outputFile)
+    headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("graphViz", runnableViz))
     headerJob
   }
 }
