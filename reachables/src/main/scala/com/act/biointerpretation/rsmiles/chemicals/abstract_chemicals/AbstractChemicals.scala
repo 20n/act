@@ -36,7 +36,7 @@ object AbstractChemicals {
        Convert from DB Object => Smarts and return that.
        Flatmap as Parse Db object returns None if an error occurs (Just filter out the junk)
     */
-    val parseDbObjectInFormat: (DBObject) => Option[(Long, ChemicalInformation)] = parseDbObject(moleculeFormat) _
+    val parseDbObjectInFormat: (DBObject) => Option[(Long, ChemicalInformation)] = parseDbObject(mongoDb, moleculeFormat) _
     val goodChemicalIds: ParMap[Long, ChemicalInformation] = result.flatMap(
       dbResponse => parseDbObjectInFormat(dbResponse)).toMap
 
@@ -45,12 +45,15 @@ object AbstractChemicals {
     goodChemicalIds
   }
 
-  private def parseDbObject(moleculeFormat: MoleculeFormat.MoleculeFormatType)(ob: DBObject): Option[(Long, ChemicalInformation)] = {
+  private def parseDbObject(mongoDB: MongoDB, moleculeFormat: MoleculeFormat.MoleculeFormatType)
+                           (ob: DBObject): Option[(Long, ChemicalInformation)] = {
     /*
       Type conversions from DB objects
      */
-    val chemicalId: Long = ob.get(ChemicalKeywords.ID.toString).asInstanceOf[Long]
-    val smiles: String = ob.get(ChemicalKeywords.SMILES.toString).asInstanceOf[String]
+    val chemical = mongoDB.convertDBObjectToChemical(ob)
+
+    val chemicalId = chemical.getUuid.toLong
+    val smiles = chemical.getSmiles
 
     // All these mean that there is likely too much unrepresented complexity.
     if (smiles.toLowerCase.contains("rrna")) return None
@@ -71,10 +74,10 @@ object AbstractChemicals {
       Option((chemicalId, new ChemicalInformation(chemicalId.toInt, MoleculeExporter.exportMolecule(mol, moleculeFormat))))
     } catch {
       case e: MolExportException =>
-        logger.debug(s"Tried converting molecule to smarts, but failed.  Molecule's chemical ID is ${chemicalId.toInt}.")
+        logger.warn(s"Tried converting molecule to smarts, but failed.  Molecule's chemical ID is ${chemicalId.toInt}.")
         None
       case e: MolFormatException =>
-        logger.debug(s"Tried to import SMARTS value $replacedSmarts, but failed.")
+        logger.warn(s"Tried to import SMARTS value $replacedSmarts, but failed.")
         None
     }
   }

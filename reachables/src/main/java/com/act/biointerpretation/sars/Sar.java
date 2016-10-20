@@ -4,7 +4,6 @@ import chemaxon.struc.Molecule;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
-import java.io.Serializable;
 import java.util.List;
 import java.util.function.Predicate;
 

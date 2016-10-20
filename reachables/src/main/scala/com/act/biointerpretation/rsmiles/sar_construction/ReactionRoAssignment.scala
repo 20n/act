@@ -37,6 +37,7 @@ object ReactionRoAssignment {
     LOGGER.info("Loaded in previous reaction information file.")
 
 
+    // This assumes that each RO will have a unique file.
     LOGGER.trace(s"Loading all predictions in.  Total of ${predictionFiles.length} prediction files are available.")
     val roPredictions: List[(Int, L2PredictionCorpus)] = predictionFiles.map(file => {
 
@@ -93,18 +94,18 @@ object ReactionRoAssignment {
       Step 1 - Filter reactions so that they have the same number of substrates and products as the projection.
      */
     val representativePrediction = roPrediction.getCorpus.asScala.head
-    val numberOfSubstrateAtoms = representativePrediction.getSubstrateInchis.size
-    val numberOfProductAtoms = representativePrediction.getProductInchis.size
+    val numberOfSubstrateMolecules = representativePrediction.getSubstrateInchis.size
+    val numberOfProductMolecules = representativePrediction.getProductInchis.size
 
     val correctSizeReactions = inputReactions.filter(reaction =>
-      (reaction.getSubstrates.length == numberOfSubstrateAtoms) && (reaction.getProducts.length == numberOfProductAtoms))
+      (reaction.getSubstrates.length == numberOfSubstrateMolecules) && (reaction.getProducts.length == numberOfProductMolecules))
     /*
       Step 2 - Filter reactions so that all the substrates match a projection
      */
     val predictionSubstrateInchis: List[Set[String]] =
       roPrediction.getCorpus.asScala.map(prediction => {
-        val productSet = prediction.getSubstrateInchis.asScala.toSet
-        productSet.map(moleculeString => MoleculeExporter.exportMolecule(
+        val substrateSet = prediction.getSubstrateInchis.asScala.toSet
+        substrateSet.map(moleculeString => MoleculeExporter.exportMolecule(
           MoleculeImporter.importMolecule(moleculeString,
             MoleculeFormatType(MoleculeFormat.stdInchi.value,
               List(MoleculeFormat.CleaningOptions.clean2d,

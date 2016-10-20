@@ -6,6 +6,7 @@ import chemaxon.reaction.ReactionException;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.MoleculeGraph;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
+import com.act.analysis.chemicals.molecules.MoleculeFormat;
 import com.act.analysis.chemicals.molecules.MoleculeFormat$;
 import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.sars.Sar;
@@ -108,9 +109,11 @@ public class AllPredictionsGenerator implements PredictionGenerator {
    */
   private List<String> getMoleculeStrings(Molecule[] mols) throws IOException {
     List<String> moleculeStrings = new ArrayList<>();
+    MoleculeFormat.MoleculeFormatType moleculeFormat = MoleculeFormat$.MODULE$.getName(this.moleculeFormat);
     for (Molecule mol : mols) {
-      // Grabs the string through the exporter.  Default is InChI w/o
-      moleculeStrings.add(MoleculeExporter.exportMolecule(mol, MoleculeFormat$.MODULE$.getName(this.moleculeFormat)));
+      // Grabs the string through the exporter.
+      // Default is "inchi:AuxNone,SAbs,Woff", which means no aux information and absolute stereo.
+      moleculeStrings.add(MoleculeExporter.exportMolecule(mol, moleculeFormat));
     }
     return moleculeStrings;
   }

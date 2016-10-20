@@ -10,10 +10,12 @@ import com.act.workflow.tool_manager.tool_wrappers.{ScalaJobWrapper, SparkWrappe
 import com.act.workflow.tool_manager.workflow.Workflow
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.log4j.LogManager
+import org.apache.spark
 
 
 class AbstractReactionsToL3ProjectionWorkflow extends Workflow {
 
+  val DEFAULT_SPARK_MASTER = "spark://spark-master:7077"
   val LOCAL_JAR_PATH = "target/scala-2.10/reachables-assembly-0.1.jar"
 
   val OPTION_USE_CACHED_RESULTS = "c"
@@ -66,19 +68,19 @@ class AbstractReactionsToL3ProjectionWorkflow extends Workflow {
 
       CliOption.builder(OPTION_SPARK_MASTER).
         longOpt("spark-master").
-        desc("Where to look for the spark master connection. " +
-          "Uses \"spark://10.0.20.19:7077\" by default."),
+        desc(s"Where to look for the spark master connection. " +
+          s"Uses \"$DEFAULT_SPARK_MASTER\" by default."),
 
       CliOption.builder(OPTION_USE_CACHED_RESULTS).
         longOpt("use-cached-results").
-        desc("If this flag is enabled, we will check if the file that would be " +
-          "made currently exists and use that file wherever possible."),
+        desc("If this flag is enabled, we will check if files that would be " +
+          "made currently exist and use those files whenever possible."),
 
       CliOption.builder(OPTION_VALID_CHEMICAL_TYPE).
         longOpt("valid-chemical-types").
         hasArg.
         desc("A molecule string format. Currently valid types are inchi, stdInchi, smiles, and smarts.  " +
-          s"By default uses the format '${MoleculeFormat.getExportString(MoleculeFormat.strictNoStereoInchi.value)}'.  " +
+          s"By default uses the format '${MoleculeFormat.getExportString(MoleculeFormat.strictNoStereoInchi)}'.  " +
           s"Only InChI based formats are allowed for this workflow." +
           s"Possible values are: \n${MoleculeFormat.listPossibleFormats().mkString("\n")}"),
 
@@ -98,7 +100,7 @@ class AbstractReactionsToL3ProjectionWorkflow extends Workflow {
      */
     val chemaxonLicense = new File(cl.getOptionValue(OPTION_CHEMAXON_LICENSE))
     require(chemaxonLicense.exists() && chemaxonLicense.isFile,
-      s"Chemaxon license does not exist as the supplied location. " +
+      "Chemaxon license does not exist as the supplied location. " +
         s"File path supplied was ${chemaxonLicense.getAbsolutePath}")
 
     val outputDirectory = new File(cl.getOptionValue(OPTION_WORKING_DIRECTORY))
@@ -119,7 +121,7 @@ class AbstractReactionsToL3ProjectionWorkflow extends Workflow {
      Setup Spark
      */
     val singleSubstrateRoProjectorClassPath = "com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector"
-    val sparkMaster = cl.getOptionValue(OPTION_SPARK_MASTER, "spark://10.0.20.19:7077")
+    val sparkMaster = cl.getOptionValue(OPTION_SPARK_MASTER, DEFAULT_SPARK_MASTER)
 
     /*
       Format currently used for the molecular transitions
@@ -134,6 +136,8 @@ class AbstractReactionsToL3ProjectionWorkflow extends Workflow {
       we'll be looking at and partially applies the abstract reaction function.
      */
     val substrateCounts: List[Int] = cl.getOptionValues(OPTION_SUBSTRATE_COUNTS).map(_.toInt).toList
+    require(substrateCounts.nonEmpty,
+      s"Please supply one or more substrate counts with option '$OPTION_SUBSTRATE_COUNTS'.  0 supplied.")
     val individualSubstrateFunction = AbstractChemicalsToReactions.calculateAbstractSubstrates(moleculeFormat)(database) _
 
     // Create all the jobs for all the substrates

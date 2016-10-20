@@ -43,6 +43,7 @@ object AbstractReactions {
 
     // Matches a reaction if either the Products or Substrates array contains an abstract element.
     val abstractSubstrateOrProduct = new BasicDBList
+    // TODO the Mongo "In" statements below could be expensive.  Possible optimization route.
     abstractSubstrateOrProduct.add(
       // Matches products that are in the abstract chemical list
       new BasicDBObject(

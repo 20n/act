@@ -10,6 +10,7 @@ import java.util.List;
  */
 public class CharacterizedGroup implements Serializable {
 
+  private static final long serialVersionUID = -4807145693001996472L;
   @JsonProperty("reaction_group_name")
   private String groupName;
 

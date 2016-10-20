@@ -7,6 +7,9 @@ import org.apache.logging.log4j.LogManager
 
 import scala.collection.parallel.immutable.ParMap
 
+/**
+  * Enumerates possible import and export formats to allow for consistent use.  Also standardizes cleaning.
+  */
 // Format information be found at https://docs.chemaxon.com/display/docs/Molecule+Formats
 object MoleculeFormat extends Enumeration {
 
@@ -33,41 +36,41 @@ object MoleculeFormat extends Enumeration {
   val noStereoSmarts = MoleculeFormatType(Value(noStereoSmartsString), List())
   val noStereoAromatizedSmarts = MoleculeFormatType(Value(noStereoAromatizedSmartsString), List())
 
-  private val exportMap: Map[String, String] = Map(
-    inchiString -> "inchi",
-    noAuxInchiString -> s"inchi:AuxNone",
-    stdInchiString -> s"inchi:AuxNone,SAbs,Woff",
-    strictInchiString -> s"inchi:AuxNone,SAbs,Woff,DoNotAddH",
-    strictNoStereoInchiString -> s"inchi:AuxNone,SNon,Woff,DoNotAddH",
-    smilesString -> smilesString,
-    smartsString -> smartsString,
-    noStereoSmartsString -> s"$smartsString:0",
-    noStereoAromatizedSmartsString -> s"$smartsString:a0"
+  private val exportMap: Map[MoleculeFormatType, String] = Map(
+    inchi -> "inchi",
+    noAuxInchi -> s"inchi:AuxNone",
+    stdInchi -> s"inchi:AuxNone,SAbs,Woff",
+    strictInchi -> s"inchi:AuxNone,SAbs,Woff,DoNotAddH",
+    strictNoStereoInchi -> s"inchi:AuxNone,SNon,Woff,DoNotAddH",
+    smiles -> smilesString,
+    smarts -> smartsString,
+    noStereoSmarts -> s"$smartsString:0",
+    noStereoAromatizedSmarts -> s"$smartsString:a0"
   )
 
   // Don't add H according to usual valences: all H are explicit
-  private val importMap: Map[String, String] = Map(
-    inchiString -> inchiString,
-    stdInchiString -> inchiString,
-    noAuxInchiString -> inchiString,
-    strictInchiString -> inchiString,
-    strictNoStereoInchiString -> inchiString,
-    smilesString -> smilesString,
-    smartsString -> smartsString,
-    noStereoSmartsString -> smartsString,
-    noStereoAromatizedSmartsString -> smartsString
+  private val importMap: Map[MoleculeFormatType, String] = Map(
+    inchi -> inchiString,
+    stdInchi -> inchiString,
+    noAuxInchi -> inchiString,
+    strictInchi -> inchiString,
+    strictNoStereoInchi -> inchiString,
+    smiles -> smilesString,
+    smarts -> smartsString,
+    noStereoSmarts -> smartsString,
+    noStereoAromatizedSmarts -> smartsString
   )
 
   def listPossibleFormats(): List[String] = {
     values.map(_.toString).toList
   }
 
-  def getExportString(chemicalFormat: MoleculeFormat.Value): String = {
-    exportMap(chemicalFormat.toString)
+  def getExportString(chemicalFormat: MoleculeFormat.MoleculeFormatType): String = {
+    exportMap(chemicalFormat)
   }
 
-  def getImportString(chemicalFormat: MoleculeFormat.Value): String = {
-    importMap(chemicalFormat.toString)
+  def getImportString(chemicalFormat: MoleculeFormat.MoleculeFormatType): String = {
+    importMap(chemicalFormat)
   }
 
   def getName(s: String): MoleculeFormatType = {

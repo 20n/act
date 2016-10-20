@@ -36,9 +36,8 @@ object MoleculeImporter {
     val resultingInchis: List[Molecule] = formats.flatMap(format => {
       try {
         // Inchis must start with "InChI="
-        if (format.toString.toLowerCase.contains("inchi")){
-          if (!mol.startsWith("InChI=")) throw new MolFormatException()
-        }
+        if (format.toString.toLowerCase.contains("inchi") && (!mol.startsWith("InChI=")))
+          throw new MolFormatException("InChIs must start with the value 'InChI='")
         val importedMolecule = Option(importMolecule(mol, format))
         importedMolecule
       } catch {
@@ -61,16 +60,16 @@ object MoleculeImporter {
   @throws[MolFormatException]
   def importMolecule(mol: String, format: MoleculeFormat.MoleculeFormatType): Molecule = {
     val formatCache = moleculeCache.get(format)
-    if (formatCache.isEmpty){
+    if (formatCache.isEmpty) {
       moleculeCache.put(format, new TrieMap[String, Molecule])
     }
 
     val molecule = moleculeCache(format).get(mol)
 
     if (molecule.isEmpty) {
-      val newMolecule = MolImporter.importMol(mol, MoleculeFormat.getImportString(format.value))
+      val newMolecule = MolImporter.importMol(mol, MoleculeFormat.getImportString(format))
 
-      // Do cleaning here if requested.... All these functions work inplace on the molecule...
+      // Note: All these functions work in place on the molecule...
       val cleaningApplyFunction = MoleculeFormat.CleaningOptions.applyCleaningOnMolecule(newMolecule)_
       format.cleaningOptions.foreach(cleaningApplyFunction)
 

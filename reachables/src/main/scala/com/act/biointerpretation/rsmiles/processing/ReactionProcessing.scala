@@ -60,10 +60,12 @@ object ReactionProcessing {
 
   private def loadMolecule(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.MoleculeFormatType)
                           (previousChemicals: ParMap[Long, ChemicalInformation])(dbObj: DBObject): List[ChemicalInformation] = {
-    val hitGoodChem: Option[ChemicalInformation] = previousChemicals.get(dbObj.get(ReactionKeywords.PUBCHEM.toString).asInstanceOf[Long])
+    val hitAbstractChem: Option[ChemicalInformation] =
+      previousChemicals.get(dbObj.get(ReactionKeywords.PUBCHEM.toString).asInstanceOf[Long])
     val coefficient = dbObj.get(ReactionKeywords.COEFFICIENT.toString).asInstanceOf[Int]
 
-    if (hitGoodChem.isDefined) return List.fill(coefficient)(hitGoodChem.get)
+    // We only get past this if we are dealing with non-abstract chemicals.
+    if (hitAbstractChem.isDefined) return List.fill(coefficient)(hitAbstractChem.get)
 
     // Try to look for real molecules if we can't find it in our abstract stack.
     val chemicalId = dbObj.get(ReactionKeywords.PUBCHEM.toString).asInstanceOf[Long]

@@ -37,7 +37,8 @@ object ConstructSarsFromPredictionCorpus {
     * @param outputFile       File to output results to
     * @param moleculeFormats  Which format the molecules shoudl be imported as
     */
-  def sarConstructor(moleculeFormats: List[MoleculeFormat.MoleculeFormatType])(roAssignmentFile: File, outputFile: File)() {
+  def sarConstructor(moleculeFormats: List[MoleculeFormat.MoleculeFormatType])
+                    (roAssignmentFile: File, outputFile: File)(): Unit = {
     val roAssignments: List[ReactionRoAssignment.RoAssignments] =
       scala.io.Source.fromFile(roAssignmentFile).getLines().mkString.parseJson.convertTo[List[RoAssignments]]
 
@@ -64,14 +65,14 @@ object ConstructSarsFromPredictionCorpus {
     * For a given group (Ro), create SARs
     *
     * @param moleculeFormats Molecule format to import the molecules as
-    * @param roCorpus        Corpus form which to pull the reactor out of
+    * @param roCorpus        Source of the reactor we will utilize
     * @param assignment      A list of reactions assigned to a single RO.  These reactions have been validated as valid.
     *
     * @return Either a characterized group or nothing, depending on if a characterized group could be constructed.
     */
   private def assignCharacterizedGroupForRo(moleculeFormats: List[MoleculeFormat.MoleculeFormatType], roCorpus: ErosCorpus)
                                            (assignment: ReactionRoAssignment.RoAssignments): Option[CharacterizedGroup] = {
-    assume(moleculeFormats.nonEmpty, "No molecule format provided, please provide a format.")
+    require(moleculeFormats.nonEmpty, "No molecule format provided, please provide a format.")
 
     /*
       Get the unique molecule strings
