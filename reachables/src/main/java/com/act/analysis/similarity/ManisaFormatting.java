@@ -1,11 +1,12 @@
 package com.act.analysis.similarity;
 
-import com.act.lcms.MS1;
-import com.act.lcms.MassCalculator;
+import com.act.lcms.*;
+import com.act.lcms.Peak;
 import com.act.lcms.db.analysis.Utils;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.model.ScanFile;
 import com.act.utils.TSVParser;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.didion.jwnl.data.Exc;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -18,7 +19,9 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -28,6 +31,7 @@ import java.util.Set;
 public class ManisaFormatting {
   private static final Logger LOGGER = LogManager.getFormatterLogger(ManisaFormatting.class);
   private static final String OPTION_VAL = "p";
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "FILL_OUT ",
@@ -98,9 +102,25 @@ public class ManisaFormatting {
         Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(inchi), MS1.IonMode.POS);
         Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, null);
 
-        List<ScanFile> scanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(db, plateId, plateRow, plateCol);
+        List<com.act.analysis.similarity.Peak> peaks = new ArrayList<>();
+        for (Map.Entry<String, Double> metlinMass : metlinMasses.entrySet()) {
+          com.act.analysis.similarity.Peak peak = new com.act.analysis.similarity.Peak(-1.0, -1.0, -1.0, -1.0, retentionTime, 0.02, metlinMass.getValue(), 5.0);
+          peaks.add(peak);
+        }
 
-        System.out.println(scanFiles.get(0).getFilename().split("/")[scanFiles.get(0).getFilename().split("/").length - 1]);
+        List<ScanFile> scanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(db, plateId, plateRow, plateCol);
+        String scanFile = scanFiles.get(0).getFilename().split("/")[scanFiles.get(0).getFilename().split("/").length - 1];
+        List<String> scanFilesForViz = new ArrayList<>();
+        scanFilesForViz.add(scanFile);
+
+        VizLayout layout = new VizLayout(includeIons.size(), 0);
+
+        VizRepresentation representation = new VizRepresentation(scanFilesForViz, peaks, layout);
+
+        String path = "/mnt/shared-data/Vijay/manisa/";
+        try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(path + row.get("molecule") + ".json"))) {
+          OBJECT_MAPPER.writeValue(predictionWriter, representation);
+        }
       }
     }
   }
