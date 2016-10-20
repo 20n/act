@@ -40,10 +40,15 @@ public class ManisaFormatting {
           .desc("FILL_OUT")
           .hasArg()
           .longOpt("FILL_OUT")
-          .required()
       );
     }
   };
+
+  static {
+    // Add DB connection options.
+    OPTION_BUILDERS.addAll(DB.DB_OPTION_BUILDERS);
+  }
+
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
