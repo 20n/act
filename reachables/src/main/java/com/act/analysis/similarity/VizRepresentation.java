@@ -161,7 +161,7 @@ public class VizRepresentation {
 
 
   @JsonProperty("scanfiles")
-  private VizScanFiles scanFiles;
+  private List<VizScanFiles.FileName> scanFiles;
 
   @JsonProperty("peaks")
   private List<VizPeak> peaks;
@@ -169,11 +169,11 @@ public class VizRepresentation {
   @JsonProperty("layout")
   private VizLayout layout;
 
-  public VizScanFiles getScanFiles() {
+  public List<VizScanFiles.FileName> getScanFiles() {
     return scanFiles;
   }
 
-  public void setScanFiles(VizScanFiles scanFiles) {
+  public void setScanFiles(List<VizScanFiles.FileName> scanFiles) {
     this.scanFiles = scanFiles;
   }
 
@@ -193,7 +193,7 @@ public class VizRepresentation {
     this.layout = layout;
   }
 
-  public VizRepresentation(VizScanFiles scanFiles, List<VizPeak> peaks, VizLayout layout) {
+  public VizRepresentation(List<VizScanFiles.FileName> scanFiles, List<VizPeak> peaks, VizLayout layout) {
     this.scanFiles = scanFiles;
     this.peaks = peaks;
     this.layout = layout;
