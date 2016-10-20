@@ -118,7 +118,7 @@ public class ManisaFormatting {
         VizRepresentation representation = new VizRepresentation(scanFilesForViz, peaks, layout);
 
         String path = "/mnt/shared-data/Vijay/manisa/";
-        try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(path + row.get("molecule") + ".json"))) {
+        try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(path + row.get("Molecule") + ".json"))) {
           OBJECT_MAPPER.writeValue(predictionWriter, representation);
         }
       }
