@@ -37,6 +37,9 @@ def stepwise_alignment(initial_samples, min_mz, mz_step, max_mz, min_time, time_
         print("Finished aligning peaks.  Number of aligned peaks is {}, number of unaligned peaks is {}".format(
             len(aligned), len(unaligned[0]) + len(unaligned[1])))
 
+        # Try to achieve the closest alignment at each step.
+        # Once we've aligned all the peaks as well as possible, we expand the window to
+        # look for things in a less strict manner than the previous iteration.
         if time_tolerance <= max_time:
             time_tolerance += time_step
         if mz_tolerance <= max_mz:
@@ -54,7 +57,7 @@ def replacement_alignment(aligned_peaks, unaligned_peaks):
 
     :param aligned_peaks:
     :param unaligned_peaks:
-    :return:
+    :return: A tuple of aligned peaks and unaligned peaks, after replacements were made.
     """
 
     def sort_ordering(data):
@@ -72,17 +75,21 @@ def replacement_alignment(aligned_peaks, unaligned_peaks):
 
             for aligned_peak_index, aligned_peak_group in enumerate(aligned_peaks):
                 mz_difference = unaligned_peak.get_mz() - aligned_peak_group[unaligned_peaks_index].get_mz()
-                if mz_difference < -0.01:
+                if mz_difference < -magic.mz_replacement_threshold:
                     continue
 
                 rt_difference = unaligned_peak.get_rt() - aligned_peak_group[unaligned_peaks_index].get_rt()
 
-                if abs(rt_difference) <= 2 and abs(mz_difference) <= 0.01:
+                if abs(rt_difference) <= magic.rt_replacement_threshold \
+                        and abs(mz_difference) <= magic.mz_replacement_threshold:
                     if aligned_peak_group[unaligned_peaks_index].get_maxo() < unaligned_peak.get_maxo():
                         aligned_peaks[aligned_peak_index][unaligned_peaks_index] = unaligned_peak
                         replacement_count += 1
                     else:
-                        # Hit close, but was not a large peak in the area so is dropped.
+                        # Hit close, but was not the largest local alignment so it is dropped.
+                        # That means that this peak shouldn't be called as an unaligned peak,
+                        # because we were able to align it.
+                        # Yet, it was not a large peak in the array and is likely an aberrant peak call.
                         drop_count += 1
 
                     # The else case is that this is a small duplicate peak.
@@ -101,6 +108,7 @@ def replacement_alignment(aligned_peaks, unaligned_peaks):
 
     return aligned_peaks, still_unaligned_peaks
 
+
 def align_old_alignment_to_new_sample(previous_alignment, sample_two, tolerance_mz, tolerance_time):
     previous_alignment = sorted(previous_alignment, key=lambda data: data[0].get_mz())
     sample_two = sorted(sample_two, key=lambda data: data.get_mz())
@@ -112,24 +120,11 @@ def align_old_alignment_to_new_sample(previous_alignment, sample_two, tolerance_
         sample_one_peak = previous_alignment[i]
 
         j = trailing_tracker
-        while j < len(sample_two):
-            sample_two_peak = sample_two[j]
-
-            mz_closeness = sample_one_peak[0].get_mz() - sample_two_peak.get_mz()
-            if abs(mz_closeness) <= tolerance_mz:
-                if abs(sample_one_peak[0].get_rt() - sample_two_peak.get_rt()) <= tolerance_time:
-                    aligned_peaks.append(previous_alignment.pop(i) + [sample_two.pop(j)])
-                    break
-            elif mz_closeness < -tolerance_mz:
-                j = len(sample_two)
-            elif j != 0 and \
-                    (sample_one_peak[0].get_mz() - sample_two[j - 1].get_mz() > tolerance_mz) and \
-                    (sample_one_peak[0].get_mz() - sample_two[j].get_mz() <= tolerance_mz):
-                trailing_tracker = j
-
-            j += 1
-        else:
+        single_alignment = single_peak_alignment()
+        if single_alignment is None:
             i += 1
+        else:
+            aligned_peaks.append(previous_alignment.pop(i) + [sample_two.pop(j)])
 
     unaligned = [[] for _ in range(0, len(previous_alignment[0]))]
     for peak in previous_alignment:
@@ -137,6 +132,26 @@ def align_old_alignment_to_new_sample(previous_alignment, sample_two, tolerance_
             unaligned[index].append(peak[index])
 
     return aligned_peaks, unaligned + sample_two
+
+
+def single_peak_alignment(sample_one_mz, sample_one_rt, sample_two, tolerance_mz, tolerance_time):
+    while j < len(sample_two):
+        sample_two_peak = sample_two[j]
+
+        mz_closeness = sample_one_mz - sample_two_peak.get_mz()
+        if abs(mz_closeness) <= tolerance_mz:
+            if abs(sample_one_rt - sample_two_peak.get_rt()) <= tolerance_time:
+                return j
+        elif mz_closeness < -tolerance_mz:
+            j = len(sample_two)
+        elif j != 0 and \
+                (sample_one_mz - sample_two[j - 1].get_mz() > tolerance_mz) and \
+                (sample_one_mz - sample_two[j].get_mz() <= tolerance_mz):
+            trailing_tracker = j
+
+        j += 1
+
+    return None
 
 
 def two_sample_alignment(sample_one, sample_two, tolerance_mz, tolerance_time):

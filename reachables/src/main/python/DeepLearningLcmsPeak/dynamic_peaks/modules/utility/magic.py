@@ -39,4 +39,10 @@ kmeans_random_state = 1337
 """
 separator = "\t"
 
-testing_value = 338.57
+"""
+Aligner default values
+"""
+# These numbers designate how close the aligner should need to be to find a set
+# of aligned peaks the same as an unaligned peak.  Values were determined by observation of alignment errors.
+mz_replacement_threshold = 0.01
+rt_replacement_threshold = 2
