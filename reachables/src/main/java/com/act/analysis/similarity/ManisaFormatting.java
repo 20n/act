@@ -117,7 +117,7 @@ public class ManisaFormatting {
           List<String> scanFilesForViz = new ArrayList<>();
           scanFilesForViz.add(scanFile);
 
-          VizRepresentation.VizLayout layout = new VizRepresentation.VizLayout(includeIons.size(), 0);
+          VizRepresentation.VizLayout layout = new VizRepresentation.VizLayout(1, 0);
 
           VizRepresentation representation = new VizRepresentation(fileNames, peaks, layout);
 
