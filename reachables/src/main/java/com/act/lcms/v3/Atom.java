@@ -13,4 +13,10 @@ public interface Atom {
    * Get the atomic number (# protons)
    */
   Integer getAtomicNumber();
+
+  /**
+   * Get the base element for this atom.
+   * In the example of C-13, the base element is Carbon
+   */
+  Element getElement();
 }
