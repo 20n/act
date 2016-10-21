@@ -48,3 +48,11 @@ reachables/licenses/license_PlatformIT.cxl
 *.json
 
 *.json
+
+reachables/lib/native/linux/libz3.so
+
+reachables/lib/native/linux/libz3java.so
+
+reachables/lib/native/mac/libz3.dylib
+
+reachables/lib/native/mac/libz3java.dylib
