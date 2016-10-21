@@ -40,7 +40,7 @@ public enum CommonElements implements Element {
     this.atomicMass = atomicMass;
     this.valency = valency;
   }
-  
+
   @Override
   public String getSymbol() {
     return this.symbol;
