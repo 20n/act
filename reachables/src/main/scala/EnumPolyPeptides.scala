@@ -94,7 +94,8 @@ object EnumPolyPeptides {
     // first, create a list by replicating the elements maxLen number of times
     // this is a list of lists
     // note: "Isoleucine" being an isomer of "Leucine", we remove it here to avoid duplication
-    val replicatedLists = List.fill(maxLen)(AllAminoAcids - Ile)
+    val aminoAcidsDedup = AllAminoAcids diff List(Ile)
+    val replicatedLists = List.fill(maxLen)(aminoAcidsDedup)
 
     // flatten the list created above, so that we have one long list of as many
     // repeated amino acids as can be in the final set. by repeating them here,
