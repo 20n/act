@@ -1,4 +1,4 @@
-package com.act.lcms.v3;
+package com.act.lcms.v2;
 
 /**
  * Representation of an element isotope, such as C-13

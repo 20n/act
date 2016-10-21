@@ -1,4 +1,4 @@
-package com.act.lcms.v3;
+package com.act.lcms.v2;
 
 /**
  * Representation of a molecular structure, at first supporting InChIs only

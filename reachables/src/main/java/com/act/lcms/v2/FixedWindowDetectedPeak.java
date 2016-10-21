@@ -1,4 +1,4 @@
-package com.act.lcms.v3;
+package com.act.lcms.v2;
 
 /**
  * Implementation of a fixed window peak.

@@ -1,4 +1,4 @@
-package com.act.lcms.v3;
+package com.act.lcms.v2;
 
 /**
  * An interface for representing detected LCMS peaks
