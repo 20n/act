@@ -5,38 +5,37 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * An interface representing a chemical formula
+ * An interface representing a chemical formula.
+ * A Chemical Formula is here represented by its elements counts.
+ * For example, CH4 is represented as Map(C -> 1, H -> 4) where C and H are the carbon and hydrogen elements.
+ * This API provides also mass retrieval, test of match with a structure and a optional name retrieval.
  */
+
 public interface ChemicalFormula {
   /**
-   * Get the count of elements in the formula
-   * @return a mapping between elements and their count in the formula
+   * Get the formula's element counts
    */
   Map<Element, Integer> getElementCounts();
 
   /**
-   * Returns a count for a specific element
-   * @param element: element to return the count for
-   * @return the count
+   * Get the number of a given element in the formula
    */
   Integer getElementCount(Element element);
 
   /**
-   * Retrive the monoisotopic mass of the molecule
-   * @return the molecule's mass
+   * Retrieve the mono-isotopic mass for the formula
    */
   Double getMonoIsotopicMass();
 
   /**
    * Check whether the formula matches a given molecular structure
    * @param structure input structure
-   * @return a boolean, true if the formula matches the given structure
+   * @return a boolean, true if the formula matches the structure
    */
   Boolean matchesMolecularStructure(MolecularStructure structure);
 
   /**
-   * Retrives an Optional with the formula's name
-   * @return the name if it exists
+   * Retrieve an optional formula name
    */
   Optional<String> getName();
 }
