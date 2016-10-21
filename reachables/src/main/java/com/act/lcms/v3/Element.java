@@ -24,6 +24,11 @@ public interface Element {
   Integer getValency();
 
   /**
+   * Get the atomic mass
+   */
+  Double getAtomicMass();
+
+  /**
    * Get the isotopes of the element
    */
   List<ElementIsotope> getElementIsotopes();
