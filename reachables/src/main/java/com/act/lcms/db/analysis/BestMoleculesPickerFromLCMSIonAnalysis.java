@@ -11,9 +11,12 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -21,9 +24,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class BestMoleculesPickerFromLCMSIonAnalysis {
 
+  private static final Logger LOGGER = LogManager.getFormatterLogger(BestMoleculesPickerFromLCMSIonAnalysis.class);
   public static final String OPTION_INPUT_FILES = "i";
   public static final String OPTION_OUTPUT_FILE = "o";
   public static final String OPTION_MIN_INTENSITY_THRESHOLD = "n";
@@ -178,10 +183,18 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     if (cl.hasOption(OPTION_MIN_OF_REPLICATES)) {
       HitOrMissReplicateFilterAndTransformer transformer = new HitOrMissReplicateFilterAndTransformer();
 
-      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
-          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults), transformer);
+      List<IonAnalysisInterchangeModel> models = positiveReplicateResults.stream().map(file -> {
+        try {
+          return IonAnalysisInterchangeModel.loadIonAnalysisInterchangeModelFromFile(file);
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
+      }).collect(Collectors.toList());
 
-      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
+      IonAnalysisInterchangeModel transformedModel = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateModels(
+          models, transformer);
+
+      printInchisAndIonsToFile(transformedModel, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
       return;
     }
 
@@ -190,17 +203,30 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
     Double minTimeThreshold = Double.parseDouble(cl.getOptionValue(OPTION_MIN_TIME_THRESHOLD));
 
     if (cl.hasOption(OPTION_GET_IONS_SUPERSET)) {
-      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.getSupersetOfIonicVariants(
-          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
+      List<IonAnalysisInterchangeModel> models = positiveReplicateResults.stream().map(file -> {
+        try {
+          return IonAnalysisInterchangeModel.loadIonAnalysisInterchangeModelFromFile(file);
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
+      }).collect(Collectors.toList());
+
+      IonAnalysisInterchangeModel transformedModel = IonAnalysisInterchangeModel.getSupersetOfIonicVariants(
+          models,
           minSnrThreshold,
           minIntensityThreshold,
           minTimeThreshold);
 
-      printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
+      printInchisAndIonsToFile(transformedModel, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));
       return;
     }
 
     if (cl.hasOption(OPTION_THRESHOLD_ANALYSIS)) {
+
+      if (positiveReplicateResults.size() > 1) {
+        LOGGER.error("Since this is a threshold analysis, the number of positive replicates should be 1.");
+        System.exit(1);
+      }
 
       // We need to set this variable as a final since it is used in a lambda function below.
       final Set<String> ions = new HashSet<>();
@@ -211,8 +237,8 @@ public class BestMoleculesPickerFromLCMSIonAnalysis {
       HitOrMissSingleSampleFilterAndTransformer hitOrMissSingleSampleTransformer =
           new HitOrMissSingleSampleFilterAndTransformer(minIntensityThreshold, minSnrThreshold, minTimeThreshold, ions);
 
-      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
-          IonAnalysisInterchangeModel.loadMultipleIonAnalysisInterchangeModelsFromFiles(positiveReplicateResults),
+      IonAnalysisInterchangeModel model = IonAnalysisInterchangeModel.filterAndOperateOnMoleculesFromModel(
+          IonAnalysisInterchangeModel.loadIonAnalysisInterchangeModelFromFile(positiveReplicateResults.get(0)),
           hitOrMissSingleSampleTransformer);
 
       printInchisAndIonsToFile(model, cl.getOptionValue(OPTION_OUTPUT_FILE), cl.hasOption(OPTION_JSON_FORMAT));

@@ -227,25 +227,20 @@ public class IonAnalysisInterchangeModel {
   /**
    * This function takes in multiple LCMS mining results  (in the IonAnalysisInterchangeModel format), which happens
    * when we have multiple positive control replicates, extracts all the molecule hits from each file and applies
-   * a filter function across the replicate hits. The filter function provide two features: it is used to transform results
-   * from multiple replicate to a single HitOrMiss molecule, like a min function across replicates. Second, it is
-   * used to filter in/out molecules based on the logic of the filter function.
+   * a filter function across the replicate hits.
    * @param replicateModels The list of IonAnalysisInterchangeModels to be analyzed
    * @param hitOrMissFilterAndTransformer This filter function takes in single/multiple HitOrMiss objects from replicates and
    *                                   performs a transformation operation on them to produce one HitOrMiss object
    *                                   and a boolean to keep the transformed molecule in the resulting model.
-   * @return A list of inchis that are valid molecule hits in all the input files and pass all the thresholds.
+   * @return A resultant model that contains a list of inchis that are valid molecule hits in the input file and
+   *          pass all the thresholds.
    * @throws IOException
    */
-  public static IonAnalysisInterchangeModel filterAndOperateOnMoleculesFromMultipleReplicateResultFiles(
+  public static IonAnalysisInterchangeModel filterAndOperateOnMoleculesFromMultipleReplicateModels(
       List<IonAnalysisInterchangeModel> replicateModels,
       HitOrMissFilterAndTransformer hitOrMissFilterAndTransformer)
       throws IOException {
 
-    // Since all replicates have the same number of peak results, we can use the first model as a representative model
-    // for the total num of mass charges.
-    int totalNumberOfMassCharges = replicateModels.get(0).getResults().size();
-    IonAnalysisInterchangeModel resultModel = new IonAnalysisInterchangeModel();
     List<ResultForMZ> resultsForMZs = new ArrayList<>();
 
     /**
@@ -256,7 +251,7 @@ public class IonAnalysisInterchangeModel {
 
     // Iterate through every mass charge
     // TODO: Consider using a parallel stream here
-    for (int i = 0; i < totalNumberOfMassCharges; i++) {
+    for (int i = 0; i < replicateModels.get(0).getResults().size(); i++) {
       ResultForMZ representativeMZ = replicateModels.get(0).getResults().get(i);
       Double representativeMassCharge = representativeMZ.getMz();
       int totalNumberOfMoleculesInMassChargeResult = representativeMZ.getMolecules().size();
@@ -269,6 +264,9 @@ public class IonAnalysisInterchangeModel {
 
       // For each mass charge, iterate through each molecule under the mass charge
       for (int j = 0; j < totalNumberOfMoleculesInMassChargeResult; j++) {
+
+        Pair<HitOrMiss, Boolean> transformedAndIsRetainedMolecule;
+
         List<HitOrMiss> moleculesFromReplicates = new ArrayList<>();
 
         // For each molecule, make sure it passes the threshold we set across every elem in deserializedResultsForPositiveReplicates,
@@ -280,44 +278,94 @@ public class IonAnalysisInterchangeModel {
           // IonAnalysisInterchangeModel to be in the same order as other replicates. We check if the mass charges are the
           // same across the samples to make sure the replicates aligned correctly.
           if (!sampleRepresentativeMz.getMz().equals(representativeMassCharge)) {
-            throw new RuntimeException("The replicates are not ordered similarly. Please verify if the correct replicates are being used.");
+            throw new RuntimeException(String.format("The replicates are not ordered correctly since %f and %f are not " +
+                "the equal.", sampleRepresentativeMz.getMz(), representativeMassCharge));
           }
 
           HitOrMiss molecule = sampleRepresentativeMz.getMolecules().get(j);
           moleculesFromReplicates.add(molecule);
         }
 
-        Pair<HitOrMiss, Boolean> transformedMoleculeAndShouldRetainMolecule = hitOrMissFilterAndTransformer.apply(moleculesFromReplicates);
+        transformedAndIsRetainedMolecule = hitOrMissFilterAndTransformer.apply(moleculesFromReplicates);
 
         // Check if the filter function  wants to throw out the molecule. If not, then add the molecule to the final result.
-        if (transformedMoleculeAndShouldRetainMolecule.getRight()) {
-          resultForMZ.addMolecule(transformedMoleculeAndShouldRetainMolecule.getLeft());
+        if (transformedAndIsRetainedMolecule.getRight()) {
+          resultForMZ.addMolecule(transformedAndIsRetainedMolecule.getLeft());
         }
       }
 
       resultsForMZs.add(resultForMZ);
     }
 
+    IonAnalysisInterchangeModel resultModel = new IonAnalysisInterchangeModel();
     resultModel.setResults(resultsForMZs);
     return resultModel;
   }
 
   /**
-   * This function loads in multiple serialized IonAnalysisInterchangeModels and deserializes them
-   * @param filepaths File paths to the serialized IonAnalysisInterchangeModels
-   * @return A list of IonAnalysisInterchangeModels corresponding to the files.
+   * This function takes in a single LCMS result (in the IonAnalysisInterchangeModel format) and extracts all the
+   * molecule hits from the file and applies a filter function on the model.
+   * @param replicateModel The IonAnalysisInterchangeModel to be analyzed
+   * @param hitOrMissFilterAndTransformer This filter function takes in single/multiple HitOrMiss objects from replicates and
+   *                                      performs a transformation operation on them to produce one HitOrMiss object
+   *                                      and a boolean to keep the transformed molecule in the resulting model.
+   * @return  A resultant model that contains a list of inchis that are valid molecule hits in the input file and
+   *          pass all the thresholds.
    * @throws IOException
    */
-  public static List<IonAnalysisInterchangeModel> loadMultipleIonAnalysisInterchangeModelsFromFiles(List<String> filepaths)
+  public static IonAnalysisInterchangeModel filterAndOperateOnMoleculesFromModel(
+      IonAnalysisInterchangeModel replicateModel,
+      HitOrMissFilterAndTransformer hitOrMissFilterAndTransformer)
       throws IOException {
 
-    List<IonAnalysisInterchangeModel> deserializedResultsForPositiveReplicates = new ArrayList<>();
-    for (String filePath : filepaths) {
-      IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
-      model.loadResultsFromFile(new File(filePath));
-      deserializedResultsForPositiveReplicates.add(model);
+    List<ResultForMZ> resultsForMZs = new ArrayList<>();
+
+    // Iterate through every mass charge
+    // TODO: Consider using a parallel stream here
+    for (int i = 0; i < replicateModel.getResults().size(); i++) {
+      ResultForMZ representativeMZ = replicateModel.getResults().get(i);
+      Double representativeMassCharge = representativeMZ.getMz();
+      int totalNumberOfMoleculesInMassChargeResult = representativeMZ.getMolecules().size();
+
+      ResultForMZ resultForMZ = new ResultForMZ(representativeMassCharge);
+      resultForMZ.setId(representativeMZ.getId());
+
+      // TODO: Take out the isValid field since it does not convey useful information for such post processing files.
+      resultForMZ.setIsValid(representativeMZ.getIsValid());
+
+      // For each mass charge, iterate through each molecule under the mass charge
+      for (int j = 0; j < totalNumberOfMoleculesInMassChargeResult; j++) {
+        Pair<HitOrMiss, Boolean> transformedAndIsRetainedMolecule;
+
+        List<HitOrMiss> molecules = replicateModel.getResults().get(i).getMolecules();
+        HitOrMiss molecule = molecules.get(j);
+        transformedAndIsRetainedMolecule = hitOrMissFilterAndTransformer.apply(molecule);
+
+        // Check if the filter function  wants to throw out the molecule. If not, then add the molecule to the final result.
+        if (transformedAndIsRetainedMolecule.getRight()) {
+          resultForMZ.addMolecule(transformedAndIsRetainedMolecule.getLeft());
+        }
+      }
+
+      resultsForMZs.add(resultForMZ);
     }
-    return deserializedResultsForPositiveReplicates;
+
+    IonAnalysisInterchangeModel resultModel = new IonAnalysisInterchangeModel();
+    resultModel.setResults(resultsForMZs);
+    return resultModel;
+  }
+
+  /**
+   * This function loads in a serialized IonAnalysisInterchangeModel and deserializes it.
+   * @param filepath File path to the serialized IonAnalysisInterchangeModels
+   * @return An IonAnalysisInterchangeModel corresponding to the file.
+   * @throws IOException
+   */
+  public static IonAnalysisInterchangeModel loadIonAnalysisInterchangeModelFromFile(String filepath)
+      throws IOException {
+    IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel();
+    model.loadResultsFromFile(new File(filepath));
+    return model;
   }
 
   /**
