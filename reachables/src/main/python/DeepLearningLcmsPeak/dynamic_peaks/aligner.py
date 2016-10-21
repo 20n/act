@@ -68,10 +68,10 @@ def replacement_alignment(aligned_peaks, unaligned_peaks):
     print("Replacing peak alignments with superior ones if a larger peak can be found locally.")
     replacement_count = 0
     drop_count = 0
-    for unaligned_peaks_index in tqdm(range(0, len(unaligned_peaks))):
+    for unaligned_peaks_index in range(0, len(unaligned_peaks)):
         unaligned_peak_set = sorted(unaligned_peaks[unaligned_peaks_index], key=sort_ordering)
 
-        for unaligned_peak in unaligned_peak_set:
+        for unaligned_peak in tqdm(unaligned_peak_set):
 
             for aligned_peak_index, aligned_peak_group in enumerate(aligned_peaks):
                 mz_difference = unaligned_peak.get_mz() - aligned_peak_group[unaligned_peaks_index].get_mz()
