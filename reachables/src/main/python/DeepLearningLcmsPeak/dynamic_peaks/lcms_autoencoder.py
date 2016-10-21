@@ -218,22 +218,22 @@ class LcmsAutoencoder:
             self.all_peaks_at_rt(right_remainder, rounding_level, centered_mz_key, threshold,
                                  max_seconds, seconds_interval, called_window_values)
 
-    def process_lcms_trace(self, lcms_directory, scan_file_name):
+    def process_lcms_trace(self, lcms_directory, trace_file_name):
         """
         The goal of this function is to take in a raw LCMS trace and convert it into a time
         and m/z aligned matrix that we can do later processing on.
 
         :param lcms_directory:  Directory of the LCMS file
-        :param scan_file_name:  Actual LCMS scan file.
+        :param trace_file_name:  Actual LCMS scan file.
         :return:                Prepared matrix
         """
         lcms_directory = os.path.join(lcms_directory, '')
-        scan_file_name = scan_file_name.split(".nc")[0]
+        scan_file_name = trace_file_name.split(".nc")[0]
         assert scan_file_name.endswith("01"), "This module only processes MS1 data which should always have a " \
                                               "file ending of '01'.  Your supplied file " \
                                                "was {}".format(scan_file_name)
 
-        current_trace_file = os.path.join(lcms_directory, scan_file_name)
+        current_trace_file = os.path.join(lcms_directory, trace_file_name)
         assert os.path.exists(current_trace_file), "The trace file at {} does not exist.".format(current_trace_file)
 
         output_tsv = os.path.join(self.output_directory, "{}.tsv".format(scan_file_name))
