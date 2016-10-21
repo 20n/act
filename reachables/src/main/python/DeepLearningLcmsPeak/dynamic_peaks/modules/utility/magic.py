@@ -9,6 +9,7 @@ mz_min = 49
 mz_max = 951
 time_min = 0
 time_max = 450
+lowest_point_to_keep = 100
 
 # Aligner settings
 rounding_level = 3

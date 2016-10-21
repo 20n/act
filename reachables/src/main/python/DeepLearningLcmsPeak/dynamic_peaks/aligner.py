@@ -110,21 +110,18 @@ def replacement_alignment(aligned_peaks, unaligned_peaks):
 
 
 def align_old_alignment_to_new_sample(previous_alignment, sample_two, tolerance_mz, tolerance_time):
-    previous_alignment = sorted(previous_alignment, key=lambda data: data[0].get_mz())
-    sample_two = sorted(sample_two, key=lambda data: data.get_mz())
-    aligned_peaks = []
+    def get_mz(s):
+        return s.get_mz()
 
-    i = 0
-    trailing_tracker = 0
-    while i < len(previous_alignment):
-        sample_one_peak = previous_alignment[i]
+    def get_rt(s):
+        return s.get_rt()
 
-        j = trailing_tracker
-        single_alignment = single_peak_alignment()
-        if single_alignment is None:
-            i += 1
-        else:
-            aligned_peaks.append(previous_alignment.pop(i) + [sample_two.pop(j)])
+    def add_to_list(o, t):
+        return o + [t]
+
+    aligned_peaks = __align_two_samples(previous_alignment, sample_two,
+                                        tolerance_mz, tolerance_time,
+                                        get_mz, get_rt, add_to_list)
 
     unaligned = [[] for _ in range(0, len(previous_alignment[0]))]
     for peak in previous_alignment:
@@ -134,31 +131,28 @@ def align_old_alignment_to_new_sample(previous_alignment, sample_two, tolerance_
     return aligned_peaks, unaligned + sample_two
 
 
-def single_peak_alignment(sample_one_mz, sample_one_rt, sample_two, tolerance_mz, tolerance_time):
-    while j < len(sample_two):
-        sample_two_peak = sample_two[j]
-
-        mz_closeness = sample_one_mz - sample_two_peak.get_mz()
-        if abs(mz_closeness) <= tolerance_mz:
-            if abs(sample_one_rt - sample_two_peak.get_rt()) <= tolerance_time:
-                return j
-        elif mz_closeness < -tolerance_mz:
-            j = len(sample_two)
-        elif j != 0 and \
-                (sample_one_mz - sample_two[j - 1].get_mz() > tolerance_mz) and \
-                (sample_one_mz - sample_two[j].get_mz() <= tolerance_mz):
-            trailing_tracker = j
-
-        j += 1
-
-    return None
-
-
 def two_sample_alignment(sample_one, sample_two, tolerance_mz, tolerance_time):
-    sample_one = sorted(sample_one, key=lambda data: data.get_mz())
-    sample_two = sorted(sample_two, key=lambda data: data.get_mz())
-    aligned_peaks = []
+    def get_mz(s):
+        return s.get_mz()
 
+    def get_rt(s):
+        return s.get_rt()
+
+    def add_to_list(o, t):
+        return [o, t]
+
+    aligned_peaks = __align_two_samples(sample_one, sample_two,
+                                        tolerance_mz, tolerance_time,
+                                        get_mz, get_rt, add_to_list)
+
+    return aligned_peaks, [sample_one, sample_two]
+
+
+def __align_two_samples(sample_one, sample_two, tolerance_mz, tolerance_time, get_mz, get_rt, add_to_list):
+    sample_one = sorted(sample_one, key=lambda data: (get_mz(data), get_rt(data)))
+    sample_two = sorted(sample_two, key=lambda data: (get_mz(data), get_rt(data)))
+
+    aligned_peaks = []
     i = 0
     trailing_tracker = 0
     while i < len(sample_one):
@@ -168,23 +162,29 @@ def two_sample_alignment(sample_one, sample_two, tolerance_mz, tolerance_time):
         while j < len(sample_two):
             sample_two_peak = sample_two[j]
 
-            mz_closeness = sample_one_peak.get_mz() - sample_two_peak.get_mz()
-            rt_closeness = abs(sample_one_peak.get_rt() - sample_two_peak.get_rt())
+            # Determine how close sample one's m/z is to sample two's
+            mz_closeness = get_mz(sample_one_peak) - sample_two_peak.get_mz()
+            # Determine how close sample one's rt is to sample two's
+            rt_closeness = abs(get_rt(sample_one_peak) - sample_two_peak.get_rt())
+
+            # If both the time and mz are close, we add the peaks to the aligned peak list and stop looking.
+            # Otherwise, we either stop if we've passed our m/z significantly, or we indicate that this
+            # is where the next iteration should start if we've just crossed the threshold.
             if abs(mz_closeness) <= tolerance_mz and rt_closeness <= tolerance_time:
-                aligned_peaks.append([sample_one.pop(i), sample_two.pop(j)])
+                aligned_peaks.append(add_to_list(sample_one.pop(i), sample_two.pop(j)))
                 break
             elif mz_closeness < -tolerance_mz:
                 j = len(sample_two)
             elif j != 0 and \
-                    (sample_one_peak.get_mz() - sample_two[j - 1].get_mz() > tolerance_mz) and \
-                    (sample_one_peak.get_mz() - sample_two[j].get_mz() <= tolerance_mz):
+                    (get_mz(sample_one_peak) - sample_two[j - 1].get_mz() > tolerance_mz) and \
+                    (get_mz(sample_one_peak) - sample_two[j].get_mz() <= tolerance_mz):
                 trailing_tracker = j
 
             j += 1
         else:
             i += 1
 
-    return aligned_peaks, [sample_one, sample_two]
+    return aligned_peaks
 
 
 def iterative_alignment(unaligned_samples):
@@ -238,6 +238,8 @@ def create_differential_peak_windows(exp, ctrl):
 
     noise_window = [magic.threshold] * len(aligned_peaks[0][0].get_intensity_window())
 
+    # Below, we switch the order of the two calls so that we keep the sign consistent.
+    # If two peaks are differentially expressed in two different samples, they should have opposite signs.
     for peaks in unaligned_peaks[0]:
         prepared_peaks.append(normalize(peaks.get_intensity_window(), noise_window))
         infos = {}
@@ -277,12 +279,17 @@ def normalize(first, second):
     if max(peaks_subtracted) > abs(min(peaks_subtracted)):
         return np.divide(peaks_subtracted, max(peaks_subtracted))
     elif max(peaks_subtracted) < abs(min(peaks_subtracted)):
-        return -np.divide(peaks_subtracted, min(peaks_subtracted))
+        return np.divide(peaks_subtracted, abs(min(peaks_subtracted)))
     else:
         return np.divide(peaks_subtracted, 1)
 
 
 def merge_lcms_replicates(autoencoder, lcms_directory, output_directory, samples, cond):
+    """
+    The goal of this function is to take in a single sample that may have multiple plates and merge them into one.
+    If a peak doesn't exist in one of the replicates, it is discarded.
+    If a peak exists in both, we remedy it so that the information from all peak calls are used.
+    """
     # Returns a list of replicates
     scans = [autoencoder.process_lcms_trace(lcms_directory, plate) for plate in samples]
 
@@ -290,13 +297,14 @@ def merge_lcms_replicates(autoencoder, lcms_directory, output_directory, samples
     for sample in scans:
         single_sample_peaks = []
         for peak in sample:
-            # TODO Remove by finding root cause
+            # TODO Remove by finding root cause.  The problem is that sometimes very small
+            # peaks will be created, likely an edge case on the window creation algorithm.
             try:
                 single_sample_peaks.append(Peak(peak["mz"], peak["rt"], peak["rtmin"], peak["rtmax"], peak["maxo"],
                                                 [peak[str(k)] for k in
                                                  range(0, int(magic.max_seconds / magic.seconds_interval))]))
-            except KeyError:
-                print peak
+            except KeyError as e:
+                print("Peak was smaller than expected, likely of size 2." + e.message)
         all_peaks.append(single_sample_peaks)
 
     aligned_windows, unaligned_windows = align_replicates(all_peaks)

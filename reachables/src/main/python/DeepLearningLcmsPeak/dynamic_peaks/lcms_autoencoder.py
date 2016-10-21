@@ -109,11 +109,16 @@ class LcmsAutoencoder:
         # Too many points! Only take the ones close to the max,
         # but bias which side we take based on the relative amount of points on each side.
         if number_of_spots_to_fill < 0:
+            # Previously, we found that we have fewer than 0 time points to fill, which means are window is too large.
+            #  The code below calculates the position of the maximum intensity data point
+            # by using our knowledge of how far the peak was shifted left.
             max_position = math.ceil((f_peaks[left_width][2] - smallest_timepoint) / float(magic.seconds_interval))
 
             count_to_left = max_position
             count_to_right = len(interpolation) - max_position
 
+            # Once we've gotten how many points are left and right of the max,
+            # we scale it such that we discard points proportional to their prior amount.
             division_factor = (count_to_left + count_to_right) / total_spots
             indexes_on_left = math.floor(count_to_left / division_factor)
             indexes_on_right = math.floor(count_to_right / division_factor)
@@ -149,9 +154,11 @@ class LcmsAutoencoder:
         Found a larger value locally, so let's avoid writing two peaks right next to each other
         as this tends to just mean we are hititng the edge of a window
         """
-        if len(smoothed_window) <= 0:
+        if len(smoothed_window) == 0:
             return
 
+        # Centered_mz_key will always be on the same rounding level as we
+        # created the keys initially by rounding off the mz values.
         values_for_this_mz = [i for i in smoothed_window if round(i[1], magic.rounding_level) == centered_mz_key]
         if len(values_for_this_mz) <= 0:
             return
@@ -164,7 +171,7 @@ class LcmsAutoencoder:
             return
 
         """
-        Figure out how wide we want to make the peak by looking left and right and
+        Figure out how wide (Time wise) we want to make the peak by looking left and right and
         taking values until they are significantly below the threshold or our max window size is reached.
         """
         left_width = 0
@@ -195,6 +202,11 @@ class LcmsAutoencoder:
         # as it could still be something, I guess
         if abs(final_peaks[0][2] - final_peaks[-1][2]) < max_seconds and max_value[0] == max_for_this_mz:
             called_window_values.append(self.call_peak(final_peaks, left_width, right_width))
+        else:
+            if self.debug:
+                print("Discarding peak because it extends too far in time or it is not the local max. "
+                      "Peak was located at mz = {}, rt = {}",
+                      smoothed_window[max_index][1], smoothed_window[max_index][2])
 
         left_remainder = smoothed_window[:max_index - left_width]
         if len(left_remainder) > 0:
@@ -215,17 +227,16 @@ class LcmsAutoencoder:
         :param scan_file_name:  Actual LCMS scan file.
         :return:                Prepared matrix
         """
-        # Plate file stuff
         lcms_directory = os.path.join(lcms_directory, '')
-        lcms_plate_name = scan_file_name.split(".nc")[0]
-        assert lcms_plate_name.endswith("01"), "This module only processes MS1 data which should always have a " \
-                                               "file ending of '01'.  Your supplied file " \
+        scan_file_name = scan_file_name.split(".nc")[0]
+        assert scan_file_name.endswith("01"), "This module only processes MS1 data which should always have a " \
+                                              "file ending of '01'.  Your supplied file " \
                                                "was {}".format(scan_file_name)
 
         current_trace_file = os.path.join(lcms_directory, scan_file_name)
         assert os.path.exists(current_trace_file), "The trace file at {} does not exist.".format(current_trace_file)
 
-        output_tsv = os.path.join(self.output_directory, "{}.tsv".format(lcms_plate_name))
+        output_tsv = os.path.join(self.output_directory, "{}.tsv".format(scan_file_name))
         # Check for cached version.
         if os.path.exists(output_tsv):
             if self.verbose:
@@ -253,6 +264,7 @@ class LcmsAutoencoder:
             Step 4) Save processed file for later reuse.
             """
             # Step 1
+            # This is a list of (Time, [M/Z], [Intensity]) values.
             loaded_triples = netcdf_parser.load_lcms_trace(current_trace_file)
 
             mz_map = {}
@@ -272,7 +284,7 @@ class LcmsAutoencoder:
 
                 for mz_index in range(0, len(triple["mz"])):
                     intensity_value = float(intensity_list[mz_index])
-                    if intensity_value > 100:
+                    if intensity_value > magic.lowest_point_to_keep:
                         current_mz = mass_list[mz_index]
                         rounded_mz = round(current_mz, magic.rounding_level)
 
@@ -293,7 +305,7 @@ class LcmsAutoencoder:
                 current_mz_keys = []
 
                 left_index = 1
-                left_key = mz_keys[mz_k_index]
+                left_key = centered_mz_key
                 while (round(abs(centered_mz_key - left_key), magic.rounding_level) < magic.within_range) and (
                                 mz_k_index - left_index >= 0):
                     left_key = mz_keys[mz_k_index - left_index]
@@ -303,7 +315,7 @@ class LcmsAutoencoder:
                 current_mz_keys.append(centered_mz_key)
 
                 right_index = 1
-                right_key = mz_keys[mz_k_index]
+                right_key = centered_mz_key
                 while (round(abs(centered_mz_key - right_key), magic.rounding_level) < magic.within_range) and (
                         mz_k_index + right_index < len(mz_keys)):
                     right_key = mz_keys[mz_k_index + right_index]
@@ -319,22 +331,33 @@ class LcmsAutoencoder:
                 this_mz_time_ordered = sorted(mz_map[centered_mz_key].values(), key=operator.itemgetter(2))
 
                 time_ordered_with_low_noise = []
-                current_lowest = 0
+                current_largest = 0
                 for value in this_mz_time_ordered:
                     # We don't want lower values causing a lot of null peaks to be called.
-                    # This is way of smoothing bumpy areas that jump between being in and out,
+                    # This is a way of smoothing bumpy areas that jump between being in and out,
                     # when there still exist a good number of points that are at that level.
                     if value[0] > magic.threshold:
                         current_time = value[2]
-                        time_ordered_with_low_noise.extend((magic.threshold, value[1], before_time) for before_time in
-                                                           range(int(current_lowest) + 1,
-                                                                 int(math.floor(current_time))))
+
+                        # Take the amount of time from the largest time seen and the amount of time from the
+                        # current time.  If we skipped a few integer time points, place the threshold
+                        # value at that position so that we fill in the valleys with reasonable noise values.
+                        time_generator = ((magic.threshold, value[1], before_time)
+                                          for before_time in
+                                          range(int(current_largest) + 1, int(math.floor(current_time))))
+
+                        time_ordered_with_low_noise.extend(time_generator)
                         time_ordered_with_low_noise.append(value)
-                        current_lowest = math.floor(current_time)
+                        current_largest = math.floor(current_time)
 
                 if len(time_ordered_with_low_noise) <= 0:
                     continue
 
+                # The interpolation can smooth out the peaks a bit so that we know when to snap points
+                # from nearby m/z values to the line.
+                # We don't want to snap small points to the line, though we don't always have great resolution
+                # in this regard, so we use the interpolation to make sure that we can view points from
+                # another m/z that may differ in temporal location as if we were comparing them to a line.
                 interpolation = np.interp(time_key_set,
                                           [t[2] for t in time_ordered_with_low_noise],
                                           [i[0] for i in time_ordered_with_low_noise],
@@ -346,21 +369,24 @@ class LcmsAutoencoder:
                     for mz in current_mz_keys:
                         if mz_map[mz].get(time) is not None:
                             value = mz_map[mz][time]
+                            # We threshold on where the interpolation says the line is so that we
+                            # only snap large values to the line
+                            # (The ones we didn't want to miss), but don't snap noise.
                             if value[0] >= interpolation[i]:
-                                window.append(mz_map[mz][time])
+                                window.append(value)
 
                 smoothed_window = sorted(window, key=operator.itemgetter(2))
 
                 smoothed_window_with_low_noise = []
-                current_lowest = math.floor(smoothed_window[0][2])
+                current_largest = math.floor(smoothed_window[0][2])
                 for value in smoothed_window:
                     current_time = value[2]
                     step = 2
                     smoothed_window_with_low_noise.extend((magic.threshold, value[1], before_time) for before_time in
-                                                          range(int(current_lowest) + step,
+                                                          range(int(current_largest) + step,
                                                                 int(math.floor(current_time)), step))
                     smoothed_window_with_low_noise.append(value)
-                    current_lowest = math.floor(current_time)
+                    current_largest = math.floor(current_time)
 
                 self.all_peaks_at_rt(smoothed_window_with_low_noise, magic.rounding_level, centered_mz_key,
                                      magic.threshold,
