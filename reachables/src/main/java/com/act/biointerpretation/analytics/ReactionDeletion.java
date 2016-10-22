@@ -118,7 +118,6 @@ public class ReactionDeletion {
     Set<Long> srcIds = new HashSet<>();
     DBIterator iterator = srcApi.getReadDB().getIteratorOverReactions(
         new BasicDBObject("$query", new BasicDBObject()).append("$orderby", new BasicDBObject("_id", 1)),
-        true,
         new BasicDBObject("_id", true));
 
     while (iterator.hasNext()) {
