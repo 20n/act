@@ -69,7 +69,7 @@ class AbstractReactionsToL3ProjectionWorkflow extends Workflow {
       CliOption.builder(OPTION_SPARK_MASTER).
         longOpt("spark-master").
         desc(s"Where to look for the spark master connection. " +
-          s"Uses \"$DEFAULT_SPARK_MASTER\" by default."),
+          s"Uses '$DEFAULT_SPARK_MASTER' by default."),
 
       CliOption.builder(OPTION_USE_CACHED_RESULTS).
         longOpt("use-cached-results").
@@ -169,7 +169,12 @@ class AbstractReactionsToL3ProjectionWorkflow extends Workflow {
       if (!projectionDir.exists()) projectionDir.mkdirs()
 
       val roProjectionsOutputFileDirectory = new File(projectionDir, s"$runId.AbstractReactionRoProjections")
-      if (!roProjectionsOutputFileDirectory.exists()) roProjectionsOutputFileDirectory.mkdirs()
+      if (!roProjectionsOutputFileDirectory.exists()) {
+        roProjectionsOutputFileDirectory.mkdirs()
+      } else {
+        roProjectionsOutputFileDirectory.delete()
+        roProjectionsOutputFileDirectory.mkdirs()
+      }
 
       val roProjectionArgs = List(
         "--substrates-list", substrateListOutputFile.getAbsolutePath,
@@ -235,7 +240,12 @@ class AbstractReactionsToL3ProjectionWorkflow extends Workflow {
         Don't cache this step as it is the last one and would make everything pointless otherwise.
        */
       val l3ProjectionOutputDirectory = new File(outputDirectory, "L3Projections")
-      if (!l3ProjectionOutputDirectory.exists()) l3ProjectionOutputDirectory.mkdirs()
+      if (!l3ProjectionOutputDirectory.exists()) {
+        l3ProjectionOutputDirectory.mkdirs()
+      } else {
+        l3ProjectionOutputDirectory.delete()
+        l3ProjectionOutputDirectory.mkdirs()
+      }
       val l3ProjectionArgs = List(
         "--substrates-list", metaboliteFile.getAbsolutePath,
         "-o", l3ProjectionOutputDirectory.getAbsolutePath,

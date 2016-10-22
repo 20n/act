@@ -173,12 +173,12 @@ trait MongoWorkflowUtilities {
     *
     * @return An iterator over the returned documents
     */
-  def mongoQueryReactions(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject, notimeout: Boolean = false): Iterator[DBObject] = {
+  def mongoQueryReactions(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject, notimeout: Boolean = true): Iterator[DBObject] = {
     logger.debug(s"Querying reaction database with the query $key.  Filtering values to obtain $filter")
     mongo.getIteratorOverReactions(key, filter).toIterator
   }
 
-  def mongoQueryChemicals(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject, notimeout: Boolean = false): Iterator[DBObject] = {
+  def mongoQueryChemicals(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject, notimeout: Boolean = true): Iterator[DBObject] = {
     logger.debug(s"Querying reaction database with the query $key.  Filtering values to obtain $filter")
     mongo.getIteratorOverChemicals(key, filter).toIterator
   }
@@ -200,7 +200,7 @@ trait MongoWorkflowUtilities {
     *
     * @return An iterator over the returned documents
     */
-  def mongoQuerySequences(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject, notimeout: Boolean = false): Iterator[DBObject] = {
+  def mongoQuerySequences(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject, notimeout: Boolean = true): Iterator[DBObject] = {
     logger.debug(s"Querying sequence database with the query $key.  Filtering values to obtain $filter")
     mongo.getDbIteratorOverSeq(key, filter).toIterator
   }

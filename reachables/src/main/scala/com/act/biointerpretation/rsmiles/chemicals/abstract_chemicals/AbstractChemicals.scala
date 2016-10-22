@@ -5,7 +5,7 @@ import chemaxon.formats.MolFormatException
 import chemaxon.marvin.io.MolExportException
 import com.act.analysis.chemicals.molecules.MoleculeFormat.CleaningOptions
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
-import com.act.biointerpretation.rsmiles.chemicals.Information.ChemicalInformation
+import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.ChemicalInformation
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities}
 import com.mongodb.DBObject
 import org.apache.log4j.LogManager

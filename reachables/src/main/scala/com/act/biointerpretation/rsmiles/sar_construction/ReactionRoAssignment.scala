@@ -6,7 +6,7 @@ import com.act.analysis.chemicals.molecules.MoleculeFormat.MoleculeFormatType
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus
 import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
-import com.act.biointerpretation.rsmiles.chemicals.Information.{ChemicalInformation, ReactionInformation}
+import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, ReactionInformation}
 import org.apache.log4j.LogManager
 import spray.json._
 

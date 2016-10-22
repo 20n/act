@@ -60,7 +60,7 @@ object MoleculeExporter {
     val moleculeString = moleculeCache(format).get(mol)
 
     if (moleculeString.isEmpty) {
-      val newFormat = MolExporter.exportToFormat(mol, MoleculeFormat.getExportString(format.value))
+      val newFormat = MolExporter.exportToFormat(mol, MoleculeFormat.getExportString(format))
       moleculeCache(format).put(mol, newFormat)
       return newFormat
     }

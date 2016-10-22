@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import act.server.MongoDB
 import com.act.analysis.chemicals.molecules.MoleculeFormat
-import com.act.biointerpretation.rsmiles.chemicals.Information.{ChemicalInformation, ReactionInformation}
+import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, ReactionInformation}
 import com.act.biointerpretation.rsmiles.processing.ReactionProcessing
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoWorkflowUtilities, ReactionKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}

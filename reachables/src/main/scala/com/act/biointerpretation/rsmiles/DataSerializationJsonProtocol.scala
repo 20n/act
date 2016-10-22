@@ -1,6 +1,6 @@
 package com.act.biointerpretation.rsmiles
 
-import com.act.biointerpretation.rsmiles.chemicals.Information.{ChemicalInformation, ReactionInformation}
+import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, ReactionInformation}
 import com.act.biointerpretation.rsmiles.sar_construction.ReactionRoAssignment
 import spray.json
 

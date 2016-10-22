@@ -2,8 +2,9 @@ package com.act.biointerpretation.rsmiles.chemicals
 
 import java.io.Serializable
 
-object Information {
+object JsonInformationTypes {
 
+  @SerialVersionUID(9508372526223L)
   case class ChemicalInformation(chemicalId: Int, chemicalAsString: String) extends Serializable {
     def getChemicalId: Int = chemicalId
     def getString: String = chemicalAsString
