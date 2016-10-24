@@ -49,16 +49,16 @@ object MoleculeFormat extends Enumeration {
   )
 
   // Don't add H according to usual valences: all H are explicit
-  private val importMap: Map[MoleculeFormatType, String] = Map(
-    inchi -> inchiString,
-    stdInchi -> inchiString,
-    noAuxInchi -> inchiString,
-    strictInchi -> inchiString,
-    strictNoStereoInchi -> inchiString,
-    smiles -> smilesString,
-    smarts -> smartsString,
-    noStereoSmarts -> smartsString,
-    noStereoAromatizedSmarts -> smartsString
+  private val importMap: Map[MoleculeFormat.Value, String] = Map(
+    inchi.value -> inchiString,
+    stdInchi.value -> inchiString,
+    noAuxInchi.value -> inchiString,
+    strictInchi.value -> inchiString,
+    strictNoStereoInchi.value -> inchiString,
+    smiles.value -> smilesString,
+    smarts.value -> smartsString,
+    noStereoSmarts.value -> smartsString,
+    noStereoAromatizedSmarts.value -> smartsString
   )
 
   def listPossibleFormats(): List[String] = {
@@ -70,7 +70,7 @@ object MoleculeFormat extends Enumeration {
   }
 
   def getImportString(chemicalFormat: MoleculeFormat.MoleculeFormatType): String = {
-    importMap(chemicalFormat)
+    importMap(chemicalFormat.value)
   }
 
   def getName(s: String): MoleculeFormatType = {
@@ -113,6 +113,10 @@ object MoleculeFormat extends Enumeration {
     override def toString: String = {
       s"${value.toString}$cleaningSeparator${cleaningOptions.mkString(",")}"
     }
+
+    def getChemaxonString: String = {
+      value.toString
+    }
   }
 
   object CleaningOptions extends Enumeration {
@@ -120,17 +124,20 @@ object MoleculeFormat extends Enumeration {
     private val clean2dString = "clean2d"
     private val clean3dString = "clean3d"
     private val aromatizeString = "aromatize"
+    private val removeIsotopesString = "removeIsotopes"
 
     val neutralize = Value(neutralizeString)
     val clean2d = Value(clean2dString)
     val clean3d = Value(clean3dString)
     val aromatize = Value(aromatizeString)
+    val removeIsotopes = Value(removeIsotopesString)
 
     private val cleaningFunctions = ParMap[String, (Molecule) => Unit](
       neutralizeString -> ((molecule: Molecule) => {new Standardizer("neutralize").standardize(molecule)}),
       clean2dString -> ((molecule: Molecule) => {Cleaner.clean(molecule, 2)}),
       clean3dString -> ((molecule: Molecule) => {Cleaner.clean(molecule, 3)}),
-      aromatizeString -> ((molecule: Molecule) => {molecule.aromatize(MoleculeGraph.AROM_BASIC)})
+      aromatizeString -> ((molecule: Molecule) => {molecule.aromatize(MoleculeGraph.AROM_BASIC)}),
+      removeIsotopesString -> ((molecule: Molecule) => {new Standardizer("clearisotopes").standardize(molecule)})
     )
 
     def applyCleaningOnMolecule(molecule: Molecule)(cleaningOption: CleaningOptions.Value): Unit = {
