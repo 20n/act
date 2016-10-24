@@ -11,27 +11,27 @@ import java.util.Map;
 public interface CombinedSpectrum {
   /**
    * Retrieve all peaks from the combined spectrum
-   * @return a mapping {trace id -> peak spectrum}
+   * @return a mapping {scan file id -> peak spectrum}
    */
   Map<String, PeakSpectrum> getAllPeaks();
 
   /**
-   * Retrieve all peaks related to a given trace
-   * @param traceId the string id of a trace
-   * @return the peak spectrum corresponding to the trace
+   * Retrieve all peaks related to a given scan file
+   * @param scanFileId the string id of a scan file
+   * @return the peak spectrum corresponding to the scan file
    */
-  PeakSpectrum getPeaks(String traceId);
+  PeakSpectrum getPeaks(String scanFileId);
 
   /**
    * Retrieve all peaks from the combined spectrum, around a mass, with a certain confidence level
    * @param mass the target mass (in Da)
    * @param confidenceLevel the confidence level (for example 0.05)
-  * @return a mapping {trace id -> peak spectrum} of matching peaks
+  * @return a mapping {scan file id -> peak spectrum} of matching peaks
    */
   Map<String, PeakSpectrum> getPeaks(Double mass, Double confidenceLevel);
 
   /**
-   * Get the trace ids of underlying traces
+   * Get the scan file ids
    */
-  List<String> getTraceIds();
+  List<String> getScanFileIds();
 }

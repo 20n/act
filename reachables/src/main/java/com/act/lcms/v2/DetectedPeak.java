@@ -20,9 +20,9 @@ public interface DetectedPeak {
   Double getIntensity();
 
   /**
-   * Return the id of the source trace
+   * Return the id of the source scan file
    */
-  String getSourceTraceId();
+  String getSourceScanFileId();
 
   /**
    * Return the peak confidence (likelihood that the detected peak is actually a peak)

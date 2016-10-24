@@ -6,7 +6,7 @@ package com.act.lcms.v2;
  */
 public class FixedWindowDetectedPeak implements DetectedPeak {
 
-  private String sourceTraceId;
+  private String sourceScanFileId;
   private Double mz;
   private Double mzWindow;
   private Double retentionTime;
@@ -30,8 +30,8 @@ public class FixedWindowDetectedPeak implements DetectedPeak {
   }
 
   @Override
-  public String getSourceTraceId() {
-    return sourceTraceId;
+  public String getSourceScanFileId() {
+    return sourceScanFileId;
   }
 
   @Override

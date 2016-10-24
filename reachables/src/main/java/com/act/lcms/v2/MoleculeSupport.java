@@ -3,7 +3,7 @@ package com.act.lcms.v2;
 import java.util.List;
 
 /**
- * Interface representing supporting evidence for the presence of a Metabolite in an LCMS trace
+ * Interface representing supporting evidence for the presence of a Metabolite.
  */
 public interface MoleculeSupport {
 
