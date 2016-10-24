@@ -10,7 +10,7 @@ public interface DetectedPeak {
   Double getMz();
 
   /**
-   * Return the estimated peak retention time
+   * Return the estimated peak retention time (in sec)
    */
   Double getRetentionTime();
 
@@ -35,5 +35,14 @@ public interface DetectedPeak {
    * @param confidenceLevel input confidence level
    * @return result of the test, true if the m/z value matches with the peak
    */
-  Boolean matches(Double mz, Double confidenceLevel);
+  Boolean matchesMz(Double mz, Double confidenceLevel);
+
+  /**
+   * Test whether an input m/z value and retention time matches with a detected peak at a certain confidence level.
+   * @param mz input m/z value
+   * @param retentionTime input retention time
+   * @param confidenceLevel input confidence level
+   * @return result of the test, true if the m/z value matches with the peak
+   */
+  Boolean matchesMzTime(Double mz, Double retentionTime, Double confidenceLevel);
 }

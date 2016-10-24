@@ -9,9 +9,9 @@ import java.util.function.Predicate;
 public interface MetaboliteCorpus {
 
   /**
-   * Fetches metabolites within a certain mass window
-   * @param minMass minimum mass (in Da)
-   * @param maxMass maximum mass (in Da)
+   * Fetches metabolites within a certain monoisotopic mass window
+   * @param minMass minimum mono-isotopic mass (in Da)
+   * @param maxMass maximum mono-isotopic mass (in Da)
    * @return a list of metabolites satisfying the constraint
    */
   List<Metabolite> fetchMetabolitesInMassWindow(Double minMass, Double maxMass);
@@ -28,5 +28,4 @@ public interface MetaboliteCorpus {
    * @return a list of all metabolites in the corpus
    */
   List<Metabolite> getAllMetabolites();
-
 }
