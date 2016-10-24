@@ -36,16 +36,16 @@ object MoleculeFormat extends Enumeration {
   val noStereoSmarts = MoleculeFormatType(Value(noStereoSmartsString), List())
   val noStereoAromatizedSmarts = MoleculeFormatType(Value(noStereoAromatizedSmartsString), List())
 
-  private val exportMap: Map[MoleculeFormatType, String] = Map(
-    inchi -> "inchi",
-    noAuxInchi -> s"inchi:AuxNone",
-    stdInchi -> s"inchi:AuxNone,SAbs,Woff",
-    strictInchi -> s"inchi:AuxNone,SAbs,Woff,DoNotAddH",
-    strictNoStereoInchi -> s"inchi:AuxNone,SNon,Woff,DoNotAddH",
-    smiles -> smilesString,
-    smarts -> smartsString,
-    noStereoSmarts -> s"$smartsString:0",
-    noStereoAromatizedSmarts -> s"$smartsString:a0"
+  private val exportMap: Map[MoleculeFormat.Value, String] = Map(
+    inchi.value -> "inchi",
+    noAuxInchi.value -> s"inchi:AuxNone",
+    stdInchi.value -> s"inchi:AuxNone,SAbs,Woff",
+    strictInchi.value -> s"inchi:AuxNone,SAbs,Woff,DoNotAddH",
+    strictNoStereoInchi.value -> s"inchi:AuxNone,SNon,Woff,DoNotAddH",
+    smiles.value -> smilesString,
+    smarts.value -> smartsString,
+    noStereoSmarts.value -> s"$smartsString:0",
+    noStereoAromatizedSmarts.value -> s"$smartsString:a0"
   )
 
   // Don't add H according to usual valences: all H are explicit
@@ -66,7 +66,7 @@ object MoleculeFormat extends Enumeration {
   }
 
   def getExportString(chemicalFormat: MoleculeFormat.MoleculeFormatType): String = {
-    exportMap(chemicalFormat)
+    exportMap(chemicalFormat.value)
   }
 
   def getImportString(chemicalFormat: MoleculeFormat.MoleculeFormatType): String = {
