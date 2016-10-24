@@ -8,12 +8,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.collections4.CollectionUtils;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Represents an edge, or reaction, in the metabolism network
@@ -58,14 +58,28 @@ public class NetworkEdge {
     this(substrates, products, new HashSet<Integer>(), new HashSet<String>(), new HashSet<String>());
   }
 
+  /**
+   * Gets an edge from a DB reaction.
+   * TODO: optimize number of DB calls made so that this will run faster.
+   */
   public static NetworkEdge buildEdgeFromReaction(MongoDB db, Reaction reaction) {
     List<Long> substrateIds = Arrays.asList(reaction.getSubstrates());
-    List<String> substrates = substrateIds.stream().map(id -> db.getChemicalFromChemicalUUID(id).getInChI())
-        .collect(Collectors.toList());
+    List<String> substrates = new ArrayList<>();
+    for (Long s : substrateIds) {
+      String inchi = db.getChemicalFromChemicalUUID(s).getInChI();
+      for (int i = 0; i < reaction.getSubstrateCoefficient(s); i++) {
+        substrates.add(inchi);
+      }
+    }
 
     List<Long> productIds = Arrays.asList(reaction.getProducts());
-    List<String> products = productIds.stream().map(id -> db.getChemicalFromChemicalUUID(id).getInChI())
-        .collect(Collectors.toList());
+    List<String> products = new ArrayList<>();
+    for (Long p : productIds) {
+      String inchi = db.getChemicalFromChemicalUUID(p).getInChI();
+      for (int i = 0; i < reaction.getProductCoefficient(p); i++) {
+        products.add(inchi);
+      }
+    }
 
     NetworkEdge edge = new NetworkEdge(substrates, products);
     edge.addReactionId(reaction.getUUID());

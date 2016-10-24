@@ -19,7 +19,10 @@ class PrecursorAnalysisFlow extends Workflow with WorkingDirectoryUtility {
 
   val logger = LogManager.getLogger(getClass.getName)
 
-  override val HELP_MESSAGE = "Workflow for precursor analyses."
+  override val HELP_MESSAGE =
+    """Workflow for precursor analyses. Takes in a set of target molecules, as inchis, and
+      |a metabolism network, and finds the precursors of the given molecules in the network. Writes out
+      |one report per target molecule supplied.""".stripMargin
 
   private val OPTION_WORKING_DIRECTORY = "w"
   private val OPTION_INPUT_NETWORK = "i"
@@ -33,8 +36,8 @@ class PrecursorAnalysisFlow extends Workflow with WorkingDirectoryUtility {
         hasArg.
         longOpt("working-directory").
         desc(
-          """The directory in which to run and create all intermediate files. This directory will be created if it
-            |does not already exist.""".stripMargin).
+          """The directory in which to run and create all intermediate files.This directory will be created if it
+            | does not already exist.""".stripMargin).
         required,
 
       CliOption.builder(OPTION_INPUT_NETWORK).
@@ -42,6 +45,7 @@ class PrecursorAnalysisFlow extends Workflow with WorkingDirectoryUtility {
         desc("The file path to the input network.").
         required,
 
+      // Note that the value separator is '|' because inchis can contain commas!
       CliOption.builder(OPTION_TARGET_INCHIS).
         hasArgs().valueSeparator('|').
         desc("The target inchis to find precursors for.")

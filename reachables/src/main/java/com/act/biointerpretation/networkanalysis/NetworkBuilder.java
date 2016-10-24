@@ -33,10 +33,10 @@ public class NetworkBuilder implements JavaRunnable {
   private final boolean skipInvalidInputs;
 
   public NetworkBuilder(
-      File seedNetwork, List<File> corpusFiles, MongoDB db, File outputFile, boolean skipInvalidInputs) {
+      File seedNetwork, List<File> corpusFiles, Optional<MongoDB> db, File outputFile, boolean skipInvalidInputs) {
     this.seedNetwork = Optional.ofNullable(seedNetwork);
     this.corpusFiles = corpusFiles;
-    this.db = Optional.ofNullable(db);
+    this.db = db;
     this.outputFile = outputFile;
     this.skipInvalidInputs = skipInvalidInputs;
   }
@@ -78,7 +78,7 @@ public class NetworkBuilder implements JavaRunnable {
     LOGGER.info("Created starting network! Loading edges from DB.");
 
     db.ifPresent(network::loadAllEdgesFromDb);
-    LOGGER.info("Done loading edges from DB, if any. Loading from corpuses.");
+    LOGGER.info("Done loading edges from DB, if any. Loading edges from any supplied prediction corpuses.");
 
     corpuses.forEach(corpus -> network.loadPredictions(corpus));
     LOGGER.info("Done loading predictions from input corpuses. Writing network to file.");

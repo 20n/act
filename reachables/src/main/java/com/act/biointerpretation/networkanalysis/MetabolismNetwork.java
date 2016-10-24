@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -19,12 +20,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -54,7 +55,7 @@ public class MetabolismNetwork {
   }
 
   public MetabolismNetwork() {
-    nodes = new ConcurrentHashMap<>();
+    nodes = new HashMap<>();
     edges = new ArrayList<>();
   }
 
@@ -132,16 +133,19 @@ public class MetabolismNetwork {
     }
 
     MetabolismNetwork subgraph = new MetabolismNetwork();
+    Map<NetworkNode, Integer> levelMap = new HashMap<>();
     Set<NetworkNode> frontier = new HashSet<>();
     frontier.add(startNode);
+    levelMap.put(startNode, 0);
 
-    for (int n = 0; n < numSteps; n++) {
+    for (MutableInt l = new MutableInt(1); l.toInteger() <= numSteps; l.increment()) {
       // Move frontier back, then add all new edges. Edge adding will add substrate and product nodes as necessary.
       frontier.forEach(node -> node.getInEdges().forEach(subgraph::addEdge));
       frontier = frontier.stream().flatMap(node -> getPrecursors(node).stream()).collect(Collectors.toSet());
+      frontier.forEach(node -> levelMap.put(node, l.toInteger()));
     }
 
-    return new PrecursorReport(startNode.getMetabolite(), subgraph);
+    return new PrecursorReport(startNode.getMetabolite(), subgraph, levelMap);
   }
 
   /**

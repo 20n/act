@@ -36,7 +36,9 @@ public class MetabolismNetworkTest {
     // Assert
     assertEquals("Graph should have one edge", 1, network.getEdges().size());
     assertEquals("Product should have one in edge.", 1, network.getNode(METABOLITE_2).getInEdges().size());
+    assertEquals("Product should have no out edges.", 0, network.getNode(METABOLITE_2).getOutEdges().size());
     assertEquals("Substrate should have one out edge.", 1, network.getNode(METABOLITE_1).getOutEdges().size());
+    assertEquals("Substrate should have no in edge.", 0, network.getNode(METABOLITE_1).getInEdges().size());
 
     NetworkEdge edge = network.getEdges().iterator().next();
     assertEquals("Edge should have one substrate", 1, edge.getSubstrates().size());
@@ -154,11 +156,12 @@ public class MetabolismNetworkTest {
   /**
    * Test precursor report of 2 levels.
    * Adds one relevant inedge, one irrelevant outedge of a precursor, and two level 2 precursors.
-   * Test verifies that every metabolite except METABOLITE 6 is reported.
+   * Test verifies that every metabolite except METABOLITE 6 is reported. Metabolite 6 should not be reported since
+   * it is the derivative of a precursor of the target metabolite 5. ßOther metabolites are either direct percursors,
+   * or precursors of precursors, and so they should all be reported.
    */
   @Test
   public void testPrecursorSubgraphN2() {
-
     // Arrange
     MetabolismNetwork network = new MetabolismNetwork();
     network.addEdge(new NetworkEdge(Arrays.asList(METABOLITE_3, METABOLITE_4), Arrays.asList(METABOLITE_5)));
@@ -181,5 +184,4 @@ public class MetabolismNetworkTest {
     assertTrue("Subgraph should contain second n2 precursor", precursorNetwork.getNodeOption(METABOLITE_1).isPresent());
     assertTrue("Subgraph should contain second n2 precursor", precursorNetwork.getNodeOption(METABOLITE_2).isPresent());
   }
-
 }

@@ -2,28 +2,34 @@ package com.act.biointerpretation.networkanalysis;
 
 import com.act.jobs.FileChecker;
 import com.act.jobs.JavaRunnable;
+import com.act.utils.TSVWriter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 /**
- * Workflow component to take in a graph,calculate a precursor subgraph, and write the subgraph to file.
+ * Workflow component to take in a graph, calculate a precursor subgraph, and write the subgraph to file.
  */
 public class PrecursorAnalysis implements JavaRunnable {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(PrecursorAnalysis.class);
 
+  private static final String TARGET_ID_HEADER = "target_id";
+  private static final String INCHI_HEADER = "InChI";
+
   private final File networkInput;
+
+  // The targets of the analysis: InChI strings of molecules whose network precursors we would like to identify.
   private final List<String> targets;
   private final File outputDirectory;
+  // The number of edges/hops/steps to search backwards from the targets to identify relevant precursors in the network.
   private final int numSteps;
 
   public PrecursorAnalysis(File networkInput, List<String> targets, int numSteps, File outputDirectory) {
@@ -56,6 +62,7 @@ public class PrecursorAnalysis implements JavaRunnable {
         PrecursorReport report = network.getPrecursorReport(targetNode.get(), numSteps);
         File outputFile = new File(outputDirectory, "precursors_target_" + id);
         report.writeToJsonFile(outputFile);
+        LOGGER.info("Wrote target %s report to file %s", target, outputFile.getAbsolutePath());
         targetIdMap.put(target, id);
         id++;
       } else {
@@ -76,13 +83,16 @@ public class PrecursorAnalysis implements JavaRunnable {
    * @throws IOException
    */
   private void writeTargetIdMapToFile(Map<String, Integer> targetIdMap, File targetIdFile) throws IOException {
-    try (BufferedWriter writer = new BufferedWriter(new FileWriter(targetIdFile))) {
-      writer.write("TARGET_ID\tINCHI");
-      for (Map.Entry entry : targetIdMap.entrySet()) {
-        writer.newLine();
-        writer.write(entry.getValue().toString() + "\t" + entry.getKey().toString());
-      }
+    TSVWriter<String, String> writer = new TSVWriter<>(Arrays.asList(TARGET_ID_HEADER, INCHI_HEADER));
+    writer.open(targetIdFile);
+    for (Map.Entry<String, Integer> entry : targetIdMap.entrySet()) {
+      writer.append(new HashMap<String, String>() {{
+        put(TARGET_ID_HEADER, entry.getValue().toString());
+        put(INCHI_HEADER, entry.getKey());
+      }});
     }
+    writer.close();
   }
 }
+
 

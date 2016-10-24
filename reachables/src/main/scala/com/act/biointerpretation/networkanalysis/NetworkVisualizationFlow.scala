@@ -17,7 +17,7 @@ class NetworkVisualizationFlow extends Workflow with WorkingDirectoryUtility {
   override val HELP_MESSAGE = "Reads in a metabolism network and writes out its GraphViz representation."
 
   private val OPTION_INPUT_NETWORK = "i"
-  private val OPTION_OUTPUT_PATH = "o"
+  private val OPTION_WORKING_DIRECTORY = "w"
   private val OPTION_ORG_STRINGS = "s"
 
   override def getCommandLineOptions: Options = {
@@ -28,10 +28,12 @@ class NetworkVisualizationFlow extends Workflow with WorkingDirectoryUtility {
         desc("The file path to the input network.").
         required(),
 
-      CliOption.builder(OPTION_OUTPUT_PATH).
+      CliOption.builder(OPTION_WORKING_DIRECTORY).
         hasArg.
-        desc("The path to write the output").
-        required,
+        desc(
+          """The directory in which to write the output files. There are two output files: the dot graph itself, and
+            |an auxiliary TSV file identifying the inchis of each node in the network.""".stripMargin)
+        .required(),
 
       CliOption.builder(OPTION_ORG_STRINGS).
         hasArg.
@@ -54,8 +56,8 @@ class NetworkVisualizationFlow extends Workflow with WorkingDirectoryUtility {
     val inputNetworkFile = new File(cl.getOptionValue(OPTION_INPUT_NETWORK))
     verifyInputFile(inputNetworkFile)
 
-    val outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH))
-    verifyOutputFile(outputFile)
+    val workingDir = new File(cl.getOptionValue(OPTION_WORKING_DIRECTORY))
+    createWorkingDirectory(workingDir)
 
     val networkViz = new PrecursorReportVisualizer()
     if (cl.hasOption(OPTION_ORG_STRINGS)) {
@@ -64,7 +66,7 @@ class NetworkVisualizationFlow extends Workflow with WorkingDirectoryUtility {
       }
     }
 
-    val runnableViz = networkViz.getRunner(inputNetworkFile, outputFile)
+    val runnableViz = networkViz.getRunner(inputNetworkFile, workingDir)
     headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("graphViz", runnableViz))
     headerJob
   }

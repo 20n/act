@@ -1,6 +1,7 @@
 package com.act.biointerpretation.networkanalysis
 
 import java.io.File
+import java.util.Optional
 
 import act.server.MongoDB
 import com.act.workflow.tool_manager.jobs.Job
@@ -70,8 +71,7 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility with Mong
       baseNetwork = new File(cl.getOptionValue(OPTION_BASE_NETWORK))
     }
 
-    var inputCorpuses = List[File]()
-    if (cl.hasOption(OPTION_INPUT_CORPUSES)) {
+    val inputCorpuses = if (cl.hasOption(OPTION_INPUT_CORPUSES)) {
       val corpusDirs = cl.getOptionValues(OPTION_INPUT_CORPUSES).map(path => new File(path))
 
       def findInputFiles(directory: File): List[File] = {
@@ -80,19 +80,23 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility with Mong
         inputFiles
       }
 
-      inputCorpuses = corpusDirs.flatMap(corpusDir => findInputFiles(corpusDir)).toList
+      corpusDirs.flatMap(corpusDir => findInputFiles(corpusDir)).toList
+    } else {
+      List[File]()
     }
 
     val outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_FILE))
     verifyOutputFile(outputFile)
 
-    var mongoDb: MongoDB = null
-    if (cl.hasOption(OPTION_MONGO_DB)) {
-      mongoDb = connectToMongoDatabase(cl.getOptionValue(OPTION_MONGO_DB))
-    }
+    val mongoDb: Option[MongoDB] =
+      if (cl.hasOption(OPTION_MONGO_DB)) {
+        Option(connectToMongoDatabase(cl.getOptionValue(OPTION_MONGO_DB)))
+      } else {
+        Option.empty
+      }
 
     val networkBuilder =
-      new NetworkBuilder(baseNetwork, inputCorpuses.asJava, mongoDb, outputFile, true)
+      new NetworkBuilder(baseNetwork, inputCorpuses.asJava, Optional.ofNullable(mongoDb.orNull), outputFile, true)
     headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("network builder", networkBuilder))
 
     headerJob
