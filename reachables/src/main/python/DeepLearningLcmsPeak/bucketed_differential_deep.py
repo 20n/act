@@ -110,7 +110,7 @@ if __name__ == "__main__":
         mz_buckets = np.zeros(bucket_list[0].shape)
 
         """
-        For each scan we create a mask such taht it only selects value where this bucket is the max intensity.
+        For each scan we create a mask such that it only selects value where this bucket is the max intensity.
         We then assign the m/z value at that max intensity point to be what the m/z value actually is.
         """
         for index, bucket in enumerate(bucket_list):

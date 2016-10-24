@@ -13,6 +13,16 @@ class LcmsClusterer:
     """
     This class is created by piping in 2D matrix of each sample's encodings to create a cluster fit,
     followed by additional information indicated in predict.
+
+    cluster = LcmsClusterer(n_cluster=2, block_size=20, mz_split=0.01, mz_min=49)
+
+    # Encoded samples come from a pre-processing step.  They are equally sized window vectors.
+    cluster.fit(encoded_samples)
+
+    # Description of these found below.
+    cluster.predict(encoded_samples, named_windows, output_descriptor, [row_matrices], drop_rt=0
+
+    This allows us to go from encoding => output TSV.
     """
 
     def __init__(self, n_cluster, block_size, mz_split, mz_min):

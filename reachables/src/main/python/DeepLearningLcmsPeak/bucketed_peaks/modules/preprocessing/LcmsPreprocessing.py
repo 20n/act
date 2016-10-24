@@ -15,15 +15,14 @@ class ScanConverter:
         """
 
         :param loaded_triples   A list of triples of LCMS points (Time, [M/Zs], [Intensities])
-
-        :param mz_min   Smallest m/z value expected
-        :param mz_max    Largest m/z value expected
-        :param mz_step  The bucket division between two m/z buckets.
-                        Step = 0.1 would mean we go in steps of 0.1 up to mz_max starting at mz_min
-        :param time_min    Smallest time value expected
-        :param time_max     Largest time value expected
-        :param time_step    Bucket division between two time points.
-                            Step = 2.5 would mean we go in steps of 2.5 up to time_max starting at time_min
+        :param mz_min Smallest m/z value expected
+        :param mz_max Largest m/z value expected
+        :param mz_step The bucket division between two m/z buckets.
+                       Step = 0.1 would mean we go in steps of 0.1 up to mz_max starting at mz_min
+        :param time_min Smallest time value expected
+        :param time_max Largest time value expected
+        :param time_step Bucket division between two time points.
+                         Step = 2.5 would mean we go in steps of 2.5 up to time_max starting at time_min
 
         The process:
         Step 1) Load the LCMS file using the netcdf_parser
