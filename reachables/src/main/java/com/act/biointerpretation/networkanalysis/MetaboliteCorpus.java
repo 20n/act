@@ -42,7 +42,6 @@ public class MetaboliteCorpus {
     List<Metabolite> l = new ArrayList<>(peaksNode.size());
 
     while (peaks.hasNext()) {
-      l.add(new Metabolite())
     }
   }
 
