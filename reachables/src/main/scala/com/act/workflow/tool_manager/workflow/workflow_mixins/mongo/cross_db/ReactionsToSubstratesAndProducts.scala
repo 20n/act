@@ -44,7 +44,7 @@ trait ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities with Query
     // Get all chemicals in one query
     val chemicals: List[Long] =
       rxnList.flatMap(x => x.getProducts.toList.map(_.toLong) ::: x.getSubstrates.toList.map(_.toLong)).distinct
-    val chemicalInchis: Map[Long, Option[String]] = getChemicalsStringsByIds(mongoConnection)(chemicals)
+    val chemicalInchis: Map[Long, Option[String]] = getChemicalStringsByIds(mongoConnection)(chemicals)
 
     val moleculeMap: List[Option[InchiReaction]] = rxnList.toStream.map(result => {
       val reactionId = result.getUUID

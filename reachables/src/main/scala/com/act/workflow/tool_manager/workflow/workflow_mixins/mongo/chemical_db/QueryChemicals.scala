@@ -12,22 +12,22 @@ import scala.collection.JavaConverters._
 trait QueryChemicals extends MongoWorkflowUtilities {
 
   /**
-    * From a chemical ID, returns the Molecule format
+    * From a chemical ID, returns the molecule for that chemical in the appropriate format
     */
   def getMoleculeById(mongoConnection: MongoDB)
                      (chemicalId: Long, moleculeFormat:
                      MoleculeFormat.Value = MoleculeFormat.inchi): Option[Molecule] = {
-    val moleculeString = getChemicalsStringById(mongoConnection)(chemicalId, moleculeFormat)
+    val moleculeString = getChemicalStringById(mongoConnection)(chemicalId, moleculeFormat)
     maybeImportString(moleculeString, moleculeFormat)
   }
 
   /**
     * Takes in a single ChemicalId and outputs the MoleculeFormat from the DB if available
     */
-  def getChemicalsStringById(mongoConnection: MongoDB)
-                            (chemicalId: Long,
+  def getChemicalStringById(mongoConnection: MongoDB)
+                           (chemicalId: Long,
                              moleculeFormat: MoleculeFormat.Value = MoleculeFormat.inchi): Option[String] = {
-    val queryResult: Map[Long, Option[String]] = getChemicalsStringsByIds(mongoConnection)(List(chemicalId), moleculeFormat)
+    val queryResult: Map[Long, Option[String]] = getChemicalStringsByIds(mongoConnection)(List(chemicalId), moleculeFormat)
 
     if (queryResult.isEmpty) {
       throw new NoSuchElementException(s"No Chemical with ID of $chemicalId was found in the database.")
@@ -41,12 +41,12 @@ trait QueryChemicals extends MongoWorkflowUtilities {
   }
 
   /**
-    * Get a single Molecule by ID
+    * Get a list of Molecules by IDs
     */
   def getMoleculesById(mongoConnection: MongoDB)
                       (chemicalIds: List[Long],
                        moleculeFormat: MoleculeFormat.Value = MoleculeFormat.inchi): Map[Long, Option[Molecule]] = {
-    val chemicalStrings = getChemicalsStringsByIds(mongoConnection)(chemicalIds)
+    val chemicalStrings = getChemicalStringsByIds(mongoConnection)(chemicalIds)
 
     if (chemicalStrings.isEmpty) {
       return Map()
@@ -58,8 +58,8 @@ trait QueryChemicals extends MongoWorkflowUtilities {
   }
 
   // From a list of Chemical IDs, returns the string representations from teh database if available
-  def getChemicalsStringsByIds(mongoConnection: MongoDB)
-                              (chemicalIds: List[Long],
+  def getChemicalStringsByIds(mongoConnection: MongoDB)
+                             (chemicalIds: List[Long],
                                moleculeFormat: MoleculeFormat.Value = MoleculeFormat.inchi): Map[Long, Option[String]] = {
     val queryResult: Option[java.util.Iterator[Chemical]] =
       Option(mongoConnection.getChemicalsbyIds(chemicalIds.map(java.lang.Long.valueOf).asJava, true))
@@ -68,13 +68,15 @@ trait QueryChemicals extends MongoWorkflowUtilities {
       return Map()
     }
 
-    queryResult.get.asScala.map(id => (id.getUuid.toLong, getFormatString(moleculeFormat, id))).toMap
+    queryResult.get.asScala.map(id => (id.getUuid.toLong, getChemicalStringByFormat(moleculeFormat, id))).toMap
   }
 
   /**
     * Returns the appropriate string, if exists.
+    * This assumes that we have used "determineFormat" to determine the format to get the format,
+    * which ensures that it is a valid type.
     */
-  private def getFormatString(moleculeFormat: MoleculeFormat.Value, result: Chemical): Option[String] = {
+  private def getChemicalStringByFormat(moleculeFormat: MoleculeFormat.Value, result: Chemical): Option[String] = {
     if (Option(result).isEmpty) {
       return None
     }
@@ -100,8 +102,11 @@ trait QueryChemicals extends MongoWorkflowUtilities {
   private def determineFormat(moleculeFormat: MoleculeFormat.Value): Keyword = {
     if (MoleculeFormat.getImportString(moleculeFormat).contains("inchi")) {
       ChemicalKeywords.INCHI
-    } else {
+    } else if (MoleculeFormat.getImportString(moleculeFormat).contains("smiles") ||
+      MoleculeFormat.getImportString(moleculeFormat).contains("smarts")) {
       ChemicalKeywords.SMILES
+    } else {
+      throw new RuntimeException(s"Invalid chemical format $moleculeFormat supplied.")
     }
   }
 

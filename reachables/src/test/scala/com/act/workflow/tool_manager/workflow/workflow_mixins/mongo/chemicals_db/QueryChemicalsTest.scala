@@ -44,22 +44,22 @@ class QueryChemicalsTest extends FlatSpec with Matchers with TimeLimitedTests wi
   }
 
   "QueryChemicals" should "return inchis that are loaded into the database when queried by ID." in {
-    TestObject.getChemicalsStringById(mockDb.get)(0L) should be(Some(chemicals(0L)))
-    TestObject.getChemicalsStringById(mockDb.get)(1L, MoleculeFormat.inchi) should be(Some(chemicals(1L)))
+    TestObject.getChemicalStringById(mockDb.get)(0L) should be(Some(chemicals(0L)))
+    TestObject.getChemicalStringById(mockDb.get)(1L, MoleculeFormat.inchi) should be(Some(chemicals(1L)))
   }
 
   "QueryChemicals" should "return None if a chemical does not have an InChI representation." in {
-    TestObject.getChemicalsStringById(mockDb.get)(2L) should be(None)
-    TestObject.getChemicalsStringById(mockDb.get)(3L) should be(None)
+    TestObject.getChemicalStringById(mockDb.get)(2L) should be(None)
+    TestObject.getChemicalStringById(mockDb.get)(3L) should be(None)
   }
 
   "QueryChemicals" should "throw an error if the chemical does not exist within the database." in {
-    an[NoSuchElementException] should be thrownBy TestObject.getChemicalsStringById(mockDb.get)(-2L)
+    an[NoSuchElementException] should be thrownBy TestObject.getChemicalStringById(mockDb.get)(-2L)
   }
 
   "QueryChemicals" should "be able to query multiple chemical IDs at one time and " +
     "return an ordered result of InChIs." in {
-    val multipleInchiQuery = TestObject.getChemicalsStringsByIds(mockDb.get)(List(0L, 1L))
+    val multipleInchiQuery = TestObject.getChemicalStringsByIds(mockDb.get)(List(0L, 1L))
     multipleInchiQuery.size should be(2)
     multipleInchiQuery(0L) should be(Some(chemicals(0L)))
     multipleInchiQuery(1L) should be(Some(chemicals(1L)))
@@ -86,9 +86,9 @@ class QueryChemicalsTest extends FlatSpec with Matchers with TimeLimitedTests wi
       Some(MoleculeImporter.importMolecule(chemicals(1L), MoleculeFormat.inchi)))
   }
 
-  "QueryChemicals" should "return None on an invalid type even if another vlaid type exists.." in {
-    TestObject.getChemicalsStringById(mockDb.get)(0L) should be(Some(chemicals(0L)))
-    TestObject.getChemicalsStringById(mockDb.get)(0L, MoleculeFormat.smiles) should be(None)
+  "QueryChemicals" should "return None on an invalid type even if another valid type exists." in {
+    TestObject.getChemicalStringById(mockDb.get)(0L) should be(Some(chemicals(0L)))
+    TestObject.getChemicalStringById(mockDb.get)(0L, MoleculeFormat.smiles) should be(None)
   }
 
   "QueryChemicals" should "be able to import multiple molecules at one time" in {
