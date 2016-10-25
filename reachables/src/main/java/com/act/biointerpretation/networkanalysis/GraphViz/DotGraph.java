@@ -15,7 +15,6 @@ import java.util.Map;
 /**
  * Represents a GraphViz graph.
  * See user manual for format here: http://graphviz.org/Documentation/dotguide.pdf
- * TODO: Add support for variable node formatting. i.e., to support coloring or shading nodes based on LCMS data.
  */
 public class DotGraph {
 
@@ -25,16 +24,20 @@ public class DotGraph {
   private static final String NAME_HEADER = "node_name";
 
   List<DotEdge> edges;
+  List<DotNode> nodes;
   Map<String, String> nodeLabelToName;
 
   public DotGraph() {
     edges = new ArrayList<>();
+    nodes = new ArrayList<>();
     nodeLabelToName = new HashMap<>();
   }
 
   public void addEdge(DotEdge edge) {
     edges.add(edge);
   }
+
+  public void addNode(DotNode node) { nodes.add(node); }
 
   public void setNodeName(String nodeLabel, String nodeName) {
     nodeLabelToName.put(nodeLabel, nodeName);
@@ -67,6 +70,9 @@ public class DotGraph {
       writer.write("digraph G {\n");
       for (DotEdge edge : edges) {
         writer.write(edge.getDotString());
+      }
+      for (DotNode node : nodes) {
+        writer.write(node.getDotString());
       }
       writer.write("}\n");
     }

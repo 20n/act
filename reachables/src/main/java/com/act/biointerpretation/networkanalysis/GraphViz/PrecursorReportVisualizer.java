@@ -30,9 +30,9 @@ public class PrecursorReportVisualizer {
   // Any edge with any organism name which contains one of these strings will be colored.
   // An edge which matches multiple keys of this map will be given one edge per distinct color specified by its
   // org matches.
-  private final Map<String, DotEdge.EdgeColor> orgToColor;
+  private final Map<String, DotColor> orgToColor;
 
-  public void addOrgOfInterest(String org, DotEdge.EdgeColor color) {
+  public void addOrgOfInterest(String org, DotColor color) {
     orgToColor.put(org, color);
   }
 
@@ -90,14 +90,14 @@ public class PrecursorReportVisualizer {
     DotEdge.EdgeStyle style = edge.getReactionIds().isEmpty() ?
         DotEdge.EdgeStyle.DOTTED : DotEdge.EdgeStyle.DEFAULT_SOLID;
 
-    Set<DotEdge.EdgeColor> colors = new HashSet<>();
+    Set<DotColor> colors = new HashSet<>();
     for (String orgOfInterest : orgToColor.keySet()) {
       if (matchesOrg(edge, orgOfInterest)) {
         colors.add(orgToColor.get(orgOfInterest));
       }
     }
     if (colors.isEmpty()) {
-      colors.add(DotEdge.EdgeColor.DEFAULT_BLACK);
+      colors.add(DotColor.DEFAULT_BLACK);
     }
 
     return colors.stream().map(c -> new DotEdge(substrateId, productId).setColor(c).setStyle(style))
