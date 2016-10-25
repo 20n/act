@@ -1,6 +1,7 @@
 package com.act.lcms.v2;
 
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 
 /**
@@ -28,4 +29,18 @@ public interface PeakSpectrum {
   List<DetectedPeak> getPeaksByTime(Double time, Double timeTolerance);
   List<DetectedPeak> getNeighborhoodPeaks(DetectedPeak targetPeak, Double massTolerance, Double timeTolerance);
   List<DetectedPeak> getNeighborhoodPeaks(Double mass, Double massTolerance, Double time, Double timeTolerance);
+
+  /**
+   * Partition the spectrum by scan file id.
+   * @return a mapping between scan files and their corresponding detected peaks.
+   */
+  Map<String, PeakSpectrum> getPeakSpectraByScanFile();
+
+  /**
+   * Extract a spectrum corresponding to a given scan file
+   * @param scanFileId id of the desired scan file
+   * @return the corresponding PeakSpectrum
+   */
+  PeakSpectrum getSpectrum(String scanFileId);
+
 }

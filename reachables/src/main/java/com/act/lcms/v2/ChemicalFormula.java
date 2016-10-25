@@ -28,14 +28,14 @@ public interface ChemicalFormula {
   Double getMonoIsotopicMass();
 
   /**
-   * Check whether the formula matches a given molecular structure
-   * @param structure input structure
-   * @return a boolean, true if the formula matches the structure
-   */
-  Boolean matchesMolecularStructure(MolecularStructure structure);
-
-  /**
    * Retrieve an optional formula name
    */
   Optional<String> getName();
+
+  /**
+   * Check for equality with another Chemicalformula
+   * @param chemicalFormula input formula
+   * @return A Boolean, indicating whether or not the formulae match
+   */
+  Boolean equals(ChemicalFormula chemicalFormula);
 }

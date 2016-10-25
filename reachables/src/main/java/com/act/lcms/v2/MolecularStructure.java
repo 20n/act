@@ -20,4 +20,9 @@ public interface MolecularStructure {
    * Get the mono-isotopic mass for the molecule
    */
   Double getMass();
+
+  /**
+   * Extract the formula for the given structure
+   */
+  ChemicalFormula getChemicalFormula();
 }
