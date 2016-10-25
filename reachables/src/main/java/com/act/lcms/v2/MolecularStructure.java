@@ -14,7 +14,7 @@ public interface MolecularStructure {
    * @param inchi input InChI string
    * @return boolean indicating if the parsing operation succeeded.
    */
-  Boolean parseStructure(String inchi);
+  Boolean parseInchi(String inchi);
 
   /**
    * Get the mono-isotopic mass for the molecule
