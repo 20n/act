@@ -103,24 +103,45 @@ public class MockedMongoDB {
 
   public void installMocks(List<Reaction> testReactions, List<Long> testChemIds,
                            List<Seq> sequences, Map<Long, String> orgNames, Map<Long, String> chemIdToInchi) {
-    this.organismMap.putAll(orgNames);
+    if (orgNames != null) {
+      this.organismMap.putAll(orgNames);
+    }
 
-    for (Seq seq : sequences) {
-      seqMap.put(Long.valueOf(seq.getUUID()), seq);
+    if (sequences != null) {
+      for (Seq seq : sequences) {
+        seqMap.put(Long.valueOf(seq.getUUID()), seq);
+      }
     }
 
     // Mock the NoSQL API and its DB connections, throwing an exception if an unexpected method gets called.
     this.mockMongoDB = mock(MongoDB.class, CRASH_BY_DEFAULT);
 
-    for (Reaction r : testReactions) {
-      this.reactionMap.put(Long.valueOf(r.getUUID()), r);
+    if (testReactions != null) {
+      for (Reaction r : testReactions) {
+        this.reactionMap.put(Long.valueOf(r.getUUID()), r);
 
-      Long[] substrates = r.getSubstrates();
-      Long[] products = r.getProducts();
-      List<Long> allSubstratesProducts = new ArrayList<>(substrates.length + products.length);
-      allSubstratesProducts.addAll(Arrays.asList(substrates));
-      allSubstratesProducts.addAll(Arrays.asList(products));
-      for (Long id : allSubstratesProducts) {
+        Long[] substrates = r.getSubstrates();
+        Long[] products = r.getProducts();
+        List<Long> allSubstratesProducts = new ArrayList<>(substrates.length + products.length);
+        allSubstratesProducts.addAll(Arrays.asList(substrates));
+        allSubstratesProducts.addAll(Arrays.asList(products));
+        for (Long id : allSubstratesProducts) {
+          if (!this.chemicalMap.containsKey(id)) {
+            Chemical c = new Chemical(id);
+            if (chemIdToInchi.containsKey(id)) {
+              c.setInchi(chemIdToInchi.get(id));
+            } else {
+              // Use /FAKE/BRENDA prefix to avoid computing InChI keys.
+              c.setInchi(String.format("InChI=/FAKE/BRENDA/TEST/%d", id));
+            }
+            this.chemicalMap.put(id, c);
+          }
+        }
+      }
+    }
+
+    if (testChemIds != null) {
+      for (Long id : testChemIds) {
         if (!this.chemicalMap.containsKey(id)) {
           Chemical c = new Chemical(id);
           if (chemIdToInchi.containsKey(id)) {
@@ -131,19 +152,6 @@ public class MockedMongoDB {
           }
           this.chemicalMap.put(id, c);
         }
-      }
-    }
-
-    for (Long id : testChemIds) {
-      if (!this.chemicalMap.containsKey(id)) {
-        Chemical c = new Chemical(id);
-        if (chemIdToInchi.containsKey(id)) {
-          c.setInchi(chemIdToInchi.get(id));
-        } else {
-          // Use /FAKE/BRENDA prefix to avoid computing InChI keys.
-          c.setInchi(String.format("InChI=/FAKE/BRENDA/TEST/%d", id));
-        }
-        this.chemicalMap.put(id, c);
       }
     }
 
@@ -168,9 +176,39 @@ public class MockedMongoDB {
     doAnswer(new Answer<Iterator<Seq>>() {
       @Override
       public Iterator<Seq> answer(InvocationOnMock invocation) throws Throwable {
-          return seqMap.values().iterator();
-        }
+        return seqMap.values().iterator();
+      }
     }).when(mockMongoDB).getSeqIterator();
+
+    doAnswer(new Answer<Iterator<Chemical>>() {
+      @Override
+      public Iterator<Chemical> answer(InvocationOnMock invocation) throws Throwable {
+        List<Chemical> chemicals = new ArrayList<>();
+        for (Long id: (List<Long>) invocation.getArgumentAt(0, List.class)){
+          if (chemicalMap.get(id) == null) {
+            return null;
+          }
+          chemicals.add(chemicalMap.get(id));
+        }
+
+        return chemicals.iterator();
+      }
+    }).when(mockMongoDB).getChemicalsbyIds(any(List.class), any(boolean.class));
+
+    doAnswer(new Answer<Iterator<Reaction>>() {
+      @Override
+      public Iterator<Reaction> answer(InvocationOnMock invocation) throws Throwable {
+        List<Reaction> reactions = new ArrayList<>();
+        for (Long id: (List<Long>) invocation.getArgumentAt(0, List.class)){
+          if (reactionMap.get(id) == null) {
+            return null;
+          }
+          reactions.add(reactionMap.get(id));
+        }
+
+        return reactions.iterator();
+      }
+    }).when(mockMongoDB).getReactionsIteratorById(any(List.class), any(boolean.class));
 
     doAnswer(new Answer<Long>() {
       @Override

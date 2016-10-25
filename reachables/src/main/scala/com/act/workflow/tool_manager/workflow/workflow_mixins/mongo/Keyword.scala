@@ -127,8 +127,10 @@ object ReactionKeywords {
 
   case object ORGANISM extends Keyword{
     val value = "organism"
-  }
 
+  case object COEFFICIENT extends Keyword {
+    val value = "coefficient"
+  }
 }
 
 object ChemicalKeywords {
@@ -139,6 +141,10 @@ object ChemicalKeywords {
 
   case object INCHI extends Keyword {
     val value = "InChI"
+  }
+
+  case object SMILES extends Keyword {
+    val value = "SMILES"
   }
 
 }
