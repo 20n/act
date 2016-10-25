@@ -63,6 +63,9 @@ def replacement_alignment(aligned_peaks, unaligned_peaks):
     def sort_ordering(data):
         return data.get_mz(), data.get_rt()
 
+    def within_threshold(group, index, unaligned):
+        return abs(unaligned - group[index].get_mz()) < magic.mz_replacement_threshold
+
     still_unaligned_peaks = list()
 
     print("Replacing peak alignments with superior ones if a larger peak can be found locally.")
@@ -72,16 +75,15 @@ def replacement_alignment(aligned_peaks, unaligned_peaks):
         unaligned_peak_set = sorted(unaligned_peaks[unaligned_peaks_index], key=sort_ordering)
 
         for unaligned_peak in tqdm(unaligned_peak_set):
+            unaligned_mz = unaligned_peak.get_mz()
 
-            for aligned_peak_index, aligned_peak_group in enumerate(aligned_peaks):
-                mz_difference = unaligned_peak.get_mz() - aligned_peak_group[unaligned_peaks_index].get_mz()
-                if mz_difference < -magic.mz_replacement_threshold:
-                    continue
-
+            # TODO: Optimize this such that it more efficiently looks at large sets of peaks.
+            # Double pointer iteration or multi-threading could be useful.
+            possible_peaks = (d for d in aligned_peaks if within_threshold(d, unaligned_peaks_index, unaligned_mz))
+            for aligned_peak_index, aligned_peak_group in enumerate(possible_peaks):
                 rt_difference = unaligned_peak.get_rt() - aligned_peak_group[unaligned_peaks_index].get_rt()
 
-                if abs(rt_difference) <= magic.rt_replacement_threshold \
-                        and abs(mz_difference) <= magic.mz_replacement_threshold:
+                if abs(rt_difference) <= magic.rt_replacement_threshold:
                     if aligned_peak_group[unaligned_peaks_index].get_maxo() < unaligned_peak.get_maxo():
                         aligned_peaks[aligned_peak_index][unaligned_peaks_index] = unaligned_peak
                         replacement_count += 1
@@ -95,16 +97,16 @@ def replacement_alignment(aligned_peaks, unaligned_peaks):
                     # The else case is that this is a small duplicate peak.
                     break
             else:
-                # Didn't find anything, readd to unaligned list
+                # Didn't find anything, read to unaligned list
                 if len(still_unaligned_peaks) <= unaligned_peaks_index:
                     still_unaligned_peaks.append([])
 
                 still_unaligned_peaks[unaligned_peaks_index].append(unaligned_peak)
 
+
     print("Replaced {} peaks, while dropping {} local minimum peaks.  "
           "Number of aligned peaks is {}, number of unaligned peaks is {}".format(replacement_count, drop_count,
-                                                                                  len(aligned_peaks), sum(
-            len(p) for p in still_unaligned_peaks)))
+                                                                                  len(aligned_peaks), sum(len(p) for p in still_unaligned_peaks)))
 
     return aligned_peaks, still_unaligned_peaks
 

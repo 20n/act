@@ -9,20 +9,20 @@ mz_min = 49
 mz_max = 951
 time_min = 0
 time_max = 450
-lowest_point_to_keep = 100
 
 # Aligner settings
 rounding_level = 3
 max_seconds = 50
 seconds_interval = 0.1
-threshold = 10000.0
+threshold = 1000.0
 within_range = 0.004
 
 """
 Lcms_Autoencoder.py Default Values
 """
 # The lowest max value a window can have before we drop that window.
-lowest_encoded_window_max_value = 1e4
+lowest_encoded_window_max_value = threshold
+lowest_point_to_keep = threshold
 
 loss_function = "mse"
 metrics = ["accuracy"]
