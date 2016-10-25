@@ -28,11 +28,8 @@ public class Metabolite {
 
   @JsonCreator
   public Metabolite(String inchi) {
-    this.mass = null;
-    this.inchi = inchi;
+    this(null, inchi);
   }
-
-
 
   @JsonCreator
   public Metabolite(Double mass){
