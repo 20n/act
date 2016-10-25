@@ -63,9 +63,6 @@ def replacement_alignment(aligned_peaks, unaligned_peaks):
     def sort_ordering(data):
         return data.get_mz(), data.get_rt()
 
-    def within_threshold(group, index, unaligned):
-        return abs(unaligned - group[index].get_mz()) < magic.mz_replacement_threshold
-
     still_unaligned_peaks = list()
 
     print("Replacing peak alignments with superior ones if a larger peak can be found locally.")
@@ -75,15 +72,16 @@ def replacement_alignment(aligned_peaks, unaligned_peaks):
         unaligned_peak_set = sorted(unaligned_peaks[unaligned_peaks_index], key=sort_ordering)
 
         for unaligned_peak in tqdm(unaligned_peak_set):
-            unaligned_mz = unaligned_peak.get_mz()
 
-            # TODO: Optimize this such that it more efficiently looks at large sets of peaks.
-            # Double pointer iteration or multi-threading could be useful.
-            possible_peaks = (d for d in aligned_peaks if within_threshold(d, unaligned_peaks_index, unaligned_mz))
-            for aligned_peak_index, aligned_peak_group in enumerate(possible_peaks):
+            for aligned_peak_index, aligned_peak_group in enumerate(aligned_peaks):
+                mz_difference = unaligned_peak.get_mz() - aligned_peak_group[unaligned_peaks_index].get_mz()
+                if mz_difference < -magic.mz_replacement_threshold:
+                    continue
+
                 rt_difference = unaligned_peak.get_rt() - aligned_peak_group[unaligned_peaks_index].get_rt()
 
-                if abs(rt_difference) <= magic.rt_replacement_threshold:
+                if abs(rt_difference) <= magic.rt_replacement_threshold \
+                        and abs(mz_difference) <= magic.mz_replacement_threshold:
                     if aligned_peak_group[unaligned_peaks_index].get_maxo() < unaligned_peak.get_maxo():
                         aligned_peaks[aligned_peak_index][unaligned_peaks_index] = unaligned_peak
                         replacement_count += 1
@@ -97,33 +95,33 @@ def replacement_alignment(aligned_peaks, unaligned_peaks):
                     # The else case is that this is a small duplicate peak.
                     break
             else:
-                # Didn't find anything, read to unaligned list
+                # Didn't find anything, readd to unaligned list
                 if len(still_unaligned_peaks) <= unaligned_peaks_index:
                     still_unaligned_peaks.append([])
 
                 still_unaligned_peaks[unaligned_peaks_index].append(unaligned_peak)
 
-
     print("Replaced {} peaks, while dropping {} local minimum peaks.  "
           "Number of aligned peaks is {}, number of unaligned peaks is {}".format(replacement_count, drop_count,
-                                                                                  len(aligned_peaks), sum(len(p) for p in still_unaligned_peaks)))
+                                                                                  len(aligned_peaks), sum(
+            len(p) for p in still_unaligned_peaks)))
 
     return aligned_peaks, still_unaligned_peaks
 
 
 def align_old_alignment_to_new_sample(previous_alignment, sample_two, tolerance_mz, tolerance_time):
     def get_mz(s):
-        return s.get_mz()
+        return s[0].get_mz()
 
     def get_rt(s):
-        return s.get_rt()
+        return s[0].get_rt()
 
     def add_to_list(o, t):
         return o + [t]
 
-    aligned_peaks = __align_two_samples(previous_alignment, sample_two,
-                                        tolerance_mz, tolerance_time,
-                                        get_mz, get_rt, add_to_list)
+    aligned_peaks, previous_alignment, sample_two = __align_two_samples(previous_alignment, sample_two,
+                                                                        tolerance_mz, tolerance_time,
+                                                                        get_mz, get_rt, add_to_list)
 
     unaligned = [[] for _ in range(0, len(previous_alignment[0]))]
     for peak in previous_alignment:
@@ -143,16 +141,16 @@ def two_sample_alignment(sample_one, sample_two, tolerance_mz, tolerance_time):
     def add_to_list(o, t):
         return [o, t]
 
-    aligned_peaks = __align_two_samples(sample_one, sample_two,
-                                        tolerance_mz, tolerance_time,
-                                        get_mz, get_rt, add_to_list)
+    aligned_peaks, sample_one, sample_two = __align_two_samples(sample_one, sample_two,
+                                                                tolerance_mz, tolerance_time,
+                                                                get_mz, get_rt, add_to_list)
 
     return aligned_peaks, [sample_one, sample_two]
 
 
 def __align_two_samples(sample_one, sample_two, tolerance_mz, tolerance_time, get_mz, get_rt, add_to_list):
     sample_one = sorted(sample_one, key=lambda data: (get_mz(data), get_rt(data)))
-    sample_two = sorted(sample_two, key=lambda data: (get_mz(data), get_rt(data)))
+    sample_two = sorted(sample_two, key=lambda data: (data.get_mz(), data.get_rt()))
 
     aligned_peaks = []
     i = 0
@@ -186,7 +184,7 @@ def __align_two_samples(sample_one, sample_two, tolerance_mz, tolerance_time, ge
         else:
             i += 1
 
-    return aligned_peaks
+    return aligned_peaks, sample_one, sample_two
 
 
 def iterative_alignment(unaligned_samples):
@@ -202,8 +200,8 @@ def iterative_alignment(unaligned_samples):
         print("Aligning previous samples with sample {}".format(i + 2))
         # TODO Make it so that we track unaligned when sample number is greater than 2
         aligned, _ = stepwise_alignment(sample, previous_alignment=aligned,
-                                                          min_mz=0.001, mz_step=0.001, max_mz=0.01,
-                                                          min_time=0.1, time_step=0.2, max_time=5)
+                                        min_mz=0.001, mz_step=0.001, max_mz=0.01,
+                                        min_time=0.1, time_step=0.2, max_time=5)
 
     if len(anything_after) == 0:
         return aligned, unaligned
