@@ -11,6 +11,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -32,13 +33,29 @@ public class PrecursorReport {
   @JsonProperty("level_map")
   Map<NetworkNode, Integer> levelMap;
 
+  @JsonProperty("lcms_hit_map")
+  Map<NetworkNode, Boolean> lcmsMap;
+
   public PrecursorReport(
       Metabolite target,
       MetabolismNetwork network,
       Map<NetworkNode, Integer> levelMap) {
+    this(target, network, levelMap, new HashMap<>());
+  }
+
+  public PrecursorReport(
+      Metabolite target,
+      MetabolismNetwork network,
+      Map<NetworkNode, Integer> levelMap,
+      Map<NetworkNode, Boolean> lcmsMap) {
     this.target = target;
     this.network = network;
     this.levelMap = levelMap;
+    this.lcmsMap = lcmsMap;
+  }
+
+  public void addLcmsData(Function<Metabolite, Boolean> isLcmsHit) {
+    network.getNodes().forEach(n -> lcmsMap.put(n, isLcmsHit(n)));
   }
 
   public Metabolite getTarget() {
@@ -53,6 +70,11 @@ public class PrecursorReport {
   @JsonIgnore
   public Map<NetworkNode, Integer> getLevelMap() {
     return levelMap;
+  }
+
+  @JsonIgnore
+  public Map<NetworkNode, Boolean> getLcmsMap() {
+    return lcmsMap;
   }
 
   /**
@@ -72,6 +94,13 @@ public class PrecursorReport {
   }
 
   /**
+   * Returns true if the node is an lcms hit, false if not.  If the node isn't in the map, returns null.
+   */
+  public Boolean isLcmsHit(NetworkNode node) {
+    return lcmsMap.get(node);
+  }
+
+  /**
    * Returns true if the substrate is exactly one level deeper in the precursor tree than the product.
    */
   public boolean edgeInBfsTree(NetworkNode substrate, NetworkNode product) {
@@ -86,10 +115,22 @@ public class PrecursorReport {
   private static PrecursorReport getFromJson(
       @JsonProperty("target") Metabolite target,
       @JsonProperty("network") MetabolismNetwork network,
-      @JsonProperty("level_map") Map<String, Integer> levelMap) {
+      @JsonProperty("level_map") Map<String, Integer> levelMap,
+      @JsonProperty("lcms_hit_map") Map<String, Boolean> lcmsMap) {
     PrecursorReport report = new PrecursorReport(target, network, new HashMap<>());
     network.getNodes().forEach(n -> report.levelMap.put(n, levelMap.get(n.getMetabolite().getInchi())));
+    network.getNodes().forEach(n -> report.lcmsMap.put(n, lcmsMap.get(n.getMetabolite().getInchi())));
     return report;
+  }
+
+  /**
+   * Custom serializer for jackson, since it chokes on keys which are not strings. Transforms lcmsMap to a
+   * String->Boolean map instead of a NetworkNode->Integer map.
+   */
+  @JsonProperty("lcms_hit_map")
+  private Map<String, Boolean> getSerializableLcmsMap() {
+    return lcmsMap.entrySet().stream().collect(Collectors.toMap(
+        e -> e.getKey().getMetabolite().getInchi(), e -> e.getValue()));
   }
 
   /**

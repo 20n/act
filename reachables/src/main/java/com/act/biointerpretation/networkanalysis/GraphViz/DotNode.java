@@ -15,8 +15,12 @@ public class DotNode {
     this.color = DotColor.DEFAULT_BLACK;
   }
 
-  public void setColor(DotColor color) {
+  /**
+   * Returns the node to allow chaining.
+   */
+  public DotNode setColor(DotColor color) {
     this.color = color;
+    return this;
   }
 
   public String getDotString() {

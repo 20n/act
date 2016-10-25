@@ -37,7 +37,9 @@ public class DotGraph {
     edges.add(edge);
   }
 
-  public void addNode(DotNode node) { nodes.add(node); }
+  public void addNode(DotNode node) {
+    nodes.add(node);
+  }
 
   public void setNodeName(String nodeLabel, String nodeName) {
     nodeLabelToName.put(nodeLabel, nodeName);
