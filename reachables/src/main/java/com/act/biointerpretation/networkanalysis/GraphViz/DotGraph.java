@@ -44,16 +44,16 @@ public class DotGraph {
    * @param outputFile
    */
   public void writeNodeNamesToFile(File outputFile) throws IOException {
-    TSVWriter<String, String> writer = new TSVWriter<>(Arrays.asList(LABEL_HEADER, NAME_HEADER));
-    writer.open(outputFile);
+    try (TSVWriter<String, String> writer = new TSVWriter<>(Arrays.asList(LABEL_HEADER, NAME_HEADER))) {
+      writer.open(outputFile);
 
-    for (Map.Entry<String, String> entry : nodeLabelToName.entrySet()) {
-      writer.append(new HashMap<String, String>() {{
-        put(LABEL_HEADER, entry.getKey());
-        put(NAME_HEADER, entry.getValue());
-      }});
+      for (Map.Entry<String, String> entry : nodeLabelToName.entrySet()) {
+        writer.append(new HashMap<String, String>() {{
+          put(LABEL_HEADER, entry.getKey());
+          put(NAME_HEADER, entry.getValue());
+        }});
+      }
     }
-    writer.close();
   }
 
   /**

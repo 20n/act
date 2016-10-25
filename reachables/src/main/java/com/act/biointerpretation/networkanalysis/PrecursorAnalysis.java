@@ -83,15 +83,15 @@ public class PrecursorAnalysis implements JavaRunnable {
    * @throws IOException
    */
   private void writeTargetIdMapToFile(Map<String, Integer> targetIdMap, File targetIdFile) throws IOException {
-    TSVWriter<String, String> writer = new TSVWriter<>(Arrays.asList(TARGET_ID_HEADER, INCHI_HEADER));
-    writer.open(targetIdFile);
-    for (Map.Entry<String, Integer> entry : targetIdMap.entrySet()) {
-      writer.append(new HashMap<String, String>() {{
-        put(TARGET_ID_HEADER, entry.getValue().toString());
-        put(INCHI_HEADER, entry.getKey());
-      }});
+    try (TSVWriter<String, String> writer = new TSVWriter<>(Arrays.asList(TARGET_ID_HEADER, INCHI_HEADER))) {
+      writer.open(targetIdFile);
+      for (Map.Entry<String, Integer> entry : targetIdMap.entrySet()) {
+        writer.append(new HashMap<String, String>() {{
+          put(TARGET_ID_HEADER, entry.getValue().toString());
+          put(INCHI_HEADER, entry.getKey());
+        }});
+      }
     }
-    writer.close();
   }
 }
 

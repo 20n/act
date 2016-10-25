@@ -60,11 +60,12 @@ public class PrecursorReport {
    * may be products of precursors of the target, but not themselves precursors.
    */
   public boolean isPrecursor(NetworkNode node) {
-    return levelMap.get(node) != null;
+    return levelMap.containsKey(node);
   }
 
   /**
-   * @return 0 for target node, 1 for its direct precursors, 2 for second-level precursors, etc.
+   * @return 0 for target node, 1 for its direct precursors, 2 for second-level precursors, etc. Returns null if the
+   * node is not in the level map, i.e. if it's not a precursor, and isPrecursor(node) == false.
    */
   public Integer getLevel(NetworkNode node) {
     return levelMap.get(node);
@@ -74,10 +75,7 @@ public class PrecursorReport {
    * Returns true if the substrate is exactly one level deeper in the precursor tree than the product.
    */
   public boolean edgeInBfsTree(NetworkNode substrate, NetworkNode product) {
-    if (!isPrecursor(substrate) || !isPrecursor(product)) {
-      return false;
-    }
-    return getLevel(substrate) == 1 + getLevel(product);
+    return isPrecursor(substrate) && isPrecursor(product) && getLevel(substrate) == 1 + getLevel(product);
   }
 
   /**

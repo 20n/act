@@ -157,7 +157,7 @@ public class MetabolismNetworkTest {
    * Test precursor report of 2 levels.
    * Adds one relevant inedge, one irrelevant outedge of a precursor, and two level 2 precursors.
    * Test verifies that every metabolite except METABOLITE 6 is reported. Metabolite 6 should not be reported since
-   * it is the derivative of a precursor of the target metabolite 5. ßOther metabolites are either direct percursors,
+   * it is the derivative of a precursor of the target metabolite 5. Other metabolites are either direct percursors,
    * or precursors of precursors, and so they should all be reported.
    */
   @Test

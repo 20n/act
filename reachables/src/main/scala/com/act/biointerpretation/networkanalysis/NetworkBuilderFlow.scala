@@ -90,9 +90,9 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility with Mong
 
     val mongoDb: Option[MongoDB] =
       if (cl.hasOption(OPTION_MONGO_DB)) {
-        Option(connectToMongoDatabase(cl.getOptionValue(OPTION_MONGO_DB)))
+        Some(connectToMongoDatabase(cl.getOptionValue(OPTION_MONGO_DB)))
       } else {
-        Option.empty
+        None
       }
 
     val networkBuilder =
