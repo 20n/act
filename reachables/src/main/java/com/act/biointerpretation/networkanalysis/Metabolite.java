@@ -18,7 +18,7 @@ public class Metabolite {
   @JsonProperty("mass")
   private Double mass;
   @JsonProperty("uuid")
-  private Long uuid = (long) uuidAssigner.incrementAndGet();
+  private String uuid = String.valueOf(uuidAssigner.incrementAndGet());
 
   @JsonCreator
   public Metabolite(Double mass, String inchi) {
@@ -40,8 +40,12 @@ public class Metabolite {
     return inchi;
   }
 
-  public Long getUUID() {
-    return uuid;
+  public String getUUID() {
+    if (this.inchi == null){
+      return uuid;
+    } else {
+      return inchi;
+    }
   }
 
   public Double getMass() {

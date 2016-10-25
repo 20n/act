@@ -246,6 +246,18 @@ public class MetabolismNetwork {
     return node;
   }
 
+  NetworkNode addNode(Double mass, String inchi) {
+    if (inchi == null) {
+      Metabolite m = new Metabolite(mass);
+      if (nodes.containsKey(m.getUUID())){
+        throw new RuntimeException("Newly created metabolite's UUID is not unique.");
+      }
+      return nodes.put(m.getUUID(), new NetworkNode(m));
+    }
+
+    return createNodeIfNoneExists(inchi);
+  }
+
   public void writeToJsonFile(File outputFile) throws IOException {
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile))) {
       OBJECT_MAPPER.writeValue(predictionWriter, this);
