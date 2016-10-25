@@ -2,7 +2,7 @@ package com.act.biointerpretation.networkanalysis
 
 import java.io.File
 
-import com.act.biointerpretation.networkanalysis.GraphViz.{DotEdge, PrecursorReportVisualizer}
+import com.act.biointerpretation.networkanalysis.GraphViz.{DotEdge, DotColor, PrecursorReportVisualizer}
 import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.tool_wrappers.JavaJobWrapper
 import com.act.workflow.tool_manager.workflow.Workflow
@@ -62,7 +62,7 @@ class NetworkVisualizationFlow extends Workflow with WorkingDirectoryUtility {
     val networkViz = new PrecursorReportVisualizer()
     if (cl.hasOption(OPTION_ORG_STRINGS)) {
       for (x <- cl.getOptionValues(OPTION_ORG_STRINGS)) {
-        networkViz.addOrgOfInterest(x, DotEdge.EdgeColor.RED)
+        networkViz.addOrgOfInterest(x, DotColor.RED)
       }
     }
 
