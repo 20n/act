@@ -15,12 +15,12 @@ class MassProjector(massDifferences: Map[String, Double]) {
   // Note: New values take priority over defaults for names
   private val massDifList: Map[String, Double] = getDefaultMassValues ++ massDifferences
 
-  def project(molecule: Molecule): Map[String, Double] ={
+  def project(molecule: Molecule): Map[String, Double] = {
     val currentMass = molecule.getExactMass
     project(currentMass)
   }
 
-  def project(molecule: String): Map[String, Double] ={
+  def project(molecule: String): Map[String, Double] = {
     project(MoleculeImporter.importMolecule(molecule))
   }
 
@@ -30,7 +30,7 @@ class MassProjector(massDifferences: Map[String, Double]) {
     })
   }
 
-   def getDefaultMassValues: Map[String, Double] ={
+  private def getDefaultMassValues: Map[String, Double] = {
     val ros = new ErosCorpus()
     ros.loadValidationCorpus()
 
@@ -39,13 +39,13 @@ class MassProjector(massDifferences: Map[String, Double]) {
       val substrates = rxnMolecule.getReactants
       val products = rxnMolecule.getProducts
 
-      val assignedMasses = if (substrates.length >= products.length){
+      val assignedMasses = if (substrates.length >= products.length) {
         for (i <- 0 until products.length) yield products(i).getExactMass - substrates(i).getExactMass
       } else {
         List(substrates(0).getExactMass - products(0).getExactMass)
       }
 
-      assignedMasses.indices.map(i => (s"${ro.getId}_$i", assignedMasses(i)))
+      assignedMasses.indices.map(i => (s"RO_${ro.getId}_Value_$i", assignedMasses(i)))
     }).toMap
 
     massDifs
