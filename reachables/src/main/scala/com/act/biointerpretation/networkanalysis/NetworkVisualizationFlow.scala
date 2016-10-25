@@ -2,7 +2,7 @@ package com.act.biointerpretation.networkanalysis
 
 import java.io.File
 
-import com.act.biointerpretation.networkanalysis.GraphViz.{DotEdge, DotColor, PrecursorReportVisualizer}
+import com.act.biointerpretation.networkanalysis.GraphViz.{DotColor, PrecursorReportVisualizer}
 import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.tool_wrappers.JavaJobWrapper
 import com.act.workflow.tool_manager.workflow.Workflow

@@ -65,6 +65,12 @@ public class PrecursorReportVisualizer {
       id++;
     }
 
+    for (NetworkNode node : network.getNodes()) {
+      if (report.isLcmsHit(node) != null && report.isLcmsHit((node))) {
+        graph.addNode(new DotNode(node.getMetabolite().getInchi()).setColor(DotColor.RED));
+      }
+    }
+
     // Add edges to the graph.  One or more DotEdges are added for each (substrate, product) pair where the substrate
     // is one level farther back in the tree than the product.
     for (NetworkEdge edge : network.getEdges()) {
