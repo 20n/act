@@ -1,13 +1,15 @@
 package com.act.biointerpretation.networkanalysis;
 
+import act.server.DBIterator;
 import act.server.MongoDB;
 import act.shared.Reaction;
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -16,15 +18,14 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -45,8 +46,16 @@ public class MetabolismNetwork {
   @JsonProperty("edges")
   List<NetworkEdge> edges;
 
+  @JsonCreator
+  private MetabolismNetwork(@JsonProperty("nodes") Map<String, NetworkNode> nodes,
+                            @JsonProperty("edges") List<NetworkEdge> edges) {
+    this();
+    this.nodes = nodes;
+    edges.forEach(this::addEdge);
+  }
+
   public MetabolismNetwork() {
-    nodes = new ConcurrentHashMap<>();
+    nodes = new HashMap<>();
     edges = new ArrayList<>();
   }
 
@@ -116,44 +125,54 @@ public class MetabolismNetwork {
    *
    * @param startNode The node to explain.
    * @param numSteps The number of steps back from the node to search.
-   * @return A subnetwork representing the precursors of the given starting metabolite.
+   * @return A report representing the precursors of the given starting metabolite.
    */
-  public MetabolismNetwork getPrecursorSubgraph(NetworkNode startNode, int numSteps) {
+  public PrecursorReport getPrecursorReport(NetworkNode startNode, int numSteps) {
     if (numSteps <= 0) {
       throw new IllegalArgumentException("Precursor graph is only well-defined for numSteps > 0");
     }
 
     MetabolismNetwork subgraph = new MetabolismNetwork();
+    Map<NetworkNode, Integer> levelMap = new HashMap<>();
     Set<NetworkNode> frontier = new HashSet<>();
     frontier.add(startNode);
+    levelMap.put(startNode, 0);
 
-    for (int n = 0; n < numSteps; n++) {
+    for (MutableInt l = new MutableInt(1); l.toInteger() <= numSteps; l.increment()) {
       // Move frontier back, then add all new edges. Edge adding will add substrate and product nodes as necessary.
+      frontier.forEach(node -> node.getInEdges().forEach(subgraph::addEdge));
       frontier = frontier.stream().flatMap(node -> getPrecursors(node).stream()).collect(Collectors.toSet());
-      frontier.forEach(node -> node.getOutEdges().forEach(e -> subgraph.addEdge(e)));
+      frontier.forEach(node -> levelMap.put(node, l.toInteger()));
     }
 
-    return subgraph;
+    return new PrecursorReport(startNode.getMetabolite(), subgraph, levelMap);
   }
 
   /**
-   * Load an edge into the network from a reaction in our reactions DB.
+   * Load all reactions from a given DB into the network.
+   *
+   * @param db The DB.
+   */
+  public void loadAllEdgesFromDb(MongoDB db) {
+    DBIterator iterator = db.getIteratorOverReactions(true);
+    Reaction reaction;
+    while ((reaction = db.getNextReaction(iterator)) != null) {
+      this.loadEdgeFromReaction(db, reaction);
+    }
+  }
+
+  /**
+   * Load an edge into the network from a reaction in our reactions DB. Discards the edge if the reaction has no
+   * substrates or no products.
    *
    * @param db The DB to look in.
-   * @param rxnId The reaction ID.
+   * @param reaction The reaction.
    */
-  public void loadEdgeFromReaction(MongoDB db, long rxnId) {
-    Reaction reaction = db.getReactionFromUUID(rxnId);
-    List<Long> substrateIds = Arrays.asList(reaction.getSubstrates());
-    List<String> substrates = substrateIds.stream().map(id -> db.getChemicalFromChemicalUUID(id).getInChI())
-      .collect(Collectors.toList());
-
-    List<Long> productIds = Arrays.asList(reaction.getProducts());
-    List<String> products = productIds.stream().map(id -> db.getChemicalFromChemicalUUID(id).getInChI())
-      .collect(Collectors.toList());
-
-    NetworkEdge edge = new NetworkEdge(substrates, products);
-    edge.addReactionId(reaction.getUUID());
+  public void loadEdgeFromReaction(MongoDB db, Reaction reaction) {
+    NetworkEdge edge = NetworkEdge.buildEdgeFromReaction(db, reaction);
+    if (edge.getSubstrates().isEmpty() || edge.getProducts().isEmpty()) {
+      return;
+    }
     addEdge(edge);
   }
 
@@ -172,7 +191,7 @@ public class MetabolismNetwork {
    * @param prediction The prediction to load.
    */
   public void loadEdgeFromPrediction(L2Prediction prediction) {
-    List<String> substrates= prediction.getSubstrateInchis();
+    List<String> substrates = prediction.getSubstrateInchis();
     List<String> products = prediction.getProductInchis();
 
     NetworkEdge edge = new NetworkEdge(substrates, products);
@@ -190,8 +209,8 @@ public class MetabolismNetwork {
    */
   public void addEdge(NetworkEdge edge) {
 
-    edge.getSubstrates().forEach(s -> createNodeIfNoneExists(s));
-    edge.getProducts().forEach(p -> createNodeIfNoneExists(p));
+    edge.getSubstrates().forEach(this::createNodeIfNoneExists);
+    edge.getProducts().forEach(this::createNodeIfNoneExists);
 
     NetworkNode substrateNode = getNode(edge.getSubstrates().get(0));
     List<NetworkEdge> equivalentEdges = substrateNode.getOutEdges().stream()
@@ -204,7 +223,7 @@ public class MetabolismNetwork {
 
     if (equivalentEdges.isEmpty()) { // If no equivalent edge exists, add the new edge
       edge.getProducts().forEach(product -> getNode(product).addInEdge(edge));
-      edge.getSubstrates().forEach(substrate -> getNode(substrate).addInEdge(edge));
+      edge.getSubstrates().forEach(substrate -> getNode(substrate).addOutEdge(edge));
       edges.add(edge);
     } else { // If there is an equivalent edge, merge the data into that edge.
       equivalentEdges.get(0).merge(edge);
@@ -233,10 +252,7 @@ public class MetabolismNetwork {
     }
   }
 
-  public void loadFromJsonFile(File inputFile) throws IOException {
-    MetabolismNetwork networkFromFile = OBJECT_MAPPER.readValue(inputFile, MetabolismNetwork.class);
-
-    this.nodes = networkFromFile.nodes;
-    networkFromFile.edges.forEach(e -> this.addEdge(e));
+  public static MetabolismNetwork getNetworkFromJsonFile(File inputFile) throws IOException {
+    return OBJECT_MAPPER.readValue(inputFile, MetabolismNetwork.class);
   }
 }

@@ -18,18 +18,10 @@ class NetworkAnalysisFlow extends Workflow with WorkingDirectoryUtility {
 
   override val HELP_MESSAGE = "Workflow to read in a network and get statistics about it."
 
-  private val OPTION_WORKING_DIRECTORY = "w"
   private val OPTION_INPUT_NETWORK = "i"
 
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
-
-      CliOption.builder(OPTION_WORKING_DIRECTORY).
-        hasArg.
-        longOpt("working-directory").
-        desc("""The directory in which to run and create all intermediate files. This directory will be created if it
-          |does not already exist.""".stripMargin).
-        required(),
 
       CliOption.builder(OPTION_INPUT_NETWORK).
         hasArg.
@@ -47,9 +39,6 @@ class NetworkAnalysisFlow extends Workflow with WorkingDirectoryUtility {
   }
 
   override def defineWorkflow(cl: CommandLine): Job = {
-
-    val workingDirPath = cl.getOptionValue(OPTION_WORKING_DIRECTORY, null)
-    val workingDir: File = new File(workingDirPath)
 
     val inputNetworkFile = new File(cl.getOptionValue(OPTION_INPUT_NETWORK))
     verifyInputFile(inputNetworkFile)

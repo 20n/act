@@ -1,7 +1,8 @@
 package com.act.biointerpretation.networkanalysis;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
  * Represents a metabolite in the metabolite network.
  * For now this class only stores an inchi, but in the future it can represent multiple levels of abstraction: a

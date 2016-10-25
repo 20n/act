@@ -1,43 +1,58 @@
 package com.act.biointerpretation.networkanalysis
 
 import java.io.File
+import java.util.Optional
 
+import act.server.MongoDB
 import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.tool_wrappers.JavaJobWrapper
 import com.act.workflow.tool_manager.workflow.Workflow
 import com.act.workflow.tool_manager.workflow.workflow_mixins.base.WorkingDirectoryUtility
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.logging.log4j.LogManager
 
 import scala.collection.JavaConverters._
 
 /**
-  * A Workflow to build a metabolism network from a set of prediction corpuses, and print out basic statistics on it.
+  * Builds a metabolism network from reactions and/or predictions and/or a previous network.
   */
-class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility {
+class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility with MongoWorkflowUtilities {
 
   val logger = LogManager.getLogger(getClass.getName)
 
-  override val HELP_MESSAGE = "Workflow to run basic build of a network from input corpuses."
+  override val HELP_MESSAGE =
+    """Build a metabolism network. A previously built network can be used as a starting point. From there, edges
+      |can be added from the reactions in a DB, or from predictions in a PredictionCorpus.""".stripMargin
 
-  private val OPTION_WORKING_DIRECTORY = "w"
-  private val OPTION_INPUT_DIRECTORIES = "i"
+  private val OPTION_OUTPUT_FILE = "o"
+  private val OPTION_BASE_NETWORK = "b"
+  private val OPTION_INPUT_CORPUSES = "i"
+  private val OPTION_MONGO_DB = "d"
 
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
 
-      CliOption.builder(OPTION_WORKING_DIRECTORY).
+      CliOption.builder(OPTION_OUTPUT_FILE).
         hasArg.
-        longOpt("working-directory").
-        desc("""The directory in which to run and create all intermediate files. This directory will be created if it
-          |does not already exist.""".stripMargin).
+        longOpt("output file path").
+        desc("The path to which to write the output network.").
         required(),
 
-      CliOption.builder(OPTION_INPUT_DIRECTORIES).
+      CliOption.builder(OPTION_BASE_NETWORK).
+        hasArg.
+        desc("A file containing a metabolism network to use as the base of the new network."),
+
+      CliOption.builder(OPTION_INPUT_CORPUSES).
         hasArgs.valueSeparator(',').
-        desc("""The directories in which to find the input corpuses. The workflow will find all non-directory files that
-          |are directly contained in any of the supplied directories, and try to use them as input files.""".stripMargin).
-        required(),
+        desc(
+          """The directories in which to find the input corpuses. The workflow will find all non-directory
+            |files that are directly contained in any of the supplied directories, and try to use them
+            |as input files.""".stripMargin),
+
+      CliOption.builder(OPTION_MONGO_DB).
+        hasArg().
+        desc("The mongo DB from which to read reactions. All reactions from the given DB are loaded."),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -51,27 +66,39 @@ class NetworkBuilderFlow extends Workflow with WorkingDirectoryUtility {
 
   override def defineWorkflow(cl: CommandLine): Job = {
 
-    val workingDirPath = cl.getOptionValue(OPTION_WORKING_DIRECTORY, null)
-    val workingDir: File = new File(workingDirPath)
-
-    val inputDirs = cl.getOptionValues(OPTION_INPUT_DIRECTORIES).map(path => new File(path))
-
-    def findInputFiles(directory: File): List[File] = {
-      val inputFiles = directory.listFiles().toList.filter(!_.isDirectory)
-      inputFiles.foreach(verifyInputFile(_))
-      inputFiles
+    var baseNetwork: File = null
+    if (cl.hasOption(OPTION_BASE_NETWORK)) {
+      baseNetwork = new File(cl.getOptionValue(OPTION_BASE_NETWORK))
     }
 
-    val inputFiles = inputDirs.flatMap(inputDir => findInputFiles(inputDir))
+    val inputCorpuses = if (cl.hasOption(OPTION_INPUT_CORPUSES)) {
+      val corpusDirs = cl.getOptionValues(OPTION_INPUT_CORPUSES).map(path => new File(path))
 
-    val outputFile = new File(workingDir, "networkOutput")
+      def findInputFiles(directory: File): List[File] = {
+        val inputFiles = directory.listFiles().toList.filter(!_.isDirectory)
+        inputFiles.foreach(verifyInputFile(_))
+        inputFiles
+      }
+
+      corpusDirs.flatMap(corpusDir => findInputFiles(corpusDir)).toList
+    } else {
+      List[File]()
+    }
+
+    val outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_FILE))
     verifyOutputFile(outputFile)
 
-    val networkBuilder = new NetworkBuilder(inputFiles.toList.asJava, outputFile, true)
+    val mongoDb: Option[MongoDB] =
+      if (cl.hasOption(OPTION_MONGO_DB)) {
+        Some(connectToMongoDatabase(cl.getOptionValue(OPTION_MONGO_DB)))
+      } else {
+        None
+      }
+
+    val networkBuilder =
+      new NetworkBuilder(baseNetwork, inputCorpuses.asJava, Optional.ofNullable(mongoDb.orNull), outputFile, true)
     headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("network builder", networkBuilder))
 
-    val networkStats = new NetworkStats(outputFile);
-    headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("network stats", networkStats))
     headerJob
   }
 }

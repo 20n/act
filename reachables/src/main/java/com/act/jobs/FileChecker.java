@@ -24,4 +24,13 @@ public class FileChecker {
       throw new IOException("createNewFile() on file " + outputFile.getAbsolutePath() + " failed: " + e.getMessage());
     }
   }
+
+  public static void verifyOrCreateDirectory(File directory) throws IOException {
+    if (!directory.exists()) {
+      directory.mkdirs();
+    }
+    if (!directory.isDirectory()) {
+      throw new IOException("File path is not a directory: " + directory.getAbsolutePath());
+    }
+  }
 }
