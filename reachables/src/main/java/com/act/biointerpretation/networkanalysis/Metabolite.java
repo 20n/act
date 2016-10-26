@@ -41,7 +41,7 @@ public class Metabolite {
   }
 
   public String getUUID() {
-    if (this.inchi == null){
+    if (this.inchi == null) {
       return uuid;
     } else {
       return inchi;

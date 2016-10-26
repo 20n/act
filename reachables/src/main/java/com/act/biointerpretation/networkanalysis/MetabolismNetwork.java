@@ -251,12 +251,23 @@ public class MetabolismNetwork {
   }
 
   public NetworkNode addNode(Double mass, String inchi) {
-    if (inchi == null) {
-      Double roundedMass = Math.round(mass * 1000.0)/ 1000.0;
+    if (mass == null && inchi == null){
+      throw new RuntimeException("At least one of the following is required to create a node: Inchi, Mass");
+    }
 
+    // Handle just InChI case.
+    if (mass == null) {
+      return createNodeIfNoneExists(inchi);
+    }
+
+    Double roundedMass = Math.round(mass * 1000.0)/ 1000.0;
+
+    // Handle with mass, but without InChI
+    if (inchi == null) {
       if (seenMasses.containsKey(roundedMass)) {
         return seenMasses.get(roundedMass);
       }
+
       Metabolite m = new Metabolite(mass);
       if (nodes.containsKey(m.getUUID())){
         throw new RuntimeException("Newly created metabolite's UUID is not unique.");
@@ -267,7 +278,13 @@ public class MetabolismNetwork {
       return newNode;
     }
 
-    return createNodeIfNoneExists(inchi);
+    // Handle the InChI with mass case
+    NetworkNode node = nodes.get(inchi);
+    if (node == null) {
+      node = nodes.put(inchi, new NetworkNode(new Metabolite(mass, inchi)));
+    }
+
+    return node;
   }
 
   public void massProjectAllNodes(MassProjector projector){
