@@ -7,10 +7,10 @@ import java.util.function.Predicate;
 /**
  * Interface for computing isotope distributions
  */
-public interface IsotopeCalculator {
+public interface IsotopeCalculator<T extends Isotope, M extends Metabolite> {
 
-  List<Isotope> getIsotopes(Metabolite metabolite);
+  List<T> getIsotopes(M metabolite);
 
-  List<Isotope> getMainIsotopes(Metabolite metabolite, Predicate<Isotope> IsotopeFilter);
+  List<T> getMainIsotopes(M metabolite, Predicate<T> IsotopeFilter);
 
 }

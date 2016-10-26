@@ -6,36 +6,24 @@ import chemaxon.struc.PeriodicSystem;
 import java.util.ArrayList;
 import java.util.List;
 
-
-public enum CommonElements implements Element {
-  CARBON("C", 12.000000, 4),
-  HYDROGEN("H", 1.007825, 1),
-  OXYGEN("O", 15.994915, 2),
-  NITROGEN("N", 14.003074, 4),
-  PHOSPHORUS("P", 30.973761, 2),
-  SULFUR("S", 31.972071, 6),
-  IODINE("I", 126.904457, 1),
-  FLUORINE("F", 18.998404, 1),
-  CHLORINE("Cl", 34.968853, 1),
-  BROMINE("Br", 78.918327, 1),
-  ;
+public class LcmsElement implements Element {
 
   private String symbol;
   private Integer atomicNumber;
   private Double atomicMass;
   private Integer valency;
 
-  CommonElements(String symbol) {
+  public LcmsElement(String symbol) {
     this.symbol = symbol;
     this.atomicNumber = PeriodicSystem.findAtomicNumber(this.symbol);
   }
 
-  CommonElements(String symbol, int atomicNumber) {
+  public LcmsElement(String symbol, int atomicNumber) {
     this.symbol = symbol;
     this.atomicNumber = atomicNumber;
   }
 
-  CommonElements(String symbol, Double atomicMass, Integer valency) {
+  public LcmsElement(String symbol, Double atomicMass, Integer valency) {
     this.symbol = symbol;
     this.atomicMass = atomicMass;
     this.valency = valency;
@@ -57,12 +45,22 @@ public enum CommonElements implements Element {
   }
 
   @Override
-  public List<ElementIsotope> getElementIsotopes() {
-    return new ArrayList<>();
+  public List<LcmsElementIsotope> getElementIsotopes() {
+    Integer isotopeCount = PeriodicSystem.getIsotopeCount(atomicNumber);
+    List<LcmsElementIsotope> elementIsotopes = new ArrayList<>(isotopeCount);
+
+    for (int i = 0; i < isotopeCount; i++) {
+      Integer massNumber = PeriodicSystem.getIsotope(atomicNumber, i);
+      Double abundance = PeriodicSystem.getAbundance(atomicNumber, massNumber);
+      elementIsotopes.add(new LcmsElementIsotope(massNumber, this, abundance));
+    }
+
+    return elementIsotopes;
   }
 
   @Override
   public Integer getValency() {
     return this.valency;
   }
+
 }

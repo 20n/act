@@ -6,17 +6,17 @@ import java.util.Optional;
 /**
  * Representation of a metabolite
  */
-public interface Metabolite {
+public interface Metabolite<M extends MolecularStructure, C extends ChemicalFormula> {
 
   /**
    * Returns an optional structure
    */
-  Optional<MolecularStructure> getStructure();
+  Optional<M> getStructure();
 
   /**
    * Returns an optional formula
    */
-  Optional<ChemicalFormula> getFormula();
+  Optional<C> getFormula();
 
   /**
    * Returns the metabolite's monoisotopic mass (in Da)

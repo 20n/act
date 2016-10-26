@@ -11,16 +11,16 @@ import java.util.Optional;
  * This API provides also mass retrieval, test of match with a structure and a optional name retrieval.
  */
 
-public interface ChemicalFormula {
+public interface ChemicalFormula<T extends Element> {
   /**
    * Get the formula's element counts
    */
-  Map<Element, Integer> getElementCounts();
+  Map<T, Integer> getElementCounts();
 
   /**
    * Get the number of a given element in the formula
    */
-  Integer getElementCount(Element element);
+  Integer getElementCount(T element);
 
   /**
    * Retrieve the mono-isotopic mass for the formula
