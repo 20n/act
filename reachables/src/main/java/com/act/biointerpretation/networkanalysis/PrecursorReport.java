@@ -1,6 +1,7 @@
 package com.act.biointerpretation.networkanalysis;
 
 import com.act.lcms.v2.Ion;
+import com.act.lcms.v2.Metabolite;
 import com.act.lcms.v2.PeakSpectrum;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -17,7 +18,7 @@ import java.util.stream.Collectors;
 
 /**
  * Group all the data relating to a single precursor report.  The report contains a target metabolite,
- * a MetabolismNetwork containing its precursors, and a Map associating each node to its level in the backwards
+ * an ImmutableNetwork containing its precursors, and a Map associating each node to its level in the backwards
  * BF search tree.
  * TODO: add LCMS data to the report
  */
@@ -29,7 +30,7 @@ public class PrecursorReport {
   Metabolite target;
 
   @JsonProperty("network")
-  MetabolismNetwork network;
+  ImmutableNetwork network;
 
   @JsonProperty("level_map")
   Map<NetworkNode, Integer> levelMap;
@@ -39,14 +40,14 @@ public class PrecursorReport {
 
   public PrecursorReport(
       Metabolite target,
-      MetabolismNetwork network,
+      ImmutableNetwork network,
       Map<NetworkNode, Integer> levelMap) {
     this(target, network, levelMap, new HashMap<>());
   }
 
   public PrecursorReport(
       Metabolite target,
-      MetabolismNetwork network,
+      ImmutableNetwork network,
       Map<NetworkNode, Integer> levelMap,
       Map<NetworkNode, Boolean> lcmsMap) {
     this.target = target;
@@ -72,7 +73,7 @@ public class PrecursorReport {
   }
 
   @JsonProperty("network")
-  public MetabolismNetwork getNetwork() {
+  public ImmutableNetwork getNetwork() {
     return network;
   }
 
@@ -122,13 +123,13 @@ public class PrecursorReport {
    */
   @JsonCreator
   private static PrecursorReport getFromJson(
-      @JsonProperty("target") Metabolite target,
-      @JsonProperty("network") MetabolismNetwork network,
-      @JsonProperty("level_map") Map<String, Integer> levelMap,
-      @JsonProperty("lcms_hit_map") Map<String, Boolean> lcmsMap) {
+      @JsonProperty("target") InchiMetabolite target,
+      @JsonProperty("network") ImmutableNetwork network,
+      @JsonProperty("level_map") Map<Integer, Integer> levelMap,
+      @JsonProperty("lcms_hit_map") Map<Integer, Boolean> lcmsMap) {
     PrecursorReport report = new PrecursorReport(target, network, new HashMap<>());
-    network.getNodes().forEach(n -> report.levelMap.put(n, levelMap.get(n.getMetabolite().getInchi())));
-    network.getNodes().forEach(n -> report.lcmsMap.put(n, lcmsMap.get(n.getMetabolite().getInchi())));
+    network.getNodes().forEach(n -> report.levelMap.put(n, levelMap.get(n.getUID())));
+    network.getNodes().forEach(n -> report.lcmsMap.put(n, lcmsMap.get(n.getUID())));
     return report;
   }
 
@@ -137,9 +138,9 @@ public class PrecursorReport {
    * String->Boolean map instead of a NetworkNode->Integer map.
    */
   @JsonProperty("lcms_hit_map")
-  private Map<String, Boolean> getSerializableLcmsMap() {
+  private Map<Integer, Boolean> getSerializableLcmsMap() {
     return lcmsMap.entrySet().stream().collect(Collectors.toMap(
-        e -> e.getKey().getMetabolite().getInchi(), e -> e.getValue()));
+        e -> e.getKey().getUID(), e -> e.getValue()));
   }
 
   /**
@@ -147,9 +148,9 @@ public class PrecursorReport {
    * String->Integer map instead of a NetworkNode->Integer map.
    */
   @JsonProperty("level_map")
-  private Map<String, Integer> getSerializableLevelMap() {
+  private Map<Integer, Integer> getSerializableLevelMap() {
     return levelMap.entrySet().stream().collect(Collectors.toMap(
-        e -> e.getKey().getMetabolite().getInchi(), e -> e.getValue()));
+        e -> e.getKey().getUID(), e -> e.getValue()));
   }
 
   public void writeToJsonFile(File outputFile) throws IOException {

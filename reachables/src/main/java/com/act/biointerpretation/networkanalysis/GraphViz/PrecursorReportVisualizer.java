@@ -1,6 +1,6 @@
 package com.act.biointerpretation.networkanalysis.GraphViz;
 
-import com.act.biointerpretation.networkanalysis.MetabolismNetwork;
+import com.act.biointerpretation.networkanalysis.ImmutableNetwork;
 import com.act.biointerpretation.networkanalysis.NetworkEdge;
 import com.act.biointerpretation.networkanalysis.NetworkNode;
 import com.act.biointerpretation.networkanalysis.PrecursorReport;
@@ -13,11 +13,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Class for turning a PrecursorReport into a DotGraph that can be visualized.
@@ -54,31 +51,22 @@ public class PrecursorReportVisualizer {
    * @return The DotGraph.
    */
   public DotGraph buildDotGraph(PrecursorReport report) {
-    MetabolismNetwork network = report.getNetwork();
+    ImmutableNetwork network = report.getNetwork();
     DotGraph graph = new DotGraph();
-
-    // Assign every inchi in the graph an ID, so we can label graph nodes by ID rather than inchi.
-    Map<String, String> inchiToIdMap = new HashMap<>();
-    Integer id = 0;
-    for (NetworkNode node : network.getNodes()) {
-      inchiToIdMap.put(node.getMetabolite().getInchi(), id.toString());
-      graph.setNodeName(id.toString(), node.getMetabolite().getInchi());
-      id++;
-    }
 
     for (NetworkNode node : network.getNodes()) {
       if (report.isLcmsHit(node) != null && report.isLcmsHit((node))) {
-        graph.addNode(new DotNode(node.getMetabolite().getInchi()).setColor(DotColor.RED));
+        graph.addNode(new DotNode(node.getUID().toString()).setColor(DotColor.RED));
       }
     }
 
     // Add edges to the graph.  One or more DotEdges are added for each (substrate, product) pair where the substrate
     // is one level farther back in the tree than the product.
     for (NetworkEdge edge : network.getEdges()) {
-      for (String substrate : edge.getSubstrates()) {
-        for (String product : edge.getProducts()) {
-          if (report.edgeInBfsTree(network.getNode(substrate), network.getNode(product))) {
-            buildDotEdges(edge, inchiToIdMap.get(substrate), inchiToIdMap.get(product)).forEach(graph::addEdge);
+      for (Integer substrate : edge.getSubstrates()) {
+        for (Integer product : edge.getProducts()) {
+          if (report.edgeInBfsTree(network.getNodeByUID(substrate), network.getNodeByUID(product))) {
+            addEdgesToGraph(edge, substrate.toString(), product.toString(), graph);
           }
         }
       }
@@ -93,7 +81,7 @@ public class PrecursorReportVisualizer {
    * If the NetworkEdge matches multiple orgs of interest, one edge is drawn for each one it matches,
    * in the appropriate color.
    */
-  private List<DotEdge> buildDotEdges(NetworkEdge edge, String substrateId, String productId) {
+  private void addEdgesToGraph(NetworkEdge edge, String substrateId, String productId, DotGraph graph) {
     DotEdge.EdgeStyle style = edge.getReactionIds().isEmpty() ?
         DotEdge.EdgeStyle.DOTTED : DotEdge.EdgeStyle.DEFAULT_SOLID;
 
@@ -107,8 +95,7 @@ public class PrecursorReportVisualizer {
       colors.add(DotColor.DEFAULT_BLACK);
     }
 
-    return colors.stream().map(c -> new DotEdge(substrateId, productId).setColor(c).setStyle(style))
-        .collect(Collectors.toList());
+    colors.stream().map(c -> new DotEdge(substrateId, productId).setColor(c).setStyle(style)).forEach(graph::addEdge);
   }
 
   /**
