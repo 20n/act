@@ -46,6 +46,8 @@ public class MetabolismNetwork {
   @JsonProperty("nodes")
   Map<String, NetworkNode> nodes;
 
+  private Map<Double, NetworkNode> seenMasses;
+
   @JsonProperty("edges")
   List<NetworkEdge> edges;
 
@@ -60,6 +62,7 @@ public class MetabolismNetwork {
   public MetabolismNetwork() {
     nodes = new HashMap<>();
     edges = new ArrayList<>();
+    seenMasses = new HashMap<>();
   }
 
   public Optional<NetworkNode> getNodeOption(String inchi) {
@@ -251,11 +254,19 @@ public class MetabolismNetwork {
 
   public NetworkNode addNode(Double mass, String inchi) {
     if (inchi == null) {
+      Double roundedMass = Math.round(mass * 1000.0)/ 1000.0;
+
+      if (seenMasses.containsKey(roundedMass)) {
+        return seenMasses.get(roundedMass);
+      }
       Metabolite m = new Metabolite(mass);
       if (nodes.containsKey(m.getUUID())){
         throw new RuntimeException("Newly created metabolite's UUID is not unique.");
       }
-      return nodes.put(m.getUUID(), new NetworkNode(m));
+
+      NetworkNode newNode = nodes.put(m.getUUID(), new NetworkNode(m));
+      seenMasses.put(roundedMass, newNode);
+      return newNode;
     }
 
     return createNodeIfNoneExists(inchi);
@@ -268,6 +279,9 @@ public class MetabolismNetwork {
   private void massProjectNode(MassProjector projector, NetworkNode node) {
     Map<String, Double> projections = projector.projectAsJava(node.getMetabolite().getMass());
 
+    // Figure out a way to merge already aside nodes
+
+    // Add edges
     for (Map.Entry<String, Double> entry : projections.entrySet()) {
       ArrayList<String> substrates = new ArrayList<>();
       ArrayList<String> products = new ArrayList<>();
