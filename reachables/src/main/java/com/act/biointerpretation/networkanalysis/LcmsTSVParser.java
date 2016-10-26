@@ -32,11 +32,11 @@ public class LcmsTSVParser {
       Double maxMz = Double.parseDouble(row.get("mzmax"));
       Double intensity = Double.parseDouble(row.get("exp_maxo"));
       Double retentionTime = Double.parseDouble(row.get("rt"));
-      Double retentionWindow = (Double.parseDouble(row.get("rtmax")) - Double.parseDouble(row.get("rtmin")) )/2;
+      Double retentionWindow = (Double.parseDouble(row.get("rtmax")) - Double.parseDouble(row.get("rtmin"))) / 2;
       String scanFile = lcmsTSVFile.getAbsolutePath();
 
       if (intensity > 0) {
-        FixedWindowDetectedPeak peak = new FixedWindowDetectedPeak(scanFile, (minMz + maxMz)/2, (maxMz - minMz)/2,
+        FixedWindowDetectedPeak peak = new FixedWindowDetectedPeak(scanFile, (minMz + maxMz) / 2, (maxMz - minMz) / 2,
             retentionTime, retentionWindow, intensity, 1.0);
         spectrum.addPeak(peak);
       }

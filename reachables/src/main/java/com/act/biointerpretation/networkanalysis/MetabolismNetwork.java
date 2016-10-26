@@ -5,6 +5,7 @@ import act.server.MongoDB;
 import act.shared.Reaction;
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.ReactionKeywords;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -12,12 +13,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.json.JSONObject;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,22 +35,28 @@ import java.util.stream.Collectors;
  * Represents a metabolism network, cataloging all possible predicted chemical transformations that could be happening
  * in a given sample.
  */
-public class MetabolismNetwork {
+public class MetabolismNetwork implements ImmutableNetwork {
 
   private static transient final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(MetabolismNetwork.class);
 
+  private static final String ORG_FIELD = ReactionKeywords.ORGANISM$.MODULE$.toString();
+
   // Map from inchis to nodes.
   // TODO: generalize to case when we no longer exclusively use inchis
   @JsonProperty("nodes")
-  Map<String, NetworkNode> nodes;
+  List<NetworkNode> nodes;
 
   @JsonProperty("edges")
   List<NetworkEdge> edges;
 
+  Map<Integer, NetworkNode> UIDIndex;
+  Map<String, NetworkNode> inchiIndex;
+  Map<Double, List<NetworkNode>> massIndex;
+
   @JsonCreator
-  private MetabolismNetwork(@JsonProperty("nodes") Map<String, NetworkNode> nodes,
+  private MetabolismNetwork(@JsonProperty("nodes") List<NetworkNode> nodes,
                             @JsonProperty("edges") List<NetworkEdge> edges) {
     this();
     this.nodes = nodes;
@@ -55,29 +64,41 @@ public class MetabolismNetwork {
   }
 
   public MetabolismNetwork() {
-    nodes = new HashMap<>();
+    nodes = new ArrayList<>();
     edges = new ArrayList<>();
+    UIDIndex = new HashMap<>();
+    inchiIndex = new HashMap<>();
+    massIndex = new HashMap<>();
   }
 
-  public Optional<NetworkNode> getNodeOption(String inchi) {
-    NetworkNode node = nodes.get(inchi);
-    if (node != null) {
-      return Optional.of(node);
+  public NetworkNode getNodeByUID(Integer uid) {
+    NetworkNode result = UIDIndex.get(uid);
+    if (result == null) {
+      throw new IllegalArgumentException("Node with given UID not found!");
     }
-    return Optional.empty();
+    return result;
   }
 
-  public NetworkNode getNode(String inchi) {
-    NetworkNode node = nodes.get(inchi);
-    if (node != null) {
-      return node;
+  public NetworkNode getNodeByInchi(String inchi) {
+    NetworkNode result = inchiIndex.get(inchi);
+    if (result == null) {
+      throw new IllegalArgumentException("Didn't find node with inchi " + inchi);
     }
-    throw new NullPointerException("Node not found! If you aren't sure if the node is there, use getNodeOption()");
+    return result;
+  }
+
+  public Optional<NetworkNode> getNodeOptionByInchi(String inchi) {
+    return Optional.ofNullable(inchiIndex.get(inchi));
+  }
+
+  public List<NetworkNode> getNodesByMass(Double mass) {
+    List<NetworkNode> result;
+    return (result = massIndex.get(mass)) != null ? result : Collections.emptyList();
   }
 
   @JsonIgnore
   public Collection<NetworkNode> getNodes() {
-    return Collections.unmodifiableCollection(nodes.values());
+    return Collections.unmodifiableCollection(nodes);
   }
 
   /**
@@ -99,7 +120,7 @@ public class MetabolismNetwork {
   public List<NetworkNode> getDerivatives(NetworkNode node) {
     List<NetworkNode> derivatives = new ArrayList<>();
     for (NetworkEdge edge : node.getOutEdges()) {
-      edge.getProducts().forEach(p -> derivatives.add(getNode(p)));
+      edge.getProducts().forEach(p -> derivatives.add(getNodeByUID(p)));
     }
     return derivatives;
   }
@@ -114,7 +135,7 @@ public class MetabolismNetwork {
   public List<NetworkNode> getPrecursors(NetworkNode node) {
     List<NetworkNode> precursors = new ArrayList<>();
     for (NetworkEdge edge : node.getInEdges()) {
-      edge.getSubstrates().forEach(s -> precursors.add(getNode(s)));
+      edge.getSubstrates().forEach(s -> precursors.add(getNodeByUID(s)));
     }
     return precursors;
   }
@@ -134,15 +155,20 @@ public class MetabolismNetwork {
 
     MetabolismNetwork subgraph = new MetabolismNetwork();
     Map<NetworkNode, Integer> levelMap = new HashMap<>();
-    Set<NetworkNode> frontier = new HashSet<>();
-    frontier.add(startNode);
+    Set<NetworkNode> frontierDerivatives = new HashSet<>();
+    Set<NetworkNode> frontierPrecursors = new HashSet<>();
+    frontierDerivatives.add(startNode);
     levelMap.put(startNode, 0);
 
     for (MutableInt l = new MutableInt(1); l.toInteger() <= numSteps; l.increment()) {
-      // Move frontier back, then add all new edges. Edge adding will add substrate and product nodes as necessary.
-      frontier.forEach(node -> node.getInEdges().forEach(subgraph::addEdge));
-      frontier = frontier.stream().flatMap(node -> getPrecursors(node).stream()).collect(Collectors.toSet());
-      frontier.forEach(node -> levelMap.put(node, l.toInteger()));
+      // Calculate precursors of derivatives
+      frontierPrecursors = frontierDerivatives.stream().flatMap(node -> getPrecursors(node).stream()).collect(Collectors.toSet());
+      // Add precursor and derivative nodes, and all edges connecting them
+      frontierDerivatives.forEach(subgraph::addNode);
+      frontierPrecursors.forEach(subgraph::addNode);
+      frontierDerivatives.forEach(node -> new ArrayList<>(node.getInEdges()).forEach(subgraph::addEdge));
+      // Move back the derivative frontier
+      frontierDerivatives = frontierPrecursors;
     }
 
     return new PrecursorReport(startNode.getMetabolite(), subgraph, levelMap);
@@ -157,23 +183,49 @@ public class MetabolismNetwork {
     DBIterator iterator = db.getIteratorOverReactions();
     Reaction reaction;
     while ((reaction = db.getNextReaction(iterator)) != null) {
-      this.loadEdgeFromReaction(db, reaction);
+      this.addEdgeFromReaction(db, reaction);
     }
   }
 
   /**
-   * Load an edge into the network from a reaction in our reactions DB. Discards the edge if the reaction has no
-   * substrates or no products.
+   * Loads an edge from a DB reaction.
+   * TODO: optimize number of DB calls made so that this will run faster.
    *
-   * @param db The DB to look in.
-   * @param reaction The reaction.
+   * @return The added edge if any, or null if the reaction's substrates or products were empty.
    */
-  public void loadEdgeFromReaction(MongoDB db, Reaction reaction) {
-    NetworkEdge edge = NetworkEdge.buildEdgeFromReaction(db, reaction);
-    if (edge.getSubstrates().isEmpty() || edge.getProducts().isEmpty()) {
-      return;
+  private NetworkEdge addEdgeFromReaction(MongoDB db, Reaction reaction) {
+    List<Long> substrateIds = Arrays.asList(reaction.getSubstrates());
+    List<String> substrates = new ArrayList<>();
+    for (Long s : substrateIds) {
+      String inchi = db.getChemicalFromChemicalUUID(s).getInChI();
+      for (int i = 0; i < reaction.getSubstrateCoefficient(s); i++) {
+        substrates.add(inchi);
+      }
     }
-    addEdge(edge);
+
+    List<Long> productIds = Arrays.asList(reaction.getProducts());
+    List<String> products = new ArrayList<>();
+    for (Long p : productIds) {
+      String inchi = db.getChemicalFromChemicalUUID(p).getInChI();
+      for (int i = 0; i < reaction.getProductCoefficient(p); i++) {
+        products.add(inchi);
+      }
+    }
+
+    if (substrates.isEmpty() || products.isEmpty()) {
+      return null;
+    }
+
+    NetworkEdge edge = addEdgeFromInchis(substrates, products);
+    edge.addReactionId(reaction.getUUID());
+
+    for (JSONObject protein : reaction.getProteinData()) {
+      if (protein.has(ORG_FIELD)) {
+        edge.addOrg(db.getOrganismNameFromId(protein.getLong(ORG_FIELD)));
+      }
+    }
+
+    return edge;
   }
 
   /**
@@ -194,27 +246,38 @@ public class MetabolismNetwork {
     List<String> substrates = prediction.getSubstrateInchis();
     List<String> products = prediction.getProductInchis();
 
-    NetworkEdge edge = new NetworkEdge(substrates, products);
+    NetworkEdge edge = addEdgeFromInchis(substrates, products);
     edge.addProjectorName(prediction.getProjectorName());
-    addEdge(edge);
   }
 
   /**
-   * Adds a given edge to the graph.
+   * Adds an edge; assumes all nodes pointed to by the edge exist
+   */
+  public NetworkEdge addEdge(NetworkEdge edge) {
+    edge.getSubstrates().forEach(s -> getNodeByUID(s).addOutEdge(edge));
+    edge.getProducts().forEach(p -> getNodeByUID(p).addInEdge(edge));
+    edges.add(edge);
+    return edge;
+  }
+
+  /**
+   * Adds a given edge to the graph. Creates new nodes from inchis where there aren't already existing nodes.
    * First, adds the substrate and product nodes to the graph, if they don't already exist.
    * Then, checks for an already existing edge with the same substrate and product; if such an edge exists, this edge's
    * auxiliary data is merged into the already existing edge.  If no such edge exists, a new edge is added.
    *
-   * @param edge The edge to add.
+   * @return The added edge.
    */
-  public void addEdge(NetworkEdge edge) {
+  public NetworkEdge addEdgeFromInchis(List<String> substrates, List<String> products) {
+    List<Integer> sNodes = substrates.stream().map(this::createOrGetNodeFromInchi).map(NetworkNode::getUID)
+        .collect(Collectors.toList());
+    List<Integer> pNodes = products.stream().map(this::createOrGetNodeFromInchi).map(NetworkNode::getUID)
+        .collect(Collectors.toList());
 
-    edge.getSubstrates().forEach(this::createNodeIfNoneExists);
-    edge.getProducts().forEach(this::createNodeIfNoneExists);
+    NetworkEdge edge = new NetworkEdge(sNodes, pNodes);
 
-    NetworkNode substrateNode = getNode(edge.getSubstrates().get(0));
-    List<NetworkEdge> equivalentEdges = substrateNode.getOutEdges().stream()
-        .filter(e -> e.hasSameChemicals(edge))
+    List<NetworkEdge> equivalentEdges = getNodeByUID(sNodes.get(0)).getOutEdges().stream()
+        .filter(e -> e.hasSameSubstratesAndProducts(edge))
         .collect(Collectors.toList());
     if (equivalentEdges.size() > 1) {
       // Should be at most one edge with a given substrate, product pair
@@ -222,11 +285,9 @@ public class MetabolismNetwork {
     }
 
     if (equivalentEdges.isEmpty()) { // If no equivalent edge exists, add the new edge
-      edge.getProducts().forEach(product -> getNode(product).addInEdge(edge));
-      edge.getSubstrates().forEach(substrate -> getNode(substrate).addOutEdge(edge));
-      edges.add(edge);
+      return addEdge(new NetworkEdge(sNodes, pNodes));
     } else { // If there is an equivalent edge, merge the data into that edge.
-      equivalentEdges.get(0).merge(edge);
+      return equivalentEdges.get(0).merge(edge);
     }
   }
 
@@ -238,12 +299,41 @@ public class MetabolismNetwork {
    * @param inchi The inchi.
    * @return The node.
    */
-  private NetworkNode createNodeIfNoneExists(String inchi) {
-    NetworkNode node = nodes.get(inchi);
+  private NetworkNode createOrGetNodeFromInchi(String inchi) {
+    NetworkNode node = inchiIndex.get(inchi);
     if (node == null) {
-      node = nodes.put(inchi, new NetworkNode(new Metabolite(inchi)));
+      return addNode(new NetworkNode(new InchiMetabolite(inchi)));
     }
     return node;
+  }
+
+  /**
+   * Adds a node to network if its UID is unique. If a node already exists with this UID, returns the existing node
+   * without modifying the graph.
+   *
+   * @param node The node to add.
+   * @return The node added, or the existing node.
+   */
+  public NetworkNode addNode(NetworkNode node) {
+    if (UIDIndex.get(node.getUID()) != null) {
+      return UIDIndex.get(node.getUID());
+    }
+    nodes.add(node);
+    UIDIndex.put(node.getUID(), node);
+    node.getMetabolite().getStructure().ifPresent(s -> inchiIndex.put(s.getInchi(), node));
+    addToMassIndex(node, node.getMetabolite().getMonoIsotopicMass());
+    return node;
+  }
+
+  private void addToMassIndex(NetworkNode node, double mass) {
+    List<NetworkNode> currentList = massIndex.get(mass);
+    if (currentList == null) {
+      massIndex.put(mass, new ArrayList<NetworkNode>() {{
+        add(node);
+      }});
+      return;
+    }
+    currentList.add(node);
   }
 
   public void writeToJsonFile(File outputFile) throws IOException {

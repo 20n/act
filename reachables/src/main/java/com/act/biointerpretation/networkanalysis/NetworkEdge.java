@@ -1,15 +1,9 @@
 package com.act.biointerpretation.networkanalysis;
 
-import act.server.MongoDB;
-import act.shared.Reaction;
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.ReactionKeywords;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.collections4.CollectionUtils;
-import org.json.JSONObject;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -20,13 +14,11 @@ import java.util.Set;
  */
 public class NetworkEdge {
 
-  private static final String ORG_FIELD = ReactionKeywords.ORGANISM$.MODULE$.toString();
-
   @JsonProperty("substrates")
-  private List<String> substrates;
+  private List<Integer> substrates;
 
   @JsonProperty("products")
-  private List<String> products;
+  private List<Integer> products;
 
   @JsonProperty("reaction_ids")
   Set<Integer> reactionIds;
@@ -39,8 +31,8 @@ public class NetworkEdge {
 
   @JsonCreator
   public NetworkEdge(
-      @JsonProperty("substrates") List<String> substrates,
-      @JsonProperty("products") List<String> products,
+      @JsonProperty("substrates") List<Integer> substrates,
+      @JsonProperty("products") List<Integer> products,
       @JsonProperty("reaction_ids") Set<Integer> reactionIds,
       @JsonProperty("projector_names") Set<String> projectorNames,
       @JsonProperty("orgs") Set<String> orgs) {
@@ -54,43 +46,8 @@ public class NetworkEdge {
     this.orgs = orgs;
   }
 
-  public NetworkEdge(List<String> substrates, List<String> products) {
+  public NetworkEdge(List<Integer> substrates, List<Integer> products) {
     this(substrates, products, new HashSet<Integer>(), new HashSet<String>(), new HashSet<String>());
-  }
-
-  /**
-   * Gets an edge from a DB reaction.
-   * TODO: optimize number of DB calls made so that this will run faster.
-   */
-  public static NetworkEdge buildEdgeFromReaction(MongoDB db, Reaction reaction) {
-    List<Long> substrateIds = Arrays.asList(reaction.getSubstrates());
-    List<String> substrates = new ArrayList<>();
-    for (Long s : substrateIds) {
-      String inchi = db.getChemicalFromChemicalUUID(s).getInChI();
-      for (int i = 0; i < reaction.getSubstrateCoefficient(s); i++) {
-        substrates.add(inchi);
-      }
-    }
-
-    List<Long> productIds = Arrays.asList(reaction.getProducts());
-    List<String> products = new ArrayList<>();
-    for (Long p : productIds) {
-      String inchi = db.getChemicalFromChemicalUUID(p).getInChI();
-      for (int i = 0; i < reaction.getProductCoefficient(p); i++) {
-        products.add(inchi);
-      }
-    }
-
-    NetworkEdge edge = new NetworkEdge(substrates, products);
-    edge.addReactionId(reaction.getUUID());
-
-    for (JSONObject protein : reaction.getProteinData()) {
-      if (protein.has(ORG_FIELD)) {
-        edge.addOrg(db.getOrganismNameFromId(protein.getLong(ORG_FIELD)));
-      }
-    }
-
-    return edge;
   }
 
   /**
@@ -99,14 +56,16 @@ public class NetworkEdge {
    * Ensures that the edges have the same chemicals; throws IllegalArgumentException otherwise.
    *
    * @param edge The edge whose data should be added.
+   * @return This edge for chaining.
    * @throws IllegalArgumentException if the other edge has different chemicals from this one.
    */
-  public void merge(NetworkEdge edge) {
-    if (!hasSameChemicals(edge)) {
+  public NetworkEdge merge(NetworkEdge edge) {
+    if (!hasSameSubstratesAndProducts(edge)) {
       throw new IllegalArgumentException("Can only merge two edges with the same chemicals.");
     }
     this.reactionIds.addAll(edge.getReactionIds());
     this.projectorNames.addAll(edge.getProjectorNames());
+    return this;
   }
 
   /**
@@ -116,16 +75,16 @@ public class NetworkEdge {
    * @param edge The edge to compare to.
    * @return True if same.
    */
-  public boolean hasSameChemicals(NetworkEdge edge) {
+  public boolean hasSameSubstratesAndProducts(NetworkEdge edge) {
     return CollectionUtils.isEqualCollection(this.getSubstrates(), edge.getSubstrates())
         && CollectionUtils.isEqualCollection(this.getProducts(), edge.getProducts());
   }
 
-  public List<String> getSubstrates() {
+  public List<Integer> getSubstrates() {
     return substrates;
   }
 
-  public List<String> getProducts() {
+  public List<Integer> getProducts() {
     return products;
   }
 
@@ -133,16 +92,18 @@ public class NetworkEdge {
     return Collections.unmodifiableSet(reactionIds);
   }
 
-  public void addReactionId(Integer reactionId) {
+  public NetworkEdge addReactionId(Integer reactionId) {
     this.reactionIds.add(reactionId);
+    return this;
   }
 
   public Set<String> getProjectorNames() {
     return Collections.unmodifiableSet(projectorNames);
   }
 
-  public void addProjectorName(String projectorName) {
+  public NetworkEdge addProjectorName(String projectorName) {
     this.projectorNames.add(projectorName);
+    return this;
   }
 
   public Set<String> getOrgs() {

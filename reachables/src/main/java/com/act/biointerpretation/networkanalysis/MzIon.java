@@ -17,6 +17,7 @@ public class MzIon implements Ion {
     this.mz = mz;
     this.ionType = ionType;
   }
+
   @Override
   public Isotope getIsotope() {
     throw new NotImplementedException();

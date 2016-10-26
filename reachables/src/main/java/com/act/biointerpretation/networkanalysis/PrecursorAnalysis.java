@@ -88,7 +88,7 @@ public class PrecursorAnalysis implements JavaRunnable {
 
     // Do precursor analyses on each target.  Give each found target an ID so we can track which report is which.
     for (String target : targets) {
-      Optional<NetworkNode> targetNode = network.getNodeOption(target);
+      Optional<NetworkNode> targetNode = network.getNodeOptionByInchi(target);
       if (targetNode.isPresent()) {
         PrecursorReport report = network.getPrecursorReport(targetNode.get(), numSteps);
         if (lcmsInput.isPresent()) {
