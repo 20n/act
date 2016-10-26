@@ -3,6 +3,7 @@ package com.act.biointerpretation.networkanalysis;
 import act.server.DBIterator;
 import act.server.MongoDB;
 import act.shared.Reaction;
+import com.act.analysis.massprojections.MassProjector;
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -27,6 +28,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static com.sun.tools.internal.xjc.reader.Ring.add;
 
 /**
  * Represents a metabolism network, cataloging all possible predicted chemical transformations that could be happening
@@ -235,18 +238,18 @@ public class MetabolismNetwork {
    * with that inchi and returns it.
    * TODO: generalize this to handle metabolites rather than just inchis
    *
-   * @param inchi The inchi.
+   * @param uuid The inchi.
    * @return The node.
    */
-  private NetworkNode createNodeIfNoneExists(String inchi) {
-    NetworkNode node = nodes.get(inchi);
+  private NetworkNode createNodeIfNoneExists(String uuid) {
+    NetworkNode node = nodes.get(uuid);
     if (node == null) {
-      node = nodes.put(inchi, new NetworkNode(new Metabolite(inchi)));
+      node = nodes.put(uuid, new NetworkNode(new Metabolite(uuid)));
     }
     return node;
   }
 
-  NetworkNode addNode(Double mass, String inchi) {
+  public NetworkNode addNode(Double mass, String inchi) {
     if (inchi == null) {
       Metabolite m = new Metabolite(mass);
       if (nodes.containsKey(m.getUUID())){
@@ -257,6 +260,27 @@ public class MetabolismNetwork {
 
     return createNodeIfNoneExists(inchi);
   }
+
+  public void massProjectAllNodes(MassProjector projector){
+    nodes.values().parallelStream().forEach(node -> massProjectNode(projector, node));
+  }
+
+  private void massProjectNode(MassProjector projector, NetworkNode node) {
+    Map<String, Double> projections = projector.projectAsJava(node.getMetabolite().getMass());
+
+    for (Map.Entry<String, Double> entry : projections.entrySet()) {
+      ArrayList<String> substrates = new ArrayList<>();
+      ArrayList<String> products = new ArrayList<>();
+      substrates.add(node.getMetabolite().getUUID());
+
+      products.add(addNode(entry.getValue(), null).getMetabolite().getUUID());
+
+      NetworkEdge projectedEdge = new NetworkEdge(substrates, products);
+      projectedEdge.addProjectorName(entry.getKey());
+      addEdge(projectedEdge);
+    }
+  }
+
 
   public void writeToJsonFile(File outputFile) throws IOException {
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile))) {
