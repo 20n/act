@@ -28,6 +28,17 @@ public class FixedWindowDetectedPeak implements DetectedPeak {
   // Probability (hence in [0,1]) that the peak is a true peak
   private Double confidence;
 
+  public FixedWindowDetectedPeak(String sourceScanFileId, Double mz, Double mzWindow, Double retentionTime,
+                                 Double retentionTimeWindow, Double intensity, Double confidence) {
+    this.sourceScanFileId = sourceScanFileId;
+    this.mz = mz;
+    this.mzWindow = mzWindow;
+    this.retentionTime = retentionTime;
+    this.retentionTimeWindow = retentionTimeWindow;
+    this.intensity = intensity;
+    this.confidence = confidence;
+  }
+
   @Override
   public Double getMz() {
     return mz;
