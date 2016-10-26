@@ -8,11 +8,6 @@ import com.act.lcms.MS1;
  */
 public interface Ion {
   /**
-   * Return the underlying isotope
-   */
-  Isotope getIsotope();
-
-  /**
    * Return the ion m/z value
    */
   Double getMzValue();
