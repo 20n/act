@@ -29,8 +29,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.sun.tools.internal.xjc.reader.Ring.add;
-
 /**
  * Represents a metabolism network, cataloging all possible predicted chemical transformations that could be happening
  * in a given sample.

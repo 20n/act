@@ -23,22 +23,24 @@ public class MetaboliteCorpus {
   private static final String DEFAULT_FILE_LOCATION = "/Volumes/shared-data/Michael/LowThresholdForRegression/dl.toIonMatchesFormulasNoMinusCholesterolMarkList.json.txt";
   private static transient final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-  public List<Metabolite> getCorpus() {
-    return corpus;
-  }
-
   private List<Metabolite> corpus;
 
+  // Basic constructor
   MetaboliteCorpus(){
     corpus = new ArrayList<>();
   }
 
-  public JsonNode getJsonNodeFromFile(File inputFile) throws IOException {
+  // Return the corpus
+  public List<Metabolite> getCorpus() {
+    return corpus;
+  }
+  
+  private JsonNode getJsonNodeFromFile(File inputFile) throws IOException {
     String fileString = new String(Files.readAllBytes(inputFile.toPath()));
     return MetaboliteCorpus.OBJECT_MAPPER.readTree(fileString);
   }
 
-  public List<DetectedPeak> getDetectedPeaksFromJsonNode(JsonNode node) {
+  private List<DetectedPeak> getDetectedPeaksFromJsonNode(JsonNode node) {
     JsonNode peaksNode = node.get("peaks");
     int size = peaksNode.size();
     LOGGER.info(size);
@@ -60,7 +62,6 @@ public class MetaboliteCorpus {
     }
 
     List<DetectedPeak> detectedPeaks = new ArrayList<>();
-
     while (peaks.hasNext()) {
       DetectedPeak peak = new DetectedPeak();
       peak.parseFromJsonNode(peaks.next(), m);
@@ -70,16 +71,20 @@ public class MetaboliteCorpus {
     return detectedPeaks;
   }
 
-  public void populateFromDetectedPeaks(List<DetectedPeak> detectedPeaks) throws JsonProcessingException {
+  private void populateFromDetectedPeaks(List<DetectedPeak> detectedPeaks) throws JsonProcessingException {
     detectedPeaks.forEach(p -> corpus.addAll(p.getMetabolites()));
   }
 
-  public static void main(String[] args) throws IOException {
+  public void populateCorpusFromJsonFile(File inputFile) throws IOException {
+    JsonNode node = getJsonNodeFromFile(inputFile);
+    List<DetectedPeak> peaks = getDetectedPeaksFromJsonNode(node);
+    populateFromDetectedPeaks(peaks);
+  }
+
+  public static void main(String[] args) throws Exception {
     MetaboliteCorpus metaboliteCorpus = new MetaboliteCorpus();
     File inputFile = new File(DEFAULT_FILE_LOCATION);
-    JsonNode node = metaboliteCorpus.getJsonNodeFromFile(inputFile);
-    List<DetectedPeak> peaks = metaboliteCorpus.getDetectedPeaksFromJsonNode(node);
-    metaboliteCorpus.populateFromDetectedPeaks(peaks);
+    metaboliteCorpus.populateCorpusFromJsonFile(inputFile);
     System.out.println(OBJECT_MAPPER.writeValueAsString(metaboliteCorpus.getCorpus()));
   }
 }
