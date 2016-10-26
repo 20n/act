@@ -4,6 +4,7 @@ import com.act.lcms.v2.DetectedPeak;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -15,6 +16,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 
 public class MetaboliteCorpus {
@@ -81,10 +83,16 @@ public class MetaboliteCorpus {
     populateFromDetectedPeaks(peaks);
   }
 
+  public MetabolismNetwork getMetabolismNetwork() {
+    MetabolismNetwork network = new MetabolismNetwork();
+    corpus.forEach(metabolite -> network.addNode(metabolite.getMass(),metabolite.getInchi()));
+    return network;
+  }
+
   public static void main(String[] args) throws Exception {
     MetaboliteCorpus metaboliteCorpus = new MetaboliteCorpus();
     File inputFile = new File(DEFAULT_FILE_LOCATION);
     metaboliteCorpus.populateCorpusFromJsonFile(inputFile);
-    System.out.println(OBJECT_MAPPER.writeValueAsString(metaboliteCorpus.getCorpus()));
+    System.out.println(OBJECT_MAPPER.writeValueAsString(metaboliteCorpus.getMetabolismNetwork()));
   }
 }
