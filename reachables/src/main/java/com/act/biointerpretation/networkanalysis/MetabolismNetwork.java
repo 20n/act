@@ -10,7 +10,9 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.Lists;
 import org.apache.commons.lang.mutable.MutableInt;
+import org.apache.jena.atlas.iterator.Iter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -23,11 +25,15 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static org.apache.jena.system.JenaSystem.forEach;
 
 /**
  * Represents a metabolism network, cataloging all possible predicted chemical transformations that could be happening
@@ -273,7 +279,8 @@ public class MetabolismNetwork {
         throw new RuntimeException("Newly created metabolite's UUID is not unique.");
       }
 
-      NetworkNode newNode = nodes.put(m.getUUID(), new NetworkNode(m));
+      NetworkNode newNode = new NetworkNode(m);
+      nodes.put(m.getUUID(), newNode);
       seenMasses.put(roundedMass, newNode);
       return newNode;
     }
@@ -281,14 +288,27 @@ public class MetabolismNetwork {
     // Handle the InChI with mass case
     NetworkNode node = nodes.get(inchi);
     if (node == null) {
-      node = nodes.put(inchi, new NetworkNode(new Metabolite(mass, inchi)));
+      node = new NetworkNode(new Metabolite(mass, inchi));
+      nodes.put(inchi, node);
     }
 
     return node;
   }
 
   public void massProjectAllNodes(MassProjector projector){
-    nodes.values().parallelStream().forEach(node -> massProjectNode(projector, node));
+    ArrayList<NetworkNode> currentNodes = Lists.newArrayList(nodes.values());
+
+    int count = 0;
+    for(NetworkNode node: currentNodes){
+      count += 1;
+      if (node.getMetabolite().getInchi() != null) {
+      massProjectNode(projector, node);
+    }
+      if (count % 10 == 0){
+        System.out.println(count);
+      }
+    }
+
   }
 
   private void massProjectNode(MassProjector projector, NetworkNode node) {

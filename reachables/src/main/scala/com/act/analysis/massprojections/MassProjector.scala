@@ -67,3 +67,9 @@ class MassProjector(massDifferences: Map[String, Double]) {
   }
 }
 
+object o {
+  def main(args: Array[String]) {
+
+  }
+}
+

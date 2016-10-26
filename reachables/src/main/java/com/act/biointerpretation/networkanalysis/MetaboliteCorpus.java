@@ -1,5 +1,6 @@
 package com.act.biointerpretation.networkanalysis;
 
+import com.act.analysis.massprojections.MassProjector;
 import com.act.lcms.v2.DetectedPeak;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -93,6 +94,9 @@ public class MetaboliteCorpus {
     MetaboliteCorpus metaboliteCorpus = new MetaboliteCorpus();
     File inputFile = new File(DEFAULT_FILE_LOCATION);
     metaboliteCorpus.populateCorpusFromJsonFile(inputFile);
-    System.out.println(OBJECT_MAPPER.writeValueAsString(metaboliteCorpus.getMetabolismNetwork()));
+    MetabolismNetwork network = metaboliteCorpus.getMetabolismNetwork();
+    System.out.println(network.getNodes().size());
+    network.massProjectAllNodes(new MassProjector());
+    System.out.println(network.getNodes().size());
   }
 }
