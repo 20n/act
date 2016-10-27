@@ -88,8 +88,8 @@ object compute {
       reactor.setReactants(substrateOrdering.map(MoleculeImporter.importMolecule(_, MoleculeFormat.strictNoStereoInchi)).toArray)
 
       // Return results
-      val reactedValues: Stream[Array[Molecule]] = Stream.continually(Option(reactor.react())).takeWhile(_.isDefined).flatMap(_.toStream)
-      //val reactedValues = Option(reactor.react())
+      //val reactedValues: Stream[Array[Molecule]] = Stream.continually(Option(reactor.react())).takeWhile(_.isDefined).flatMap(_.toStream)
+      val reactedValues = Option(reactor.react())
       val partiallyAppliedMapper: List[Molecule] => Option[InchiResult] = mapReactionsToResult(substrates, ro.getId.toString)
       reactedValues.flatMap(potentialProducts => partiallyAppliedMapper(potentialProducts.toList))
     }).toStream
