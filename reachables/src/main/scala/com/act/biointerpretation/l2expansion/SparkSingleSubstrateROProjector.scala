@@ -43,7 +43,6 @@ object compute {
   private val LOGGER = LogManager.getLogger(getClass)
   var eros = new ErosCorpus()
   eros.loadValidationCorpus()
-  eros.filterCorpusBySubstrateCount(1)
 
   //  net.sf.jniinchi.JniInchiWrapper.loadLibrary()
 
