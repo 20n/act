@@ -306,7 +306,7 @@ object SparkSingleSubstrateROProjector {
       null
     } else {
       LOGGER.info("Building ERO RDD")
-      val groupSize = 10000
+      val groupSize = 100
       // TODO Add file parsing so that multiple substrate reactions can be loaded in
       val inchiRDD: RDD[Seq[String]] = spark.makeRDD(validInchis.toList, groupSize)
 
