@@ -1,11 +1,9 @@
-package com.act
+package com.act.lcms
 
 import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, Cl, Br, F, I, MonoIsotopicMass}
-import act.shared.MassToFormula
 import act.shared.ChemicalSymbols.Helpers.computeMassFromAtomicFormula
 import act.shared.{CmdLineParser, OptDesc}
 import java.io.PrintWriter
-import act.shared.StableChemicalFormulae
 
 object EnumChemFormulae {
   val defaultMaxMass = 1000.0 // Da

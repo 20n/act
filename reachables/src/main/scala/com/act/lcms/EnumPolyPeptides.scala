@@ -8,7 +8,7 @@ import act.shared.ChemicalSymbols.{Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, 
 import act.shared.ChemicalSymbols.{Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg}
 import act.shared.ChemicalSymbols.MonoIsotopicMass
 import act.shared.ChemicalSymbols.Helpers.{fromSymbol, computeChemicalFormulaFromAAFormula, computeMassFromAtomicFormula, computeFormulaFromElements}
-import act.shared.MassToFormula
+import com.act.lcms.MassToFormula
 
 object EnumPolyPeptides {
   // This class enumerates all polypeptides upto a certain mass.
