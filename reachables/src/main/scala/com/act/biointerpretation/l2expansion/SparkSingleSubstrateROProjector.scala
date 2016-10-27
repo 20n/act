@@ -175,9 +175,14 @@ object SparkSingleSubstrateROProjector {
 
       CliOption.builder(OPTION_NUMBER_SUBSTRATES).
         longOpt("substrate-number").
+        hasArg.
         desc("The number of substrates the input reactions are expected to have.  " +
           "Be careful, a number greater than 1 permutes the initial " +
           "list so that we project on all pair-wise groupings."),
+
+      CliOption.builder(OPTION_REVERSE).
+        longOpt("reverse").
+        desc("Flag to reverse all reactions."),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
