@@ -1,10 +1,7 @@
 package com.act.lcms
 
 import act.shared.{CmdLineParser, OptDesc}
-import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, Br, Cl, I, F, AllAtoms, AminoAcid, AllAminoAcids, MonoIsotopicMass}
-import act.shared.ChemicalSymbols.{Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser}
-import act.shared.ChemicalSymbols.{Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg}
-import act.shared.ChemicalSymbols.Helpers.{fromSymbol, computeMassFromAtomicFormula, computeFormulaFromElements}
+import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, Br, Cl, I, F, AllAtoms, MonoIsotopicMass}
 
 // testing chemicals from the DB
 import act.server.MongoDB
@@ -18,7 +15,7 @@ import scala.annotation.tailrec
 import collection.JavaConversions._
 import java.io.PrintWriter
 import scala.reflect.runtime.universe._
-import scala.reflect.runtime.{currentMirror => cm}
+
 
 sealed trait Expr {
   def <=(other: Expr): LinIneq = LinIneq(this, Le, other)
@@ -33,12 +30,12 @@ sealed trait Expr {
   def mod(other: Expr): Expr = ArithExpr(Mod, List(this, other))
 }
 case class Const(c: Int) extends Expr
-case class Var(val id: String) extends Expr
-case class Term(val c: Const, val v: Var) extends Expr
-case class LinExpr(val terms: List[Term]) extends Expr {
+case class Var(d: String) extends Expr
+case class Term(c: Const, v: Var) extends Expr
+case class LinExpr(terms: List[Term]) extends Expr {
   def +(term: Term): LinExpr = LinExpr(term :: this.terms)
 }
-case class ArithExpr(val op: ArithmeticOp, val terms: List[Expr]) extends Expr
+case class ArithExpr(op: ArithmeticOp, terms: List[Expr]) extends Expr
 
 // TODO: FIX ADT 
 // The structure below is not right. Done correctly, there should be case
@@ -68,9 +65,9 @@ sealed trait BooleanExpr {
   def implies(other: BooleanExpr) = Multi(Or, List(this.not, other))
   def not = Unary(Not, this)
 }
-case class LinIneq(val lhs: Expr, val ineq: CompareOp, val rhs: Expr) extends BooleanExpr
-case class Multi(val op: BoolOp, val b: List[BooleanExpr]) extends BooleanExpr
-case class Unary(val op: BoolOp, val a: BooleanExpr) extends BooleanExpr
+case class LinIneq(lhs: Expr, ineq: CompareOp, rhs: Expr) extends BooleanExpr
+case class Multi(op: BoolOp, b: List[BooleanExpr]) extends BooleanExpr
+case class Unary(op: BoolOp, a: BooleanExpr) extends BooleanExpr
 
 object Solver {
 
