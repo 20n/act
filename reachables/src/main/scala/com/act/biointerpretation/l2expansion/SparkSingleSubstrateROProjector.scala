@@ -8,20 +8,17 @@ import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector.InchiResult
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
+import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
 import com.act.biointerpretation.sars.{CharacterizedGroup, SarCorpus}
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
-
-import scala.collection.JavaConverters._
-import scala.collection.mutable
-import scala.io.Source
-import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
-import com.act.biointerpretation.rsmiles.chemicals.Information.ReactionInformation
 import spray.json._
 
+import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
+import scala.io.Source
 
 /**
   * A Spark job that will project the set of single-substrate validation EROs over a list of substrate InChIs.
@@ -61,7 +58,7 @@ object compute {
    *
    * TODO: try out other partitioning schemes and/or pre-compile and cache ERO Reactors for improved performance.
    */
-  def run(licenseFileName: String)(substrates: List[String]): Stream[InchiResult] = {
+  def run(licenseFileName: String, reverse: Boolean)(substrates: List[String]): Stream[InchiResult] = {
     // Load license file once
     if (this.localLicenseFile.isEmpty) {
       this.localLicenseFile = Option(SparkFiles.get(licenseFileName))
@@ -69,18 +66,23 @@ object compute {
       LicenseManager.setLicenseFile(SparkFiles.get(licenseFileName))
     }
 
-    val getAllResults: Ero => Stream[InchiResult] = getAllResultsForSubstrate(substrates)
+    val getAllResults: Ero => Stream[InchiResult] = getAllResultsForSubstrate(substrates, reverse)
     val results: Stream[InchiResult] = this.eros.getRos.asScala.toStream.flatMap(getAllResults)
     results
   }
 
-  def getAllResultsForSubstrate(substrates: List[String])(ro: Ero): Stream[InchiResult] = {
-    if (ro.getSubstrate_count != substrates.length){
+  def getAllResultsForSubstrate(substrates: List[String], reverse: Boolean)(ro: Ero): Stream[InchiResult] = {
+    if (!reverse && ro.getSubstrate_count != substrates.length){
+      return Stream()
+    }
+
+    if (reverse && ro.getProduct_count != substrates.length){
       return Stream()
     }
 
     // React
     val reactor = ro.getReactor
+    reactor.setReverse(reverse)
 
     // Get all permutations
     val resultingReactions: Stream[InchiResult] = substrates.permutations.flatMap(substrateOrdering => {
@@ -122,6 +124,7 @@ object SparkSingleSubstrateROProjector {
   val OPTION_SAR_CORPUS_FILE = "c"
   val OPTION_SPARK_MASTER = "m"
   val OPTION_NUMBER_SUBSTRATES = "p"
+  val OPTION_REVERSE = "r"
 
   def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -305,7 +308,7 @@ object SparkSingleSubstrateROProjector {
       LOGGER.info("Starting execution")
       // PROJECT!  Run ERO projection over all InChIs.
       val resultsRDD: RDD[InchiResult] = inchiRDD.flatMap(inchi => {
-        compute.run(licenseFileName)(inchi.toList)
+        compute.run(licenseFileName, cl.hasOption(OPTION_REVERSE))(inchi.toList)
       })
       resultsRDD
     }
