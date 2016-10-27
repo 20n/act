@@ -1,14 +1,14 @@
 package com.act.lcms
 
 import java.io.PrintWriter
+
 import com.act.lcms.MS1.MetlinIonMass
 import act.shared.{CmdLineParser, OptDesc}
-import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, AminoAcid, AllAminoAcids}
-import act.shared.ChemicalSymbols.{Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser} 
-import act.shared.ChemicalSymbols.{Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg}
+import act.shared.ChemicalSymbols.{AllAminoAcids, AminoAcid, Atom, C, H, N, O, P, S}
+import act.shared.ChemicalSymbols.{Ala, Cys, Gly, Ile, Leu, Met, Phe, Pro, Ser, Val}
+import act.shared.ChemicalSymbols.{Arg, Asn, Asp, Gln, Glu, His, Lys, Thr, Trp, Tyr}
 import act.shared.ChemicalSymbols.MonoIsotopicMass
-import act.shared.ChemicalSymbols.Helpers.{fromSymbol, computeChemicalFormulaFromAAFormula, computeMassFromAtomicFormula, computeFormulaFromElements}
-import act.shared.MassToFormula
+import act.shared.ChemicalSymbols.Helpers.{computeChemicalFormulaFromAAFormula, computeFormulaFromElements, computeMassFromAtomicFormula, fromSymbol}
 
 object EnumPolyPeptides {
   // This class enumerates all polypeptides upto a certain mass.

@@ -1,7 +1,6 @@
 package com.act.lcms
 
 import act.shared.ChemicalSymbols.Atom
-import act.shared.MassToFormula
 import com.act.lcms.v3.{LargeMassToMoleculeMap, NamedMolecule}
 
 import scala.collection.JavaConversions._

@@ -1,10 +1,7 @@
-package act.shared
+package com.act.lcms
 
-import act.shared.{CmdLineParser, OptDesc}
-import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, AllAtoms, AminoAcid, AllAminoAcids, MonoIsotopicMass}
-import act.shared.ChemicalSymbols.{Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser}
-import act.shared.ChemicalSymbols.{Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg}
-import act.shared.ChemicalSymbols.Helpers.{fromSymbol, computeMassFromAtomicFormula, computeFormulaFromElements}
+import act.shared.ChemicalSymbols._
+import act.shared._
 
 // testing chemicals from the DB
 import act.server.MongoDB
@@ -14,11 +11,12 @@ import com.act.lcms.MassCalculator.calculateMass
 import com.microsoft.z3._
 
 // scala/java stuff
-import scala.annotation.tailrec
-import collection.JavaConversions._
 import java.io.PrintWriter
+
+import scala.annotation.tailrec
+import scala.collection.JavaConversions._
 import scala.reflect.runtime.universe._
-import scala.reflect.runtime.{currentMirror => cm}
+
 
 sealed trait Expr
 case class Const(c: Int) extends Expr
@@ -113,6 +111,7 @@ object Solver {
       val boolFn = op match {
         case And => ctx.mkAnd _
         case Or  => ctx.mkOr _
+        case _ => ???
       }
       val (lhs, varsLhs) = mkClause(e1)
       val (rhs, varsRhs) = mkClause(e2)
@@ -121,6 +120,7 @@ object Solver {
     case Unary(op, e) => {
       val boolFn = op match {
         case Not => ctx.mkNot _
+        case _ => ???
       }
       val (expr, vars) = mkClause(e)
       (boolFn(expr), vars)
@@ -132,6 +132,7 @@ object Solver {
       val boolExpr = op match {
         case And => ctx.mkAnd(exprs:_*)
         case Or  => ctx.mkOr(exprs:_*)
+        case _ => ???
       }
       (boolExpr, varsLists.reduce(_++_))
     }
@@ -599,7 +600,6 @@ object MassToFormula {
 
   def runAllUnitTests() {
     println(s"${Console.BLUE}Running all tests!")
-    unitTestIntegralSolns()
     testDBChemicals(n = 10000, maxMz = 200.00)
     testAcetaminophen
   }
@@ -784,74 +784,6 @@ object MassToFormula {
     val dbCases = testformulae.toSet
     dbCases foreach solveNCheck
   }
-
-  def unitTestIntegralSolns() {
-    // The type parameter is needed or else the compiler fails to infer
-    // the right type for the tuple elements. we can specify it as a type on the variable,
-    // or parameter to the constructor. The latter looks more readable.
-    val testcases = Set[(Int, List[Atom], Set[Map[Atom, Int]])](
-      (
-        104,                        // atomic mass aiming for
-        List(C, N, O),              // atomic space to search
-        Set(Map(C->6, N->0, O->2),  // sets of valid formulae
-          Map(C->5, N->2, O->1),
-          Map(C->1, N->2, O->4),
-          Map(C->2, N->0, O->5),
-          Map(C->4, N->4, O->0),
-          Map(C->0, N->4, O->3))
-      )
-    )
-
-    testcases.foreach{ test =>
-      {
-        val (intMz, elems, validAtomicFormulae) = test
-        val formulator = new MassToFormula(atomSpace = elems) // Hah! The "formulator"
-        val constraints = formulator.buildConstraintOverInts(intMz)
-        val validSolns = validAtomicFormulae.map(_.map(kv => (MassToFormula.atomToVar(kv._1), kv._2)))
-        testOneSolnOverCNO(constraints, intMz, validSolns, formulator)
-        testAllSolnOverCNO(constraints, intMz, validSolns, formulator)
-      }
-    }
-  }
-
-  def testOneSolnOverCNO(constraints: List[BooleanExpr], intMz: Int, expected: Set[Map[Var, Int]], f: MassToFormula) {
-
-    val vars = constraints.map(Solver.getVars).flatten
-    val sat = Solver.solveOne(constraints)
-
-    sat match {
-      case None => {
-        if (expected.size == 0) {
-          reportPass(s"PASS: No formula over CNO has approx mass ${intMz}, as required.")
-        } else {
-          // found a solution when none should have existed
-          reportFail(s"FAIL: Did not find a solution for ${intMz}, when expected ${expected}")
-        }
-      }
-      case Some(soln) => {
-        if (expected contains soln) {
-          reportPass(s"PASS: ${f.buildChemFormulaV(soln)} found with mass ~${intMz}")
-        } else {
-          reportFail(s"FAIL: Solver found ${sat.size} solutions but ${expected} was not in it")
-        }
-      }
-    }
-
-  }
-
-  def testAllSolnOverCNO(constraints: List[BooleanExpr], intMz: Int, expected: Set[Map[Var, Int]], f: MassToFormula) {
-
-    val vars = constraints.map(Solver.getVars).flatten
-    val sat = Solver.solveMany(constraints)
-
-    val descs = sat.map{ soln => s"${f.buildChemFormulaV(soln)}" }
-    if (!(sat equals expected)) {
-      reportFail(s"FAIL: Enumerate: Found ${descs.size} formulae for ~${intMz}: $descs but expected $expected")
-      reportFail(s"FAIL DEBUG: satisfying solution - expected = ${sat -- expected}")
-      reportFail(s"FAIL DEBUG: expected - satisfying solution = ${expected -- sat}")
-    }
-  }
-
 }
 
 sealed trait Specials {
