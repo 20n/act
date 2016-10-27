@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jacob.com.NotImplementedException;
 import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -30,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 /**
@@ -57,8 +57,6 @@ public class MetabolismNetwork implements ImmutableNetwork {
   Map<Integer, NetworkNode> UIDIndex;
   @JsonIgnore
   Map<String, NetworkNode> inchiIndex;
-  @JsonIgnore
-  Map<Double, List<NetworkNode>> massIndex;
 
   @JsonCreator
   private MetabolismNetwork(@JsonProperty("nodes") List<NetworkNode> nodes,
@@ -73,7 +71,6 @@ public class MetabolismNetwork implements ImmutableNetwork {
     edges = new ArrayList<>();
     UIDIndex = new HashMap<>();
     inchiIndex = new HashMap<>();
-    massIndex = new HashMap<>();
   }
 
   @Override
@@ -100,9 +97,8 @@ public class MetabolismNetwork implements ImmutableNetwork {
   }
 
   @Override
-  public List<NetworkNode> getNodesByMass(Double mass) {
-    List<NetworkNode> result;
-    return (result = massIndex.get(mass)) != null ? result : Collections.emptyList();
+  public List<NetworkNode> getNodesByMass(Double mass, Double massTolerance) {
+    throw new NotImplementedException("Mass indexing not yet implemented.");
   }
 
   @JsonIgnore
@@ -204,8 +200,13 @@ public class MetabolismNetwork implements ImmutableNetwork {
   public void loadAllEdgesFromDb(MongoDB db) {
     DBIterator iterator = db.getIteratorOverReactions();
     Reaction reaction;
+    int count = 0;
     while ((reaction = db.getNextReaction(iterator)) != null) {
       this.addEdgeFromReaction(db, reaction);
+      if (count % 1000 == 0) {
+        LOGGER.info("Processed %d reactions.", count);
+      }
+      count++;
     }
   }
 
@@ -343,19 +344,7 @@ public class MetabolismNetwork implements ImmutableNetwork {
     nodes.add(node);
     UIDIndex.put(node.getUID(), node);
     node.getMetabolite().getStructure().ifPresent(s -> inchiIndex.put(s.getInchi(), node));
-    addToMassIndex(node, node.getMetabolite().getMonoIsotopicMass());
     return node;
-  }
-
-  private void addToMassIndex(NetworkNode node, double mass) {
-    List<NetworkNode> currentList = massIndex.get(mass);
-    if (currentList == null) {
-      massIndex.put(mass, new ArrayList<NetworkNode>() {{
-        add(node);
-      }});
-      return;
-    }
-    currentList.add(node);
   }
 
   public void writeToJsonFile(File outputFile) throws IOException {

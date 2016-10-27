@@ -1,11 +1,8 @@
 package com.act.biointerpretation.networkanalysis;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -26,7 +23,7 @@ public interface ImmutableNetwork {
 
   public Optional<NetworkNode> getNodeOptionByInchi(String inchi);
 
-  public List<NetworkNode> getNodesByMass(Double mass);
+  public List<NetworkNode> getNodesByMass(Double mass, Double massTolerance);
 
   public Collection<NetworkNode> getNodes();
 
