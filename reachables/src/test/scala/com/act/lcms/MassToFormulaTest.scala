@@ -5,6 +5,8 @@ import org.scalatest.{FlatSpec, Matchers}
 
 
 class MassToFormulaTest extends FlatSpec with Matchers {
+  // WARNING: these tests might fail on a Mac, with the following error:
+  // "no libz3java in java.library.path"
 
   // The type parameter is needed or else the compiler fails to infer
   // the right type for the tuple elements. we can specify it as a type on the variable,
@@ -58,7 +60,7 @@ class MassToFormulaTest extends FlatSpec with Matchers {
 
     val descs = sat.map{ soln => s"${f.buildChemFormulaV(soln)}" }
 
-    "MassToFormula" should s"enumerated the correct set of formulae for ~${intMz}: $descs" in {
+    "MassToFormula" should s"enumerate the correct set of formulae for ~${intMz}: $descs" in {
       sat should be equals expected
     }
   }
