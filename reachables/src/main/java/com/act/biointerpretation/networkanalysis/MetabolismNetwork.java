@@ -295,42 +295,6 @@ public class MetabolismNetwork {
     return node;
   }
 
-  public void massProjectAllNodes(MassProjector projector){
-    ArrayList<NetworkNode> currentNodes = Lists.newArrayList(nodes.values());
-
-    int count = 0;
-    for(NetworkNode node: currentNodes){
-      count += 1;
-      if (node.getMetabolite().getInchi() != null) {
-      massProjectNode(projector, node);
-    }
-      if (count % 10 == 0){
-        System.out.println(count);
-      }
-    }
-
-  }
-
-  private void massProjectNode(MassProjector projector, NetworkNode node) {
-    Map<String, Double> projections = projector.projectAsJava(node.getMetabolite().getMass());
-
-    // Figure out a way to merge already aside nodes
-
-    // Add edges
-    for (Map.Entry<String, Double> entry : projections.entrySet()) {
-      ArrayList<String> substrates = new ArrayList<>();
-      ArrayList<String> products = new ArrayList<>();
-      substrates.add(node.getMetabolite().getUUID());
-
-      products.add(addNode(entry.getValue(), null).getMetabolite().getUUID());
-
-      NetworkEdge projectedEdge = new NetworkEdge(substrates, products);
-      projectedEdge.addProjectorName(entry.getKey());
-      addEdge(projectedEdge);
-    }
-  }
-
-
   public void writeToJsonFile(File outputFile) throws IOException {
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile))) {
       OBJECT_MAPPER.writeValue(predictionWriter, this);

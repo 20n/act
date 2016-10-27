@@ -29,11 +29,15 @@ public class DetectedPeak {
     Double moleculeMass = node.get("moleculeMass").asDouble();
     if (matchingInchisList.size() > 0) {
       this.metabolites = matchingInchis.get(node.get("matching_inchis").asLong())
-          .stream().map(namedInchis -> new Metabolite(moleculeMass, namedInchis)).collect(Collectors.toList());
+          .stream().map(namedInchis -> new Metabolite(moleculeMass, cleanInchi(namedInchis))).collect(Collectors.toList());
     } else {
       this.metabolites = new ArrayList<>();
       this.metabolites.add(new Metabolite(moleculeMass));
     }
+  }
+
+  public String cleanInchi(String inchi){
+    return inchi.replace("\"", "").trim();
   }
 
   public List<Metabolite> getMetabolites() {

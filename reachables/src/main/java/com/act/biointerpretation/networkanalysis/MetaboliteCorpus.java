@@ -29,7 +29,7 @@ public class MetaboliteCorpus {
   private List<Metabolite> corpus;
 
   // Basic constructor
-  MetaboliteCorpus(){
+  public MetaboliteCorpus(){
     corpus = new ArrayList<>();
   }
 
@@ -86,7 +86,7 @@ public class MetaboliteCorpus {
 
   public MetabolismNetwork getMetabolismNetwork() {
     MetabolismNetwork network = new MetabolismNetwork();
-    corpus.forEach(metabolite -> network.addNode(metabolite.getMass(),metabolite.getInchi()));
+    corpus.forEach(metabolite -> network.addNode(metabolite.getMass(), metabolite.getInchi()));
     return network;
   }
 
@@ -95,8 +95,7 @@ public class MetaboliteCorpus {
     File inputFile = new File(DEFAULT_FILE_LOCATION);
     metaboliteCorpus.populateCorpusFromJsonFile(inputFile);
     MetabolismNetwork network = metaboliteCorpus.getMetabolismNetwork();
-    System.out.println(network.getNodes().size());
-    network.massProjectAllNodes(new MassProjector());
-    System.out.println(network.getNodes().size());
+
+
   }
 }
