@@ -121,6 +121,7 @@ object SparkSingleSubstrateROProjector {
   val OPTION_VALID_CHEMICAL_TYPE = "v"
   val OPTION_SAR_CORPUS_FILE = "c"
   val OPTION_SPARK_MASTER = "m"
+  val OPTION_NUMBER_SUBSTRATES = "p"
 
   def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -168,6 +169,12 @@ object SparkSingleSubstrateROProjector {
         longOpt("spark-master").
         desc("Where to look for the spark master connection. " +
           "Uses \"spark://spark-master:7077\" by default."),
+
+      CliOption.builder(OPTION_NUMBER_SUBSTRATES).
+        longOpt("substrate-number").
+        desc("The number of substrates the input reactions are expected to have.  " +
+          "Be careful, a number greater than 1 permutes the initial " +
+          "list so that we project on all pair-wise groupings."),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -243,7 +250,7 @@ object SparkSingleSubstrateROProjector {
     // We filter, but don't actually import here.  If we imported we'd run out of memory way faster.
     val substrateGroups: Set[String] = Source.fromFile(substratesListFile).getLines().toSet
 
-    val pairs: Set[Seq[String]] = substrateGroups.toSeq.combinations(2).toSet
+    val pairs: Set[Seq[String]] = substrateGroups.toSeq.combinations(cl.getOptionValue(OPTION_NUMBER_SUBSTRATES, "1").toInt).toSet
 
     val validInchis: Set[Seq[String]] = pairs.filter(group => {
       try {
