@@ -152,7 +152,7 @@ public class MetabolismNetwork {
       // Move frontier back, then add all new edges. Edge adding will add substrate and product nodes as necessary.
       frontier.forEach(node -> node.getInEdges().forEach(subgraph::addEdge));
       frontier = frontier.stream().flatMap(node -> getPrecursors(node).stream()).collect(Collectors.toSet());
-      frontier.forEach(node -> levelMap.put(node, l.toInteger()));
+      frontier.forEach(node -> levelMap.put(subgraph.getNode(node.getMetabolite().getUUID()), l.toInteger()));
     }
 
     return new PrecursorReport(startNode.getMetabolite(), subgraph, levelMap);

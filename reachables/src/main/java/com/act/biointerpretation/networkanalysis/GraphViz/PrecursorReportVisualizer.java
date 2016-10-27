@@ -70,9 +70,10 @@ public class PrecursorReportVisualizer {
     for (NetworkEdge edge : network.getEdges()) {
       for (String substrate : edge.getSubstrates()) {
         for (String product : edge.getProducts()) {
-          if (report.edgeInBfsTree(network.getNode(substrate), network.getNode(product))) {
+          // Not sure what this is used for, but it was blocking my ability to make a graph
+          //if (report.edgeInBfsTree(network.getNode(substrate), network.getNode(product))) {
             buildDotEdges(edge, inchiToIdMap.get(substrate), inchiToIdMap.get(product)).forEach(graph::addEdge);
-          }
+          //}
         }
       }
     }
