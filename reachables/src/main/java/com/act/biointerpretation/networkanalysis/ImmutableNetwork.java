@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @JsonTypeInfo(
     use = JsonTypeInfo.Id.NAME,
@@ -27,7 +28,6 @@ public interface ImmutableNetwork {
 
   public List<NetworkNode> getNodesByMass(Double mass);
 
-  @JsonIgnore
   public Collection<NetworkNode> getNodes();
 
   /**
@@ -36,6 +36,10 @@ public interface ImmutableNetwork {
    * @return An unmodifiable collection of the graph's edges.
    */
   public Collection<NetworkEdge> getEdges();
+
+  public Set<NetworkNode> getSubstrates(NetworkEdge edge);
+
+  public Set<NetworkNode> getProducts(NetworkEdge edge);
 
   /**
    * Get all nodes that are one step forward from this node. These are predicted products of reactions that have this
@@ -54,6 +58,4 @@ public interface ImmutableNetwork {
    * @return The list of potential substrate nodes.
    */
   public List<NetworkNode> getPrecursors(NetworkNode node);
-
-  public void writeToJsonFile(File outputFile) throws IOException;
 }

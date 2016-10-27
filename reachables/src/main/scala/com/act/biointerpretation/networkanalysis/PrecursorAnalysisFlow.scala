@@ -93,7 +93,7 @@ class PrecursorAnalysisFlow extends Workflow with WorkingDirectoryUtility {
     val numSteps = Integer.parseInt(cl.getOptionValue(OPTION_NUM_STEPS))
 
     val precursorAnalysis = new PrecursorAnalysis(
-      inputNetworkFile, Optional.of(inputLcms.orNull), cl.getOptionValues(OPTION_TARGET_INCHIS).toList.asJava, numSteps, workingDir)
+      inputNetworkFile, Optional.ofNullable(inputLcms.orNull), cl.getOptionValues(OPTION_TARGET_INCHIS).toList.asJava, numSteps, workingDir)
 
     headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("PrecursorAnalysis", precursorAnalysis))
     headerJob

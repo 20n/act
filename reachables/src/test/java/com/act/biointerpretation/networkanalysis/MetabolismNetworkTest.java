@@ -28,6 +28,7 @@ public class MetabolismNetworkTest {
   private static final String METABOLITE_4 = "D";
   private static final String METABOLITE_5 = "E";
   private static final String METABOLITE_6 = "F";
+  private static final String METABOLITE_7 = "G";
 
   private static final Double MASS_1 = 0.1;
   private static final Double MASS_2 = 0.2;
@@ -35,6 +36,7 @@ public class MetabolismNetworkTest {
   private static final Double MASS_4 = 0.6;
   private static final Double MASS_5 = 0.7;
   private static final Double MASS_6 = 0.9;
+  private static final Double MASS_7 = 1.0;
 
   private static List<NetworkNode> nodes = new ArrayList<>();
   private static Map<String, Integer> inchiToID = new HashMap<>();
@@ -51,6 +53,7 @@ public class MetabolismNetworkTest {
     nodes.add(new NetworkNode(getMockMetabolite(METABOLITE_4, MASS_4)));
     nodes.add(new NetworkNode(getMockMetabolite(METABOLITE_5, MASS_5)));
     nodes.add(new NetworkNode(getMockMetabolite(METABOLITE_6, MASS_6)));
+    nodes.add(new NetworkNode(getMockMetabolite(METABOLITE_7, MASS_7)));
 
     nodes.forEach(n -> inchiToID.put(n.getMetabolite().getStructure().get().getInchi(), n.getUID()));
   }
@@ -198,15 +201,16 @@ public class MetabolismNetworkTest {
    * Test precursor report of 2 levels.
    * Adds one relevant inedge, one irrelevant outedge of a precursor, and two level 2 precursors.
    * Test verifies that every metabolite except METABOLITE 6 is reported. Metabolite 6 should not be reported since
-   * it is the derivative of a precursor of the target metabolite 5. Other metabolites are either direct percursors,
-   * or precursors of precursors, and so they should all be reported.
+   * it is the derivative of a precursor of the target metabolite 5. Metabolites 1-5 are either direct percursors,
+   * or precursors of precursors, and so they should all be reported. Metabolite 7 is a second product of an in-edge
+   * of the target, so it should also be in the subgraph, but not the level map.
    */
   @Test
   public void testPrecursorSubgraphN2() {
     // Arrange
     MetabolismNetwork network = new MetabolismNetwork();
     nodes.forEach(network::addNode);
-    network.addEdgeFromInchis(Arrays.asList(METABOLITE_3, METABOLITE_4), Arrays.asList(METABOLITE_5));
+    network.addEdgeFromInchis(Arrays.asList(METABOLITE_3, METABOLITE_4), Arrays.asList(METABOLITE_5, METABOLITE_7));
     network.addEdgeFromInchis(Arrays.asList(METABOLITE_3, METABOLITE_4), Arrays.asList(METABOLITE_6));
     network.addEdgeFromInchis(Arrays.asList(METABOLITE_1), Arrays.asList(METABOLITE_3));
     network.addEdgeFromInchis(Arrays.asList(METABOLITE_2), Arrays.asList(METABOLITE_3));
@@ -218,13 +222,19 @@ public class MetabolismNetworkTest {
     // Assert
     ImmutableNetwork precursorNetwork = report.getNetwork();
     precursorNetwork.getNodes().forEach(n -> System.out.println(n.getMetabolite().getStructure().get().getInchi()));
-    assertEquals("Subgraph should contain five nodes", 5, precursorNetwork.getNodes().size());
+    assertEquals("Subgraph should contain six nodes", 6, precursorNetwork.getNodes().size());
     assertEquals("Subgraph should contain three edges", 3, precursorNetwork.getEdges().size());
 
     assertTrue("Subgraph should contain query node", precursorNetwork.getNodeOptionByInchi(METABOLITE_5).isPresent());
     assertTrue("Subgraph should contain first n1 precursor", precursorNetwork.getNodeOptionByInchi(METABOLITE_3).isPresent());
     assertTrue("Subgraph should contain second n1 precursor", precursorNetwork.getNodeOptionByInchi(METABOLITE_4).isPresent());
+    assertTrue("Subgraph should contain second product of target's in-edge1", precursorNetwork.getNodeOptionByInchi(METABOLITE_7).isPresent());
     assertTrue("Subgraph should contain second n2 precursor", precursorNetwork.getNodeOptionByInchi(METABOLITE_1).isPresent());
     assertTrue("Subgraph should contain second n2 precursor", precursorNetwork.getNodeOptionByInchi(METABOLITE_2).isPresent());
+
+    assertEquals("Level of target is 0", 0, (int) report.getLevel(precursorNetwork.getNodeByInchi(METABOLITE_5)));
+    assertEquals("Level of 1st precursor is 1", 1, (int) report.getLevel(precursorNetwork.getNodeByInchi(METABOLITE_3)));
+    assertEquals("Level of 2nd precursor is 2", 2, (int) report.getLevel(precursorNetwork.getNodeByInchi(METABOLITE_1)));
+    assertEquals("Level of non-precursor is null", null, report.getLevel(precursorNetwork.getNodeByInchi(METABOLITE_7)));
   }
 }

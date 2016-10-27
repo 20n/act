@@ -38,8 +38,8 @@ public class PrecursorReportVisualizer {
     orgToColor = new HashMap<>();
   }
 
-  public Runner getRunner(File inputNetwork, File workingDir) {
-    return new Runner(inputNetwork, workingDir);
+  public Runner getRunner(File inputNetwork, File outputFile) {
+    return new Runner(inputNetwork, outputFile);
   }
 
   /**
@@ -114,15 +114,12 @@ public class PrecursorReportVisualizer {
    */
   public class Runner implements JavaRunnable {
 
-    private static final String OUTPUT_NAME = "precursor_graph";
-    private static final String ID_FILE_NAME = "node_ids";
-
     private final File inputFile;
-    private final File workingDir;
+    private final File outputFile;
 
-    public Runner(File inputFile, File workingDir) {
+    public Runner(File inputFile, File outputFile) {
       this.inputFile = inputFile;
-      this.workingDir = workingDir;
+      this.outputFile = outputFile;
     }
 
     /**
@@ -134,12 +131,6 @@ public class PrecursorReportVisualizer {
     @Override
     public void run() throws IOException {
       FileChecker.verifyInputFile(inputFile);
-      FileChecker.verifyOrCreateDirectory(workingDir);
-
-      File outputFile = new File(workingDir, OUTPUT_NAME);
-      File idFile = new File(workingDir, ID_FILE_NAME);
-
-      FileChecker.verifyAndCreateOutputFile(idFile);
       FileChecker.verifyAndCreateOutputFile(outputFile);
 
       PrecursorReport report = PrecursorReport.readFromJsonFile(inputFile);
@@ -147,12 +138,9 @@ public class PrecursorReportVisualizer {
       LOGGER.info("Handled input files. Building dot graph.");
       DotGraph graph = buildDotGraph(report);
 
-      LOGGER.info("Build graph. Writing output files.");
+      LOGGER.info("Build graph. Writing out graph.");
       graph.writeGraphToFile(outputFile);
-      LOGGER.info("Graph written to: %s", outputFile.getAbsolutePath());
-      graph.writeNodeNamesToFile(idFile);
-      LOGGER.info("Node label to name mapping written to: %s", idFile.getAbsolutePath());
-      LOGGER.info("Complete!");
+      LOGGER.info("Graph written to %s. Workflow complete!", outputFile.getAbsolutePath());
     }
   }
 }

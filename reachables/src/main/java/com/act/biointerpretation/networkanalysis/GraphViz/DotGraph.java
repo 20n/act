@@ -25,12 +25,10 @@ public class DotGraph {
 
   List<DotEdge> edges;
   List<DotNode> nodes;
-  Map<String, String> nodeLabelToName;
 
   public DotGraph() {
     edges = new ArrayList<>();
     nodes = new ArrayList<>();
-    nodeLabelToName = new HashMap<>();
   }
 
   public void addEdge(DotEdge edge) {
@@ -39,26 +37,6 @@ public class DotGraph {
 
   public void addNode(DotNode node) {
     nodes.add(node);
-  }
-
-  public void setNodeName(String nodeLabel, String nodeName) {
-    nodeLabelToName.put(nodeLabel, nodeName);
-  }
-
-  /**
-   * @param outputFile
-   */
-  public void writeNodeNamesToFile(File outputFile) throws IOException {
-    try (TSVWriter<String, String> writer = new TSVWriter<>(Arrays.asList(LABEL_HEADER, NAME_HEADER))) {
-      writer.open(outputFile);
-
-      for (Map.Entry<String, String> entry : nodeLabelToName.entrySet()) {
-        writer.append(new HashMap<String, String>() {{
-          put(LABEL_HEADER, entry.getKey());
-          put(NAME_HEADER, entry.getValue());
-        }});
-      }
-    }
   }
 
   /**
