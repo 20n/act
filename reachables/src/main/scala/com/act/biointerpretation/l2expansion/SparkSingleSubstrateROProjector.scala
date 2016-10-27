@@ -89,7 +89,8 @@ object compute {
       reactor.setReactants(substrateOrdering.map(MoleculeImporter.importMolecule(_, MoleculeFormat.strictNoStereoInchi)).toArray)
 
       // Return results
-      val reactedValues: Stream[Array[Molecule]] = Stream.continually(Option(reactor.react())).takeWhile(_.isDefined).flatMap(_.toStream)
+      //val reactedValues: Stream[Array[Molecule]] = Stream.continually(Option(reactor.react())).takeWhile(_.isDefined).flatMap(_.toStream)
+      val reactedValues = Option(reactor.react())
       val partiallyAppliedMapper: List[Molecule] => Option[InchiResult] = mapReactionsToResult(substrates, ro.getId.toString)
       reactedValues.flatMap(potentialProducts => partiallyAppliedMapper(potentialProducts.toList))
     }).toStream
@@ -241,9 +242,11 @@ object SparkSingleSubstrateROProjector {
     }
 
     // We filter, but don't actually import here.  If we imported we'd run out of memory way faster.
-    val substrateGroups = Source.fromFile(substratesListFile).getLines().mkString.parseJson.convertTo[Set[List[String]]]
+    val substrateGroups: Set[String] = Source.fromFile(substratesListFile).getLines().toSet
 
-    val validInchis = substrateGroups.filter(group => {
+    val pairs: Set[Seq[String]] = substrateGroups.toSeq.combinations(2).toSet
+
+    val validInchis: Set[Seq[String]] = pairs.filter(group => {
       try {
         group.foreach(inchi => {
           MoleculeImporter.importMolecule(inchi)
@@ -291,12 +294,12 @@ object SparkSingleSubstrateROProjector {
       LOGGER.info("Building ERO RDD")
       val groupSize = 100
       // TODO Add file parsing so that multiple substrate reactions can be loaded in
-      val inchiRDD: RDD[List[String]] = spark.makeRDD(validInchis.toList, groupSize)
+      val inchiRDD: RDD[Seq[String]] = spark.makeRDD(validInchis.toList, groupSize)
 
       LOGGER.info("Starting execution")
       // PROJECT!  Run ERO projection over all InChIs.
       val resultsRDD: RDD[InchiResult] = inchiRDD.flatMap(inchi => {
-        compute.run(licenseFileName)(inchi)
+        compute.run(licenseFileName)(inchi.toList)
       })
       resultsRDD
     }
