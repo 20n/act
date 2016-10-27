@@ -40,10 +40,10 @@ case object Or extends BoolOp
 case object Not extends BoolOp
 
 sealed trait BooleanExpr
-case class LinIneq(val lhs: Expr, val ineq: CompareOp, val rhs: Expr) extends BooleanExpr
-case class Binary(val a: BooleanExpr, val op: BoolOp, val b: BooleanExpr) extends BooleanExpr
-case class Multi(val op: BoolOp, val b: List[BooleanExpr]) extends BooleanExpr
-case class Unary(val op: BoolOp, val a: BooleanExpr) extends BooleanExpr
+case class LinIneq(lhs: Expr, ineq: CompareOp, rhs: Expr) extends BooleanExpr
+case class Binary(a: BooleanExpr, op: BoolOp, b: BooleanExpr) extends BooleanExpr
+case class Multi(op: BoolOp, b: List[BooleanExpr]) extends BooleanExpr
+case class Unary(op: BoolOp, a: BooleanExpr) extends BooleanExpr
 
 object Solver {
 
@@ -383,19 +383,7 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
         // that translates to a very easy comparison boolean circuit.
         val max = (math ceil (closeMz.toDouble / atomMass)).toInt
 
-        val upper = a match {
-          case H => {
-            // there cannot be more than (valence * others) - count(others)
-            // coz there are at max valenc*other bonds to make, and max available for H
-            // are in cases where all others are in a single line, e.g., alcohols
-            val others = elements.filter(!_.equals(H))
-            val ts = others.map( a => Term(Const(a.maxValency), varsForAtoms(a)) )
-            val lineBonds = Term(Const(-others.size), one)
-            LinExpr(lineBonds :: ts)
-          }
-          case _ => Const(max)
-        }
-        val upperBound = LinIneq(varsForAtoms(a), Le, upper)
+        val upperBound = LinIneq(varsForAtoms(a), Le, Const(max))
 
         (lowerBound, upperBound)
       }
@@ -415,6 +403,12 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
 
 object MassToFormula {
   def atomToVar(a: Atom) = Var(a.symbol.toString)
+  def term(c: Int) = Term(Const(c), oneVar)
+  def term(c: Int, a: Atom) = Term(Const(c), MassToFormula.atomToVar(a))
+  // See comment on `onec` in `buildConstraintOverInts` for how we use `oneVar`
+  // to anchor constants, by being able to put them in terms that need to be of
+  // the form Constant x Variable.
+  def oneVar  = Var("v=1")
 
   // These can be overwritten by command line arguments to specific files
   // We can pass them around as arguments, but it was getting very painful.
@@ -429,7 +423,7 @@ object MassToFormula {
 
   def main(args: Array[String]) {
     val className = this.getClass.getCanonicalName
-    val opts = List(optMz, optMassFile, optOutputFile, optOutFailedTests, optRunTests, optSpecials)
+    val opts = List(optMz, optMassFile, optOutputFile, optOutFailedTests, optRunDbTests, optSpecials, optMinFormula)
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
     outStream = {
@@ -457,7 +451,7 @@ object MassToFormula {
         if (!spls.forall(s => allSpecialNm.contains(s))) {
           errStream.println("Invalid specialization provided.")
           errStream.println("Specializations of solver supported: " + allSpecialNm.mkString(", "))
-          errStream.flush
+          errStream.flush()
           System.exit(1)
         }
         def nameToClass(s: String) = {
@@ -473,9 +467,14 @@ object MassToFormula {
       }
     }
 
-    if (cmdLine has optRunTests) {
-      // TODO: Eventually, move to scalatest.
-      runAllUnitTests
+    if (cmdLine has optMinFormula) {
+      val minFormula = cmdLine get optMinFormula
+      val minFormulaMap = getFormulaMap(minFormula)
+      specials + new AtLeastMinFormula(minFormulaMap)
+    }
+
+    if (cmdLine has optRunDbTests) {
+      runDBTests
     } else if ((cmdLine has optMz) && !(cmdLine has optMassFile)) {
       val mass = (cmdLine get optMz).toDouble
       solve(specials)(List(mass))
@@ -501,7 +500,7 @@ object MassToFormula {
       val solns = f.solve(new MonoIsotopicMass(m))
       val allChemicalFormulae = solns.map(f.buildChemFormulaA)
       outStream.write(m + "\t" + allChemicalFormulae.mkString("\t") + "\n")
-      outStream.flush
+      outStream.flush()
     })
   }
 
@@ -540,7 +539,7 @@ object MassToFormula {
     stream.write(color)
     stream.write(s)
     stream.println()
-    stream.flush
+    stream.flush()
   }
 
   val optMz = new OptDesc(
@@ -591,14 +590,21 @@ object MassToFormula {
                              |We log `mass inchi delta atomset otherknobs..` in TSV form.""".stripMargin,
                     isReqd = false, hasArg = true)
 
-  val optRunTests = new OptDesc(
+  val optRunDbTests = new OptDesc(
                     param = "t",
-                    longParam = "run-tests",
-                    name = "run regression tests",
-                    desc = """Run regression tests. This will take some time.""",
+                    longParam = "run-db-tests",
+                    name = "run database regression tests",
+                    desc = """Run database regression tests. This will take some time.""",
                     isReqd = false, hasArg = false)
 
-  def runAllUnitTests() {
+  val optMinFormula = new OptDesc(
+                    param = "f",
+                    longParam = "min-formula",
+                    name = "search with min number of elements",
+                    desc = """Use provided formula as minimum number of element to reduce search space.""",
+                    isReqd = false, hasArg = false)
+
+  def runDBTests() {
     println(s"${Console.BLUE}Running all tests!")
     testDBChemicals(n = 10000, maxMz = 200.00)
     testAcetaminophen
@@ -656,9 +662,7 @@ object MassToFormula {
   ////
   // TODO: Replace below with Chemaxon.Molecule.getAtomCount(atomicNumber)
   // Function `getFormulaMap: String -> Map[Atom, Int]` and helpers `getFormulaMapStep`,
-  // `get{Num, Atom}AtHead`, and `headExtractHelper` won't be needed. That will take care
-  // of fixing the greedy approach here that only works for single char atoms 
-  // (Line: `!isHeadAlreadyAtom && c.isLetter`)
+  // `get{Num, Atom}AtHead`, and `headExtractHelper` won't be needed.
   //
   // Considerations that will need to be tested before the move:
   // 1. Chemaxon license?
@@ -814,3 +818,35 @@ class LessThan3xH extends Specials {
   def describe() = "3C>=H"
   def constraints() = Set() + moreOf((3, C), (1, H))
 }
+
+class ValencyConstraints(atomSpace: List[Atom]) extends Specials {
+  def describe() = "3C>=H"
+  def constraints() = Set(getValencyConstraint())
+
+  def getValencyConstraint() = {
+    val elements = atomSpace.sortBy(_.symbol)
+    val varsForAtoms = elements.map(a => (a, MassToFormula.atomToVar(a))).toMap
+
+    // there cannot be more than (valence * others) - count(others)
+    // coz there are at max valenc*other bonds to make, and max available for H
+    // are in cases where all others are in a single line, e.g., alcohols
+    val others = elements.filter(!_.equals(H))
+    val ts = others.map( a => Term(Const(a.maxValency), varsForAtoms(a)) )
+    val lineBonds = Term(Const(-others.size), MassToFormula.oneVar)
+    LinIneq(LinExpr(lineBonds :: ts), Ge, Term(Const(1), MassToFormula.atomToVar(H)))
+  }
+}
+
+class AtLeastMinFormula(minFormulaMap: Map[Atom, Int]) extends Specials {
+  def describe() = s"C >= ${minFormulaMap.get(C)} + H >= ${minFormulaMap.get(H)} +" +
+    s" N >= ${minFormulaMap.get(N)} + O >= ${minFormulaMap.get(O)} +" +
+    s" P >= ${minFormulaMap.get(P)} + S >= ${minFormulaMap.get(S)}"
+
+  def moreThanMin(a: Atom) = {
+    moreOf((1, a), (minFormulaMap.getOrElse(a, 0), a))
+  }
+
+  def constraints() = Set(C, H, N, O, P, S).map(a => moreThanMin(a))
+}
+
+
