@@ -5,11 +5,10 @@ import act.shared.{CmdLineParser, OptDesc}
 import scala.io.Source
 import act.shared.ChemicalSymbols.{MonoIsotopicMass, Atom, AllAminoAcids}
 import com.act.lcms.MS1.MetlinIonMass
-import act.shared.MassToFormula
+import com.act.lcms.MassToFormula
 import act.shared.ChemicalSymbols.Helpers.computeMassFromAtomicFormula
 import com.act.lcms.MassCalculator.calculateMass
 
-// @mark-20n @MichaelLampe20n: help resolve this to specific imports; please!
 import spray.json._
 import spray.json.DefaultJsonProtocol._
 import scala.annotation.tailrec

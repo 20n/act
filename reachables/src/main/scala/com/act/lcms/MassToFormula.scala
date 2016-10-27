@@ -1,4 +1,4 @@
-package act.shared
+package com.act.lcms
 
 import act.shared.{CmdLineParser, OptDesc}
 import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, Br, Cl, I, F, AllAtoms, AminoAcid, AllAminoAcids, MonoIsotopicMass}
