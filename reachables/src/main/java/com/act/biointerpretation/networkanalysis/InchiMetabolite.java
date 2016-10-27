@@ -5,6 +5,7 @@ import com.act.lcms.v2.ChemicalFormula;
 import com.act.lcms.v2.Metabolite;
 import com.act.lcms.v2.MolecularStructure;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang.NotImplementedException;
 
@@ -20,47 +21,34 @@ public class InchiMetabolite implements Metabolite {
   @JsonProperty("inchi")
   private String inchi;
 
+  private MolecularStructure structure;
+
   @JsonCreator
   public InchiMetabolite(@JsonProperty("inchi") String inchi) {
     this.inchi = inchi;
+    this.structure = new InchiStructure(inchi);
   }
 
+  @JsonIgnore
   public String getInchi() {
     return inchi;
   }
 
+  @JsonIgnore
   @Override
   public Optional<MolecularStructure> getStructure() {
-    return Optional.of(new MolecularStructure() {
-      @Override
-      public String getInchi() {
-        return inchi;
-      }
-
-      @Override
-      public Boolean parseInchi(String inchi) {
-        throw new NotImplementedException();
-      }
-
-      @Override
-      public Double getMass() {
-        return MassCalculator.calculateMass(inchi);
-      }
-
-      @Override
-      public ChemicalFormula getChemicalFormula() {
-        throw new NotImplementedException();
-      }
-    });
+    return Optional.of(structure);
   }
 
+  @JsonIgnore
   @Override
   public Optional<ChemicalFormula> getFormula() {
     return Optional.empty();
   }
 
+  @JsonIgnore
   @Override
   public Double getMonoIsotopicMass() {
-    return MassCalculator.calculateMass(inchi);
+    return structure.getMass();
   }
 }

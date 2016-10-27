@@ -1,11 +1,22 @@
 package com.act.lcms.v2;
 
 
+import com.act.biointerpretation.networkanalysis.InchiMetabolite;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
 import java.util.Optional;
 
 /**
  * Representation of a metabolite
  */
+@JsonTypeInfo(
+    use = JsonTypeInfo.Id.NAME,
+    include = JsonTypeInfo.As.PROPERTY,
+    property = "type")
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = InchiMetabolite.class, name = "inchi_metabolite")
+})
 public interface Metabolite {
 
   /**

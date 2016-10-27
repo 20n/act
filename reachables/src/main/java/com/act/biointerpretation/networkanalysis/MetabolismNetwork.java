@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 /**
@@ -51,15 +52,18 @@ public class MetabolismNetwork implements ImmutableNetwork {
   @JsonProperty("edges")
   List<NetworkEdge> edges;
 
+  @JsonIgnore
   Map<Integer, NetworkNode> UIDIndex;
+  @JsonIgnore
   Map<String, NetworkNode> inchiIndex;
+  @JsonIgnore
   Map<Double, List<NetworkNode>> massIndex;
 
   @JsonCreator
   private MetabolismNetwork(@JsonProperty("nodes") List<NetworkNode> nodes,
                             @JsonProperty("edges") List<NetworkEdge> edges) {
     this();
-    this.nodes = nodes;
+    nodes.forEach(this::addNode);
     edges.forEach(this::addEdge);
   }
 
@@ -71,6 +75,7 @@ public class MetabolismNetwork implements ImmutableNetwork {
     massIndex = new HashMap<>();
   }
 
+  @Override
   public NetworkNode getNodeByUID(Integer uid) {
     NetworkNode result = UIDIndex.get(uid);
     if (result == null) {
@@ -79,6 +84,7 @@ public class MetabolismNetwork implements ImmutableNetwork {
     return result;
   }
 
+  @Override
   public NetworkNode getNodeByInchi(String inchi) {
     NetworkNode result = inchiIndex.get(inchi);
     if (result == null) {
@@ -87,16 +93,19 @@ public class MetabolismNetwork implements ImmutableNetwork {
     return result;
   }
 
+  @Override
   public Optional<NetworkNode> getNodeOptionByInchi(String inchi) {
     return Optional.ofNullable(inchiIndex.get(inchi));
   }
 
+  @Override
   public List<NetworkNode> getNodesByMass(Double mass) {
     List<NetworkNode> result;
     return (result = massIndex.get(mass)) != null ? result : Collections.emptyList();
   }
 
   @JsonIgnore
+  @Override
   public Collection<NetworkNode> getNodes() {
     return Collections.unmodifiableCollection(nodes);
   }
@@ -110,6 +119,16 @@ public class MetabolismNetwork implements ImmutableNetwork {
     return Collections.unmodifiableCollection(edges);
   }
 
+  @Override
+  public Set<NetworkNode> getSubstrates(NetworkEdge edge) {
+    return edge.getSubstrates().stream().map(this::getNodeByUID).collect(Collectors.toSet());
+  }
+
+  @Override
+  public Set<NetworkNode> getProducts(NetworkEdge edge) {
+    return edge.getProducts().stream().map(this::getNodeByUID).collect(Collectors.toSet());
+  }
+
   /**
    * Get all nodes that are one step forward from this node. These are predicted products of reactions that have this
    * node as a substrate.
@@ -117,6 +136,7 @@ public class MetabolismNetwork implements ImmutableNetwork {
    * @param node The starting node.
    * @return The list of potential product nodes.
    */
+  @Override
   public List<NetworkNode> getDerivatives(NetworkNode node) {
     List<NetworkNode> derivatives = new ArrayList<>();
     for (NetworkEdge edge : node.getOutEdges()) {
@@ -132,6 +152,7 @@ public class MetabolismNetwork implements ImmutableNetwork {
    * @param node The starting node.
    * @return The list of potential substrate nodes.
    */
+  @Override
   public List<NetworkNode> getPrecursors(NetworkNode node) {
     List<NetworkNode> precursors = new ArrayList<>();
     for (NetworkEdge edge : node.getInEdges()) {
@@ -155,20 +176,20 @@ public class MetabolismNetwork implements ImmutableNetwork {
 
     MetabolismNetwork subgraph = new MetabolismNetwork();
     Map<NetworkNode, Integer> levelMap = new HashMap<>();
-    Set<NetworkNode> frontierDerivatives = new HashSet<>();
-    Set<NetworkNode> frontierPrecursors = new HashSet<>();
-    frontierDerivatives.add(startNode);
+    Set<NetworkNode> frontier = new HashSet<>();
+    frontier.add(startNode);
     levelMap.put(startNode, 0);
 
     for (MutableInt l = new MutableInt(1); l.toInteger() <= numSteps; l.increment()) {
-      // Calculate precursors of derivatives
-      frontierPrecursors = frontierDerivatives.stream().flatMap(node -> getPrecursors(node).stream()).collect(Collectors.toSet());
-      // Add precursor and derivative nodes, and all edges connecting them
-      frontierDerivatives.forEach(subgraph::addNode);
-      frontierPrecursors.forEach(subgraph::addNode);
-      frontierDerivatives.forEach(node -> new ArrayList<>(node.getInEdges()).forEach(subgraph::addEdge));
-      // Move back the derivative frontier
-      frontierDerivatives = frontierPrecursors;
+      // Get edges leading into the derivative frontier
+      List<NetworkEdge> edges = frontier.stream().flatMap(n -> n.getInEdges().stream()).collect(Collectors.toList());
+      // Add all of the nodes adjacent to the edges, and the edges themselves, to the subgraph
+      edges.forEach(e -> this.getSubstrates(e).forEach(subgraph::addNode));
+      edges.forEach(e -> this.getProducts(e).forEach(subgraph::addNode));
+      edges.forEach(subgraph::addEdge);
+      // Calculate new frontier
+      frontier = edges.stream().flatMap(e -> this.getSubstrates(e).stream()).collect(Collectors.toSet());
+      frontier.forEach(n -> levelMap.put(n, l.toInteger()));
     }
 
     return new PrecursorReport(startNode.getMetabolite(), subgraph, levelMap);
