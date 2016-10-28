@@ -1,6 +1,7 @@
 package com.act.biointerpretation.networkanalysis;
 
 import com.act.lcms.v2.Ion;
+import com.act.lcms.v2.IonCalculator;
 import com.act.lcms.v2.Metabolite;
 import com.act.lcms.v2.PeakSpectrum;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -56,7 +57,7 @@ public class PrecursorReport {
     this.lcmsMap = lcmsMap;
   }
 
-  public void addLcmsData(PeakSpectrum peakSpectrum, MetaboliteToMz massCalculator, double massTolerance) {
+  public void addLcmsData(PeakSpectrum peakSpectrum, IonCalculator<Ion> massCalculator, double massTolerance) {
     for (NetworkNode node : network.getNodes()) {
       lcmsMap.put(node, false);
       for (Ion ion : massCalculator.getIons(node.getMetabolite())) {

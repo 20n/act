@@ -79,21 +79,15 @@ public class PrecursorAnalysis implements JavaRunnable {
 
     Map<String, Integer> targetIdMap = new HashMap<>();
     int id = 0;
-    MetaboliteToMz metaboliteToMz = null;
-    PeakSpectrum lcmsSpectrum = null;
-    if (lcmsInput.isPresent()) {
-      metaboliteToMz = new MetaboliteToMz(ionSet);
-      lcmsSpectrum = LcmsTSVParser.parseTSV(lcmsInput.get());
-    }
+    MetaboliteToMz metaboliteToMz = lcmsInput.isPresent() ? new MetaboliteToMz(ionSet) : null;
+    PeakSpectrum lcmsSpectrum = lcmsInput.isPresent() ? LcmsTSVParser.parseTSV(lcmsInput.get()) : null;
 
     // Do precursor analyses on each target.  Give each found target an ID so we can track which report is which.
     for (String target : targets) {
       Optional<NetworkNode> targetNode = network.getNodeOptionByInchi(target);
       if (targetNode.isPresent()) {
         PrecursorReport report = network.getPrecursorReport(targetNode.get(), numSteps);
-        if (lcmsInput.isPresent()) {
-          report.addLcmsData(lcmsSpectrum, metaboliteToMz, MASS_TOLERANCE);
-        }
+        lcmsInput.ifPresent(a -> report.addLcmsData(lcmsSpectrum, metaboliteToMz, MASS_TOLERANCE));
         File outputFile = new File(outputDirectory, "precursors_target_" + id);
         report.writeToJsonFile(outputFile);
         LOGGER.info("Wrote target %s report to file %s", target, outputFile.getAbsolutePath());
