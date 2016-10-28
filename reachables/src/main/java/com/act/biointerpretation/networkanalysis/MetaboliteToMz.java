@@ -22,8 +22,7 @@ public class MetaboliteToMz implements IonCalculator<Ion> {
   List<MS1.MetlinIonMass> ionMasses;
 
   public MetaboliteToMz(Set<String> ions) {
-    ionMasses = Arrays.asList(ionDeltas);
-    ionMasses.removeIf(m -> !ions.contains(m.getName()));
+    ionMasses = Arrays.stream(ionDeltas).filter(m -> ions.contains(m.getName())).collect(Collectors.toList());
   }
 
   @Override

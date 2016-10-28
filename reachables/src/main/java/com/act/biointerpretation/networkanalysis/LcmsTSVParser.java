@@ -15,10 +15,14 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-/**
- * Created by gil on 10/26/16.
- */
 public class LcmsTSVParser {
+
+  private static final String MZ_KEY = "mz";
+  private static final String INT_KEY = "exp_maxo";
+  private static final String RT_KEY = "rt";
+
+  private static final Double MASS_TOLERANCE = .1;
+  private static final Double RT_TOLERANCE = 1.0;
 
   public static PeakSpectrum parseTSV(File lcmsTSVFile) throws IOException {
     FileChecker.verifyInputFile(lcmsTSVFile);
@@ -27,22 +31,25 @@ public class LcmsTSVParser {
 
     TSVSpectrum spectrum = new TSVSpectrum();
 
+    int i = 0;
     for (Map<String, String> row : parser.getResults()) {
-      Double minMz = Double.parseDouble(row.get("mzmin"));
-      Double maxMz = Double.parseDouble(row.get("mzmax"));
-      Double intensity = Double.parseDouble(row.get("exp_maxo"));
-      Double retentionTime = Double.parseDouble(row.get("rt"));
-      Double retentionWindow = (Double.parseDouble(row.get("rtmax")) - Double.parseDouble(row.get("rtmin"))) / 2;
+      Double mz = getDouble(row.get(MZ_KEY));
+      Double intensity = getDouble(row.get(INT_KEY));
+      Double retentionTime = getDouble(row.get(RT_KEY));
       String scanFile = lcmsTSVFile.getAbsolutePath();
 
       if (intensity > 0) {
-        FixedWindowDetectedPeak peak = new FixedWindowDetectedPeak(scanFile, (minMz + maxMz) / 2, (maxMz - minMz) / 2,
-            retentionTime, retentionWindow, intensity, 1.0);
+        FixedWindowDetectedPeak peak = new FixedWindowDetectedPeak(scanFile, mz - MASS_TOLERANCE, mz + MASS_TOLERANCE,
+            retentionTime, RT_TOLERANCE, intensity, 1.0);
         spectrum.addPeak(peak);
       }
     }
 
     return spectrum;
+  }
+
+  private static Double getDouble(String raw) {
+    return (raw.equals("")) ? 0.0 : Double.parseDouble(raw);
   }
 
   private static class TSVSpectrum implements PeakSpectrum {
