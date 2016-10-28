@@ -8,10 +8,10 @@ import org.scalatest.{FlatSpec, Matchers}
 class UntargetedMetabolomicsTest extends FlatSpec with Matchers {
 
   // desactivate tests for this class
-  def runTests = false
+  def runTests = true
 
   // this data was collected with XCMS Centwave "optimzed" parameters: peak width 1-50 and ppm 20 (@vijay-20n?)
-  def dataForWell(dataset: String)(repl: Int) = s"Plate_plate2016_09_08_${dataset}${repl}_0908201601.tsv"
+  def dataForWell(dataset: String)(repl: Int) = s"Plate_plate2016_09_08_$dataset${repl}_0908201601.tsv"
   def fullLoc(well: String) = getClass.getResource(well).getPath
   def readSpectra(f: String) = {
     val src = new RawData(source = f)

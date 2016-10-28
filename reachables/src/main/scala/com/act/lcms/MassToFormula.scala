@@ -93,21 +93,18 @@ object Solver {
   type SMTBoolExprVars = (BoolExpr, Map[FuncDecl, Var])
 
   def mkExpr(e: Expr): SMTExprVars = e match {
-    case Const(c)         => {
+    case Const(c)         =>
       val expr = ctx.mkNumeral(c.toString, bv_type).asInstanceOf[BitVecNum]
       (expr, Map())
-    }
-    case Var(v)           => {
+    case Var(v)           =>
       val expr = ctx.mkBVConst(v, bvSz)
       (expr, Map(expr.getFuncDecl -> Var(v)))
-    }
-    case Term(c, v)       => {
+    case Term(c, v)       =>
       val (coeff, varsCoeff) = mkExpr(c)
       val (variable, varsVar) = mkExpr(v)
       val expr = ctx.mkBVMul(coeff, variable)
       (expr, varsCoeff ++ varsVar)
-    }
-    case LinExpr(ts)      => {
+    case LinExpr(ts)      =>
       // we need to write this separately so that we can specify the type of the anonymous function
       // otherwise the reduce below is unable to infer the type and defaults to `Any` causing compile failure
       val fn: (SMTExprVars, SMTExprVars) => SMTExprVars = {
@@ -115,8 +112,7 @@ object Solver {
       }
       val terms = ts.map(mkExpr)
       terms.reduce(fn)
-    }
-    case ArithExpr(op, ts) => {
+    case ArithExpr(op, ts) =>
       val operation = op match {
         case Add => ctx.mkBVAdd _
         case Sub => ctx.mkBVSub _
@@ -129,7 +125,6 @@ object Solver {
       }
       val terms = ts.map(mkExpr)
       terms.reduce(fn)
-    }
   }
 
   def mkClause(eq: BooleanExpr): SMTBoolExprVars = {
@@ -149,6 +144,7 @@ object Solver {
       case Unary(op, e) => {
         val boolFn = op match {
           case Not => ctx.mkNot _
+          case _ => ???
         }
         val (expr, vars) = mkClause(e)
         (boolFn(expr), vars)
@@ -160,6 +156,7 @@ object Solver {
         val boolExpr = op match {
           case And => ctx.mkAnd(exprs:_*)
           case Or  => ctx.mkOr(exprs:_*)
+          case _ => ???
         }
         (boolExpr, varsLists.reduce(_++_))
       }
@@ -171,6 +168,7 @@ object Solver {
     case Var(n)      => Set(Var(n))
     case Term(c, v)  => Set(v)
     case LinExpr(ts) => ts.map(getVars).reduce(_++_)
+    case _ => ???
   }
 
   def getVars(eq: BooleanExpr): Set[Var] = eq match {
