@@ -131,9 +131,11 @@ public class FeatureGenerator {
         microspeciesPlugin.run();
         Molecule phMol = microspeciesPlugin.getMajorMicrospecies();
         plugin.setlogPMethod(LogPMethod.CONSENSUS);
-        plugin.setUserTypes("logPTrue,logPMicro,logPNonionic"); // These arguments were chosen via experimentation.
+        plugin.setUserTypes("logPTrue,logPMicro,logPNonionic");
         plugin.setMolecule(phMol);
         plugin.run();
+        
+        System.out.println(String.format("%s", MolExporter.exportToFormat(phMol, "inchi:AuxNone,Woff")));
 
         Double mass = molecule.getMass();
         Double logP = plugin.getlogPTrue();
