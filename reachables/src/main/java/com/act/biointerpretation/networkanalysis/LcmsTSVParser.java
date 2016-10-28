@@ -21,7 +21,9 @@ public class LcmsTSVParser {
   private static final String INT_KEY = "exp_maxo";
   private static final String RT_KEY = "rt";
 
-  private static final Double MASS_TOLERANCE = .1;
+  // 0.01 daltons is a good baseline tolerance for matching mz values between ions and peaks
+  private static final Double MZ_TOLERANCE = .01;
+  // This is currently irrelevant, but the peak requires some notion of an RT window, so we make one based on this.
   private static final Double RT_TOLERANCE = 1.0;
 
   public static PeakSpectrum parseTSV(File lcmsTSVFile) throws IOException {
@@ -39,7 +41,7 @@ public class LcmsTSVParser {
       String scanFile = lcmsTSVFile.getAbsolutePath();
 
       if (intensity > 0) {
-        FixedWindowDetectedPeak peak = new FixedWindowDetectedPeak(scanFile, mz - MASS_TOLERANCE, mz + MASS_TOLERANCE,
+        FixedWindowDetectedPeak peak = new FixedWindowDetectedPeak(scanFile, mz - MZ_TOLERANCE, mz + MZ_TOLERANCE,
             retentionTime, RT_TOLERANCE, intensity, 1.0);
         spectrum.addPeak(peak);
       }
