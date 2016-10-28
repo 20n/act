@@ -85,7 +85,7 @@ class EnumChemFormulae(maxElems: Map[Atom, Int] = EnumChemFormulae.defaultMaxEle
          f <- 0 to maxElems(F);
          b <- 0 to maxElems(Br);
          i <- 0 to maxElems(I)
-       ) {
+    ) {
       val formula: ChemicalFormula = Map(C->c, H->h, N->n, O->o, P->p, S->s, Cl->cl, F->f, Br->b, I->i)
       val isStableChemical = stableFormulae.isValid(formula)
       if (isStableChemical) {

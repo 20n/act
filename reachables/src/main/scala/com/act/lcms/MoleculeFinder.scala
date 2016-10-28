@@ -1,8 +1,10 @@
 package com.act.lcms
 
 import act.shared.ChemicalSymbols.Atom
+import com.act.lcms.v2.{LargeMassToMoleculeMap, NamedMolecule}
 
-class PeakToMolecule {
+
+class MoleculeFinder {
 
   trait ChemicalFormulae {
     type ChemicalFormula = Map[Atom, Int]

@@ -1,4 +1,4 @@
-package com.act.lcms.v3;
+package com.act.lcms.v2;
 
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
