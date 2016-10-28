@@ -36,8 +36,9 @@ public class PrecursorReport {
   @JsonProperty("level_map")
   Map<NetworkNode, Integer> levelMap;
 
+  // Maps nodes to confidence that they're in the lcms trace, from 0.0 to 1.0.
   @JsonProperty("lcms_hit_map")
-  Map<NetworkNode, Boolean> lcmsMap;
+  Map<NetworkNode, Double> lcmsMap;
 
   public PrecursorReport(
       Metabolite target,
@@ -50,7 +51,7 @@ public class PrecursorReport {
       Metabolite target,
       ImmutableNetwork network,
       Map<NetworkNode, Integer> levelMap,
-      Map<NetworkNode, Boolean> lcmsMap) {
+      Map<NetworkNode, Double> lcmsMap) {
     this.target = target;
     this.network = network;
     this.levelMap = levelMap;
@@ -59,10 +60,10 @@ public class PrecursorReport {
 
   public void addLcmsData(PeakSpectrum peakSpectrum, IonCalculator<Ion> massCalculator, double massTolerance) {
     for (NetworkNode node : network.getNodes()) {
-      lcmsMap.put(node, false);
+      lcmsMap.put(node, 0.0);
       for (Ion ion : massCalculator.getIons(node.getMetabolite())) {
         if (!peakSpectrum.getPeaksByMass(ion.getMzValue(), massTolerance).isEmpty()) {
-          lcmsMap.put(node, true);
+          lcmsMap.put(node, 1.0);
           break;
         }
       }
@@ -84,7 +85,7 @@ public class PrecursorReport {
   }
 
   @JsonIgnore
-  public Map<NetworkNode, Boolean> getLcmsMap() {
+  public Map<NetworkNode, Double> getLcmsMap() {
     return lcmsMap;
   }
 
@@ -107,7 +108,7 @@ public class PrecursorReport {
   /**
    * Returns true if the node is an lcms hit, false if not.  If the node isn't in the map, returns null.
    */
-  public Boolean isLcmsHit(NetworkNode node) {
+  public Double getLcmsConfidence(NetworkNode node) {
     return lcmsMap.get(node);
   }
 
@@ -127,7 +128,7 @@ public class PrecursorReport {
       @JsonProperty("target") InchiMetabolite target,
       @JsonProperty("network") ImmutableNetwork network,
       @JsonProperty("level_map") Map<Integer, Integer> levelMap,
-      @JsonProperty("lcms_hit_map") Map<Integer, Boolean> lcmsMap) {
+      @JsonProperty("lcms_hit_map") Map<Integer, Double> lcmsMap) {
     PrecursorReport report = new PrecursorReport(target, network, new HashMap<>());
     network.getNodes().forEach(n -> report.levelMap.put(n, levelMap.get(n.getUID())));
     network.getNodes().forEach(n -> report.lcmsMap.put(n, lcmsMap.get(n.getUID())));
@@ -139,7 +140,7 @@ public class PrecursorReport {
    * String->Boolean map instead of a NetworkNode->Integer map.
    */
   @JsonProperty("lcms_hit_map")
-  private Map<Integer, Boolean> getSerializableLcmsMap() {
+  private Map<Integer, Double> getSerializableLcmsMap() {
     return lcmsMap.entrySet().stream().collect(Collectors.toMap(
         e -> e.getKey().getUID(), e -> e.getValue()));
   }
