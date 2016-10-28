@@ -139,6 +139,8 @@ public class FeatureGenerator {
       plugin.setMolecule(phMol);
       plugin.run();
 
+
+      pluginLogD.setpH(2.7);
       pluginLogD.setlogPMethod(LogPMethod.CONSENSUS);
       pluginLogD.setMolecule(phMol);
       pluginLogD.run();
