@@ -1,8 +1,6 @@
-package com.act.lcms.v3;
+package com.act.lcms.v2;
 
-/**
- * Created by tom on 10/12/16.
- */
+
 public class NamedMolecule {
   Float mass;
   String molecule;

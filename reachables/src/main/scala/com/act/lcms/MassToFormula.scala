@@ -320,13 +320,13 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
   def solve(mass: MonoIsotopicMass): List[ChemicalFormula] = {
     val RHSints = (-delta to delta).map(d => (mass rounded 0).toInt + d).toList
 
-    val candidateFormulae = RHSints.map( intMz => {
+    val candidateFormulae = RHSints.flatMap( intMz => {
       val constraints = buildConstraintOverInts(intMz)
       val specializations = specials.map(_.constraints)
       val sat = Solver.solveMany(constraints ++ specializations)
       val formulae = sat.map(soln => soln.map(toChemicalFormula))
       formulae
-    }).flatten
+    })
 
     val approxMassSat = candidateFormulae.map{ soln => s"${buildChemFormulaA(soln)}" }
 
@@ -409,23 +409,11 @@ class MassToFormula(val specials: Set[Specials] = Set(), private val atomSpace: 
         // that translates to a very easy comparison boolean circuit.
         val max = (math ceil (closeMz.toDouble / atomMass)).toInt
 
-        val upper = a match {
-          case H => {
-            // there cannot be more than (valence * others) - count(others)
-            // coz there are at max valenc*other bonds to make, and max available for H
-            // are in cases where all others are in a single line, e.g., alcohols
-            val others = elements.filter(!_.equals(H))
-            val ts = others.map( a => Term(Const(a.maxValency), varsForAtoms(a)) )
-            val lineBonds = Term(Const(-others.size), MassToFormula.oneVar)
-            LinExpr(lineBonds :: ts)
-          }
-          case _ => Const(max)
-        }
-        val upperBound = LinIneq(varsForAtoms(a), Le, upper)
+        val upperBound = LinIneq(varsForAtoms(a), Le, Const(max))
 
         (lowerBound, upperBound)
       }
-    ).toList.unzip
+    ).unzip
 
     // combine all bounds
     val bounds = boundLists match {
@@ -489,7 +477,7 @@ object MassToFormula {
         if (!spls.forall(s => allSpecialNm.contains(s))) {
           errStream.println("Invalid specialization provided.")
           errStream.println("Specializations of solver supported: " + allSpecialNm.mkString(", "))
-          errStream.flush
+          errStream.flush()
           System.exit(1)
         }
         def nameToClass(s: String) = {
@@ -535,7 +523,7 @@ object MassToFormula {
       val solns = f.solve(new MonoIsotopicMass(m))
       val allChemicalFormulae = solns.map(f.buildChemFormulaA)
       outStream.write(m + "\t" + allChemicalFormulae.mkString("\t") + "\n")
-      outStream.flush
+      outStream.flush()
     })
   }
 
@@ -574,7 +562,7 @@ object MassToFormula {
     stream.write(color)
     stream.write(s)
     stream.println()
-    stream.flush
+    stream.flush()
   }
 
   val optMz = new OptDesc(
@@ -876,6 +864,38 @@ class LessThan3xH extends Specials {
   def describe() = "3C>=H"
   def constraints() = e(3, C) >= e(H)
   def check(f: ChemicalFormula) = 3 * f(C) >= f(H)
+}
+
+class ValencyConstraints(atomSpace: List[Atom]) extends Specials {
+  def describe() = "3C>=H"
+  // there cannot be more than (valence * others) - count(others)
+  // coz there are at max valenc*other bonds to make, and max available for H
+  // are in cases where all others are in a single line, e.g., alcohols
+
+  def constraints() = {
+    val others = List(C, N, O, P, S, Cl, Br, I, F)
+    val ts: List[Term] = others.map(a => t(a.maxValency, a))
+    val lineBonds: Term = t(-others.size)
+    LinExpr(ts.::(lineBonds)) >= t(H)
+  }
+  def check(f: ChemicalFormula) = {
+    val others = List(C, N, O, P, S, Cl, Br, I, F).filter(a => f.contains(a))
+    val ts = others.map(a => a.maxValency * f(a)).sum - others.size
+    ts >= f(H)
+  }
+}
+
+class AtLeastMinFormula(minFormulaMap: Map[Atom, Int]) extends Specials {
+  def describe() = s"C >= ${minFormulaMap.get(C)} + H >= ${minFormulaMap.get(H)} +" +
+    s" N >= ${minFormulaMap.get(N)} + O >= ${minFormulaMap.get(O)} +" +
+    s" P >= ${minFormulaMap.get(P)} + S >= ${minFormulaMap.get(S)}"
+
+  def moreThanMin(a: Atom) = {
+    e(a) >= e(minFormulaMap(a))
+  }
+
+  def constraints() = Multi(And, List(C, H, N, O, P, S).map(a => moreThanMin(a)))
+  def check(f: ChemicalFormula) = List(C, H, N, O, P, S).map(a => f(a) >= minFormulaMap(a)).reduce(_ && _)
 }
 
 class StableChemicalFormulae extends Specials {

@@ -39,10 +39,6 @@ class MassToFormulaTest extends FlatSpec with Matchers {
     }
   }
 
-
-  testMultiCharAtoms()
-  testStableFormulaEdgeCases()
-
   if (tryToSolve) {
     solveAcetaminophen()
     testSolvingIntegralSolns()
@@ -79,16 +75,19 @@ class MassToFormulaTest extends FlatSpec with Matchers {
     }
   }
 
-  def testMultiCharAtoms() {
-    assert(MassToFormula.getFormulaMap("C20BrCl2").equals(Map(C->20, Br->1, Cl->2)))
-    assert(MassToFormula.getFormulaMap("BrCl2").equals(Map(Br->1, Cl->2)))
-    assert(MassToFormula.getFormulaMap("BrC2").equals(Map(Br->1, C->2)))
-    assert(MassToFormula.getFormulaMap("CCl").equals(Map(C->1, Cl->1)))
-    assert(MassToFormula.getFormulaMap("ClC").equals(Map(C->1, Cl->1)))
-    assert(MassToFormula.getFormulaMap("IFClH20CBrN1OP2").equals(Map(C->1, H->20, N->1, O->1, P->2, Cl->1, Br->1, I->1, F ->1)))
+  "MassToFormula" should s"parse formulae correctly" in {
+    val testCases = Map(
+      "C20BrCl2" -> Map(C->20, Br->1, Cl->2),
+      "BrCl2" -> Map(Br->1, Cl->2),
+      "BrC2" -> Map(Br->1, C->2),
+      "CCl" -> Map(C->1, Cl->1),
+      "ClC" -> Map(C->1, Cl->1),
+      "IFClH20CBrN1OP2" -> Map(C->1, H->20, N->1, O->1, P->2, Cl->1, Br->1, I->1, F ->1)
+    )
+    testCases.foreach(formula => MassToFormula.getFormulaMap(formula._1) should be equals formula._2)
   }
 
-  def testStableFormulaEdgeCases() = {
+  "MassToFormula" should "identify the given edge cases as valid molecules" in {
     // These test cases comes from https://github.com/20n/act/pull/473#issuecomment-252290577
     val edgeCases = Map(
       "atp"     -> (506.995758, "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1"),
@@ -105,17 +104,12 @@ class MassToFormulaTest extends FlatSpec with Matchers {
       "chloramphenicol" -> (322.012329, "InChI=1S/C11H12Cl2N2O5/c12-10(13)11(18)14-8(5-16)9(17)6-1-3-7(4-2-6)15(19)20/h1-4,8-10,16-17H,5H2,(H,14,18)/t8-,9-/m1/s1"),
       "teixobactin" -> (1241.713257, "InChI=1S/C58H95N15O15/c1-12-28(5)42(70-49(79)37(61-11)23-34-19-17-16-18-20-34)53(83)67-39(26-74)51(81)65-36(21-22-41(59)76)48(78)69-44(30(7)14-3)55(85)71-43(29(6)13-2)54(84)68-40(27-75)52(82)73-46-33(10)88-57(87)45(31(8)15-4)72-50(80)38(24-35-25-62-58(60)64-35)66-47(77)32(9)63-56(46)86/h16-20,28-33,35-40,42-46,61,74-75H,12-15,21-27H2,1-11H3,(H2,59,76)(H,63,86)(H,65,81)(H,66,77)(H,67,83)(H,68,84)(H,69,78)(H,70,79)(H,71,85)(H,72,80)(H,73,82)(H3,60,62,64)/t28-,29-,30-,31-,32-,33-,35-,36+,37+,38-,39-,40-,42-,43-,44+,45-,46+/m0/s1")
     )
-
     val stableCnstr = new StableChemicalFormulae
-    for ((name, massInChI) <- edgeCases) {
-      val (mass, inchi) = massInChI
-      val parsed: Option[(String, Map[Atom, Int])] = MassToFormula.formulaFromInChI(inchi)
-      assert(parsed.isDefined, s"Failed: $name, Invalid InChI: $inchi")
-      val formula = parsed match { case Some((str, form)) => form }
-      val passes = stableCnstr.isValid(formula)
-      if (!passes) MassToFormula.reportFail(s"FAIL: $name, $formula, $inchi")
-    }
-    MassToFormula.reportPass("Finished running testStableFormulaEdgeCases")
+
+
+    val parsed = edgeCases.map(mol => MassToFormula.formulaFromInChI(mol._2._2))
+    parsed.foreach(p => p.isDefined should be(true))
+    parsed.foreach(p => stableCnstr.isValid(p.get._2) should be(true))
   }
 
   def solveAcetaminophen() {
