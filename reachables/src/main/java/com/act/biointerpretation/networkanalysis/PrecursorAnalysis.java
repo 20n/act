@@ -26,7 +26,7 @@ public class PrecursorAnalysis implements JavaRunnable {
 
   private static final String TARGET_ID_HEADER = "target_id";
   private static final String INCHI_HEADER = "InChI";
-  private static final Double MASS_TOLERANCE = 0.1;
+  private static final Double MASS_TOLERANCE = 0.01;
 
   private final File networkInput;
   private final Optional<File> lcmsInput;
