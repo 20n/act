@@ -55,7 +55,7 @@ public class PrecursorReportVisualizer {
     DotGraph graph = new DotGraph();
 
     for (NetworkNode node : network.getNodes()) {
-      if (report.getLcmsConfidence(node) != null && report.getLcmsConfidence(node) > .75) {
+      if (report.isPrecursor(node) && report.getLcmsConfidence(node) != null && report.getLcmsConfidence(node) > .75) {
         graph.addNode(new DotNode(node.getUID().toString()).setColor(DotColor.RED));
       }
     }

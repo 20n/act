@@ -184,8 +184,10 @@ public class MetabolismNetwork implements ImmutableNetwork {
       edges.forEach(e -> this.getSubstrates(e).forEach(subgraph::addNode));
       edges.forEach(e -> this.getProducts(e).forEach(subgraph::addNode));
       edges.forEach(subgraph::addEdge);
-      // Calculate new frontier
+      // Calculate new frontier, excluding already-labeled nodes to avoid cycles
       frontier = edges.stream().flatMap(e -> this.getSubstrates(e).stream()).collect(Collectors.toSet());
+      frontier.removeIf(levelMap::containsKey);
+      // Label remaining nodes with appropriate level.
       frontier.forEach(n -> levelMap.put(n, l.toInteger()));
     }
 

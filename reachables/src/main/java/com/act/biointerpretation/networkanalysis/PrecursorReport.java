@@ -40,6 +40,10 @@ public class PrecursorReport {
   @JsonProperty("lcms_hit_map")
   Map<NetworkNode, Double> lcmsMap;
 
+  public PrecursorReport(Metabolite target, ImmutableNetwork network) {
+    this(target, network, new HashMap<>(), new HashMap<>());
+  }
+
   public PrecursorReport(
       Metabolite target,
       ImmutableNetwork network,
@@ -116,7 +120,7 @@ public class PrecursorReport {
    * Returns true if the substrate is exactly one level deeper in the precursor tree than the product.
    */
   public boolean edgeInBfsTree(NetworkNode substrate, NetworkNode product) {
-    return isPrecursor(substrate) && isPrecursor(product) && getLevel(substrate) == 1 + getLevel(product);
+    return isPrecursor(substrate) && isPrecursor(product) && getLevel(substrate).equals(1 + getLevel(product));
   }
 
   /**
@@ -129,9 +133,10 @@ public class PrecursorReport {
       @JsonProperty("network") ImmutableNetwork network,
       @JsonProperty("level_map") Map<Integer, Integer> levelMap,
       @JsonProperty("lcms_hit_map") Map<Integer, Double> lcmsMap) {
-    PrecursorReport report = new PrecursorReport(target, network, new HashMap<>());
-    network.getNodes().forEach(n -> report.levelMap.put(n, levelMap.get(n.getUID())));
-    network.getNodes().forEach(n -> report.lcmsMap.put(n, lcmsMap.get(n.getUID())));
+    PrecursorReport report = new PrecursorReport(target, network);
+    levelMap.entrySet().forEach(e -> report.levelMap.put(network.getNodeByUID(e.getKey()), e.getValue()));
+    lcmsMap.entrySet().forEach(e -> report.lcmsMap.put(network.getNodeByUID(e.getKey()), e.getValue()));
+    ;
     return report;
   }
 

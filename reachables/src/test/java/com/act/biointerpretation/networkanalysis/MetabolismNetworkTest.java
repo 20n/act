@@ -221,7 +221,6 @@ public class MetabolismNetworkTest {
 
     // Assert
     ImmutableNetwork precursorNetwork = report.getNetwork();
-    precursorNetwork.getNodes().forEach(n -> System.out.println(n.getMetabolite().getStructure().get().getInchi()));
     assertEquals("Subgraph should contain six nodes", 6, precursorNetwork.getNodes().size());
     assertEquals("Subgraph should contain three edges", 3, precursorNetwork.getEdges().size());
 
@@ -236,5 +235,30 @@ public class MetabolismNetworkTest {
     assertEquals("Level of 1st precursor is 1", 1, (int) report.getLevel(precursorNetwork.getNodeByInchi(METABOLITE_3)));
     assertEquals("Level of 2nd precursor is 2", 2, (int) report.getLevel(precursorNetwork.getNodeByInchi(METABOLITE_1)));
     assertEquals("Level of non-precursor is null", null, report.getLevel(precursorNetwork.getNodeByInchi(METABOLITE_7)));
+  }
+
+
+  /**
+   * Test precursor report of 2 levels to see how it handles cycles.  The key test is that the target, METABOLITE_5,
+   * should have level 0, despite the fact that it is also its own second-level precursor.
+   */
+  @Test
+  public void testPrecursorSubgraphCycles() {
+    // Arrange
+    MetabolismNetwork network = new MetabolismNetwork();
+    nodes.forEach(network::addNode);
+    network.addEdgeFromInchis(Arrays.asList(METABOLITE_4), Arrays.asList(METABOLITE_5));
+    network.addEdgeFromInchis(Arrays.asList(METABOLITE_3), Arrays.asList(METABOLITE_4));
+    network.addEdgeFromInchis(Arrays.asList(METABOLITE_5), Arrays.asList(METABOLITE_4));
+    NetworkNode e = network.getNodeByInchi(METABOLITE_5);
+
+    // Act
+    PrecursorReport report = network.getPrecursorReport(e, 2);
+
+    // Assert
+    ImmutableNetwork precursorNetwork = report.getNetwork();
+    assertEquals("Level of target is 0", 0, (int) report.getLevel(precursorNetwork.getNodeByInchi(METABOLITE_5)));
+    assertEquals("Level of 1st precursor is 1", 1, (int) report.getLevel(precursorNetwork.getNodeByInchi(METABOLITE_4)));
+    assertEquals("Level of 2nd precursor is 2", 2, (int) report.getLevel(precursorNetwork.getNodeByInchi(METABOLITE_3)));
   }
 }
