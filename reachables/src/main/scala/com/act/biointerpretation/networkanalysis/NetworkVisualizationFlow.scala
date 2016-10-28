@@ -14,24 +14,20 @@ class NetworkVisualizationFlow extends Workflow with WorkingDirectoryUtility {
 
   val logger = LogManager.getLogger(getClass.getName)
 
+  private val OUTPUT_PREFIX = "graphViz_precursor_"
+
   override val HELP_MESSAGE = "Reads in a metabolism network and writes out its GraphViz representation."
 
-  private val OPTION_INPUT_NETWORK = "i"
-  private val OPTION_OUTPUT_FILE = "o"
+  private val OPTION_WORKING_DIR = "w"
   private val OPTION_ORG_STRINGS = "s"
 
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
 
-      CliOption.builder(OPTION_INPUT_NETWORK).
+      CliOption.builder(OPTION_WORKING_DIR).
         hasArg.
-        desc("The file path to the input network.").
+        desc("The file path to the directory containing precursor target analyses.").
         required(),
-
-      CliOption.builder(OPTION_OUTPUT_FILE).
-        hasArg.
-        desc("The file path to which to write the graph in dot graph format.")
-        .required(),
 
       CliOption.builder(OPTION_ORG_STRINGS).
         hasArg.
@@ -49,12 +45,16 @@ class NetworkVisualizationFlow extends Workflow with WorkingDirectoryUtility {
     opts
   }
 
+  def getOutputFile(workingDir: File, input: File): File = {
+    val outputName = OUTPUT_PREFIX + input.getName.stripPrefix(PrecursorAnalysis.PRECURSOR_PREFIX)
+    new File(workingDir, outputName)
+  }
+
   override def defineWorkflow(cl: CommandLine): Job = {
 
-    val inputNetworkFile = new File(cl.getOptionValue(OPTION_INPUT_NETWORK))
-    verifyInputFile(inputNetworkFile)
-
-    val outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_FILE))
+    val workingDir = new File(cl.getOptionValue(OPTION_WORKING_DIR))
+    createWorkingDirectory(workingDir)
+    val inputs: Array[File] = workingDir.listFiles().filter(f => f.getName.contains(PrecursorAnalysis.PRECURSOR_PREFIX))
 
     val networkViz = new PrecursorReportVisualizer()
     if (cl.hasOption(OPTION_ORG_STRINGS)) {
@@ -63,8 +63,8 @@ class NetworkVisualizationFlow extends Workflow with WorkingDirectoryUtility {
       }
     }
 
-    val runnableViz = networkViz.getRunner(inputNetworkFile, outputFile)
-    headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("graphViz", runnableViz))
+    val jobs = inputs.map(i => JavaJobWrapper.wrapJavaFunction("graphViz", networkViz.getRunner(i, getOutputFile(workingDir, i))))
+    headerJob.thenRunBatch(jobs.toList)
     headerJob
   }
 }

@@ -24,6 +24,8 @@ public class PrecursorAnalysis implements JavaRunnable {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(PrecursorAnalysis.class);
 
+  public static final String PRECURSOR_PREFIX = "precursors_target_";
+
   private static final String TARGET_ID_HEADER = "target_id";
   private static final String INCHI_HEADER = "InChI";
   private static final Double MASS_TOLERANCE = 0.01;
@@ -88,7 +90,7 @@ public class PrecursorAnalysis implements JavaRunnable {
       if (targetNode.isPresent()) {
         PrecursorReport report = network.getPrecursorReport(targetNode.get(), numSteps);
         lcmsInput.ifPresent(a -> report.addLcmsData(lcmsSpectrum, metaboliteToMz, MASS_TOLERANCE));
-        File outputFile = new File(outputDirectory, "precursors_target_" + id);
+        File outputFile = new File(outputDirectory, PRECURSOR_PREFIX + id);
         report.writeToJsonFile(outputFile);
         LOGGER.info("Wrote target %s report to file %s", target, outputFile.getAbsolutePath());
         targetIdMap.put(target, id);
