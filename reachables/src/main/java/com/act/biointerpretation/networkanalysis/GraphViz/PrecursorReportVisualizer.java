@@ -60,8 +60,8 @@ public class PrecursorReportVisualizer {
     Map<String, String> inchiToIdMap = new HashMap<>();
     Integer id = 0;
     for (NetworkNode node : network.getNodes()) {
-      inchiToIdMap.put(node.getMetabolite().getInchi(), id.toString());
-      graph.setNodeName(id.toString(), node.getMetabolite().getInchi());
+      inchiToIdMap.put(node.getMetabolite().getInchi(), node.getMetabolite().getInchi());
+      graph.setNodeName(node.getMetabolite().getInchi(), node.getMetabolite().getInchi());
       id++;
     }
 

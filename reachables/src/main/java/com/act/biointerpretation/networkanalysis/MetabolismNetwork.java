@@ -3,16 +3,13 @@ package com.act.biointerpretation.networkanalysis;
 import act.server.DBIterator;
 import act.server.MongoDB;
 import act.shared.Reaction;
-import com.act.analysis.massprojections.MassProjector;
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.Lists;
 import org.apache.commons.lang.mutable.MutableInt;
-import org.apache.jena.atlas.iterator.Iter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -25,15 +22,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static org.apache.jena.system.JenaSystem.forEach;
 
 /**
  * Represents a metabolism network, cataloging all possible predicted chemical transformations that could be happening
@@ -152,6 +145,27 @@ public class MetabolismNetwork {
       // Move frontier back, then add all new edges. Edge adding will add substrate and product nodes as necessary.
       frontier.forEach(node -> node.getInEdges().forEach(subgraph::addEdge));
       frontier = frontier.stream().flatMap(node -> getPrecursors(node).stream()).collect(Collectors.toSet());
+      frontier.forEach(node -> levelMap.put(subgraph.getNode(node.getMetabolite().getUUID()), l.toInteger()));
+    }
+
+    return new PrecursorReport(startNode.getMetabolite(), subgraph, levelMap);
+  }
+
+  public PrecursorReport getDerivativeReport(NetworkNode startNode, int numSteps) {
+    if (numSteps <= 0) {
+      throw new IllegalArgumentException("Precursor graph is only well-defined for numSteps > 0");
+    }
+
+    MetabolismNetwork subgraph = new MetabolismNetwork();
+    Map<NetworkNode, Integer> levelMap = new HashMap<>();
+    Set<NetworkNode> frontier = new HashSet<>();
+    frontier.add(startNode);
+    levelMap.put(startNode, 0);
+
+    for (MutableInt l = new MutableInt(1); l.toInteger() <= numSteps; l.increment()) {
+      // Move frontier back, then add all new edges. Edge adding will add substrate and product nodes as necessary.
+      frontier.forEach(node -> node.getOutEdges().forEach(subgraph::addEdge));
+      frontier = frontier.stream().flatMap(node -> getDerivatives(node).stream()).collect(Collectors.toSet());
       frontier.forEach(node -> levelMap.put(subgraph.getNode(node.getMetabolite().getUUID()), l.toInteger()));
     }
 
