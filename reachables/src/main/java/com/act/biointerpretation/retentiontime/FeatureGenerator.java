@@ -130,15 +130,25 @@ public class FeatureGenerator {
         microspeciesPlugin.setMolecule(molecule);
         microspeciesPlugin.run();
         Molecule phMol = microspeciesPlugin.getMajorMicrospecies();
+
+
         plugin.setlogPMethod(LogPMethod.CONSENSUS);
         plugin.setUserTypes("logPTrue,logPMicro,logPNonionic");
         plugin.setMolecule(phMol);
         plugin.run();
-        
-        System.out.println(String.format("%s", MolExporter.exportToFormat(phMol, "inchi:AuxNone,Woff")));
-
         Double mass = molecule.getMass();
         Double logP = plugin.getlogPTrue();
+        System.out.println(logP.toString());
+
+        plugin.setlogPMethod(LogPMethod.CONSENSUS);
+        plugin.setUserTypes("logPTrue,logPMicro,logPNonionic");
+        plugin.setMolecule(molecule);
+        plugin.run();
+        Double logP2 = plugin.getlogPTrue();
+        System.out.println(logP2.toString());
+
+        System.out.println(String.format("%s", MolExporter.exportToFormat(phMol, "inchi:AuxNone,Woff")));
+
 
         Map<String, String> row = new HashMap<>();
         row.put("Chemical", MolExporter.exportToFormat(molecule, "smiles"));
