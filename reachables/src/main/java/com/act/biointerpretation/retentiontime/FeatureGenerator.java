@@ -140,7 +140,7 @@ public class FeatureGenerator {
         Double logP = plugin.getlogPTrue();
 
         Map<String, String> row = new HashMap<>();
-        row.put("Chemical", MolExporter.exportToFormat(molecule, "smiles:AuxNone,Woff"));
+        row.put("Chemical", MolExporter.exportToFormat(molecule, "smiles"));
         row.put("Mass", mass.toString());
         row.put("LogP", logP.toString());
 
