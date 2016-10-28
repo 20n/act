@@ -124,21 +124,6 @@ public class FeatureGenerator {
     while ((chemical = reader.readLine()) != null) {
       try {
         Molecule molecule = MolImporter.importMol(chemical, chemicalFormat);
-        Cleaner.clean(molecule, 3);
-        plugin.standardize(molecule);
-        microspeciesPlugin.setpH(2.7);
-        microspeciesPlugin.setMolecule(molecule);
-        microspeciesPlugin.run();
-        Molecule phMol = microspeciesPlugin.getMajorMicrospecies();
-
-
-        plugin.setlogPMethod(LogPMethod.CONSENSUS);
-        plugin.setUserTypes("logPTrue,logPMicro,logPNonionic");
-        plugin.setMolecule(phMol);
-        plugin.run();
-        Double mass = molecule.getMass();
-        Double logP = plugin.getlogPTrue();
-        System.out.println(logP.toString());
 
         plugin.setlogPMethod(LogPMethod.CONSENSUS);
         plugin.setUserTypes("logPTrue,logPMicro,logPNonionic");
@@ -146,6 +131,21 @@ public class FeatureGenerator {
         plugin.run();
         Double logP2 = plugin.getlogPTrue();
         System.out.println(logP2.toString());
+
+        Cleaner.clean(molecule, 3);
+        plugin.standardize(molecule);
+        microspeciesPlugin.setpH(2.7);
+        microspeciesPlugin.setMolecule(molecule);
+        microspeciesPlugin.run();
+
+        Molecule phMol = microspeciesPlugin.getMajorMicrospecies();
+        plugin.setlogPMethod(LogPMethod.CONSENSUS);
+        plugin.setUserTypes("logPTrue,logPMicro,logPNonionic");
+        plugin.setMolecule(phMol);
+        plugin.run();
+        Double mass = molecule.getMass();
+        Double logP = plugin.getlogPTrue();
+        System.out.println(logP.toString());
 
         System.out.println(String.format("%s", MolExporter.exportToFormat(phMol, "inchi:AuxNone,Woff")));
 
