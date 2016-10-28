@@ -220,7 +220,7 @@ public class MetabolismNetwork implements ImmutableNetwork {
     List<String> substrates = new ArrayList<>();
     for (Long s : substrateIds) {
       String inchi = db.getChemicalFromChemicalUUID(s).getInChI();
-      for (int i = 0; i < reaction.getSubstrateCoefficient(s); i++) {
+      for (int i = 0; i < denullCoeff(reaction.getSubstrateCoefficient(s)); i++) {
         substrates.add(inchi);
       }
     }
@@ -229,7 +229,7 @@ public class MetabolismNetwork implements ImmutableNetwork {
     List<String> products = new ArrayList<>();
     for (Long p : productIds) {
       String inchi = db.getChemicalFromChemicalUUID(p).getInChI();
-      for (int i = 0; i < reaction.getProductCoefficient(p); i++) {
+      for (int i = 0; i < denullCoeff(reaction.getProductCoefficient(p)); i++) {
         products.add(inchi);
       }
     }
@@ -248,6 +248,19 @@ public class MetabolismNetwork implements ImmutableNetwork {
     }
 
     return edge;
+  }
+
+  /**
+   * Assumes any coefficient which is null should be 1. Null coefficients were given NullPointerExceptions previously.
+   *
+   * @param coeffOrNull The Integer value directly from the DB.
+   * @return The input value if not null; otherwise 1.
+   */
+  private Integer denullCoeff(Integer coeffOrNull) {
+    if (coeffOrNull == null) {
+      return 1;
+    }
+    return coeffOrNull;
   }
 
   /**
