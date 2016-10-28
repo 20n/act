@@ -1,14 +1,17 @@
 package com.act.lcms
 
-import java.io.{PrintWriter, File}
+import java.io.{File, PrintWriter}
+
 import act.shared.{CmdLineParser, OptDesc}
+
 import scala.io.Source
-import act.shared.ChemicalSymbols.{MonoIsotopicMass, Atom, AllAminoAcids}
+import act.shared.ChemicalSymbols.{AllAminoAcids, Atom, MonoIsotopicMass}
 import com.act.lcms.MS1.MetlinIonMass
 import act.shared.ChemicalSymbols.Helpers.computeMassFromAtomicFormula
-
+import com.act.lcms.v2.{LargeMassToMoleculeMap, LargeMassToMoleculeMapParser}
 import spray.json._
 import spray.json.DefaultJsonProtocol._
+
 import scala.annotation.tailrec
 
 object MagicParams {
@@ -43,6 +46,9 @@ object MagicParams {
   // to keep the output file for visualization smaller, we disable outputing raw mz and raw rt
   // values. this flag controls that.
   val _outputRawPeakData = true
+
+  // precision of lookup in enumerated formulae list
+  val _precisionMetaboliteLookup = 0.02F
 }
 
 object RetentionTime {
@@ -840,16 +846,23 @@ object UntargetedMetabolomics {
     val inchis: PeakHits = if (!mapToInChIsUsingList) {
       rslt
     } else {
-      println(s"Mapping to structures using inchi list")
-      // map the peaks to candidate structures if they appear in the lists (from HMDB, ROs, etc)
-      moleculeFinder.StructureHits.toStructureHitsUsingLists(rslt, inchiListFile)
+      val parser = new LargeMassToMoleculeMapParser()
+      parser.setNamesHeader("name")
+      parser.parseNamedInchis(new File(inchiListFile))
+      val smallFormulaMap: LargeMassToMoleculeMap  = parser.getMassToMoleculeMap
+      moleculeFinder.StructureHits.toStructureHitsUsingLargeMap(
+        rslt, smallFormulaMap, MagicParams._precisionMetaboliteLookup)
     }
 
     val formulae: PeakHits = if (!mapToFormulaUsingList) {
       inchis
     } else {
-      println(s"Mapping to formula using list")
-      moleculeFinder.FormulaHits.toFormulaHitsUsingLists(inchis, formulaListFile)
+      println(s"Mapping to formula using large enumerated list")
+      val parser = new LargeMassToMoleculeMapParser("formula", "mass")
+      parser.parse(new File(formulaListFile))
+      val smallFormulaMap: LargeMassToMoleculeMap  = parser.getMassToMoleculeMap
+      moleculeFinder.FormulaHits.toFormulaHitsUsingLargeMap(
+        inchis, smallFormulaMap, MagicParams._precisionMetaboliteLookup)
     }
 
     val formulaeWithSolver: PeakHits = if (!mapToFormulaUsingSolver) {

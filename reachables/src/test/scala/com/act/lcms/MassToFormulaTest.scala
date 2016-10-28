@@ -75,7 +75,7 @@ class MassToFormulaTest extends FlatSpec with Matchers {
     }
   }
 
-  "MassToFormula" should s"parse formulae correctly" in {
+  "MassToFormula" should s"correctly parse formulae" in {
     val testCases = Map(
       "C20BrCl2" -> Map(C->20, Br->1, Cl->2),
       "BrCl2" -> Map(Br->1, Cl->2),

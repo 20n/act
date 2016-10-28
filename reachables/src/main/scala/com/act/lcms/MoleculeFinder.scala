@@ -3,6 +3,8 @@ package com.act.lcms
 import act.shared.ChemicalSymbols.Atom
 import com.act.lcms.v2.{LargeMassToMoleculeMap, NamedMolecule}
 
+import scala.collection.JavaConversions._
+
 
 class MoleculeFinder {
 
