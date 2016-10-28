@@ -122,44 +122,40 @@ public class FeatureGenerator {
 
     String chemical;
     while ((chemical = reader.readLine()) != null) {
-      try {
-        Molecule molecule = MolImporter.importMol(chemical, chemicalFormat);
+      Molecule molecule = MolImporter.importMol(chemical, chemicalFormat);
 
-        plugin.setlogPMethod(LogPMethod.CONSENSUS);
-        plugin.setUserTypes("logPTrue,logPMicro,logPNonionic");
-        plugin.setMolecule(molecule);
-        plugin.run();
-        Double logP2 = plugin.getlogPTrue();
-        System.out.println(logP2.toString());
+      plugin.setlogPMethod(LogPMethod.CONSENSUS);
+      plugin.setUserTypes("logPTrue,logPMicro,logPNonionic");
+      plugin.setMolecule(molecule);
+      plugin.run();
+      Double logP2 = plugin.getlogPTrue();
+      System.out.println(logP2.toString());
 
-        Cleaner.clean(molecule, 3);
-        plugin.standardize(molecule);
-        microspeciesPlugin.setpH(2.7);
-        microspeciesPlugin.setMolecule(molecule);
-        microspeciesPlugin.run();
+      Cleaner.clean(molecule, 3);
+      plugin.standardize(molecule);
+      microspeciesPlugin.setpH(2.7);
+      microspeciesPlugin.setMolecule(molecule);
+      microspeciesPlugin.run();
 
-        Molecule phMol = microspeciesPlugin.getMajorMicrospecies();
-        plugin.setlogPMethod(LogPMethod.CONSENSUS);
-        plugin.setUserTypes("logPTrue,logPMicro,logPNonionic");
-        plugin.setMolecule(phMol);
-        plugin.run();
-        Double mass = molecule.getMass();
-        Double logP = plugin.getlogPTrue();
-        System.out.println(logP.toString());
+      Molecule phMol = microspeciesPlugin.getMajorMicrospecies();
+      plugin.setlogPMethod(LogPMethod.CONSENSUS);
+      plugin.setUserTypes("logPTrue,logPMicro,logPNonionic");
+      plugin.setMolecule(phMol);
+      plugin.run();
+      Double mass = molecule.getMass();
+      Double logP = plugin.getlogPTrue();
+      System.out.println(logP.toString());
 
-        System.out.println(String.format("%s", MolExporter.exportToFormat(phMol, "inchi:AuxNone,Woff")));
+      System.out.println(String.format("%s", MolExporter.exportToFormat(phMol, "inchi:AuxNone,Woff")));
 
 
-        Map<String, String> row = new HashMap<>();
-        row.put("Chemical", MolExporter.exportToFormat(molecule, "smiles"));
-        row.put("Mass", mass.toString());
-        row.put("LogP", logP.toString());
+      Map<String, String> row = new HashMap<>();
+      row.put("Chemical", MolExporter.exportToFormat(molecule, "smiles"));
+      row.put("Mass", mass.toString());
+      row.put("LogP", logP.toString());
 
-        writer.append(row);
-        writer.flush();
-      } catch (Exception e) {
-        LOGGER.error(e.getMessage());
-      }
+      writer.append(row);
+      writer.flush();
     }
 
     writer.close();
