@@ -135,8 +135,7 @@ public class FeatureGenerator {
         plugin.setMolecule(phMol);
         plugin.run();
 
-        String inchi = MolExporter.exportToFormat(molecule, "inchi:AuxNone,Woff");
-        Double mass = MassCalculator.calculateMass(inchi);
+        Double mass = molecule.getMass();
         Double logP = plugin.getlogPTrue();
 
         Map<String, String> row = new HashMap<>();
