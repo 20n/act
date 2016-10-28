@@ -5,12 +5,8 @@ import org.scalatest.{FlatSpec, Matchers}
 
 
 class MassToFormulaTest extends FlatSpec with Matchers {
-  // WARNING: these tests might fail on a Mac, with the following error:
-  // "no libz3java in java.library.path" if you change this to true
-  val tryToSolve = false
 
-
-  def testSolvingIntegralSolns() = {
+  ignore should "be able to solve integral solutions - uses z3 solver" in {
     // The type parameter is needed or else the compiler fails to infer
     // the right type for the tuple elements. we can specify it as a type on the variable,
     // or parameter to the constructor. The latter looks more readable.
@@ -27,6 +23,34 @@ class MassToFormulaTest extends FlatSpec with Matchers {
         )
     )
 
+    def testOneSolnOverCNO(constraints: List[BooleanExpr], intMz: Int, expected: Set[Map[Var, Int]], f: MassToFormula) {
+
+      if (expected.isEmpty) {
+        val sat = Solver.solveOne(constraints)
+        "MassToFormula" should s"find no formulae over CNO with approx mass ${intMz}" in {
+          sat shouldBe empty
+        }
+      } else {
+        val sat = Solver.solveOne(constraints)
+        "MassToFormula" should s"find solutions as expected over CNO with approx mass ${intMz}" in {
+          val soln = sat.get
+          expected should contain (soln)
+        }
+      }
+    }
+
+    def testAllSolnOverCNO(constraints: List[BooleanExpr], intMz: Int, expected: Set[Map[Var, Int]], f: MassToFormula) {
+
+      val vars = constraints.flatMap(Solver.getVars)
+      val sat = Solver.solveMany(constraints)
+
+      val descs = sat.map{ soln => s"${f.buildChemFormulaV(soln)}" }
+
+      "MassToFormula" should s"enumerate the correct set of formulae for ~${intMz}: $descs" in {
+        sat should be equals expected
+      }
+    }
+
     testcases.foreach{
       test => {
         val (intMz, elems, validAtomicFormulae) = test
@@ -36,42 +60,6 @@ class MassToFormulaTest extends FlatSpec with Matchers {
         testOneSolnOverCNO(constraints, intMz, validSolns, formulator)
         testAllSolnOverCNO(constraints, intMz, validSolns, formulator)
       }
-    }
-  }
-
-  if (tryToSolve) {
-    solveAcetaminophen()
-    testSolvingIntegralSolns()
-  }
-
-
-  def testOneSolnOverCNO(constraints: List[BooleanExpr], intMz: Int, expected: Set[Map[Var, Int]], f: MassToFormula) {
-
-    val vars = constraints.flatMap(Solver.getVars)
-    val sat = Solver.solveOne(constraints)
-
-
-    if (expected.isEmpty) {
-      "MassToFormula" should s"find no formulae over CNO with approx mass ${intMz}" in {
-        sat shouldBe empty
-      }
-    } else {
-      "MassToFormula" should s"find solutions as expected over CNO with approx mass ${intMz}" in {
-        val soln = sat.get
-        expected should contain (soln)
-      }
-    }
-  }
-
-  def testAllSolnOverCNO(constraints: List[BooleanExpr], intMz: Int, expected: Set[Map[Var, Int]], f: MassToFormula) {
-
-    val vars = constraints.flatMap(Solver.getVars)
-    val sat = Solver.solveMany(constraints)
-
-    val descs = sat.map{ soln => s"${f.buildChemFormulaV(soln)}" }
-
-    "MassToFormula" should s"enumerate the correct set of formulae for ~${intMz}: $descs" in {
-      sat should be equals expected
     }
   }
 
@@ -106,13 +94,12 @@ class MassToFormulaTest extends FlatSpec with Matchers {
     )
     val stableCnstr = new StableChemicalFormulae
 
-
     val parsed = edgeCases.map(mol => MassToFormula.formulaFromInChI(mol._2._2))
     parsed.foreach(p => p.isDefined should be(true))
     parsed.foreach(p => stableCnstr.isValid(p.get._2) should be(true))
   }
 
-  def solveAcetaminophen() {
+  ignore should "be able to solve acetaminophen - uses z3 Solver" in {
     val apapSolnLimitedAtoms: Map[Atom, Int] = MassToFormula.getFormulaMap("C8H9NO2", fillToAllAtom = false)
     val apapSoln: Map[Atom, Int] = MassToFormula.getFormulaMap("C8H9NO2", fillToAllAtom = true)
     val inchi = "InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)"
@@ -130,5 +117,42 @@ class MassToFormulaTest extends FlatSpec with Matchers {
     apapCases foreach MassToFormula.solveNCheck
   }
 
+  ignore should "correctly check valency constraints" in {
+
+  }
+
+  "MassToFormula" should "correctly check min formula constraints" in {
+
+    // Test cases are constructed in the following way
+    // min formula string -> Map(test formula string -> check result)
+    // For instance, C5H10O2N2 should pass the check with min formula C4H10O2N2, but C4H10O1N2 should not
+    val testCases = Map(
+      "C4H10O2N2" -> Map(
+        "C5H10O2N2" -> true,
+        "C4H100O2N2" -> true,
+        "C4H10O2N2BrCl" -> true,
+        "C4H10O2N2" -> true,
+        "C4H10O1N2" -> false,
+        "C3H10O2N2" -> false),
+      "CH3ClBr" -> Map(
+        "CH3ClBr" -> true,
+        "CH4ClBr" -> true,
+        "CH3" -> false,
+        "CH3Br" -> false
+      )
+    )
+
+    testCases foreach {
+      case (minFormulaString, testMap) =>
+        val minFormula = MassToFormula.getFormulaMap(minFormulaString)
+        val minFormulaConstraint = new AtLeastMinFormula(minFormula)
+        testMap foreach {
+          case testFormula =>
+            withClue(s"Checking test case ${testFormula._1} with min formula ${minFormulaString}:") {
+              minFormulaConstraint.check(MassToFormula.getFormulaMap(testFormula._1)) should be(testFormula._2)
+            }
+        }
+    }
+  }
 
 }

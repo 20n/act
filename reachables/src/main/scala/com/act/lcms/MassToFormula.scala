@@ -491,6 +491,12 @@ object MassToFormula {
       }
     }
 
+    if (cmdLine has optMinFormula) {
+      val minFormula = cmdLine get optMinFormula
+      val minFormulaMap = getFormulaMap(minFormula)
+      specials + new AtLeastMinFormula(minFormulaMap)
+    }
+
     if (cmdLine has optRunDBTests) {
       // TODO: Eventually, move to scalatest.
       val spl = cmdLine getMany optRunDBTests
@@ -592,6 +598,14 @@ object MassToFormula {
                              |Any of the following, or a comma separated list of multiple are
                              |supported: ${allSpecialNm}.""".stripMargin,
                     isReqd = false, hasArgs = true)
+
+  val optMinFormula = new OptDesc(
+                    param = "f",
+                    longParam = "min-formula",
+                    name = "minFormula for solving",
+                    desc = s"""Do not solve formulae under a minimum number of elements, as specifying in the min
+                               |formula.""".stripMargin,
+                    isReqd = false, hasArg = true)
 
   val optOutputFile = new OptDesc(
                     param = "o",
@@ -864,36 +878,35 @@ class LessThan3xH extends Specials {
   def check(f: ChemicalFormula) = 3 * f(C) >= f(H)
 }
 
-class ValencyConstraints(atomSpace: List[Atom]) extends Specials {
+class ValencyConstraints extends Specials {
   def describe() = "3C>=H"
   // there cannot be more than (valence * others) - count(others)
   // coz there are at max valenc*other bonds to make, and max available for H
   // are in cases where all others are in a single line, e.g., alcohols
 
   def constraints() = {
-    val others = List(C, N, O, P, S, Cl, Br, I, F)
-    val ts: List[Term] = others.map(a => t(a.maxValency, a))
-    val lineBonds: Term = t(-others.size)
+    val ts: List[Term] = AllAtoms.map(a => t(a.maxValency, a))
+    val lineBonds: Term = t(-AllAtoms.size)
     LinExpr(ts.::(lineBonds)) >= t(H)
   }
   def check(f: ChemicalFormula) = {
-    val others = List(C, N, O, P, S, Cl, Br, I, F).filter(a => f.contains(a))
+    val others = AllAtoms.filter(a => f.contains(a))
     val ts = others.map(a => a.maxValency * f(a)).sum - others.size
     ts >= f(H)
   }
 }
 
 class AtLeastMinFormula(minFormulaMap: Map[Atom, Int]) extends Specials {
-  def describe() = s"C >= ${minFormulaMap.get(C)} + H >= ${minFormulaMap.get(H)} +" +
-    s" N >= ${minFormulaMap.get(N)} + O >= ${minFormulaMap.get(O)} +" +
-    s" P >= ${minFormulaMap.get(P)} + S >= ${minFormulaMap.get(S)}"
+  def describe() = minFormulaMap.map(element => element._1.symbol + " >= " + element._2.toString).reduce(_ + " + " + _)
 
   def moreThanMin(a: Atom) = {
-    e(a) >= e(minFormulaMap(a))
+    e(a) >= e(minFormulaMap.getOrElse(a, 0))
   }
 
-  def constraints() = Multi(And, List(C, H, N, O, P, S).map(a => moreThanMin(a)))
-  def check(f: ChemicalFormula) = List(C, H, N, O, P, S).map(a => f(a) >= minFormulaMap(a)).reduce(_ && _)
+  def constraints() = Multi(And, AllAtoms.map(a => moreThanMin(a)))
+  def check(f: ChemicalFormula) = {
+    AllAtoms.map(a => f.getOrElse(a, 0) >= minFormulaMap.getOrElse(a, 0)).reduce(_ && _)
+  }
 }
 
 class StableChemicalFormulae extends Specials {
