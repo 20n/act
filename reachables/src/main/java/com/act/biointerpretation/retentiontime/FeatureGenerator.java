@@ -126,7 +126,7 @@ public class FeatureGenerator {
         Molecule molecule = MolImporter.importMol(chemical, chemicalFormat);
         Cleaner.clean(molecule, 3);
         plugin.standardize(molecule);
-        microspeciesPlugin.setpH(1.5);
+        microspeciesPlugin.setpH(2.7);
         microspeciesPlugin.setMolecule(molecule);
         microspeciesPlugin.run();
         Molecule phMol = microspeciesPlugin.getMajorMicrospecies();
