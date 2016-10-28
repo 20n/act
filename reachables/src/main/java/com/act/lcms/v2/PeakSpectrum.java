@@ -25,10 +25,19 @@ public interface PeakSpectrum {
   /*
    * All following APIs are supported by the above getPeaks.
    */
-  List<DetectedPeak> getPeaksByMass(Double mass, Double massTolerance);
-  List<DetectedPeak> getPeaksByTime(Double time, Double timeTolerance);
-  List<DetectedPeak> getNeighborhoodPeaks(DetectedPeak targetPeak, Double massTolerance, Double timeTolerance);
-  List<DetectedPeak> getNeighborhoodPeaks(Double mass, Double massTolerance, Double time, Double timeTolerance);
+
+  /*
+   * Retrieval of peaks around a given mz and/or time value, with a certain confidence level
+   */
+  List<DetectedPeak> getPeaksByMZ(Double mz, Double confidenceLevel);
+  List<DetectedPeak> getPeaksByTime(Double time, Double confidenceLevel);
+  List<DetectedPeak> getPeaksByMzTime(Double time, Double mz, Double confidenceLevel);
+
+  /*
+   * Retrieval of peaks around a given mz and/or time value, with a given mz/time tolerance
+   */
+  List<DetectedPeak> getNeighborhoodPeaks(DetectedPeak targetPeak, Double mzTolerance, Double timeTolerance);
+  List<DetectedPeak> getNeighborhoodPeaks(Double mz, Double mzTolerance, Double time, Double timeTolerance);
 
   /**
    * Partition the spectrum by scan file id.

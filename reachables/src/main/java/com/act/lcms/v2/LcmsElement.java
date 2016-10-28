@@ -45,9 +45,9 @@ public class LcmsElement implements Element {
   }
 
   @Override
-  public List<LcmsElementIsotope> getElementIsotopes() {
+  public List<ElementIsotope> getElementIsotopes() {
     Integer isotopeCount = PeriodicSystem.getIsotopeCount(atomicNumber);
-    List<LcmsElementIsotope> elementIsotopes = new ArrayList<>(isotopeCount);
+    List<ElementIsotope> elementIsotopes = new ArrayList<>(isotopeCount);
 
     for (int i = 0; i < isotopeCount; i++) {
       Integer massNumber = PeriodicSystem.getIsotope(atomicNumber, i);

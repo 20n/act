@@ -6,15 +6,15 @@ import java.util.Map;
 import java.util.Optional;
 
 
-public class LcmsChemicalFormula implements ChemicalFormula<LcmsElement> {
+public class LcmsChemicalFormula implements ChemicalFormula {
 
-  private Map<LcmsElement, Integer> elementCounts;
+  private Map<Element, Integer> elementCounts;
 
-  public Map<LcmsElement, Integer> getElementCounts() {
+  public Map<Element, Integer> getElementCounts() {
     return this.elementCounts;
   }
 
-  public Integer getElementCount(LcmsElement element) {
+  public Integer getElementCount(Element element) {
     return elementCounts.getOrDefault(element, 0);
   }
 

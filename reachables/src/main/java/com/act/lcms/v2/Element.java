@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * An interface representing a chemical element such as C, H or O
  */
-public interface Element<T extends ElementIsotope> {
+public interface Element {
 
   /**
    * Get the symbol of the element (for example, "C" for carbon)
@@ -31,5 +31,5 @@ public interface Element<T extends ElementIsotope> {
   /**
    * Get the isotopes of the element
    */
-  List<T> getElementIsotopes();
+  List<ElementIsotope> getElementIsotopes();
 }

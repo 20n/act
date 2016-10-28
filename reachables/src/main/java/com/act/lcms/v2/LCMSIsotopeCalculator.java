@@ -10,7 +10,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 
-public class LcmsIsotopeCalculator implements IsotopeCalculator<LcmsIsotope, LcmsMetabolite> {
+public class LcmsIsotopeCalculator implements IsotopeCalculator {
 
   private ElementalAnalyserPlugin analyser;
 
@@ -18,10 +18,10 @@ public class LcmsIsotopeCalculator implements IsotopeCalculator<LcmsIsotope, Lcm
     analyser = new ElementalAnalyserPlugin();
   }
 
-  public List<LcmsIsotope> getIsotopes(LcmsMetabolite metabolite) {
-    LcmsChemicalFormula formula;
+  public List<Isotope> getIsotopes(Metabolite metabolite) {
+    ChemicalFormula formula;
     if (metabolite.getStructure().isPresent()) {
-      LcmsMolecularStructure structure = metabolite.getStructure().get();
+      MolecularStructure structure = metabolite.getStructure().get();
       formula = structure.getChemicalFormula();
     } else if (metabolite.getFormula().isPresent()) {
       formula = metabolite.getFormula().get();
@@ -36,7 +36,7 @@ public class LcmsIsotopeCalculator implements IsotopeCalculator<LcmsIsotope, Lcm
         .collect(Collectors.toList());
   }
 
-  public List<LcmsIsotope> getMainIsotopes(LcmsMetabolite metabolite, Predicate<LcmsIsotope> isotopeFilter) {
+  public List<Isotope> getMainIsotopes(Metabolite metabolite, Predicate<Isotope> isotopeFilter) {
     return getIsotopes(metabolite).stream().filter(isotopeFilter).collect(Collectors.toList());
   }
 }

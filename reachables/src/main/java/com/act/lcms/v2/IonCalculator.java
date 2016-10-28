@@ -6,14 +6,14 @@ import com.act.lcms.MS1;
 import java.util.List;
 import java.util.function.Predicate;
 
-public interface IonCalculator<T extends Ion> {
+public interface IonCalculator {
 
-  List<T> getIons(Isotope isotope);
+  List<Ion> getIons(Isotope isotope);
 
-  List<T> getSelectedIons(Isotope isotope, Predicate<MS1.MetlinIonMass> ionFilter);
+  List<Ion> getSelectedIons(Isotope isotope, Predicate<MS1.MetlinIonMass> ionFilter);
 
-  List<T> getIons(Metabolite metabolite);
+  List<Ion> getIons(Metabolite metabolite);
 
-  List<T> getSelectedIons(Metabolite metabolite, Predicate<MS1.MetlinIonMass> ionFilter);
+  List<Ion> getSelectedIons(Metabolite metabolite, Predicate<MS1.MetlinIonMass> ionFilter);
 
 }

@@ -3,10 +3,10 @@ package com.act.lcms.v2;
 
 public class LcmsElementIsotope implements ElementIsotope {
   private Integer massNumber;
-  private Element<LcmsElementIsotope> element;
+  private Element element;
   private Double abundance;
 
-  public LcmsElementIsotope(Integer massNumber, Element<LcmsElementIsotope> element, Double abundance) {
+  public LcmsElementIsotope(Integer massNumber, Element element, Double abundance) {
     this.massNumber = massNumber;
     this.element = element;
     this.abundance = abundance;
@@ -18,7 +18,7 @@ public class LcmsElementIsotope implements ElementIsotope {
   }
 
   @Override
-  public Element<LcmsElementIsotope> getElement() {
+  public Element getElement() {
     return element;
   }
 
