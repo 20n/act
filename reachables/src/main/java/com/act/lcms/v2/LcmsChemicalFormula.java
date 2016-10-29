@@ -22,7 +22,7 @@ public class LcmsChemicalFormula implements ChemicalFormula {
     return elementCounts
         .entrySet()
         .stream()
-        .mapToDouble(entry -> entry.getKey().getAtomicMass() * entry.getValue())
+        .mapToDouble(entry -> entry.getKey().getMass() * entry.getValue())
         .sum();
   }
 

@@ -11,6 +11,11 @@ public interface ElementIsotope {
   Integer getMassNumber();
 
   /**
+   * Get the isotopic mass
+   */
+  Double getIsotopicMass();
+
+  /**
    * Get the base element for this atom.
    * In the example of C-13, the base element is Carbon
    */

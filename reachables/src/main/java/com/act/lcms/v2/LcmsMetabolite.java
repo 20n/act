@@ -7,11 +7,11 @@ import java.util.Optional;
 
 public class LcmsMetabolite implements Metabolite {
 
-  public Optional<LcmsMolecularStructure> getStructure() {
+  public Optional<MolecularStructure> getStructure() {
     throw new NotImplementedException();
   }
 
-  public Optional<LcmsChemicalFormula> getFormula() {
+  public Optional<ChemicalFormula> getFormula() {
     throw new NotImplementedException();
   }
 

@@ -24,9 +24,9 @@ public interface Element {
   Integer getValency();
 
   /**
-   * Get the atomic mass
+   * Get the mass of the most frequent natural isotope
    */
-  Double getAtomicMass();
+  Double getMass();
 
   /**
    * Get the isotopes of the element
