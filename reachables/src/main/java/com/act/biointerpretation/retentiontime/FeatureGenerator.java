@@ -105,8 +105,6 @@ public class FeatureGenerator {
     logPPlugin plugin = new logPPlugin();
     MajorMicrospeciesPlugin microspeciesPlugin = new MajorMicrospeciesPlugin();
 
-    logDPlugin pluginLogD = new logDPlugin();
-
     String chemicalFormat = cl.hasOption(OPTION_SMILES_REPRESENTATION) ? "smiles" : "inchi";
 
     BufferedReader reader = new BufferedReader(new FileReader(cl.getOptionValue(OPTION_INPUT_FILE)));
@@ -115,7 +113,6 @@ public class FeatureGenerator {
     OUTPUT_TSV_HEADER_FIELDS.add("Chemical");
     OUTPUT_TSV_HEADER_FIELDS.add("Mass");
     OUTPUT_TSV_HEADER_FIELDS.add("LogP");
-    OUTPUT_TSV_HEADER_FIELDS.add("LogD");
 
     List<String> header = new ArrayList<>();
     header.addAll(OUTPUT_TSV_HEADER_FIELDS);
@@ -139,25 +136,13 @@ public class FeatureGenerator {
       plugin.setMolecule(phMol);
       plugin.run();
 
-
-      pluginLogD.setpH(2.7);
-      pluginLogD.setlogPMethod(LogPMethod.CONSENSUS);
-      pluginLogD.setMolecule(phMol);
-      pluginLogD.run();
-
       Double mass = molecule.getMass();
       Double logP = plugin.getlogPTrue();
-      Double logD = pluginLogD.getlogD();
-
-      System.out.println(logP.toString());
-
-      System.out.println(String.format("%s", MolExporter.exportToFormat(phMol, "inchi:AuxNone,Woff")));
 
       Map<String, String> row = new HashMap<>();
       row.put("Chemical", MolExporter.exportToFormat(molecule, "smiles"));
       row.put("Mass", mass.toString());
       row.put("LogP", logP.toString());
-      row.put("LogD", logD.toString());
 
       writer.append(row);
       writer.flush();
