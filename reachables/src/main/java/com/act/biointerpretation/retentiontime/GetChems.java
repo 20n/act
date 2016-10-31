@@ -29,9 +29,9 @@ public class GetChems {
 
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(new File("/mnt/shared-data/Vijay/ret_time_prediction/marvin_all_chems_random.txt")))) {
       while(chemIter.hasNext()) {
+        DBObject chemObj = chemIter.next();
+        Chemical chem = mongoDB.convertDBObjectToChemical(chemObj);
         if (indexes.contains(counter)) {
-          DBObject chemObj = chemIter.next();
-          Chemical chem = mongoDB.convertDBObjectToChemical(chemObj);
           predictionWriter.write(chem.getInChI());
           predictionWriter.write("\n");
         }
