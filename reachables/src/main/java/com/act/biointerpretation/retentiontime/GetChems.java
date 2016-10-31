@@ -21,7 +21,7 @@ public class GetChems {
     Set<Integer> indexes = new HashSet<>();
     Random random = new Random(10);
 
-    for (int i = 0; i < 5000; i++) {
+    for (int i = 0; i < 37000; i++) {
       indexes.add(random.nextInt(943622));
     }
 
