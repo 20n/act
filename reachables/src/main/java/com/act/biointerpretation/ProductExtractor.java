@@ -116,7 +116,7 @@ public class ProductExtractor {
     LOGGER.info("Found %d valid organisms", validOrganisms.size());
 
     Set<Long> productIds = new TreeSet<>(); // Use something with implicit ordering we can traverse in order.
-    DBIterator reactionIterator = db.getIteratorOverReactions(true);
+    DBIterator reactionIterator = db.getIteratorOverReactions();
     Reaction r;
     while ((r = db.getNextReaction(reactionIterator)) != null) {
       Set<JSONObject> proteins = r.getProteinData();
