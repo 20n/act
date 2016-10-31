@@ -122,30 +122,34 @@ public class FeatureGenerator {
 
     String chemical;
     while ((chemical = reader.readLine()) != null) {
-      Molecule molecule = MolImporter.importMol(chemical, chemicalFormat);
+      try {
+        Molecule molecule = MolImporter.importMol(chemical, chemicalFormat);
 
-      Cleaner.clean(molecule, 3);
-      plugin.standardize(molecule);
-      microspeciesPlugin.setpH(2.7);
-      microspeciesPlugin.setMolecule(molecule);
-      microspeciesPlugin.run();
+        Cleaner.clean(molecule, 3);
+        plugin.standardize(molecule);
+        microspeciesPlugin.setpH(2.7);
+        microspeciesPlugin.setMolecule(molecule);
+        microspeciesPlugin.run();
 
-      Molecule phMol = microspeciesPlugin.getMajorMicrospecies();
-      plugin.setlogPMethod(LogPMethod.CONSENSUS);
-      plugin.setUserTypes("logPTrue,logPMicro,logPNonionic");
-      plugin.setMolecule(phMol);
-      plugin.run();
+        Molecule phMol = microspeciesPlugin.getMajorMicrospecies();
+        plugin.setlogPMethod(LogPMethod.CONSENSUS);
+        plugin.setUserTypes("logPTrue,logPMicro,logPNonionic");
+        plugin.setMolecule(phMol);
+        plugin.run();
 
-      Double mass = molecule.getMass();
-      Double logP = plugin.getlogPTrue();
+        Double mass = molecule.getMass();
+        Double logP = plugin.getlogPTrue();
 
-      Map<String, String> row = new HashMap<>();
-      row.put("Chemical", MolExporter.exportToFormat(molecule, "smiles"));
-      row.put("Mass", mass.toString());
-      row.put("LogP", logP.toString());
+        Map<String, String> row = new HashMap<>();
+        row.put("Chemical", MolExporter.exportToFormat(molecule, "smiles"));
+        row.put("Mass", mass.toString());
+        row.put("LogP", logP.toString());
 
-      writer.append(row);
-      writer.flush();
+        writer.append(row);
+        writer.flush();
+      } catch (Exception e) {
+        System.out.println(e.getMessage());
+      }
     }
 
     writer.close();
