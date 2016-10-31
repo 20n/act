@@ -205,7 +205,7 @@ public class LoadAct extends SteppedTask {
   }
 
   private void addReactionsToNetwork() {
-    DBIterator iterator = this.db.getIteratorOverReactions(true);
+    DBIterator iterator = this.db.getIteratorOverReactions();
     Reaction r;
     Map<Reaction.RxnDataSource, Integer> counts = new HashMap<>();
     for (Reaction.RxnDataSource src : Reaction.RxnDataSource.values())

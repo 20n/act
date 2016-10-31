@@ -1882,15 +1882,13 @@ public class MongoDB {
     return new DBIterator(cursor);
   }
 
-  public DBIterator getDbIteratorOverSeq(BasicDBObject matchCriterion, boolean notimeout, BasicDBObject keys) {
+  public DBIterator getDbIteratorOverSeq(BasicDBObject matchCriterion, BasicDBObject keys) {
     if (keys == null) {
       keys = new BasicDBObject();
     }
 
     DBCursor cursor = this.dbSeq.find(matchCriterion, keys);
-    if (notimeout) {
-      cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
-    }
+    cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
     return new DBIterator(cursor);
   }
 
@@ -1939,20 +1937,18 @@ public class MongoDB {
     return new DBIterator(cursor);
   }
 
-  public DBIterator getIteratorOverChemicals(BasicDBObject matchCriterion, boolean notimeout, BasicDBObject keys) {
+  public DBIterator getIteratorOverChemicals(BasicDBObject matchCriterion, BasicDBObject keys) {
     if (keys == null) {
       keys = new BasicDBObject();
     }
     DBCursor cursor = this.dbChemicals.find(matchCriterion, keys);
-    if (notimeout) {
-      cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
-    }
+    cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
 
     return new DBIterator(cursor); // DBIterator is just a wrapper class
   }
 
-  public Iterator<Chemical> getJavaIteratorOverChemicals(BasicDBObject matchCriterion, boolean notimeout)  {
-    final DBIterator iter = getIteratorOverChemicals(matchCriterion, notimeout, null);
+  public Iterator<Chemical> getJavaIteratorOverChemicals(BasicDBObject matchCriterion)  {
+    final DBIterator iter = getIteratorOverChemicals(matchCriterion, null);
 
     return new Iterator<Chemical>() {
       @Override
@@ -1977,18 +1973,18 @@ public class MongoDB {
       queryList.add(new BasicDBObject(ChemicalKeywords.ID$.MODULE$.toString(), id));
     }
 
-    return getJavaIteratorOverChemicals(new BasicDBObject(MongoKeywords.OR$.MODULE$.toString(), queryList), notimeout);
+    return getJavaIteratorOverChemicals(new BasicDBObject(MongoKeywords.OR$.MODULE$.toString(), queryList));
   }
 
-  public DBIterator getIteratorOverReactions(boolean notimeout) {
-    return getIteratorOverReactions(DEFAULT_CURSOR_ORDER_BY_ID, notimeout, null);
+  public DBIterator getIteratorOverReactions() {
+    return getIteratorOverReactions(DEFAULT_CURSOR_ORDER_BY_ID, null);
   }
 
-  private DBIterator getIteratorOverReactions(Long low, Long high, boolean notimeout) {
-    return getIteratorOverReactions(getRangeUUIDRestriction(low, high), notimeout, null);
+  private DBIterator getIteratorOverReactions(Long low, Long high) {
+    return getIteratorOverReactions(getRangeUUIDRestriction(low, high), null);
   }
 
-  public DBIterator getIteratorOverReactions(BasicDBObject matchCriterion, boolean notimeout, BasicDBObject keys) {
+  public DBIterator getIteratorOverReactions(BasicDBObject matchCriterion, BasicDBObject keys) {
 
     if (keys == null) {
       keys = new BasicDBObject();
@@ -1996,8 +1992,7 @@ public class MongoDB {
     }
 
     DBCursor cursor = this.dbReactions.find(matchCriterion, keys);
-    if (notimeout)
-      cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
+    cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
     return new DBIterator(cursor); // DBIterator is just a wrapper classs
   }
 
@@ -2370,7 +2365,7 @@ public class MongoDB {
 
     BasicDBObject query = new BasicDBObject(MongoKeywords.OR$.MODULE$.toString(), reactionList);
 
-    final DBIterator iter = getIteratorOverReactions(query, notimeout, null);
+    final DBIterator iter = getIteratorOverReactions(query, null);
 
     return new Iterator<Reaction>() {
       @Override
@@ -2591,15 +2586,13 @@ public class MongoDB {
     return new DBIterator(cursor);
   }
 
-  public DBIterator getDbIteratorOverOrgs(BasicDBObject matchCriterion, boolean notimeout, BasicDBObject keys) {
+  public DBIterator getDbIteratorOverOrgs(BasicDBObject matchCriterion, BasicDBObject keys) {
     if (keys == null) {
       keys = new BasicDBObject();
     }
 
     DBCursor cursor = this.dbOrganismNames.find(matchCriterion, keys);
-    if (notimeout) {
-      cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
-    }
+    cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
     return new DBIterator(cursor);
   }
 
@@ -2645,7 +2638,7 @@ public class MongoDB {
    * Returns set of all organism ids involved in reactions
    */
   public Set<Long> getOrganismIDs() {
-    DBIterator iterator = getIteratorOverReactions(new BasicDBObject(), false, null);
+    DBIterator iterator = getIteratorOverReactions(new BasicDBObject(), null);
     Set<Long> ids = new HashSet<Long>();
     while (iterator.hasNext()) {
       DBObject r = iterator.next();

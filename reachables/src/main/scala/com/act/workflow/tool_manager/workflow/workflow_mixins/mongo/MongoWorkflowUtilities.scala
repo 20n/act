@@ -167,17 +167,17 @@ trait MongoWorkflowUtilities {
     */
   def mongoQueryReactions(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
     logger.debug(s"Querying reaction database with the query $key.  Filtering values to obtain $filter")
-    mongo.getIteratorOverReactions(key, false, filter).toIterator
+    mongo.getIteratorOverReactions(key, filter).toIterator
   }
 
   def mongoQueryChemicals(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
     logger.debug(s"Querying reaction database with the query $key.  Filtering values to obtain $filter")
-    mongo.getIteratorOverChemicals(key, false, filter).toIterator
+    mongo.getIteratorOverChemicals(key, filter).toIterator
   }
 
   def mongoChemicalIterator(mongo: MongoDB)(key: BasicDBObject): Option[Iterator[Chemical]] = {
     logger.debug(s"Querying chemical database with the query $key.")
-    Option(mongo.getJavaIteratorOverChemicals(key, false))
+    Option(mongo.getJavaIteratorOverChemicals(key))
   }
 
 
