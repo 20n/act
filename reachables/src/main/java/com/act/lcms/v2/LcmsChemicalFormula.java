@@ -8,7 +8,17 @@ import java.util.Optional;
 
 public class LcmsChemicalFormula implements ChemicalFormula {
 
+  public LcmsChemicalFormula(Map<Element, Integer> elementCounts) {
+    this.elementCounts = elementCounts;
+  }
+
+  public LcmsChemicalFormula(Map<Element, Integer> elementCounts, String name) {
+    this.elementCounts = elementCounts;
+    this.name = name;
+  }
+
   private Map<Element, Integer> elementCounts;
+  private String name;
 
   public Map<Element, Integer> getElementCounts() {
     return this.elementCounts;
@@ -27,7 +37,7 @@ public class LcmsChemicalFormula implements ChemicalFormula {
   }
 
   public Optional<String> getName() {
-    return null;
+    return Optional.ofNullable(this.name);
   }
 
   public Boolean equals(ChemicalFormula chemicalFormula) {

@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 public class LcmsIonCalculator implements IonCalculator {
 
 
-  private List<Ion> getIonsFromMass(Double mass, Predicate<MS1.MetlinIonMass> ionFilter) {
+  List<Ion> getIonsFromMass(Double mass, Predicate<MS1.MetlinIonMass> ionFilter) {
     List<Ion> ions = Arrays.asList(MS1.ionDeltas)
         .stream()
         .filter(ionFilter)

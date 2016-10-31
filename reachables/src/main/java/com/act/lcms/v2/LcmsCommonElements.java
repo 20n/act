@@ -19,4 +19,8 @@ public enum LcmsCommonElements {
   LcmsCommonElements(String symbol, Integer valency) {
     new LcmsElement(symbol, valency);
   }
+
+  public LcmsElement getElement() {
+    return this.element;
+  }
 }
