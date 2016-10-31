@@ -34,7 +34,7 @@ public class LargeMassToMoleculeMapParser {
 
   private LargeMassToMoleculeMap massToMoleculeMap = new LargeMassToMoleculeMap();
 
-  public LargeMassToMoleculeMap getMonoIsotopicMassToMoleculeMap() {
+  public LargeMassToMoleculeMap getMassToMoleculeMap() {
     return massToMoleculeMap;
   }
 
@@ -176,11 +176,11 @@ public class LargeMassToMoleculeMapParser {
   public static void main(String[] args) throws Exception {
     LargeMassToMoleculeMapParser parser = new LargeMassToMoleculeMapParser(DEFAULT_FORMULA_HEADER, DEFAULT_MASS_HEADER);
     parser.parse(new File(DEFAULT_TEST_FILE));
-    System.out.println(parser.getMonoIsotopicMassToMoleculeMap());
+    System.out.println(parser.getMassToMoleculeMap());
 
     parser = new LargeMassToMoleculeMapParser();
     parser.setNamesHeader("name");
     parser.parseNamedInchis(new File(DEFAULT_NAMED_INCHIS));
-    System.out.println(parser.getMonoIsotopicMassToMoleculeMap());
+    System.out.println(parser.getMassToMoleculeMap());
   }
 }

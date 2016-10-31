@@ -1,7 +1,7 @@
 package com.act.lcms
 
 import act.shared.ChemicalSymbols.Atom
-import com.act.lcms.v2.{LargeMassToMoleculeMap, NamedMolecule}
+import com.act.lcms.v2.{LargeMassToMoleculeMap, RawMetabolite}
 
 import scala.collection.JavaConversions._
 
@@ -36,17 +36,17 @@ class MoleculeFinder {
 
     def toFormulaHitsUsingLargeMap(peaks: PeakHits,
                                    smallFormulaMap: LargeMassToMoleculeMap,
-                                   precision: Float): FormulaHits = {
+                                   precision: Double): FormulaHits = {
 
       val peakSet: Set[Peak] = peaks.peakSpectra.peaks
 
-      def toFormula(n: NamedMolecule): (ChemicalFormula, Option[String]) = {
+      def toFormula(n: RawMetabolite): (ChemicalFormula, Option[String]) = {
 
         (MassToFormula.getFormulaMap(n.getMolecule), Option(n.getName))
       }
 
       def bestFormulaeMatches(peak: Peak): List[(ChemicalFormula, Option[String])] = {
-        val results = smallFormulaMap.getSortedFromCenter(peak.mz.initMass.toFloat, precision)
+        val results = smallFormulaMap.getSortedFromCenter(peak.mz.initMass, precision)
         val formulae = results.toList.map(toFormula)
         formulae
       }
@@ -104,16 +104,16 @@ class MoleculeFinder {
 
     def toStructureHitsUsingLargeMap(peaks: PeakHits,
                                    smallInchisMap: LargeMassToMoleculeMap,
-                                   precision: Float): StructureHits = {
+                                   precision: Double): StructureHits = {
 
       val peakSet: Set[Peak] = peaks.peakSpectra.peaks
 
-      def toInchi(n: NamedMolecule): (String, Option[String]) = {
+      def toInchi(n: RawMetabolite): (String, Option[String]) = {
         (n.getMolecule, Option(n.getName))
       }
 
       def bestInchisMatches(peak: Peak): List[(String, Option[String])] = {
-        val results = smallInchisMap.getSortedFromCenter(peak.mz.initMass.toFloat, precision)
+        val results = smallInchisMap.getSortedFromCenter(peak.mz.initMass, precision)
         val inchis = results.toList.map(toInchi)
         inchis
       }
