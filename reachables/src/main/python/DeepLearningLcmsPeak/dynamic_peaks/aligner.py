@@ -5,6 +5,7 @@ import numpy as np
 from tqdm import tqdm
 
 from modules.utility import magic
+import operator
 
 
 def align_replicates(mz_lists):
@@ -274,14 +275,31 @@ def create_differential_peak_windows(exp, ctrl):
 
 
 def normalize(first, second):
-    peaks_subtracted = np.asarray(first) - np.asarray(second)
+    # We need to align the peaks so that their max values are in the same place.
+    first_max_index, fm = max(enumerate(first), key=operator.itemgetter(1))
+    second_max_index, sm = max(enumerate(second), key=operator.itemgetter(1))
 
-    if max(peaks_subtracted) > abs(min(peaks_subtracted)):
-        return np.divide(peaks_subtracted, max(peaks_subtracted))
-    elif max(peaks_subtracted) < abs(min(peaks_subtracted)):
-        return np.divide(peaks_subtracted, abs(min(peaks_subtracted)))
-    else:
-        return np.divide(peaks_subtracted, 1)
+    peaks_subtracted = np.zeros(len(first))
+
+    r, l = 0, 0
+
+    middle = len(peaks_subtracted)/2
+
+    while middle - l >= 0 and middle + r < len(peaks_subtracted):
+        try:
+            peaks_subtracted[middle - l] = first[first_max_index - l] - second[second_max_index - l]
+        except IndexError:
+            pass
+
+        try:
+            peaks_subtracted[middle + r] = first[first_max_index + r] - second[second_max_index + r]
+        except IndexError:
+            pass
+
+        l += 1
+        r += 1
+
+    return np.divide(peaks_subtracted, max([fm, sm]))
 
 
 def merge_lcms_replicates(autoencoder, lcms_directory, output_directory, samples, cond):
