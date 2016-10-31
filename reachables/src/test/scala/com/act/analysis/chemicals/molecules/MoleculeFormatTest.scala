@@ -18,10 +18,14 @@ class MoleculeFormatTest extends FlatSpec with Matchers with BeforeAndAfterEach 
   "MoleculeFormat" should "should have import and export strings for all values." in {
     // We implicitly test that all the values can be hit by
     // enumerating over the values and testing if they match to an export and an import.
+
+    // Check imports
     noException should be thrownBy MoleculeFormat.values.map(
       y => MoleculeFormat.getImportString(MoleculeFormatType(y, List())))
+
+    // Check exports
     noException should be thrownBy MoleculeFormat.values.map(
-      y => MoleculeFormat.getImportString(MoleculeFormatType(y, List())))
+      y => MoleculeFormat.getExportString(MoleculeFormatType(y, List())))
   }
 
   "MoleculeFormat" should "should have valid inchi options for importing molecules." in {

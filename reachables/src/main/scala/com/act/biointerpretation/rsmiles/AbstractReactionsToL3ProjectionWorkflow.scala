@@ -172,6 +172,8 @@ class AbstractReactionsToL3ProjectionWorkflow extends Workflow {
       if (!roProjectionsOutputFileDirectory.exists()) {
         roProjectionsOutputFileDirectory.mkdirs()
       } else {
+        LOGGER.info(s"Removing previous directory ${roProjectionsOutputFileDirectory.getAbsolutePath} " +
+          s"and recreating as an empty folder.")
         roProjectionsOutputFileDirectory.delete()
         roProjectionsOutputFileDirectory.mkdirs()
       }
