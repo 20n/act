@@ -194,7 +194,7 @@ trait MongoWorkflowUtilities {
     */
   def mongoQuerySequences(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
     logger.debug(s"Querying sequence database with the query $key.  Filtering values to obtain $filter")
-    mongo.getDbIteratorOverSeq(key, false, filter).toIterator
+    mongo.getDbIteratorOverSeq(key, filter).toIterator
   }
 
   /**
