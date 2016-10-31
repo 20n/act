@@ -14,7 +14,8 @@ time_max = 450
 rounding_level = 3
 max_seconds = 50
 seconds_interval = 0.1
-threshold = 1000.0
+# TODO Introduce optimizations that allows this method not use a threshold
+threshold = 10000.0
 within_range = 0.004
 
 """

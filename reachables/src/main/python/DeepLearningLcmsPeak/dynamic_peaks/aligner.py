@@ -103,9 +103,9 @@ def replacement_alignment(aligned_peaks, unaligned_peaks):
                 still_unaligned_peaks[unaligned_peaks_index].append(unaligned_peak)
 
     print("Replaced {} peaks, while dropping {} local minimum peaks.  "
-          "Number of aligned peaks is {}, number of unaligned peaks is {}".format(replacement_count, drop_count,
-                                                                                  len(aligned_peaks), sum(
-            len(p) for p in still_unaligned_peaks)))
+          "Number of aligned peaks is {}, "
+          "number of unaligned peaks is {}".format(replacement_count, drop_count,
+                                                   len(aligned_peaks), sum(len(p) for p in still_unaligned_peaks)))
 
     return aligned_peaks, still_unaligned_peaks
 
@@ -149,8 +149,12 @@ def two_sample_alignment(sample_one, sample_two, tolerance_mz, tolerance_time):
     return aligned_peaks, [sample_one, sample_two]
 
 
-def __align_two_samples(sample_one, sample_two, tolerance_mz, tolerance_time, get_mz, get_rt, add_to_list):
-    sample_one = sorted(sample_one, key=lambda data: (get_mz(data), get_rt(data)))
+def __align_two_samples(sample_one, sample_two, tolerance_mz, tolerance_time, 
+                        get_mz_sample_one, get_rt_sample_one, add_to_list):
+    # Sample one is some variant of peaks such that we can sort them by their RT and MZ using the supplied functions.
+    # We require that same two is a single list of peaks, or a single list
+    # of things that have the same interface as a peak
+    sample_one = sorted(sample_one, key=lambda data: (get_mz_sample_one(data), get_rt_sample_one(data)))
     sample_two = sorted(sample_two, key=lambda data: (data.get_mz(), data.get_rt()))
 
     aligned_peaks = []
@@ -164,9 +168,9 @@ def __align_two_samples(sample_one, sample_two, tolerance_mz, tolerance_time, ge
             sample_two_peak = sample_two[j]
 
             # Determine how close sample one's m/z is to sample two's
-            mz_closeness = get_mz(sample_one_peak) - sample_two_peak.get_mz()
+            mz_closeness = get_mz_sample_one(sample_one_peak) - sample_two_peak.get_mz()
             # Determine how close sample one's rt is to sample two's
-            rt_closeness = abs(get_rt(sample_one_peak) - sample_two_peak.get_rt())
+            rt_closeness = abs(get_rt_sample_one(sample_one_peak) - sample_two_peak.get_rt())
 
             # If both the time and mz are close, we add the peaks to the aligned peak list and stop looking.
             # Otherwise, we either stop if we've passed our m/z significantly, or we indicate that this
@@ -177,8 +181,8 @@ def __align_two_samples(sample_one, sample_two, tolerance_mz, tolerance_time, ge
             elif mz_closeness < -tolerance_mz:
                 j = len(sample_two)
             elif j != 0 and \
-                    (get_mz(sample_one_peak) - sample_two[j - 1].get_mz() > tolerance_mz) and \
-                    (get_mz(sample_one_peak) - sample_two[j].get_mz() <= tolerance_mz):
+                    (get_mz_sample_one(sample_one_peak) - sample_two[j - 1].get_mz() > tolerance_mz) and \
+                    (get_mz_sample_one(sample_one_peak) - sample_two[j].get_mz() <= tolerance_mz):
                 trailing_tracker = j
 
             j += 1
