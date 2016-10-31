@@ -27,7 +27,7 @@ public class GetChems {
 
     int counter = 0;
 
-    try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(new File("/mnt/shared-data/Vijay/ret_time_prediction/marvin_all_chems.txt")))) {
+    try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(new File("/mnt/shared-data/Vijay/ret_time_prediction/marvin_all_chems_random.txt")))) {
       while(chemIter.hasNext()) {
         if (indexes.contains(counter)) {
           DBObject chemObj = chemIter.next();
