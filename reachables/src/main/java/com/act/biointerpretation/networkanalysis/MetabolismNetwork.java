@@ -154,7 +154,7 @@ public class MetabolismNetwork {
    * @param db The DB.
    */
   public void loadAllEdgesFromDb(MongoDB db) {
-    DBIterator iterator = db.getIteratorOverReactions(true);
+    DBIterator iterator = db.getIteratorOverReactions();
     Reaction reaction;
     while ((reaction = db.getNextReaction(iterator)) != null) {
       this.loadEdgeFromReaction(db, reaction);
