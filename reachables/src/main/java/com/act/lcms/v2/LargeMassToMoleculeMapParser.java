@@ -34,7 +34,7 @@ public class LargeMassToMoleculeMapParser {
 
   private LargeMassToMoleculeMap massToMoleculeMap = new LargeMassToMoleculeMap();
 
-  public LargeMassToMoleculeMap getMassToMoleculeMap() {
+  public LargeMassToMoleculeMap getMonoIsotopicMassToMoleculeMap() {
     return massToMoleculeMap;
   }
 
@@ -60,13 +60,13 @@ public class LargeMassToMoleculeMapParser {
 
   public void parse(File inputFile) throws IOException {
 
-    Float mass;
+    Double mass;
     String molecule;
     String line;
     String[] splitLine;
     String name;
     Integer nameIndex = -1;
-    NamedMolecule namedMolecule;
+    RawMetabolite namedMolecule;
 
     try (BufferedReader formulaeReader = getFormulaeReader(inputFile)) {
 
@@ -86,7 +86,7 @@ public class LargeMassToMoleculeMapParser {
       int i = 0;
       while (formulaeReader.ready()) {
 
-        namedMolecule = new NamedMolecule();
+        namedMolecule = new RawMetabolite();
 
         if (i % 1000000 == 0) {
           LOGGER.info("Formulae processed so far: %d", i);
@@ -95,8 +95,8 @@ public class LargeMassToMoleculeMapParser {
         line = formulaeReader.readLine();
         splitLine = line.split(TSV_SEPARATOR);
 
-        mass = Float.parseFloat(splitLine[massIndex]);
-        namedMolecule.setMass(mass);
+        mass = Double.parseDouble(splitLine[massIndex]);
+        namedMolecule.setMonoIsotopicMass(mass);
         molecule = splitLine[moleculeIndex];
         namedMolecule.setMolecule(molecule);
 
@@ -113,14 +113,13 @@ public class LargeMassToMoleculeMapParser {
 
   public void parseNamedInchis(File inputFile) throws IOException {
 
-    Float mass;
+    Double mass;
     String molecule;
     String line;
     String[] splitLine;
     String name;
     Integer nameIndex = -1;
-    NamedMolecule namedMolecule;
-    Double doubleMass;
+    RawMetabolite namedMolecule;
 
     try (BufferedReader formulaeReader = getFormulaeReader(inputFile)) {
 
@@ -139,7 +138,7 @@ public class LargeMassToMoleculeMapParser {
       int i = 0;
       while (formulaeReader.ready()) {
 
-        namedMolecule = new NamedMolecule();
+        namedMolecule = new RawMetabolite();
 
         if (i % 1000000 == 0) {
           LOGGER.info("Structure processed so far: %d", i);
@@ -151,9 +150,8 @@ public class LargeMassToMoleculeMapParser {
         molecule = splitLine[moleculeIndex];
         namedMolecule.setMolecule(molecule);
         try {
-          doubleMass = MolImporter.importMol(molecule).getExactMass();
-          mass = doubleMass.floatValue();
-          namedMolecule.setMass(mass);
+          mass = MolImporter.importMol(molecule).getExactMass();
+          namedMolecule.setMonoIsotopicMass(mass);
         } catch (MolFormatException e) {
           LOGGER.error("Couldnot parse");
           continue;
@@ -164,7 +162,7 @@ public class LargeMassToMoleculeMapParser {
           namedMolecule.setName(name);
         }
 
-        massToMoleculeMap.add(namedMolecule.getMass(), namedMolecule);
+        massToMoleculeMap.add(namedMolecule.getMonoIsotopicMass(), namedMolecule);
         i++;
       }
     }
@@ -178,11 +176,11 @@ public class LargeMassToMoleculeMapParser {
   public static void main(String[] args) throws Exception {
     LargeMassToMoleculeMapParser parser = new LargeMassToMoleculeMapParser(DEFAULT_FORMULA_HEADER, DEFAULT_MASS_HEADER);
     parser.parse(new File(DEFAULT_TEST_FILE));
-    System.out.println(parser.getMassToMoleculeMap());
+    System.out.println(parser.getMonoIsotopicMassToMoleculeMap());
 
     parser = new LargeMassToMoleculeMapParser();
     parser.setNamesHeader("name");
     parser.parseNamedInchis(new File(DEFAULT_NAMED_INCHIS));
-    System.out.println(parser.getMassToMoleculeMap());
+    System.out.println(parser.getMonoIsotopicMassToMoleculeMap());
   }
 }

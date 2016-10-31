@@ -1,20 +1,20 @@
 package com.act.lcms.v2;
 
 
-public class NamedMolecule {
-  Float mass;
+public class RawMetabolite {
+  Double monoIsotopicMass;
   String molecule;
   String name;
 
-  public NamedMolecule() {
+  public RawMetabolite() {
   }
 
-  public Float getMass() {
-    return mass;
+  public Double getMonoIsotopicMass() {
+    return monoIsotopicMass;
   }
 
-  public void setMass(Float mass) {
-    this.mass = mass;
+  public void setMonoIsotopicMass(Double monoIsotopicMass) {
+    this.monoIsotopicMass = monoIsotopicMass;
   }
 
   public void setMolecule(String molecule) {
