@@ -1,7 +1,7 @@
 package com.act.lcms
 
 import act.shared.ChemicalSymbols.Atom
-import com.act.lcms.v2.{LargeMassToMoleculeMap, RawMetabolite}
+import com.act.lcms.v2.{MassToRawMetaboliteMap, RawMetabolite}
 
 import scala.collection.JavaConversions._
 
@@ -35,7 +35,7 @@ class MoleculeFinder {
   object FormulaHits extends ChemicalFormulae with SolveUsingSMTSolver {
 
     def toFormulaHitsUsingLargeMap(peaks: PeakHits,
-                                   smallFormulaMap: LargeMassToMoleculeMap,
+                                   smallFormulaMap: MassToRawMetaboliteMap,
                                    precision: Double): FormulaHits = {
 
       val peakSet: Set[Peak] = peaks.peakSpectra.peaks
@@ -103,7 +103,7 @@ class MoleculeFinder {
   object StructureHits {
 
     def toStructureHitsUsingLargeMap(peaks: PeakHits,
-                                   smallInchisMap: LargeMassToMoleculeMap,
+                                   smallInchisMap: MassToRawMetaboliteMap,
                                    precision: Double): StructureHits = {
 
       val peakSet: Set[Peak] = peaks.peakSpectra.peaks
