@@ -116,11 +116,7 @@ class MassToFormulaTest extends FlatSpec with Matchers {
 
     apapCases foreach MassToFormula.solveNCheck
   }
-
-  ignore should "correctly check valency constraints" in {
-
-  }
-
+  
   "MassToFormula" should "correctly check min formula constraints" in {
 
     // Test cases are constructed in the following way
