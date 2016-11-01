@@ -7,7 +7,7 @@ import act.shared.{CmdLineParser, OptDesc}
 import scala.io.Source
 import act.shared.ChemicalSymbols.{AllAminoAcids, MonoIsotopicMass}
 import com.act.lcms.MS1.MetlinIonMass
-import com.act.lcms.v2.{LargeMassToMoleculeMap, LargeMassToMoleculeMapParser}
+import com.act.lcms.v2.{MassToRawMetaboliteMap, MassToRawMetaboliteMapParser}
 import spray.json._
 import spray.json.DefaultJsonProtocol._
 
@@ -839,10 +839,9 @@ object UntargetedMetabolomics {
     val inchis: PeakHits = if (!mapToInChIsUsingList) {
       rslt
     } else {
-      val parser = new LargeMassToMoleculeMapParser()
-      parser.setNamesHeader("name")
-      parser.parseNamedInchis(new File(inchiListFile))
-      val smallFormulaMap: LargeMassToMoleculeMap  = parser.getMassToMoleculeMap
+      val parser = new MassToRawMetaboliteMapParser(new File(inchiListFile))
+      parser.parse()
+      val smallFormulaMap: MassToRawMetaboliteMap  = parser.getMassToMoleculeMap
       moleculeFinder.StructureHits.toStructureHitsUsingLargeMap(
         rslt, smallFormulaMap, MagicParams._precisionMetaboliteLookup)
     }
@@ -851,9 +850,9 @@ object UntargetedMetabolomics {
       inchis
     } else {
       println(s"Mapping to formula using large enumerated list")
-      val parser = new LargeMassToMoleculeMapParser("formula", "mass")
-      parser.parse(new File(formulaListFile))
-      val smallFormulaMap: LargeMassToMoleculeMap  = parser.getMassToMoleculeMap
+      val parser = new MassToRawMetaboliteMapParser(new File(formulaListFile))
+      parser.parse()
+      val smallFormulaMap: MassToRawMetaboliteMap = parser.getMassToMoleculeMap
       moleculeFinder.FormulaHits.toFormulaHitsUsingLargeMap(
         inchis, smallFormulaMap, MagicParams._precisionMetaboliteLookup)
     }

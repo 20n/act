@@ -2,9 +2,9 @@ package com.act.lcms.v2;
 
 
 public class RawMetabolite {
-  Double monoIsotopicMass;
-  String molecule;
-  String name;
+  private Double monoIsotopicMass;
+  private String molecule;
+  private String name;
 
   public RawMetabolite() {
   }
