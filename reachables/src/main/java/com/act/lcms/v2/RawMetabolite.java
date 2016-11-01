@@ -2,18 +2,18 @@ package com.act.lcms.v2;
 
 
 public class RawMetabolite {
-  private Double monoIsotopicMass;
+  private Float monoIsotopicMass;
   private String molecule;
   private String name;
 
   public RawMetabolite() {
   }
 
-  public Double getMonoIsotopicMass() {
+  public Float getMonoIsotopicMass() {
     return monoIsotopicMass;
   }
 
-  public void setMonoIsotopicMass(Double monoIsotopicMass) {
+  public void setMonoIsotopicMass(Float monoIsotopicMass) {
     this.monoIsotopicMass = monoIsotopicMass;
   }
 

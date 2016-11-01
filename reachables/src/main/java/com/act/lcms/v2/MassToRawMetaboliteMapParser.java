@@ -126,18 +126,19 @@ public class MassToRawMetaboliteMapParser {
     String[] splitLine = line.split(TSV_SEPARATOR);
     String metabolite = splitLine[metaboliteIndex];
     rawMetabolite.setMolecule(metabolite);
-    Double mass = null;
+    Float mass = null;
     if (massIndex < 0) {
       assert metaboliteHeader.equals(DEFAULT_STRUCTURE_HEADER);
       try {
-        mass = MolImporter.importMol(metabolite).getExactMass();
+        Double massDouble = MolImporter.importMol(metabolite).getExactMass();
+        mass = massDouble.floatValue();
         rawMetabolite.setMonoIsotopicMass(mass);
       } catch (MolFormatException e) {
         LOGGER.error("Could not parse molecule %s, skipping.", metabolite);
         return;
       }
     } else {
-      mass = Double.parseDouble(splitLine[massIndex]);
+      mass = Float.parseFloat(splitLine[massIndex]);
       rawMetabolite.setMonoIsotopicMass(mass);
     }
 

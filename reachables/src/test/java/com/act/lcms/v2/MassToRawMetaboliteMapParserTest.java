@@ -60,8 +60,8 @@ public class MassToRawMetaboliteMapParserTest {
     String testCase = "C8H9NO2\t151.063";
     parser.addRawMetabolite(testCase);
     MassToRawMetaboliteMap map = parser.getMassToMoleculeMap();
-    assertTrue(map.getMassToMoleculeMap().containsKey(151.063));
-    List<RawMetabolite> value = map.getMassToMoleculeMap().get(151.063);
+    assertTrue(map.getMassToMoleculeMap().containsKey(151.063F));
+    List<RawMetabolite> value = map.getMassToMoleculeMap().get(151.063F);
     assertEquals(1, value.size());
     assertEquals("C8H9NO2", value.get(0).getMolecule());
     assertEquals(151.063, value.get(0).getMonoIsotopicMass(), 0.001);
@@ -75,8 +75,8 @@ public class MassToRawMetaboliteMapParserTest {
     String testCase = "C8H9NO2\t151.063\tAPAP";
     parser.addRawMetabolite(testCase);
     MassToRawMetaboliteMap map = parser.getMassToMoleculeMap();
-    assertTrue(map.getMassToMoleculeMap().containsKey(151.063));
-    List<RawMetabolite> value = map.getMassToMoleculeMap().get(151.063);
+    assertTrue(map.getMassToMoleculeMap().containsKey(151.063F));
+    List<RawMetabolite> value = map.getMassToMoleculeMap().get(151.063F);
     assertEquals(1, value.size());
     assertEquals("C8H9NO2", value.get(0).getMolecule());
     assertEquals(151.063, value.get(0).getMonoIsotopicMass(), 0.001);
@@ -91,7 +91,7 @@ public class MassToRawMetaboliteMapParserTest {
     String testCase = "InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)\tAPAP";
     parser.addRawMetabolite(testCase);
     MassToRawMetaboliteMap map = parser.getMassToMoleculeMap();
-    Double testKey = map.getMassToMoleculeMap().ceilingKey(151.0);
+    Float testKey = map.getMassToMoleculeMap().ceilingKey(151.0F);
     assertEquals(testKey, 151.063, 0.001);
     List<RawMetabolite> value = map.getMassToMoleculeMap().get(testKey);
     assertEquals(1, value.size());
@@ -111,14 +111,14 @@ public class MassToRawMetaboliteMapParserTest {
     parser.addRawMetabolite(testCase1);
     parser.addRawMetabolite(testCase2);
     MassToRawMetaboliteMap map = parser.getMassToMoleculeMap();
-    assertTrue(map.getMassToMoleculeMap().containsKey(151.063));
-    List<RawMetabolite> value = map.getMassToMoleculeMap().get(151.063);
+    assertTrue(map.getMassToMoleculeMap().containsKey(151.063F));
+    List<RawMetabolite> value = map.getMassToMoleculeMap().get(151.063F);
     assertEquals(2, value.size());
     assertEquals("C8H9NO2", value.get(0).getMolecule());
-    assertEquals(151.063, value.get(0).getMonoIsotopicMass(), 0.001);
+    assertEquals(151.063F, value.get(0).getMonoIsotopicMass(), 0.001);
     assertEquals("APAP", value.get(0).getName());
     assertEquals("C8H9NO2", value.get(1).getMolecule());
-    assertEquals(151.063, value.get(1).getMonoIsotopicMass(), 0.001);
+    assertEquals(151.063F, value.get(1).getMonoIsotopicMass(), 0.001);
     assertEquals("APAP2", value.get(1).getName());
   }
 }

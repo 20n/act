@@ -46,7 +46,7 @@ class MoleculeFinder {
       }
 
       def bestFormulaeMatches(peak: Peak): List[(ChemicalFormula, Option[String])] = {
-        val results = smallFormulaMap.getSortedFromCenter(peak.mz.initMass, precision)
+        val results = smallFormulaMap.getSortedFromCenter(peak.mz.initMass.toFloat, precision.toFloat)
         val formulae = results.toList.map(toFormula)
         formulae
       }
@@ -113,7 +113,7 @@ class MoleculeFinder {
       }
 
       def bestInchisMatches(peak: Peak): List[(String, Option[String])] = {
-        val results = smallInchisMap.getSortedFromCenter(peak.mz.initMass, precision)
+        val results = smallInchisMap.getSortedFromCenter(peak.mz.initMass.toFloat, precision.toFloat)
         val inchis = results.toList.map(toInchi)
         inchis
       }
