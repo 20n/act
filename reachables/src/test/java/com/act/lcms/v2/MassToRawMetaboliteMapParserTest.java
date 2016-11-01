@@ -46,6 +46,7 @@ public class MassToRawMetaboliteMapParserTest {
     Integer expectedFormulaHeaderPosition = 0;
     Integer expectedMassHeaderPosition = 1;
     Integer expectedNameHeaderPosition = 2;
+    assertEquals(parser.getMassToMoleculeMap().getKind(), MassToRawMetaboliteMap.RawMetaboliteKind.FORMULA);
     assertEquals(expectedFormulaHeaderPosition, parser.getMetaboliteIndex());
     assertEquals(expectedMassHeaderPosition, parser.getMassIndex());
     assertEquals(expectedNameHeaderPosition, parser.getNameIndex());

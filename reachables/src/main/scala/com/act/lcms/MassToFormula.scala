@@ -30,7 +30,7 @@ sealed trait Expr {
   def mod(other: Expr): Expr = ArithExpr(Mod, List(this, other))
 }
 case class Const(c: Int) extends Expr
-case class Var(d: String) extends Expr
+case class Var(id: String) extends Expr
 case class Term(c: Const, v: Var) extends Expr
 case class LinExpr(terms: List[Term]) extends Expr {
   def +(term: Term): LinExpr = LinExpr(term :: this.terms)
@@ -602,9 +602,9 @@ object MassToFormula {
   val optMinFormula = new OptDesc(
                     param = "f",
                     longParam = "min-formula",
-                    name = "minFormula for solving",
-                    desc = s"""Do not solve formulae under a minimum number of elements, as specifying in the min
-                               |formula.""".stripMargin,
+                    name = "min formula for solving",
+                    desc = s"""Attempt resolving to only formulae above a minimum count for each element.
+                               |The minimum counts are defined by a formula, holding the counts.""".stripMargin,
                     isReqd = false, hasArg = true)
 
   val optOutputFile = new OptDesc(
@@ -879,9 +879,9 @@ class LessThan3xH extends Specials {
 }
 
 class ValencyConstraints extends Specials {
-  def describe() = "3C>=H"
+  def describe() = "Valence contraints"
   // there cannot be more than (valence * others) - count(others)
-  // coz there are at max valenc*other bonds to make, and max available for H
+  // because there are at max valence*other bonds to make, and max available for H
   // are in cases where all others are in a single line, e.g., alcohols
 
   def constraints() = {

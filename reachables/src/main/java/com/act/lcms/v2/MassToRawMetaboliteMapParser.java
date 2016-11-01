@@ -20,6 +20,7 @@ public class MassToRawMetaboliteMapParser {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(MassToRawMetaboliteMapParser.class);
 
+  // Default headers
   private static final String DEFAULT_STRUCTURE_HEADER = "inchi";
   private static final String DEFAULT_FORMULA_HEADER = "formula";
   private static final String DEFAULT_MASS_HEADER = "mass";
@@ -27,16 +28,17 @@ public class MassToRawMetaboliteMapParser {
 
   private static final String TSV_SEPARATOR = "\t";
 
+  // Instance variables
   private String metaboliteHeader = null;
-  
   private Integer metaboliteIndex;
   private Integer massIndex;
   private Integer nameIndex;
 
   private File inputFile;
 
-  private MassToRawMetaboliteMap massToMetaboliteMap = new MassToRawMetaboliteMap();
+  private MassToRawMetaboliteMap massToMetaboliteMap;
 
+  // Basic getters
   public Integer getMetaboliteIndex() {
     return metaboliteIndex;
   }
@@ -53,13 +55,19 @@ public class MassToRawMetaboliteMapParser {
     return massToMetaboliteMap;
   }
 
-  MassToRawMetaboliteMapParser() {}
+
+  MassToRawMetaboliteMapParser() {
+    // Initialize all indices to -1.
+    this.metaboliteIndex = -1;
+    this.massIndex = -1;
+    this.nameIndex = -1;
+  }
 
   public MassToRawMetaboliteMapParser(File inputFile) {
     this.inputFile = inputFile;
     try {
       FileChecker.verifyInputFile(inputFile);
-      String headerLine = getFormulaeReader(inputFile).readLine();
+      String headerLine = getMetabolitesReader(inputFile).readLine();
       List<String> headers = Arrays.asList(headerLine.split(TSV_SEPARATOR));
       validateHeaders(headers);
     } catch (IOException e) {
@@ -67,13 +75,17 @@ public class MassToRawMetaboliteMapParser {
     }
   }
 
+  /**
+   * Validates headers and assign the corresponding indices / metabolite kind
+   * @param headers headers parsed from the input file
+   */
   void validateHeaders(List<String> headers) {
     if (headers.contains(DEFAULT_STRUCTURE_HEADER)) {
       this.metaboliteHeader = DEFAULT_STRUCTURE_HEADER;
-      this.massToMetaboliteMap.setKind(MassToRawMetaboliteMap.RawMetaboliteKind.INCHI);
+      this.massToMetaboliteMap = new MassToRawMetaboliteMap(MassToRawMetaboliteMap.RawMetaboliteKind.INCHI);
     } else if (headers.contains(DEFAULT_FORMULA_HEADER)) {
       this.metaboliteHeader = DEFAULT_FORMULA_HEADER;
-      this.massToMetaboliteMap.setKind(MassToRawMetaboliteMap.RawMetaboliteKind.FORMULA);
+      this.massToMetaboliteMap = new MassToRawMetaboliteMap(MassToRawMetaboliteMap.RawMetaboliteKind.FORMULA);
     } else {
       String msg = String.format("Input file did not contain expected metabolite headers: %s or %s", DEFAULT_FORMULA_HEADER, DEFAULT_STRUCTURE_HEADER);
       LOGGER.error(msg);
@@ -104,6 +116,10 @@ public class MassToRawMetaboliteMapParser {
     }
   }
 
+  /**
+   * Parses and adds the parsed RawMetabolite to the map
+   * @param line raw line from the input file to parse
+   */
   void addRawMetabolite(String line) {
 
     RawMetabolite rawMetabolite = new RawMetabolite();
@@ -111,19 +127,18 @@ public class MassToRawMetaboliteMapParser {
     String metabolite = splitLine[metaboliteIndex];
     rawMetabolite.setMolecule(metabolite);
     Double mass = null;
-    if (massIndex >= 0) {
+    if (massIndex < 0) {
+      assert metaboliteHeader.equals(DEFAULT_STRUCTURE_HEADER);
+      try {
+        mass = MolImporter.importMol(metabolite).getExactMass();
+        rawMetabolite.setMonoIsotopicMass(mass);
+      } catch (MolFormatException e) {
+        LOGGER.error("Could not parse molecule %s, skipping.", metabolite);
+        return;
+      }
+    } else {
       mass = Double.parseDouble(splitLine[massIndex]);
       rawMetabolite.setMonoIsotopicMass(mass);
-    } else {
-      if (metaboliteHeader.equals(DEFAULT_STRUCTURE_HEADER)) {
-        try {
-          mass = MolImporter.importMol(metabolite).getExactMass();
-          rawMetabolite.setMonoIsotopicMass(mass);
-        } catch (MolFormatException e) {
-          LOGGER.error("Could not parse molecule %s, skipping.", metabolite);
-          return;
-        }
-      }
     }
 
     if (nameIndex >= 0) {
@@ -138,14 +153,14 @@ public class MassToRawMetaboliteMapParser {
 
   public void parse() throws IOException {
 
-    try (BufferedReader formulaeReader = getFormulaeReader(inputFile)) {
+    try (BufferedReader metabolitesReader = getMetabolitesReader(inputFile)) {
 
       int i = 0;
-      formulaeReader.readLine();
+      metabolitesReader.readLine();
 
-      while (formulaeReader.ready()) {
+      while (metabolitesReader.ready()) {
 
-        String line = formulaeReader.readLine();
+        String line = metabolitesReader.readLine();
         addRawMetabolite(line);
         i++;
 
@@ -156,8 +171,8 @@ public class MassToRawMetaboliteMapParser {
     }
   }
 
-  private BufferedReader getFormulaeReader(File inchiFile) throws FileNotFoundException {
-    FileInputStream formulaeInputStream = new FileInputStream(inchiFile);
-    return new BufferedReader(new InputStreamReader(formulaeInputStream));
+  private BufferedReader getMetabolitesReader(File metaboliteFile) throws FileNotFoundException {
+    FileInputStream metabolitesInputStream = new FileInputStream(metaboliteFile);
+    return new BufferedReader(new InputStreamReader(metabolitesInputStream));
   }
 }
