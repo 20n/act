@@ -16,25 +16,13 @@ public class LcmsIsotope implements Isotope {
     return metabolite;
   }
 
-  public void setMetabolite(Metabolite metabolite) {
-    this.metabolite = metabolite;
-  }
-
   @Override
   public Double getIsotopicMass() {
     return isotopicMass;
   }
 
-  public void setIsotopicMass(Double isotopicMass) {
-    this.isotopicMass = isotopicMass;
-  }
-
   @Override
   public Double getAbundance() {
     return abundance;
-  }
-
-  public void setAbundance(Double abundance) {
-    this.abundance = abundance;
   }
 }

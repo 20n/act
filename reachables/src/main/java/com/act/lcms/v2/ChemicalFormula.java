@@ -35,7 +35,8 @@ public interface ChemicalFormula {
   /**
    * Check for equality with another Chemicalformula
    * @param chemicalFormula input formula
-   * @return A Boolean, indicating whether or not the formulae match
+   * @return A boolean, indicating whether or not the formulae match
    */
-  Boolean equals(ChemicalFormula chemicalFormula);
+  @Override
+  boolean equals(Object chemicalFormula);
 }

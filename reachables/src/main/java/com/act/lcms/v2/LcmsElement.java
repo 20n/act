@@ -8,6 +8,11 @@ import java.util.List;
 
 public class LcmsElement implements Element {
 
+  // Chemaxon's API for PeriodicSystem returns isotopes that have abundance 0.
+  // We need to filter these out by setting a minimum abundance level.
+  // Abundance ranges from 0-100 with the most abundant isotope having an abundance of 100
+  private static final Double MIN_ABUNDANCE = 0.1;
+
   private String symbol;
   private Integer atomicNumber;
   private Double mass;
@@ -54,7 +59,7 @@ public class LcmsElement implements Element {
     for (int i = 0; i < isotopeCount; i++) {
       Integer massNumber = PeriodicSystem.getIsotope(atomicNumber, i);
       Double abundance = PeriodicSystem.getAbundance(atomicNumber, massNumber);
-      if (abundance > 0.1) {
+      if (abundance > MIN_ABUNDANCE) {
         elementIsotopes.add(new LcmsElementIsotope(this, massNumber));
       }
     }

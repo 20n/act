@@ -11,6 +11,5 @@ public interface IsotopeCalculator {
 
   List<Isotope> getIsotopes(Metabolite metabolite);
 
-  List<Isotope> getMainIsotopes(Metabolite metabolite, Predicate<Isotope> IsotopeFilter);
-
+  List<Isotope> getIsotopes(Metabolite metabolite, Predicate<Isotope> IsotopeFilter);
 }
