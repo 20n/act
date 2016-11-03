@@ -367,17 +367,18 @@ object SparkROProjector {
   }
 
   def projectInChIsAndReturnResults(chemaxonLicense: File, workingDirectory: File)
-                                   (inputInchis: List[L2InchiCorpus], exhaustive: Boolean = false, reverse: Boolean = false)
-                                   (memory: String = "4GB"): Iterator[InchiResult] = {
-    val assembledJar = "target/scala-2.10/reachables-assembly-0.1.jar"
-    val sparkJob: Job = SparkWrapper.assembleJarAtRuntime(assembledJar)
+                                   (memory: String = "4GB", sparkMaster: String = DEFAULT_SPARK_MASTER, useCached: Boolean = false)
+                                   (inputInchis: List[L2InchiCorpus])
+                                   (exhaustive: Boolean = false, reverse: Boolean = false): List[InchiResult] = {
 
-    if (!workingDirectory.exists()){
-      workingDirectory.mkdirs()
-    }
+    val assembledJar = "target/scala-2.10/reachables-assembly-0.1.jar"
+    val sparkJob: Job = SparkWrapper.assembleJarAtRuntime(assembledJar, useCached)
+
+    if (!workingDirectory.exists()) workingDirectory.mkdirs()
 
     val filePrefix = "inchiCorpus"
     val fileSuffix = "txt"
+
     // Write to a file
     val substrateFiles: List[String] = inputInchis.zipWithIndex.map(
       {case(file, index) =>
@@ -396,13 +397,13 @@ object SparkROProjector {
     )
 
     sparkJob.thenRun(
-      SparkWrapper.runClassPath(assembledJar, DEFAULT_SPARK_MASTER)(getClass.getCanonicalName, List())(memory))
+      SparkWrapper.runClassPath(assembledJar, sparkMaster)(getClass.getCanonicalName, List())(memory))
 
     // Block until finished
     JobManager.startJobAndAwaitUntilWorkflowComplete(sparkJob)
 
     val outputResults = new File(workingDirectory, "projectedReactions")
-    outputResults.toJson.convertTo[Iterator[InchiResult]]
+    scala.io.Source.fromFile(outputResults).getLines().mkString.parseJson.convertTo[List[InchiResult]]
   }
 
 
