@@ -1,5 +1,8 @@
 package com.act.lcms.v2;
 
+/**
+ * Provides a list of common elements
+ */
 
 public enum LcmsCommonElements {
   CARBON("C", 4),

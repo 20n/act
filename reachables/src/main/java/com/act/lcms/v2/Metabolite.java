@@ -19,7 +19,7 @@ public interface Metabolite {
   Optional<ChemicalFormula> getFormula();
 
   /**
-   * Returns the metabolite's monoisotopic mass (in Da)
+   * Returns the metabolite's mono-isotopic mass (in Da)
    */
   Double getMonoIsotopicMass();
 }
