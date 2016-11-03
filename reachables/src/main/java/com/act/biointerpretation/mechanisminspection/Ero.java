@@ -50,10 +50,10 @@ public class Ero implements Serializable {
       Reactor r = new Reactor();
       try {
         r.setReactionString(getRo());
+        return r;
       } catch (ReactionException e) {
         return null;
       }
-      return r;
     }
   };
 

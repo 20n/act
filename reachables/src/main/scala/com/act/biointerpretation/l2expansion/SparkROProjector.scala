@@ -26,9 +26,10 @@ object InchiResultProtocol extends DefaultJsonProtocol {
   implicit val inchiFormat = jsonFormat3(InchiResult)
 }
 
+// Because we made the protocol in this file, we need to import it here to expose the methods it has to our file.
+// This allows us to do direct conversions on InchiResult objects to and form JSON.
 import com.act.biointerpretation.l2expansion.InchiResultProtocol._
 
-// TODO Allow to be called from outside of CLI so we can programmatically spark project (Possibly using Spark Workflow)?
 object SparkMoleculeProjector {
   val defaultMoleculeFormat = MoleculeFormat.strictNoStereoInchi
 
@@ -67,10 +68,11 @@ object SparkMoleculeProjector {
     if (reverse) reactor.setReverse(reverse)
 
     // Get all permutations of the input so that substrate order doesn't matter.
-    val resultingReactions: Stream[InchiResult] = inputs.permutations.flatMap(substrateOrdering => {
+    val importedMolecules: List[Molecule] = inputs.map(x => MoleculeImporter.importMolecule(x, defaultMoleculeFormat))
+    val resultingReactions: Stream[InchiResult] = importedMolecules.permutations.flatMap(substrateOrdering => {
 
       // Setup reactor
-      reactor.setReactants(substrateOrdering.map(MoleculeImporter.importMolecule(_, defaultMoleculeFormat)).toArray)
+      reactor.setReactants(substrateOrdering.toArray)
 
       // Generate reactions
       val reactedValues: Stream[Array[Molecule]] = if (exhaustive) {
@@ -97,7 +99,9 @@ object SparkMoleculeProjector {
       val products = potentialProducts.map(x => MoleculeExporter.exportMolecule(x, defaultMoleculeFormat))
       Option(InchiResult(substrates, roNumber, products))
     } catch {
-      case e: MolExportException => None
+      case e: MolExportException =>
+        LOGGER.warn(s"Unable to export a projected project.  Projected projects were $potentialProducts")
+        None
     }
   }
 }
@@ -111,6 +115,7 @@ object SparkROProjector {
   val OPTION_REVERSE = "r"
   val OPTION_VALID_CHEMICAL_TYPE = "v"
   private val HELP_FORMATTER: HelpFormatter = new HelpFormatter
+  HELP_FORMATTER.setWidth(100)
   private val HELP_MESSAGE = "A Spark job that will project the set of validation ROs over a list of substrates."
   private val LOGGER = LogManager.getLogger(getClass)
   private val SPARK_LOG_LEVEL = "WARN"
@@ -174,7 +179,7 @@ object SparkROProjector {
     val licenseFileName = new File(licenseFile).getName
 
     LOGGER.info("Building ERO RDD")
-    val groupSize = 100
+    val groupSize = 1000
 
     val inchiRDD: RDD[Seq[String]] = spark.makeRDD(validInchis, groupSize)
 
@@ -188,15 +193,13 @@ object SparkROProjector {
     handleProjectionTermination(resultsRDD, outputDir)
   }
 
-  HELP_FORMATTER.setWidth(100)
-
   private def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
       CliOption.builder(OPTION_LICENSE_FILE).
         required(true).
         hasArg.
-        longOpt("license-file")
-        .desc("A path to the Chemaxon license file to load, mainly for checking license validity"),
+        longOpt("license-file").
+        desc("A path to the Chemaxon license file to load, mainly for checking license validity"),
 
       CliOption.builder(OPTION_SUBSTRATES_LISTS).
         required(true).
@@ -214,10 +217,13 @@ object SparkROProjector {
       CliOption.builder(OPTION_VALID_CHEMICAL_TYPE).
         longOpt("valid-chemical-types").
         hasArg.
-        desc("A molecule string format. Currently valid types are inchi, stdInchi, smiles, and smarts.  " +
-          s"By default, uses stdInChI which " +
-          s"is the format '${MoleculeFormat.getExportString(MoleculeFormat.stdInchi)}'.  " +
-          s"Possible values are: \n${MoleculeFormat.listPossibleFormats().mkString("\n")}"),
+        desc(
+          s"""
+             |A molecule string format. Currently valid types are inchi, stdInchi, smiles, and smarts.
+             |By default, uses stdInChI which is the format: ${MoleculeFormat.getExportString(MoleculeFormat.stdInchi)}.
+             |Possible values are:
+             |${MoleculeFormat.listPossibleFormats().mkString("|")}
+             |""".stripMargin),
 
       CliOption.builder(OPTION_SPARK_MASTER).
         longOpt("spark-master").
@@ -340,6 +346,9 @@ object SparkROProjector {
   }
 
   private def combinationList(suppliedInchiLists: List[List[String]]): List[List[String]] = {
+    // The goal of this method is to take in a list containing a list of InChIs and to group them into all combinations.
+    // For example, if three lists are supplied we will output all
+    // possible groups of three where, for example, the first element is from the first list.
     val filteredLists = suppliedInchiLists.filter(_.nonEmpty)
 
     val validCombinations: ListBuffer[List[String]] = mutable.ListBuffer()
@@ -377,25 +386,22 @@ object SparkROProjector {
     validCombinations.toList.distinct
   }
 
-  def projectInChIsAndReturnResults(chemaxonLicense: File, workingDirectory: File)
+  def projectInChIsAndReturnResults(chemaxonLicense: File, assembledJar: File, workingDirectory: File)
                                    (memory: String = "4GB", sparkMaster: String = DEFAULT_SPARK_MASTER, useCached: Boolean = false)
                                    (inputInchis: List[L2InchiCorpus])
                                    (exhaustive: Boolean = false, reverse: Boolean = false): List[InchiResult] = {
-    val assembledJar = "target/scala-2.10/reachables-assembly-0.1.jar"
-
     if (!workingDirectory.exists()) workingDirectory.mkdirs()
 
     val filePrefix = "inchiCorpus"
     val fileSuffix = "txt"
 
     // Write to a file
-    val substrateFiles: List[String] = inputInchis.zipWithIndex.map(
-      {case(file, index) =>
-        val substrateFile = new File(workingDirectory, s"$filePrefix.$index.$fileSuffix")
-        file.writeToFile(substrateFile)
-        substrateFile.getAbsolutePath
-      }
-    )
+    val substrateFiles: List[String] = inputInchis.zipWithIndex.map({
+        case(file, index) =>
+          val substrateFile = new File(workingDirectory, s"$filePrefix.$index.$fileSuffix")
+          file.writeToFile(substrateFile)
+          substrateFile.getAbsolutePath
+      })
 
     val conditionalArgs: ListBuffer[String] = new ListBuffer()
     if (exhaustive) conditionalArgs.append(s"-$OPTION_EXHAUSTIVE")
@@ -410,7 +416,8 @@ object SparkROProjector {
 
     // We need to replace the $ because scala ends the canonical name with that.
     val sparkJob =
-      SparkWrapper.runClassPath(assembledJar, sparkMaster)(getClass.getCanonicalName.replace("$", ""), classArgs)(memory)
+      SparkWrapper.runClassPath(
+        assembledJar.getAbsolutePath, sparkMaster)(getClass.getCanonicalName.replaceAll("\\$$", ""), classArgs)(memory)
 
     // Block until finished
     JobManager.startJobAndAwaitUntilWorkflowComplete(sparkJob)
