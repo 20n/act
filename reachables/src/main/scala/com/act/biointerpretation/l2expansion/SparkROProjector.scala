@@ -2,12 +2,17 @@ package com.act.biointerpretation.l2expansion
 
 import java.io.{BufferedWriter, File, FileWriter}
 
+import breeze.linalg
+import breeze.linalg.reverse
 import chemaxon.license.LicenseManager
 import chemaxon.marvin.io.MolExportException
 import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.l2expansion.SparkROProjector.InchiResult
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
+import com.act.workflow.tool_manager.jobs.management.JobManager
+import com.act.workflow.tool_manager.jobs.{Job, ShellJob}
+import com.act.workflow.tool_manager.tool_wrappers.SparkWrapper
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
@@ -15,24 +20,10 @@ import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
 import spray.json._
 
 import scala.collection.JavaConverters._
-import scala.io.Source
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
-/**
-  * A Spark job that will project the set of single-substrate validation EROs over a list of substrate InChIs.
-  *
-  * Run like:
-  * $ sbt assembly
-  * $ $SPARK_HOME/bin/spark-submit \
-  * --driver-class-path $PWD/target/scala-2.10/reachables-assembly-0.1.jar \
-  * --class com.act.biointerpretation.l2expansion.SparkSingleSubstrateROProjector \
-  * --master spark://spark-master:7077 \
-  * --deploy-mode client --executor-memory 4G \
-  * $PWD/target/scala-2.10/reachables-assembly-0.1.jar \
-  * --substrates-list file_of_substrate_inchis \
-  * -s \
-  * -o output_file \
-  * -l license file
-  */
+// TODO Allow to be called from outside of CLI so we can programmatically spark project (Possibly using Spark Workflow)?
 object SparkMoleculeProjector {
   val defaultMoleculeFormat = MoleculeFormat.strictNoStereoInchi
 
@@ -45,7 +36,8 @@ object SparkMoleculeProjector {
   def project(licenseFileName: String)
              (reverse: Boolean, exhaustive: Boolean)
              (substrates: List[String]): Stream[InchiResult] = {
-    // Load license file once
+
+    // Load Chemaxon license file once
     if (this.localLicenseFile.isEmpty) {
       this.localLicenseFile = Option(SparkFiles.get(licenseFileName))
       LOGGER.info(s"Using license file at $localLicenseFile " +
@@ -53,7 +45,6 @@ object SparkMoleculeProjector {
       LicenseManager.setLicenseFile(SparkFiles.get(licenseFileName))
     }
 
-    LOGGER.info(s"Reverse is set to $reverse")
     val getResults: Ero => Stream[InchiResult] = getResultsForSubstrate(substrates, reverse, exhaustive)
     val results: Stream[InchiResult] = this.eros.getRos.asScala.toStream.flatMap(getResults)
     results
@@ -61,28 +52,22 @@ object SparkMoleculeProjector {
 
   private def getResultsForSubstrate(inputs: List[String], reverse: Boolean, exhaustive: Boolean)
                                     (ro: Ero): Stream[InchiResult] = {
-    // We check the substate or the products to ensure equal length based on if we are reversing the rxn or not.
-    if (!reverse && ro.getSubstrate_count != inputs.length) {
-      return Stream()
-    }
-    if (reverse && ro.getProduct_count != inputs.length) {
+    // We check the substrate or the products to ensure equal length based on if we are reversing the rxn or not.
+    if ((!reverse && ro.getSubstrate_count != inputs.length) || (reverse && ro.getProduct_count != inputs.length)) {
       return Stream()
     }
 
     // Setup reactor based on ro
     val reactor = ro.getReactor
-    if (reverse) {
-      reactor.setReverse(reverse)
-    }
+    if (reverse) reactor.setReverse(reverse)
 
     // Get all permutations of the input so that substrate order doesn't matter.
     val resultingReactions: Stream[InchiResult] = inputs.permutations.flatMap(substrateOrdering => {
 
       // Setup reactor
-      reactor.setReactants(
-        substrateOrdering.map(MoleculeImporter.importMolecule(_, defaultMoleculeFormat)).toArray)
+      reactor.setReactants(substrateOrdering.map(MoleculeImporter.importMolecule(_, defaultMoleculeFormat)).toArray)
 
-      // Return results
+      // Generate reactions
       val reactedValues: Stream[Array[Molecule]] = if (exhaustive) {
         Stream.continually(Option(reactor.react())).takeWhile(_.isDefined).flatMap(_.toStream)
       } else {
@@ -91,7 +76,9 @@ object SparkMoleculeProjector {
       }
 
       // Map the resulting reactions to a consistent format.
-      val partiallyAppliedMapper: List[Molecule] => Option[InchiResult] = mapReactionsToResult(inputs, ro.getId.toString)
+      val partiallyAppliedMapper: List[Molecule] => Option[InchiResult] =
+        mapReactionsToResult(inputs, ro.getId.toString)
+
       reactedValues.flatMap(potentialProducts => partiallyAppliedMapper(potentialProducts.toList))
     }).toStream
 
@@ -99,7 +86,8 @@ object SparkMoleculeProjector {
     resultingReactions
   }
 
-  private def mapReactionsToResult(substrates: List[String], roNumber: String)(potentialProducts: List[Molecule]): Option[InchiResult] = {
+  private def mapReactionsToResult(substrates: List[String], roNumber: String)
+                                  (potentialProducts: List[Molecule]): Option[InchiResult] = {
     try {
       val products = potentialProducts.map(x => MoleculeExporter.exportMolecule(x, defaultMoleculeFormat))
       Option(InchiResult(substrates, roNumber, products))
@@ -113,16 +101,14 @@ object SparkROProjector {
   private val LOGGER = LogManager.getLogger(getClass)
 
   private val SPARK_LOG_LEVEL = "WARN"
+  private val DEFAULT_SPARK_MASTER = "spark://spark-master:7077"
 
   val OPTION_EXHAUSTIVE = "e"
-  val OPTION_SUBSTRATES_LIST = "i"
+  val OPTION_SUBSTRATES_LISTS = "i"
   val OPTION_LICENSE_FILE = "l"
   val OPTION_SPARK_MASTER = "m"
-  val OPTION_FILTER_REQUIRE_RO_NAMES = "n"
   val OPTION_OUTPUT_DIRECTORY = "o"
-  val OPTION_NUMBER_SUBSTRATES = "p"
   val OPTION_REVERSE = "r"
-  val OPTION_FILTER_FOR_SPECTROMETERY = "s"
   val OPTION_VALID_CHEMICAL_TYPE = "v"
 
   def getCommandLineOptions: Options = {
@@ -133,9 +119,9 @@ object SparkROProjector {
         longOpt("license-file")
         .desc("A path to the Chemaxon license file to load, mainly for checking license validity"),
 
-      CliOption.builder(OPTION_SUBSTRATES_LIST).
+      CliOption.builder(OPTION_SUBSTRATES_LISTS).
         required(true).
-        hasArg.
+        hasArgs.
         longOpt("substrates-list").
         desc("A list of substrate InChIs onto which to project ROs"),
 
@@ -144,14 +130,6 @@ object SparkROProjector {
         hasArg.
         longOpt("output-directory").
         desc("A directory in which to write per-RO result files"),
-
-      CliOption.builder(OPTION_FILTER_FOR_SPECTROMETERY).
-        longOpt("filter-for-spectrometery").
-        desc("Filter potential substrates to those that we think could be detected via LCMS (i.e. <= 950 daltons"),
-
-      CliOption.builder(OPTION_FILTER_REQUIRE_RO_NAMES).
-        longOpt("only-named-eros").
-        desc("Only apply EROs from the validation corpus that have assigned names"),
 
       CliOption.builder(OPTION_VALID_CHEMICAL_TYPE).
         longOpt("valid-chemical-types").
@@ -164,14 +142,7 @@ object SparkROProjector {
       CliOption.builder(OPTION_SPARK_MASTER).
         longOpt("spark-master").
         desc("Where to look for the spark master connection. " +
-          "Uses \"spark://spark-master:7077\" by default."),
-
-      CliOption.builder(OPTION_NUMBER_SUBSTRATES).
-        longOpt("substrate-number").
-        hasArg.
-        desc("The number of substrates the input reactions are expected to have.  " +
-          "Be careful, a number greater than 1 permutes the initial " +
-          "list so that we project on all pair-wise groupings."),
+          s"Uses \" $DEFAULT_SPARK_MASTER \" by default."),
 
       CliOption.builder(OPTION_REVERSE).
         longOpt("reverse").
@@ -180,7 +151,8 @@ object SparkROProjector {
       CliOption.builder(OPTION_EXHAUSTIVE).
         longOpt("exhaustive").
         desc("Flag to indicate that substrates should be reacted until exhaustion, " +
-          "meaning all possible reactions occur and are returned."),
+          "meaning all possible reactions occur and are returned.  " +
+          "Can be quite expensive for substrates with a large quantity of reaction sites."),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -242,23 +214,19 @@ object SparkROProjector {
       outputDir.mkdirs()
     }
 
-    val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)
-    val inchiCorpus = new L2InchiCorpus()
-    inchiCorpus.loadCorpus(new File(substratesListFile))
+    val substrateCorpuses: List[L2InchiCorpus] = cl.getOptionValues(OPTION_SUBSTRATES_LISTS).toList.map(x => {
+      val inchiCorpus = new L2InchiCorpus()
+      inchiCorpus.loadCorpus(new File(x))
+      inchiCorpus
+    })
 
+    // List of all unique InChIs in each corpus
+    val inchiCorpuses: List[List[String]] = substrateCorpuses.map(_.getInchiList.asScala.distinct.toList)
 
-    if (cl.hasOption(OPTION_FILTER_FOR_SPECTROMETERY)) {
-      LOGGER.info(s"Substrate list size before mass filtering: ${inchiCorpus.getInchiList.size}")
-      inchiCorpus.filterByMass(950)
-      LOGGER.info(s"Substrate list size after filtering: ${inchiCorpus.getInchiList.size}")
-    }
+    // List of combinations of InChIs
+    val inchiCombinations: List[List[String]] = combinationList(inchiCorpuses)
 
-    // We filter, but don't actually import here.  If we imported we'd run out of memory way faster.
-    val substrateGroups: Set[String] = Source.fromFile(substratesListFile).getLines().toSet
-
-    val pairs: Set[Seq[String]] = substrateGroups.toSeq.combinations(cl.getOptionValue(OPTION_NUMBER_SUBSTRATES, "1").toInt).toSet
-
-    val validInchis: Set[Seq[String]] = pairs.filter(group => {
+    val validInchis: List[List[String]] = inchiCombinations.filter(group => {
       try {
         group.foreach(inchi => {
           MoleculeImporter.importMolecule(inchi)
@@ -269,11 +237,10 @@ object SparkROProjector {
       }
     })
 
-    LOGGER.info(s"Loaded and validated ${validInchis.size} InChIs from source file at $substratesListFile")
-
-
-    // Don't set a master here, spark-submit will do that for us.
-    val conf = new SparkConf().setAppName("Spark RO Projection").setMaster(cl.getOptionValue(OPTION_SPARK_MASTER, "spark://spark-master:7077"))
+    // Setup spark connection
+    val conf = new SparkConf().
+      setAppName("Spark RO Projection").
+      setMaster(cl.getOptionValue(OPTION_SPARK_MASTER, DEFAULT_SPARK_MASTER))
     conf.set("spark.scheduler.mode", "FAIR")
     conf.getAll.foreach(x => LOGGER.info(s"Spark config pair: ${x._1}: ${x._2}"))
     val spark = new SparkContext(conf)
@@ -281,19 +248,20 @@ object SparkROProjector {
     // Silence Spark's verbose logging, which can make it difficult to find our own log messages.
     spark.setLogLevel(SPARK_LOG_LEVEL)
 
-    LOGGER.info("Distributing license file to spark workers")
+    LOGGER.info("Distributing Chemaxon license file to spark workers")
     spark.addFile(licenseFile)
     val licenseFileName = new File(licenseFile).getName
 
     LOGGER.info("Building ERO RDD")
     val groupSize = 100
-    // TODO Add file parsing so that multiple substrate reactions can be loaded in
-    val inchiRDD: RDD[Seq[String]] = spark.makeRDD(validInchis.toList, groupSize)
+
+    val inchiRDD: RDD[Seq[String]] = spark.makeRDD(validInchis, groupSize)
 
     LOGGER.info("Starting execution")
     // PROJECT!  Run ERO projection over all InChIs.
     val resultsRDD: RDD[InchiResult] = inchiRDD.flatMap(inchi => {
-      SparkMoleculeProjector.project(licenseFileName)(cl.hasOption(OPTION_REVERSE), cl.hasOption(OPTION_EXHAUSTIVE))(inchi.toList)
+      SparkMoleculeProjector.project(licenseFileName)(
+        cl.hasOption(OPTION_REVERSE), cl.hasOption(OPTION_EXHAUSTIVE))(inchi.toList)
     })
 
     handleProjectionTermination(resultsRDD, outputDir)
@@ -301,7 +269,7 @@ object SparkROProjector {
 
   def handleProjectionTermination(resultsRDD: RDD[InchiResult], outputDir: File): Unit = {
     /* This next part represents us jumping through some hoops (that are possibly on fire) in order to make Spark do
-     * the thing we want it to do: project in parallel but stream results back for storage partitioned by RO.
+     * the thing we want it to do: project in parallel but stream results back for storage.
      *
      * All operations on RDDs are performed lazily.  Only operations that require some data to be returned to the driver
      * process will initiate the application of those RDD operations on the cluster.  That is, functions like `count()`
@@ -344,6 +312,7 @@ object SparkROProjector {
     val projectedReactionsFile = new File(outputDir, "projectedReactions")
     val buffer = new BufferedWriter(new FileWriter(projectedReactionsFile))
 
+    // TODO Consider if we want to try using jackson/spray's streaming API?
     // Start array and write
     buffer.write("[")
 
@@ -359,6 +328,84 @@ object SparkROProjector {
 
     resultsRDD.unpersist()
   }
+
+  private def combinationList(suppliedInchiLists: List[List[String]]): List[List[String]] = {
+    val filteredLists = suppliedInchiLists.filter(_.nonEmpty)
+
+    val validCombinations: ListBuffer[List[String]] = mutable.ListBuffer()
+
+    // Instantiate pointers at the first element.
+    val pointers: Array[Int] = Array.fill(filteredLists.size)(0)
+
+    while (pointers.head < filteredLists.head.length) {
+      // Get the next sequence and append to our combinations list
+      val indexedPointers = pointers.zipWithIndex
+      validCombinations.append(indexedPointers.map({
+        case (value, index) => filteredLists(index)(value)
+      }).toList)
+
+      // Handle pointers
+      // Find the last value that is below its end.  If it is at the end, reset to 0 and increment the next one.
+      val iteratePointer =
+        indexedPointers.reverse.find({ case (value, index) => value <= filteredLists(index).length }).get
+
+      // Count up the pointers
+      if (iteratePointer._1 < filteredLists(iteratePointer._2).length - 1) {
+        pointers(iteratePointer._2) += 1
+      } else {
+        var index = iteratePointer._2
+        pointers(index) += 1
+        while (pointers(index) == filteredLists(index).length && index > 0) {
+          pointers(index) = 0
+          pointers(index - 1) += 1
+          index -= 1
+        }
+      }
+    }
+
+    validCombinations.toList.distinct
+  }
+
+  def projectInChIsAndReturnResults(chemaxonLicense: File, workingDirectory: File)
+                                   (inputInchis: List[L2InchiCorpus], exhaustive: Boolean = false, reverse: Boolean = false)
+                                   (memory: String = "4GB"): Iterator[InchiResult] = {
+    val assembledJar = "target/scala-2.10/reachables-assembly-0.1.jar"
+    val sparkJob: Job = SparkWrapper.assembleJarAtRuntime(assembledJar)
+
+    if (!workingDirectory.exists()){
+      workingDirectory.mkdirs()
+    }
+
+    val filePrefix = "inchiCorpus"
+    val fileSuffix = "txt"
+    // Write to a file
+    val substrateFiles: List[String] = inputInchis.zipWithIndex.map(
+      {case(file, index) =>
+        val substrateFile = new File(workingDirectory, s"$filePrefix.$index.$fileSuffix")
+        file.writeToFile(substrateFile)
+        substrateFile.getAbsolutePath
+      }
+    )
+
+    val classArgs: List[String] = List(
+      s"-$OPTION_EXHAUSTIVE", exhaustive.toString,
+      s"-$OPTION_REVERSE", reverse.toString,
+      s"-$OPTION_LICENSE_FILE", chemaxonLicense.getAbsolutePath,
+      s"-$OPTION_OUTPUT_DIRECTORY", workingDirectory.getAbsolutePath,
+      s"-$OPTION_SUBSTRATES_LISTS", substrateFiles.mkString(",")
+    )
+
+    sparkJob.thenRun(
+      SparkWrapper.runClassPath(assembledJar, DEFAULT_SPARK_MASTER)(getClass.getCanonicalName, List())(memory))
+
+    // Block until finished
+    JobManager.startJobAndAwaitUntilWorkflowComplete(sparkJob)
+
+    val outputResults = new File(workingDirectory, "projectedReactions")
+    outputResults.toJson.convertTo[Iterator[InchiResult]]
+  }
+
+
 
   case class InchiResult(substrate: List[String], ros: String, products: List[String])
 
