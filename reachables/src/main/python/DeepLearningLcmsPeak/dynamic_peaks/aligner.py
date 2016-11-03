@@ -289,6 +289,10 @@ def normalize(first, second):
 
     middle = len(peaks_subtracted)/2
 
+    """
+    The general thought is that it is a fair assumption that aligned peaks have similar shapes and that by taking each
+    time point away from the max we will best get the difference.
+    """
     while middle - l >= 0 and middle + r < len(peaks_subtracted):
         try:
             peaks_subtracted[middle - l] = first[first_max_index - l] - second[second_max_index - l]
