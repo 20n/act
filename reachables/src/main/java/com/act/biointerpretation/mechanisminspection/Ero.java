@@ -44,7 +44,18 @@ public class Ero implements Serializable {
   private Integer product_count;
 
   @JsonIgnore
-  private transient Reactor reactor = null;
+  private transient ThreadLocal<Reactor> reactor= new ThreadLocal<Reactor>() {
+    @Override
+    protected Reactor initialValue() {
+      Reactor r = new Reactor();
+      try {
+        r.setReactionString(getRo());
+      } catch (ReactionException e) {
+        return null;
+      }
+      return r;
+    }
+  };
 
   public Ero() {}
 
@@ -140,8 +151,6 @@ public class Ero implements Serializable {
   public Reactor getReactor() throws ReactionException {
     // We don't cache the reactor every time as by caching
     // it we disallow concurrency operations on a single RO.
-    Reactor r = new Reactor();
-    r.setReactionString(this.getRo());
-    return r;
+    return reactor.get();
   }
 }
