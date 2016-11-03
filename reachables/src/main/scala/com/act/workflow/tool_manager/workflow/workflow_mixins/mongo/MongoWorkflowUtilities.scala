@@ -38,14 +38,6 @@ trait MongoWorkflowUtilities {
     new BasicDBObject(values map { case (key, value) => key.value -> value })
   }
 
-  def formatUnwoundName(listName: Keyword, valueName: Keyword): String = {
-    formatUnwoundName(listName.toString, valueName.toString)
-  }
-
-  def formatUnwoundName(listName: String, valueName: Keyword): String = {
-    formatUnwoundName(listName, valueName.toString)
-  }
-
   /**
     * Unwinding a list creates a value that can be found by the name <PreviousListName>.<ValueName>.
     * This function standardizes that naming procedure for use in querying unwound variables within lists.
@@ -67,6 +59,14 @@ trait MongoWorkflowUtilities {
     s"$listName.$valueName"
   }
 
+  def formatUnwoundName(listName: String, valueName: Keyword): String = {
+    formatUnwoundName(listName, valueName.toString)
+  }
+
+  def formatUnwoundName(listName: Keyword, valueName: Keyword): String = {
+    formatUnwoundName(listName.toString, valueName.toString)
+  }
+
   def formatUnwoundName(listName: Keyword, valueName: String): String = {
     formatUnwoundName(listName.toString, valueName)
   }
@@ -82,6 +82,10 @@ trait MongoWorkflowUtilities {
     */
   def getMongoExists: BasicDBObject = {
     createDbObject(MongoKeywords.EXISTS, true)
+  }
+
+  def createDbObject(key: Keyword, value: Any): BasicDBObject = {
+    new BasicDBObject(key.toString, value)
   }
 
   /**
@@ -114,6 +118,10 @@ trait MongoWorkflowUtilities {
   /*
     General Mongo functionality
    */
+
+  def defineMongoNot(truthValue: String): BasicDBObject = {
+    createDbObject(MongoKeywords.NOT, truthValue)
+  }
 
   /**
     * Truth value that returns true if all members of the truthValueList evaluate to true
@@ -165,12 +173,12 @@ trait MongoWorkflowUtilities {
     *
     * @return An iterator over the returned documents
     */
-  def mongoQueryReactions(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
+  def mongoQueryReactions(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject, notimeout: Boolean = true): Iterator[DBObject] = {
     logger.debug(s"Querying reaction database with the query $key.  Filtering values to obtain $filter")
     mongo.getIteratorOverReactions(key, filter).toIterator
   }
 
-  def mongoQueryChemicals(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
+  def mongoQueryChemicals(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject, notimeout: Boolean = true): Iterator[DBObject] = {
     logger.debug(s"Querying reaction database with the query $key.  Filtering values to obtain $filter")
     mongo.getIteratorOverChemicals(key, filter).toIterator
   }
@@ -192,7 +200,7 @@ trait MongoWorkflowUtilities {
     *
     * @return An iterator over the returned documents
     */
-  def mongoQuerySequences(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
+  def mongoQuerySequences(mongo: MongoDB)(key: BasicDBObject, filter: BasicDBObject, notimeout: Boolean = true): Iterator[DBObject] = {
     logger.debug(s"Querying sequence database with the query $key.  Filtering values to obtain $filter")
     mongo.getDbIteratorOverSeq(key, filter).toIterator
   }
@@ -211,10 +219,6 @@ trait MongoWorkflowUtilities {
     */
   def defineMongoMatch(thingsToMatch: BasicDBObject): BasicDBObject = {
     createDbObject(MongoKeywords.MATCH, thingsToMatch)
-  }
-
-  def createDbObject(key: Keyword, value: Any): BasicDBObject = {
-    new BasicDBObject(key.toString, value)
   }
 
   /**

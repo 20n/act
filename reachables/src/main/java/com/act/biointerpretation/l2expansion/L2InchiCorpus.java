@@ -2,6 +2,9 @@ package com.act.biointerpretation.l2expansion;
 
 import chemaxon.formats.MolFormatException;
 import chemaxon.struc.Molecule;
+import com.act.analysis.chemicals.molecules.MoleculeFormat;
+import com.act.analysis.chemicals.molecules.MoleculeFormat.MoleculeFormatType;
+import com.act.analysis.chemicals.molecules.MoleculeFormat$;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import com.act.jobs.FileChecker;
 import com.act.jobs.JavaRunnable;
@@ -57,10 +60,20 @@ public class L2InchiCorpus {
   }
 
   public List<Molecule> getMolecules() {
+    List<MoleculeFormat.MoleculeFormatType> wrappedInchi = new ArrayList<>();
+    wrappedInchi.add(MoleculeFormat$.MODULE$.stdInchi());
+    return getMolecules(wrappedInchi);
+  }
+
+  public List<Molecule> getMolecules(List<MoleculeFormat.MoleculeFormatType> formats) {
+    // We take in a string list here because java won't load in the scala enumeration type...
+    List<MoleculeFormatType> formatList = new ArrayList<>();
+    formatList.addAll(formats);
+
     List<Molecule> results = new ArrayList<>(getInchiList().size());
     for (String inchi : getInchiList()) {
       try {
-        results.add(MoleculeImporter.importMolecule(inchi));
+        results.add(MoleculeImporter.importMolecule(inchi, formatList));
       } catch (MolFormatException e) {
         LOGGER.error("MolFormatException on metabolite %s. %s", inchi, e.getMessage());
       }
@@ -87,20 +100,21 @@ public class L2InchiCorpus {
 
     try (BufferedReader inchiReader = getInchiReader(inchisFile)) {
 
-      String inchi;
-      while ((inchi = inchiReader.readLine()) != null) {
+      String moleculeString;
+      while ((moleculeString = inchiReader.readLine()) != null) {
 
-        String trimmed = inchi.trim();
-        if (!trimmed.equals(inchi)) {
-          LOGGER.warn("Leading or trailing whitespace found in inchi file.");
+        String trimmedMolecule = moleculeString.trim();
+        if (!trimmedMolecule.equals(moleculeString)) {
+          LOGGER.warn("Leading or trailing whitespace found in molecule string file.");
         }
-        if (trimmed.equals("")) {
-          LOGGER.warn("Blank line detected in inchis file and ignored.");
+        if (trimmedMolecule.equals("")) {
+          LOGGER.warn("Blank line detected in molecule string file and ignored.");
           continue;
         }
-        corpus.add(inchi);
+        corpus.add(trimmedMolecule);
       }
     }
+    LOGGER.info("Loaded " + corpus.size() + " molecules into corpus.");
   }
 
   /**

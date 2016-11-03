@@ -1,11 +1,13 @@
 package com.act.biointerpretation.l2expansion;
 
 import chemaxon.calculations.clean.Cleaner;
-import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.MoleculeGraph;
+import com.act.analysis.chemicals.molecules.MoleculeExporter;
+import com.act.analysis.chemicals.molecules.MoleculeFormat;
+import com.act.analysis.chemicals.molecules.MoleculeFormat$;
 import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.sars.Sar;
 import com.act.biointerpretation.sars.SerializableReactor;
@@ -21,11 +23,7 @@ import java.util.Map;
  */
 public class AllPredictionsGenerator implements PredictionGenerator {
 
-  private static final String INCHI_SETTINGS = new StringBuilder("inchi:").
-      append("SAbs").append(','). // Force absolute stereo to ensure standard InChIs are produced.
-      append("AuxNone").append(','). // Don't write the AuxInfo block.
-      append("Woff"). // Disable warnings.
-      toString();
+  private String moleculeFormat;
 
   private static final Integer CLEAN_DIMENSION = 2;
 
@@ -34,6 +32,13 @@ public class AllPredictionsGenerator implements PredictionGenerator {
 
   public AllPredictionsGenerator(ReactionProjector projector) {
     this.projector = projector;
+    this.moleculeFormat = MoleculeFormat$.MODULE$.stdInchi().value().toString();
+  }
+
+  // Allow for the caller to change the format.
+  public AllPredictionsGenerator(ReactionProjector projector, String format) {
+    this.projector = projector;
+    moleculeFormat = format;
   }
 
   @Override
@@ -60,7 +65,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
     } catch (ReactionException e) {
       StringBuilder builder = new StringBuilder();
       builder.append(e.getMessage())
-          .append(": substrates, reactor: ").append(getInchis(substratesArray))
+          .append(": substrates, reactor: ").append(getMoleculeStrings(substratesArray))
           .append(",").append(reactor.getReactorSmarts());
       throw new ReactionException(builder.toString());
     }
@@ -80,11 +85,11 @@ public class AllPredictionsGenerator implements PredictionGenerator {
 
     for (Molecule[] substrates : projectionMap.keySet()) {
       List<L2PredictionChemical> predictedSubstrates =
-          L2PredictionChemical.getPredictionChemicals(getInchis(substrates));
+          L2PredictionChemical.getPredictionChemicals(getMoleculeStrings(substrates));
 
       for (Molecule[] products : projectionMap.get(substrates)) {
         List<L2PredictionChemical> predictedProducts =
-            L2PredictionChemical.getPredictionChemicals(getInchis(products));
+            L2PredictionChemical.getPredictionChemicals(getMoleculeStrings(products));
 
         L2Prediction prediction = new L2Prediction(nextUid, predictedSubstrates, name, predictedProducts);
 
@@ -97,17 +102,20 @@ public class AllPredictionsGenerator implements PredictionGenerator {
 
 
   /**
-   * Translate an array of chemaxon Molecules into a List of their String inchi representations
+   * Translate an array of Chemaxon Molecules into a List of their string representations
    *
    * @param mols An array of molecules.
    * @return An array of inchis corresponding to the supplied molecules.
    */
-  private List<String> getInchis(Molecule[] mols) throws IOException {
-    List<String> inchis = new ArrayList<>();
+  private List<String> getMoleculeStrings(Molecule[] mols) throws IOException {
+    List<String> moleculeStrings = new ArrayList<>();
+    MoleculeFormat.MoleculeFormatType moleculeFormat = MoleculeFormat$.MODULE$.getName(this.moleculeFormat);
     for (Molecule mol : mols) {
-      inchis.add(MolExporter.exportToFormat(mol, INCHI_SETTINGS));
+      // Grabs the string through the exporter.
+      // Default is "inchi:AuxNone,SAbs,Woff", which means no aux information and absolute stereo.
+      moleculeStrings.add(MoleculeExporter.exportMolecule(mol, moleculeFormat));
     }
-    return inchis;
+    return moleculeStrings;
   }
 
   /**

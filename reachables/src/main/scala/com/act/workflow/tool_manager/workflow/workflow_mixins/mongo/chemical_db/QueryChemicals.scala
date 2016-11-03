@@ -4,6 +4,7 @@ import act.server.MongoDB
 import act.shared.Chemical
 import chemaxon.formats.MolFormatException
 import chemaxon.struc.Molecule
+import com.act.analysis.chemicals.molecules.MoleculeFormat.MoleculeFormatType
 import com.act.analysis.chemicals.molecules.{MoleculeFormat, MoleculeImporter}
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, Keyword, MongoWorkflowUtilities}
 
@@ -16,7 +17,7 @@ trait QueryChemicals extends MongoWorkflowUtilities {
     */
   def getMoleculeById(mongoConnection: MongoDB)
                      (chemicalId: Long, moleculeFormat:
-                     MoleculeFormat.Value = MoleculeFormat.inchi): Option[Molecule] = {
+                     MoleculeFormatType = MoleculeFormat.inchi): Option[Molecule] = {
     val moleculeString = getChemicalStringById(mongoConnection)(chemicalId, moleculeFormat)
     maybeImportString(moleculeString, moleculeFormat)
   }
@@ -26,7 +27,7 @@ trait QueryChemicals extends MongoWorkflowUtilities {
     */
   def getChemicalStringById(mongoConnection: MongoDB)
                            (chemicalId: Long,
-                             moleculeFormat: MoleculeFormat.Value = MoleculeFormat.inchi): Option[String] = {
+                             moleculeFormat: MoleculeFormatType = MoleculeFormat.inchi): Option[String] = {
     val queryResult: Map[Long, Option[String]] = getChemicalStringsByIds(mongoConnection)(List(chemicalId), moleculeFormat)
 
     if (queryResult.isEmpty) {
@@ -45,7 +46,7 @@ trait QueryChemicals extends MongoWorkflowUtilities {
     */
   def getMoleculesById(mongoConnection: MongoDB)
                       (chemicalIds: List[Long],
-                       moleculeFormat: MoleculeFormat.Value = MoleculeFormat.inchi): Map[Long, Option[Molecule]] = {
+                       moleculeFormat: MoleculeFormatType = MoleculeFormat.inchi): Map[Long, Option[Molecule]] = {
     val chemicalStrings = getChemicalStringsByIds(mongoConnection)(chemicalIds)
 
     if (chemicalStrings.isEmpty) {
@@ -60,7 +61,7 @@ trait QueryChemicals extends MongoWorkflowUtilities {
   // From a list of Chemical IDs, returns the string representations from teh database if available
   def getChemicalStringsByIds(mongoConnection: MongoDB)
                              (chemicalIds: List[Long],
-                               moleculeFormat: MoleculeFormat.Value = MoleculeFormat.inchi): Map[Long, Option[String]] = {
+                               moleculeFormat: MoleculeFormatType = MoleculeFormat.inchi): Map[Long, Option[String]] = {
     val queryResult: Option[java.util.Iterator[Chemical]] =
       Option(mongoConnection.getChemicalsbyIds(chemicalIds.map(java.lang.Long.valueOf).asJava, true))
 
@@ -76,7 +77,7 @@ trait QueryChemicals extends MongoWorkflowUtilities {
     * This assumes that we have used "determineFormat" to determine the format to get the format,
     * which ensures that it is a valid type.
     */
-  private def getChemicalStringByFormat(moleculeFormat: MoleculeFormat.Value, result: Chemical): Option[String] = {
+  private def getChemicalStringByFormat(moleculeFormat: MoleculeFormatType, result: Chemical): Option[String] = {
     if (Option(result).isEmpty) {
       return None
     }
@@ -99,7 +100,7 @@ trait QueryChemicals extends MongoWorkflowUtilities {
   /**
     * Determines if to use InChI or SMILES
     */
-  private def determineFormat(moleculeFormat: MoleculeFormat.Value): Keyword = {
+  private def determineFormat(moleculeFormat: MoleculeFormatType): Keyword = {
     if (MoleculeFormat.getImportString(moleculeFormat).contains("inchi")) {
       ChemicalKeywords.INCHI
     } else if (MoleculeFormat.getImportString(moleculeFormat).contains("smiles") ||
@@ -114,7 +115,7 @@ trait QueryChemicals extends MongoWorkflowUtilities {
     * If the string exists, import it
     */
   private def maybeImportString(moleculeString: Option[String],
-                                moleculeFormat: MoleculeFormat.Value): Option[Molecule] = {
+                                moleculeFormat: MoleculeFormatType): Option[Molecule] = {
     if (moleculeString.isDefined) {
       try {
         return Option(MoleculeImporter.importMolecule(moleculeString.get, moleculeFormat))

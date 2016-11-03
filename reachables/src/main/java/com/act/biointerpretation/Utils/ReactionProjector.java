@@ -1,9 +1,5 @@
 package com.act.biointerpretation.Utils;
 
-import chemaxon.calculations.clean.Cleaner;
-import chemaxon.calculations.hydrogenize.Hydrogenize;
-import chemaxon.formats.MolExporter;
-import chemaxon.formats.MolImporter;
 import chemaxon.reaction.ConcurrentReactorProcessor;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
@@ -14,8 +10,9 @@ import chemaxon.sss.search.SearchException;
 import chemaxon.struc.Molecule;
 import chemaxon.util.iterator.MoleculeIterator;
 import chemaxon.util.iterator.MoleculeIteratorFactory;
-import com.act.biointerpretation.sars.OneSubstrateSubstructureSar;
-import com.act.biointerpretation.sars.Sar;
+import com.act.analysis.chemicals.molecules.MoleculeExporter;
+import com.act.analysis.chemicals.molecules.MoleculeFormat;
+import com.act.analysis.chemicals.molecules.MoleculeFormat$;
 import org.apache.commons.collections4.Bag;
 import org.apache.commons.collections4.bag.HashBag;
 import org.apache.logging.log4j.LogManager;
@@ -33,11 +30,13 @@ import java.util.Set;
 public class ReactionProjector {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionProjector.class);
-  private static final String INCHI_FORMAT = "inchi:AuxNone";
   private static final String MOL_NOT_FOUND = "NOT_FOUND";
 
   private static final MolSearchOptions LAX_SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
   private static final MolSearch DEFAULT_SEARCHER = new MolSearch();
+
+  private static final String DEFAULT_MOLECULE_FORMAT = MoleculeFormat.noAuxInchi().value().toString();
+  private final String moleculeFormat;
 
   /**
    * Set searcher to ignore stereo and bond type.  This will allow us to optimistically match products so that we don't
@@ -50,16 +49,24 @@ public class ReactionProjector {
   }
 
   private MolSearch searcher;
-  private Map<Molecule, String> molToInchiMap;
 
   public ReactionProjector() {
-    this(DEFAULT_SEARCHER);
+    this(DEFAULT_SEARCHER, DEFAULT_MOLECULE_FORMAT);
   }
 
   public ReactionProjector(MolSearch searcher) {
-    this.searcher = searcher;
-    this.molToInchiMap = new HashMap<>();
+    this(searcher, DEFAULT_MOLECULE_FORMAT);
   }
+
+  public ReactionProjector(String moleculeFormat) {
+    this(DEFAULT_SEARCHER, moleculeFormat);
+  }
+
+  public ReactionProjector(MolSearch searcher, String moleculeFormat) {
+    this.searcher = searcher;
+    this.moleculeFormat = moleculeFormat;
+  }
+
 
   /**
    * This method should be called if projecting on more chemicals than should be stored in memory
@@ -67,7 +74,7 @@ public class ReactionProjector {
    * with their inchis.
    */
   public void clearInchiCache() {
-    molToInchiMap = new HashMap<>();
+    MoleculeExporter.clearCache();
   }
 
   /**
@@ -253,7 +260,7 @@ public class ReactionProjector {
     }
 
     // Second ordering is same if two molecules are equal.
-    if (getInchi(mols[0]).equals(getInchi(mols[1]))) {
+    if (getMoleculeString(mols[0]).equals(getMoleculeString(mols[1]))) {
       return results;
     }
 
@@ -300,28 +307,19 @@ public class ReactionProjector {
   private String getStringHash(Molecule[] mols) throws IOException {
     StringBuilder builder = new StringBuilder();
     for (Molecule molecule : mols) {
-      builder.append(getInchi(molecule));
+      builder.append(getMoleculeString(molecule));
     }
     return builder.toString();
   }
 
   /**
-   * Gets an inchi from a molecule, either by looking it up in the map or calculating it directly.
-   * This ensures that no inchi is calculated twice over the lifetime of a single ReactionProjector instance.
+   * Gets a a string of the molecule.  The exporter takes care of all caching so we don't need to worry about it
    *
    * @param molecule The molecule.
-   * @return The molecule's inchi.
+   * @return The molecule's string presentation in the format that this class declares..
    * @throws IOException
    */
-  private String getInchi(Molecule molecule) throws IOException {
-    String inchi = molToInchiMap.getOrDefault(molecule, MOL_NOT_FOUND);
-
-    if (!inchi.equals(MOL_NOT_FOUND)) {
-      return inchi;
-    }
-
-    inchi = MolExporter.exportToFormat(molecule, INCHI_FORMAT);
-    molToInchiMap.put(molecule, inchi);
-    return inchi;
+  private String getMoleculeString(Molecule molecule) throws IOException {
+    return MoleculeExporter.exportMolecule(molecule, MoleculeFormat$.MODULE$.getName(this.moleculeFormat));
   }
 }

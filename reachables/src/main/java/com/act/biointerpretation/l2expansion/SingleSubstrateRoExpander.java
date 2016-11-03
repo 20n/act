@@ -5,6 +5,7 @@ import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import com.act.biointerpretation.sars.SerializableReactor;
+import org.apache.commons.logging.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
