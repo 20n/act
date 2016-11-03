@@ -3,6 +3,7 @@ package com.act.biointerpretation
 import java.io.{File, IOException}
 import java.util.NoSuchElementException
 
+import breeze.linalg.Options.Value
 import com.act.biointerpretation.l2expansion.{L2ExpansionDriver, L2InchiCorpus, L2PredictionCorpus}
 import com.act.biointerpretation.mechanisminspection.ErosCorpus
 import com.act.biointerpretation.sarinference.SarTreeNode.ScoringFunctions
@@ -103,15 +104,21 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     opts
   }
 
-  object WorkflowSteps extends Enumeration {
-    type WorkflowSteps = Value
+  object WorkflowSteps {
+    sealed abstract class Step(val value: String) {
+      override def toString: String = value
+    }
+    case object EXPANSION extends Step("EXPANSION")
+    case object LCMS extends Step("LCMS")
+    case object CLUSTERING extends Step("CLUSTERING")
+    case object SAR_SCORING extends Step("SAR_SCORING")
+    case object PRODUCT_SCORING extends Step("PRODUCT_SCORING")
+    case object MESH_RESULTS extends Step("MESH_RESULTS")
 
-    val EXPANSION = Value("EXPANSION")
-    val LCMS = Value("LCMS")
-    val CLUSTERING = Value("CLUSTERING")
-    val SAR_SCORING = Value("SAR_SCORING")
-    val PRODUCT_SCORING = Value("PRODUCT_SCORING")
-    val MESH_RESULTS = Value("MESH_RESULTS")
+    def withName(name: String): Option[Step] = {
+      names.find(n => n.value.equals(name))
+    }
+    private def names = List(EXPANSION, LCMS, CLUSTERING, SAR_SCORING, PRODUCT_SCORING, MESH_RESULTS)
   }
 
   // Implement this with the job structure you want to run to define a workflow
@@ -285,7 +292,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     /**
       * Decide which steps to run based on the StartingPoint supplied, or run the entire workflow by default
       */
-    def getStepFromCommandline(optionVal: String, defaultStep: WorkflowSteps.Value): WorkflowSteps.Value = {
+    def getStepFromCommandline(optionVal: String, defaultStep: WorkflowSteps.Step): WorkflowSteps.Step = {
       if (cl.hasOption(optionVal)) {
         try {
           return WorkflowSteps.withName(cl.getOptionValue(optionVal))
