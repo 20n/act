@@ -152,7 +152,7 @@ def two_sample_alignment(sample_one, sample_two, tolerance_mz, tolerance_time):
 def __align_two_samples(sample_one, sample_two, tolerance_mz, tolerance_time, 
                         get_mz_sample_one, get_rt_sample_one, add_to_list):
     # Sample one is some variant of peaks such that we can sort them by their RT and MZ using the supplied functions.
-    # We require that same two is a single list of peaks, or a single list
+    # We require that sample two is a single list of peaks, or a single list
     # of things that have the same interface as a peak
     sample_one = sorted(sample_one, key=lambda data: (get_mz_sample_one(data), get_rt_sample_one(data)))
     sample_two = sorted(sample_two, key=lambda data: (data.get_mz(), data.get_rt()))
