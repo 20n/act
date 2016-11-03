@@ -33,7 +33,7 @@ object SparkWrapper extends ToolWrapper {
   def assembleJarAtRuntime(assembledJarLocation: String, useCached: Boolean = false): ShellJob = {
     if (useCached && new File(assembledJarLocation).exists()) {
       // Placeholder
-      val job = constructJob("Assembled JAR in Cache", None, args = List(""))
+      val job = constructJob("Assembled JAR in Cache", None, args = List("pwd"))
       job.doNotWriteOutputStream()
       return job
     }

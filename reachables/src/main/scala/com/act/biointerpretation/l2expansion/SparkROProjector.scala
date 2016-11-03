@@ -2,16 +2,13 @@ package com.act.biointerpretation.l2expansion
 
 import java.io.{BufferedWriter, File, FileWriter}
 
-import breeze.linalg
-import breeze.linalg.reverse
 import chemaxon.license.LicenseManager
 import chemaxon.marvin.io.MolExportException
 import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
-import com.act.biointerpretation.l2expansion.SparkROProjector.InchiResult
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
+import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.jobs.management.JobManager
-import com.act.workflow.tool_manager.jobs.{Job, ShellJob}
 import com.act.workflow.tool_manager.tool_wrappers.SparkWrapper
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.log4j.LogManager
@@ -22,6 +19,14 @@ import spray.json._
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+
+case class InchiResult(substrate: List[String], ros: String, products: List[String])
+
+object InchiResultProtocol extends DefaultJsonProtocol {
+  implicit val inchiFormat = jsonFormat3(InchiResult)
+}
+
+import com.act.biointerpretation.l2expansion.InchiResultProtocol._
 
 // TODO Allow to be called from outside of CLI so we can programmatically spark project (Possibly using Spark Workflow)?
 object SparkMoleculeProjector {
@@ -98,11 +103,6 @@ object SparkMoleculeProjector {
 }
 
 object SparkROProjector {
-  private val LOGGER = LogManager.getLogger(getClass)
-
-  private val SPARK_LOG_LEVEL = "WARN"
-  private val DEFAULT_SPARK_MASTER = "spark://spark-master:7077"
-
   val OPTION_EXHAUSTIVE = "e"
   val OPTION_SUBSTRATES_LISTS = "i"
   val OPTION_LICENSE_FILE = "l"
@@ -110,93 +110,11 @@ object SparkROProjector {
   val OPTION_OUTPUT_DIRECTORY = "o"
   val OPTION_REVERSE = "r"
   val OPTION_VALID_CHEMICAL_TYPE = "v"
-
-  def getCommandLineOptions: Options = {
-    val options = List[CliOption.Builder](
-      CliOption.builder(OPTION_LICENSE_FILE).
-        required(true).
-        hasArg.
-        longOpt("license-file")
-        .desc("A path to the Chemaxon license file to load, mainly for checking license validity"),
-
-      CliOption.builder(OPTION_SUBSTRATES_LISTS).
-        required(true).
-        hasArgs.
-        longOpt("substrates-list").
-        desc("A list of substrate InChIs onto which to project ROs"),
-
-      CliOption.builder(OPTION_OUTPUT_DIRECTORY).
-        required(true).
-        hasArg.
-        longOpt("output-directory").
-        desc("A directory in which to write per-RO result files"),
-
-      CliOption.builder(OPTION_VALID_CHEMICAL_TYPE).
-        longOpt("valid-chemical-types").
-        hasArg.
-        desc("A molecule string format. Currently valid types are inchi, stdInchi, smiles, and smarts.  " +
-          s"By default, uses stdInChI which " +
-          s"is the format '${MoleculeFormat.getExportString(MoleculeFormat.stdInchi)}'.  " +
-          s"Possible values are: \n${MoleculeFormat.listPossibleFormats().mkString("\n")}"),
-
-      CliOption.builder(OPTION_SPARK_MASTER).
-        longOpt("spark-master").
-        desc("Where to look for the spark master connection. " +
-          s"Uses \" $DEFAULT_SPARK_MASTER \" by default."),
-
-      CliOption.builder(OPTION_REVERSE).
-        longOpt("reverse").
-        desc("Flag to reverse all reactions."),
-
-      CliOption.builder(OPTION_EXHAUSTIVE).
-        longOpt("exhaustive").
-        desc("Flag to indicate that substrates should be reacted until exhaustion, " +
-          "meaning all possible reactions occur and are returned.  " +
-          "Can be quite expensive for substrates with a large quantity of reaction sites."),
-
-      CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
-    )
-
-    val opts: Options = new Options()
-    for (opt <- options) {
-      opts.addOption(opt.build)
-    }
-    opts
-  }
-
   val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   val HELP_MESSAGE = "A Spark job that will project the set of validation ROs over a list of substrates."
-  HELP_FORMATTER.setWidth(100)
-
-  // The following were stolen (in haste) from Workflow.scala.
-  def parseCommandLineOptions(args: Array[String]): CommandLine = {
-    val opts = getCommandLineOptions
-
-    // Parse command line options
-    var cl: Option[CommandLine] = None
-    try {
-      val parser = new DefaultParser()
-      cl = Option(parser.parse(opts, args))
-    } catch {
-      case e: ParseException =>
-        LOGGER.error(s"Argument parsing failed: ${e.getMessage}\n")
-        exitWithHelp(opts)
-    }
-
-    if (cl.isEmpty) {
-      LOGGER.error("Detected that command line parser failed to be constructed.")
-      exitWithHelp(opts)
-    }
-
-    if (cl.get.hasOption("help")) exitWithHelp(opts)
-
-    cl.get
-  }
-
-  def exitWithHelp(opts: Options): Unit = {
-    HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
-    System.exit(1)
-  }
+  private val LOGGER = LogManager.getLogger(getClass)
+  private val SPARK_LOG_LEVEL = "WARN"
+  private val DEFAULT_SPARK_MASTER = "spark://spark-master:7077"
 
   def main(args: Array[String]): Unit = {
     val cl = parseCommandLineOptions(args)
@@ -265,6 +183,92 @@ object SparkROProjector {
     })
 
     handleProjectionTermination(resultsRDD, outputDir)
+  }
+
+  HELP_FORMATTER.setWidth(100)
+
+  def getCommandLineOptions: Options = {
+    val options = List[CliOption.Builder](
+      CliOption.builder(OPTION_LICENSE_FILE).
+        required(true).
+        hasArg.
+        longOpt("license-file")
+        .desc("A path to the Chemaxon license file to load, mainly for checking license validity"),
+
+      CliOption.builder(OPTION_SUBSTRATES_LISTS).
+        required(true).
+        hasArgs.
+        valueSeparator(',').
+        longOpt("substrates-list").
+        desc("A list of substrate InChIs onto which to project ROs"),
+
+      CliOption.builder(OPTION_OUTPUT_DIRECTORY).
+        required(true).
+        hasArg.
+        longOpt("output-directory").
+        desc("A directory in which to write per-RO result files"),
+
+      CliOption.builder(OPTION_VALID_CHEMICAL_TYPE).
+        longOpt("valid-chemical-types").
+        hasArg.
+        desc("A molecule string format. Currently valid types are inchi, stdInchi, smiles, and smarts.  " +
+          s"By default, uses stdInChI which " +
+          s"is the format '${MoleculeFormat.getExportString(MoleculeFormat.stdInchi)}'.  " +
+          s"Possible values are: \n${MoleculeFormat.listPossibleFormats().mkString("\n")}"),
+
+      CliOption.builder(OPTION_SPARK_MASTER).
+        longOpt("spark-master").
+        desc("Where to look for the spark master connection. " +
+          s"Uses $DEFAULT_SPARK_MASTER by default."),
+
+      CliOption.builder(OPTION_REVERSE).
+        longOpt("reverse").
+        desc("Flag to reverse all reactions."),
+
+      CliOption.builder(OPTION_EXHAUSTIVE).
+        longOpt("exhaustive").
+        desc("Flag to indicate that substrates should be reacted until exhaustion, " +
+          "meaning all possible reactions occur and are returned.  " +
+          "Can be quite expensive for substrates with a large quantity of reaction sites."),
+
+      CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
+    )
+
+    val opts: Options = new Options()
+    for (opt <- options) {
+      opts.addOption(opt.build)
+    }
+    opts
+  }
+
+  // The following were stolen (in haste) from Workflow.scala.
+  def parseCommandLineOptions(args: Array[String]): CommandLine = {
+    val opts = getCommandLineOptions
+
+    // Parse command line options
+    var cl: Option[CommandLine] = None
+    try {
+      val parser = new DefaultParser()
+      cl = Option(parser.parse(opts, args))
+    } catch {
+      case e: ParseException =>
+        LOGGER.error(s"Argument parsing failed: ${e.getMessage}\n")
+        exitWithHelp(opts)
+    }
+
+    if (cl.isEmpty) {
+      LOGGER.error("Detected that command line parser failed to be constructed.")
+      exitWithHelp(opts)
+    }
+
+    if (cl.get.hasOption("help")) exitWithHelp(opts)
+
+    cl.get
+  }
+
+  def exitWithHelp(opts: Options): Unit = {
+    HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
+    System.exit(1)
   }
 
   def handleProjectionTermination(resultsRDD: RDD[InchiResult], outputDir: File): Unit = {
@@ -388,16 +392,21 @@ object SparkROProjector {
       }
     )
 
+    val conditionalArgs: ListBuffer[String] = new ListBuffer()
+    if (exhaustive) conditionalArgs.append(s"-$OPTION_EXHAUSTIVE")
+    if (reverse) conditionalArgs.append(s"-$OPTION_REVERSE")
+
+
     val classArgs: List[String] = List(
-      s"-$OPTION_EXHAUSTIVE", exhaustive.toString,
-      s"-$OPTION_REVERSE", reverse.toString,
       s"-$OPTION_LICENSE_FILE", chemaxonLicense.getAbsolutePath,
       s"-$OPTION_OUTPUT_DIRECTORY", workingDirectory.getAbsolutePath,
       s"-$OPTION_SUBSTRATES_LISTS", substrateFiles.mkString(",")
-    )
+    ) ::: conditionalArgs.toList
+
+
 
     sparkJob.thenRun(
-      SparkWrapper.runClassPath(assembledJar, sparkMaster)(getClass.getCanonicalName, List())(memory))
+      SparkWrapper.runClassPath(assembledJar, sparkMaster)(getClass.getCanonicalName.replace("$", ""), classArgs)(memory))
 
     // Block until finished
     JobManager.startJobAndAwaitUntilWorkflowComplete(sparkJob)
@@ -405,9 +414,4 @@ object SparkROProjector {
     val outputResults = new File(workingDirectory, "projectedReactions")
     scala.io.Source.fromFile(outputResults).getLines().mkString.parseJson.convertTo[List[InchiResult]]
   }
-
-
-
-  case class InchiResult(substrate: List[String], ros: String, products: List[String])
-
 }
