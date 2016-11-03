@@ -80,7 +80,7 @@ public class ReactionProjector {
   /**
    * Run the given reactor until it produces the expected product. Reactor must produce one product at a time.
    *
-   * @param reactor The reactor to run.
+   * @param reactor         The reactor to run.
    * @param expectedProduct The product we expect to see.
    * @return The produced product; this is necessary because the reactor will produce the product with atom maps
    * corresponding to the substrate, whereas the expectedProduct Molecule will not have such atom maps.
@@ -130,15 +130,17 @@ public class ReactionProjector {
   /**
    * Get the results of a reaction in list form, rather than as a map from substrates to products.
    *
-   * @param mols The substrates.
+   * @param mols    The substrates.
    * @param reactor The reactor.
+   * @param maxProducts The maximum number of products to compute before exiting.  No limit is imposed for max values
+   *                    of null or 0.
    * @return A list of product sets produced by this reaction.
    * @throws IOException
    * @throws ReactionException
    */
-  public List<Molecule[]> getAllProjectedProductSets(Molecule[] mols, Reactor reactor)
+  public List<Molecule[]> getAllProjectedProductSets(Molecule[] mols, Reactor reactor, Integer maxProducts)
       throws IOException, ReactionException {
-    Map<Molecule[], List<Molecule[]>> map = getRoProjectionMap(mols, reactor);
+    Map<Molecule[], List<Molecule[]>> map = getRoProjectionMap(mols, reactor, maxProducts);
 
     List<Molecule[]> allProductSets = new ArrayList<>();
 
@@ -149,20 +151,28 @@ public class ReactionProjector {
     return allProductSets;
   }
 
+  public List<Molecule[]> getAllProjectedProductSets(Molecule[] mols, Reactor reactor)
+      throws IOException, ReactionException {
+    return getAllProjectedProductSets(mols, reactor, null);
+  }
+
   /**
    * This function takes as input an array of molecules and a Reactor and outputs the products of the transformation.
    * The results are returned as a map from orderings of the substrates to the products produced by those orderings.
    * In most cases the map will have only one entry, but in some cases different orderings of substrates can lead to
    * different valid predictions.
-   *
+   * <p>
    * Note that, for efficient two substrate expansion, the specialized method
    * fastProjectionOfTwoSubstrateRoOntoTwoMolecules should be used instead of this one.
    *
-   * @param mols An array of molecules representing the chemical reactants.
+   * @param mols    An array of molecules representing the chemical reactants.
    * @param reactor A Reactor representing the reaction to apply.
+   * @param maxProducts The maximum number of products to compute before exiting.  No limit is imposed for max values
+   *                    of null or 0.
    * @return The substrate -> product map.
    */
-  public Map<Molecule[], List<Molecule[]>> getRoProjectionMap(Molecule[] mols, Reactor reactor) throws ReactionException, IOException {
+  public Map<Molecule[], List<Molecule[]>> getRoProjectionMap(Molecule[] mols, Reactor reactor, Integer maxProducts)
+      throws ReactionException, IOException {
 
     Map<Molecule[], List<Molecule[]>> resultsMap = new HashMap<>();
 
@@ -177,7 +187,7 @@ public class ReactionProjector {
     // we have to use the ConcurrentReactorProcessor API since it gives us the ability to combinatorially explore all
     // possible matching combinations of reactants on the substrates of the RO.
     if (mols.length == 1) {
-      List<Molecule[]> productSets = getProductsFixedOrder(reactor, mols);
+      List<Molecule[]> productSets = getProductsFixedOrder(reactor, mols, maxProducts);
       if (!productSets.isEmpty()) {
         resultsMap.put(mols, productSets);
       }
@@ -232,10 +242,18 @@ public class ReactionProjector {
 
         substrateHashes.add(thisHash);
         resultsMap.put(reactants, results);
+        if (maxProducts != null && maxProducts > 0 && resultsMap.size() >= maxProducts) {
+          break;
+        }
       }
 
       return resultsMap;
     }
+  }
+
+  public Map<Molecule[], List<Molecule[]>> getRoProjectionMap(Molecule[] mols, Reactor reactor)
+      throws ReactionException, IOException {
+    return getRoProjectionMap(mols, reactor, null);
   }
 
   /**
@@ -243,7 +261,7 @@ public class ReactionProjector {
    * cleans and returns the results of that projection.
    * TODO: Expand this class to handle 3 or 4 substrate reactions.
    *
-   * @param mols Substrate molecules
+   * @param mols    Substrate molecules
    * @param reactor The two substrate reactor
    * @return A list of product arrays, where each array represents the products of a given reaction combination.
    * @throws ReactionException
@@ -253,7 +271,7 @@ public class ReactionProjector {
       throws ReactionException, IOException {
     Map<Molecule[], List<Molecule[]>> results = new HashMap<>();
 
-    Molecule[] firstCombinationOfSubstrates = new Molecule[] {mols[0], mols[1]};
+    Molecule[] firstCombinationOfSubstrates = new Molecule[]{mols[0], mols[1]};
     List<Molecule[]> productSets = getProductsFixedOrder(reactor, firstCombinationOfSubstrates);
     if (!productSets.isEmpty()) {
       results.put(firstCombinationOfSubstrates, productSets);
@@ -264,7 +282,7 @@ public class ReactionProjector {
       return results;
     }
 
-    Molecule[] secondCombinationOfSubstrates = new Molecule[] {mols[1], mols[0]};
+    Molecule[] secondCombinationOfSubstrates = new Molecule[]{mols[1], mols[0]};
     productSets = getProductsFixedOrder(reactor, firstCombinationOfSubstrates);
     if (!productSets.isEmpty()) {
       results.put(secondCombinationOfSubstrates, productSets);
@@ -277,12 +295,14 @@ public class ReactionProjector {
    * Gets all product sets that a Reactor produces when applies to a given array of substrates, in only the order
    * that they are already in.
    *
-   * @param reactor The Reactor.
+   * @param reactor    The Reactor.
    * @param substrates The substrates.
+   * @param maxProducts The maximum number of products to compute before exiting.  No limit is imposed for max values
+   *                    of null or 0.
    * @return A list of product arrays returned by the Reactor.
    * @throws ReactionException
    */
-  public List<Molecule[]> getProductsFixedOrder(Reactor reactor, Molecule[] substrates)
+  public List<Molecule[]> getProductsFixedOrder(Reactor reactor, Molecule[] substrates, Integer maxProducts)
       throws ReactionException {
 
     reactor.setReactants(substrates);
@@ -291,11 +311,18 @@ public class ReactionProjector {
     Molecule[] products;
     while ((products = reactor.react()) != null) {
       results.add(products);
+      if (maxProducts != null && maxProducts > 0 && results.size() >= maxProducts) {
+        break;
+      }
     }
 
     return results;
   }
 
+  public List<Molecule[]> getProductsFixedOrder(Reactor reactor, Molecule[] substrates)
+      throws ReactionException {
+    return getProductsFixedOrder(reactor, substrates, null);
+  }
   /**
    * Builds a string which will be identical for two molecule arrays which represent the same molecules
    * in the same order, and different otherwise.
