@@ -47,8 +47,6 @@ public class LcmsChemicalFormulaTest {
 
     acetaminophenFormulaString = "C8H9NO2";
     sulfuricAcidFormulaString = "H2O4S";
-
-
   }
 
   @Test
@@ -74,16 +72,35 @@ public class LcmsChemicalFormulaTest {
 
   @Test
   public void testFormulaTransformations() {
-    List<String> testCases = Arrays.asList("C20BrCl2", "BrCl2", "BrC2", "CCl", "ClC", "IFClH20CBrN10P2");
-    List<ChemicalFormula> testCasesFormulae = testCases.stream().map(formula -> new LcmsChemicalFormula(formula)).collect(Collectors.toList());
-    List<String> testCasesHillOrderedExpected = Arrays.asList("C20BrCl2", "BrCl2", "C2Br", "CCl", "CCl", "CH20BrClFIN10P2");
+    List<String> testCases = Arrays.asList(
+        "C20BrCl2", // test correct parsing of halogens
+        "BrCl2", // test correct parsing of halogens
+        "BrC2",
+        "CCl", // chlorine vs carbon + ordering
+        "ClC", // chlorine vs carbon + ordering
+        "IFClH20CBrN10P2", // test hill system ordering (case contains carbon)
+        "H10ClBrN4O2", // test hill system ordering (case does not contains carbon)
+        "IFClH20BrN10P2" // test hill system ordering (case does not contains carbon)
+    );
+
+    List<String> testCasesHillOrderedExpected = Arrays.asList(
+        "C20BrCl2",
+        "BrCl2",
+        "C2Br",
+        "CCl",
+        "CCl",
+        "CH20BrClFIN10P2",
+        "BrClH10N4O2"
+    );
+
+    List<ChemicalFormula> testCasesFormulae = testCases.stream().map(LcmsChemicalFormula::new).collect(Collectors.toList());
     List<String> testCasesHillOrdered = testCasesFormulae.stream().map(ChemicalFormula::toString).collect(Collectors.toList());
 
     assertEquals(testCasesHillOrderedExpected, testCasesHillOrdered);
 
-    Iterator<Integer> testCasesExpectedC = Arrays.asList(20, 0, 2, 1, 1, 1).iterator();
-    Iterator<Integer> testCasesExpectedBr = Arrays.asList(1, 1, 1, 0, 0, 1).iterator();
-    Iterator<Integer> testCasesExpectedCl = Arrays.asList(2, 2, 0, 1, 1, 1).iterator();
+    Iterator<Integer> testCasesExpectedC = Arrays.asList(20, 0, 2, 1, 1, 1, 0).iterator();
+    Iterator<Integer> testCasesExpectedBr = Arrays.asList(1, 1, 1, 0, 0, 1, 1).iterator();
+    Iterator<Integer> testCasesExpectedCl = Arrays.asList(2, 2, 0, 1, 1, 1, 1).iterator();
 
     Iterator<ChemicalFormula> testCasesFormulaeIterator = testCasesFormulae.iterator();
 

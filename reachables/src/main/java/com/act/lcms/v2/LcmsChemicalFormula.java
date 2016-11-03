@@ -12,9 +12,8 @@ import java.util.regex.Pattern;
 
 public class LcmsChemicalFormula implements ChemicalFormula {
 
-  private static final String PATTERN_STRING = "([A-Z][a-z]?)(\\d*)";
-
-  private static Pattern PATTERN = Pattern.compile(PATTERN_STRING);
+  // The following pattern matches element + count combinations in a formula string.
+  private static final Pattern ELEMENT_COUNT_PATTERN = Pattern.compile("([A-Z][a-z]?)(\\d*)");
 
   private Map<Element, Integer> elementCounts;
   private String name;
@@ -58,27 +57,30 @@ public class LcmsChemicalFormula implements ChemicalFormula {
         getElementCounts().equals(((ChemicalFormula) chemicalFormula).getElementCounts());
   }
 
-  private TreeMap<Element, Integer> getSortedElementCounts() {
-    TreeMap<Element, Integer> treeMap = new TreeMap<>(
-        new Comparator<Element>() {
-          @Override
-          public int compare(Element e1, Element e2) {
-            if (e1.getSymbol().equals(e2.getSymbol())) {
-              return 0;
-            } else if (e1.getSymbol().equals("C")) {
-              return -1;
-            } else if (e2.getSymbol().equals("C")) {
-              return 1;
-            } else if (e1.getSymbol().equals("H")) {
-              return -1;
-            } else if (e2.getSymbol().equals("H")) {
-              return 1;
-            } else {
-              return e1.getSymbol().compareTo(e2.getSymbol());
-            }
-          }
+  private Comparator<Element> getElementComparator(ChemicalFormula formula) {
+    if (formula.getElementCount(LcmsCommonElements.CARBON.getElement()) > 0) {
+      return (Element e1, Element e2) -> {
+        if (e1.getSymbol().equals(e2.getSymbol())) {
+          return 0;
+        } else if (e1.getSymbol().equals("C")) {
+          return -1;
+        } else if (e2.getSymbol().equals("C")) {
+          return 1;
+        } else if (e1.getSymbol().equals("H")) {
+          return -1;
+        } else if (e2.getSymbol().equals("H")) {
+          return 1;
+        } else {
+          return e1.getSymbol().compareTo(e2.getSymbol());
         }
-    );
+      };
+    } else {
+      return (Element e1, Element e2) -> e1.getSymbol().compareTo(e2.getSymbol());
+    }
+  }
+
+  private TreeMap<Element, Integer> getSortedElementCounts() {
+    TreeMap<Element, Integer> treeMap = new TreeMap<>(getElementComparator(this));
     treeMap.putAll(elementCounts);
     return treeMap;
   }
@@ -86,7 +88,7 @@ public class LcmsChemicalFormula implements ChemicalFormula {
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
-    for (Map.Entry<Element, Integer> entry: getSortedElementCounts().entrySet()) {
+    for (Map.Entry<Element, Integer> entry : getSortedElementCounts().entrySet()) {
       builder.append(entry.getKey().getSymbol());
       Integer count = entry.getValue();
       if (count > 1) {
@@ -98,7 +100,12 @@ public class LcmsChemicalFormula implements ChemicalFormula {
 
   public void fromString(String formulaString) {
     elementCounts = new HashMap<>();
-    Matcher matches = PATTERN.matcher(formulaString);
+    Matcher matches = ELEMENT_COUNT_PATTERN.matcher(formulaString);
+    // Example: in "C8H9NO2", there will be 4 matches for this pattern, each of which having two groups.
+    // First match: "C8", with group 1 being "C" and group 2 being "8"
+    // Second match: "H9", group 1 is "H", group 2 is "9"
+    // Third match: "N", group 1 is "N", group 2 is "" (empty string)
+    // Fourth match: "O2", group 1 is "O" and group 2 is "2"
     while (matches.find()) {
       Element element = new LcmsElement(matches.group(1));
       Integer count = (matches.group(2).equals("")) ? 1 : Integer.parseInt(matches.group(2));
