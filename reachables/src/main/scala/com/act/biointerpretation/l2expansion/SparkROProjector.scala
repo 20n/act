@@ -110,8 +110,8 @@ object SparkROProjector {
   val OPTION_OUTPUT_DIRECTORY = "o"
   val OPTION_REVERSE = "r"
   val OPTION_VALID_CHEMICAL_TYPE = "v"
-  val HELP_FORMATTER: HelpFormatter = new HelpFormatter
-  val HELP_MESSAGE = "A Spark job that will project the set of validation ROs over a list of substrates."
+  private val HELP_FORMATTER: HelpFormatter = new HelpFormatter
+  private val HELP_MESSAGE = "A Spark job that will project the set of validation ROs over a list of substrates."
   private val LOGGER = LogManager.getLogger(getClass)
   private val SPARK_LOG_LEVEL = "WARN"
   private val DEFAULT_SPARK_MASTER = "spark://spark-master:7077"
@@ -159,7 +159,10 @@ object SparkROProjector {
     val conf = new SparkConf().
       setAppName("Spark RO Projection").
       setMaster(cl.getOptionValue(OPTION_SPARK_MASTER, DEFAULT_SPARK_MASTER))
+
+    // Allow multiple jobs to allocate
     conf.set("spark.scheduler.mode", "FAIR")
+
     conf.getAll.foreach(x => LOGGER.info(s"Spark config pair: ${x._1}: ${x._2}"))
     val spark = new SparkContext(conf)
 
@@ -187,7 +190,7 @@ object SparkROProjector {
 
   HELP_FORMATTER.setWidth(100)
 
-  def getCommandLineOptions: Options = {
+  private def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
       CliOption.builder(OPTION_LICENSE_FILE).
         required(true).
@@ -242,7 +245,7 @@ object SparkROProjector {
   }
 
   // The following were stolen (in haste) from Workflow.scala.
-  def parseCommandLineOptions(args: Array[String]): CommandLine = {
+  private def parseCommandLineOptions(args: Array[String]): CommandLine = {
     val opts = getCommandLineOptions
 
     // Parse command line options
@@ -266,12 +269,12 @@ object SparkROProjector {
     cl.get
   }
 
-  def exitWithHelp(opts: Options): Unit = {
+  private def exitWithHelp(opts: Options): Unit = {
     HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
     System.exit(1)
   }
 
-  def handleProjectionTermination(resultsRDD: RDD[InchiResult], outputDir: File): Unit = {
+  private def handleProjectionTermination(resultsRDD: RDD[InchiResult], outputDir: File): Unit = {
     /* This next part represents us jumping through some hoops (that are possibly on fire) in order to make Spark do
      * the thing we want it to do: project in parallel but stream results back for storage.
      *
@@ -320,9 +323,12 @@ object SparkROProjector {
     // Start array and write
     buffer.write("[")
 
+    val resultsIterator = resultsRDD.toLocalIterator
+    buffer.write(s"${resultsIterator.next().toJson.prettyPrint}")
+
     // For each element in the iterator, write as a new element
     // TODO Consider buffer flushing after each write?
-    resultsRDD.toLocalIterator.foreach(result => {
+    resultsIterator.foreach(result => {
       buffer.write(s",${result.toJson.prettyPrint}")
     })
 
@@ -357,6 +363,7 @@ object SparkROProjector {
       if (iteratePointer._1 < filteredLists(iteratePointer._2).length - 1) {
         pointers(iteratePointer._2) += 1
       } else {
+        // If a pointer has exceeded the limit, we need to carry until it is resolved.
         var index = iteratePointer._2
         pointers(index) += 1
         while (pointers(index) == filteredLists(index).length && index > 0) {
@@ -374,9 +381,7 @@ object SparkROProjector {
                                    (memory: String = "4GB", sparkMaster: String = DEFAULT_SPARK_MASTER, useCached: Boolean = false)
                                    (inputInchis: List[L2InchiCorpus])
                                    (exhaustive: Boolean = false, reverse: Boolean = false): List[InchiResult] = {
-
     val assembledJar = "target/scala-2.10/reachables-assembly-0.1.jar"
-    val sparkJob: Job = SparkWrapper.assembleJarAtRuntime(assembledJar, useCached)
 
     if (!workingDirectory.exists()) workingDirectory.mkdirs()
 
@@ -403,14 +408,14 @@ object SparkROProjector {
       s"-$OPTION_SUBSTRATES_LISTS", substrateFiles.mkString(",")
     ) ::: conditionalArgs.toList
 
-
-
-    sparkJob.thenRun(
-      SparkWrapper.runClassPath(assembledJar, sparkMaster)(getClass.getCanonicalName.replace("$", ""), classArgs)(memory))
+    // We need to replace the $ because scala ends the canonical name with that.
+    val sparkJob =
+      SparkWrapper.runClassPath(assembledJar, sparkMaster)(getClass.getCanonicalName.replace("$", ""), classArgs)(memory)
 
     // Block until finished
     JobManager.startJobAndAwaitUntilWorkflowComplete(sparkJob)
 
+    // Reload file from disk
     val outputResults = new File(workingDirectory, "projectedReactions")
     scala.io.Source.fromFile(outputResults).getLines().mkString.parseJson.convertTo[List[InchiResult]]
   }
