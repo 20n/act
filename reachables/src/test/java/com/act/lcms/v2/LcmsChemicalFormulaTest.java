@@ -90,7 +90,8 @@ public class LcmsChemicalFormulaTest {
         "CCl",
         "CCl",
         "CH20BrClFIN10P2",
-        "BrClH10N4O2"
+        "BrClH10N4O2",
+        "BrClFH20IN10P2"
     );
 
     List<ChemicalFormula> testCasesFormulae = testCases.stream().map(LcmsChemicalFormula::new).collect(Collectors.toList());
@@ -98,9 +99,9 @@ public class LcmsChemicalFormulaTest {
 
     assertEquals(testCasesHillOrderedExpected, testCasesHillOrdered);
 
-    Iterator<Integer> testCasesExpectedC = Arrays.asList(20, 0, 2, 1, 1, 1, 0).iterator();
-    Iterator<Integer> testCasesExpectedBr = Arrays.asList(1, 1, 1, 0, 0, 1, 1).iterator();
-    Iterator<Integer> testCasesExpectedCl = Arrays.asList(2, 2, 0, 1, 1, 1, 1).iterator();
+    Iterator<Integer> testCasesExpectedC = Arrays.asList(20, 0, 2, 1, 1, 1, 0, 0).iterator();
+    Iterator<Integer> testCasesExpectedBr = Arrays.asList(1, 1, 1, 0, 0, 1, 1, 1).iterator();
+    Iterator<Integer> testCasesExpectedCl = Arrays.asList(2, 2, 0, 1, 1, 1, 1, 1).iterator();
 
     Iterator<ChemicalFormula> testCasesFormulaeIterator = testCasesFormulae.iterator();
 
