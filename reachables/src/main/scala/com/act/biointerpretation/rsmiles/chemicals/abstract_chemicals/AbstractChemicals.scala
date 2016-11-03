@@ -3,7 +3,7 @@ package com.act.biointerpretation.rsmiles.chemicals.abstract_chemicals
 import act.server.MongoDB
 import chemaxon.formats.MolFormatException
 import chemaxon.marvin.io.MolExportException
-import com.act.analysis.chemicals.molecules.MoleculeFormat.CleaningOptions
+import com.act.analysis.chemicals.molecules.MoleculeFormat.Cleaning
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.ChemicalInformation
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities}
@@ -18,7 +18,7 @@ object AbstractChemicals {
   // Chemaxon technically uses smarts when we say Smiles, so we just make it explicit here.
   // We do the cleaning so that we can get rid of a lot of the junk that would make down-stream processing hard.
   val cleanSmartsFormat = new MoleculeFormat.MoleculeFormatType(MoleculeFormat.smarts.value,
-    List(CleaningOptions.neutralize, CleaningOptions.clean2d, CleaningOptions.aromatize))
+    List(Cleaning.neutralize, Cleaning.clean2d, Cleaning.aromatize))
 
   def getAbstractChemicals(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.MoleculeFormatType): ParMap[Long, ChemicalInformation] = {
     logger.info("Finding abstract chemicals.")

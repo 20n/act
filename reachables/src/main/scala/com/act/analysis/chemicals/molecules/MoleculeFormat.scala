@@ -30,11 +30,11 @@ object MoleculeFormat extends Enumeration {
   val stdInchi = MoleculeFormatType(Value(stdInchiString), List())
   val noAuxInchi = MoleculeFormatType(Value(noAuxInchiString), List())
   val strictInchi = MoleculeFormatType(Value(strictInchiString), List())
-  val strictNoStereoInchi = MoleculeFormatType(Value(strictNoStereoInchiString), List(CleaningOptions.removeStereo))
+  val strictNoStereoInchi = MoleculeFormatType(Value(strictNoStereoInchiString), List(Cleaning.removeStereo))
   val smiles = MoleculeFormatType(Value(smilesString), List())
   val smarts = MoleculeFormatType(Value(smartsString), List())
-  val noStereoSmarts = MoleculeFormatType(Value(noStereoSmartsString), List(CleaningOptions.removeStereo))
-  val noStereoAromatizedSmarts = MoleculeFormatType(Value(noStereoAromatizedSmartsString), List(CleaningOptions.removeStereo))
+  val noStereoSmarts = MoleculeFormatType(Value(noStereoSmartsString), List(Cleaning.removeStereo))
+  val noStereoAromatizedSmarts = MoleculeFormatType(Value(noStereoAromatizedSmartsString), List(Cleaning.removeStereo))
 
   private val exportMap: Map[MoleculeFormat.Value, String] = Map(
     inchi.getValue -> "inchi",
@@ -78,14 +78,14 @@ object MoleculeFormat extends Enumeration {
 
     val splitString = s.split(cleaningSeparator, 2).toList
 
-    val cleaningOptions: List[CleaningOptions.Value] =
+    val cleaningOptions: List[Cleaning.Options] =
       if (splitString.length == 1)
         List()
       else
         splitString(1).split(",").toList.flatMap(cleaningSetting => {
           try {
             if (!cleaningSetting.equals("")) {
-              Option(CleaningOptions.withName(cleaningSetting))
+              Cleaning.withName(cleaningSetting)
             } else
               None
           } catch {
@@ -111,14 +111,14 @@ object MoleculeFormat extends Enumeration {
 
 
   object MoleculeFormatType {
-    def apply(moleculeFormatType: MoleculeFormatType, cleaning: List[CleaningOptions.Value]): MoleculeFormatType = {
+    def apply(moleculeFormatType: MoleculeFormatType, cleaning: List[Cleaning.Options]): MoleculeFormatType = {
       new MoleculeFormatType(moleculeFormatType.getValue, (cleaning ::: moleculeFormatType.cleaningOptions).distinct)
     }
   }
 
 
-  case class MoleculeFormatType(value: Value, cleaningOptions: List[CleaningOptions.Value]) {
-    def this(moleculeFormatType: MoleculeFormatType, cleaning: List[CleaningOptions.Value]) {
+  case class MoleculeFormatType(value: Value, cleaningOptions: List[Cleaning.Options]) {
+    def this(moleculeFormatType: MoleculeFormatType, cleaning: List[Cleaning.Options]) {
       // Allow for concatenating of a native type and supplied types.
       this(moleculeFormatType.getValue, (cleaning ::: moleculeFormatType.cleaningOptions).distinct)
     }
@@ -133,7 +133,7 @@ object MoleculeFormat extends Enumeration {
   }
 
 
-  object CleaningOptions extends Enumeration {
+  object Cleaning {
     private val neutralizeString = "neutralize"
     private val clean2dString = "clean2d"
     private val clean3dString = "clean3d"
@@ -141,12 +141,18 @@ object MoleculeFormat extends Enumeration {
     private val removeIsotopesString = "removeIsotopes"
     private val removeStereoString = "removeStereo"
 
-    val neutralize = Value(neutralizeString)
-    val clean2d = Value(clean2dString)
-    val clean3d = Value(clean3dString)
-    val aromatize = Value(aromatizeString)
-    val removeIsotopes = Value(removeIsotopesString)
-    val removeStereo = Value(removeStereoString)
+    sealed abstract class Options(val name: String) {
+      def getName: String = name
+    }
+
+    case object neutralize extends Options(neutralizeString)
+    case object clean2d extends Options(clean2dString)
+    case object clean3d extends Options(clean3dString)
+    case object aromatize extends Options(aromatizeString)
+    case object removeIsotopes extends Options(removeIsotopesString)
+    case object removeStereo extends Options(removeStereoString)
+
+    private val options: List[Options] = List(neutralize, clean2d, clean3d, aromatize, removeIsotopes, removeStereo)
 
     private val cleaningFunctions = ParMap[String, (Molecule) => Unit](
       neutralizeString -> ((molecule: Molecule) => {new Standardizer("neutralize").standardize(molecule)}),
@@ -157,9 +163,13 @@ object MoleculeFormat extends Enumeration {
       removeStereoString -> ((molecule: Molecule) => {new Standardizer("clearstereo").standardize(molecule)})
     )
 
-    def applyCleaningOnMolecule(molecule: Molecule)(cleaningOption: CleaningOptions.Value): Unit = {
+    def applyCleaningOnMolecule(molecule: Molecule)(cleaningOption: Cleaning.Options): Unit = {
       // Get the correct option and apply it
-      cleaningFunctions(cleaningOption.toString)(molecule)
+      cleaningFunctions(cleaningOption.getName)(molecule)
+    }
+
+    def withName(name: String): Option[Cleaning.Options] = {
+      options.find(o => o.getName.equals(name))
     }
   }
 }

@@ -70,7 +70,7 @@ object MoleculeImporter {
       val newMolecule = MolImporter.importMol(mol, MoleculeFormat.getImportString(format))
 
       // Note: All these functions work in place on the molecule...
-      val cleaningApplyFunction = MoleculeFormat.CleaningOptions.applyCleaningOnMolecule(newMolecule)_
+      val cleaningApplyFunction = MoleculeFormat.Cleaning.applyCleaningOnMolecule(newMolecule)_
       format.cleaningOptions.foreach(cleaningApplyFunction)
 
       moleculeCache(format).put(mol, newMolecule)

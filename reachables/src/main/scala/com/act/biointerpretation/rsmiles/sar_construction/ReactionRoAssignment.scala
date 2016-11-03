@@ -108,9 +108,9 @@ object ReactionRoAssignment {
         substrateSet.map(moleculeString => MoleculeExporter.exportMolecule(
           MoleculeImporter.importMolecule(moleculeString,
             MoleculeFormatType(MoleculeFormat.stdInchi.value,
-              List(MoleculeFormat.CleaningOptions.clean2d,
-                MoleculeFormat.CleaningOptions.neutralize,
-                MoleculeFormat.CleaningOptions.aromatize))
+              List(MoleculeFormat.Cleaning.clean2d,
+                MoleculeFormat.Cleaning.neutralize,
+                MoleculeFormat.Cleaning.aromatize))
           ),
           MoleculeFormat.stdInchi))
       }).toList
@@ -132,9 +132,9 @@ object ReactionRoAssignment {
         productSet.map(moleculeString => MoleculeExporter.exportMolecule(
           MoleculeImporter.importMolecule(moleculeString,
             MoleculeFormatType(MoleculeFormat.stdInchi.value,
-              List(MoleculeFormat.CleaningOptions.clean2d,
-                MoleculeFormat.CleaningOptions.neutralize,
-                MoleculeFormat.CleaningOptions.aromatize))
+              List(MoleculeFormat.Cleaning.clean2d,
+                MoleculeFormat.Cleaning.neutralize,
+                MoleculeFormat.Cleaning.aromatize))
           ),
           MoleculeFormat.stdInchi))
       }).toList
