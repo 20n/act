@@ -138,6 +138,8 @@ public class Ero implements Serializable {
 
   @JsonIgnore
   public Reactor getReactor() throws ReactionException {
+    // We don't cache the reactor every time as by caching
+    // it we disallow concurrency operations on a single RO.
     Reactor r = new Reactor();
     r.setReactionString(this.getRo());
     return r;
