@@ -39,4 +39,18 @@ public interface ChemicalFormula {
    */
   @Override
   boolean equals(Object chemicalFormula);
+
+  /**
+   * Converts a formula to its string representation using the Hill Order system
+   * Hill Order: C's first, then H's, then others in alphabetical order.
+   * @return string representation of the formula
+   */
+  @Override
+  String toString();
+
+  /**
+   * Parses a formula from its string representation
+   * @param formula string representation of the formula
+   */
+  void fromString(String formula);
 }

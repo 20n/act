@@ -17,7 +17,7 @@ public enum LcmsCommonElements {
   private LcmsElement element;
 
   LcmsCommonElements(String symbol, Integer valency) {
-    new LcmsElement(symbol, valency);
+    element = new LcmsElement(symbol, valency);
   }
 
   public LcmsElement getElement() {

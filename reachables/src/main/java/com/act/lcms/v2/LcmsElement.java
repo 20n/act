@@ -32,7 +32,10 @@ public class LcmsElement implements Element {
   }
 
   public LcmsElement(String symbol, Integer valency) {
-    new LcmsElement(symbol);
+    this.symbol = symbol;
+    this.atomicNumber = PeriodicSystem.findAtomicNumber(this.symbol);
+    Integer massNumber = PeriodicSystem.getMostFrequentNaturalIsotope(this.atomicNumber);
+    this.mass = PeriodicSystem.getMass(this.atomicNumber, massNumber);
     this.valency = valency;
   }
 
@@ -72,4 +75,21 @@ public class LcmsElement implements Element {
     return this.valency;
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+
+    Element that = (Element) o;
+
+    if (!symbol.equals(that.getSymbol())) return false;
+    return atomicNumber.equals(that.getAtomicNumber());
+  }
+
+  @Override
+  public int hashCode() {
+    int result = symbol.hashCode();
+    result = 31 * result + atomicNumber.hashCode();
+    return result;
+  }
 }
