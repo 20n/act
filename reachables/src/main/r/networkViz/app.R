@@ -74,15 +74,20 @@ ui <- fluidPage(
     column(8, headerPanel("Network magic"), align = "center"),
     column(2)
   ),
-  sidebarPanel(
-    fileInput("dot.graph.file", label = "Choose a graph file (DOT format)"),
-    em("Try loading '/Volumes/shared-data/Michael/Humanprojection/cholesterol_stuffs/graphs/6report.dot'"),
-    em("Select a node in the graph to see its InChI representation and structure:"),
-    textOutput("shiny_return"),
-    moleculeRendererUI("molecule")
-  ),
-  mainPanel(
-    visNetworkOutput("network", height = "700px")
+  fluidRow(
+    class = "Body",
+    column(4, 
+           tagList(
+             wellPanel(
+               fileInput("dot.graph.file", label = "Choose a graph file (DOT format)"),
+               em("Try loading '/Volumes/shared-data/Michael/Humanprojection/cholesterol_stuffs/graphs/6report.dot'")
+             ),
+             em("Select a node in the graph to see its InChI representation and structure:"),
+             textOutput("shiny_return"),
+             moleculeRendererUI("molecule")  
+           )
+          ),
+    column(8, visNetworkOutput("network", height = "700px"))
   )
 )
 
