@@ -42,11 +42,8 @@ server <- function(input, output, session) {
   })
   
   output$shiny_return <- renderPrint({
-    unlist(input$current_node_id$node)
+    cat(unlist(input$current_node_id$node))
   })
-  
-  
-  
   
   observe({
     callModule(moleculeRenderer, "molecule", reactive(unlist(input$current_node_id$node)), "200px")
@@ -71,10 +68,13 @@ ui <- fluidPage(
     column(2)
   ),
   sidebarPanel(
-    fileInput("dot.graph.file", label = "Choose a graph file (DOT format)")
+    fileInput("dot.graph.file", label = "Choose a graph file (DOT format)"),
+    em("Try loading '/Volumes/shared-data/Michael/Humanprojection/cholesterol_stuffs/graphs'")
+    
   ),
   mainPanel(
     visNetworkOutput("network", height = "700px"),
+    em("Select a node in the graph to see its InChI representation and structure:"),
     textOutput("shiny_return"),
     moleculeRendererUI("molecule")
   )
