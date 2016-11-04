@@ -1,10 +1,8 @@
-package com.act.lcms
-
-import act.shared.{CmdLineParser, OptDesc}
-import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, Br, Cl, I, F, AllAtoms, MonoIsotopicMass}
+package act.shared
 
 // testing chemicals from the DB
 import act.server.MongoDB
+import act.shared.ChemicalSymbols._
 import com.act.lcms.MassCalculator.calculateMass
 
 // SMT solver
@@ -829,6 +827,8 @@ object MassToFormula {
   }
 }
 
+// Specials allow us to add specific constraints (e.g. stable chemicals, valency constraints) to the search
+// Each set comes with a constraints and a check method, for respective use in the solver / the enumeration.
 sealed trait Specials {
   type ChemicalFormula = Map[Atom, Int]
   def constraints(): BooleanExpr
@@ -839,6 +839,7 @@ sealed trait Specials {
     check(f ++ fillOut)
   }
 
+  // Handy shortcuts to construct expressions (e) or terms (t) from Atoms and coefficients
   def t(c: Int, a: Atom) = MassToFormula.term(c, a)
   def t(a: Atom) = MassToFormula.term(1, a)
   def t(c: Int) = MassToFormula.term(c)
@@ -879,7 +880,8 @@ class LessThan3xH extends Specials {
 }
 
 class ValencyConstraints extends Specials {
-  def describe() = "Valence contraints"
+  def describe() = "Valence constraints"
+
   // there cannot be more than (valence * others) - count(others)
   // because there are at max valence*other bonds to make, and max available for H
   // are in cases where all others are in a single line, e.g., alcohols
@@ -887,6 +889,8 @@ class ValencyConstraints extends Specials {
   def constraints() = {
     val ts: List[Term] = AllAtoms.map(a => t(a.maxValency, a))
     val lineBonds: Term = t(-AllAtoms.size)
+    // The following linear expression allows us enforce a valency constraint:
+    // "Number of H in formula should be <= sum of valency of other atoms - count of other atoms"
     LinExpr(ts.::(lineBonds)) >= t(H)
   }
   def check(f: ChemicalFormula) = {
@@ -905,7 +909,7 @@ class AtLeastMinFormula(minFormulaMap: Map[Atom, Int]) extends Specials {
 
   def constraints() = Multi(And, AllAtoms.map(a => moreThanMin(a)))
   def check(f: ChemicalFormula) = {
-    AllAtoms.map(a => f.getOrElse(a, 0) >= minFormulaMap.getOrElse(a, 0)).reduce(_ && _)
+    AllAtoms.forall(a => f.getOrElse(a, 0) >= minFormulaMap.getOrElse(a, 0))
   }
 }
 

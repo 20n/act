@@ -870,12 +870,12 @@ object UntargetedMetabolomics {
     val metaForInChIs = if (!mapToInChIsUsingList) {
       List()
     } else {
-      inchis.extraCodes().map(codesToJson)
+      inchis.extraCodes.map(codesToJson)
     }
     val metaForFormulae = if (!mapToFormulaUsingList) {
       List()
     } else {
-      formulae.extraCodes().map(codesToJson)
+      formulae.extraCodes.map(codesToJson)
     }
 
     val extraMetaData = Map("matching_inchi_hashes" -> metaForInChIs) ++

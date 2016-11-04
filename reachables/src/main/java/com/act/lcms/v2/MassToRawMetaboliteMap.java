@@ -6,7 +6,6 @@ import org.apache.logging.log4j.Logger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
@@ -14,7 +13,8 @@ import java.util.TreeMap;
  * This class holds the API for a {Double mass -> List<RawMetabolite> rawMetabolites} map.
  * Its purpose is to store in memory enumerated lists of structures or formulae and allow for quick lookups.
  * Along with the NavigableMap holding the data structure, an enum defines the expected kind of metabolite.
- * Note: the expectation is that the conversion to actual Metabolite objects is done outside of this API.
+ * TODO: add support to convert RawMetabolite -> Metabolite once #492 goes through and provide APIs to retrieve
+ * Metabolites directly form the map.
  */
 
 public class MassToRawMetaboliteMap {
@@ -47,7 +47,8 @@ public class MassToRawMetaboliteMap {
   /**
    * Add a RawMetabolite to the map
    */
-  public void add(Double mass, RawMetabolite rawMetabolite) {
+  public void add(RawMetabolite rawMetabolite) {
+    Double mass = rawMetabolite.getMonoIsotopicMass();
     List<RawMetabolite> matchingMetabolites = massToRawMetaboliteMap.get(mass);
     if (matchingMetabolites == null) {
       matchingMetabolites = new ArrayList<>();
@@ -59,15 +60,16 @@ public class MassToRawMetaboliteMap {
   /**
    * Retrieve all the RawMetabolites within a given mono-isotopic mass window
    */
-  public Map<Double, List<RawMetabolite>> getMassWindow(Double minMass, Double maxMass) {
-    return massToRawMetaboliteMap.subMap(minMass, maxMass);
+  public Map<Double, List<RawMetabolite>> getMassWindow(Double minMass, Double maxMass, Boolean inclusive) {
+    return massToRawMetaboliteMap.subMap(minMass, inclusive, maxMass, inclusive);
   }
 
   /**
    * Retrieve all the RawMetabolites within a given centered mono-isotopic mass window
    */
   public Map<Double, List<RawMetabolite>> getMassCenteredWindow(Double center, Double windowSize) {
-    return getMassWindow(center - windowSize / 2, center + windowSize / 2);
+    // We default to being inclusive of the query bounds
+    return getMassWindow(center - windowSize / 2, center + windowSize / 2, true);
   }
 
   /**

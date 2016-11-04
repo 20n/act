@@ -1,4 +1,4 @@
-package com.act.lcms
+package act.shared
 
 import act.shared.ChemicalSymbols._
 import org.scalatest.{FlatSpec, Matchers}
@@ -6,6 +6,8 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class MassToFormulaTest extends FlatSpec with Matchers {
 
+  // The keyword "ignore" does not run the test, but informs the user when running tests that it has been disabled.
+  // Replace "ignore" by "MassToFormula" (with quotes) to enable the test.
   ignore should "be able to solve integral solutions - uses z3 solver" in {
     // The type parameter is needed or else the compiler fails to infer
     // the right type for the tuple elements. we can specify it as a type on the variable,
@@ -99,6 +101,8 @@ class MassToFormulaTest extends FlatSpec with Matchers {
     parsed.foreach(p => stableCnstr.isValid(p.get._2) should be(true))
   }
 
+  // The keyword "ignore" does not run the test, but informs the user when running tests that it has been disabled.
+  // Replace "ignore" by "MassToFormula" (with quotes) to enable the test.
   ignore should "be able to solve acetaminophen - uses z3 Solver" in {
     val apapSolnLimitedAtoms: Map[Atom, Int] = MassToFormula.getFormulaMap("C8H9NO2", fillToAllAtom = false)
     val apapSoln: Map[Atom, Int] = MassToFormula.getFormulaMap("C8H9NO2", fillToAllAtom = true)
@@ -144,11 +148,10 @@ class MassToFormulaTest extends FlatSpec with Matchers {
         val minFormulaConstraint = new AtLeastMinFormula(minFormula)
         testMap foreach {
           case testFormula =>
-            withClue(s"Checking test case ${testFormula._1} with min formula ${minFormulaString}:") {
+            withClue(s"Checking test case ${testFormula._1} with min formula $minFormulaString:") {
               minFormulaConstraint.check(MassToFormula.getFormulaMap(testFormula._1)) should be(testFormula._2)
             }
         }
     }
   }
-
 }

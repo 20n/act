@@ -1,6 +1,7 @@
 package com.act.lcms
 
 import act.shared.ChemicalSymbols.Atom
+import act.shared.MassToFormula
 import com.act.lcms.v2.{MassToRawMetaboliteMap, RawMetabolite}
 
 import scala.collection.JavaConversions._
@@ -8,12 +9,12 @@ import scala.collection.JavaConversions._
 
 class MoleculeFinder {
 
-  trait ChemicalFormulae {
-    type ChemicalFormula = Map[Atom, Int]
-  }
+  case class NamedFormula(formula: Map[Atom, Int], name: Option[String])
+  case class NamedInchi(inchi: String, name: Option[String])
 
-  trait SolveUsingSMTSolver extends ChemicalFormulae {
-    def findHitsUsingSolver(hits: PeakHits): Map[Peak, List[(ChemicalFormula, Option[String])]] = {
+  trait SolveUsingSMTSolver {
+
+    def findHitsUsingSolver(hits: PeakHits): Map[Peak, List[NamedFormula]] = {
       // TODO: parameterize the solver to only consider formulae that do not overlap with the
       // set already exhaustively covered through enumeration, e.g., if C50 H100 N20 O20 P20 S20,
       // i.e., 800million (tractable) has already been enumerated, then we only need to consider
@@ -22,17 +23,17 @@ class MoleculeFinder {
 
       val pks: List[Peak] = hits.peakSpectra.peaks.toList
 
-      def solveAndAddName(peak: Peak): List[(ChemicalFormula, Option[String])] = {
-        m2f.solve(peak.mz).map((_, None))
+      def solveAndAddName(peak: Peak): List[NamedFormula] = {
+        m2f.solve(peak.mz).map(NamedFormula(_, None))
       }
 
-      val formulae: List[List[(ChemicalFormula, Option[String])]] = pks map solveAndAddName
-      val formulaeHits: Map[Peak, List[(ChemicalFormula, Option[String])]] = pks.zip(formulae).toMap
+      val formulae: List[List[NamedFormula]] = pks map solveAndAddName
+      val formulaeHits: Map[Peak, List[NamedFormula]] = pks.zip(formulae).toMap
       formulaeHits
     }
   }
 
-  object FormulaHits extends ChemicalFormulae with SolveUsingSMTSolver {
+  object FormulaHits extends SolveUsingSMTSolver {
 
     def toFormulaHitsUsingLargeMap(peaks: PeakHits,
                                    smallFormulaMap: MassToRawMetaboliteMap,
@@ -40,15 +41,13 @@ class MoleculeFinder {
 
       val peakSet: Set[Peak] = peaks.peakSpectra.peaks
 
-      def toFormula(n: RawMetabolite): (ChemicalFormula, Option[String]) = {
-
-        (MassToFormula.getFormulaMap(n.getMolecule), Option(n.getName))
+      def toFormula(n: RawMetabolite): NamedFormula = {
+        NamedFormula(MassToFormula.getFormulaMap(n.getMolecule), Option(n.getName.get))
       }
 
-      def bestFormulaeMatches(peak: Peak): List[(ChemicalFormula, Option[String])] = {
-        val results = smallFormulaMap.getSortedFromCenter(peak.mz.initMass, precision)
-        val formulae = results.toList.map(toFormula)
-        formulae
+      def bestFormulaeMatches(peak: Peak): List[NamedFormula] = {
+        val results: List[RawMetabolite] = smallFormulaMap.getSortedFromCenter(peak.mz.initMass, precision).toList
+        results.map(toFormula)
       }
 
       val peakToFormula = (peakSet map { peak => peak -> bestFormulaeMatches(peak) }).toMap
@@ -60,18 +59,18 @@ class MoleculeFinder {
     }
   }
 
-  class FormulaHits(val peaks: PeakHits, val toFormulae: Map[Peak, List[(Map[Atom, Int], Option[String])]]) extends
-    PeakHits(peaks.origin, peaks.peakSpectra) with ChemicalFormulae {
+  class FormulaHits(val peaks: PeakHits, val toFormulae: Map[Peak, List[NamedFormula]]) extends
+    PeakHits(peaks.origin, peaks.peakSpectra) {
 
     // we need a copy of MassToFormula with default `elements` coz we want to call its
     // hill system readable formula maker: buildChemFormulaA
     val m2f = new MassToFormula
 
-    def toReadable(f: (ChemicalFormula, Option[String])): (String, Option[String]) = {
-      (m2f.buildChemFormulaA(f._1), f._2)
+    def toReadable(f: NamedFormula): (String, Option[String]) = {
+      (m2f.buildChemFormulaA(f.formula), f.name)
     }
 
-    def code(f: Option[List[(ChemicalFormula, Option[String])]]): (Double, List[(String, Option[String])]) = {
+    def code(f: Option[List[NamedFormula]]): (Double, List[(String, Option[String])]) = {
       val forms = f.getOrElse(List())
       val hcode = forms match {
         case List() => -1
@@ -81,9 +80,9 @@ class MoleculeFinder {
     }
 
     override def extraCodes(): Map[Double, List[(String, Option[String])]] = {
-      val formulae: List[List[(ChemicalFormula, Option[String])]] = toFormulae.values.toList
+      val formulae: List[List[NamedFormula]] = toFormulae.values.toList
       // add an option in front of each element of the list above, so that we can call `code`
-      val formulaeOpt: List[Option[List[(ChemicalFormula, Option[String])]]] = formulae.map(l => Some(l))
+      val formulaeOpt: List[Option[List[NamedFormula]]] = formulae.map(l => Option(l))
       formulaeOpt.map(code).toMap
     }
 
@@ -108,11 +107,11 @@ class MoleculeFinder {
 
       val peakSet: Set[Peak] = peaks.peakSpectra.peaks
 
-      def toInchi(n: RawMetabolite): (String, Option[String]) = {
-        (n.getMolecule, Option(n.getName))
+      def toInchi(n: RawMetabolite): NamedInchi = {
+        NamedInchi(n.getMolecule, Option(n.getName.get))
       }
 
-      def bestInchisMatches(peak: Peak): List[(String, Option[String])] = {
+      def bestInchisMatches(peak: Peak): List[NamedInchi] = {
         val results = smallInchisMap.getSortedFromCenter(peak.mz.initMass, precision)
         val inchis = results.toList.map(toInchi)
         inchis
@@ -124,12 +123,12 @@ class MoleculeFinder {
     }
   }
 
-  class StructureHits(val peaks: PeakHits, val toInChI: Map[Peak, List[(String, Option[String])]]) extends
+  class StructureHits(val peaks: PeakHits, val toInChI: Map[Peak, List[NamedInchi]]) extends
     PeakHits(peaks.origin, peaks.peakSpectra) {
 
-    def code(i: Option[List[(String, Option[String])]]): (Double, List[(String, Option[String])]) = {
+    def code(i: Option[List[NamedInchi]]): (Double, List[(String, Option[String])]) = {
 
-      val inchis = i.getOrElse(List())
+      val inchis = i.getOrElse(List()).map(namedInchi => (namedInchi.inchi, namedInchi.name))
       val hcode = inchis match {
         case List() => -1
         case _ => inchis.hashCode.toDouble
@@ -138,9 +137,9 @@ class MoleculeFinder {
     }
 
     override def extraCodes(): Map[Double, List[(String, Option[String])]] = {
-      val inchis: List[List[(String, Option[String])]] = toInChI.values.toList
+      val inchis: List[List[NamedInchi]] = toInChI.values.toList
       // add an option in front of each element of the list above, so that we can call `code`
-      val inchiOpts: List[Option[List[(String, Option[String])]]] = inchis.map(l => Some(l))
+      val inchiOpts: List[Option[List[NamedInchi]]] = inchis.map(l => Option(l))
       inchiOpts.map(code).toMap
     }
 
@@ -156,5 +155,4 @@ class MoleculeFinder {
       basic + ("matching_inchis" -> hcode)
     }
   }
-
 }

@@ -29,7 +29,7 @@ public class MassToRawMetaboliteMapParser {
   private static final String TSV_SEPARATOR = "\t";
 
   // Instance variables
-  private String metaboliteHeader = null;
+  private String metaboliteHeader;
   private Integer metaboliteIndex;
   private Integer massIndex;
   private Integer nameIndex;
@@ -57,6 +57,7 @@ public class MassToRawMetaboliteMapParser {
 
 
   MassToRawMetaboliteMapParser() {
+    this.metaboliteHeader = null;
     // Initialize all indices to -1.
     this.metaboliteIndex = -1;
     this.massIndex = -1;
@@ -122,32 +123,28 @@ public class MassToRawMetaboliteMapParser {
    */
   void addRawMetabolite(String line) {
 
-    RawMetabolite rawMetabolite = new RawMetabolite();
     String[] splitLine = line.split(TSV_SEPARATOR);
     String metabolite = splitLine[metaboliteIndex];
-    rawMetabolite.setMolecule(metabolite);
     Double mass = null;
+    String name = null;
     if (massIndex < 0) {
       assert metaboliteHeader.equals(DEFAULT_STRUCTURE_HEADER);
       try {
         mass = MolImporter.importMol(metabolite).getExactMass();
-        rawMetabolite.setMonoIsotopicMass(mass);
       } catch (MolFormatException e) {
         LOGGER.error("Could not parse molecule %s, skipping.", metabolite);
         return;
       }
     } else {
       mass = Double.parseDouble(splitLine[massIndex]);
-      rawMetabolite.setMonoIsotopicMass(mass);
     }
 
     if (nameIndex >= 0) {
-      String name = splitLine[nameIndex];
-      rawMetabolite.setName(name);
+      name = splitLine[nameIndex];
     }
 
     if (mass != null) {
-      massToMetaboliteMap.add(mass, rawMetabolite);
+      massToMetaboliteMap.add(new RawMetabolite(mass, metabolite, name));
     }
   }
 
@@ -162,9 +159,8 @@ public class MassToRawMetaboliteMapParser {
 
         String line = metabolitesReader.readLine();
         addRawMetabolite(line);
-        i++;
 
-        if (i % 1000000 == 0) {
+        if (++i % 1000000 == 0) {
           LOGGER.info("Metabolites processed so far: %d", i);
         }
       }

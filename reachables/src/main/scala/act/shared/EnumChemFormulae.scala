@@ -1,8 +1,7 @@
-package com.act.lcms
+package act.shared
 
-import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, Cl, Br, F, I, MonoIsotopicMass}
+import act.shared.ChemicalSymbols.{Atom, Br, C, Cl, F, H, I, MonoIsotopicMass, N, O, P, S}
 import act.shared.ChemicalSymbols.Helpers.computeMassFromAtomicFormula
-import act.shared.{CmdLineParser, OptDesc}
 import java.io.PrintWriter
 
 object EnumChemFormulae {

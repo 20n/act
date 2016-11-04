@@ -7,6 +7,8 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class UntargetedMetabolomicsTest extends FlatSpec with Matchers {
 
+  // The keyword "ignore" does not run the test, but informs the user when running tests that it has been disabled.
+  // Replace "ignore" by "MassToFormula" (with quotes) to enable the test.
   ignore should "correctly run end to end tests" in {
     // this data was collected with XCMS Centwave "optimzed" parameters: peak width 1-50 and ppm 20 (@vijay-20n?)
     def dataForWell(dataset: String)(repl: Int) = s"Plate_plate2016_09_08_$dataset${repl}_0908201601.tsv"
@@ -68,9 +70,6 @@ class UntargetedMetabolomicsTest extends FlatSpec with Matchers {
       ("wt-df", wt, df, bnd("wt-df"), bnd("wt-df"))
 
     )
-
-    val verbose = false
-    val outputRawPeakHits = false
 
     cases.foreach{ case (testID, controlsF, hypothesesF, peakMinCnt, peakMaxCnt) => {
 

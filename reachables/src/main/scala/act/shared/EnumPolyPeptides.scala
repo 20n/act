@@ -1,13 +1,14 @@
-package com.act.lcms
+package act.shared
 
 import java.io.PrintWriter
+
 import com.act.lcms.MS1.MetlinIonMass
-import act.shared.{CmdLineParser, OptDesc}
-import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, AminoAcid, AllAminoAcids}
-import act.shared.ChemicalSymbols.{Gly, Ala, Pro, Val, Cys, Ile, Leu, Met, Phe, Ser} 
-import act.shared.ChemicalSymbols.{Thr, Tyr, Asp, Glu, Lys, Trp, Asn, Gln, His, Arg}
+import act.shared.ChemicalSymbols.{AllAminoAcids, AminoAcid, Atom, C, H, N, O, P, S}
+import act.shared.ChemicalSymbols.{Ala, Cys, Gly, Ile, Leu, Met, Phe, Pro, Ser, Val}
+import act.shared.ChemicalSymbols.{Arg, Asn, Asp, Gln, Glu, His, Lys, Thr, Trp, Tyr}
 import act.shared.ChemicalSymbols.MonoIsotopicMass
-import act.shared.ChemicalSymbols.Helpers.{fromSymbol, computeChemicalFormulaFromAAFormula, computeMassFromAtomicFormula, computeFormulaFromElements}
+import act.shared.ChemicalSymbols.Helpers.{computeChemicalFormulaFromAAFormula, computeFormulaFromElements, computeMassFromAtomicFormula, fromSymbol}
+import com.act.lcms.MS1
 
 object EnumPolyPeptides {
   // This class enumerates all polypeptides upto a certain mass.
@@ -94,12 +95,12 @@ object EnumPolyPeptides {
     // this is a list of lists
     // note: "Isoleucine" being an isomer of "Leucine", we remove it here to avoid duplication
     val aminoAcidsDedup = AllAminoAcids diff List(Ile)
-    val replicatedLists = List.fill(maxLen)(aminoAcidsDedup)
+    val replicatedLists: List[List[ChemicalSymbols.AminoAcid]] = List.fill(maxLen)(aminoAcidsDedup)
 
     // flatten the list created above, so that we have one long list of as many
     // repeated amino acids as can be in the final set. by repeating them here,
     // we can then pick *without* repetition
-    val pickSetNonDistinctElems = replicatedLists.flatten
+    val pickSetNonDistinctElems: List[ChemicalSymbols.AminoAcid] = replicatedLists.flatten
 
     // then we just ask the standard library to give us a standard combinations
     // i.e., pick `maxLen` elements from this mega-list
