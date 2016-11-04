@@ -2,7 +2,7 @@ package act.shared
 
 // testing chemicals from the DB
 import act.server.MongoDB
-import act.shared.ChemicalSymbols._
+import act.shared.ChemicalSymbols.{Atom, Br, C, Cl, F, H, I, MonoIsotopicMass, N, O, P, S, AllAtoms}
 import com.act.lcms.MassCalculator.calculateMass
 
 // SMT solver
@@ -91,18 +91,18 @@ object Solver {
   type SMTBoolExprVars = (BoolExpr, Map[FuncDecl, Var])
 
   def mkExpr(e: Expr): SMTExprVars = e match {
-    case Const(c)         =>
+    case Const(c) =>
       val expr = ctx.mkNumeral(c.toString, bv_type).asInstanceOf[BitVecNum]
       (expr, Map())
-    case Var(v)           =>
+    case Var(v) =>
       val expr = ctx.mkBVConst(v, bvSz)
       (expr, Map(expr.getFuncDecl -> Var(v)))
-    case Term(c, v)       =>
+    case Term(c, v) =>
       val (coeff, varsCoeff) = mkExpr(c)
       val (variable, varsVar) = mkExpr(v)
       val expr = ctx.mkBVMul(coeff, variable)
       (expr, varsCoeff ++ varsVar)
-    case LinExpr(ts)      =>
+    case LinExpr(ts) =>
       // we need to write this separately so that we can specify the type of the anonymous function
       // otherwise the reduce below is unable to infer the type and defaults to `Any` causing compile failure
       val fn: (SMTExprVars, SMTExprVars) => SMTExprVars = {

@@ -12,9 +12,9 @@ import java.util.Optional;
 
 public class RawMetabolite {
 
-  private Double monoIsotopicMass;
-  private String molecule;
-  private String name;
+  private final Double monoIsotopicMass;
+  private final String molecule;
+  private final String name;
 
   public RawMetabolite(Double monoIsotopicMass, String molecule, String name) {
     this.monoIsotopicMass = monoIsotopicMass;
@@ -24,18 +24,6 @@ public class RawMetabolite {
 
   public Double getMonoIsotopicMass() {
     return monoIsotopicMass;
-  }
-
-  public void setMonoIsotopicMass(Double monoIsotopicMass) {
-    this.monoIsotopicMass = monoIsotopicMass;
-  }
-
-  public void setMolecule(String molecule) {
-    this.molecule = molecule;
-  }
-
-  public void setName(String name) {
-    this.name = name;
   }
 
   public String getMolecule() {

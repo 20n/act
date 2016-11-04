@@ -9,8 +9,8 @@ import scala.collection.JavaConversions._
 
 class MoleculeFinder {
 
-  case class NamedFormula(formula: Map[Atom, Int], name: Option[String])
-  case class NamedInchi(inchi: String, name: Option[String])
+  sealed case class NamedFormula(formula: Map[Atom, Int], name: Option[String])
+  sealed case class NamedInchi(inchi: String, name: Option[String])
 
   trait SolveUsingSMTSolver {
 
@@ -27,8 +27,7 @@ class MoleculeFinder {
         m2f.solve(peak.mz).map(NamedFormula(_, None))
       }
 
-      val formulae: List[List[NamedFormula]] = pks map solveAndAddName
-      val formulaeHits: Map[Peak, List[NamedFormula]] = pks.zip(formulae).toMap
+      val formulaeHits: Map[Peak, List[NamedFormula]] = pks.map(peak => (peak, solveAndAddName(peak))).toMap
       formulaeHits
     }
   }

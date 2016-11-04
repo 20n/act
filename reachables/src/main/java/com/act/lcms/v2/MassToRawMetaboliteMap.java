@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 /**
  * This class holds the API for a {Double mass -> List<RawMetabolite> rawMetabolites} map.
@@ -34,10 +35,6 @@ public class MassToRawMetaboliteMap {
   public MassToRawMetaboliteMap(RawMetaboliteKind kind) {
     this.massToRawMetaboliteMap = new TreeMap<>();
     this.kind = kind;
-  }
-
-  public NavigableMap<Double, List<RawMetabolite>> getMassToMoleculeMap() {
-    return massToRawMetaboliteMap;
   }
 
   public RawMetaboliteKind getKind() {
@@ -78,10 +75,24 @@ public class MassToRawMetaboliteMap {
    */
   public List<RawMetabolite> getSortedFromCenter(Double center, Double windowSize) {
     Map<Double, List<RawMetabolite>> subMap =  getMassCenteredWindow(center, windowSize);
-    Map<Double, List<RawMetabolite>> newMap = new TreeMap<>();
+    TreeMap<Double, List<RawMetabolite>> newMap = new TreeMap<>();
     subMap.entrySet().stream().forEachOrdered(entry -> newMap.put(Math.abs(entry.getKey() - center), entry.getValue()));
-    List<RawMetabolite> rawMetabolites = new ArrayList<>();
-    newMap.values().forEach(rawMetabolites::addAll);
-    return rawMetabolites;
+    return newMap.values().stream().flatMap(List::stream).collect(Collectors.toList());
   }
+
+  /**
+   * The following three methods expose part of the NavigableMap API for easier testing
+   */
+  Boolean containsKey(Double key) {
+    return massToRawMetaboliteMap.containsKey(key);
+  }
+
+  Double ceilingKey(Double key) {
+    return massToRawMetaboliteMap.ceilingKey(key);
+  }
+
+  List<RawMetabolite> get(Double key) {
+    return massToRawMetaboliteMap.get(key);
+  }
+
 }

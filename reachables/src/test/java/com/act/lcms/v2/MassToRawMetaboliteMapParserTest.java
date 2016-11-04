@@ -1,7 +1,6 @@
 package com.act.lcms.v2;
 
 
-import chemaxon.formats.MolFormatException;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -75,8 +74,8 @@ public class MassToRawMetaboliteMapParserTest {
 
     // Test whether the metabolite was added correctly
     MassToRawMetaboliteMap map = parser.getMassToMoleculeMap();
-    assertTrue(map.getMassToMoleculeMap().containsKey(151.063));
-    List<RawMetabolite> value = map.getMassToMoleculeMap().get(151.063);
+    assertTrue(map.containsKey(151.063));
+    List<RawMetabolite> value = map.get(151.063);
     assertEquals(1, value.size());
     assertEquals("C8H9NO2", value.get(0).getMolecule());
     assertEquals(151.063, value.get(0).getMonoIsotopicMass(), 0.001);
@@ -95,8 +94,8 @@ public class MassToRawMetaboliteMapParserTest {
 
     // Test whether the metabolite was added correctly
     MassToRawMetaboliteMap map = parser.getMassToMoleculeMap();
-    assertTrue(map.getMassToMoleculeMap().containsKey(151.063));
-    List<RawMetabolite> value = map.getMassToMoleculeMap().get(151.063);
+    assertTrue(map.containsKey(151.063));
+    List<RawMetabolite> value = map.get(151.063);
     assertEquals(1, value.size());
     assertEquals("C8H9NO2", value.get(0).getMolecule());
     assertEquals(151.063, value.get(0).getMonoIsotopicMass(), 0.001);
@@ -116,9 +115,9 @@ public class MassToRawMetaboliteMapParserTest {
 
     // Test whether the metabolite was added correctly
     MassToRawMetaboliteMap map = parser.getMassToMoleculeMap();
-    Double testKey = map.getMassToMoleculeMap().ceilingKey(151.0);
+    Double testKey = map.ceilingKey(151.0);
     assertEquals(testKey, 151.063, 0.001);
-    List<RawMetabolite> value = map.getMassToMoleculeMap().get(testKey);
+    List<RawMetabolite> value = map.get(testKey);
     assertEquals(1, value.size());
     assertEquals("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)", value.get(0).getMolecule());
     assertEquals(151.063, value.get(0).getMonoIsotopicMass(), 0.001);
@@ -141,8 +140,8 @@ public class MassToRawMetaboliteMapParserTest {
 
     // Test whether the metabolites were added correctly
     MassToRawMetaboliteMap map = parser.getMassToMoleculeMap();
-    assertTrue(map.getMassToMoleculeMap().containsKey(151.063));
-    List<RawMetabolite> value = map.getMassToMoleculeMap().get(151.063);
+    assertTrue(map.containsKey(151.063));
+    List<RawMetabolite> value = map.get(151.063);
     assertEquals(2, value.size());
     assertEquals("C8H9NO2", value.get(0).getMolecule());
     assertEquals(151.063, value.get(0).getMonoIsotopicMass(), 0.001);

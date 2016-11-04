@@ -3,6 +3,7 @@ package com.act.lcms.v2;
 
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
+import com.act.analysis.chemicals.molecules.MoleculeImporter$;
 import com.act.jobs.FileChecker;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -72,7 +73,9 @@ public class MassToRawMetaboliteMapParser {
       List<String> headers = Arrays.asList(headerLine.split(TSV_SEPARATOR));
       validateHeaders(headers);
     } catch (IOException e) {
-      throw new RuntimeException("An I/O exception occured when trying to parse input file", e);
+      String msg = String.format("An I/O exception occured when trying to parse input file: %s",
+          inputFile.getAbsolutePath());
+      throw new RuntimeException(msg);
     }
   }
 
@@ -81,6 +84,7 @@ public class MassToRawMetaboliteMapParser {
    * @param headers headers parsed from the input file
    */
   void validateHeaders(List<String> headers) {
+
     if (headers.contains(DEFAULT_STRUCTURE_HEADER)) {
       this.metaboliteHeader = DEFAULT_STRUCTURE_HEADER;
       this.massToMetaboliteMap = new MassToRawMetaboliteMap(MassToRawMetaboliteMap.RawMetaboliteKind.INCHI);
@@ -125,12 +129,12 @@ public class MassToRawMetaboliteMapParser {
 
     String[] splitLine = line.split(TSV_SEPARATOR);
     String metabolite = splitLine[metaboliteIndex];
-    Double mass = null;
+    Double mass;
     String name = null;
     if (massIndex < 0) {
       assert metaboliteHeader.equals(DEFAULT_STRUCTURE_HEADER);
       try {
-        mass = MolImporter.importMol(metabolite).getExactMass();
+        mass = MoleculeImporter$.MODULE$.importMolecule(metabolite).getExactMass();
       } catch (MolFormatException e) {
         LOGGER.error("Could not parse molecule %s, skipping.", metabolite);
         return;
@@ -143,9 +147,7 @@ public class MassToRawMetaboliteMapParser {
       name = splitLine[nameIndex];
     }
 
-    if (mass != null) {
-      massToMetaboliteMap.add(new RawMetabolite(mass, metabolite, name));
-    }
+    massToMetaboliteMap.add(new RawMetabolite(mass, metabolite, name));
   }
 
   public void parse() throws IOException {
@@ -153,6 +155,7 @@ public class MassToRawMetaboliteMapParser {
     try (BufferedReader metabolitesReader = getMetabolitesReader(inputFile)) {
 
       int i = 0;
+      // Skip headers
       metabolitesReader.readLine();
 
       while (metabolitesReader.ready()) {
