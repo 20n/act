@@ -117,6 +117,8 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     def withName(name: String): Option[Step] = {
       names.find(n => n.value.equals(name))
     }
+
+    def getNames: List[Step] = names
     private def names = List(EXPANSION, LCMS, CLUSTERING, SAR_SCORING, PRODUCT_SCORING, MESH_RESULTS)
   }
 
@@ -294,11 +296,13 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     def getStepFromCommandline(optionVal: String, defaultStep: WorkflowSteps.Step): WorkflowSteps.Step = {
       if (cl.hasOption(optionVal)) {
         try {
-          return WorkflowSteps.withName(cl.getOptionValue(optionVal))
+          val step = WorkflowSteps.withName(cl.getOptionValue(optionVal))
+          if (step.isEmpty) throw new NoSuchElementException()
+          step.get
         } catch {
           case e: NoSuchElementException =>
-            logger.error(s"Workflow  point must be among ${WorkflowSteps.values.map(value => value.toString()).toList} " +
-              s"; Input: ${cl.getOptionValue(optionVal)}; ${e.getMessage()}")
+            logger.error(s"Workflow  point must be among ${WorkflowSteps.getNames.map(_.toString())} " +
+              s"; Input: ${cl.getOptionValue(optionVal)}; ${e.getMessage}")
             System.exit(1)
         }
       }
@@ -312,7 +316,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     /**
       * Pick out the correct steps to run, and add them to the workflow.
       */
-    val jobList: List[(WorkflowSteps.Value, () => Unit)] = List(
+    val jobList: List[(WorkflowSteps.Step, () => Unit)] = List(
       (WorkflowSteps.EXPANSION, addExpansionJobList() _),
       (WorkflowSteps.LCMS, addLcmsJob() _),
       (WorkflowSteps.CLUSTERING, addClusteringJobs() _),

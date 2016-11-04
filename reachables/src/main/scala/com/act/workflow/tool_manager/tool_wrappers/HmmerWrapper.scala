@@ -138,6 +138,7 @@ Other utilities - These do conversions or give added benefits to HMMs/Proteins
     case class Command(command: String) {
       def getCommand: String = command
     }
+
     case object HmmBuild extends Command("hmmbuild")
     case object HmmAlign extends Command("hmmalign")
     case object HmmScan extends Command("hmmscan")
