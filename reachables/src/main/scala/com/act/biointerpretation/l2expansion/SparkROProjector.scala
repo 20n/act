@@ -7,7 +7,6 @@ import chemaxon.marvin.io.MolExportException
 import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
-import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.jobs.management.JobManager
 import com.act.workflow.tool_manager.tool_wrappers.SparkWrapper
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
@@ -20,17 +19,18 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-case class InchiResult(substrate: List[String], ros: String, products: List[String])
+// Basic storage class for serializing and deserializing projection results
+case class ProjectionResult(substrate: List[String], ros: String, products: List[String])
 
-object InchiResultProtocol extends DefaultJsonProtocol {
-  implicit val inchiFormat = jsonFormat3(InchiResult)
+object ProjectionResultProtocol extends DefaultJsonProtocol {
+  implicit val projectionFormat = jsonFormat3(ProjectionResult)
 }
 
 // Because we made the protocol in this file, we need to import it here to expose the methods it has to our file.
-// This allows us to do direct conversions on InchiResult objects to and form JSON.
-import com.act.biointerpretation.l2expansion.InchiResultProtocol._
+// This allows us to do direct conversions on ProjectionResult objects to and from JSON.
+import com.act.biointerpretation.l2expansion.ProjectionResultProtocol._
 
-object SparkMoleculeProjector {
+object SparkInstance {
   val defaultMoleculeFormat = MoleculeFormat.strictNoStereoInchi
 
   private val LOGGER = LogManager.getLogger(getClass)
@@ -41,7 +41,7 @@ object SparkMoleculeProjector {
 
   def project(licenseFileName: String)
              (reverse: Boolean, exhaustive: Boolean)
-             (substrates: List[String]): Stream[InchiResult] = {
+             (substrates: List[String]): Stream[ProjectionResult] = {
 
     // Load Chemaxon license file once
     if (this.localLicenseFile.isEmpty) {
@@ -51,13 +51,13 @@ object SparkMoleculeProjector {
       LicenseManager.setLicenseFile(SparkFiles.get(licenseFileName))
     }
 
-    val getResults: Ero => Stream[InchiResult] = getResultsForSubstrate(substrates, reverse, exhaustive)
-    val results: Stream[InchiResult] = this.eros.getRos.asScala.toStream.flatMap(getResults)
+    val getResults: Ero => Stream[ProjectionResult] = getResultsForSubstrate(substrates, reverse, exhaustive)
+    val results: Stream[ProjectionResult] = this.eros.getRos.asScala.toStream.flatMap(getResults)
     results
   }
 
   private def getResultsForSubstrate(inputs: List[String], reverse: Boolean, exhaustive: Boolean)
-                                    (ro: Ero): Stream[InchiResult] = {
+                                    (ro: Ero): Stream[ProjectionResult] = {
     // We check the substrate or the products to ensure equal length based on if we are reversing the rxn or not.
     if ((!reverse && ro.getSubstrate_count != inputs.length) || (reverse && ro.getProduct_count != inputs.length)) {
       return Stream()
@@ -69,7 +69,7 @@ object SparkMoleculeProjector {
 
     // Get all permutations of the input so that substrate order doesn't matter.
     val importedMolecules: List[Molecule] = inputs.map(x => MoleculeImporter.importMolecule(x, defaultMoleculeFormat))
-    val resultingReactions: Stream[InchiResult] = importedMolecules.permutations.flatMap(substrateOrdering => {
+    val resultingReactions: Stream[ProjectionResult] = importedMolecules.permutations.flatMap(substrateOrdering => {
 
       // Setup reactor
       reactor.setReactants(substrateOrdering.toArray)
@@ -83,7 +83,7 @@ object SparkMoleculeProjector {
       }
 
       // Map the resulting reactions to a consistent format.
-      val partiallyAppliedMapper: List[Molecule] => Option[InchiResult] =
+      val partiallyAppliedMapper: List[Molecule] => Option[ProjectionResult] =
         mapReactionsToResult(inputs, ro.getId.toString)
 
       reactedValues.flatMap(potentialProducts => partiallyAppliedMapper(potentialProducts.toList))
@@ -94,10 +94,10 @@ object SparkMoleculeProjector {
   }
 
   private def mapReactionsToResult(substrates: List[String], roNumber: String)
-                                  (potentialProducts: List[Molecule]): Option[InchiResult] = {
+                                  (potentialProducts: List[Molecule]): Option[ProjectionResult] = {
     try {
       val products = potentialProducts.map(x => MoleculeExporter.exportMolecule(x, defaultMoleculeFormat))
-      Option(InchiResult(substrates, roNumber, products))
+      Option(ProjectionResult(substrates, roNumber, products))
     } catch {
       case e: MolExportException =>
         LOGGER.warn(s"Unable to export a projected project.  Projected projects were $potentialProducts")
@@ -114,8 +114,10 @@ object SparkROProjector {
   val OPTION_OUTPUT_DIRECTORY = "o"
   val OPTION_REVERSE = "r"
   val OPTION_VALID_CHEMICAL_TYPE = "v"
+
   private val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   HELP_FORMATTER.setWidth(100)
+
   private val HELP_MESSAGE = "A Spark job that will project the set of validation ROs over a list of substrates."
   private val LOGGER = LogManager.getLogger(getClass)
   private val SPARK_LOG_LEVEL = "WARN"
@@ -149,6 +151,8 @@ object SparkROProjector {
     // List of combinations of InChIs
     val inchiCombinations: List[List[String]] = combinationList(inchiCorpuses)
 
+    LOGGER.info("Attempting to filter out combinations with invalid InChIs.  " +
+      s"Starting with ${inchiCombinations.length} inchis.")
     val validInchis: List[List[String]] = inchiCombinations.filter(group => {
       try {
         group.foreach(inchi => {
@@ -159,10 +163,13 @@ object SparkROProjector {
         case e: Exception => false
       }
     })
+    LOGGER.info(s"Filtering removed ${inchiCombinations.length - validInchis.length}" +
+      s" combinations, ${validInchis.length} remain.")
 
     // Setup spark connection
     val conf = new SparkConf().
-      setAppName("Spark RO Projection").
+      setAppName(s"${if (cl.hasOption(OPTION_EXHAUSTIVE)) "Exhaustive"} ${if (cl.hasOption(OPTION_REVERSE)) "Reverse"} " +
+        s"${validInchis.head.length} Substrate${if (validInchis.head.length != 1) "s"} RO Projection").
       setMaster(cl.getOptionValue(OPTION_SPARK_MASTER, DEFAULT_SPARK_MASTER))
 
     // Allow multiple jobs to allocate
@@ -180,14 +187,12 @@ object SparkROProjector {
 
     LOGGER.info("Building ERO RDD")
     val groupSize = 1000
-
     val inchiRDD: RDD[Seq[String]] = spark.makeRDD(validInchis, groupSize)
 
     LOGGER.info("Starting execution")
     // PROJECT!  Run ERO projection over all InChIs.
-    val resultsRDD: RDD[InchiResult] = inchiRDD.flatMap(inchi => {
-      SparkMoleculeProjector.project(licenseFileName)(
-        cl.hasOption(OPTION_REVERSE), cl.hasOption(OPTION_EXHAUSTIVE))(inchi.toList)
+    val resultsRDD: RDD[ProjectionResult] = inchiRDD.flatMap(inchi => {
+      SparkInstance.project(licenseFileName)(cl.hasOption(OPTION_REVERSE), cl.hasOption(OPTION_EXHAUSTIVE))(inchi.toList)
     })
 
     handleProjectionTermination(resultsRDD, outputDir)
@@ -280,7 +285,7 @@ object SparkROProjector {
     System.exit(1)
   }
 
-  private def handleProjectionTermination(resultsRDD: RDD[InchiResult], outputDir: File): Unit = {
+  private def handleProjectionTermination(resultsRDD: RDD[ProjectionResult], outputDir: File): Unit = {
     /* This next part represents us jumping through some hoops (that are possibly on fire) in order to make Spark do
      * the thing we want it to do: project in parallel but stream results back for storage.
      *
@@ -387,21 +392,21 @@ object SparkROProjector {
   }
 
   def projectInChIsAndReturnResults(chemaxonLicense: File, assembledJar: File, workingDirectory: File)
-                                   (memory: String = "4GB", sparkMaster: String = DEFAULT_SPARK_MASTER, useCached: Boolean = false)
+                                   (memory: String = "4GB", sparkMaster: String = DEFAULT_SPARK_MASTER)
                                    (inputInchis: List[L2InchiCorpus])
-                                   (exhaustive: Boolean = false, reverse: Boolean = false): List[InchiResult] = {
+                                   (exhaustive: Boolean = false, reverse: Boolean = false): List[ProjectionResult] = {
     if (!workingDirectory.exists()) workingDirectory.mkdirs()
 
-    val filePrefix = "inchiCorpus"
+    val filePrefix = "tmpInchiCorpus"
     val fileSuffix = "txt"
 
     // Write to a file
     val substrateFiles: List[String] = inputInchis.zipWithIndex.map({
-        case(file, index) =>
-          val substrateFile = new File(workingDirectory, s"$filePrefix.$index.$fileSuffix")
-          file.writeToFile(substrateFile)
-          substrateFile.getAbsolutePath
-      })
+      case (file, index) =>
+        val substrateFile = new File(workingDirectory, s"$filePrefix.$index.$fileSuffix")
+        file.writeToFile(substrateFile)
+        substrateFile.getAbsolutePath
+    })
 
     val conditionalArgs: ListBuffer[String] = new ListBuffer()
     if (exhaustive) conditionalArgs.append(s"-$OPTION_EXHAUSTIVE")
@@ -424,6 +429,10 @@ object SparkROProjector {
 
     // Reload file from disk
     val outputResults = new File(workingDirectory, "projectedReactions")
-    scala.io.Source.fromFile(outputResults).getLines().mkString.parseJson.convertTo[List[InchiResult]]
+
+    // TODO Consider if it is worthwhile or desired to remove all created files,
+    // effectively leveraging files just as temporary intermediates.
+
+    scala.io.Source.fromFile(outputResults).getLines().mkString.parseJson.convertTo[List[ProjectionResult]]
   }
 }
