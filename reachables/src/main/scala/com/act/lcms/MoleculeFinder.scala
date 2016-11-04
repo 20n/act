@@ -41,7 +41,7 @@ class MoleculeFinder {
       val peakSet: Set[Peak] = peaks.peakSpectra.peaks
 
       def toFormula(n: RawMetabolite): NamedFormula = {
-        NamedFormula(MassToFormula.getFormulaMap(n.getMolecule), Option(n.getName.get))
+        NamedFormula(MassToFormula.getFormulaMap(n.getMolecule), Option(n.getName.orElse(null)))
       }
 
       def bestFormulaeMatches(peak: Peak): List[NamedFormula] = {
@@ -107,7 +107,7 @@ class MoleculeFinder {
       val peakSet: Set[Peak] = peaks.peakSpectra.peaks
 
       def toInchi(n: RawMetabolite): NamedInchi = {
-        NamedInchi(n.getMolecule, Option(n.getName.get))
+        NamedInchi(n.getMolecule, Option(n.getName.orElse(null)))
       }
 
       def bestInchisMatches(peak: Peak): List[NamedInchi] = {
