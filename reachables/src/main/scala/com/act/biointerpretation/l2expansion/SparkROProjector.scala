@@ -356,6 +356,14 @@ object SparkROProjector {
   }
 
   private def combinationList(suppliedInchiLists: List[List[String]]): List[List[String]] = {
+    // The reason for this method as opposed to other examples is that normally this process is done recursively.
+    // http://stackoverflow.com/questions/23425930/generating-all-possible-combinations-from-a-listlistint-in-scala
+    // However, that means that hitting a stack overflow is much easier.
+    // To avoid this, I've written a simple iterative algorithm that avoids the recursive stack problems.
+    // An optimal solution to this problem would find a way to effectively leverage tail recursion to keep the
+    // stack small, while simplifying the logic (As the stack frame that does exist effectively will manage
+    // all the pointer stuff).
+    //
     // The goal of this method is to take in a list containing a list of InChIs and to group them into all combinations.
     // For example, if three lists are supplied we will output all
     // possible groups of three where, for example, the first element is from the first list.
