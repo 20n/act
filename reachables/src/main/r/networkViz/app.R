@@ -43,7 +43,7 @@ server <- function(input, output, session) {
   
   inchi <- reactive({
     shiny::validate(
-      need(length(input$current_node_id$node) > 0)
+      need(length(input$current_node_id$node) > 0, "Please select a node on the graph!!")
     )
     unlist(input$current_node_id$node)
   })
@@ -53,7 +53,7 @@ server <- function(input, output, session) {
   })
   
   observe({
-    callModule(moleculeRenderer, "molecule", inchi(), "200px")
+    callModule(moleculeRenderer, "molecule", c(inchi(), ""), "200px")
     #visNetworkProxy("network") %>%
     #  visOptions(manipulation = TRUE)
   })
