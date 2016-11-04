@@ -363,7 +363,9 @@ object SparkROProjector {
 
     val validCombinations: ListBuffer[List[String]] = mutable.ListBuffer()
 
-    // Instantiate pointers at the first element.
+    // Instantiate pointers at the first element (0th).
+    // The pointer array is of size `filteredLists` because we want one pointer for each list,
+    // as we will be taking one element from each list on each pass.
     val pointers: Array[Int] = Array.fill(filteredLists.size)(0)
 
     while (pointers.head < filteredLists.head.length) {
@@ -385,6 +387,10 @@ object SparkROProjector {
         // If a pointer has exceeded the limit, we need to carry until it is resolved.
         var index = iteratePointer._2
         pointers(index) += 1
+
+        // Terminate when we either are trying to set the first index (Meaning the one that the above while
+        // loop terminates on) to 0, or when the size of the number the pointer is at is not equal to the size
+        // of the list which it points to (When we aren't about to be out of bounds).
         while (pointers(index) == filteredLists(index).length && index > 0) {
           pointers(index) = 0
           pointers(index - 1) += 1
