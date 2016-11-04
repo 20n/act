@@ -53,7 +53,7 @@ server <- function(input, output, session) {
   })
   
   observe({
-    callModule(moleculeRenderer, "molecule", c(inchi(), ""), "200px")
+    callModule(moleculeRenderer, "molecule", reactive(c(inchi(), "")), "200px")
     #visNetworkProxy("network") %>%
     #  visOptions(manipulation = TRUE)
   })
