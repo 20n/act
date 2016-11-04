@@ -10,7 +10,7 @@ require(rscala)
 basicConfig('DEBUG')
 
 source("../LCMSDataVisualisation/molecule_renderer.R")
-source("../LCMSDataVisualisation/lcms_lib.R")
+#source("../LCMSDataVisualisation/lcms_lib.R")
 source("lib.R")
 
 loginfo("Done loading libraries and sourcing modules")
@@ -41,12 +41,19 @@ server <- function(input, output, session) {
                 ;}")
   })
   
+  inchi <- reactive({
+    shiny::validate(
+      need(length(input$current_node_id$node) > 0)
+    )
+    unlist(input$current_node_id$node)
+  })
+  
   output$shiny_return <- renderPrint({
-    cat(unlist(input$current_node_id$node))
+    cat(inchi())
   })
   
   observe({
-    callModule(moleculeRenderer, "molecule", reactive(unlist(input$current_node_id$node)), "200px")
+    callModule(moleculeRenderer, "molecule", inchi(), "200px")
     #visNetworkProxy("network") %>%
     #  visOptions(manipulation = TRUE)
   })
@@ -69,7 +76,7 @@ ui <- fluidPage(
   ),
   sidebarPanel(
     fileInput("dot.graph.file", label = "Choose a graph file (DOT format)"),
-    em("Try loading '/Volumes/shared-data/Michael/Humanprojection/cholesterol_stuffs/graphs'")
+    em("Try loading '/Volumes/shared-data/Michael/Humanprojection/cholesterol_stuffs/graphs/6report.dot'")
     
   ),
   mainPanel(
