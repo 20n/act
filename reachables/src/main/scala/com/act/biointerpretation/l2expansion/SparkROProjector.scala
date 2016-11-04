@@ -16,7 +16,6 @@ import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
 import spray.json._
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 // Basic storage class for serializing and deserializing projection results
@@ -154,11 +153,11 @@ object SparkROProjector {
     val inchiCorpuses: List[List[String]] = substrateCorpuses.map(_.getInchiList.asScala.distinct.toList)
 
     // List of combinations of InChIs
-    val inchiCombinations: List[List[String]] = combinationList(inchiCorpuses)
+    val inchiCombinations: Stream[Stream[String]] = combinationList(inchiCorpuses.map(_.toStream).toStream)
 
     LOGGER.info("Attempting to filter out combinations with invalid InChIs.  " +
       s"Starting with ${inchiCombinations.length} inchis.")
-    val validInchis: List[List[String]] = inchiCombinations.filter(group => {
+    val validInchis: Stream[Stream[String]] = inchiCombinations.filter(group => {
       try {
         group.foreach(inchi => {
           MoleculeImporter.importMolecule(inchi)
@@ -355,59 +354,9 @@ object SparkROProjector {
     resultsRDD.unpersist()
   }
 
-  private def combinationList(suppliedInchiLists: List[List[String]]): List[List[String]] = {
-    // The reason for this method as opposed to other examples is that normally this process is done recursively;
-    // however, that means that hitting a stack overflow is much easier.
-    // Example of normal: http://stackoverflow.com/q/23425930/4978569
-    // To avoid this, I've written a simple iterative algorithm that avoids the recursive stack problems.
-    // An optimal solution to this problem would find a way to effectively leverage tail recursion to keep the
-    // stack small, while simplifying the logic (As the stack frame that does exist effectively will manage
-    // all the pointer stuff).
-    //
-    // The goal of this method is to take in a list containing a list of InChIs and to group them into all combinations.
-    // For example, if three lists are supplied we will output all
-    // possible groups of three where, for example, the first element is from the first list.
-    val filteredLists = suppliedInchiLists.filter(_.nonEmpty)
-
-    val validCombinations: ListBuffer[List[String]] = mutable.ListBuffer()
-
-    // Instantiate pointers at the first element (0th).
-    // The pointer array is of size `filteredLists` because we want one pointer for each list,
-    // as we will be taking one element from each list on each pass.
-    val pointers: Array[Int] = Array.fill(filteredLists.size)(0)
-
-    while (pointers.head < filteredLists.head.length) {
-      // Get the next sequence and append to our combinations list
-      val indexedPointers = pointers.zipWithIndex
-      validCombinations.append(indexedPointers.map({
-        case (value, index) => filteredLists(index)(value)
-      }).toList)
-
-      // Handle pointers
-      // Find the last value that is below its end.  If it is at the end, reset to 0 and increment the next one.
-      val iteratePointer =
-        indexedPointers.reverse.find({ case (value, index) => value <= filteredLists(index).length }).get
-
-      // Count up the pointers
-      if (iteratePointer._1 < filteredLists(iteratePointer._2).length - 1) {
-        pointers(iteratePointer._2) += 1
-      } else {
-        // If a pointer has exceeded the limit, we need to carry until it is resolved.
-        var index = iteratePointer._2
-        pointers(index) += 1
-
-        // Terminate when we either are trying to set the first index (Meaning the one that the above while
-        // loop terminates on) to 0, or when the size of the number the pointer is at is not equal to the size
-        // of the list which it points to (When we aren't about to be out of bounds).
-        while (pointers(index) == filteredLists(index).length && index > 0) {
-          pointers(index) = 0
-          pointers(index - 1) += 1
-          index -= 1
-        }
-      }
-    }
-
-    validCombinations.toList.distinct
+  private def combinationList(suppliedInchiLists: Stream[Stream[String]]): Stream[Stream[String]] = {
+    if (suppliedInchiLists.isEmpty) Stream(Stream.empty)
+    else suppliedInchiLists.head.flatMap(i => combinationList(suppliedInchiLists.tail).map(i #:: _))
   }
 
   def projectInChIsAndReturnResults(chemaxonLicense: File, assembledJar: File, workingDirectory: File)
