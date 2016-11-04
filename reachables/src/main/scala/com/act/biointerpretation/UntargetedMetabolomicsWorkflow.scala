@@ -3,7 +3,6 @@ package com.act.biointerpretation
 import java.io.{File, IOException}
 import java.util.NoSuchElementException
 
-import breeze.linalg.Options.Value
 import com.act.biointerpretation.l2expansion.{L2ExpansionDriver, L2InchiCorpus, L2PredictionCorpus}
 import com.act.biointerpretation.mechanisminspection.ErosCorpus
 import com.act.biointerpretation.sarinference.SarTreeNode.ScoringFunctions
@@ -380,13 +379,17 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     headerJob.thenRunBatch(jobs, batchSize)
   }
 
-  object StartingPoints extends Enumeration {
-    type StartingPoints = Value
+  object StartingPoints {
+    case class StartingPoint(name: String){
+      override def toString = name
+    }
 
-    val EXPANSION = Value("EXPANSION")
-    val LCMS = Value("LCMS")
-    val CLUSTERING = Value("CLUSTERING")
-    val SCORING = Value("SCORING")
+    case object EXPANSION extends StartingPoint("EXPANSION")
+    case object LCMS extends StartingPoint("LCMS")
+    case object CLUSTERING extends StartingPoint("CLUSTERING")
+    case object SCORING extends StartingPoint("SCORING")
+
+    val values = List(EXPANSION, LCMS, CLUSTERING, SCORING)
   }
 
 }
