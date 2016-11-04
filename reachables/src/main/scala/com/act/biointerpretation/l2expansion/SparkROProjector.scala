@@ -68,6 +68,11 @@ object SparkInstance {
     if (reverse) reactor.setReverse(reverse)
 
     // Get all permutations of the input so that substrate order doesn't matter.
+    //
+    // TODO Having the importedMolecules above the loop may interfere with permutation's ability to correctly
+    // filter out duplicate reactions (For example, List(a,b,b) should not making two combinations (a,b,b).
+    // We should assess this as for higher number of molecule reactors this may be the dominant case over the
+    // cost that could be imposed by hitting the MoleculeImporter's cache.
     val importedMolecules: List[Molecule] = inputs.map(x => MoleculeImporter.importMolecule(x, defaultMoleculeFormat))
     val resultingReactions: Stream[ProjectionResult] = importedMolecules.permutations.flatMap(substrateOrdering => {
 
