@@ -356,9 +356,9 @@ object SparkROProjector {
   }
 
   private def combinationList(suppliedInchiLists: List[List[String]]): List[List[String]] = {
-    // The reason for this method as opposed to other examples is that normally this process is done recursively.
-    // http://stackoverflow.com/questions/23425930/generating-all-possible-combinations-from-a-listlistint-in-scala
-    // However, that means that hitting a stack overflow is much easier.
+    // The reason for this method as opposed to other examples is that normally this process is done recursively;
+    // however, that means that hitting a stack overflow is much easier.
+    // Example of normal: http://stackoverflow.com/q/23425930/4978569
     // To avoid this, I've written a simple iterative algorithm that avoids the recursive stack problems.
     // An optimal solution to this problem would find a way to effectively leverage tail recursion to keep the
     // stack small, while simplifying the logic (As the stack frame that does exist effectively will manage
