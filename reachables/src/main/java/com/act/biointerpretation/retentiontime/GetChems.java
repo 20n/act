@@ -30,7 +30,8 @@ public class GetChems {
     for (Map<String, String> row : parser.getResults()) {
 
       Molecule mol = MolImporter.importMol(row.get("chemicals"), "smiles");
-      System.out.println(mol.getName());
+      
+      System.out.println(mongoDB.getChemicalFromSMILES(row.get("chemicals")).getFirstName());
 
     }
 
