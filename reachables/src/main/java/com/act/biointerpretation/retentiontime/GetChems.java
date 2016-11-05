@@ -29,7 +29,7 @@ public class GetChems {
 
     for (Map<String, String> row : parser.getResults()) {
 
-      Chemical chem = mongoDB.getChemicalFromSMILES(row.get("chemicals");
+      Chemical chem = mongoDB.getChemicalFromSMILES(row.get("chemicals"));
 
       if (chem != null) {
         System.out.println(mongoDB.getChemicalFromSMILES(row.get("chemicals")).getFirstName());
