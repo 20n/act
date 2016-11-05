@@ -3,6 +3,7 @@ package com.act.biointerpretation.retentiontime;
 import act.server.DBIterator;
 import act.server.MongoDB;
 import act.shared.Chemical;
+import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import com.act.utils.TSVParser;
@@ -28,10 +29,8 @@ public class GetChems {
 
     for (Map<String, String> row : parser.getResults()) {
 
-      for (String key : row.keySet()) {
-        System.out.println(key);
-      }
-
+      Molecule mol = MolImporter.importMol(row.get("chemicals"), "smiles");
+      System.out.println(mol.getName());
 
     }
 
@@ -42,25 +41,25 @@ public class GetChems {
 
 
 
-    Set<Integer> indexes = new HashSet<>();
-    Random random = new Random(10);
-
-    for (int i = 0; i < 37000; i++) {
-      indexes.add(random.nextInt(943622));
-    }
-
-    int counter = 0;
-
-    try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(new File("/mnt/shared-data/Vijay/ret_time_prediction/marvin_all_chems_random.txt")))) {
-      while(chemIter.hasNext()) {
-        DBObject chemObj = chemIter.next();
-        Chemical chem = mongoDB.convertDBObjectToChemical(chemObj);
-        if (indexes.contains(counter)) {
-          predictionWriter.write(chem.getInChI());
-          predictionWriter.write("\n");
-        }
-        counter++;
-      }
-    }
+//    Set<Integer> indexes = new HashSet<>();
+//    Random random = new Random(10);
+//
+//    for (int i = 0; i < 37000; i++) {
+//      indexes.add(random.nextInt(943622));
+//    }
+//
+//    int counter = 0;
+//
+//    try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(new File("/mnt/shared-data/Vijay/ret_time_prediction/marvin_all_chems_random.txt")))) {
+//      while(chemIter.hasNext()) {
+//        DBObject chemObj = chemIter.next();
+//        Chemical chem = mongoDB.convertDBObjectToChemical(chemObj);
+//        if (indexes.contains(counter)) {
+//          predictionWriter.write(chem.getInChI());
+//          predictionWriter.write("\n");
+//        }
+//        counter++;
+//      }
+//    }
   }
 }
