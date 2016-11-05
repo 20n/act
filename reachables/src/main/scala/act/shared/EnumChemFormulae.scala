@@ -1,11 +1,8 @@
-package com.act
+package act.shared
 
-import act.shared.ChemicalSymbols.{Atom, C, H, N, O, P, S, Cl, Br, F, I, MonoIsotopicMass}
-import act.shared.MassToFormula
+import act.shared.ChemicalSymbols.{Atom, Br, C, Cl, F, H, I, MonoIsotopicMass, N, O, P, S}
 import act.shared.ChemicalSymbols.Helpers.computeMassFromAtomicFormula
-import act.shared.{CmdLineParser, OptDesc}
 import java.io.PrintWriter
-import act.shared.StableChemicalFormulae
 
 object EnumChemFormulae {
   val defaultMaxMass = 1000.0 // Da
@@ -87,7 +84,7 @@ class EnumChemFormulae(maxElems: Map[Atom, Int] = EnumChemFormulae.defaultMaxEle
          f <- 0 to maxElems(F);
          b <- 0 to maxElems(Br);
          i <- 0 to maxElems(I)
-       ) {
+    ) {
       val formula: ChemicalFormula = Map(C->c, H->h, N->n, O->o, P->p, S->s, Cl->cl, F->f, Br->b, I->i)
       val isStableChemical = stableFormulae.isValid(formula)
       if (isStableChemical) {
