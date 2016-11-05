@@ -3,12 +3,16 @@ package com.act.biointerpretation.retentiontime;
 import act.server.DBIterator;
 import act.server.MongoDB;
 import act.shared.Chemical;
+import chemaxon.struc.Molecule;
+import com.act.analysis.chemicals.molecules.MoleculeImporter;
+import com.act.utils.TSVParser;
 import com.mongodb.DBObject;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
@@ -17,6 +21,26 @@ public class GetChems {
   public static void main(String[] args) throws Exception {
     MongoDB mongoDB = new MongoDB("localhost", 27017, "marvin");
     DBIterator chemIter = mongoDB.getIteratorOverChemicals();
+
+
+    TSVParser parser = new TSVParser();
+    parser.parse(new File("/mnt/shared-data/Vijay/ret_time_prediction/chemicals_sigma.txt"));
+
+    for (Map<String, String> row : parser.getResults()) {
+
+      for (String key : row.keySet()) {
+        System.out.println(key);
+      }
+
+
+    }
+
+
+
+
+
+
+
 
     Set<Integer> indexes = new HashSet<>();
     Random random = new Random(10);
