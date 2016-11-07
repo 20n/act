@@ -4,11 +4,14 @@ import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.Serializable;
 
 public class Ero implements Serializable {
   private static final long serialVersionUID = 5679370596050943302L;
+  private static final Logger LOGGER = LogManager.getLogger(Ero.class);
 
   @JsonProperty("id")
   private Integer id;
@@ -44,7 +47,7 @@ public class Ero implements Serializable {
   private Integer product_count;
 
   @JsonIgnore
-  private transient ThreadLocal<Reactor> reactor= new ThreadLocal<Reactor>() {
+  private transient ThreadLocal<Reactor> reactor = new ThreadLocal<Reactor>() {
     @Override
     protected Reactor initialValue() {
       Reactor r = new Reactor();
@@ -52,6 +55,8 @@ public class Ero implements Serializable {
         r.setReactionString(getRo());
         return r;
       } catch (ReactionException e) {
+        LOGGER.warn(String.format("Unable to set reaction string %s for RO %d.  " +
+                "Please verify validity of the reaction string for this RO.", getRo(), getId()));
         return null;
       }
     }
@@ -151,6 +156,8 @@ public class Ero implements Serializable {
   public Reactor getReactor() throws ReactionException {
     // We don't cache the reactor every time as by caching
     // it we disallow concurrency operations on a single RO.
+    // We also don't want to reconstruct it each time as this is an expensive operation.
+    // Therefore, we only reconstruct it for each thread.
     return reactor.get();
   }
 }
