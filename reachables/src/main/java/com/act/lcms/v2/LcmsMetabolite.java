@@ -11,19 +11,22 @@ public class LcmsMetabolite implements Metabolite {
 
   LcmsMetabolite(Double monoisotopicMass) {
     this.monoisotopicMass = monoisotopicMass;
-  }
-
-  LcmsMetabolite(Double monoisotopicMass, MolecularStructure structure) {
-    this.monoisotopicMass = monoisotopicMass;
-    this.structure = structure;
     this.formula = null;
-  }
-
-  LcmsMetabolite(Double monoisotopicMass, ChemicalFormula formula) {
-    this.monoisotopicMass = monoisotopicMass;
-    this.formula = formula;
     this.structure = null;
   }
+
+  LcmsMetabolite(ChemicalFormula formula) {
+    this.formula = formula;
+    this.monoisotopicMass = formula.getMonoIsotopicMass();
+    this.structure = null;
+  }
+
+  LcmsMetabolite(MolecularStructure structure) {
+    this.structure = structure;
+    this.monoisotopicMass = structure.getMonoIsotopicMass();
+    this.formula = structure.getChemicalFormula();
+  }
+
 
   public Optional<MolecularStructure> getStructure() {
     return Optional.ofNullable(this.structure);

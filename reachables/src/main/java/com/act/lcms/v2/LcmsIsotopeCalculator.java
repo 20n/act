@@ -25,11 +25,11 @@ public class LcmsIsotopeCalculator implements IsotopeCalculator {
   public List<Isotope> getIsotopes(Metabolite metabolite) {
     // If possible, extract a ChemicalFormula from the Metabolite
     ChemicalFormula formula;
-    if (metabolite.getStructure().isPresent()) {
+    if (metabolite.getFormula().isPresent()) {
+      formula = metabolite.getFormula().get();
+    } else if (metabolite.getStructure().isPresent()) {
       MolecularStructure structure = metabolite.getStructure().get();
       formula = structure.getChemicalFormula();
-    } else if (metabolite.getFormula().isPresent()) {
-      formula = metabolite.getFormula().get();
     } else {
       LOGGER.error("No structure or formula was found for metabolite (mass: %f.3). Skipping",
           metabolite.getMonoIsotopicMass());

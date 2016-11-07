@@ -62,6 +62,8 @@ public class LcmsElement implements Element {
     for (int i = 0; i < isotopeCount; i++) {
       Integer massNumber = PeriodicSystem.getIsotope(atomicNumber, i);
       Double abundance = PeriodicSystem.getAbundance(atomicNumber, massNumber);
+      // Chemaxon returns isotopes having ~0 abundance, so we filter these out to focus on the ones that actually occur
+      // in nature. MIN_ABUNDANCE should definitely be < 1 so we don't filter out C-13 which has ~1% natural abundance.
       if (abundance > MIN_ABUNDANCE) {
         elementIsotopes.add(new LcmsElementIsotope(this, massNumber));
       }

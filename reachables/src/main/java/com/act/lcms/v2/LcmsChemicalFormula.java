@@ -9,6 +9,11 @@ import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * A class representing a Chemical Formula and a potential name associated with it.
+ * The element counts are stored in a Map {Element -> count} and the class provides a convenient API
+ * for parsing from string, converting to string according to the Hill Order system.
+ */
 
 public class LcmsChemicalFormula implements ChemicalFormula {
 
@@ -57,8 +62,20 @@ public class LcmsChemicalFormula implements ChemicalFormula {
         getElementCounts().equals(((ChemicalFormula) chemicalFormula).getElementCounts());
   }
 
+  /**
+   * The following method implements the comparison of elements in a formula for the purpose of ordering them according
+   * to the Hill Order System, defined as follows:
+   * Case 1) If the formula contains Carbon:
+   * Carbon first, Hydrogen second, and all remaining elements in alphabetical order.
+   * Case 2) If no Carbon is present, all elements in alphabetical order.
+   * Indicate the number after each element symbol
+   * @param formula input formula. We need to provide it since the rules changes whether it contains a Carbon
+   * @return a Comparator between elements in the formula
+   */
   private Comparator<Element> getElementComparator(ChemicalFormula formula) {
     if (formula.getElementCount(LcmsCommonElements.CARBON.getElement()) > 0) {
+      // Case 1) the formula contains a Carbon
+      // Carbon first, Hydrogen second, and all remaining elements in alphabetical order.
       return (Element e1, Element e2) -> {
         if (e1.getSymbol().equals(e2.getSymbol())) {
           return 0;
@@ -75,6 +92,8 @@ public class LcmsChemicalFormula implements ChemicalFormula {
         }
       };
     } else {
+      // Case 2) the formula does not contain a Carbon
+      // all elements in alphabetical order, including Hydrogen
       return (Element e1, Element e2) -> e1.getSymbol().compareTo(e2.getSymbol());
     }
   }
@@ -85,6 +104,11 @@ public class LcmsChemicalFormula implements ChemicalFormula {
     return treeMap;
   }
 
+  /**
+   * Converts a Chemical Formula to its string representation following the Hill Order system described above.
+   * For example, the formula (C->8, H->9, N->1, O->2) would be converted as "C8H9NO2".
+   * @return the formula's string representation
+   */
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();

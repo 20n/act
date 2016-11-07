@@ -1,7 +1,7 @@
 package com.act.lcms.v2;
 
 /**
- * Provides a list of common elements
+ * Enumerates some common elements, with their valency
  */
 
 public enum LcmsCommonElements {
