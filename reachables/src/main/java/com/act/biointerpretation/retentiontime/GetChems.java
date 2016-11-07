@@ -32,7 +32,7 @@ public class GetChems {
     header.add("Mass");
 
     TSVWriter<String, String> writer = new TSVWriter<>(header);
-    writer.open(new File("/mnt/shared-data/Vijay/ret_time_prediction/marvin_l2_sigma.txt"));
+    writer.open(new File("/mnt/shared-data/Vijay/ret_time_prediction/drugbank_sigma.txt"));
 
     logPPlugin plugin = new logPPlugin();
     MajorMicrospeciesPlugin microspeciesPlugin = new MajorMicrospeciesPlugin();
@@ -45,10 +45,7 @@ public class GetChems {
       sigmaChems.put(chemical.getInChI(), chemical);
     }
 
-    BufferedReader reader = new BufferedReader(new FileReader("/mnt/shared-data/Gil/resources/reachables_list"));
-
-    String line = null;
-    while ((line = reader.readLine()) != null) {
+    for (String line : drugBankChems.keySet()) {
       if (sigmaChems.keySet().contains(line)) {
         Map<String, String> row = new HashMap<>();
         row.put("Name", sigmaChems.get(line).getFirstName());
@@ -76,8 +73,43 @@ public class GetChems {
         writer.append(row);
       }
     }
+//
+//    BufferedReader reader = new BufferedReader(new FileReader("/mnt/shared-data/Gil/resources/reachables_list"));
+//
+//
+//
+//
+//    String line = null;
+//    while ((line = reader.readLine()) != null) {
+//      if (sigmaChems.keySet().contains(line)) {
+//        Map<String, String> row = new HashMap<>();
+//        row.put("Name", sigmaChems.get(line).getFirstName());
+//        row.put("Inchi", line);
+//
+//        Molecule molecule = MolImporter.importMol(line, "inchi");
+//
+//        Cleaner.clean(molecule, 3);
+//        plugin.standardize(molecule);
+//        microspeciesPlugin.setpH(2.7);
+//        microspeciesPlugin.setMolecule(molecule);
+//        microspeciesPlugin.run();
+//
+//        Molecule phMol = microspeciesPlugin.getMajorMicrospecies();
+//        plugin.setlogPMethod(LogPMethod.CONSENSUS);
+//        plugin.setUserTypes("logPTrue,logPMicro,logPNonionic");
+//        plugin.setMolecule(phMol);
+//        plugin.run();
+//
+//        Double mass = molecule.getMass();
+//        Double logP = plugin.getlogPTrue();
+//        row.put("Mass", mass.toString());
+//        row.put("LogP", logP.toString());
+//
+//        writer.append(row);
+//      }
+//    }
 
     writer.close();
-    reader.close();
+    //reader.close();
   }
 }
