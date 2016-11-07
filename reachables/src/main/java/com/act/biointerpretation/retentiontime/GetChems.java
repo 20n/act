@@ -32,7 +32,7 @@ public class GetChems {
     header.add("Mass");
 
     TSVWriter<String, String> writer = new TSVWriter<>(header);
-    writer.open(new File("/mnt/shared-data/Vijay/ret_time_prediction/marvin_l4n1_sigma.txt"));
+    writer.open(new File("/mnt/shared-data/Vijay/ret_time_prediction/marvin_l2_sigma.txt"));
 
     logPPlugin plugin = new logPPlugin();
     MajorMicrospeciesPlugin microspeciesPlugin = new MajorMicrospeciesPlugin();
@@ -45,7 +45,7 @@ public class GetChems {
       sigmaChems.put(chemical.getInChI(), chemical);
     }
 
-    BufferedReader reader = new BufferedReader(new FileReader("/mnt/shared-data/Gil/resources/L2_L4_n1_inchis"));
+    BufferedReader reader = new BufferedReader(new FileReader("/mnt/shared-data/Gil/resources/reachables"));
 
     String line = null;
     while ((line = reader.readLine()) != null) {
