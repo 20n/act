@@ -62,11 +62,11 @@ public class PrecursorReport {
     this.lcmsMap = lcmsMap;
   }
 
-  public void addLcmsData(PeakSpectrum peakSpectrum, IonCalculator<Ion> massCalculator, double massTolerance) {
+  public void addLcmsData(PeakSpectrum peakSpectrum, IonCalculator massCalculator, double massTolerance) {
     for (NetworkNode node : network.getNodes()) {
       lcmsMap.put(node, 0.0);
       for (Ion ion : massCalculator.getIons(node.getMetabolite())) {
-        if (!peakSpectrum.getPeaksByMass(ion.getMzValue(), massTolerance).isEmpty()) {
+        if (!peakSpectrum.getPeaks(peak -> Math.abs(peak.getMz() - ion.getMzValue()) < massTolerance).isEmpty()) {
           lcmsMap.put(node, 1.0);
           break;
         }

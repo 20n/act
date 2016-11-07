@@ -1,13 +1,11 @@
 package com.act.biointerpretation.networkanalysis;
 
-import com.act.lcms.MassCalculator;
 import com.act.lcms.v2.ChemicalFormula;
 import com.act.lcms.v2.Metabolite;
 import com.act.lcms.v2.MolecularStructure;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.apache.commons.lang.NotImplementedException;
 
 import java.util.Optional;
 
@@ -49,6 +47,6 @@ public class InchiMetabolite implements Metabolite {
   @JsonIgnore
   @Override
   public Double getMonoIsotopicMass() {
-    return structure.getMass();
+    return structure.getMonoIsotopicMass();
   }
 }
