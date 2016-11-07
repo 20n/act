@@ -69,9 +69,9 @@ object SparkInstance {
     // Get all permutations of the input so that substrate order doesn't matter.
     //
     // TODO Having the importedMolecules above the loop may interfere with permutation's ability to correctly
-    // filter out duplicate reactions (For example, List(a,b,b) should not making two combinations (a,b,b).
-    // We should assess this as for higher number of molecule reactors this may be the dominant case over the
-    // cost that could be imposed by hitting the MoleculeImporter's cache.
+    // filter out duplicate reactions (For example, List(a,b,b) should not make two combinations of (a,b,b)
+    // because of the duplicates b. We should assess this as for higher number of molecule reactors this
+    // may be the dominant case over the cost that could be imposed by hitting the MoleculeImporter's cache.
     val importedMolecules: List[Molecule] = inputs.map(x => MoleculeImporter.importMolecule(x, defaultMoleculeFormat))
     val resultingReactions: Stream[ProjectionResult] = importedMolecules.permutations.flatMap(substrateOrdering => {
 
@@ -155,6 +155,7 @@ object SparkROProjector {
     // List of combinations of InChIs
     val inchiCombinations: Stream[Stream[String]] = combinationList(inchiCorpuses.map(_.toStream).toStream)
 
+    // TODO Move this filtering into combinationsList so that it is lazily evaluated as we need the elements.
     LOGGER.info("Attempting to filter out combinations with invalid InChIs.  " +
       s"Starting with ${inchiCombinations.length} inchis.")
     val validInchis: Stream[Stream[String]] = inchiCombinations.filter(group => {
