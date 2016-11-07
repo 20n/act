@@ -32,7 +32,7 @@ public class GetChems {
     header.add("Mass");
 
     TSVWriter<String, String> writer = new TSVWriter<>(header);
-    writer.open(new File("/mnt/shared-data/Vijay/ret_time_prediction/marvin_l2_drugbank_sigma.txt"));
+    writer.open(new File("/mnt/shared-data/Vijay/ret_time_prediction/marvin_l4n1_drugbank_sigma.txt"));
 
     logPPlugin plugin = new logPPlugin();
     MajorMicrospeciesPlugin microspeciesPlugin = new MajorMicrospeciesPlugin();
