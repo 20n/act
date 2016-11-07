@@ -3,16 +3,23 @@ package com.act.biointerpretation.retentiontime;
 import act.server.DBIterator;
 import act.server.MongoDB;
 import act.shared.Chemical;
+import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import com.act.utils.TSVParser;
+import com.act.utils.TSVWriter;
 import com.mongodb.DBObject;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -21,48 +28,37 @@ public class GetChems {
 
   public static void main(String[] args) throws Exception {
     MongoDB mongoDB = new MongoDB("localhost", 27017, "marvin");
-    DBIterator chemIter = mongoDB.getIteratorOverChemicals();
+    Map<String, Chemical> drugBankChems = new HashMap<>();
+    Map<String, Chemical> sigmaChems = new HashMap<>();
 
+    List<String> header = new ArrayList<>();
+    header.add("Name");
+    header.add("Inchi");
 
-    TSVParser parser = new TSVParser();
-    parser.parse(new File("/mnt/shared-data/Vijay/ret_time_prediction/chemicals_sigma.txt"));
+    TSVWriter<String, String> writer = new TSVWriter<>(header);
+    writer.open(new File("/mnt/shared-data/Vijay/ret_time_prediction/marvin_l2_drugbank_sigma.txt"));
 
-    for (Map<String, String> row : parser.getResults()) {
-
-      Chemical chem = mongoDB.getChemicalFromSMILES(row.get("chemicals"));
-
-      if (chem != null) {
-        System.out.println(mongoDB.getChemicalFromSMILES(row.get("chemicals")).getFirstName());
-      }
-
+    for (Chemical chemical : mongoDB.getDrugbankChemicals()) {
+      drugBankChems.put(chemical.getInChI(), chemical);
     }
 
+    for (Chemical chemical : mongoDB.getSigmaChemicals()) {
+      sigmaChems.put(chemical.getInChI(), chemical);
+    }
 
+    BufferedReader reader = new BufferedReader(new FileReader("/mnt/shared-data/Gil/resources/reachables_list"));
 
+    String line = null;
+    while ((line = reader.readLine()) != null) {
+      if (drugBankChems.keySet().contains(line)) {
+        Map<String, String> row = new HashMap<>();
+        row.put("Name", drugBankChems.get(line).getShortestName());
+        row.put("Inchi", line);
+        writer.append(row);
+      }
+    }
 
-
-
-
-
-//    Set<Integer> indexes = new HashSet<>();
-//    Random random = new Random(10);
-//
-//    for (int i = 0; i < 37000; i++) {
-//      indexes.add(random.nextInt(943622));
-//    }
-//
-//    int counter = 0;
-//
-//    try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(new File("/mnt/shared-data/Vijay/ret_time_prediction/marvin_all_chems_random.txt")))) {
-//      while(chemIter.hasNext()) {
-//        DBObject chemObj = chemIter.next();
-//        Chemical chem = mongoDB.convertDBObjectToChemical(chemObj);
-//        if (indexes.contains(counter)) {
-//          predictionWriter.write(chem.getInChI());
-//          predictionWriter.write("\n");
-//        }
-//        counter++;
-//      }
-//    }
+    writer.close();
+    reader.close();
   }
 }
