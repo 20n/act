@@ -45,7 +45,7 @@ public class GetChems {
       sigmaChems.put(chemical.getInChI(), chemical);
     }
 
-    BufferedReader reader = new BufferedReader(new FileReader("/mnt/shared-data/Gil/resources/reachables"));
+    BufferedReader reader = new BufferedReader(new FileReader("/mnt/shared-data/Gil/resources/reachables_list"));
 
     String line = null;
     while ((line = reader.readLine()) != null) {
