@@ -32,7 +32,7 @@ public class GetChems {
     header.add("Mass");
 
     TSVWriter<String, String> writer = new TSVWriter<>(header);
-    writer.open(new File("/mnt/shared-data/Vijay/ret_time_prediction/marvin_l4n1_drugbank_sigma.txt"));
+    writer.open(new File("/mnt/shared-data/Vijay/ret_time_prediction/marvin_l4n1_sigma.txt"));
 
     logPPlugin plugin = new logPPlugin();
     MajorMicrospeciesPlugin microspeciesPlugin = new MajorMicrospeciesPlugin();
@@ -49,32 +49,7 @@ public class GetChems {
 
     String line = null;
     while ((line = reader.readLine()) != null) {
-      if (drugBankChems.keySet().contains(line)) {
-        Map<String, String> row = new HashMap<>();
-        row.put("Name", drugBankChems.get(line).getFirstName());
-        row.put("Inchi", line);
-
-        Molecule molecule = MolImporter.importMol(line, "inchi");
-
-        Cleaner.clean(molecule, 3);
-        plugin.standardize(molecule);
-        microspeciesPlugin.setpH(2.7);
-        microspeciesPlugin.setMolecule(molecule);
-        microspeciesPlugin.run();
-
-        Molecule phMol = microspeciesPlugin.getMajorMicrospecies();
-        plugin.setlogPMethod(LogPMethod.CONSENSUS);
-        plugin.setUserTypes("logPTrue,logPMicro,logPNonionic");
-        plugin.setMolecule(phMol);
-        plugin.run();
-
-        Double mass = molecule.getMass();
-        Double logP = plugin.getlogPTrue();
-        row.put("Mass", mass.toString());
-        row.put("LogP", logP.toString());
-
-        writer.append(row);
-      } else if (sigmaChems.keySet().contains(line)) {
+      if (sigmaChems.keySet().contains(line)) {
         Map<String, String> row = new HashMap<>();
         row.put("Name", sigmaChems.get(line).getFirstName());
         row.put("Inchi", line);
