@@ -77,12 +77,17 @@ public class LcmsTSVParser {
     }
 
     @Override
-    public List<DetectedPeak> getPeaksByMass(Double mass, Double massTolerance) {
-      return getPeaks(p -> Math.abs(p.getMz() - mass) < massTolerance);
+    public List<DetectedPeak> getPeaksByMZ(Double mz, Double confidenceLevel) {
+      throw new NotImplementedException("Not implemented.");
     }
 
     @Override
     public List<DetectedPeak> getPeaksByTime(Double time, Double timeTolerance) {
+      throw new NotImplementedException("Not implemented.");
+    }
+
+    @Override
+    public List<DetectedPeak> getPeaksByMzTime(Double time, Double mz, Double confidenceLevel) {
       throw new NotImplementedException("Not implemented.");
     }
 

@@ -61,7 +61,7 @@ public class MetabolismNetworkTest {
   private Metabolite getMockMetabolite(String s, double mass) {
     MolecularStructure structure = Mockito.mock(MolecularStructure.class);
     Mockito.when(structure.getInchi()).thenReturn(s);
-    Mockito.when(structure.getMass()).thenReturn(mass);
+    Mockito.when(structure.getMonoIsotopicMass()).thenReturn(mass);
 
     Metabolite m = Mockito.mock(Metabolite.class);
     Mockito.when(m.getStructure()).thenReturn(Optional.of(structure));

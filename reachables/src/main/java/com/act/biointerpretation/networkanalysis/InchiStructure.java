@@ -23,12 +23,7 @@ public class InchiStructure implements MolecularStructure {
   }
 
   @Override
-  public Boolean parseInchi(String inchi) {
-    throw new NotImplementedException();
-  }
-
-  @Override
-  public Double getMass() {
+  public Double getMonoIsotopicMass() {
     try {
       return MassCalculator.calculateMass(inchi);
     } catch (Exception e) {

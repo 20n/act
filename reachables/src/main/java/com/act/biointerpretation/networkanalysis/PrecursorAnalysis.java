@@ -81,7 +81,7 @@ public class PrecursorAnalysis implements JavaRunnable {
 
     Map<String, Integer> targetIdMap = new HashMap<>();
     int id = 0;
-    MetaboliteToMz metaboliteToMz = lcmsInput.isPresent() ? new MetaboliteToMz(ionSet) : null;
+    MetaboliteToMz metaboliteToMz = lcmsInput.isPresent() ? new MetaboliteToMz() : null;
     PeakSpectrum lcmsSpectrum = lcmsInput.isPresent() ? LcmsTSVParser.parseTSV(lcmsInput.get()) : null;
 
     // Do precursor analyses on each target.  Give each found target an ID so we can track which report is which.
