@@ -55,6 +55,11 @@ public class GetChems {
         row.put("Name", drugBankChems.get(line).getShortestName());
         row.put("Inchi", line);
         writer.append(row);
+      } else if (sigmaChems.keySet().contains(line)) {
+        Map<String, String> row = new HashMap<>();
+        row.put("Name", sigmaChems.get(line).getShortestName());
+        row.put("Inchi", line);
+        writer.append(row);
       }
     }
 
