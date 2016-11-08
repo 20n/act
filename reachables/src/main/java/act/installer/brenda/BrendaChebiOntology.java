@@ -414,6 +414,9 @@ public class BrendaChebiOntology {
       }
       for (String parentApplication : directApplicationMap.get(chemicalEntity)) {
         Set<String> mainApplications = applicationToMainApplicationsMap.get(parentApplication);
+        if (chemicalEntity.equals("CHEBI:15377")) {
+          LOGGER.info(mainApplications);
+        }
         if (mainApplications != null) {
           mainApplicationsSet.addAll(mainApplications.stream().map(ontologyMap::get).collect(Collectors.toSet()));
           if (chemicalEntity.equals("CHEBI:15377")) {
