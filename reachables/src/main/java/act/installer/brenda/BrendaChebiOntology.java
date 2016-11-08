@@ -349,12 +349,11 @@ public class BrendaChebiOntology {
       LOGGER.debug("current index is at %d", currentIndex);
       LOGGER.debug("%d applications in the applications to visit set", applicationsToVisit.size());
       String currentApplication = applicationsToVisit.get(currentIndex);
-      LOGGER.info("current application is %s", currentApplication);
+      LOGGER.debug("current application is %s", currentApplication);
       Set<String> subApplications = isSubtypeOfRelationships.get(currentApplication);
 
       if (subApplications != null) {
-        LOGGER.info("Found %d existing sub-applicaitons", subApplications.size());
-        //subApplications.removeAll(applicationToMainApplicationsMap.keySet());
+        LOGGER.debug("Found %d existing sub-applicaitons", subApplications.size());
 
         // add all sub-applications to the set of applications to visit
         applicationsToVisit.addAll(subApplications);
