@@ -52,7 +52,15 @@ public class BrendaChebiOntology {
         "  terms.term,",
         "  definitions.definition",
         "FROM ontology_chebi_Terms terms",
-        "OUTER JOIN ontology_chebi_Definitions definitions",
+        "LEFT OUTER JOIN ontology_chebi_Definitions definitions",
+        "ON terms.id_go = definitions.id_go",
+        "UNION",
+        "SELECT",
+        "  terms.id_go,",
+        "  terms.term,",
+        "  definitions.definition",
+        "FROM ontology_chebi_Terms terms",
+        "RIGHT OUTER JOIN ontology_chebi_Definitions definitions",
         "ON terms.id_go = definitions.id_go"
     }, " ");
 
