@@ -5,7 +5,6 @@ import com.act.utils.TSVWriter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -50,7 +49,7 @@ public class MZCollisionCounter {
     );
     add(Option.builder(OPTION_OUTPUT_FILE)
         .argName("output-file")
-        .desc("Write collision histogram data to an output file (default: stdout)")
+        .desc("Write collision histogram data to an output file")
         .hasArg()
         .required()
         .longOpt("output-file")
@@ -129,39 +128,53 @@ public class MZCollisionCounter {
       } else {
         // Compute windows for every m/z.  We don't care about the original mz values since we just want the count.
         List<Double> mzs = mzMap.ionMZsSorted();
-        // Window = lower bound, counter, upper bound.  Counter in the middle = easy to remember what's what.
-        LinkedList<Triple<Double, LongAdder, Double>> allWindows = new LinkedList<Triple<Double, LongAdder, Double>>() {{
+        // Window = (lower bound, upper bound), counter, and number of representative structures.
+        LinkedList<CollisionWindow> allWindows = new LinkedList<CollisionWindow>() {{
           for (Double mz : mzs) {
             // CPU for memory trade-off: don't re-compute the window bounds over and over and over and over and over.
-            add(Triple.of(mz - WINDOW_TOLERANCE, new LongAdder(), mz + WINDOW_TOLERANCE));
+            try {
+              add(new CollisionWindow(mz, mzMap.ionMZToMZSources(mz).size()));
+            } catch (NoSuchElementException e) {
+              LOGGER.error("Caught no such element exception for mz %f: %s", mz, e.getMessage());
+              throw e;
+            }
           }
         }};
 
         // Sweep line time!  The window ranges are the interesting points.  We just accumulate overlap counts as we go.
-        LinkedList<Triple<Double, LongAdder, Double>> workingSet = new LinkedList<>();
-        List<Triple<Double, LongAdder, Double>> finishedSet = new LinkedList<>();
+        LinkedList<CollisionWindow> workingSet = new LinkedList<>();
+        List<CollisionWindow> finishedSet = new LinkedList<>();
 
         while (allWindows.size() > 0) {
-          Triple<Double, LongAdder, Double> thisWindow = allWindows.pop();
+          CollisionWindow thisWindow = allWindows.pop();
           // Remove any windows from the working set that don't overlap with the next window.
-          while (workingSet.size() > 0 && workingSet.peekFirst().getRight() < thisWindow.getLeft()) {
+          while (workingSet.size() > 0 && workingSet.peekFirst().getMax() < thisWindow.getMin()) {
             finishedSet.add(workingSet.pop());
           }
-          workingSet.add(thisWindow);
 
-          // Add one to each overlapping window to remember that this new window intersects with all of them.
-          workingSet.forEach(t -> t.getMiddle().increment());
+          for (CollisionWindow w : workingSet) {
+            /* Add the size of the new overlapping window's structure count to each of the windows in the working set,
+             * which represents the number of possible confused structures that fall within the overlapping region.
+             * We exclude the window itself as it should already have counted the colliding structures it represents. */
+            w.getAccumulator().add(thisWindow.getStructureCount());
+
+            /* Reciprocally, add the structure counts of all windows with which the current window overlaps to it. */
+            thisWindow.getAccumulator().add(w.getStructureCount());
+          }
+
+          // Now that accumulation is complete, we can safely add the current window.
+          workingSet.add(thisWindow);
         }
 
         // All the interesting events are done, so drop the remaining windows into the finished set.
         finishedSet.addAll(workingSet);
 
-        Map<Long, Long> collisionHistogram = histogram(finishedSet.stream().map(t -> t.getMiddle().longValue()));
+        Map<Long, Long> collisionHistogram = histogram(finishedSet.stream().map(w -> w.getAccumulator().longValue()));
         List<Long> sortedCollisions = new ArrayList<>(collisionHistogram.keySet());
         Collections.sort(sortedCollisions);
         for (Long collision : sortedCollisions) {
           tsvWriter.append(new HashMap<String, Long>() {{
-            put("collisions", collision.longValue());
+            put("collisions", collision);
             put("count", collisionHistogram.get(collision));
           }});
         }
@@ -170,6 +183,38 @@ public class MZCollisionCounter {
       if (tsvWriter != null) {
         tsvWriter.close();
       }
+    }
+  }
+
+  private static class CollisionWindow {
+    Double min;
+    Double max;
+    LongAdder accumulator = new LongAdder();
+    Integer structureCount;
+
+    public CollisionWindow(Double mz, Integer structureCount) {
+      this.min = mz - WINDOW_TOLERANCE;
+      this.max = mz + WINDOW_TOLERANCE;
+      this.structureCount = structureCount;
+
+      // Set the base
+      this.accumulator.add(structureCount);
+    }
+
+    Double getMin() {
+      return min;
+    }
+
+    Double getMax() {
+      return max;
+    }
+
+    LongAdder getAccumulator() {
+      return accumulator;
+    }
+
+    Integer getStructureCount() {
+      return structureCount;
     }
   }
 
