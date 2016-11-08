@@ -44,28 +44,39 @@ public class BrendaChebiOntology {
 
   public static class ChebiOntology {
 
-    // The following query allows to retrieve the definitions
+    // The following query allows to retrieve the terms (basic string defining an ontology) and definitions
     // (when it exists) corresponding to a ChEBI id (ex: "CHEBI:46195") to create ChebiOntology objects.
     public static final String QUERY = StringUtils.join(new String[]{
         "SELECT",
-        "  id_go,",
-        "  definition",
-        "FROM ontology_chebi_Definitions"
+        "  terms.id_go,",
+        "  terms.term,",
+        "  definitions.definition",
+        "FROM ontology_chebi_Terms terms",
+        "OUTER JOIN ontology_chebi_Definitions definitions",
+        "ON terms.id_go = definitions.id_go"
     }, " ");
 
     @JsonProperty("chebi_id")
     private String chebiId;
 
+    @JsonProperty("term")
+    private String term;
+
     @JsonProperty("definition")
     private String definition;
 
-    public ChebiOntology(String chebiId, String definition) {
+    public ChebiOntology(String chebiId, String term, String definition) {
       this.chebiId = chebiId;
+      this.term = term;
       this.definition = definition;
     }
 
     public String getChebiId() {
       return this.chebiId;
+    }
+
+    public String getTerm() {
+      return this.term;
     }
 
     public String getDefinition() {
@@ -90,20 +101,22 @@ public class BrendaChebiOntology {
     }
 
     /* This function creates a ChebiOntology object from a ResultSet resulting from a SQL query.
-     * It pulls the 2 first fields from the query, assuming the order:
+     * It pulls the 3 first fields from the query, assuming the order:
      * ChebiId,
+     * Term,
      * Definition
      */
     public static ChebiOntology fromResultSet(ResultSet resultSet) throws SQLException {
       return new ChebiOntology(
           resultSet.getString(1),
-          resultSet.getString(2)
-      );
+          resultSet.getString(2),
+          resultSet.getString(3));
     }
 
     public BasicDBObject toBasicDBObject() {
       BasicDBObject o = new BasicDBObject();
       o.put("chebi_id", getChebiId());
+      o.put("term", getTerm());
       o.put("definition", getDefinition());
       return o;
     }
@@ -439,7 +452,7 @@ public class BrendaChebiOntology {
 
     // Get the ontology map (ChebiId -> ChebiOntology object)
     Map<String, ChebiOntology> ontologyMap = fetchOntologyMap(brendaDB);
-    LOGGER.info("Done fetching ontology map: ChEBI ID -> ontology object (id, definition)");
+    LOGGER.info("Done fetching ontology map: ChEBI ID -> ontology object (id, term, definition)");
 
     // Get relationships of type 'isSubtypeOf'
     Map<String, Set<String>> isSubtypeOfRelationships = fetchIsSubtypeOfRelationships(brendaDB);
@@ -465,7 +478,7 @@ public class BrendaChebiOntology {
         continue;
       }
 
-      LOGGER.debug("Processing Chemical with InChI: %s and ChEBI ID: %s", inchi, chebiId);
+      LOGGER.info("Processing Chemical with InChI: %s and ChEBI ID: %s", inchi, chebiId);
       ChebiOntology ontology = ontologyMap.get(chebiId);
       ChebiApplicationSet applicationSet = chemicalEntityToApplicationsMap.get(ontology);
       if (applicationSet == null) {
