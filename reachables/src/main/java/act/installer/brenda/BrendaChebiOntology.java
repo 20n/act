@@ -194,18 +194,16 @@ public class BrendaChebiOntology {
     }
 
     public BasicDBObject toBasicDBObject() {
-      BasicDBObject o = new BasicDBObject();
+
       BasicDBList directApplications = new BasicDBList();
       BasicDBList mainApplications = new BasicDBList();
-      for (BrendaChebiOntology.ChebiOntology directApplication : getDirectApplications()) {
-        directApplications.add(directApplication.toBasicDBObject());
-      }
-      for (BrendaChebiOntology.ChebiOntology mainApplication : getMainApplications()) {
-        mainApplications.add(mainApplication.toBasicDBObject());
-      }
-      o.put("direct_applications", directApplications);
-      o.put("main_applications", mainApplications);
-      return o;
+
+      getDirectApplications().forEach(directApplication -> directApplications.add(directApplication.toBasicDBObject()));
+      getMainApplications().forEach(mainApplication -> mainApplications.add(mainApplication.toBasicDBObject()));
+
+      return new BasicDBObject()
+          .append("direct_applications", directApplications)
+          .append("main_applications", mainApplications);
     }
   }
 
