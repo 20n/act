@@ -324,8 +324,7 @@ public class BrendaChebiOntology {
 
 
   public static Map<String, Set<String>> getApplicationToMainApplicationsMap(
-      Map<String, Set<String>> isSubtypeOfRelationships,
-      String applicationChebiId) {
+      Map<String, Set<String>> isSubtypeOfRelationships, String applicationChebiId) {
 
     /*
      * Compute the set of main applications. These are the ontologies that are subtypes of the ontology 'application'.
@@ -343,18 +342,23 @@ public class BrendaChebiOntology {
 
     // For each main application, define the mainApplicationSet as a set containing only itself.
     applicationsToVisit.stream().forEach(application ->
-        applicationToMainApplicationsMap.put(application, new HashSet<>(Collections.singletonList(application))));
+        applicationToMainApplicationsMap.put(application, Collections.singleton(application)));
 
     // Then visit all applications in a BFS fashion, appending new applications to visit to the applicationsToVisit
     // and propagating/merging the set of main applications as we progress down the relationship graph.
     int currentIndex = 0;
     while (currentIndex < applicationsToVisit.size()) {
-
-      LOGGER.info("%d applications in the applications to visit set", applicationsToVisit.size());
+      LOGGER.debug("current index is at %d", currentIndex);
+      LOGGER.debug("%d applications in the applications to visit set", applicationsToVisit.size());
       String currentApplication = applicationsToVisit.get(currentIndex);
+      LOGGER.info("current application is %s", currentApplication);
       Set<String> subApplications = isSubtypeOfRelationships.get(currentApplication);
+
       if (subApplications != null) {
-        // subApplications.removeAll(applicationToMainApplicationsMap.keySet());
+        LOGGER.info("Found %d existing sub-applicaitons", subApplications.size());
+        //subApplications.removeAll(applicationToMainApplicationsMap.keySet());
+
+        // add all sub-applications to the set of applications to visit
         applicationsToVisit.addAll(subApplications);
         for (String subApplication : subApplications) {
           Set<String> mainApplicationsSet = applicationToMainApplicationsMap.get(subApplication);
@@ -380,13 +384,13 @@ public class BrendaChebiOntology {
   public static Map<ChebiOntology, ChebiApplicationSet> getApplications(
       Map<String, ChebiOntology> ontologyMap,
       Map<String, Set<String>> isSubtypeOfRelationships,
-      Map<String, Set<String>> hasRoleRelationships) throws SQLException {
+      Map<String, Set<String>> hasRoleRelationships) {
 
 
     Map<String, Set<String>> applicationToMainApplicationsMap = getApplicationToMainApplicationsMap(
         isSubtypeOfRelationships, APPLICATION_CHEBI_ID);
 
-    // Filter out the role that are not applications
+    // Filter out the roles that are not applications
     Map<String, Set<String>> directApplicationMap = new HashMap<>();
     hasRoleRelationships.forEach((key, value) -> directApplicationMap.put(
         key, value
@@ -443,11 +447,10 @@ public class BrendaChebiOntology {
     Map<String, ChebiOntology> ontologyMap = fetchOntologyMap(brendaDB);
 
     // Get relationships of type 'isSubtypeOf'
-    Map<ChebiOntology, Set<ChebiOntology>> isSubtypeOfRelationships = fetchIsSubtypeOfRelationships(brendaDB, ontologyMap);
+    Map<String, Set<String>> isSubtypeOfRelationships = fetchIsSubtypeOfRelationships(brendaDB);
 
     // Get relationships of type 'hasRole'
-    Map<ChebiOntology, Set<ChebiOntology>> hasRoleRelationships =
-        fetchHasRoleRelationships(brendaDB, ontologyMap);
+    Map<String, Set<String>> hasRoleRelationships = fetchHasRoleRelationships(brendaDB);
 
     // Get the applications for all chemical entities
     Map<ChebiOntology, ChebiApplicationSet> chemicalEntityToApplicationsMap = getApplications(
@@ -487,10 +490,10 @@ public class BrendaChebiOntology {
     Map<String, ChebiOntology> ontologyMap = fetchOntologyMap(brendaDB);
 
     // Get "is subtype of" relationships
-    Map<ChebiOntology, Set<ChebiOntology>> isSubTypeOfRelationships = fetchIsSubtypeOfRelationships(brendaDB, ontologyMap);
+    Map<String, Set<String>> isSubTypeOfRelationships = fetchIsSubtypeOfRelationships(brendaDB);
 
     // Get "has role" relationships
-    Map<ChebiOntology, Set<ChebiOntology>> hasRoleRelationships = fetchHasRoleRelationships(brendaDB, ontologyMap);
+    Map<String, Set<String>> hasRoleRelationships = fetchHasRoleRelationships(brendaDB);
 
     // Get the applications for all chemical entities
     Map<ChebiOntology, ChebiApplicationSet> chemicalEntityToApplicationsMap = getApplications(
