@@ -369,11 +369,6 @@ public class BrendaChebiOntology {
     }
 
     /*
-     * Fetch the set of direct applications for each ontology that has a role (aka is a chemical entity).
-     */
-
-
-    /*
      * Compute the set of main applications for each ontology that has a role (aka is a chemical entity).
      */
     Map<ChebiOntology, Set<ChebiOntology>> chemicalEntityToMainApplicationMap = new HashMap<>();
@@ -432,8 +427,6 @@ public class BrendaChebiOntology {
         ontologyMap, isSubtypeOfRelationships, hasRoleRelationships);
 
 
-
-
     DBIterator chemicalsIterator = db.getIteratorOverChemicals();
     // Iterate over all chemicals
     while (chemicalsIterator.hasNext()) {
@@ -466,10 +459,15 @@ public class BrendaChebiOntology {
     // Get the ontology map (ChebiId -> ChebiOntology object)
     Map<String, ChebiOntology> ontologyMap = fetchOntologyMap(brendaDB);
 
+    // Get "is subtype of" relationships
+    Map<ChebiOntology, Set<ChebiOntology>> isSubTypeOfRelationships = fetchIsSubtypeOfRelationships(brendaDB, ontologyMap);
+
+    // Get "has role" relationships
+    Map<ChebiOntology, Set<ChebiOntology>> hasRoleRelationships = fetchHasRoleRelationships(brendaDB, ontologyMap);
+
     // Get the applications for all chemical entities
     Map<ChebiOntology, ChebiApplicationSet> chemicalEntityToApplicationsMap = getApplications(
-        brendaDB,
-        ontologyMap);
+        ontologyMap, isSubTypeOfRelationships, hasRoleRelationships);
 
     ChebiOntology applicationOntology = ontologyMap.get("CHEBI:46195");
 
