@@ -415,6 +415,8 @@ public class BrendaChebiOntology {
       }
     }
 
+    LOGGER.info("Done computing main applications for ontologies having a role.");
+
     /*
      * Finally, construct a ChebiApplicationSet object containing direct and main applications for the molecules.
      */
@@ -425,6 +427,8 @@ public class BrendaChebiOntology {
           chemicalEntityToMainApplicationMap.get(ontologyMap.get(chemicalEntity)));
       chemicalEntityToApplicationsMap.put(ontologyMap.get(chemicalEntity), applications);
     }
+
+    LOGGER.info("Done computing each ontology application set.");
 
     return chemicalEntityToApplicationsMap;
   }
@@ -443,17 +447,20 @@ public class BrendaChebiOntology {
 
     // Get the ontology map (ChebiId -> ChebiOntology object)
     Map<String, ChebiOntology> ontologyMap = fetchOntologyMap(brendaDB);
+    LOGGER.info("Done fetching ontology map: ChEBI ID -> ontology object (id, term, definition)");
 
     // Get relationships of type 'isSubtypeOf'
     Map<String, Set<String>> isSubtypeOfRelationships = fetchIsSubtypeOfRelationships(brendaDB);
+    LOGGER.info("Done fetching 'is subtype of' relationships");
 
     // Get relationships of type 'hasRole'
     Map<String, Set<String>> hasRoleRelationships = fetchHasRoleRelationships(brendaDB);
+    LOGGER.info("Done fetching 'has role' relationships");
 
     // Get the applications for all chemical entities
     Map<ChebiOntology, ChebiApplicationSet> chemicalEntityToApplicationsMap = getApplications(
         ontologyMap, isSubtypeOfRelationships, hasRoleRelationships);
-
+    LOGGER.info("Done computing applications");
 
     DBIterator chemicalsIterator = db.getIteratorOverChemicals();
     // Iterate over all chemicals
@@ -470,7 +477,7 @@ public class BrendaChebiOntology {
       ChebiOntology ontology = ontologyMap.get(chebiId);
       ChebiApplicationSet applicationSet = chemicalEntityToApplicationsMap.get(ontology);
       if (applicationSet == null) {
-        LOGGER.debug("Application set for %s was found null. Skipping update.", chebiId);
+        LOGGER.debug("Found no applications for %s. Skipping database update for this chemical.", chebiId);
         continue;
       }
       db.updateChemicalWithChebiApplications(chebiId, applicationSet);
