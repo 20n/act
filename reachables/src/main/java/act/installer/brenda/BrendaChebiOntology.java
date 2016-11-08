@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -395,7 +396,6 @@ public class BrendaChebiOntology {
             .filter(ontology -> applicationToMainApplicationsMap.keySet().contains(ontology))
             .collect(Collectors.toSet())));
 
-    assert !directApplicationMap.containsKey(null);
     // directApplicationMap now maps each ontology to its direct applications
 
     /*
@@ -409,24 +409,13 @@ public class BrendaChebiOntology {
         mainApplicationsSet = new HashSet<>();
         chemicalEntityToMainApplicationMap.put(ontologyMap.get(chemicalEntity), mainApplicationsSet);
       }
-      if (chemicalEntity.equals("CHEBI:15377")) {
-        LOGGER.info(directApplicationMap.get(chemicalEntity).toString());
-      }
       for (String parentApplication : directApplicationMap.get(chemicalEntity)) {
         Set<String> mainApplications = applicationToMainApplicationsMap.get(parentApplication);
-        if (chemicalEntity.equals("CHEBI:15377")) {
-          LOGGER.info(mainApplications);
-        }
         if (mainApplications != null) {
-          mainApplicationsSet.addAll(mainApplications.stream().map(ontologyMap::get).collect(Collectors.toSet()));
-          if (chemicalEntity.equals("CHEBI:15377")) {
-            LOGGER.info(mainApplications.stream().map(ontologyMap::get).collect(Collectors.toSet()));
-          }
+          mainApplicationsSet.addAll(mainApplications.stream().map(ontologyMap::get).filter(Objects::nonNull).collect(Collectors.toSet()));
         }
       }
     }
-
-    assert !applicationToMainApplicationsMap.containsKey(null);
 
     LOGGER.info("Done computing main applications for ontologies having a role.");
 
@@ -458,7 +447,6 @@ public class BrendaChebiOntology {
    * @throws IOException
    */
   public void addChebiApplications(MongoDB db, SQLConnection brendaDB) throws SQLException, IOException {
-    Map<String, Long> all_db_chems = db.constructAllInChIs();
 
     // Get the ontology map (ChebiId -> ChebiOntology object)
     Map<String, ChebiOntology> ontologyMap = fetchOntologyMap(brendaDB);
