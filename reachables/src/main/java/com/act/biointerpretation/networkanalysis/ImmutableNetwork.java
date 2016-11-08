@@ -19,6 +19,8 @@ public interface ImmutableNetwork {
 
   public NetworkNode getNodeByUID(Integer uid);
 
+  public Optional<NetworkNode> getNodeOptionByUID(Integer uid);
+
   public NetworkNode getNodeByInchi(String inchi);
 
   public Optional<NetworkNode> getNodeOptionByInchi(String inchi);

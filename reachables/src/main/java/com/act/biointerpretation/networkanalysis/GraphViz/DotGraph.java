@@ -1,16 +1,11 @@
 package com.act.biointerpretation.networkanalysis.GraphViz;
 
-import com.act.utils.TSVWriter;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Represents a GraphViz graph.

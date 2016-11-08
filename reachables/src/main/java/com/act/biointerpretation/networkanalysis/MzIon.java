@@ -3,9 +3,6 @@ package com.act.biointerpretation.networkanalysis;
 import com.act.lcms.MS1;
 import com.act.lcms.v2.Ion;
 
-/**
- * Created by gil on 10/26/16.
- */
 public class MzIon implements Ion {
 
   private final double mz;
