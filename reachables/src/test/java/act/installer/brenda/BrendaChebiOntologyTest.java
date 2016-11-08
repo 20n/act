@@ -1,22 +1,92 @@
 package act.installer.brenda;
 
+import act.installer.wikipedia.ImportantChemicalsWikipedia;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 
 import static org.junit.Assert.assertEquals;
 
-/**
- * Created by tom on 10/3/16.
- */
+
 public class BrendaChebiOntologyTest {
 
 
-  // Test printing capacities
-  // Test
+  private BrendaChebiOntology.ChebiOntology buildTestCase(String id) {
+    String chebiId = String.format("CHEBI:%s", id);
+    String term  = String.format("term%s", id);
+    String definition = String.format("definition%s", id);
+    return new BrendaChebiOntology.ChebiOntology(chebiId, term, definition);
+  }
+
+  @Test
+  /**
+   * Map<ChebiOntology, Set<ChebiOntology>> getApplicationToMainApplicationsMap(
+   Map<String, ChebiOntology> ontologyMap,
+   Map<ChebiOntology, Set<ChebiOntology>> isSubtypeOfRelationships)
+   */
+  public void testApplicationToMainApplicationMapping() {
+
+    List<Integer> range = IntStream.rangeClosed(1, 10).boxed().collect(Collectors.toList());
+    List<BrendaChebiOntology.ChebiOntology> ontologies = range.stream().map(id -> buildTestCase(id.toString())).collect(Collectors.toList());
+    Map<String, BrendaChebiOntology.ChebiOntology> ontologyMap = new HashMap<>();
+    ontologies.forEach(o -> ontologyMap.put(o.getChebiId(), o));
+
+    Map<BrendaChebiOntology.ChebiOntology, Set<BrendaChebiOntology.ChebiOntology>> isSubtypeOfRelationships = new HashMap<>();
+
+    //         1 -> main application ontology
+    //        / \
+    //       2   3 -> these are main applications
+    //      /     \
+    //     4       5 -> these are sub applications
+    //      \     / \
+    //       \   /   6 -> another level of sub-applications
+    //        \ /     \
+    //         7       8 -> chemicals
+    // Question: can there be nested chemicals?
+
+    // 2 and 3 are main applications
+    Set<BrendaChebiOntology.ChebiOntology> mainApplications = new HashSet<>();
+    mainApplications.add(ontologies.get(1));
+    mainApplications.add(ontologies.get(2));
+    // 1 is the main application id
+    isSubtypeOfRelationships.put(ontologies.get(0), mainApplications);
+
+    // 4, 5 and 6 are sub applications. 4 is sub-application of 2 and 5 is sub-application of 3.
+    isSubtypeOfRelationships.put(ontologies.get(1), Collections.singleton(ontologies.get(3)));
+    isSubtypeOfRelationships.put(ontologies.get(2), Collections.singleton(ontologies.get(4)));
+    isSubtypeOfRelationships.put(ontologies.get(4), Collections.singleton(ontologies.get(5)));
+
+    // 7 and 8 are chemicals with respective applications 4 and 6
+    isSubtypeOfRelationships.put(ontologies.get(3), Collections.singleton(ontologies.get(6)));
+    isSubtypeOfRelationships.put(ontologies.get(4), Collections.singleton(ontologies.get(6)));
+    isSubtypeOfRelationships.put(ontologies.get(5), Collections.singleton(ontologies.get(7)));
+
+    // Expected map is:
+    Map<BrendaChebiOntology.ChebiOntology, Set<BrendaChebiOntology.ChebiOntology>> applicationToMainApplicationMap = new HashMap<>();
+    applicationToMainApplicationMap.put(ontologies.get(1), Collections.singleton(ontologies.get(1)));
+    applicationToMainApplicationMap.put(ontologies.get(2), Collections.singleton(ontologies.get(2)));
+    applicationToMainApplicationMap.put(ontologies.get(3), Collections.singleton(ontologies.get(1)));
+    applicationToMainApplicationMap.put(ontologies.get(4), Collections.singleton(ontologies.get(2)));
+    applicationToMainApplicationMap.put(ontologies.get(5), Collections.singleton(ontologies.get(2)));
+    applicationToMainApplicationMap.put(ontologies.get(6), new HashSet<BrendaChebiOntology.ChebiOntology>() {{
+      add(ontologies.get(1));
+      add(ontologies.get(2));
+    }});
+    applicationToMainApplicationMap.put(ontologies.get(7), Collections.singleton(ontologies.get(2)));
+
+    assertEquals(applicationToMainApplicationMap, BrendaChebiOntology.getApplicationToMainApplicationsMap(ontologyMap, isSubtypeOfRelationships, "CHEBI:1"));
+  }
+
+
 
   public static class InchiFormattingTestCase {
 
