@@ -2,6 +2,8 @@ package com.act.biointerpretation.networkanalysis;
 
 import com.act.jobs.FileChecker;
 import com.act.jobs.JavaRunnable;
+import com.act.lcms.v2.IonCalculator;
+import com.act.lcms.v2.LcmsIonCalculator;
 import com.act.lcms.v2.PeakSpectrum;
 import com.act.utils.TSVWriter;
 import org.apache.logging.log4j.LogManager;
@@ -46,7 +48,7 @@ public class PrecursorAnalysis implements JavaRunnable {
   }};
 
   public PrecursorAnalysis(File networkInput, List<String> targets, int numSteps, File outputDirectory) {
-    this(networkInput, Optional.empty(), targets, numSteps, outputDirectory);
+    this(networkInput, null, targets, numSteps, outputDirectory);
   }
 
   public PrecursorAnalysis(File networkInput,
@@ -81,7 +83,7 @@ public class PrecursorAnalysis implements JavaRunnable {
 
     Map<String, Integer> targetIdMap = new HashMap<>();
     int id = 0;
-    MetaboliteToMz metaboliteToMz = lcmsInput.isPresent() ? new MetaboliteToMz() : null;
+    IonCalculator ionCalculator = lcmsInput.isPresent() ? new LcmsIonCalculator() : null;
     PeakSpectrum lcmsSpectrum = lcmsInput.isPresent() ? LcmsTSVParser.parseTSV(lcmsInput.get()) : null;
 
     // Do precursor analyses on each target.  Give each found target an ID so we can track which report is which.
@@ -89,7 +91,7 @@ public class PrecursorAnalysis implements JavaRunnable {
       Optional<NetworkNode> targetNode = network.getNodeOptionByInchi(target);
       if (targetNode.isPresent()) {
         PrecursorReport report = network.getPrecursorReport(targetNode.get(), numSteps);
-        lcmsInput.ifPresent(a -> report.addLcmsData(lcmsSpectrum, metaboliteToMz, MASS_TOLERANCE));
+        lcmsInput.ifPresent(a -> report.addLcmsData(lcmsSpectrum, ionCalculator, ionSet, MASS_TOLERANCE));
         File outputFile = new File(outputDirectory, PRECURSOR_PREFIX + id);
         report.writeToJsonFile(outputFile);
         LOGGER.info("Wrote target %s report to file %s", target, outputFile.getAbsolutePath());

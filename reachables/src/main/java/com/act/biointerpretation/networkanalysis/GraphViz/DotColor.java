@@ -1,6 +1,6 @@
 package com.act.biointerpretation.networkanalysis.GraphViz;
 
-import java.awt.*;
+import java.awt.Color;
 
 /**
  * Represents the color of an edge or node in a dot graph.

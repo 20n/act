@@ -83,6 +83,11 @@ public class MetabolismNetwork implements ImmutableNetwork {
   }
 
   @Override
+  public Optional<NetworkNode> getNodeOptionByUID(Integer uid) {
+    return Optional.ofNullable(UIDIndex.get(uid));
+  }
+
+  @Override
   public NetworkNode getNodeByInchi(String inchi) {
     NetworkNode result = inchiIndex.get(inchi);
     if (result == null) {

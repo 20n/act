@@ -1,11 +1,11 @@
 package com.act.biointerpretation.networkanalysis;
 
+import com.act.lcms.MS1;
 import com.act.lcms.v2.Ion;
 import com.act.lcms.v2.IonCalculator;
 import com.act.lcms.v2.Metabolite;
 import com.act.lcms.v2.PeakSpectrum;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -15,6 +15,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -62,11 +63,11 @@ public class PrecursorReport {
     this.lcmsMap = lcmsMap;
   }
 
-  public void addLcmsData(PeakSpectrum peakSpectrum, IonCalculator massCalculator, double massTolerance) {
+  public void addLcmsData(PeakSpectrum peakSpectrum, IonCalculator massCalculator, Set<String> ions, double massTol) {
     for (NetworkNode node : network.getNodes()) {
       lcmsMap.put(node, 0.0);
-      for (Ion ion : massCalculator.getIons(node.getMetabolite())) {
-        if (!peakSpectrum.getPeaks(peak -> Math.abs(peak.getMz() - ion.getMzValue()) < massTolerance).isEmpty()) {
+      for (Ion ion : massCalculator.getSelectedIons(node.getMetabolite(), ions, MS1.IonMode.POS)) {
+        if (!peakSpectrum.getPeaksByMZ(ion.getMzValue(), 1.0).isEmpty()) {
           lcmsMap.put(node, 1.0);
           break;
         }
@@ -81,16 +82,6 @@ public class PrecursorReport {
   @JsonProperty("network")
   public ImmutableNetwork getNetwork() {
     return network;
-  }
-
-  @JsonIgnore
-  public Map<NetworkNode, Integer> getLevelMap() {
-    return levelMap;
-  }
-
-  @JsonIgnore
-  public Map<NetworkNode, Double> getLcmsMap() {
-    return lcmsMap;
   }
 
   /**
