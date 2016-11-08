@@ -461,6 +461,8 @@ public class BrendaChebiOntology {
         ontologyMap, isSubtypeOfRelationships, hasRoleRelationships);
     LOGGER.info("Done computing applications");
 
+    LOGGER.info(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(chemicalEntityToApplicationsMap));
+
     DBIterator chemicalsIterator = db.getIteratorOverChemicals();
     // Iterate over all chemicals
     while (chemicalsIterator.hasNext()) {
@@ -472,13 +474,14 @@ public class BrendaChebiOntology {
         continue;
       }
 
-      LOGGER.debug("Processing Chemical with InChI: %s and ChEBI ID: %s", inchi, chebiId);
+      LOGGER.info("Processing Chemical with InChI: %s and ChEBI ID: %s", inchi, chebiId);
       ChebiOntology ontology = ontologyMap.get(chebiId);
       ChebiApplicationSet applicationSet = chemicalEntityToApplicationsMap.get(ontology);
       if (applicationSet == null) {
         LOGGER.debug("Found no applications for %s. Skipping database update for this chemical.", chebiId);
         continue;
       }
+      LOGGER.info(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(applicationSet));
       db.updateChemicalWithChebiApplications(chebiId, applicationSet);
     }
   }
