@@ -424,7 +424,9 @@ public class BrendaChebiOntology {
      */
     Map<ChebiOntology, ChebiApplicationSet> chemicalEntityToApplicationsMap = new HashMap<>();
     for (String chemicalEntity : directApplicationMap.keySet()) {
-      Set<ChebiOntology> directApplications = directApplicationMap.get(chemicalEntity).stream().map(ontologyMap::get).collect(Collectors.toSet());
+      Set<ChebiOntology> directApplications = directApplicationMap
+          .get(chemicalEntity).stream().map(ontologyMap::get)
+          .filter(Objects::nonNull).collect(Collectors.toSet());
       Set<ChebiOntology> mainApplications = chemicalEntityToMainApplicationMap.get(ontologyMap.get(chemicalEntity));
       if (directApplications.size() > 0 || mainApplications.size() > 0) {
         ChebiApplicationSet applications = new ChebiApplicationSet(directApplications, mainApplications);
