@@ -403,15 +403,22 @@ public class BrendaChebiOntology {
      */
     Map<ChebiOntology, Set<ChebiOntology>> chemicalEntityToMainApplicationMap = new HashMap<>();
     for (String chemicalEntity : directApplicationMap.keySet()) {
+
       Set<ChebiOntology> mainApplicationsSet = chemicalEntityToMainApplicationMap.get(ontologyMap.get(chemicalEntity));
       if (mainApplicationsSet == null) {
         mainApplicationsSet = new HashSet<>();
         chemicalEntityToMainApplicationMap.put(ontologyMap.get(chemicalEntity), mainApplicationsSet);
       }
+      if (chemicalEntity.equals("CHEBI:15377")) {
+        LOGGER.info(directApplicationMap.get(chemicalEntity).toString());
+      }
       for (String parentApplication : directApplicationMap.get(chemicalEntity)) {
         Set<String> mainApplications = applicationToMainApplicationsMap.get(parentApplication);
         if (mainApplications != null) {
           mainApplicationsSet.addAll(mainApplications.stream().map(ontologyMap::get).collect(Collectors.toSet()));
+          if (chemicalEntity.equals("CHEBI:15377")) {
+            LOGGER.info(mainApplications.stream().map(ontologyMap::get).collect(Collectors.toSet()));
+          }
         }
       }
     }
