@@ -394,6 +394,8 @@ public class BrendaChebiOntology {
             .stream()
             .filter(ontology -> applicationToMainApplicationsMap.keySet().contains(ontology))
             .collect(Collectors.toSet())));
+
+    assert !directApplicationMap.containsKey(null);
     // directApplicationMap now maps each ontology to its direct applications
 
     /*
@@ -414,6 +416,8 @@ public class BrendaChebiOntology {
       }
     }
 
+    assert !applicationToMainApplicationsMap.containsKey(null);
+
     LOGGER.info("Done computing main applications for ontologies having a role.");
 
     /*
@@ -421,10 +425,12 @@ public class BrendaChebiOntology {
      */
     Map<ChebiOntology, ChebiApplicationSet> chemicalEntityToApplicationsMap = new HashMap<>();
     for (String chemicalEntity : directApplicationMap.keySet()) {
-      ChebiApplicationSet applications = new ChebiApplicationSet(
-          directApplicationMap.get(chemicalEntity).stream().map(ontologyMap::get).collect(Collectors.toSet()),
-          chemicalEntityToMainApplicationMap.get(ontologyMap.get(chemicalEntity)));
-      chemicalEntityToApplicationsMap.put(ontologyMap.get(chemicalEntity), applications);
+      Set<ChebiOntology> directApplications = directApplicationMap.get(chemicalEntity).stream().map(ontologyMap::get).collect(Collectors.toSet());
+      Set<ChebiOntology> mainApplications = chemicalEntityToMainApplicationMap.get(ontologyMap.get(chemicalEntity));
+      if (directApplications.size() > 0 || mainApplications.size() > 0) {
+        ChebiApplicationSet applications = new ChebiApplicationSet(directApplications, mainApplications);
+        chemicalEntityToApplicationsMap.put(ontologyMap.get(chemicalEntity), applications);
+      }
     }
 
     LOGGER.info("Done computing each ontology application set.");
@@ -460,8 +466,6 @@ public class BrendaChebiOntology {
     Map<ChebiOntology, ChebiApplicationSet> chemicalEntityToApplicationsMap = getApplications(
         ontologyMap, isSubtypeOfRelationships, hasRoleRelationships);
     LOGGER.info("Done computing applications");
-
-    LOGGER.info(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(chemicalEntityToApplicationsMap));
 
     DBIterator chemicalsIterator = db.getIteratorOverChemicals();
     // Iterate over all chemicals
