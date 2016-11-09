@@ -1,5 +1,6 @@
 package com.act.biointerpretation.Utils;
 
+import chemaxon.marvin.io.MolExportException;
 import chemaxon.reaction.ConcurrentReactorProcessor;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
@@ -8,6 +9,7 @@ import chemaxon.sss.search.MolSearch;
 import chemaxon.sss.search.MolSearchOptions;
 import chemaxon.sss.search.SearchException;
 import chemaxon.struc.Molecule;
+import chemaxon.struc.RxnMolecule;
 import chemaxon.util.iterator.MoleculeIterator;
 import chemaxon.util.iterator.MoleculeIteratorFactory;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
@@ -15,6 +17,7 @@ import com.act.analysis.chemicals.molecules.MoleculeFormat;
 import com.act.analysis.chemicals.molecules.MoleculeFormat$;
 import org.apache.commons.collections4.Bag;
 import org.apache.commons.collections4.bag.HashBag;
+import org.apache.commons.collections4.iterators.PermutationIterator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -23,9 +26,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ReactionProjector {
 
@@ -48,6 +54,35 @@ public class ReactionProjector {
     DEFAULT_SEARCHER.setSearchOptions(LAX_SEARCH_OPTIONS);
   }
 
+  private transient ThreadLocal<MolSearch> substrateSearcher = new ThreadLocal<MolSearch>() {
+    @Override
+    protected MolSearch initialValue() {
+      MolSearch search = new MolSearch();
+      /* These parameters were identified by trial and error as reasonable defaults for doing substructure searches for
+       * reactor substrate matching.  */
+      MolSearchOptions options = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
+      // This allows H's in RO strings to match implicit hydrogens in our target molecules.
+      options.setImplicitHMatching(SearchConstants.IMPLICIT_H_MATCHING_ENABLED);
+      /* This allows for vague bond matching in ring structures.  From the Chemaxon Docs:
+       *    In the query all single ring bonds are replaced by "single or aromatic" and all double ring bonds are
+       *    replaced by "double or aromatic" prior to search.
+       *    (https://www.chemaxon.com/jchem/doc/dev/java/api/chemaxon/sss/SearchConstants.html)
+       *
+       * This should allow us to handle aromatized molecules gracefully without handling non-ring single and double
+       * bonds ambiguously. */
+      options.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL2);
+      // Few if any of our ROs concern stereo chemistry, so we can just ignore it.
+      options.setStereoSearchType(SearchConstants.STEREO_IGNORE);
+      /* Chemaxon's tautomer handling is weird, as sometimes it picks a non-representative tautomer as its default.
+       * As such, we'll allow tautomer matches to avoid excluding viable candidates. */
+      options.setTautomerSearch(SearchConstants.TAUTOMER_SEARCH_ON);
+      search.setSearchOptions(options);
+      return search;
+    }
+  };
+
+  private boolean useSubstructureFiltering = false;
+
   private MolSearch searcher;
 
   public ReactionProjector() {
@@ -67,6 +102,12 @@ public class ReactionProjector {
     this.moleculeFormat = moleculeFormat;
   }
 
+  public ReactionProjector(boolean useSubstructureFiltering) {
+    // I don't anticipate either of these ever being used if this is the constructor employed.
+    this.searcher = DEFAULT_SEARCHER;
+    this.moleculeFormat = DEFAULT_MOLECULE_FORMAT;
+    this.useSubstructureFiltering = useSubstructureFiltering;
+  }
 
   /**
    * This method should be called if projecting on more chemicals than should be stored in memory
@@ -191,7 +232,44 @@ public class ReactionProjector {
       if (!productSets.isEmpty()) {
         resultsMap.put(mols, productSets);
       }
-      return resultsMap;
+    } else if (useSubstructureFiltering) {
+      Optional<List<Set<Integer>>> viableSubstrateIndexes;
+      try {
+        viableSubstrateIndexes = matchCandidatesToSubstrateStructures(reactor, mols);
+      } catch (SearchException e) {
+        throw new ReactionException("Caught exception when performing pre-reaction substructure search", e);
+      }
+
+      if (viableSubstrateIndexes.isPresent()) {
+        List<Integer> allIndexes = new ArrayList<Integer>(mols.length) {{
+          for (int i = 0; i < mols.length; i++) {
+            add(i);
+          }
+        }};
+
+        int permutationIndex = 0;
+        PermutationIterator<Integer> iter = new PermutationIterator<>(allIndexes);
+        while (iter.hasNext()) {
+          permutationIndex++;
+          LOGGER.info("Running permutation %d", permutationIndex);
+          List<Integer> permutation = iter.next();
+          if (permutationFitsSubstructureMatches(permutation, viableSubstrateIndexes.get())) {
+            Molecule[] substrates = indexPermutationToMolecules(mols, permutation);
+            reactor.setReactants(substrates);
+            Molecule[] products;
+            List<Molecule[]> results = new ArrayList<>();
+            while ((products = reactor.react()) != null) {
+              results.add(products);
+              if (maxProducts != null && maxProducts > 0 && results.size() >= maxProducts) {
+                break;
+              }
+            }
+            if (results.size() > 0) {
+              resultsMap.put(substrates, results);
+            }
+          }
+        }
+      } // Otherwise just return the empty map.
     } else {
       // TODO: why not make one of these per ReactionProjector object?
       // TODO: replace this with Apache commons PermutationIterator for clean iteration over distinct permutations.
@@ -246,9 +324,76 @@ public class ReactionProjector {
           break;
         }
       }
-
-      return resultsMap;
     }
+    return resultsMap;
+  }
+
+  private Optional<List<Set<Integer>>> matchCandidatesToSubstrateStructures(Reactor reactor, Molecule[] candidates)
+      throws SearchException, MolExportException {
+
+    RxnMolecule rxnMol = reactor.getReaction();
+    Molecule[] substrateStructures = rxnMol.getReactants();
+
+    MolSearch search = substrateSearcher.get();
+
+    /* Each list in `results` is a set of viable indexes into candidates for a given substrate position in the reactor.
+     * So if candidates contains three molecules and results looks like:
+     *   0: 0, 1
+     *   1: 1
+     *   2: 0, 2
+     *
+     * Then candidates[0] can appear as substrate 0 or 2, candidates[1] as substrate 0 or 1, and candidates[2] only as
+     * substrate 2. */
+    List<Set<Integer>> results = new ArrayList<>(substrateStructures.length);
+
+    for (int i = 0; i < substrateStructures.length; i++) {
+      search.setQuery(substrateStructures[i]);
+      results.add(new HashSet<>());
+
+      /* Test each candidate molecule against each substrate structure of the reactor.  If we can't find a match,
+       * there's no way that the molecule could appear in a particular position in the reaction and we can later
+       * eliminate input molecule permutations that don't conform to this structure match. */
+      for (int j = 0; j < candidates.length; j++) {
+        search.setTarget(candidates[j]);
+        // Any match will do, so just call findFirst and ensure we get some sort of results.
+        int[] res = search.findFirst();
+        if (res != null) {
+          results.get(i).add(j);
+        }
+      }
+
+      /* If one of the substrate patterns can't be matched to any input structure, then there are no viable permutations
+       * to consider.  We tell the call as much by returning `empty`. */
+      if (results.get(i).size() == 0) {
+        return Optional.empty();
+      }
+    }
+
+    return Optional.of(results);
+  }
+
+  private Boolean permutationFitsSubstructureMatches(
+      List<Integer> permutation, List<Set<Integer>> viableIndexes) {
+      /* For each permutation, match its value at each location against the list of viable indexes for that location.
+       * If a given permutation is 0, 2, 1 and viableIndexes looks like
+       *   0: 0, 1
+       *   1: 1
+       *   2: 0, 2
+       * as above, then then the second structure index doesn't pass a substructure search and we can skip it. */
+      for (int i = 0; i < permutation.size(); i++) {
+        if (!viableIndexes.get(i).contains(permutation.get(i))) {
+          return false;
+        }
+      }
+      return true;
+  }
+
+  private Molecule[] indexPermutationToMolecules(Molecule[] molecules, List<Integer> permutation) {
+    Molecule[] results = new Molecule[molecules.length];
+    for (int i = 0; i < permutation.size(); i++) {
+      results[i] = molecules[permutation.get(i)];
+    }
+    return results;
   }
 
   public Map<Molecule[], List<Molecule[]>> getRoProjectionMap(Molecule[] mols, Reactor reactor)
