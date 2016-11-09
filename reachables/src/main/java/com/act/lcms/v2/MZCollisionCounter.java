@@ -128,7 +128,8 @@ public class MZCollisionCounter {
       } else {
         // Compute windows for every m/z.  We don't care about the original mz values since we just want the count.
         List<Double> mzs = mzMap.ionMZsSorted();
-        // Window = (lower bound, upper bound), counter, and number of representative structures.
+        /* Window = (lower bound, upper bound), counter of represented m/z's that collide with this window, and number
+         * of representative structures (which will be used in counting collisions). */
         LinkedList<CollisionWindow> allWindows = new LinkedList<CollisionWindow>() {{
           for (Double mz : mzs) {
             // CPU for memory trade-off: don't re-compute the window bounds over and over and over and over and over.
@@ -143,13 +144,13 @@ public class MZCollisionCounter {
 
         // Sweep line time!  The window ranges are the interesting points.  We just accumulate overlap counts as we go.
         LinkedList<CollisionWindow> workingSet = new LinkedList<>();
-        List<CollisionWindow> finishedSet = new LinkedList<>();
+        List<CollisionWindow> finished = new LinkedList<>();
 
         while (allWindows.size() > 0) {
           CollisionWindow thisWindow = allWindows.pop();
           // Remove any windows from the working set that don't overlap with the next window.
-          while (workingSet.size() > 0 && workingSet.peekFirst().getMax() < thisWindow.getMin()) {
-            finishedSet.add(workingSet.pop());
+          while (workingSet.size() > 0 && workingSet.peekFirst().getMaxMZ() < thisWindow.getMinMZ()) {
+            finished.add(workingSet.pop());
           }
 
           for (CollisionWindow w : workingSet) {
@@ -167,9 +168,9 @@ public class MZCollisionCounter {
         }
 
         // All the interesting events are done, so drop the remaining windows into the finished set.
-        finishedSet.addAll(workingSet);
+        finished.addAll(workingSet);
 
-        Map<Long, Long> collisionHistogram = histogram(finishedSet.stream().map(w -> w.getAccumulator().longValue()));
+        Map<Long, Long> collisionHistogram = histogram(finished.stream().map(w -> w.getAccumulator().longValue()));
         List<Long> sortedCollisions = new ArrayList<>(collisionHistogram.keySet());
         Collections.sort(sortedCollisions);
         for (Long collision : sortedCollisions) {
@@ -193,19 +194,19 @@ public class MZCollisionCounter {
     Integer structureCount;
 
     public CollisionWindow(Double mz, Integer structureCount) {
-      this.min = mz - WINDOW_TOLERANCE;
-      this.max = mz + WINDOW_TOLERANCE;
+      this.min = mz - MZCollisionCounter.WINDOW_TOLERANCE;
+      this.max = mz + MZCollisionCounter.WINDOW_TOLERANCE;
       this.structureCount = structureCount;
 
       // Set the base
       this.accumulator.add(structureCount);
     }
 
-    Double getMin() {
+    Double getMinMZ() {
       return min;
     }
 
-    Double getMax() {
+    Double getMaxMZ() {
       return max;
     }
 
