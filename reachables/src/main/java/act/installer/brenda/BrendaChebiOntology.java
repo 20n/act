@@ -329,24 +329,25 @@ public class BrendaChebiOntology {
     return hasRoleRelationships;
   }
 
-
+  /**
+   * This method processes relatioships "is subtype of" to produce a mapping between each application and its main
+   * application, used subsequently (outside of this) to compute each ontology's main application.
+   * @param isSubtypeOfRelationships map {chebi id -> subtype's chebi ids}
+   * @param applicationChebiId main application's chebi id
+   * @return a map {application's chebi id -> related main application's chebi ids}
+   */
   public static Map<String, Set<String>> getApplicationToMainApplicationsMap(
       Map<String, Set<String>> isSubtypeOfRelationships, String applicationChebiId) {
 
     // Compute the set of main applications. These are the ontologies that are subtypes of the ontology 'application'.
     Set<String> mainApplicationsChebiId = isSubtypeOfRelationships.get(applicationChebiId);
 
-
-    // For each application, compute its set of main applications (subset of direct or indirect parents that are in
-    // MAIN_APPLICATIONS_ONTOLOGIES) and store it in a hashmap applicationToMainApplicationsMap
-    Map<String, Set<String>> applicationToMainApplicationsMap = new HashMap<>();
-
     // Compute the initial list of applications to visit from the set of main applications.
     ArrayList<String> applicationsToVisit = new ArrayList<>(mainApplicationsChebiId);
 
-    // For each main application, define the mainApplicationSet as a set containing only itself.
-    applicationsToVisit.stream().forEach(application ->
-        applicationToMainApplicationsMap.put(application, Collections.singleton(application)));
+    // For each main application, map it to a set containing only itself.
+    Map<String, Set<String>> applicationToMainApplicationsMap = applicationsToVisit.stream().
+        collect(Collectors.toMap(e -> e, Collections::singleton));
 
     // Then visit all applications in a BFS fashion, appending new applications to visit to the applicationsToVisit
     // and propagating/merging the set of main applications as we progress down the relationship graph.
@@ -391,11 +392,10 @@ public class BrendaChebiOntology {
 
     // Filter out the roles that are not applications
     Map<String, Set<String>> directApplicationMap = new HashMap<>();
-    hasRoleRelationships.forEach((key, value) -> directApplicationMap.put(
-        key, value
-            .stream()
-            .filter(ontology -> applicationToMainApplicationsMap.keySet().contains(ontology))
-            .collect(Collectors.toSet())));
+    hasRoleRelationships.forEach((key, value) -> directApplicationMap.put(key, value
+        .stream()
+        .filter(ontology -> applicationToMainApplicationsMap.keySet().contains(ontology))
+        .collect(Collectors.toSet())));
 
     // Compute the set of main applications for each ontology that has a role (aka is a chemical entity).
     Map<ChebiOntology, Set<ChebiOntology>> chemicalEntityToMainApplicationMap = new HashMap<>();
@@ -409,7 +409,8 @@ public class BrendaChebiOntology {
       for (String parentApplication : directApplicationMap.get(chemicalEntity)) {
         Set<String> mainApplications = applicationToMainApplicationsMap.get(parentApplication);
         if (mainApplications != null) {
-          mainApplicationsSet.addAll(mainApplications.stream().map(ontologyMap::get).filter(Objects::nonNull).collect(Collectors.toSet()));
+          mainApplicationsSet.addAll(mainApplications.stream().map(ontologyMap::get).filter(Objects::nonNull).
+              collect(Collectors.toSet()));
         }
       }
     }
@@ -476,7 +477,6 @@ public class BrendaChebiOntology {
         LOGGER.debug("Found no applications for %s. Skipping database update for this chemical.", chebiId);
         continue;
       }
-      LOGGER.info(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(applicationSet));
       db.updateChemicalWithChebiApplications(chebiId, applicationSet);
     }
   }
