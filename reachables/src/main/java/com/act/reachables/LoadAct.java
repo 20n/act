@@ -225,6 +225,7 @@ public class LoadAct extends SteppedTask {
       for (Reaction directedRxn : reactionsWithAccurateDirections) {
         addToNw(directedRxn);
       }
+
     }
     logProgress("");
 
