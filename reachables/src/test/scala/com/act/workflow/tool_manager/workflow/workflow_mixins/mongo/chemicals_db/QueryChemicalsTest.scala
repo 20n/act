@@ -39,6 +39,7 @@ class QueryChemicalsTest extends FlatSpec with Matchers with TimeLimitedTests wi
   }
 
   override def afterEach(): Unit = {
+    QueryChemicals.clearCache()
     MoleculeImporter.clearCache()
     mockDb = None
   }

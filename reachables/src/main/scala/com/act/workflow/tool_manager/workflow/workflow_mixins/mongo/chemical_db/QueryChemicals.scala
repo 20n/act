@@ -15,7 +15,7 @@ import scala.collection.concurrent.TrieMap
 object QueryChemicals extends MongoWorkflowUtilities {
   private val cacheSize = 50000L
 
-  private val formatCache = new TrieMap[MoleculeFormatType, Cache[Long, Option[String]]]()
+  private var formatCache = new TrieMap[MoleculeFormatType, Cache[Long, Option[String]]]()
 
   private def buildCache(moleculeFormatType: MoleculeFormatType): Cache[Long, Option[String]] ={
     val caffeine = Caffeine.newBuilder().asInstanceOf[Caffeine[Long, Option[String]]]
@@ -24,6 +24,10 @@ object QueryChemicals extends MongoWorkflowUtilities {
     // If you want to debug how the cache is doing, use chemicalCache.stats()
     caffeine.recordStats()
     caffeine.build[Long, Option[String]]()
+  }
+
+  def clearCache(): Unit ={
+    formatCache = new TrieMap[MoleculeFormatType, Cache[Long, Option[String]]]()
   }
 
   /**
