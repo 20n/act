@@ -466,26 +466,26 @@ class RunManager(job: Job) {
   * Update and query job statuses
   */
 object StatusCodes {
-  sealed class Status(name: String) {
+  sealed case class Status(name: String) {
     override def toString = name
   }
-  case object Success extends Status("Success")
-  case object Retry extends Status("Retrying")
-  case object Failure  extends Status("Failure")
-  case object Running extends Status("Running")
-  case object NotStarted extends Status("NotStarted")
-  case object ParentProcessFailure extends Status("Parent Process Failed")
-  case object Killed extends Status("Killed")
+  object Success extends Status("Success")
+  object Retry extends Status("Retrying")
+  object Failure  extends Status("Failure")
+  object Running extends Status("Running")
+  object NotStarted extends Status("NotStarted")
+  object ParentProcessFailure extends Status("Parent Process Failed")
+  object Killed extends Status("Killed")
 }
 
 /**
   * Flags used to indicate special things to jobs.
   */
 object JobFlag {
-  sealed class Flag()
+  sealed case class Flag()
 
-  case object ShouldNotBeWaitedOn extends Flag
-  case object ShouldNotFailChildrenJobs extends Flag
+  object ShouldNotBeWaitedOn extends Flag
+  object ShouldNotFailChildrenJobs extends Flag
 }
 
 /**

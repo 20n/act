@@ -2,14 +2,14 @@ package com.act.analysis.proteome.files
 
 trait Hmm {
   object HmmHeaderDesignations  {
-    sealed abstract class Designation(val value: String) {
+    sealed case class Designation(value: String) {
       override def toString: String = value
     }
 
-    case object Name extends Designation("NAME")
-    case object Pfam extends Designation("ACC")
-    case object Description extends Designation("DESC")
-    case object Length extends Designation("LENG")
+    object Name extends Designation("NAME")
+    object Pfam extends Designation("ACC")
+    object Description extends Designation("DESC")
+    object Length extends Designation("LENG")
 
     def withName(name: String): Option[Designation] = {
       names.find(n => n.value.equals(name))

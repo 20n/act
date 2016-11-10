@@ -135,22 +135,22 @@ Other utilities - These do conversions or give added benefits to HMMs/Proteins
 
   //TODO All commands that I plan to implement
   object HmmCommands {
-    sealed class Command(command: String) {
+    sealed case class Command(command: String) {
       def getCommand: String = command
     }
 
-    case object HmmBuild extends Command("hmmbuild")
-    case object HmmAlign extends Command("hmmalign")
-    case object HmmScan extends Command("hmmscan")
-    case object HmmPress extends Command("hmmpress")
-    case object HmmSearch extends Command("hmmsearch")
-    case object JackHammr extends Command("jackhmmr")
-    case object Phmmer extends Command("phmmer")
-    case object HmmConvert extends Command("hmmconvert")
-    case object HmmEmit extends Command("hmmemit")
-    case object HmmFetch extends Command("hmmfetch")
-    case object HmmLogo extends Command("hmmlogo")
-    case object HmmPgmd extends Command("hmmpgmd")
+    object HmmBuild extends Command("hmmbuild")
+    object HmmAlign extends Command("hmmalign")
+    object HmmScan extends Command("hmmscan")
+    object HmmPress extends Command("hmmpress")
+    object HmmSearch extends Command("hmmsearch")
+    object JackHammr extends Command("jackhmmr")
+    object Phmmer extends Command("phmmer")
+    object HmmConvert extends Command("hmmconvert")
+    object HmmEmit extends Command("hmmemit")
+    object HmmFetch extends Command("hmmfetch")
+    object HmmLogo extends Command("hmmlogo")
+    object HmmPgmd extends Command("hmmpgmd")
   }
 
 }

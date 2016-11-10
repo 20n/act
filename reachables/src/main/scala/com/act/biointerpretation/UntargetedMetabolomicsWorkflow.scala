@@ -14,6 +14,8 @@ import com.act.workflow.tool_manager.workflow.Workflow
 import com.act.workflow.tool_manager.workflow.workflow_mixins.base.WorkingDirectoryUtility
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.logging.log4j.LogManager
+import sun.java2d.cmm.lcms
+import sun.java2d.cmm.lcms.LCMS
 
 import scala.collection.JavaConverters._
 
@@ -104,15 +106,15 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
   }
 
   object WorkflowSteps {
-    sealed abstract class Step(val value: String) {
+    sealed case class Step(val value: String) {
       override def toString: String = value
     }
-    case object EXPANSION extends Step("EXPANSION")
-    case object LCMS extends Step("LCMS")
-    case object CLUSTERING extends Step("CLUSTERING")
-    case object SAR_SCORING extends Step("SAR_SCORING")
-    case object PRODUCT_SCORING extends Step("PRODUCT_SCORING")
-    case object MESH_RESULTS extends Step("MESH_RESULTS")
+    object EXPANSION extends Step("EXPANSION")
+    object LCMS extends Step("LCMS")
+    object CLUSTERING extends Step("CLUSTERING")
+    object SAR_SCORING extends Step("SAR_SCORING")
+    object PRODUCT_SCORING extends Step("PRODUCT_SCORING")
+    object MESH_RESULTS extends Step("MESH_RESULTS")
 
     def withName(name: String): Option[Step] = {
       names.find(n => n.value.equals(name))
@@ -384,16 +386,16 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
   }
 
   object StartingPoints {
-    sealed class StartingPoint(name: String){
+    sealed case class StartingPoint(name: String){
       override def toString = name
     }
 
-    case object EXPANSION extends StartingPoint("EXPANSION")
-    case object LCMS extends StartingPoint("LCMS")
-    case object CLUSTERING extends StartingPoint("CLUSTERING")
-    case object SCORING extends StartingPoint("SCORING")
+    object EXPANSION extends StartingPoint("EXPANSION")
+    object LCMS extends StartingPoint("LCMS")
+    object CLUSTERING extends StartingPoint("CLUSTERING")
+    object SCORING extends StartingPoint("SCORING")
 
-    val values = List(EXPANSION, LCMS, CLUSTERING, SCORING)
+    val values = List(EXPANSION, lcms.LCMS, CLUSTERING, SCORING)
   }
 
 }
