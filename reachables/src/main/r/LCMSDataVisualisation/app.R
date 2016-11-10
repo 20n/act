@@ -75,9 +75,10 @@ server <- function(input, output, session) {
 
   
   output$memory.table <- renderTable({
+    env <- environment()
     data.frame(
       # can use globalenv(), parent.frame(), etc
-      object = ls(environment()),
+      object = ls(env),
       size = unlist(lapply(ls(env), function(x) {
         object.size(get(x, envir = env, inherits = FALSE))
       }))
