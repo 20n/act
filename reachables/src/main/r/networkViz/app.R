@@ -5,6 +5,7 @@ debug <- FALSE
 # Shiny library (should already be loaded when app started)
 require(shiny)
 require(visNetwork)
+require(jsonlite)
 require(logging)
 require(digest)
 require(rscala)
