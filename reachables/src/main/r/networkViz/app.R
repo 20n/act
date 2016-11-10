@@ -48,11 +48,11 @@ server <- function(input, output, session) {
   
   output$network <- renderVisNetwork({
     viz <- visNetwork(nodes = network()$nodes, edges = network()$edges) %>%
+      visNodes(shadow = TRUE) %>%
       visEvents(selectNode = "function(nodes) {
                 Shiny.onInputChange('current_node_id', nodes);
                 ;}") %>%
-      visEdges(arrows= list(middle = TRUE)) %>%
-      visNodes(color = list(background = "red", border = "blue", highlight = "blue")) %>%
+      visEdges(arrows = list(middle = TRUE)) %>%
       visOptions(highlightNearest = TRUE)
     if (input$hierarchical) {
       viz %>%
@@ -69,7 +69,7 @@ server <- function(input, output, session) {
       need(length(input$current_node_id$node) == 1, "Please select a node on the graph!!")
     )
     nodes <- network()$nodes
-    nodes$label[which(nodes$id == input$current_node_id$node[[1]])]
+    nodes$inchi[which(nodes$id == input$current_node_id$node[[1]])]
   })
   
   output$shiny_return <- renderText({
@@ -111,7 +111,10 @@ ui <- fluidPage(
   # Header panel, containing the logo and the app title
   fluidRow(
     class = "Header",
-    column(2, imageOutput("logo", height = "100%")),
+    column(2, tagList(
+      imageOutput("logo", height = "100%"),
+      p()
+      )),
     column(8, headerPanel("Network visualisation"), align = "center"),
     column(2)
   ),
@@ -121,17 +124,24 @@ ui <- fluidPage(
            tagList(
              wellPanel(
                fileInput("dot.graph.file", label = "Choose a network file (JSON format)"),
-               em("Try loading '/Volumes/shared-data/Thomas/network-viz/sample/network.json'"),
+               p("Try loading ", strong("/Volumes/shared-data/Thomas/network-viz/sample/network.json")),
+               p(),
                checkboxInput("nodes.selection", label = "Add node selection drop-down menu"),
-               checkboxInput("disable.physics", label = "Enable physics"),
+               checkboxInput("disable.physics", label = "Disable physics"),
                checkboxInput("hierarchical", label = "Hierarchical display")
              ),
-             em("Select a node in the graph to see its InChI representation and structure:"),
+             em("InChI representation and structure"),
+             p(),
              textOutput("shiny_return"),
              moleculeRendererUI("molecule")  
-           )
-          ),
-    column(8, visNetworkOutput("network", height = "700px"))
+           ),
+          align = "center"),
+    column(8, 
+           tagList(
+             visNetworkOutput("network", height = "700px"),
+             em("Try selecting nodes and dragging them around")
+             ),
+           align = "center")
   )
 )
 
