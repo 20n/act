@@ -50,6 +50,10 @@ object ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities {
     createReactions(mongoConnection)(mongoConnection.getReactionsIterator)
   }
 
+  def querySubstrateAndProductInchisJava(mongoConnection: MongoDB): java.util.List[InchiReaction] = {
+    createReactions(mongoConnection)(mongoConnection.getReactionsIterator).flatten.asJava
+  }
+
   private def createReactions(mongoConnection: MongoDB)(iter: Iterator[Reaction]): List[Option[InchiReaction]] ={
     val count = new AtomicInteger()
     val moleculeMap: List[Option[InchiReaction]] = iter.map(result => {
