@@ -10,14 +10,20 @@ import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKey
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 
 import scala.collection.JavaConverters._
+import scala.collection.concurrent.TrieMap
 
 object QueryChemicals extends MongoWorkflowUtilities {
+  private val cacheSize = 50000L
 
-  val chemicalCache: Cache[Long, Option[String]] = {
-    // Type inference makes me sad sometimes.
+  private val formatCache = new TrieMap[MoleculeFormatType, Cache[Long, Option[String]]]()
+
+  private def buildCache(moleculeFormatType: MoleculeFormatType): Cache[Long, Option[String]] ={
     val caffeine = Caffeine.newBuilder().asInstanceOf[Caffeine[Long, Option[String]]]
-    caffeine.maximumSize(100000).recordStats()
-    caffeine.build()
+    caffeine.maximumSize(cacheSize)
+
+    // If you want to debug how the cache is doing, use chemicalCache.stats()
+    caffeine.recordStats()
+    caffeine.build[Long, Option[String]]()
   }
 
   /**
@@ -71,7 +77,10 @@ object QueryChemicals extends MongoWorkflowUtilities {
   def getChemicalStringsByIds(mongoConnection: MongoDB)
                              (chemicalIds: List[Long],
                                moleculeFormat: MoleculeFormatType = MoleculeFormat.inchi): Map[Long, Option[String]] = {
-    val knownChemicals = chemicalCache.getAllPresent(chemicalIds.asJava).asScala.toMap
+    if (!formatCache.contains(moleculeFormat)) {
+      formatCache.put(moleculeFormat, buildCache(moleculeFormat))
+    }
+    val knownChemicals = formatCache(moleculeFormat).getAllPresent(chemicalIds.asJava).asScala.toMap
     val foundKeys = knownChemicals.keySet
     val unknownChemicals = chemicalIds.filter(!foundKeys.contains(_))
     if (unknownChemicals.isEmpty){
@@ -84,7 +93,7 @@ object QueryChemicals extends MongoWorkflowUtilities {
     queryResult.get.asScala.map(id => {
       val format = getChemicalStringByFormat(moleculeFormat, id)
       val resultId = id.getUuid.toLong
-      chemicalCache.put(resultId, format)
+      formatCache(moleculeFormat).put(resultId, format)
 
       (resultId, format)
     }).toMap ++ knownChemicals

@@ -52,8 +52,8 @@ class ReactionsToSubstratesAndProductsTest extends FlatSpec with Matchers with T
   }
 
   "ReactionToSubstratesAndProducts" should "retrieve the InChIs of a single substrate and product reaction." in {
-    val inchis: List[Option[TestObject.InchiReaction]] =
-      TestObject.querySubstrateAndProductInchisByReactionIds(mockDb.get)(List(0L))
+    val inchis: List[Option[ReactionsToSubstratesAndProducts.InchiReaction]] =
+      ReactionsToSubstratesAndProducts.querySubstrateAndProductInchisByReactionIds(mockDb.get)(List(0L))
 
     val returnElement = inchis.head.get
 
@@ -63,7 +63,7 @@ class ReactionsToSubstratesAndProductsTest extends FlatSpec with Matchers with T
   }
 
   "ReactionToSubstratesAndProducts" should "retrieve the InChIs of a single substrate and two product reaction." in {
-    val inchis: List[Option[TestObject.InchiReaction]] = TestObject.querySubstrateAndProductInchisByReactionIds(mockDb.get)(List(1L))
+    val inchis: List[Option[ReactionsToSubstratesAndProducts.InchiReaction]] = ReactionsToSubstratesAndProducts.querySubstrateAndProductInchisByReactionIds(mockDb.get)(List(1L))
 
     val returnElement = inchis.head.get
 
@@ -73,8 +73,8 @@ class ReactionsToSubstratesAndProductsTest extends FlatSpec with Matchers with T
   }
 
   "ReactionToSubstratesAndProducts" should "retrieve the InChIs of a multiple substrate and single product reaction." in {
-    val inchis: List[Option[TestObject.InchiReaction]] =
-      TestObject.querySubstrateAndProductInchisByReactionIds(mockDb.get)(List(2L))
+    val inchis: List[Option[ReactionsToSubstratesAndProducts.InchiReaction]] =
+      ReactionsToSubstratesAndProducts.querySubstrateAndProductInchisByReactionIds(mockDb.get)(List(2L))
 
     val returnElement = inchis.head.get
 
@@ -85,8 +85,8 @@ class ReactionsToSubstratesAndProductsTest extends FlatSpec with Matchers with T
 
   "ReactionToSubstratesAndProducts" should
     "should correctly unpack reactions with multiple of the same substrate (Coefficient > 1)." in {
-    val inchis: List[Option[TestObject.InchiReaction]] =
-      TestObject.querySubstrateAndProductInchisByReactionIds(mockDb.get)(List(3L))
+    val inchis: List[Option[ReactionsToSubstratesAndProducts.InchiReaction]] =
+      ReactionsToSubstratesAndProducts.querySubstrateAndProductInchisByReactionIds(mockDb.get)(List(3L))
 
     val returnElement = inchis.head.get
 
@@ -97,8 +97,8 @@ class ReactionsToSubstratesAndProductsTest extends FlatSpec with Matchers with T
 
   "ReactionToSubstratesAndProducts" should
     "should correctly unpack reactions with multiple of the same product (Coefficient > 1)." in {
-    val inchis: List[Option[TestObject.InchiReaction]] =
-      TestObject.querySubstrateAndProductInchisByReactionIds(mockDb.get)(List(4L))
+    val inchis: List[Option[ReactionsToSubstratesAndProducts.InchiReaction]] =
+      ReactionsToSubstratesAndProducts.querySubstrateAndProductInchisByReactionIds(mockDb.get)(List(4L))
 
     val returnElement = inchis.head.get
 
@@ -106,7 +106,4 @@ class ReactionsToSubstratesAndProductsTest extends FlatSpec with Matchers with T
     returnElement.substrates should be(List(chemicals(0L)))
     returnElement.products should be(List(chemicals(1L), chemicals(1L)))
   }
-
-  object TestObject extends ReactionsToSubstratesAndProducts {}
-
 }
