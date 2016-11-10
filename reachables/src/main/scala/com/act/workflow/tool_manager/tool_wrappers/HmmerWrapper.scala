@@ -135,7 +135,7 @@ Other utilities - These do conversions or give added benefits to HMMs/Proteins
 
   //TODO All commands that I plan to implement
   object HmmCommands {
-    case class Command(command: String) {
+    sealed class Command(command: String) {
       def getCommand: String = command
     }
 

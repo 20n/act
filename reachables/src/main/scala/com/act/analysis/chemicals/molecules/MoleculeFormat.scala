@@ -26,28 +26,17 @@ object MoleculeFormat {
   private val noStereoSmartsString = "noStereoSmarts"
   private val noStereoAromatizedSmartsString = "noStereoAromatizedSmarts"
 
-  sealed abstract class Format(formatType: MoleculeFormatType) {
-    def getFormat: MoleculeFormatType = formatType
-  }
+  case object inchi extends MoleculeFormatType(inchiString, List())
+  case object stdInchi extends MoleculeFormatType(stdInchiString, List())
+  case object noAuxInchi extends MoleculeFormatType(noAuxInchiString, List())
+  case object strictInchi extends MoleculeFormatType(strictInchiString, List())
+  case object strictNoStereoInchi extends MoleculeFormatType(strictNoStereoInchiString, List(Cleaning.removeStereo))
+  case object smiles extends MoleculeFormatType(smilesString, List())
+  case object smarts extends MoleculeFormatType(smartsString, List())
+  case object noStereoSmarts extends MoleculeFormatType(noStereoSmartsString, List(Cleaning.removeStereo))
+  case object noStereoAromatizedSmarts extends MoleculeFormatType(noStereoAromatizedSmartsString, List(Cleaning.removeStereo))
 
-//  case object neutralize extends Format(neutralizeString)
-//  case object clean2d extends Options(clean2dString)
-//  case object clean3d extends Options(clean3dString)
-//  case object aromatize extends Options(aromatizeString)
-//  case object removeIsotopes extends Options(removeIsotopesString)
-//  case object removeStereo extends Options(removeStereoString)
-
-  case object inchi extends Format(MoleculeFormatType(inchiString, List()))
-  case object stdInchi extends Format(MoleculeFormatType(stdInchiString, List()))
-  case object noAuxInchi extends Format(MoleculeFormatType(noAuxInchiString, List()))
-  case object strictInchi extends Format(MoleculeFormatType(strictInchiString, List()))
-  case object strictNoStereoInchi extends Format(MoleculeFormatType(strictNoStereoInchiString, List(Cleaning.removeStereo)))
-  case object smiles extends Format(MoleculeFormatType(smilesString, List()))
-  case object smarts extends Format(MoleculeFormatType(smartsString, List()))
-  case object noStereoSmarts extends Format(MoleculeFormatType(noStereoSmartsString, List(Cleaning.removeStereo)))
-  case object noStereoAromatizedSmarts extends Format(MoleculeFormatType(noStereoAromatizedSmartsString, List(Cleaning.removeStereo)))
-
-  private val exportMap: Map[Format, String] = Map(
+  private val exportMap: Map[MoleculeFormatType, String] = Map(
     inchi -> "inchi",
     noAuxInchi-> s"inchi:AuxNone",
     stdInchi -> s"inchi:AuxNone,SAbs,Woff",
@@ -60,7 +49,7 @@ object MoleculeFormat {
   )
 
   // Don't add H according to usual valences: all H are explicit
-  private val importMap: Map[Format, String] = Map(
+  private val importMap: Map[MoleculeFormatType, String] = Map(
     inchi -> inchiString,
     stdInchi -> inchiString,
     noAuxInchi-> inchiString,

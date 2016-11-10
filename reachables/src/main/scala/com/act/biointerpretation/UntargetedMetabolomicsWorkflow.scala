@@ -384,7 +384,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
   }
 
   object StartingPoints {
-    case class StartingPoint(name: String){
+    sealed class StartingPoint(name: String){
       override def toString = name
     }
 

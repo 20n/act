@@ -466,7 +466,7 @@ class RunManager(job: Job) {
   * Update and query job statuses
   */
 object StatusCodes {
-  sealed case class Status(name: String) {
+  sealed class Status(name: String) {
     override def toString = name
   }
   case object Success extends Status("Success")
@@ -482,7 +482,7 @@ object StatusCodes {
   * Flags used to indicate special things to jobs.
   */
 object JobFlag {
-  case class Flag()
+  sealed class Flag()
 
   case object ShouldNotBeWaitedOn extends Flag
   case object ShouldNotFailChildrenJobs extends Flag
