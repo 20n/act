@@ -59,7 +59,6 @@ object QueryChemicals extends MongoWorkflowUtilities {
     queryResult.values.head
   }
 
-
   /**
     * Get a list of Molecules by IDs
     */
