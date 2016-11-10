@@ -17,7 +17,7 @@ object AbstractChemicals {
 
   // Chemaxon technically uses smarts when we say Smiles, so we just make it explicit here.
   // We do the cleaning so that we can get rid of a lot of the junk that would make down-stream processing hard.
-  val cleanSmartsFormat = new MoleculeFormat.MoleculeFormatType(MoleculeFormat.smarts.getFormat,
+  val cleanSmartsFormat = new MoleculeFormat.MoleculeFormatType(MoleculeFormat.smarts,
     List(Cleaning.neutralize, Cleaning.clean2d, Cleaning.aromatize))
 
   def getAbstractChemicals(mongoDb: MongoDB, moleculeFormat: MoleculeFormat.MoleculeFormatType): ParMap[Long, ChemicalInformation] = {

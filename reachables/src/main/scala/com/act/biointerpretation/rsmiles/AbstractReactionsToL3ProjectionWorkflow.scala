@@ -80,9 +80,9 @@ class AbstractReactionsToL3ProjectionWorkflow extends Workflow {
         longOpt("valid-chemical-types").
         hasArg.
         desc("A molecule string format. Currently valid types are inchi, stdInchi, smiles, and smarts.  " +
-          s"By default uses the format '${MoleculeFormat.getExportString(MoleculeFormat.strictNoStereoInchi.getFormat)}'.  " +
+          s"By default uses the format '${MoleculeFormat.getExportString(MoleculeFormat.strictNoStereoInchi)}'.  " +
           s"Only InChI based formats are allowed for this workflow." +
-          s"Possible values are: \n${MoleculeFormat.listPossibleFormats().mkString("\n")}"),
+          s"Possible values are: \n${MoleculeFormat.listPossibleFormatStrings().mkString("\n")}"),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )

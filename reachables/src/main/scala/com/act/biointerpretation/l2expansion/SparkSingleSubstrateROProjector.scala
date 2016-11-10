@@ -150,8 +150,8 @@ object SparkSingleSubstrateROProjector {
         hasArg.
         desc("A molecule string format. Currently valid types are inchi, stdInchi, smiles, and smarts.  " +
           s"By default, uses stdInChI which " +
-          s"is the format '${MoleculeFormat.getExportString(MoleculeFormat.stdInchi.getFormat)}'.  " +
-          s"Possible values are: \n${MoleculeFormat.listPossibleFormats().mkString("\n")}"),
+          s"is the format '${MoleculeFormat.getExportString(MoleculeFormat.stdInchi)}'.  " +
+          s"Possible values are: \n${MoleculeFormat.listPossibleFormatStrings().mkString("\n")}"),
 
       CliOption.builder(OPTION_SAR_CORPUS_FILE).
         longOpt("sar-corpus").
@@ -224,7 +224,7 @@ object SparkSingleSubstrateROProjector {
     val moleculeFormat: MoleculeFormat.MoleculeFormatType = if (cl.hasOption(OPTION_VALID_CHEMICAL_TYPE)) {
       MoleculeFormat.getName(cl.getOptionValue(OPTION_VALID_CHEMICAL_TYPE))
     } else {
-      MoleculeFormat.stdInchi.getFormat
+      MoleculeFormat.stdInchi
     }
 
     val substratesListFile = cl.getOptionValue(OPTION_SUBSTRATES_LIST)

@@ -26,7 +26,7 @@ object MoleculeImporter {
   // Overload for easy java interop.
   @throws[MolFormatException]
   def importMolecule(mol: String): Molecule = {
-    importMolecule(mol, MoleculeFormat.inchi.getFormat)
+    importMolecule(mol, MoleculeFormat.inchi)
   }
 
   private implicit def toMolecule(chemical: Chemical): String = chemical.getInChI

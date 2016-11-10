@@ -107,6 +107,6 @@ object MoleculeConversions {
   }
 
   implicit def stringToMolecule(s: String): Molecule = {
-    MoleculeImporter.importMolecule(s, List(MoleculeFormat.inchi.getFormat, MoleculeFormat.smarts.getFormat))
+    MoleculeImporter.importMolecule(s, List(MoleculeFormat.inchi, MoleculeFormat.smarts))
   }
 }
