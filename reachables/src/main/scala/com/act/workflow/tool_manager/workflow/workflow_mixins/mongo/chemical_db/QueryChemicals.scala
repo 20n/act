@@ -7,10 +7,18 @@ import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.MoleculeFormat.MoleculeFormatType
 import com.act.analysis.chemicals.molecules.{MoleculeFormat, MoleculeImporter}
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, Keyword, MongoWorkflowUtilities}
+import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 
 import scala.collection.JavaConverters._
 
-trait QueryChemicals extends MongoWorkflowUtilities {
+object QueryChemicals extends MongoWorkflowUtilities {
+
+  val chemicalCache: Cache[Long, Option[String]] = {
+    // Type inference makes me sad sometimes.
+    val caffeine = Caffeine.newBuilder().asInstanceOf[Caffeine[Long, Option[String]]]
+    caffeine.maximumSize(100000).recordStats()
+    caffeine.build()
+  }
 
   /**
     * From a chemical ID, returns the molecule for that chemical in the appropriate format
@@ -41,6 +49,7 @@ trait QueryChemicals extends MongoWorkflowUtilities {
     queryResult.values.head
   }
 
+
   /**
     * Get a list of Molecules by IDs
     */
@@ -62,14 +71,23 @@ trait QueryChemicals extends MongoWorkflowUtilities {
   def getChemicalStringsByIds(mongoConnection: MongoDB)
                              (chemicalIds: List[Long],
                                moleculeFormat: MoleculeFormatType = MoleculeFormat.inchi): Map[Long, Option[String]] = {
-    val queryResult: Option[java.util.Iterator[Chemical]] =
-      Option(mongoConnection.getChemicalsbyIds(chemicalIds.map(java.lang.Long.valueOf).asJava, true))
-
-    if (queryResult.isEmpty) {
-      return Map()
+    val knownChemicals = chemicalCache.getAllPresent(chemicalIds.asJava).asScala.toMap
+    val foundKeys = knownChemicals.keySet
+    val unknownChemicals = chemicalIds.filter(!foundKeys.contains(_))
+    if (unknownChemicals.isEmpty){
+      return knownChemicals
     }
 
-    queryResult.get.asScala.map(id => (id.getUuid.toLong, getChemicalStringByFormat(moleculeFormat, id))).toMap
+    val queryResult: Option[java.util.Iterator[Chemical]] =
+      Option(mongoConnection.getChemicalsbyIds(unknownChemicals.map(java.lang.Long.valueOf).asJava, true))
+
+    queryResult.get.asScala.map(id => {
+      val format = getChemicalStringByFormat(moleculeFormat, id)
+      val resultId = id.getUuid.toLong
+      chemicalCache.put(resultId, format)
+
+      (resultId, format)
+    }).toMap ++ knownChemicals
   }
 
   /**

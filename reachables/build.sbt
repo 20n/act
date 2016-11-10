@@ -1,4 +1,4 @@
-import AssemblyKeys._
+import sbtassembly.Plugin.AssemblyKeys._
 
 assemblySettings
 
@@ -108,6 +108,8 @@ libraryDependencies ++= {
       "org.apache.jena" % "jena-core" % "3.1.0",
       "org.apache.jena" % "jena-querybuilder" % "3.1.0",
       "io.spray" %%  "spray-json" % "1.3.2",
+      "com.github.ben-manes.caffeine" % "caffeine" % "2.3.5",
+
   /*
    * the maven repo jar seem to be outdated, or incompatible.
    * we posted to the indigo group bugs. The current resolution

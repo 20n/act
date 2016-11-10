@@ -2384,6 +2384,26 @@ public class MongoDB {
     };
   }
 
+  public Iterator<Reaction> getReactionsIterator(){
+    final DBIterator iter = getIteratorOverReactions();
+
+    return new Iterator<Reaction>() {
+      @Override
+      public boolean hasNext() {
+        boolean hasNext = iter.hasNext();
+        if (!hasNext)
+          iter.close();
+        return hasNext;
+      }
+
+      @Override
+      public Reaction next() {
+        DBObject o = iter.next();
+        return convertDBObjectToReaction(o);
+      }
+    };
+  }
+
   public BasicDBObject getRangeUUIDRestriction(Long lowUUID, Long highUUID) {
     BasicDBObject restrictTo = new BasicDBObject();
     // need to encode { "_id" : { $gte : lowUUID, $lte : highUUID } }
