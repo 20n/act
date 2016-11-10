@@ -4,6 +4,7 @@ import act.server.MongoDB
 import act.shared.Reaction
 import com.act.analysis.chemicals.molecules.MoleculeImporter
 import com.act.biointerpretation.test.util.MockedMongoDB
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.chemical_db.QueryChemicals
 import org.scalatest.concurrent.{ThreadSignaler, TimeLimitedTests}
 import org.scalatest.time.SpanSugar._
 import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
@@ -37,6 +38,7 @@ class ReactionsToSubstratesAndProductsTest extends FlatSpec with Matchers with T
   }
 
   override def afterEach(): Unit = {
+    QueryChemicals.clearCache()
     MoleculeImporter.clearCache()
     mockDb = None
   }
