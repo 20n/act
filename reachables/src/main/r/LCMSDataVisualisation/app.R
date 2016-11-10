@@ -85,6 +85,28 @@ server <- function(input, output, session) {
     )
   })
   
+  output$global.memory.table <- renderTable({
+    env <- globalenv()
+    data.frame(
+      # can use globalenv(), parent.frame(), etc
+      object = ls(env),
+      size = unlist(lapply(ls(env), function(x) {
+        object.size(get(x, envir = env, inherits = FALSE))
+      }))
+    )
+  })
+  
+  output$parent.memory.table <- renderTable({
+    env <- parent.frame()
+    data.frame(
+      # can use globalenv(), parent.frame(), etc
+      object = ls(env),
+      size = unlist(lapply(ls(env), function(x) {
+        object.size(get(x, envir = env, inherits = FALSE))
+      }))
+    )
+  })
+  
     
   # Render 20n logo
   output$logo <- renderImage({
@@ -129,7 +151,9 @@ ui <- fluidPage(
                       mainPanel(lcmsConfigTracesUI("config"))
              ),
              tabPanel("Memory-usage", value = "memory",
-                      tableOutput("memory.table")
+                      tableOutput("memory.table"),
+                      tableOutput("global.memory.table"),
+                      tableOutput("parent.memory.table")
              )
   )
 )
