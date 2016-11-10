@@ -72,6 +72,20 @@ server <- function(input, output, session) {
     invalidateLater(1000, session)
     gc()
   })
+  
+  observe({
+    env <- environment()
+  })
+  
+  output$foo <- renderTable({
+    data.frame(
+      object = ls(env),
+      size = unlist(lapply(ls(env), function(x) {
+        object.size(get(x, envir = env, inherits = FALSE))
+      }))
+    )
+  })
+  
     
   # Render 20n logo
   output$logo <- renderImage({
@@ -114,6 +128,9 @@ ui <- fluidPage(
              tabPanel("Configuration-based", value = "config",
                       sidebarPanel(lcmsConfigTracesInput("config")),
                       mainPanel(lcmsConfigTracesUI("config"))
+             ),
+             tabPanel("Memory-usage", value = "memory",
+                      tableOutput("foo")
              )
   )
 )
