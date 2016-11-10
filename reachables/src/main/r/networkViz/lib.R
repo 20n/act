@@ -22,9 +22,3 @@ saveMoleculeStructure <- {
 }
 
 
-getInputFileAsString <- function(input.file) {
-  shiny::validate(
-    need(!is.null(input.file), "Please upload a graph file.") 
-  )
-  readChar(input.file$datapath, input.file$size)
-}

@@ -1,4 +1,7 @@
 
+debug <- FALSE
+
+
 # Shiny library (should already be loaded when app started)
 require(shiny)
 require(visNetwork)
@@ -8,23 +11,31 @@ require(rscala)
 
 # Set logging level
 basicConfig('DEBUG')
-
-source("../LCMSDataVisualisation/molecule_renderer.R")
-#source("../LCMSDataVisualisation/lcms_lib.R")
-source("lib.R")
+if (!debug) {
+  source("../LCMSDataVisualisation/molecule_renderer.R")  
+  source("lib.R")  
+}
 
 loginfo("Done loading libraries and sourcing modules")
 
 # 20nlogo -> symlink to the 20n logo. Should be in the working directory of the server.
 k20logoLocation <- "20nlogo"
 
+
+getNetworkJson <- function(input.file) {
+  shiny::validate(
+    need(!is.null(input.file), "Please upload a graph file.") 
+  )
+  fromJSON(input.file$datapath)
+}
+
 # The server side performs the computations behind the scenes
 # It collects a list of inputs from ui.R and produces a list of output
 # Here, the logic is mainly delegated to the modules
 server <- function(input, output, session) {
   
-  inputFileString <- reactive(
-    getInputFileAsString(input$dot.graph.file)
+  network <- reactive(
+    getNetworkJson(input$dot.graph.file)
   )
   
   # Render 20n logo
@@ -35,27 +46,56 @@ server <- function(input, output, session) {
   }, deleteFile = FALSE)
   
   output$network <- renderVisNetwork({
-    visNetwork(dot = inputFileString()) %>%
+    viz <- visNetwork(nodes = network()$nodes, edges = network()$edges) %>%
       visEvents(selectNode = "function(nodes) {
                 Shiny.onInputChange('current_node_id', nodes);
-                ;}")
+                ;}") %>%
+      visEdges(arrows= list(middle = TRUE)) %>%
+      visNodes(color = list(background = "red", border = "blue", highlight = "blue")) %>%
+      visOptions(highlightNearest = TRUE)
+    if (input$hierarchical) {
+      viz %>%
+        visLayout(hierarchical = TRUE) %>%
+        visHierarchicalLayout(direction = "LR")
+    } else {
+      viz
+    }
+  
   })
   
   inchi <- reactive({
     shiny::validate(
-      need(length(input$current_node_id$node) > 0, "Please select a node on the graph!!")
+      need(length(input$current_node_id$node) == 1, "Please select a node on the graph!!")
     )
-    unlist(input$current_node_id$node)
+    nodes <- network()$nodes
+    nodes$label[which(nodes$id == input$current_node_id$node[[1]])]
   })
   
-  output$shiny_return <- renderPrint({
-    cat(inchi())
+  output$shiny_return <- renderText({
+    inchi()
   })
   
   observe({
-    callModule(moleculeRenderer, "molecule", reactive(c(inchi(), "")), "400px")
-    #visNetworkProxy("network") %>%
-    #  visOptions(manipulation = TRUE)
+    if (!debug) {
+      callModule(moleculeRenderer, "molecule", reactive(c(inchi(), "")), "400px")  
+    }
+  })
+  
+  observe({
+    if (input$disable.physics) {
+      visNetworkProxy("network") %>%
+        visPhysics(enable = FALSE)
+    } else {
+      visNetworkProxy("network") %>%
+        visPhysics(enable = TRUE)
+    }
+    if (input$nodes.selection) {
+      visNetworkProxy("network") %>%
+        visOptions(nodesIdSelection = list(enabled = TRUE, useLabels = FALSE))
+    } else {
+      visNetworkProxy("network") %>%
+        visOptions(nodesIdSelection = list(enabled = FALSE))
+    }
   })
 
 }
@@ -71,7 +111,7 @@ ui <- fluidPage(
   fluidRow(
     class = "Header",
     column(2, imageOutput("logo", height = "100%")),
-    column(8, headerPanel("Network magic"), align = "center"),
+    column(8, headerPanel("Network visualisation"), align = "center"),
     column(2)
   ),
   fluidRow(
@@ -79,8 +119,11 @@ ui <- fluidPage(
     column(4, 
            tagList(
              wellPanel(
-               fileInput("dot.graph.file", label = "Choose a graph file (DOT format)"),
-               em("Try loading '/Volumes/shared-data/Michael/Humanprojection/cholesterol_stuffs/graphs/6report.dot'")
+               fileInput("dot.graph.file", label = "Choose a network file (JSON format)"),
+               em("Try loading '/Volumes/shared-data/Thomas/network-viz/sample/network.json'"),
+               checkboxInput("nodes.selection", label = "Add node selection drop-down menu"),
+               checkboxInput("disable.physics", label = "Enable physics"),
+               checkboxInput("hierarchical", label = "Hierarchical display")
              ),
              em("Select a node in the graph to see its InChI representation and structure:"),
              textOutput("shiny_return"),
