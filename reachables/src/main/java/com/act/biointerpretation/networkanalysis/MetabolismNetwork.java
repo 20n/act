@@ -1,10 +1,9 @@
 package com.act.biointerpretation.networkanalysis;
 
-import act.server.DBIterator;
 import act.server.MongoDB;
-import act.shared.Reaction;
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.cross_db.ReactionsToSubstratesAndProducts;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -12,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import scala.collection.JavaConversions;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -154,10 +154,10 @@ public class MetabolismNetwork {
    * @param db The DB.
    */
   public void loadAllEdgesFromDb(MongoDB db) {
-    DBIterator iterator = db.getIteratorOverReactions();
-    Reaction reaction;
-    while ((reaction = db.getNextReaction(iterator)) != null) {
-      this.loadEdgeFromReaction(db, reaction);
+    List<ReactionsToSubstratesAndProducts.InchiReaction> parsedReactions =
+            ReactionsToSubstratesAndProducts.querySubstrateAndProductInchisJava(db);
+    for (ReactionsToSubstratesAndProducts.InchiReaction r : parsedReactions) {
+      this.loadEdgeFromInchiReaction(r);
     }
   }
 
@@ -165,14 +165,17 @@ public class MetabolismNetwork {
    * Load an edge into the network from a reaction in our reactions DB. Discards the edge if the reaction has no
    * substrates or no products.
    *
-   * @param db The DB to look in.
    * @param reaction The reaction.
    */
-  public void loadEdgeFromReaction(MongoDB db, Reaction reaction) {
-    NetworkEdge edge = NetworkEdge.buildEdgeFromReaction(db, reaction);
-    if (edge.getSubstrates().isEmpty() || edge.getProducts().isEmpty()) {
+  public void loadEdgeFromInchiReaction(ReactionsToSubstratesAndProducts.InchiReaction reaction) {
+    if (reaction.substrates().isEmpty() || reaction.products().isEmpty()){
       return;
     }
+    NetworkEdge edge = new NetworkEdge(JavaConversions.asJavaList(reaction.substrates()),
+                        JavaConversions.asJavaList(reaction.products()));
+    edge.addReactionId(reaction.id());
+
+    // TODO: Add in the organism by modifying the InchiReaction
     addEdge(edge);
   }
 
