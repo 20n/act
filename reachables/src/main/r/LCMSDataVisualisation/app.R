@@ -72,14 +72,12 @@ server <- function(input, output, session) {
     invalidateLater(1000, session)
     gc()
   })
+
   
-  observe({
-    env <- environment()
-  })
-  
-  output$foo <- renderTable({
+  output$memory.table <- renderTable({
     data.frame(
-      object = ls(env),
+      # can use globalenv(), parent.frame(), etc
+      object = ls(environment()),
       size = unlist(lapply(ls(env), function(x) {
         object.size(get(x, envir = env, inherits = FALSE))
       }))
@@ -130,7 +128,7 @@ ui <- fluidPage(
                       mainPanel(lcmsConfigTracesUI("config"))
              ),
              tabPanel("Memory-usage", value = "memory",
-                      tableOutput("foo")
+                      tableOutput("memory.table")
              )
   )
 )
