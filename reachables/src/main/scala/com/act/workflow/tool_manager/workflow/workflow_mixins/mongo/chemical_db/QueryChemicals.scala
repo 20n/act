@@ -17,7 +17,7 @@ object QueryChemicals extends MongoWorkflowUtilities {
 
   private var formatCache = new TrieMap[MoleculeFormatType, Cache[Long, Option[String]]]()
 
-  private def buildCache(moleculeFormatType: MoleculeFormatType): Cache[Long, Option[String]] ={
+  private def buildCache(moleculeFormatType: MoleculeFormatType): Cache[Long, Option[String]] = {
     val caffeine = Caffeine.newBuilder().asInstanceOf[Caffeine[Long, Option[String]]]
     caffeine.maximumSize(cacheSize)
 
@@ -26,7 +26,7 @@ object QueryChemicals extends MongoWorkflowUtilities {
     caffeine.build[Long, Option[String]]()
   }
 
-  def clearCache(): Unit ={
+  def clearCache(): Unit = {
     formatCache = new TrieMap[MoleculeFormatType, Cache[Long, Option[String]]]()
   }
 

@@ -43,20 +43,28 @@ object ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities {
       return List()
     }
 
-    createReactions(mongoConnection)(dbReactionIdsIterator.get)
+    createReactions(mongoConnection)(dbReactionIdsIterator.get).toList
   }
 
   def querySubstrateAndProductInchis(mongoConnection: MongoDB): List[Option[InchiReaction]] = {
+    createReactions(mongoConnection)(mongoConnection.getReactionsIterator).toList
+  }
+
+  def querySubstrateAndProductInchisIterator(mongoConnection: MongoDB): Iterator[Option[InchiReaction]] = {
     createReactions(mongoConnection)(mongoConnection.getReactionsIterator)
   }
 
   def querySubstrateAndProductInchisJava(mongoConnection: MongoDB): java.util.List[InchiReaction] = {
+    createReactions(mongoConnection)(mongoConnection.getReactionsIterator).toList.flatten.asJava
+  }
+
+  def querySubstrateAndProductInchisJavaIterator(mongoConnection: MongoDB): java.util.Iterator[InchiReaction] = {
     createReactions(mongoConnection)(mongoConnection.getReactionsIterator).flatten.asJava
   }
 
-  private def createReactions(mongoConnection: MongoDB)(iter: Iterator[Reaction]): List[Option[InchiReaction]] ={
+  private def createReactions(mongoConnection: MongoDB)(iter: Iterator[Reaction]): Iterator[Option[InchiReaction]] ={
     val count = new AtomicInteger()
-    val moleculeMap: List[Option[InchiReaction]] = iter.map(result => {
+    iter.map(result => {
       val reactionId = result.getUUID
 
       val chemicals = (result.getSubstrates.toList ::: result.getProducts.toList).distinct.map(x => x.toLong)
@@ -84,9 +92,7 @@ object ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities {
       } else {
         None
       }
-    }).toList
-
-    moleculeMap
+    })
   }
 
   /**

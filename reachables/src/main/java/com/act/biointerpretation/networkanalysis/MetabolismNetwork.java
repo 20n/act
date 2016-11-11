@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -154,10 +155,10 @@ public class MetabolismNetwork {
    * @param db The DB.
    */
   public void loadAllEdgesFromDb(MongoDB db) {
-    List<ReactionsToSubstratesAndProducts.InchiReaction> parsedReactions =
-            ReactionsToSubstratesAndProducts.querySubstrateAndProductInchisJava(db);
-    for (ReactionsToSubstratesAndProducts.InchiReaction r : parsedReactions) {
-      this.loadEdgeFromInchiReaction(r);
+    Iterator<ReactionsToSubstratesAndProducts.InchiReaction> parsedReactions =
+            ReactionsToSubstratesAndProducts.querySubstrateAndProductInchisJavaIterator(db);
+    while (parsedReactions.hasNext()) {
+      this.loadEdgeFromInchiReaction(parsedReactions.next());
     }
   }
 
@@ -168,7 +169,7 @@ public class MetabolismNetwork {
    * @param reaction The reaction.
    */
   public void loadEdgeFromInchiReaction(ReactionsToSubstratesAndProducts.InchiReaction reaction) {
-    if (reaction.substrates().isEmpty() || reaction.products().isEmpty()){
+    if (reaction.substrates().isEmpty() || reaction.products().isEmpty()) {
       return;
     }
     NetworkEdge edge = new NetworkEdge(JavaConversions.asJavaList(reaction.substrates()),
