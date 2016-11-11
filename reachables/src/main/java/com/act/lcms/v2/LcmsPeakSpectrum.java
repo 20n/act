@@ -6,19 +6,19 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-public class LcmsSpectrum implements PeakSpectrum {
+public class LcmsPeakSpectrum implements PeakSpectrum {
 
   List<DetectedPeak> peaks;
 
-  public LcmsSpectrum(List<DetectedPeak> peaks) {
+  public LcmsPeakSpectrum(List<DetectedPeak> peaks) {
     this.peaks = peaks;
   }
 
-  public LcmsSpectrum(PeakSpectrum spectrum) {
+  public LcmsPeakSpectrum(PeakSpectrum spectrum) {
     this(spectrum.getAllPeaks());
   }
 
-  public LcmsSpectrum() {
+  public LcmsPeakSpectrum() {
     this(new ArrayList<>());
   }
 

@@ -3,7 +3,7 @@ package com.act.biointerpretation.networkanalysis;
 import com.act.jobs.FileChecker;
 import com.act.lcms.v2.DetectedPeak;
 import com.act.lcms.v2.FixedWindowDetectedPeak;
-import com.act.lcms.v2.LcmsSpectrum;
+import com.act.lcms.v2.LcmsPeakSpectrum;
 import com.act.lcms.v2.PeakSpectrum;
 import com.act.utils.TSVParser;
 
@@ -45,12 +45,12 @@ public class LcmsTSVParser {
       String scanFile = lcmsTSVFile.getAbsolutePath();
 
       if (intensity > 0) {
-        FixedWindowDetectedPeak peak = new FixedWindowDetectedPeak(scanFile, mz, MZ_TOLERANCE,
+        FixedWindowDetectedPeak peak = new FixedWindowDetectedPeak(scanFile, mz, 2*MZ_TOLERANCE,
             retentionTime, RT_TOLERANCE, intensity, 1.0);
         peaks.add(peak);
       }
     }
 
-    return new LcmsSpectrum(peaks);
+    return new LcmsPeakSpectrum(peaks);
   }
 }
