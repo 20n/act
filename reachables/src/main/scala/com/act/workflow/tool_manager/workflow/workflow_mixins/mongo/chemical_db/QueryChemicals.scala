@@ -93,13 +93,15 @@ object QueryChemicals extends MongoWorkflowUtilities {
     val queryResult: Option[java.util.Iterator[Chemical]] =
       Option(mongoConnection.getChemicalsbyIds(unknownChemicals.map(java.lang.Long.valueOf).asJava, true))
 
-    queryResult.get.asScala.map(id => {
+    val unknownChemicalsResult: Map[Long, Option[String]] = queryResult.get.asScala.map(id => {
       val format = getChemicalStringByFormat(moleculeFormat, id)
       val resultId = id.getUuid.toLong
       formatCache(moleculeFormat).put(resultId, format)
 
       (resultId, format)
-    }).toMap ++ knownChemicals
+    }).toMap
+
+    unknownChemicalsResult ++ knownChemicals
   }
 
   /**

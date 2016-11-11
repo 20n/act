@@ -62,24 +62,38 @@ object ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities {
     createReactions(mongoConnection)(mongoConnection.getReactionsIterator).flatten.asJava
   }
 
-  private def createReactions(mongoConnection: MongoDB)(iter: Iterator[Reaction]): Iterator[Option[InchiReaction]] ={
+  private def createReactions(mongoConnection: MongoDB)(iter: Iterator[Reaction]): Iterator[Option[InchiReaction]] = {
+    def chemicalIdToStrings(chemicalStringCache: Map[Long, Option[String]])
+                           (substrateId: Long, rawCoefficient: Option[Integer]): List[Option[String]] ={
+      val chemicalString: Option[String] = chemicalStringCache(substrateId)
+      // By default we say chemicals without coefficients have a coefficient of 1
+      val coefficient = rawCoefficient.getOrElse[Integer](Integer.valueOf(1))
+      // Creates a list that has the chemical string repeated by the coefficient of that chemcial string.
+      List.fill(coefficient)(chemicalString)
+    }
+
     val count = new AtomicInteger()
     iter.map(result => {
       val reactionId = result.getUUID
 
+      // Compute all the substrates and product strings for this reaction in one query
       val chemicals = (result.getSubstrates.toList ::: result.getProducts.toList).distinct.map(x => x.toLong)
       val thisReactionsChemicals: Map[Long, Option[String]] = QueryChemicals.getChemicalStringsByIds(mongoConnection)(chemicals)
 
+      // We create a mapper which uses the current cache to map a chemicalId and Coefficient
+      // to a list of one or more strings.
+      val chemicalMapper: (Long, Option[Integer]) => List[Option[String]] = chemicalIdToStrings(thisReactionsChemicals)
+
+      // Substrates first
       val substrateMolecules: List[Option[String]] = result.getSubstrates.toList.flatMap(substrateId => {
-        val s: Option[String] = thisReactionsChemicals(substrateId)
-        val coefficient: Option[Integer] = Option(result.getSubstrateCoefficient(substrateId))
-        List.fill(coefficient.getOrElse[Integer](Integer.valueOf(1)))(s)
+        val rawCoefficient: Option[Integer] = Option(result.getSubstrateCoefficient(substrateId))
+        chemicalMapper(substrateId, rawCoefficient)
       })
 
+      // Then products
       val productMolecules: List[Option[String]] = result.getProducts.toList.flatMap(productId => {
-        val s: Option[String] = thisReactionsChemicals(productId)
-        val coefficient: Option[Integer] = Option(result.getProductCoefficient(productId))
-        List.fill(coefficient.getOrElse[Integer](Integer.valueOf(1)))(s)
+        val rawCoefficient: Option[Integer] = Option(result.getProductCoefficient(productId))
+        chemicalMapper(productId, rawCoefficient)
       })
 
       if (count.incrementAndGet() % 1000 == 0){
