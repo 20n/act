@@ -1,11 +1,16 @@
 package com.act.biointerpretation.l2expansion
 
 import java.io.{BufferedWriter, File, FileWriter}
+import java.util
+import java.util.{Spliterator, Spliterators}
+import java.util.stream.StreamSupport
 
+import act.server.MongoDB
 import chemaxon.license.LicenseManager
 import chemaxon.marvin.io.MolExportException
 import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
+import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.act.workflow.tool_manager.jobs.management.JobManager
 import com.act.workflow.tool_manager.tool_wrappers.SparkWrapper
@@ -15,6 +20,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
 import spray.json._
 
+import scala.collection.JavaConverters
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
@@ -37,6 +43,7 @@ object SparkInstance {
   eros.loadValidationCorpus()
 
   var localLicenseFile: Option[String] = None
+  var projector: ReactionProjector = new ReactionProjector(true)
 
   def project(licenseFileName: String)
              (reverse: Boolean, exhaustive: Boolean)
@@ -73,6 +80,8 @@ object SparkInstance {
     // because of the duplicates b. We should assess this as for higher number of molecule reactors this
     // may be the dominant case over the cost that could be imposed by hitting the MoleculeImporter's cache.
     val importedMolecules: List[Molecule] = inputs.map(x => MoleculeImporter.importMolecule(x, defaultMoleculeFormat))
+    projector.getRoProjectionMap(importedMolecules.toArray, reactor).asScala.map(_._2.asScala.map(_.toList)).flatten.map(mapReactionsToResult(inputs, ro.getId.toString))
+    projector.getRoProjectionMap(importedMolecules.toArray, reactor).asScala.flatten
     val resultingReactions: Stream[ProjectionResult] = importedMolecules.permutations.flatMap(substrateOrdering => {
 
       // Setup reactor
@@ -118,6 +127,9 @@ object SparkROProjector {
   val OPTION_OUTPUT_DIRECTORY = "o"
   val OPTION_REVERSE = "r"
   val OPTION_VALID_CHEMICAL_TYPE = "v"
+  val OPTION_DB_NAME = "d"
+  val OPTION_DB_PORT = "p"
+  val OPTION_DB_HOST = "t"
 
   private val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   HELP_FORMATTER.setWidth(100)
@@ -149,27 +161,20 @@ object SparkROProjector {
       inchiCorpus
     })
 
-    // List of all unique InChIs in each corpus
-    val inchiCorpuses: List[List[String]] = substrateCorpuses.map(_.getInchiList.asScala.distinct.toList)
-
-    // List of combinations of InChIs
-    val inchiCombinations: Stream[Stream[String]] = combinationList(inchiCorpuses.map(_.toStream).toStream)
-
-    // TODO Move this filtering into combinationsList so that it is lazily evaluated as we need the elements.
-    LOGGER.info("Attempting to filter out combinations with invalid InChIs.  " +
-      s"Starting with ${inchiCombinations.length} inchis.")
-    val validInchis: Stream[Stream[String]] = inchiCombinations.filter(group => {
-      try {
-        group.foreach(inchi => {
-          MoleculeImporter.importMolecule(inchi)
-        })
-        true
-      } catch {
-        case e: Exception => false
+    val validInchis: Stream[Stream[String]] = {
+      if (cl.hasOption(OPTION_SUBSTRATES_LISTS)) {
+        inchiSourceFromFiles(cl.getOptionValues(OPTION_SUBSTRATES_LISTS).toList)
+      } else if (cl.hasOption(OPTION_DB_NAME)) {
+        inchiSourceFromDB(cl.getOptionValue(OPTION_DB_NAME),
+          cl.getOptionValue(OPTION_DB_PORT, "27017").toInt,
+          cl.getOptionValue(OPTION_DB_HOST, "localhost")
+        )
+      } else {
+        LOGGER.error("Must specify either substrate list(s) or a DB from which to read")
+        exitWithHelp(getCommandLineOptions)
+        Stream()
       }
-    })
-    LOGGER.info(s"Filtering removed ${inchiCombinations.length - validInchis.length}" +
-      s" combinations, ${validInchis.length} remain.")
+    }
 
     // Setup spark connection
     val conf = new SparkConf().
@@ -203,6 +208,45 @@ object SparkROProjector {
     handleProjectionTermination(resultsRDD, outputDir)
   }
 
+  private def inchiSourceFromFiles(fileNames: List[String]) : Stream[Stream[String]] = {
+    val substrateCorpuses: List[L2InchiCorpus] = fileNames.map(x => {
+      val inchiCorpus = new L2InchiCorpus()
+      inchiCorpus.loadCorpus(new File(x))
+      inchiCorpus
+    })
+
+    // List of all unique InChIs in each corpus
+    val inchiCorpuses: List[List[String]] = substrateCorpuses.map(_.getInchiList.asScala.distinct.toList)
+
+    // List of combinations of InChIs
+    val inchiCombinations: Stream[Stream[String]] = combinationList(inchiCorpuses.map(_.toStream).toStream)
+
+    // TODO Move this filtering into combinationsList so that it is lazily evaluated as we need the elements.
+    LOGGER.info("Attempting to filter out combinations with invalid InChIs.  " +
+      s"Starting with ${inchiCombinations.length} inchis.")
+    val validInchis: Stream[Stream[String]] = inchiCombinations.filter(group => {
+      try {
+        group.foreach(inchi => {
+          MoleculeImporter.importMolecule(inchi)
+        })
+        true
+      } catch {
+        case e: Exception => false
+      }
+    })
+    LOGGER.info(s"Filtering removed ${inchiCombinations.length - validInchis.length}" +
+      s" combinations, ${validInchis.length} remain.")
+
+    validInchis
+  }
+
+  private def inchiSourceFromDB(dbName: String, dbPort: Int, dbHost: String): Stream[Stream[String]] = {
+    val db: MongoDB = new MongoDB(dbHost, dbPort, dbName)
+    val reactionIter = new ValidReactionSubstratesIterator(db)
+
+    JavaConverters.asScalaIteratorConverter(reactionIter).asScala.map(_.asScala.toStream).toStream
+  }
+
   private def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
       CliOption.builder(OPTION_LICENSE_FILE).
@@ -212,11 +256,25 @@ object SparkROProjector {
         desc("A path to the Chemaxon license file to load, mainly for checking license validity"),
 
       CliOption.builder(OPTION_SUBSTRATES_LISTS).
-        required(true).
         hasArgs.
         valueSeparator(',').
         longOpt("substrates-list").
         desc("A list of substrate InChIs onto which to project ROs"),
+
+      CliOption.builder(OPTION_DB_NAME).
+        hasArg().
+        longOpt("db-name").
+        desc("The name of the installer DB from which to read reaction substrates"),
+
+      CliOption.builder(OPTION_DB_HOST).
+        hasArg().
+        longOpt("db-host").
+        desc("The name of the host where the installer DB from which to read lives"),
+
+      CliOption.builder(OPTION_DB_PORT).
+        hasArg().
+        longOpt("db-port").
+        desc("The port on which to connect to the installer DB"),
 
       CliOption.builder(OPTION_OUTPUT_DIRECTORY).
         required(true).
