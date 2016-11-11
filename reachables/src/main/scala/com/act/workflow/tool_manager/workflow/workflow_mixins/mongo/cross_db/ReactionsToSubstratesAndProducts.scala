@@ -69,7 +69,7 @@ object ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities {
       val chemicalString: Option[String] = chemicalStringCache(substrateId)
       // By default we say chemicals without coefficients have a coefficient of 1
       val coefficient = rawCoefficient.getOrElse[Integer](Integer.valueOf(defaultReactionChemicalCoefficient))
-      // Creates a list that has the chemical string repeated by the coefficient of that chemcial string.
+      // Creates a list that has the chemical string repeated by the coefficient of that chemical string.
       List.fill(coefficient)(chemicalString)
     }
 
