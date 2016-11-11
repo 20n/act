@@ -73,18 +73,6 @@ server <- function(input, output, session) {
     gc()
   })
 
-  
-  output$memory.table <- renderTable({
-    env <- environment()
-    data.frame(
-      # can use globalenv(), parent.frame(), etc
-      object = ls(env),
-      size = unlist(lapply(ls(env), function(x) {
-        object.size(get(x, envir = env, inherits = FALSE))
-      }))
-    )
-  })
-  
   output$global.memory.table <- renderTable({
     env <- globalenv()
     data.frame(
@@ -97,7 +85,18 @@ server <- function(input, output, session) {
   })
   
   output$parent.memory.table <- renderTable({
-    env <- parent.frame()
+    env <- parent.frame(n = 1)
+    data.frame(
+      # can use globalenv(), parent.frame(), etc
+      object = ls(env),
+      size = unlist(lapply(ls(env), function(x) {
+        object.size(get(x, envir = env, inherits = FALSE))
+      }))
+    )
+  })
+  
+  output$parent.memory.table2 <- renderTable({
+    env <- parent.frame(n = 2)
     data.frame(
       # can use globalenv(), parent.frame(), etc
       object = ls(env),
@@ -153,7 +152,8 @@ ui <- fluidPage(
              tabPanel("Memory-usage", value = "memory",
                       tableOutput("memory.table"),
                       tableOutput("global.memory.table"),
-                      tableOutput("parent.memory.table")
+                      tableOutput("parent.memory.table"),
+                      tableOutput("parent.memory.table2")
              )
   )
 )
