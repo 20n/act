@@ -251,7 +251,6 @@ public class ReactionProjector {
         PermutationIterator<Integer> iter = new PermutationIterator<>(allIndexes);
         while (iter.hasNext()) {
           permutationIndex++;
-          LOGGER.info("Running permutation %d", permutationIndex);
           List<Integer> permutation = iter.next();
           if (permutationFitsSubstructureMatches(permutation, viableSubstrateIndexes.get())) {
             Molecule[] substrates = indexPermutationToMolecules(mols, permutation);
