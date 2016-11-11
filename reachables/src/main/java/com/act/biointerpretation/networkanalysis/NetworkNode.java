@@ -9,13 +9,14 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Represents a node, or chemical, in the metabolism network
  */
 public class NetworkNode {
 
-  private static Integer uidCounter = 0;
+  private static AtomicInteger uidCounter = new AtomicInteger(0);
 
   @JsonProperty("uid")
   private final Integer UID;
@@ -34,11 +35,14 @@ public class NetworkNode {
     this.inEdges = new HashSet<>();
     this.metabolite = metabolite;
     this.UID = UID;
-    uidCounter = Math.max(UID + 1, uidCounter);
+    uidCounter.set(Math.max(UID + 1, uidCounter.get()));
   }
 
   public NetworkNode(Metabolite metabolite) {
-    this(metabolite, uidCounter);
+    this.outEdges = new HashSet<>();
+    this.inEdges = new HashSet<>();
+    this.metabolite = metabolite;
+    this.UID = uidCounter.getAndIncrement();
   }
 
   public Metabolite getMetabolite() {

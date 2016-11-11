@@ -16,16 +16,19 @@ public class DotEdge {
   private EdgeStyle style;
 
   public DotEdge(String source, String sink) {
+    this(source, sink, DotColor.DEFAULT_BLACK, EdgeStyle.DEFAULT_SOLID);
+  }
+
+  public DotEdge(String source, String sink, DotColor color, EdgeStyle style) {
     this.source = source;
     this.sink = sink;
-    this.color = DotColor.DEFAULT_BLACK;
-    this.style = EdgeStyle.DEFAULT_SOLID;
+    this.color = color;
+    this.style = style;
   }
 
   /**
    * Gets the string that should be written to a DOT file to add this edge to a graph.
    * See user manual for dot format here: http://graphviz.org/Documentation/dotguide.pdf
-   *
    * @return The string.
    */
   public String getDotString() {

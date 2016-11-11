@@ -63,10 +63,19 @@ public class PrecursorReport {
     this.lcmsMap = lcmsMap;
   }
 
-  public void addLcmsData(PeakSpectrum peakSpectrum, IonCalculator massCalculator, Set<String> ions, double massTol) {
+  /**
+   * Uses a PeakSpectrum to decide on an LCMS confidence value for each node of the network. For now, we say that
+   * a node has a confidence of 1.0 if any of its ions match up with a peak in the spectrum with confidence 1.0. If none
+   * of its ions match up with any peaks with confidence 1.0, we give a confidence of 0.0. We can, of course, make this
+   * calculation more sophisticated as needed.
+   * @param peakSpectrum The peaks to match the nodes against.
+   * @param ionCalculator The ion calculator to use.
+   * @param ions The ions to use.
+   */
+  public void addLcmsData(PeakSpectrum peakSpectrum, IonCalculator ionCalculator, Set<String> ions) {
     for (NetworkNode node : network.getNodes()) {
       lcmsMap.put(node, 0.0);
-      for (Ion ion : massCalculator.getSelectedIons(node.getMetabolite(), ions, MS1.IonMode.POS)) {
+      for (Ion ion : ionCalculator.getSelectedIons(node.getMetabolite(), ions, MS1.IonMode.POS)) {
         if (!peakSpectrum.getPeaksByMZ(ion.getMzValue(), 1.0).isEmpty()) {
           lcmsMap.put(node, 1.0);
           break;
@@ -101,7 +110,8 @@ public class PrecursorReport {
   }
 
   /**
-   * Returns true if the node is an lcms hit, false if not.  If the node isn't in the map, returns null.
+   * Returns a value between 0 and 1, where 0 indicates the node definitely is not an lcms hit, and 1 indicates
+   * that it definitely is.
    */
   public Double getLcmsConfidence(NetworkNode node) {
     return lcmsMap.get(node);
@@ -120,7 +130,7 @@ public class PrecursorReport {
    */
   @JsonCreator
   private static PrecursorReport getFromJson(
-      @JsonProperty("target") InchiMetabolite target,
+      @JsonProperty("target") Metabolite target,
       @JsonProperty("network") ImmutableNetwork network,
       @JsonProperty("level_map") Map<Integer, Integer> levelMap,
       @JsonProperty("lcms_hit_map") Map<Integer, Double> lcmsMap) {
@@ -133,7 +143,7 @@ public class PrecursorReport {
 
   /**
    * Custom serializer for jackson, since it chokes on keys which are not strings. Transforms lcmsMap to a
-   * String->Boolean map instead of a NetworkNode->Integer map.
+   * UID->confidence map instead of a NetworkNode->confidence map.
    */
   @JsonProperty("lcms_hit_map")
   private Map<Integer, Double> getSerializableLcmsMap() {
@@ -143,7 +153,7 @@ public class PrecursorReport {
 
   /**
    * Custom serializer for jackson, since it chokes on keys which are not Strings. Transforms levelMap to a
-   * String->Integer map instead of a NetworkNode->Integer map.
+   * UID->Integer map instead of a NetworkNode->Integer map.
    */
   @JsonProperty("level_map")
   private Map<Integer, Integer> getSerializableLevelMap() {

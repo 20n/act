@@ -105,10 +105,10 @@ public class PrecursorReportTest {
     Mockito.when(spectrum.getPeaksByMZ(MET_1_ION_1.getMzValue(), 1.0)).thenReturn(SOME_PEAKS);
 
     // Act
-    report.addLcmsData(spectrum, mockIonCalculator, ions, MASS_TOLERANCE);
+    report.addLcmsData(spectrum, mockIonCalculator, ions);
 
     // Assert
     assertEquals("Metabolite 1, matching at one ion, is positive.", new Double(1.0), report.getLcmsConfidence(node1));
-    assertEquals("Metabolite 2, matching at no ions, is negative.", new Double(1.0), report.getLcmsConfidence(node1));
+    assertEquals("Metabolite 2, matching at no ions, is negative.", new Double(0.0), report.getLcmsConfidence(node2));
   }
 }
