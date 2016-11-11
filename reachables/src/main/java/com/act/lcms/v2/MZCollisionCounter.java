@@ -5,7 +5,6 @@ import com.act.utils.TSVWriter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -32,8 +31,9 @@ public class MZCollisionCounter {
   private static final String OPTION_INPUT_INCHI_LIST = "i";
   private static final String OPTION_OUTPUT_FILE = "o";
   private static final String OPTION_COUNT_WINDOW_INTERSECTIONS = "w";
+  private static final String OPTION_WINDOW_HALFWIDTH = "s";
   private static final String OPTION_ONLY_CONSIDER_IONS = "n";
-  private static final Double WINDOW_TOLERANCE = 0.01;
+  private static final Double DEFAULT_WINDOW_TOLERANCE = 0.01;
 
   private static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class calculates the monoisoptic masses of a list of InChIs, computes ion m/z's for those masses, ",
@@ -50,14 +50,20 @@ public class MZCollisionCounter {
     );
     add(Option.builder(OPTION_OUTPUT_FILE)
         .argName("output-file")
-        .desc("Write collision histogram data to an output file (default: stdout)")
+        .desc("Write collision histogram data to an output file")
         .hasArg()
         .required()
         .longOpt("output-file")
     );
     add(Option.builder(OPTION_COUNT_WINDOW_INTERSECTIONS)
-        .desc("Count intersections of +/-0.01 Dalton mass charge windows instead of counting exact collisions")
+        .desc("Count intersections of +/-0.01 Dalton mass charge windows instead of counting exact collisions; " +
+            "counts the number of structures that might fall within each window and bins by count")
         .longOpt("window-collisions")
+    );
+    add(Option.builder(OPTION_WINDOW_HALFWIDTH)
+        .desc(String.format("Sets the window half-width for collision counting in window mode, default is %.3f",
+            DEFAULT_WINDOW_TOLERANCE))
+        .longOpt("window-half-width")
     );
     add(Option.builder(OPTION_ONLY_CONSIDER_IONS)
         .argName("ions")
@@ -127,41 +133,81 @@ public class MZCollisionCounter {
           }});
         }
       } else {
+        /* After some deliberation (thanks Gil!), the windowed variant of this calculation counts the number of
+         * structures whose 0.01 Da m/z windows (for some set of ions) overlap with each other.
+         *
+         * For example, let's assume we have five total input structures, and are only searching for one ion.  Let's
+         * also assume that three of those structures have m/z A and the remaining two have m/z B.  The windows might
+         * look like this in the m/z domain:
+         * |----A----|
+         *        |----B----|
+         * Because A represents three structures and overlaps with B, which represents two, we assign A a count of 5--
+         * this is the number of structures we believe could fall into the range of A given our current peak calling
+         * approach.  Similarly, B is assigned a count of 5, as the possibility for collision/confusion is symmetric.
+         *
+         * Note that this is an over-approximation of collisions, as we could more precisely only consider intersections
+         * when the exact m/z of B falls within the window around A and vice versa.  However, because we have observed
+         * cases where the MS sensor doesn't report structures at exactly the m/z we predict, we employ this weaker
+         * definition of intersection to give a slightly pessimistic view of what confusions might be possible. */
         // Compute windows for every m/z.  We don't care about the original mz values since we just want the count.
         List<Double> mzs = mzMap.ionMZsSorted();
-        // Window = lower bound, counter, upper bound.  Counter in the middle = easy to remember what's what.
-        LinkedList<Triple<Double, LongAdder, Double>> allWindows = new LinkedList<Triple<Double, LongAdder, Double>>() {{
+
+        final Double windowHalfWidth;
+        if (cl.hasOption(OPTION_WINDOW_HALFWIDTH)) {
+          // Don't use get with default for this option, as we want the exact FP value of the default tolerance.
+          windowHalfWidth = Double.valueOf(cl.getOptionValue(OPTION_WINDOW_HALFWIDTH));
+        } else {
+          windowHalfWidth = DEFAULT_WINDOW_TOLERANCE;
+        }
+
+        /* Window = (lower bound, upper bound), counter of represented m/z's that collide with this window, and number
+         * of representative structures (which will be used in counting collisions). */
+        LinkedList<CollisionWindow> allWindows = new LinkedList<CollisionWindow>() {{
           for (Double mz : mzs) {
             // CPU for memory trade-off: don't re-compute the window bounds over and over and over and over and over.
-            add(Triple.of(mz - WINDOW_TOLERANCE, new LongAdder(), mz + WINDOW_TOLERANCE));
+            try {
+              add(new CollisionWindow(mz, windowHalfWidth, mzMap.ionMZToMZSources(mz).size()));
+            } catch (NoSuchElementException e) {
+              LOGGER.error("Caught no such element exception for mz %f: %s", mz, e.getMessage());
+              throw e;
+            }
           }
         }};
 
         // Sweep line time!  The window ranges are the interesting points.  We just accumulate overlap counts as we go.
-        LinkedList<Triple<Double, LongAdder, Double>> workingSet = new LinkedList<>();
-        List<Triple<Double, LongAdder, Double>> finishedSet = new LinkedList<>();
+        LinkedList<CollisionWindow> workingSet = new LinkedList<>();
+        List<CollisionWindow> finished = new LinkedList<>();
 
         while (allWindows.size() > 0) {
-          Triple<Double, LongAdder, Double> thisWindow = allWindows.pop();
+          CollisionWindow thisWindow = allWindows.pop();
           // Remove any windows from the working set that don't overlap with the next window.
-          while (workingSet.size() > 0 && workingSet.peekFirst().getRight() < thisWindow.getLeft()) {
-            finishedSet.add(workingSet.pop());
+          while (workingSet.size() > 0 && workingSet.peekFirst().getMaxMZ() < thisWindow.getMinMZ()) {
+            finished.add(workingSet.pop());
           }
-          workingSet.add(thisWindow);
 
-          // Add one to each overlapping window to remember that this new window intersects with all of them.
-          workingSet.forEach(t -> t.getMiddle().increment());
+          for (CollisionWindow w : workingSet) {
+            /* Add the size of the new overlapping window's structure count to each of the windows in the working set,
+             * which represents the number of possible confused structures that fall within the overlapping region.
+             * We exclude the window itself as it should already have counted the colliding structures it represents. */
+            w.getAccumulator().add(thisWindow.getStructureCount());
+
+            /* Reciprocally, add the structure counts of all windows with which the current window overlaps to it. */
+            thisWindow.getAccumulator().add(w.getStructureCount());
+          }
+
+          // Now that accumulation is complete, we can safely add the current window.
+          workingSet.add(thisWindow);
         }
 
         // All the interesting events are done, so drop the remaining windows into the finished set.
-        finishedSet.addAll(workingSet);
+        finished.addAll(workingSet);
 
-        Map<Long, Long> collisionHistogram = histogram(finishedSet.stream().map(t -> t.getMiddle().longValue()));
+        Map<Long, Long> collisionHistogram = histogram(finished.stream().map(w -> w.getAccumulator().longValue()));
         List<Long> sortedCollisions = new ArrayList<>(collisionHistogram.keySet());
         Collections.sort(sortedCollisions);
         for (Long collision : sortedCollisions) {
           tsvWriter.append(new HashMap<String, Long>() {{
-            put("collisions", collision.longValue());
+            put("collisions", collision);
             put("count", collisionHistogram.get(collision));
           }});
         }
@@ -170,6 +216,38 @@ public class MZCollisionCounter {
       if (tsvWriter != null) {
         tsvWriter.close();
       }
+    }
+  }
+
+  private static class CollisionWindow {
+    Double min;
+    Double max;
+    LongAdder accumulator = new LongAdder();
+    Integer structureCount;
+
+    public CollisionWindow(Double mz, Double windowHalfWidth, Integer structureCount) {
+      this.min = mz - windowHalfWidth;
+      this.max = mz + windowHalfWidth;
+      this.structureCount = structureCount;
+
+      // Set the base
+      this.accumulator.add(structureCount);
+    }
+
+    Double getMinMZ() {
+      return min;
+    }
+
+    Double getMaxMZ() {
+      return max;
+    }
+
+    LongAdder getAccumulator() {
+      return accumulator;
+    }
+
+    Integer getStructureCount() {
+      return structureCount;
     }
   }
 
