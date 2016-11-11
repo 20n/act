@@ -83,7 +83,7 @@ public class PrecursorAnalysis implements JavaRunnable {
     Map<String, Integer> targetIdMap = new HashMap<>();
     int id = 0;
     IonCalculator ionCalculator = lcmsInput.isPresent() ? new LcmsIonCalculator() : null;
-    PeakSpectrum lcmsSpectrum = lcmsInput.isPresent() ? LcmsTSVParser.parseTSV(lcmsInput.get()) : null;
+    PeakSpectrum lcmsSpectrum = lcmsInput.isPresent() ? LcmsTSVParser.parseExperimentalTSV(lcmsInput.get()) : null;
 
     // Do precursor analyses on each target.  Give each found target an ID so we can track which report is which.
     for (String target : targets) {
