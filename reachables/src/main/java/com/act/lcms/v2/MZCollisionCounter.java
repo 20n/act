@@ -55,7 +55,8 @@ public class MZCollisionCounter {
         .longOpt("output-file")
     );
     add(Option.builder(OPTION_COUNT_WINDOW_INTERSECTIONS)
-        .desc("Count intersections of +/-0.01 Dalton mass charge windows instead of counting exact collisions")
+        .desc("Count intersections of +/-0.01 Dalton mass charge windows instead of counting exact collisions; " +
+            "counts the number of structures that might fall within each window and bins by count")
         .longOpt("window-collisions")
     );
     add(Option.builder(OPTION_ONLY_CONSIDER_IONS)
@@ -126,6 +127,22 @@ public class MZCollisionCounter {
           }});
         }
       } else {
+        /* After some deliberation (thanks Gil!), the windowed variant of this calculation counts the number of
+         * structures whose 0.01 Da m/z windows (for some set of ions) overlap with each other.
+         *
+         * For example, let's assume we have five total input structures, and are only searching for one ion.  Let's
+         * also assume that three of those structures have m/z A and the remaining two have m/z B.  The windows might
+         * look like this in the m/z domain:
+         * |----A----|
+         *        |----B----|
+         * Because A represents three structures and overlaps with B, which represents two, we assign A a count of 5--
+         * this is the number of structures we believe could fall into the range of A given our current peak calling
+         * approach.  Similarly, B is assigned a count of 5, as the possibility for collision/confusion is symmetric.
+         *
+         * Note that this is an over-approximation of collisions, as we could more precisely only consider intersections
+         * when the exact m/z of B falls within the window around A and vice versa.  However, because we have observed
+         * cases where the MS sensor doesn't report structures at exactly the m/z we predict, we employ this weaker
+         * definition of intersection to give a slightly pessimistic view of what confusions might be possible. */
         // Compute windows for every m/z.  We don't care about the original mz values since we just want the count.
         List<Double> mzs = mzMap.ionMZsSorted();
         /* Window = (lower bound, upper bound), counter of represented m/z's that collide with this window, and number
