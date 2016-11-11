@@ -25,8 +25,8 @@ public class PrecursorReportVisualizer {
   private static final Logger LOGGER = LogManager.getFormatterLogger(PrecursorReportVisualizer.class);
 
   private static final Double FULL_CONFIDENCE = 1.0;
-  private static final DotColor LCMS_HIT_COLOR = DotColor.DEFAULT_BLACK;
-  private static final DotColor LCMS_MISS_COLOR = DotColor.RED;
+  private static final DotColor LCMS_HIT_COLOR =  DotColor.RED;
+  private static final DotColor LCMS_MISS_COLOR = DotColor.DEFAULT_BLACK;
   private static final DotEdge.EdgeStyle REACTION_EDGE_STYLE = DotEdge.EdgeStyle.DEFAULT_SOLID;
   private static final DotEdge.EdgeStyle PREDICTION_EDGE_STYLE = DotEdge.EdgeStyle.DOTTED;
 
@@ -41,7 +41,7 @@ public class PrecursorReportVisualizer {
   }
 
   public PrecursorReportVisualizer() {
-    orgToColor = new HashMap<>();
+    this.orgToColor = new HashMap<>();
   }
 
   public Runner getRunner(File inputNetwork, File outputFile) {

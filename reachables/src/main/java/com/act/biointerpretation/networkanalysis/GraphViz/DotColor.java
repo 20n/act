@@ -9,8 +9,6 @@ import java.util.Set;
  * Represents the color of an edge or node in a dot graph.
  */
 public class DotColor {
-  public static final DotColor DEFAULT_BLACK = new DotColor();
-  public static final DotColor RED = new DotColor("red");
 
   // This list is incomplete; add to it if you want any of the more nuanced colors. You can find options here:
   // http://www.graphviz.org/doc/info/colors.html.
@@ -18,6 +16,9 @@ public class DotColor {
     addAll(Arrays.asList("red", "green", "blue", "yellow", "purple", "pink", "orange",
         "black", "white", "violet", "turquoise", "silver", "beige"));
   }};
+
+  public static final DotColor DEFAULT_BLACK = new DotColor();
+  public static final DotColor RED = new DotColor("red");
 
   private final String stringRep;
 
