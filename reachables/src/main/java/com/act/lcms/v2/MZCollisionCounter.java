@@ -31,8 +31,9 @@ public class MZCollisionCounter {
   private static final String OPTION_INPUT_INCHI_LIST = "i";
   private static final String OPTION_OUTPUT_FILE = "o";
   private static final String OPTION_COUNT_WINDOW_INTERSECTIONS = "w";
+  private static final String OPTION_WINDOW_HALFWIDTH = "s";
   private static final String OPTION_ONLY_CONSIDER_IONS = "n";
-  private static final Double WINDOW_TOLERANCE = 0.01;
+  private static final Double DEFAULT_WINDOW_TOLERANCE = 0.01;
 
   private static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class calculates the monoisoptic masses of a list of InChIs, computes ion m/z's for those masses, ",
@@ -58,6 +59,11 @@ public class MZCollisionCounter {
         .desc("Count intersections of +/-0.01 Dalton mass charge windows instead of counting exact collisions; " +
             "counts the number of structures that might fall within each window and bins by count")
         .longOpt("window-collisions")
+    );
+    add(Option.builder(OPTION_WINDOW_HALFWIDTH)
+        .desc(String.format("Sets the window half-width for collision counting in window mode, default is %.3f",
+            DEFAULT_WINDOW_TOLERANCE))
+        .longOpt("window-half-width")
     );
     add(Option.builder(OPTION_ONLY_CONSIDER_IONS)
         .argName("ions")
@@ -145,13 +151,22 @@ public class MZCollisionCounter {
          * definition of intersection to give a slightly pessimistic view of what confusions might be possible. */
         // Compute windows for every m/z.  We don't care about the original mz values since we just want the count.
         List<Double> mzs = mzMap.ionMZsSorted();
+
+        final Double windowHalfWidth;
+        if (cl.hasOption(OPTION_WINDOW_HALFWIDTH)) {
+          // Don't use get with default for this option, as we want the exact FP value of the default tolerance.
+          windowHalfWidth = Double.valueOf(cl.getOptionValue(OPTION_WINDOW_HALFWIDTH));
+        } else {
+          windowHalfWidth = DEFAULT_WINDOW_TOLERANCE;
+        }
+
         /* Window = (lower bound, upper bound), counter of represented m/z's that collide with this window, and number
          * of representative structures (which will be used in counting collisions). */
         LinkedList<CollisionWindow> allWindows = new LinkedList<CollisionWindow>() {{
           for (Double mz : mzs) {
             // CPU for memory trade-off: don't re-compute the window bounds over and over and over and over and over.
             try {
-              add(new CollisionWindow(mz, mzMap.ionMZToMZSources(mz).size()));
+              add(new CollisionWindow(mz, windowHalfWidth, mzMap.ionMZToMZSources(mz).size()));
             } catch (NoSuchElementException e) {
               LOGGER.error("Caught no such element exception for mz %f: %s", mz, e.getMessage());
               throw e;
@@ -210,9 +225,9 @@ public class MZCollisionCounter {
     LongAdder accumulator = new LongAdder();
     Integer structureCount;
 
-    public CollisionWindow(Double mz, Integer structureCount) {
-      this.min = mz - MZCollisionCounter.WINDOW_TOLERANCE;
-      this.max = mz + MZCollisionCounter.WINDOW_TOLERANCE;
+    public CollisionWindow(Double mz, Double windowHalfWidth, Integer structureCount) {
+      this.min = mz - windowHalfWidth;
+      this.max = mz + windowHalfWidth;
       this.structureCount = structureCount;
 
       // Set the base
