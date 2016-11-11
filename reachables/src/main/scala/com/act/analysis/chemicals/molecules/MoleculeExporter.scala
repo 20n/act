@@ -3,6 +3,8 @@ package com.act.analysis.chemicals.molecules
 import chemaxon.formats.MolExporter
 import chemaxon.marvin.io.MolExportException
 import chemaxon.struc.Molecule
+import com.act.analysis.chemicals.molecules.MoleculeFormat.MoleculeFormatType
+import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
@@ -12,15 +14,24 @@ import scala.collection.concurrent.TrieMap
   * in all the various formats we experience in a cache friendly manner.
   */
 object MoleculeExporter {
+  private val maxCacheSize = 10000L
   // By hashing also on the format we can support a molecule being converted to multiple formats in a given JVM
-  // TODO Make this a more LRU style cache so it is less memory intensive for large data sets.
-  private val moleculeCache = TrieMap[MoleculeFormat.MoleculeFormatType, TrieMap[Molecule, String]]()
+  private val moleculeCache = TrieMap[MoleculeFormat.MoleculeFormatType, Cache[Molecule, String]]()
 
   // Defaults to inchi which has aux information.
   private var defaultFormat: List[MoleculeFormat.MoleculeFormatType] = List(MoleculeFormat.inchi)
 
   def clearCache(): Unit ={
-    moleculeCache.keySet.foreach(key => moleculeCache.put(key, new TrieMap[Molecule, String]))
+    moleculeCache.keySet.foreach(key => moleculeCache.put(key, buildCache(key)))
+  }
+
+  private def buildCache(moleculeFormatType: MoleculeFormatType): Cache[Molecule, String] ={
+    val caffeine = Caffeine.newBuilder().asInstanceOf[Caffeine[Molecule, String]]
+    caffeine.maximumSize(maxCacheSize)
+
+    // If you want to debug how the cache is doing
+    caffeine.recordStats()
+    caffeine.build[Molecule, String]()
   }
 
   def setDefaultFormat(format: MoleculeFormat.MoleculeFormatType): Unit = {
@@ -54,10 +65,10 @@ object MoleculeExporter {
     val formatCache = moleculeCache.get(format)
 
     if (formatCache.isEmpty) {
-      moleculeCache.put(format, new TrieMap[Molecule, String])
+      moleculeCache.put(format, buildCache(format))
     }
 
-    val moleculeString = moleculeCache(format).get(mol)
+    val moleculeString: Option[String] = Option(moleculeCache(format).getIfPresent(mol))
 
     if (moleculeString.isEmpty) {
       val newFormat = MolExporter.exportToFormat(mol, MoleculeFormat.getExportString(format))
