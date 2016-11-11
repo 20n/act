@@ -5,16 +5,28 @@ import chemaxon.calculations.clean.Cleaner
 import chemaxon.formats.{MolFormatException, MolImporter}
 import chemaxon.standardizer.Standardizer
 import chemaxon.struc.{Molecule, MoleculeGraph}
+import com.act.analysis.chemicals.molecules.MoleculeFormat.MoleculeFormatType
+import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 
 object MoleculeImporter {
+  private val maxCacheSize = 10000L
   // Have a cache for each format.
-  private val moleculeCache = TrieMap[MoleculeFormat.MoleculeFormatType, TrieMap[String, Molecule]]()
+  private val moleculeCache = TrieMap[MoleculeFormat.MoleculeFormatType, Cache[String, Molecule]]()
 
   def clearCache(): Unit = {
-    moleculeCache.keySet.foreach(key => moleculeCache.put(key, new TrieMap[String, Molecule]))
+    moleculeCache.keySet.foreach(key => moleculeCache.put(key, buildCache(key)))
+  }
+
+  private def buildCache(moleculeFormatType: MoleculeFormatType): Cache[String, Molecule] ={
+    val caffeine = Caffeine.newBuilder().asInstanceOf[Caffeine[String, Molecule]]
+    caffeine.maximumSize(maxCacheSize)
+
+    // If you want to debug how the cache is doing, use chemicalCache.stats()
+    caffeine.recordStats()
+    caffeine.build[String, Molecule]()
   }
 
   // For java
@@ -61,10 +73,10 @@ object MoleculeImporter {
   def importMolecule(mol: String, format: MoleculeFormat.MoleculeFormatType): Molecule = {
     val formatCache = moleculeCache.get(format)
     if (formatCache.isEmpty) {
-      moleculeCache.put(format, new TrieMap[String, Molecule])
+      moleculeCache.put(format, buildCache(format))
     }
 
-    val molecule = moleculeCache(format).get(mol)
+    val molecule: Option[Molecule] = Option(moleculeCache(format).getIfPresent(mol))
 
     if (molecule.isEmpty) {
       val newMolecule = MolImporter.importMol(mol, MoleculeFormat.getImportString(format))
