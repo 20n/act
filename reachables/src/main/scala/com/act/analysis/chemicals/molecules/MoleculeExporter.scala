@@ -27,13 +27,19 @@ object MoleculeExporter {
     moleculeCache.keySet.foreach(key => moleculeCache.put(key, buildCache(key)))
   }
 
-  def setCacheSize(size: Long): Unit ={
+  /**
+    * Wipes all the current caches and changes their maximum sizes to the designated value
+    *
+    * @param size Maximum number of elements in the cache
+    */
+  def setCacheSize(size: Long): Unit = {
     LOGGER.info(s"${getClass.getCanonicalName} cache size has changed to $size " +
       s"per ${MoleculeFormatType.getClass.getCanonicalName}.")
     maxCacheSize = size
+    clearCache()
   }
 
-  private def buildCache(moleculeFormatType: MoleculeFormatType): Cache[Molecule, String] ={
+  private def buildCache(moleculeFormatType: MoleculeFormatType): Cache[Molecule, String] = {
     val caffeine = Caffeine.newBuilder().asInstanceOf[Caffeine[Molecule, String]]
     caffeine.maximumSize(maxCacheSize)
 
