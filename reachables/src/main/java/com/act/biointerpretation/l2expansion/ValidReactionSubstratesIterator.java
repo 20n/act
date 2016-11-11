@@ -109,15 +109,21 @@ public class ValidReactionSubstratesIterator implements Iterator<List<String>> {
    * @return True if the reactions substrates/products have valid InChIs; false otherwise.
    */
   private boolean reactionChemicalsAreValid(Reaction r) {
+    if (r.getSubstrates() == null || r.getSubstrates().length == 0) {
+      return false;
+    }
+
     for (Long id : r.getSubstrates()) {
       if (!validateChemicalForId(id)) {
         return false;
       }
     }
 
-    for (Long id : r.getProducts()) {
-      if (!validateChemicalForId(id)) {
-        return false;
+    if (r.getProducts() != null) {
+      for (Long id : r.getProducts()) {
+        if (!validateChemicalForId(id)) {
+          return false;
+        }
       }
     }
 
