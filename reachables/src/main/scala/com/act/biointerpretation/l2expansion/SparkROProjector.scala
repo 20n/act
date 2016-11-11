@@ -183,29 +183,18 @@ object SparkROProjector {
       outputDir.mkdirs()
     }
 
-    val substrateCorpuses: List[L2InchiCorpus] = cl.getOptionValues(OPTION_SUBSTRATES_LISTS).toList.map(x => {
-      val inchiCorpus = new L2InchiCorpus()
-      inchiCorpus.loadCorpus(new File(x))
-      inchiCorpus
-    })
-
-    // List of all unique InChIs in each corpus
-    val inchiCorpuses: List[List[String]] = substrateCorpuses.map(_.getInchiList.asScala.distinct.toList)
-
-    // List of combinations of InChIs
-    val inchiCombinations: Stream[Stream[String]] = combinationList(inchiCorpuses.map(_.toStream).toStream)
-
-    // TODO Move this filtering into combinationsList so that it is lazily evaluated as we need the elements.
-    LOGGER.info("Attempting to filter out combinations with invalid InChIs.  " +
-      s"Starting with ${inchiCombinations.length} inchis.")
-    val validInchis: Stream[Stream[String]] = inchiCombinations.filter(group => {
-      try {
-        group.foreach(inchi => {
-          MoleculeImporter.importMolecule(inchi)
-        })
-        true
-      } catch {
-        case e: Exception => false
+    val validInchis: Stream[Stream[String]] = {
+      if (cl.hasOption(OPTION_SUBSTRATES_LISTS)) {
+        inchiSourceFromFiles(cl.getOptionValues(OPTION_SUBSTRATES_LISTS).toList)
+      } else if (cl.hasOption(OPTION_DB_NAME)) {
+        inchiSourceFromDB(cl.getOptionValue(OPTION_DB_NAME),
+          cl.getOptionValue(OPTION_DB_PORT, "27017").toInt,
+          cl.getOptionValue(OPTION_DB_HOST, "localhost")
+        )
+      } else {
+        LOGGER.error("Must specify either substrate list(s) or a DB from which to read")
+        exitWithHelp(getCommandLineOptions)
+        Stream()
       }
     })
     LOGGER.info(s"Filtering removed ${inchiCombinations.length - validInchis.length}" +
