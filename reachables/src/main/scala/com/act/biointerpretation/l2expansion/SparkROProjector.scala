@@ -8,6 +8,8 @@ import java.util.stream.StreamSupport
 import act.server.MongoDB
 import chemaxon.license.LicenseManager
 import chemaxon.marvin.io.MolExportException
+import chemaxon.sss.SearchConstants
+import chemaxon.sss.search.{MolSearch, MolSearchOptions}
 import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.Utils.ReactionProjector
@@ -44,7 +46,27 @@ object SparkInstance {
   eros.loadValidationCorpus()
 
   var localLicenseFile: Option[String] = None
-  var projector: ReactionProjector = new ReactionProjector(true)
+  var substructureSearch: MolSearch = new MolSearch // TODO: should this be `ThreadLocal` (or the scala-equivalent)?
+
+  { // Limit `options` scope to initialization.
+    val options: MolSearchOptions = new MolSearchOptions(SearchConstants.SUBSTRUCTURE)
+    // This allows H's in RO strings to match implicit hydrogens in our target molecules.
+    options.setImplicitHMatching(SearchConstants.IMPLICIT_H_MATCHING_ENABLED)
+    /* This allows for vague bond matching in ring structures.  From the Chemaxon Docs:
+     *    In the query all single ring bonds are replaced by "single or aromatic" and all double ring bonds are
+     *    replaced by "double or aromatic" prior to search.
+     *    (https://www.chemaxon.com/jchem/doc/dev/java/api/chemaxon/sss/SearchConstants.html)
+     *
+     * This should allow us to handle aromatized molecules gracefully without handling non-ring single and double
+     * bonds ambiguously. */
+    options.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL2)
+    // Few if any of our ROs concern stereo chemistry, so we can just ignore it.
+    options.setStereoSearchType(SearchConstants.STEREO_IGNORE)
+    /* Chemaxon's tautomer handling is weird, as sometimes it picks a non-representative tautomer as its default.
+     * As such, we'll allow tautomer matches to avoid excluding viable candidates. */
+    options.setTautomerSearch(SearchConstants.TAUTOMER_SEARCH_ON)
+    substructureSearch.setSearchOptions(options)
+  }
 
   def project(licenseFileName: String)
              (reverse: Boolean, exhaustive: Boolean)
@@ -81,9 +103,8 @@ object SparkInstance {
     // because of the duplicates b. We should assess this as for higher number of molecule reactors this
     // may be the dominant case over the cost that could be imposed by hitting the MoleculeImporter's cache.
     val importedMolecules: List[Molecule] = inputs.map(x => MoleculeImporter.importMolecule(x, defaultMoleculeFormat))
-    projector.getRoProjectionMap(importedMolecules.toArray, reactor).asScala.map(_._2.asScala.map(_.toList)).flatten.map(mapReactionsToResult(inputs, ro.getId.toString))
-    projector.getRoProjectionMap(importedMolecules.toArray, reactor).asScala.flatten
-    val resultingReactions: Stream[ProjectionResult] = importedMolecules.permutations.flatMap(substrateOrdering => {
+    val resultingReactions: Stream[ProjectionResult] = importedMolecules.permutations.filter(possibleSubstrates(ro)).
+      flatMap(substrateOrdering => {
 
       // Setup reactor
       reactor.setReactants(substrateOrdering.toArray)
@@ -105,6 +126,19 @@ object SparkInstance {
 
     // Output stream
     resultingReactions
+  }
+
+  // TODO: This is so much more elegant and concise in scala; can we bring this to the ReactionProjector?
+  private def possibleSubstrates(ro: Ero)(mols: List[Molecule]): Boolean = {
+    val substrateQueries: Array[Molecule] = ro.getReactor.getReactants
+    val molsAndQueries: Array[(Molecule, Molecule)] = substrateQueries.zip(mols)
+    molsAndQueries.forall(p => matchesSubstructure(p._1, p._2))
+  }
+
+  private def matchesSubstructure(query: Molecule, target: Molecule): Boolean = {
+    substructureSearch.setQuery(query)
+    substructureSearch.setTarget(target)
+    substructureSearch.findFirst() != null
   }
 
   private def mapReactionsToResult(substrates: List[String], roNumber: String)
