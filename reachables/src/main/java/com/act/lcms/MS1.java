@@ -307,6 +307,7 @@ public class MS1 {
     }
   }
 
+  // TODO: create an ion Enum rather than having to access this list by String name
   public static final MetlinIonMass[] ionDeltas = new MetlinIonMass[] {
     new MetlinIonMass(IonMode.POS,   "M+H-2H2O",  1,  35.0128),
     new MetlinIonMass(IonMode.POS,    "M+H-H2O",  1,  17.0028),
@@ -380,7 +381,6 @@ public class MS1 {
     }
     return rows;
   }
-
 
   /**
    * This function takes as input a mass charge and ionmode and outputs a map of ion names to mass charge

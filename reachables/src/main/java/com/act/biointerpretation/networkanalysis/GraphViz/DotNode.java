@@ -11,16 +11,12 @@ public class DotNode {
   private DotColor color;
 
   public DotNode(String label) {
-    this.label = label;
-    this.color = DotColor.DEFAULT_BLACK;
+    this(label, DotColor.DEFAULT_BLACK);
   }
 
-  /**
-   * Returns the node to allow chaining.
-   */
-  public DotNode setColor(DotColor color) {
+  public DotNode(String label, DotColor color) {
+    this.label = label;
     this.color = color;
-    return this;
   }
 
   public String getDotString() {

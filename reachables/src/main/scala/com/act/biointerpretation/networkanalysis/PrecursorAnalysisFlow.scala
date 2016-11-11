@@ -44,21 +44,25 @@ class PrecursorAnalysisFlow extends Workflow with WorkingDirectoryUtility {
 
       CliOption.builder(OPTION_INPUT_NETWORK).
         hasArg.
+        longOpt("input-network").
         desc("The file path to the input network.").
         required,
 
       CliOption.builder(OPTION_INPUT_LCMS).
         hasArg.
+        longOpt("input-lcms").
         desc("The file path to the input lcms file. This is a differential peak TSV file, for now."),
 
       // Note that the value separator is '|' because inchis can contain commas!
       CliOption.builder(OPTION_TARGET_INCHIS).
         hasArgs().valueSeparator('|').
+        longOpt("target-inchis").
         desc("The target inchis to find precursors for.")
         required,
 
       CliOption.builder(OPTION_NUM_STEPS).
         hasArg().
+        longOpt("num-steps").
         desc("The number of levels of precursors to return").
         required,
 
@@ -84,16 +88,16 @@ class PrecursorAnalysisFlow extends Workflow with WorkingDirectoryUtility {
     verifyInputFile(inputNetworkFile)
 
     val inputLcms =
-    if (cl.hasOption(OPTION_INPUT_LCMS)) {
-      Some(new File(cl.getOptionValue(OPTION_INPUT_LCMS)))
-    } else {
-      None
-    }
+      if (cl.hasOption(OPTION_INPUT_LCMS)) {
+        new File(cl.getOptionValue(OPTION_INPUT_LCMS))
+      } else {
+        null
+      }
 
     val numSteps = Integer.parseInt(cl.getOptionValue(OPTION_NUM_STEPS))
 
     val precursorAnalysis = new PrecursorAnalysis(
-      inputNetworkFile, Optional.ofNullable(inputLcms.orNull), cl.getOptionValues(OPTION_TARGET_INCHIS).toList.asJava, numSteps, workingDir)
+      inputNetworkFile, Optional.ofNullable(inputLcms), cl.getOptionValues(OPTION_TARGET_INCHIS).toList.asJava, numSteps, workingDir)
 
     headerJob.thenRun(JavaJobWrapper.wrapJavaFunction("PrecursorAnalysis", precursorAnalysis))
     headerJob

@@ -13,11 +13,6 @@ import java.util.List;
  */
 public class DotGraph {
 
-  // The node label refers to the node's label as drawn in the graph
-  private static final String LABEL_HEADER = "node_label";
-  // The node name is a more meaningful identifier, i.e., the InChI of the molecule the nodde represents.
-  private static final String NAME_HEADER = "node_name";
-
   List<DotEdge> edges;
   List<DotNode> nodes;
 
@@ -36,18 +31,17 @@ public class DotGraph {
 
   /**
    * Writes this graph to a given stream in DOT format, so it can be processed by GraphViz.
-   *
    * @param outputFile The file to write to.
    * @throws IOException
    */
   public void writeGraphToFile(File outputFile) throws IOException {
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
       writer.write("digraph G {\n");
-      for (DotEdge edge : edges) {
-        writer.write(edge.getDotString());
-      }
       for (DotNode node : nodes) {
         writer.write(node.getDotString());
+      }
+      for (DotEdge edge : edges) {
+        writer.write(edge.getDotString());
       }
       writer.write("}\n");
     }

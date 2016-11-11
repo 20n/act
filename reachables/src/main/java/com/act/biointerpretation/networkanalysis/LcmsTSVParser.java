@@ -3,17 +3,15 @@ package com.act.biointerpretation.networkanalysis;
 import com.act.jobs.FileChecker;
 import com.act.lcms.v2.DetectedPeak;
 import com.act.lcms.v2.FixedWindowDetectedPeak;
+import com.act.lcms.v2.LcmsSpectrum;
 import com.act.lcms.v2.PeakSpectrum;
 import com.act.utils.TSVParser;
-import com.jacob.com.NotImplementedException;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class LcmsTSVParser {
 
@@ -26,89 +24,33 @@ public class LcmsTSVParser {
   // This is currently irrelevant, but the peak requires some notion of an RT window, so we make one based on this.
   private static final Double RT_TOLERANCE = 1.0;
 
+  private LcmsTSVParser() {
+    // There's no reason to instantiate this class.
+  }
+
   public static PeakSpectrum parseTSV(File lcmsTSVFile) throws IOException {
     FileChecker.verifyInputFile(lcmsTSVFile);
     TSVParser parser = new TSVParser();
     parser.parse(lcmsTSVFile);
 
-    TSVSpectrum spectrum = new TSVSpectrum();
+    List<DetectedPeak> peaks = new ArrayList<>();
 
-    int i = 0;
     for (Map<String, String> row : parser.getResults()) {
-      Double mz = getDouble(row.get(MZ_KEY));
-      Double intensity = getDouble(row.get(INT_KEY));
-      Double retentionTime = getDouble(row.get(RT_KEY));
+      Double mz = Double.parseDouble(row.get(MZ_KEY));
+      Double intensity = row.get(INT_KEY).equals("") ? 0.0 : Double.parseDouble(row.get(INT_KEY));
+      Double retentionTime = Double.parseDouble(row.get(RT_KEY));
+
+      // We're abusing DetectedPeak's scan file field by pointing it to a TSV file instead of a scan file.
+      // TODO: work out the proper way to do this.
       String scanFile = lcmsTSVFile.getAbsolutePath();
 
       if (intensity > 0) {
-        FixedWindowDetectedPeak peak = new FixedWindowDetectedPeak(scanFile, mz - MZ_TOLERANCE, mz + MZ_TOLERANCE,
+        FixedWindowDetectedPeak peak = new FixedWindowDetectedPeak(scanFile, mz, MZ_TOLERANCE,
             retentionTime, RT_TOLERANCE, intensity, 1.0);
-        spectrum.addPeak(peak);
+        peaks.add(peak);
       }
     }
 
-    return spectrum;
-  }
-
-  private static Double getDouble(String raw) {
-    return (raw.equals("")) ? 0.0 : Double.parseDouble(raw);
-  }
-
-  private static class TSVSpectrum implements PeakSpectrum {
-
-    List<DetectedPeak> peaks;
-
-    public TSVSpectrum() {
-      peaks = new ArrayList<>();
-    }
-
-    public void addPeak(DetectedPeak peak) {
-      peaks.add(peak);
-    }
-
-    @Override
-    public List<DetectedPeak> getAllPeaks() {
-      return peaks;
-    }
-
-    @Override
-    public List<DetectedPeak> getPeaks(Predicate<DetectedPeak> filter) {
-      return peaks.stream().filter(filter).collect(Collectors.toList());
-    }
-
-    @Override
-    public List<DetectedPeak> getPeaksByMZ(Double mz, Double confidenceLevel) {
-      throw new NotImplementedException("Not implemented.");
-    }
-
-    @Override
-    public List<DetectedPeak> getPeaksByTime(Double time, Double timeTolerance) {
-      throw new NotImplementedException("Not implemented.");
-    }
-
-    @Override
-    public List<DetectedPeak> getPeaksByMzTime(Double time, Double mz, Double confidenceLevel) {
-      throw new NotImplementedException("Not implemented.");
-    }
-
-    @Override
-    public List<DetectedPeak> getNeighborhoodPeaks(DetectedPeak targetPeak, Double massTolerance, Double timeTolerance) {
-      throw new NotImplementedException("Not implemented.");
-    }
-
-    @Override
-    public List<DetectedPeak> getNeighborhoodPeaks(Double mass, Double massTolerance, Double time, Double timeTolerance) {
-      throw new NotImplementedException("Not implemented.");
-    }
-
-    @Override
-    public Map<String, PeakSpectrum> getPeakSpectraByScanFile() {
-      throw new NotImplementedException("Not implemented.");
-    }
-
-    @Override
-    public PeakSpectrum getSpectrum(String scanFileId) {
-      throw new NotImplementedException("Not implemented.");
-    }
+    return new LcmsSpectrum(peaks);
   }
 }

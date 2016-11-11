@@ -26,11 +26,14 @@ class NetworkVisualizationFlow extends Workflow with WorkingDirectoryUtility {
 
       CliOption.builder(OPTION_WORKING_DIR).
         hasArg.
-        desc("The file path to the directory containing precursor target analyses.").
+        longOpt("working-dir").
+        desc("The file path to the directory containing precursor target analyses. The outputs are written to the " +
+          s"same directory, with prefix $OUTPUT_PREFIX").
         required(),
 
       CliOption.builder(OPTION_ORG_STRINGS).
         hasArg.
+        longOpt("org-strings").
         desc(
           """One or more strings representing organisms of interest. Edges with orgs containing
             |these strings are colored in red.""".stripMargin),

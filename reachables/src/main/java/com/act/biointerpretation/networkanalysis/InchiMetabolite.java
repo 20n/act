@@ -13,6 +13,7 @@ import java.util.Optional;
  * Represents a metabolite in the metabolite network.
  * For now this class only stores an inchi, but in the future it can represent multiple levels of abstraction: a
  * structure in any format, a chemical formula, or only a mass.
+ * TODO: Implement full serialization on LcmsMetabolite, and replace every use of InchiMetabolite with LcmsMetabolite.
  */
 public class InchiMetabolite implements Metabolite {
 

@@ -24,6 +24,12 @@ public class PrecursorReportVisualizer {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(PrecursorReportVisualizer.class);
 
+  private static final Double FULL_CONFIDENCE = 1.0;
+  private static final DotColor LCMS_HIT_COLOR = DotColor.DEFAULT_BLACK;
+  private static final DotColor LCMS_MISS_COLOR = DotColor.RED;
+  private static final DotEdge.EdgeStyle REACTION_EDGE_STYLE = DotEdge.EdgeStyle.DEFAULT_SOLID;
+  private static final DotEdge.EdgeStyle PREDICTION_EDGE_STYLE = DotEdge.EdgeStyle.DOTTED;
+
   // A map from organisms of interest to their respective colors.
   // Any edge with any organism name which contains one of these strings will be colored.
   // An edge which matches multiple keys of this map will be given one edge per distinct color specified by its
@@ -46,7 +52,6 @@ public class PrecursorReportVisualizer {
    * Builds DOT graph representation of the precursor report.  The graph is printed out with the target metabolite
    * on the bottom, all its direct precursors one level up, all their precursors two levels up, etc.  Only edges
    * between adjacent levels are drawn, resulting in a reverse BFS tree representation of the precursors.
-   *
    * @param report The PrecursorReport.
    * @return The DotGraph.
    */
@@ -55,8 +60,11 @@ public class PrecursorReportVisualizer {
     DotGraph graph = new DotGraph();
 
     for (NetworkNode node : network.getNodes()) {
-      if (report.isPrecursor(node) && report.getLcmsConfidence(node) != null && report.getLcmsConfidence(node) > .75) {
-        graph.addNode(new DotNode(node.getUID().toString()).setColor(DotColor.RED));
+      if (report.isPrecursor(node) && report.getLcmsConfidence(node) != null &&
+          report.getLcmsConfidence(node).equals(FULL_CONFIDENCE)) {
+        graph.addNode(new DotNode(node.getUID().toString(), LCMS_HIT_COLOR));
+      } else {
+        graph.addNode(new DotNode(node.getUID().toString(), LCMS_MISS_COLOR));
       }
     }
 
@@ -82,8 +90,7 @@ public class PrecursorReportVisualizer {
    * in the appropriate color.
    */
   private void addEdgesToGraph(NetworkEdge edge, String substrateId, String productId, DotGraph graph) {
-    DotEdge.EdgeStyle style = edge.getReactionIds().isEmpty() ?
-        DotEdge.EdgeStyle.DOTTED : DotEdge.EdgeStyle.DEFAULT_SOLID;
+    DotEdge.EdgeStyle style = edge.getReactionIds().isEmpty() ? PREDICTION_EDGE_STYLE : REACTION_EDGE_STYLE;
 
     Set<DotColor> colors = new HashSet<>();
     for (String orgOfInterest : orgToColor.keySet()) {
@@ -95,7 +102,7 @@ public class PrecursorReportVisualizer {
       colors.add(DotColor.DEFAULT_BLACK);
     }
 
-    colors.stream().map(c -> new DotEdge(substrateId, productId).setColor(c).setStyle(style)).forEach(graph::addEdge);
+    colors.stream().map(c -> new DotEdge(substrateId, productId, c, style)).forEach(graph::addEdge);
   }
 
   /**
@@ -125,7 +132,6 @@ public class PrecursorReportVisualizer {
     /**
      * Loads in a precursorReport from file, builds a DotGraph from it, and writes it to file.
      * The graph can be visualized with an online GraphViz viewer like http://www.webgraphviz.com/.
-     *
      * @throws IOException
      */
     @Override
@@ -140,7 +146,7 @@ public class PrecursorReportVisualizer {
 
       LOGGER.info("Build graph. Writing out graph.");
       graph.writeGraphToFile(outputFile);
-      LOGGER.info("Graph written to %s. Workflow complete!", outputFile.getAbsolutePath());
+      LOGGER.info("Graph written to %s. Visualization complete!", outputFile.getAbsolutePath());
     }
   }
 }

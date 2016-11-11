@@ -30,7 +30,6 @@ public class PrecursorAnalysis implements JavaRunnable {
 
   private static final String TARGET_ID_HEADER = "target_id";
   private static final String INCHI_HEADER = "InChI";
-  private static final Double MASS_TOLERANCE = 0.01;
 
   private final File networkInput;
   private final Optional<File> lcmsInput;
@@ -91,7 +90,7 @@ public class PrecursorAnalysis implements JavaRunnable {
       Optional<NetworkNode> targetNode = network.getNodeOptionByInchi(target);
       if (targetNode.isPresent()) {
         PrecursorReport report = network.getPrecursorReport(targetNode.get(), numSteps);
-        lcmsInput.ifPresent(a -> report.addLcmsData(lcmsSpectrum, ionCalculator, ionSet, MASS_TOLERANCE));
+        lcmsInput.ifPresent(a -> report.addLcmsData(lcmsSpectrum, ionCalculator, ionSet));
         File outputFile = new File(outputDirectory, PRECURSOR_PREFIX + id);
         report.writeToJsonFile(outputFile);
         LOGGER.info("Wrote target %s report to file %s", target, outputFile.getAbsolutePath());
@@ -109,7 +108,6 @@ public class PrecursorAnalysis implements JavaRunnable {
 
   /**
    * Write out the target ID map. This is a TSV file where each line contains the ID followed by the target's InChI.
-   *
    * @param targetIdMap The map to write.
    * @param targetIdFile The file to write to.
    * @throws IOException
