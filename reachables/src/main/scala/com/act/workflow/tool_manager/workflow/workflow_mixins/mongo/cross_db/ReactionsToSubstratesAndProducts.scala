@@ -14,6 +14,7 @@ import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 
 object ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities {
+  private val defaultReactionChemicalCoefficient = 1
   private val LOGGER = LogManager.getLogger(getClass)
   /**
     * Provides an easier converter from Inchi => Molecule such that the returned reactions is all in the Molecule format.
@@ -67,7 +68,7 @@ object ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities {
                            (substrateId: Long, rawCoefficient: Option[Integer]): List[Option[String]] ={
       val chemicalString: Option[String] = chemicalStringCache(substrateId)
       // By default we say chemicals without coefficients have a coefficient of 1
-      val coefficient = rawCoefficient.getOrElse[Integer](Integer.valueOf(1))
+      val coefficient = rawCoefficient.getOrElse[Integer](Integer.valueOf(defaultReactionChemicalCoefficient))
       // Creates a list that has the chemical string repeated by the coefficient of that chemcial string.
       List.fill(coefficient)(chemicalString)
     }
