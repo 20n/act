@@ -5,6 +5,7 @@ import chemaxon.marvin.io.MolExportException
 import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.MoleculeFormat.MoleculeFormatType
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
+import org.apache.logging.log4j.LogManager
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
@@ -14,7 +15,8 @@ import scala.collection.concurrent.TrieMap
   * in all the various formats we experience in a cache friendly manner.
   */
 object MoleculeExporter {
-  private val maxCacheSize = 10000L
+  private val LOGGER = LogManager.getLogger(getClass)
+  private var maxCacheSize = 10000L
   // By hashing also on the format we can support a molecule being converted to multiple formats in a given JVM
   private val moleculeCache = TrieMap[MoleculeFormat.MoleculeFormatType, Cache[Molecule, String]]()
 
@@ -23,6 +25,12 @@ object MoleculeExporter {
 
   def clearCache(): Unit ={
     moleculeCache.keySet.foreach(key => moleculeCache.put(key, buildCache(key)))
+  }
+
+  def setCacheSize(size: Long): Unit ={
+    LOGGER.info(s"${getClass.getCanonicalName} cache size has changed to $size " +
+      s"per ${MoleculeFormatType.getClass.getCanonicalName}.")
+    maxCacheSize = size
   }
 
   private def buildCache(moleculeFormatType: MoleculeFormatType): Cache[Molecule, String] ={

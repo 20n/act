@@ -1,23 +1,29 @@
 package com.act.analysis.chemicals.molecules
 
 import act.shared.Chemical
-import chemaxon.calculations.clean.Cleaner
 import chemaxon.formats.{MolFormatException, MolImporter}
-import chemaxon.standardizer.Standardizer
-import chemaxon.struc.{Molecule, MoleculeGraph}
+import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.MoleculeFormat.MoleculeFormatType
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
+import org.apache.logging.log4j.LogManager
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 
 object MoleculeImporter {
-  private val maxCacheSize = 10000L
+  private val LOGGER = LogManager.getLogger(getClass)
+  private var maxCacheSize = 10000L
   // Have a cache for each format.
   private val moleculeCache = TrieMap[MoleculeFormat.MoleculeFormatType, Cache[String, Molecule]]()
 
   def clearCache(): Unit = {
     moleculeCache.keySet.foreach(key => moleculeCache.put(key, buildCache(key)))
+  }
+
+  def setCacheSize(size: Long): Unit ={
+    LOGGER.info(s"${getClass.getCanonicalName} cache size has changed to $size " +
+      s"per ${MoleculeFormatType.getClass.getCanonicalName}.")
+    maxCacheSize = size
   }
 
   private def buildCache(moleculeFormatType: MoleculeFormatType): Cache[String, Molecule] ={
