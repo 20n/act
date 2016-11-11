@@ -189,12 +189,6 @@ object SparkROProjector {
       outputDir.mkdirs()
     }
 
-    val substrateCorpuses: List[L2InchiCorpus] = cl.getOptionValues(OPTION_SUBSTRATES_LISTS).toList.map(x => {
-      val inchiCorpus = new L2InchiCorpus()
-      inchiCorpus.loadCorpus(new File(x))
-      inchiCorpus
-    })
-
     val validInchis: Stream[Stream[String]] = {
       if (cl.hasOption(OPTION_SUBSTRATES_LISTS)) {
         inchiSourceFromFiles(cl.getOptionValues(OPTION_SUBSTRATES_LISTS).toList)
