@@ -1,9 +1,6 @@
 package com.act.biointerpretation.l2expansion
 
 import java.io.{BufferedWriter, File, FileWriter}
-import java.util
-import java.util.{Spliterator, Spliterators}
-import java.util.stream.StreamSupport
 
 import act.server.MongoDB
 import chemaxon.license.LicenseManager
@@ -12,7 +9,6 @@ import chemaxon.sss.SearchConstants
 import chemaxon.sss.search.{MolSearch, MolSearchOptions}
 import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
-import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.act.workflow.tool_manager.jobs.management.JobManager
 import com.act.workflow.tool_manager.tool_wrappers.SparkWrapper
@@ -272,8 +268,8 @@ object SparkROProjector {
   private def inchiSourceFromDB(dbName: String, dbPort: Int, dbHost: String): Stream[Stream[String]] = {
     val db: MongoDB = new MongoDB(dbHost, dbPort, dbName)
     val reactionIter = new ValidReactionSubstratesIterator(db)
-    
-    JavaConverters.asScalaIteratorConverter(reactionIter).asScala.toStream.map(_.toStream)
+
+    JavaConverters.asScalaIteratorConverter(reactionIter).asScala.toStream.map(_.toList.toStream)
   }
 
   private def getCommandLineOptions: Options = {
