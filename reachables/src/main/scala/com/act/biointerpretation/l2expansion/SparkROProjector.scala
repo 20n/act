@@ -189,7 +189,7 @@ object SparkROProjector {
       outputDir.mkdirs()
     }
 
-    val validInchis: Stream[Stream[String]] = {
+    val validInchis: Stream[Stream[String]] =
       if (cl.hasOption(OPTION_SUBSTRATES_LISTS)) {
         inchiSourceFromFiles(cl.getOptionValues(OPTION_SUBSTRATES_LISTS).toList)
       } else if (cl.hasOption(OPTION_DB_NAME)) {
@@ -202,7 +202,6 @@ object SparkROProjector {
         exitWithHelp(getCommandLineOptions)
         Stream()
       }
-    }
 
     // Setup spark connection
     val conf = new SparkConf().
@@ -272,7 +271,7 @@ object SparkROProjector {
     val db: MongoDB = new MongoDB(dbHost, dbPort, dbName)
     val reactionIter = new ValidReactionSubstratesIterator(db)
 
-    JavaConverters.asScalaIteratorConverter(reactionIter).asScala.map(_.asScala.toStream).toStream
+    JavaConverters.asScalaIteratorConverter(reactionIter).asScala.toStream.map(_.toStream)
   }
 
   private def getCommandLineOptions: Options = {
