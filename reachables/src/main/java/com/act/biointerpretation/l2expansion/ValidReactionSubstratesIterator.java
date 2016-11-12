@@ -22,7 +22,7 @@ import java.util.List;
  *
  * TODO: generalize this to iterate over reactions in addition to just substrates.
  */
-public class ValidReactionSubstratesIterator implements Iterator<List<String>> {
+public class ValidReactionSubstratesIterator implements Iterator<String[]> {
   private static final int DEFAULT_CACHE_SIZE = 10000;
 
   private MongoDB db;
@@ -59,6 +59,10 @@ public class ValidReactionSubstratesIterator implements Iterator<List<String>> {
     boolean foundValidReaction = false;
     Reaction r = db.getNextReaction(dbIter);
     do {
+      if (r == null) {
+        // TODO: this should not be possible, should it?
+        return false;
+      }
       if (reactionChemicalsAreValid(r)) {
         foundValidReaction = true;
       } else {
@@ -78,7 +82,7 @@ public class ValidReactionSubstratesIterator implements Iterator<List<String>> {
   }
 
   @Override
-  public List<String> next() {
+  public String[] next() {
     if (nextValidReaction != null) {
       Reaction r = nextValidReaction;
       nextValidReaction = null; // Invalidate reaction to avoid accidental double next() calls.
@@ -97,7 +101,7 @@ public class ValidReactionSubstratesIterator implements Iterator<List<String>> {
           substrateInchis.add(lookupResults.getLeft());
         }
       }
-      return substrateInchis;
+      return substrateInchis.toArray(new String[substrateInchis.size()]);
     } else {
       throw new RuntimeException("next() called without calling hasNext() or on an exhausted iterator");
     }

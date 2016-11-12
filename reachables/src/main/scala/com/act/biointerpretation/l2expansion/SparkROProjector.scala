@@ -2,6 +2,7 @@ package com.act.biointerpretation.l2expansion
 
 import java.io.{BufferedWriter, File, FileWriter}
 
+import act.server.MongoDB
 import chemaxon.license.LicenseManager
 import chemaxon.marvin.io.MolExportException
 import chemaxon.sss.SearchConstants
@@ -13,11 +14,13 @@ import com.act.workflow.tool_manager.jobs.management.JobManager
 import com.act.workflow.tool_manager.tool_wrappers.SparkWrapper
 import com.ibm.db2.jcc.am.so
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
+import org.apache.jena.sparql.procedure.library.debug
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
 import spray.json._
 
+import scala.collection.JavaConverters
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
@@ -183,7 +186,7 @@ object SparkROProjector {
       outputDir.mkdirs()
     }
 
-    val validInchis: Stream[Stream[String]] = {
+    val validInchis: Stream[Stream[String]] =
       if (cl.hasOption(OPTION_SUBSTRATES_LISTS)) {
         inchiSourceFromFiles(cl.getOptionValues(OPTION_SUBSTRATES_LISTS).toList)
       } else if (cl.hasOption(OPTION_DB_NAME)) {
@@ -196,9 +199,6 @@ object SparkROProjector {
         exitWithHelp(getCommandLineOptions)
         Stream()
       }
-    })
-    LOGGER.info(s"Filtering removed ${inchiCombinations.length - validInchis.length}" +
-      s" combinations, ${validInchis.length} remain.")
 
     // Setup spark connection
     val conf = new SparkConf().
@@ -230,6 +230,45 @@ object SparkROProjector {
     })
 
     handleProjectionTermination(resultsRDD, outputDir)
+  }
+
+  private def inchiSourceFromFiles(fileNames: List[String]) : Stream[Stream[String]] = {
+    val substrateCorpuses: List[L2InchiCorpus] = fileNames.map(x => {
+      val inchiCorpus = new L2InchiCorpus()
+      inchiCorpus.loadCorpus(new File(x))
+      inchiCorpus
+    })
+
+    // List of all unique InChIs in each corpus
+    val inchiCorpuses: List[List[String]] = substrateCorpuses.map(_.getInchiList.asScala.distinct.toList)
+
+    // List of combinations of InChIs
+    val inchiCombinations: Stream[Stream[String]] = combinationList(inchiCorpuses.map(_.toStream).toStream)
+
+    // TODO Move this filtering into combinationsList so that it is lazily evaluated as we need the elements.
+    LOGGER.info("Attempting to filter out combinations with invalid InChIs.  " +
+      s"Starting with ${inchiCombinations.length} inchis.")
+    val validInchis: Stream[Stream[String]] = inchiCombinations.filter(group => {
+      try {
+        group.foreach(inchi => {
+          MoleculeImporter.importMolecule(inchi)
+        })
+        true
+      } catch {
+        case e: Exception => false
+      }
+    })
+    LOGGER.info(s"Filtering removed ${inchiCombinations.length - validInchis.length}" +
+      s" combinations, ${validInchis.length} remain.")
+
+    validInchis
+  }
+
+  private def inchiSourceFromDB(dbName: String, dbPort: Int, dbHost: String): Stream[Stream[String]] = {
+    val db: MongoDB = new MongoDB(dbHost, dbPort, dbName)
+    val reactionIter = new ValidReactionSubstratesIterator(db)
+
+    JavaConverters.asScalaIteratorConverter(reactionIter).asScala.toStream.map(_.toStream)
   }
 
   private def getCommandLineOptions: Options = {
