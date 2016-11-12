@@ -16,6 +16,7 @@ import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.act.workflow.tool_manager.jobs.management.JobManager
 import com.act.workflow.tool_manager.tool_wrappers.SparkWrapper
+import com.ibm.db2.jcc.am.to
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
@@ -190,7 +191,7 @@ object SparkROProjector {
       outputDir.mkdirs()
     }
 
-    val validInchis: Stream[Stream[String]] = {
+    val validInchis: Stream[Stream[String]] =
       if (cl.hasOption(OPTION_SUBSTRATES_LISTS)) {
         inchiSourceFromFiles(cl.getOptionValues(OPTION_SUBSTRATES_LISTS).toList)
       } else if (cl.hasOption(OPTION_DB_NAME)) {
@@ -203,7 +204,6 @@ object SparkROProjector {
         exitWithHelp(getCommandLineOptions)
         Stream()
       }
-    }
 
     // Setup spark connection
     val conf = new SparkConf().
@@ -272,8 +272,8 @@ object SparkROProjector {
   private def inchiSourceFromDB(dbName: String, dbPort: Int, dbHost: String): Stream[Stream[String]] = {
     val db: MongoDB = new MongoDB(dbHost, dbPort, dbName)
     val reactionIter = new ValidReactionSubstratesIterator(db)
-
-    JavaConverters.asScalaIteratorConverter(reactionIter).asScala.map(x => x.toStream).toStream
+    
+    JavaConverters.asScalaIteratorConverter(reactionIter).asScala.toStream.map(_.toStream)
   }
 
   private def getCommandLineOptions: Options = {
