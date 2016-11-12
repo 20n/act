@@ -268,7 +268,7 @@ object SparkROProjector {
     val db: MongoDB = new MongoDB(dbHost, dbPort, dbName)
     val reactionIter = new ValidReactionSubstratesIterator(db)
 
-    JavaConverters.asScalaIteratorConverter(reactionIter).asScala.toStream.map(_.toStream)
+    JavaConverters.asScalaIteratorConverter(reactionIter).asScala.toStream.map(_.toList.toStream)
   }
 
   private def getCommandLineOptions: Options = {
