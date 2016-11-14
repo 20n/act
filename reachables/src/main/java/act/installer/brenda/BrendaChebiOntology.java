@@ -392,8 +392,7 @@ public class BrendaChebiOntology {
 
     // Filter out the roles that are not applications
     Map<String, Set<String>> directApplicationMap = new HashMap<>();
-    hasRoleRelationships.forEach((key, value) -> directApplicationMap.put(key, value
-        .stream()
+    hasRoleRelationships.forEach((key, value) -> directApplicationMap.put(key, value.stream()
         .filter(ontology -> applicationToMainApplicationsMap.keySet().contains(ontology))
         .collect(Collectors.toSet())));
 
