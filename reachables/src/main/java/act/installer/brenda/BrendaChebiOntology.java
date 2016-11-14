@@ -17,17 +17,20 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class BrendaChebiOntology {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(BrendaChebiOntology.class);
-  static final int IS_SUBTYPE_OF_RELATIONSHIP_TYPE = 1;
-  static final int HAS_ROLE_RELATIONSHIP_TYPE = 12;
+  private static final int IS_SUBTYPE_OF_RELATIONSHIP_TYPE = 1;
+  private static final int HAS_ROLE_RELATIONSHIP_TYPE = 12;
 
   private static ObjectMapper mapper = new ObjectMapper();
 
@@ -35,8 +38,16 @@ public class BrendaChebiOntology {
   // The method getApplications then traverses the ontologies down from this ontology.
   // The effect is to consider only roles that are applications, defined in the user manual as 'classifying [entities]
   // on the basis of their intended use by humans'.
-  static final String APPLICATION_CHEBI_ID = "CHEBI:33232";
+  private static final String APPLICATION_CHEBI_ID = "CHEBI:33232";
 
+  /**
+   * The ChebiOntology class holds an ontology, defined as an ID (the ChEBI ID, for example 'CHEBI:16708' for adenine),
+   * a term holding a one-word definition and a longer definition.
+   * These are queried from 2 different tables in the Brenda database: ontology_chebi_{Definitions,Terms}
+   * We use a workaround (see http://stackoverflow.com/questions/4796872/full-outer-join-in-mysql) to mimic the
+   * full outer join in MySQL. That allows us to merge information in both table irrespective of the presence of
+   * an ontology in one or the other.
+   */
   public static class ChebiOntology {
 
     // The following query allows to retrieve the terms (basic string defining an ontology) and definitions
@@ -47,7 +58,15 @@ public class BrendaChebiOntology {
         "  terms.term,",
         "  definitions.definition",
         "FROM ontology_chebi_Terms terms",
-        "LEFT JOIN ontology_chebi_Definitions definitions",
+        "LEFT OUTER JOIN ontology_chebi_Definitions definitions",
+        "ON terms.id_go = definitions.id_go",
+        "UNION",
+        "SELECT",
+        "  definitions.id_go,",
+        "  terms.term,",
+        "  definitions.definition",
+        "FROM ontology_chebi_Terms terms",
+        "RIGHT OUTER JOIN ontology_chebi_Definitions definitions",
         "ON terms.id_go = definitions.id_go"
     }, " ");
 
@@ -108,7 +127,7 @@ public class BrendaChebiOntology {
           resultSet.getString(3));
     }
 
-    public BasicDBObject getBasicDBObject() {
+    public BasicDBObject toBasicDBObject() {
       BasicDBObject o = new BasicDBObject();
       o.put("chebi_id", getChebiId());
       o.put("term", getTerm());
@@ -189,19 +208,17 @@ public class BrendaChebiOntology {
       return directApplications;
     }
 
-    public BasicDBObject getBasicDBObject() {
-      BasicDBObject o = new BasicDBObject();
+    public BasicDBObject toBasicDBObject() {
+
       BasicDBList directApplications = new BasicDBList();
       BasicDBList mainApplications = new BasicDBList();
-      for (BrendaChebiOntology.ChebiOntology directApplication : getDirectApplications()) {
-        directApplications.add(directApplication.getBasicDBObject());
-      }
-      for (BrendaChebiOntology.ChebiOntology mainApplication : getMainApplications()) {
-        mainApplications.add(mainApplication.getBasicDBObject());
-      }
-      o.put("direct_applications", directApplications);
-      o.put("main_applications", mainApplications);
-      return o;
+
+      getDirectApplications().forEach(directApplication -> directApplications.add(directApplication.toBasicDBObject()));
+      getMainApplications().forEach(mainApplication -> mainApplications.add(mainApplication.toBasicDBObject()));
+
+      return new BasicDBObject()
+          .append("direct_applications", directApplications)
+          .append("main_applications", mainApplications);
     }
   }
 
@@ -232,34 +249,35 @@ public class BrendaChebiOntology {
   }
 
   /**
-   * This function fetches relationships of type 'isSubTypeOf' between ChebiOntology objects given a connexion to the
-   * BRENDA DB. The output is a map from a ChebiOntology object to all its subtypes ontologies.
+   * This function fetches relationships of type 'isSubTypeOf' between ChebiID given a connexion to the
+   * BRENDA DB.
    * @param brendaDB a SQLConnexion object to the BRENDA DB
-   * @param ontologyMap a map from ChebiId to ChebiOntology objects
-   * @return a map from ChebiOntology objects to a set of ChebiOntology objects (its subtypes).
+   * @return a map from a ChEBI ID (String) to a set of its subtypes' ChEBI ID.
    * @throws SQLException
    */
-  public static Map<ChebiOntology, Set<ChebiOntology>> fetchIsSubtypeOfRelationships(
-      SQLConnection brendaDB,
-      Map<String, ChebiOntology> ontologyMap)
-      throws SQLException {
+  public static Map<String, Set<String>> fetchIsSubtypeOfRelationships(SQLConnection brendaDB) throws SQLException {
 
+    // Initializations
     int relationshipsProcessed = 0;
+    Map<String, Set<String>> isSubtypeOfRelationships = new HashMap<>();
 
-    Map<ChebiOntology, Set<ChebiOntology>> isSubtypeOfRelationships = new HashMap<>();
-
+    // Get an iterator over all Chebi relationships of type "is subtype of".
     Iterator<ChebiRelationship> relationships = brendaDB.getChebiRelationships(IS_SUBTYPE_OF_RELATIONSHIP_TYPE);
 
     while (relationships.hasNext()) {
       ChebiRelationship relationship = relationships.next();
-      // Note that we use the 'parent' as the key here and insert the 'child' in the value set.
-      // Hence we get a map of ontologies to their subtype.
-      Set<ChebiOntology> ontologySet = isSubtypeOfRelationships.get(ontologyMap.get(relationship.getParentChebiId()));
-      if (ontologySet == null) {
-        ontologySet = new HashSet<>();
-        isSubtypeOfRelationships.put(ontologyMap.get(relationship.getParentChebiId()), ontologySet);
+
+      // Get child and parent chebi id
+      String parentChebiId = relationship.getParentChebiId();
+      String childChebiId = relationship.getChebiId();
+
+      // Add child to the set of existing child ontologies
+      Set<String> childchebiIds = isSubtypeOfRelationships.get(parentChebiId);
+      if (childchebiIds == null) {
+        childchebiIds = new HashSet<>();
+        isSubtypeOfRelationships.put(parentChebiId, childchebiIds);
       }
-      ontologySet.add(ontologyMap.get(relationship.getChebiId()));
+      childchebiIds.add(childChebiId);
       relationshipsProcessed++;
     }
 
@@ -269,41 +287,40 @@ public class BrendaChebiOntology {
     return isSubtypeOfRelationships;
   }
 
+
   /**
-   * This function fetches relationships of type 'hasRole' between ChebiOntology objects given a connexion to the
-   * BRENDA DB. The output is a map from a ChebiOntology object to all its roles that are 'applications'.
+   * This function fetches relationships of type 'hasRole' between ChebiID objects given a connexion to the
+   * BRENDA DB.
    * @param brendaDB a SQLConnexion object to the BRENDA DB
-   * @param ontologyMap a map from ChebiId to ChebiOntology objects
-   * @param allApplications the set of all ontologies that have the ontology 'application' as a parent
-   * @return a map from ChebiOntology objects to a set of ChebiOntology objects (its roles).
+   * @return a map from a ChEBI ID (String) to a set of its roles' ChEBI ID.
    * @throws SQLException
    */
-  public static Map<ChebiOntology, Set<ChebiOntology>> fetchHasRoleRelationships(
-      SQLConnection brendaDB,
-      Map<String, ChebiOntology> ontologyMap,
-      ArrayList<ChebiOntology> allApplications)
-      throws SQLException {
+  public static Map<String, Set<String>> fetchHasRoleRelationships(SQLConnection brendaDB) throws SQLException {
 
+    // Initializations
     int relationshipsProcessed = 0;
-    Set<ChebiOntology> allApplicationsSet = new HashSet<>(allApplications);
-    Map<ChebiOntology, Set<ChebiOntology>> hasRoleRelationships = new HashMap<>();
+    Map<String, Set<String>> hasRoleRelationships = new HashMap<>();
 
+    // Get an iterator over all Chebi relationships of type "has role".
     Iterator<ChebiRelationship> relationships = brendaDB.getChebiRelationships(HAS_ROLE_RELATIONSHIP_TYPE);
 
     while (relationships.hasNext()) {
-
+      // For each relationship "has role", we have a child and a parent chebi ids.
+      // We call the child the "base chebi id" and the parent the "role chebi id"
       ChebiRelationship relationship = relationships.next();
-      ChebiOntology ontology = ontologyMap.get(relationship.getParentChebiId());
 
-      if (allApplicationsSet.contains(ontology)) {
-        Set<ChebiOntology> ontologySet = hasRoleRelationships.get(ontologyMap.get(relationship.getChebiId()));
-        if (ontologySet == null) {
-          ontologySet = new HashSet<>();
-          hasRoleRelationships.put(ontologyMap.get(relationship.getChebiId()), ontologySet);
-        }
-        ontologySet.add(ontology);
-        relationshipsProcessed++;
+      String roleChebiId = relationship.getParentChebiId();
+      String baseChebiId = relationship.getChebiId();
+
+      // Get the existing set of roles for the chebi id of interest
+      Set<String> roles = hasRoleRelationships.get(baseChebiId);
+      if (roles == null) {
+        roles = new HashSet<>();
+        hasRoleRelationships.put(baseChebiId, roles);
       }
+      // Add the role the existing set
+      roles.add(roleChebiId);
+      relationshipsProcessed++;
     }
 
     LOGGER.debug("Done processing 'has role' relationships");
@@ -313,51 +330,38 @@ public class BrendaChebiOntology {
   }
 
   /**
-   * This function fetches and construct the set of main and direct applications for each ontology that has a role.
-   * @param brendaDB a SQLConnexion object to the BRENDA DB
-   * @param ontologyMap a map from ChebiId to ChebiOntology objects
-   * @return a map from ChebiOntology objects to a ChebiApplicationSet object
-   * @throws SQLException
+   * This method processes relatioships "is subtype of" to produce a mapping between each application and its main
+   * application, used subsequently (outside of this) to compute each ontology's main application.
+   * @param isSubtypeOfRelationships map {chebi id -> subtype's chebi ids}
+   * @param applicationChebiId main application's chebi id
+   * @return a map {application's chebi id -> related main application's chebi ids}
    */
-  public static Map<ChebiOntology, ChebiApplicationSet> getApplications(
-      SQLConnection brendaDB,
-      Map<String, ChebiOntology> ontologyMap) throws SQLException {
+  public static Map<String, Set<String>> getApplicationToMainApplicationsMap(
+      Map<String, Set<String>> isSubtypeOfRelationships, String applicationChebiId) {
 
-    final ChebiOntology APPLICATION_ONTOLOGY = ontologyMap.get(APPLICATION_CHEBI_ID);
-
-    /*
-     * Compute the set of main applications. These are the ontologies that are subtypes of the ontology 'application'.
-     */
-    Map<ChebiOntology, Set<ChebiOntology>> isSubtypeOfRelationships =
-        fetchIsSubtypeOfRelationships(brendaDB, ontologyMap);
-    final Set<ChebiOntology> MAIN_APPLICATIONS_ONTOLOGIES = isSubtypeOfRelationships.get(APPLICATION_ONTOLOGY);
-
-    /*
-     * For each application, compute its set of main applications (subset of direct or indirect parents that are in
-     * MAIN_APPLICATIONS_ONTOLOGIES) and store it in a hashmap applicationToMainApplicationsMap
-     */
-    Map<ChebiOntology, Set<ChebiOntology>> applicationToMainApplicationsMap = new HashMap<>();
+    // Compute the set of main applications. These are the ontologies that are subtypes of the ontology 'application'.
+    Set<String> mainApplicationsChebiId = isSubtypeOfRelationships.get(applicationChebiId);
 
     // Compute the initial list of applications to visit from the set of main applications.
-    ArrayList<ChebiOntology> applicationsToVisit = new ArrayList<>(MAIN_APPLICATIONS_ONTOLOGIES);
+    ArrayList<String> applicationsToVisit = new ArrayList<>(mainApplicationsChebiId);
 
-    // For each main application, define the mainApplicationSet as a set containing only itself.
-    for (ChebiOntology applicationToVisit : applicationsToVisit) {
-      Set<ChebiOntology> mainApplicationsSet = new HashSet<>();
-      mainApplicationsSet.add(applicationToVisit);
-      applicationToMainApplicationsMap.put(applicationToVisit, mainApplicationsSet);
-    }
+    // For each main application, map it to a set containing only itself.
+    Map<String, Set<String>> applicationToMainApplicationsMap = applicationsToVisit.stream().
+        collect(Collectors.toMap(e -> e, Collections::singleton));
 
     // Then visit all applications in a BFS fashion, appending new applications to visit to the applicationsToVisit
     // and propagating/merging the set of main applications as we progress down the relationship graph.
     int currentIndex = 0;
     while (currentIndex < applicationsToVisit.size()) {
-      ChebiOntology currentApplication = applicationsToVisit.get(currentIndex);
-      Set<ChebiOntology> subApplications = isSubtypeOfRelationships.get(currentApplication);
+
+      String currentApplication = applicationsToVisit.get(currentIndex);
+      Set<String> subApplications = isSubtypeOfRelationships.get(currentApplication);
+
       if (subApplications != null) {
+        // add all sub-applications to the set of applications to visit
         applicationsToVisit.addAll(subApplications);
-        for (ChebiOntology subApplication : subApplications) {
-          Set<ChebiOntology> mainApplicationsSet = applicationToMainApplicationsMap.get(subApplication);
+        for (String subApplication : subApplications) {
+          Set<String> mainApplicationsSet = applicationToMainApplicationsMap.get(subApplication);
           if (mainApplicationsSet == null) {
             mainApplicationsSet = new HashSet<>();
             applicationToMainApplicationsMap.put(subApplication, mainApplicationsSet);
@@ -367,39 +371,60 @@ public class BrendaChebiOntology {
       }
       currentIndex++;
     }
-    /*
-     * Fetch the set of direct applications for each ontology that has a role (aka is a chemical entity).
-     */
-    Map<ChebiOntology, Set<ChebiOntology>> directApplicationMap =
-        fetchHasRoleRelationships(brendaDB, ontologyMap, applicationsToVisit);
 
-    /*
-     * Compute the set of main applications for each ontology that has a role (aka is a chemical entity).
-     */
+    return applicationToMainApplicationsMap;
+  }
+
+  /**
+   * This function fetches and construct the set of main and direct applications for each ontology that has a role.
+   * @param ontologyMap map {chebi id -> ChebiOntology object}
+   * @param isSubtypeOfRelationships map {chebi id -> set of chebi id for its subtypes}
+   * @param hasRoleRelationships map {chebi id -> set of chebi id for its roles}
+   * @return a map from ChebiOntology objects to a ChebiApplicationSet object
+   */
+  public static Map<ChebiOntology, ChebiApplicationSet> getApplications(
+      Map<String, ChebiOntology> ontologyMap,
+      Map<String, Set<String>> isSubtypeOfRelationships,
+      Map<String, Set<String>> hasRoleRelationships) {
+
+    Map<String, Set<String>> applicationToMainApplicationsMap = getApplicationToMainApplicationsMap(
+        isSubtypeOfRelationships, APPLICATION_CHEBI_ID);
+
+    // Filter out the roles that are not applications
+    Map<String, Set<String>> directApplicationMap = new HashMap<>();
+    hasRoleRelationships.forEach((key, value) -> directApplicationMap.put(key, value.stream()
+        .filter(ontology -> applicationToMainApplicationsMap.keySet().contains(ontology))
+        .collect(Collectors.toSet())));
+
+    // Compute the set of main applications for each ontology that has a role (aka is a chemical entity).
     Map<ChebiOntology, Set<ChebiOntology>> chemicalEntityToMainApplicationMap = new HashMap<>();
-    for (ChebiOntology chemicalEntity : directApplicationMap.keySet()) {
-      Set<ChebiOntology> mainApplicationsSet = chemicalEntityToMainApplicationMap.get(chemicalEntity);
+    for (String chemicalEntity : directApplicationMap.keySet()) {
+
+      Set<ChebiOntology> mainApplicationsSet = chemicalEntityToMainApplicationMap.get(ontologyMap.get(chemicalEntity));
       if (mainApplicationsSet == null) {
         mainApplicationsSet = new HashSet<>();
-        chemicalEntityToMainApplicationMap.put(chemicalEntity, mainApplicationsSet);
+        chemicalEntityToMainApplicationMap.put(ontologyMap.get(chemicalEntity), mainApplicationsSet);
       }
-      for (ChebiOntology parentApplication : directApplicationMap.get(chemicalEntity)) {
-        Set<ChebiOntology> mainApplications = applicationToMainApplicationsMap.get(parentApplication);
+      for (String parentApplication : directApplicationMap.get(chemicalEntity)) {
+        Set<String> mainApplications = applicationToMainApplicationsMap.get(parentApplication);
         if (mainApplications != null) {
-          mainApplicationsSet.addAll(mainApplications);
+          mainApplicationsSet.addAll(mainApplications.stream().map(ontologyMap::get).filter(Objects::nonNull).
+              collect(Collectors.toSet()));
         }
       }
     }
 
-    /*
-     * Finally, construct a ChebiApplicationSet object containing direct and main applications for the molecules.
-     */
+    // Finally, construct a ChebiApplicationSet object containing direct and main applications for the molecules.
     Map<ChebiOntology, ChebiApplicationSet> chemicalEntityToApplicationsMap = new HashMap<>();
-    for (ChebiOntology chemicalEntity : directApplicationMap.keySet()) {
-      ChebiApplicationSet applications = new ChebiApplicationSet(
-          directApplicationMap.get(chemicalEntity),
-          chemicalEntityToMainApplicationMap.get(chemicalEntity));
-      chemicalEntityToApplicationsMap.put(chemicalEntity, applications);
+    for (String chemicalEntity : directApplicationMap.keySet()) {
+      Set<ChebiOntology> directApplications = directApplicationMap
+          .get(chemicalEntity).stream().map(ontologyMap::get)
+          .filter(Objects::nonNull).collect(Collectors.toSet());
+      Set<ChebiOntology> mainApplications = chemicalEntityToMainApplicationMap.get(ontologyMap.get(chemicalEntity));
+      if (directApplications.size() > 0 || mainApplications.size() > 0) {
+        ChebiApplicationSet applications = new ChebiApplicationSet(directApplications, mainApplications);
+        chemicalEntityToApplicationsMap.put(ontologyMap.get(chemicalEntity), applications);
+      }
     }
 
     return chemicalEntityToApplicationsMap;
@@ -415,15 +440,23 @@ public class BrendaChebiOntology {
    * @throws IOException
    */
   public void addChebiApplications(MongoDB db, SQLConnection brendaDB) throws SQLException, IOException {
-    Map<String, Long> all_db_chems = db.constructAllInChIs();
 
     // Get the ontology map (ChebiId -> ChebiOntology object)
     Map<String, ChebiOntology> ontologyMap = fetchOntologyMap(brendaDB);
+    LOGGER.info("Done fetching ontology map: ChEBI ID -> ontology object (id, term, definition)");
+
+    // Get relationships of type 'isSubtypeOf'
+    Map<String, Set<String>> isSubtypeOfRelationships = fetchIsSubtypeOfRelationships(brendaDB);
+    LOGGER.info("Done fetching 'is subtype of' relationships");
+
+    // Get relationships of type 'hasRole'
+    Map<String, Set<String>> hasRoleRelationships = fetchHasRoleRelationships(brendaDB);
+    LOGGER.info("Done fetching 'has role' relationships");
 
     // Get the applications for all chemical entities
     Map<ChebiOntology, ChebiApplicationSet> chemicalEntityToApplicationsMap = getApplications(
-        brendaDB,
-        ontologyMap);
+        ontologyMap, isSubtypeOfRelationships, hasRoleRelationships);
+    LOGGER.info("Done computing applications");
 
     DBIterator chemicalsIterator = db.getIteratorOverChemicals();
     // Iterate over all chemicals
@@ -436,11 +469,11 @@ public class BrendaChebiOntology {
         continue;
       }
 
-      LOGGER.debug("Processing Chemical with InChI: %s and ChEBI ID: %s", inchi, chebiId);
+      LOGGER.info("Processing Chemical with InChI: %s and ChEBI ID: %s", inchi, chebiId);
       ChebiOntology ontology = ontologyMap.get(chebiId);
       ChebiApplicationSet applicationSet = chemicalEntityToApplicationsMap.get(ontology);
       if (applicationSet == null) {
-        LOGGER.debug("Application set for %s was found null. Skipping update.", chebiId);
+        LOGGER.debug("Found no applications for %s. Skipping database update for this chemical.", chebiId);
         continue;
       }
       db.updateChemicalWithChebiApplications(chebiId, applicationSet);
@@ -457,10 +490,15 @@ public class BrendaChebiOntology {
     // Get the ontology map (ChebiId -> ChebiOntology object)
     Map<String, ChebiOntology> ontologyMap = fetchOntologyMap(brendaDB);
 
+    // Get "is subtype of" relationships
+    Map<String, Set<String>> isSubTypeOfRelationships = fetchIsSubtypeOfRelationships(brendaDB);
+
+    // Get "has role" relationships
+    Map<String, Set<String>> hasRoleRelationships = fetchHasRoleRelationships(brendaDB);
+
     // Get the applications for all chemical entities
     Map<ChebiOntology, ChebiApplicationSet> chemicalEntityToApplicationsMap = getApplications(
-        brendaDB,
-        ontologyMap);
+        ontologyMap, isSubTypeOfRelationships, hasRoleRelationships);
 
     ChebiOntology applicationOntology = ontologyMap.get("CHEBI:46195");
 

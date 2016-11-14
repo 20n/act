@@ -3155,12 +3155,12 @@ public class MongoDB {
   public void updateChemicalWithChebiApplications(String chebiId,
                                                   BrendaChebiOntology.ChebiApplicationSet applicationSet) {
     Chemical c = this.getChemicalFromChebiId(chebiId);
-    if (c != null) {
+    if (c != null && applicationSet != null) {
       long id = c.getUuid();
       BasicDBObject query = new BasicDBObject("_id", id);
       BasicDBObject update = new BasicDBObject("$set",
           new BasicDBObject("xref.CHEBI.metadata.applications",
-              applicationSet.getBasicDBObject()));
+              applicationSet.toBasicDBObject()));
       this.dbChemicals.update(query, update);
     }
   }
