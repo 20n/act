@@ -14,6 +14,7 @@ import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 
 object ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities {
+  // By default we say chemicals without coefficients have a coefficient of 1
   private val defaultReactionChemicalCoefficient = 1
   private val LOGGER = LogManager.getLogger(getClass)
   /**
@@ -67,7 +68,6 @@ object ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities {
     def chemicalIdToStrings(chemicalStringCache: Map[Long, Option[String]])
                            (substrateId: Long, rawCoefficient: Option[Integer]): List[Option[String]] ={
       val chemicalString: Option[String] = chemicalStringCache(substrateId)
-      // By default we say chemicals without coefficients have a coefficient of 1
       val coefficient = rawCoefficient.getOrElse[Integer](Integer.valueOf(defaultReactionChemicalCoefficient))
       // Creates a list that has the chemical string repeated by the coefficient of that chemical string.
       List.fill(coefficient)(chemicalString)
