@@ -3,6 +3,7 @@ package com.act.biointerpretation.l2expansion
 import java.io.{BufferedWriter, File, FileWriter}
 
 import act.server.MongoDB
+import breeze.linalg.reverse
 import chemaxon.license.LicenseManager
 import chemaxon.marvin.io.MolExportException
 import chemaxon.sss.SearchConstants
@@ -12,7 +13,7 @@ import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, M
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.act.workflow.tool_manager.jobs.management.JobManager
 import com.act.workflow.tool_manager.tool_wrappers.SparkWrapper
-import com.ibm.db2.jcc.am.so
+import com.ibm.db2.jcc.am.{ro, so}
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.jena.sparql.procedure.library.debug
 import org.apache.log4j.LogManager
@@ -44,27 +45,31 @@ object SparkInstance {
 
   var localLicenseFile: Option[String] = None
 
-  var substructureSearch: MolSearch = new MolSearch // TODO: should this be `ThreadLocal` (or the scala-equivalent)?
-
-  { // Limit `options` scope to initialization.
-    val options: MolSearchOptions = new MolSearchOptions(SearchConstants.SUBSTRUCTURE)
-    // This allows H's in RO strings to match implicit hydrogens in our target molecules.
-    options.setImplicitHMatching(SearchConstants.IMPLICIT_H_MATCHING_ENABLED)
-    /* This allows for vague bond matching in ring structures.  From the Chemaxon Docs:
-     *    In the query all single ring bonds are replaced by "single or aromatic" and all double ring bonds are
-     *    replaced by "double or aromatic" prior to search.
-     *    (https://www.chemaxon.com/jchem/doc/dev/java/api/chemaxon/sss/SearchConstants.html)
-     *
-     * This should allow us to handle aromatized molecules gracefully without handling non-ring single and double
-     * bonds ambiguously. */
-    options.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL2)
-    // Few if any of our ROs concern stereo chemistry, so we can just ignore it.
-    options.setStereoSearchType(SearchConstants.STEREO_IGNORE)
-    /* Chemaxon's tautomer handling is weird, as sometimes it picks a non-representative tautomer as its default.
-     * As such, we'll allow tautomer matches to avoid excluding viable candidates. */
-    options.setTautomerSearch(SearchConstants.TAUTOMER_SEARCH_ON)
-    substructureSearch.setSearchOptions(options)
+  //var substructureSearch: MolSearch = new MolSearch // TODO: should this be `ThreadLocal` (or the scala-equivalent)?
+  var substructureSearch: ThreadLocal[MolSearch] = new ThreadLocal[MolSearch] {
+    override def initialValue(): MolSearch = {
+      val search: MolSearch = new MolSearch
+      val options: MolSearchOptions = new MolSearchOptions(SearchConstants.SUBSTRUCTURE)
+      // This allows H's in RO strings to match implicit hydrogens in our target molecules.
+      options.setImplicitHMatching(SearchConstants.IMPLICIT_H_MATCHING_ENABLED)
+      /* This allows for vague bond matching in ring structures.  From the Chemaxon Docs:
+       *    In the query all single ring bonds are replaced by "single or aromatic" and all double ring bonds are
+       *    replaced by "double or aromatic" prior to search.
+       *    (https://www.chemaxon.com/jchem/doc/dev/java/api/chemaxon/sss/SearchConstants.html)
+       *
+       * This should allow us to handle aromatized molecules gracefully without handling non-ring single and double
+       * bonds ambiguously. */
+      options.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL2)
+      // Few if any of our ROs concern stereo chemistry, so we can just ignore it.
+      options.setStereoSearchType(SearchConstants.STEREO_IGNORE)
+      /* Chemaxon's tautomer handling is weird, as sometimes it picks a non-representative tautomer as its default.
+       * As such, we'll allow tautomer matches to avoid excluding viable candidates. */
+      options.setTautomerSearch(SearchConstants.TAUTOMER_SEARCH_ON)
+      search.setSearchOptions(options)
+      search
+    }
   }
+
 
   def project(licenseFileName: String)
              (reverse: Boolean, exhaustive: Boolean)
@@ -148,9 +153,10 @@ object SparkInstance {
     val q = MoleculeExporter.exportAsSmarts(query)
     val t = MoleculeExporter.exportAsSmarts(target)
     LOGGER.info(s"Running search ${q} on ${t}")
-    substructureSearch.setQuery(query)
-    substructureSearch.setTarget(target)
-    substructureSearch.findFirst() != null
+    val search = substructureSearch.get()
+    search.setQuery(query)
+    search.setTarget(target)
+    search.findFirst() != null
   }
 
   private def mapReactionsToResult(substrates: List[String], roNumber: String)
