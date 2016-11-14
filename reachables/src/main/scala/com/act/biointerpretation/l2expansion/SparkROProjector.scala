@@ -132,11 +132,18 @@ object SparkInstance {
     if (mols == null) {
       throw new RuntimeException(s"Got null molecules, but don't know where from.  ero is ${ro.getId}")
     }
+    if (mols.size != substrateQueries.length) {
+      return false
+    }
+
     val molsAndQueries: Array[(Molecule, Molecule)] = substrateQueries.zip(mols)
     molsAndQueries.forall(p => matchesSubstructure(p._1, p._2))
   }
 
   private def matchesSubstructure(query: Molecule, target: Molecule): Boolean = {
+    val q = MoleculeExporter.exportAsSmarts(query)
+    val t = MoleculeExporter.exportAsSmarts(target)
+    LOGGER.info(s"Running search ${q} on ${t}")
     substructureSearch.setQuery(query)
     substructureSearch.setTarget(target)
     substructureSearch.findFirst() != null
