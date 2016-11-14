@@ -125,7 +125,7 @@ object SparkInstance {
 
   // TODO: This is so much more elegant and concise in scala; can we bring this to the ReactionProjector?
   private def possibleSubstrates(ro: Ero)(mols: List[Molecule]): Boolean = {
-    val substrateQueries: Array[Molecule] = ro.getReactor.getReactants
+    val substrateQueries: Array[Molecule] = ro.getReactor.getReaction.getReactants
     if (substrateQueries == null) {
       throw new RuntimeException(s"Got null substrate queries for ero ${ro.getId}")
     }
