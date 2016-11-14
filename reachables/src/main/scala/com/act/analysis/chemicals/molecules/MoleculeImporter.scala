@@ -1,20 +1,44 @@
 package com.act.analysis.chemicals.molecules
 
 import act.shared.Chemical
-import chemaxon.calculations.clean.Cleaner
 import chemaxon.formats.{MolFormatException, MolImporter}
-import chemaxon.standardizer.Standardizer
-import chemaxon.struc.{Molecule, MoleculeGraph}
+import chemaxon.struc.Molecule
+import com.act.analysis.chemicals.molecules.MoleculeFormat.MoleculeFormatType
+import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
+import org.apache.logging.log4j.LogManager
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
 
 object MoleculeImporter {
+  private val LOGGER = LogManager.getLogger(getClass)
+  private var maxCacheSize = 10000L
   // Have a cache for each format.
-  private val moleculeCache = TrieMap[MoleculeFormat.MoleculeFormatType, TrieMap[String, Molecule]]()
+  private val moleculeCache = TrieMap[MoleculeFormat.MoleculeFormatType, Cache[String, Molecule]]()
 
   def clearCache(): Unit = {
-    moleculeCache.keySet.foreach(key => moleculeCache.put(key, new TrieMap[String, Molecule]))
+    moleculeCache.keySet.foreach(key => moleculeCache.put(key, buildCache(key)))
+  }
+
+  /**
+    * Wipes all the current caches and changes their maximum sizes to the designated value
+    *
+    * @param size Maximum number of elements in the cache
+    */
+  def setCacheSize(size: Long): Unit = {
+    LOGGER.info(s"${getClass.getCanonicalName} cache size has changed to $size " +
+      s"per ${MoleculeFormatType.getClass.getCanonicalName}.")
+    maxCacheSize = size
+    clearCache()
+  }
+
+  private def buildCache(moleculeFormatType: MoleculeFormatType): Cache[String, Molecule] = {
+    val caffeine = Caffeine.newBuilder().asInstanceOf[Caffeine[String, Molecule]]
+    caffeine.maximumSize(maxCacheSize)
+
+    // If you want to debug how the cache is doing
+    caffeine.recordStats()
+    caffeine.build[String, Molecule]()
   }
 
   // For java
@@ -61,10 +85,10 @@ object MoleculeImporter {
   def importMolecule(mol: String, format: MoleculeFormat.MoleculeFormatType): Molecule = {
     val formatCache = moleculeCache.get(format)
     if (formatCache.isEmpty) {
-      moleculeCache.put(format, new TrieMap[String, Molecule])
+      moleculeCache.put(format, buildCache(format))
     }
 
-    val molecule = moleculeCache(format).get(mol)
+    val molecule: Option[Molecule] = Option(moleculeCache(format).getIfPresent(mol))
 
     if (molecule.isEmpty) {
       val newMolecule = MolImporter.importMol(mol, MoleculeFormat.getImportString(format))
