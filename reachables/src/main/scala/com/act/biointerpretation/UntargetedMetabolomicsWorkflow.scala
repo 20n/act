@@ -14,8 +14,6 @@ import com.act.workflow.tool_manager.workflow.Workflow
 import com.act.workflow.tool_manager.workflow.workflow_mixins.base.WorkingDirectoryUtility
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.logging.log4j.LogManager
-import sun.java2d.cmm.lcms
-import sun.java2d.cmm.lcms.LCMS
 
 import scala.collection.JavaConverters._
 
@@ -395,7 +393,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     object CLUSTERING extends StartingPoint("CLUSTERING")
     object SCORING extends StartingPoint("SCORING")
 
-    val values = List(EXPANSION, lcms.LCMS, CLUSTERING, SCORING)
+    val values: List[StartingPoint] = List(EXPANSION, LCMS, CLUSTERING, SCORING)
   }
 
 }

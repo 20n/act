@@ -90,11 +90,17 @@ object MoleculeFormat {
   }
 
   def getExportString(chemicalFormat: MoleculeFormat.MoleculeFormatType): String = {
-    exportMap(exportMap.keys.find(x => x.name.equals(chemicalFormat.value.name)).get)
+    if (!exportMap.contains(chemicalFormat.getValue)){
+      throw new RuntimeException(s"Unable to find export format ${chemicalFormat.getValue}.")
+    }
+    exportMap(chemicalFormat.getValue)
   }
 
   def getImportString(chemicalFormat: MoleculeFormat.MoleculeFormatType): String = {
-    importMap(importMap.keys.find(x => x.name.equals(chemicalFormat.value.name)).get)
+    if (!importMap.contains(chemicalFormat.getValue)){
+      throw new RuntimeException(s"Unable to find import format ${chemicalFormat.getValue}.")
+    }
+    importMap(chemicalFormat.getValue)
   }
 
   def getName(s: String): MoleculeFormatType = {
