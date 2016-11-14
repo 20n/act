@@ -56,6 +56,11 @@ object ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities {
     createReactions(mongoConnection)(mongoConnection.getReactionsIterator)
   }
 
+  /*
+    We flatten the array because `Option` is easier to handle in Scala than in Java.
+    The expected use case is to supply a list of reaction IDs and want a list of reactions
+    w/ InChIs back, so we just supply that for Java users.
+   */
   def querySubstrateAndProductInchisJava(mongoConnection: MongoDB): java.util.List[InchiReaction] = {
     createReactions(mongoConnection)(mongoConnection.getReactionsIterator).toList.flatten.asJava
   }
