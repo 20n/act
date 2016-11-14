@@ -19,7 +19,7 @@ abstract class Job(name: String) {
   val internalState = new InternalState(this)
   private val logger: Logger = LogManager.getLogger(getClass.getName)
 
-  private val flags: ListBuffer[JobFlag.Value] = ListBuffer[JobFlag.Value]()
+  private val flags: ListBuffer[JobFlag.Flag] = ListBuffer[JobFlag.Flag]()
 
   /**
     * Adds a flag to this job, which designates that certain, advanced behavior should occur
@@ -30,14 +30,14 @@ abstract class Job(name: String) {
     *
     * @param value An allowed JobFlag
     */
-  def addFlag(value: JobFlag.Value): Unit = flags.append(value)
+  def addFlag(value: JobFlag.Flag): Unit = flags.append(value)
 
   /**
     * Returns a list of all flags that this job possesses
     *
     * @return List of flags
     */
-  def getFlags: List[JobFlag.Value] = flags.toList
+  def getFlags: List[JobFlag.Flag] = flags.toList
 
   /**
     * Defined by the given type of job to effectively run asynchronously.
@@ -236,7 +236,7 @@ class InternalState(job: Job) {
     *
     * @param newStatus What new status should be assigned to the job
     */
-  def setJobStatus(newStatus: String): Unit = {
+  def setJobStatus(newStatus: StatusCodes.Status): Unit = {
     // Handle Logging of various levels
     val message = s"Job status for command $job has changed to $newStatus"
     newStatus match {
@@ -251,7 +251,7 @@ class InternalState(job: Job) {
     if (statusManager.isCompleted) JobManager.indicateJobCompleteToManager(job)
   }
 
-  def setStatus(value: String): Unit = statusManager.setJobStatus(value)
+  def setStatus(value: StatusCodes.Status): Unit = statusManager.setJobStatus(value)
 
   /**
     * Kills a job if it is not yet complete (Either unstarted or running)
@@ -465,29 +465,34 @@ class RunManager(job: Job) {
 /**
   * Update and query job statuses
   */
-object StatusCodes extends Enumeration {
-  val Status = Value
-  val Success = "Success"
-  val Retry = "Retrying"
-  val Failure = "Failure"
-  val Running = "Running"
-  val NotStarted = "NotStarted"
-  val ParentProcessFailure = "Parent Process Failed"
-  val Killed = "Killed"
+object StatusCodes {
+  sealed case class Status(name: String) {
+    override def toString = name
+  }
+  object Success extends Status("Success")
+  object Retry extends Status("Retrying")
+  object Failure  extends Status("Failure")
+  object Running extends Status("Running")
+  object NotStarted extends Status("NotStarted")
+  object ParentProcessFailure extends Status("Parent Process Failed")
+  object Killed extends Status("Killed")
 }
 
 /**
   * Flags used to indicate special things to jobs.
   */
-object JobFlag extends Enumeration {
-  val ShouldNotBeWaitedOn, ShouldNotFailChildrenJobs = Value
+object JobFlag {
+  sealed case class Flag()
+
+  object ShouldNotBeWaitedOn extends Flag
+  object ShouldNotFailChildrenJobs extends Flag
 }
 
 /**
   * Keeps track of the status of the job.
   */
 class StatusManager {
-  private var status = StatusCodes.NotStarted
+  private var status: StatusCodes.Status = StatusCodes.NotStarted
 
   def isCompleted: Boolean = {
     isSuccessful | isFailed | isKilled
@@ -501,11 +506,11 @@ class StatusManager {
     getJobStatus == StatusCodes.Success
   }
 
-  def getJobStatus: String = synchronized {
+  def getJobStatus: StatusCodes.Status = synchronized {
     this.status
   }
 
-  def setJobStatus(newStatus: String): Unit = synchronized {
+  def setJobStatus(newStatus: StatusCodes.Status): Unit = synchronized {
     this.status = newStatus
   }
 
@@ -524,6 +529,6 @@ class StatusManager {
   }
 
   override def toString: String = {
-    getJobStatus
+    getJobStatus.toString
   }
 }

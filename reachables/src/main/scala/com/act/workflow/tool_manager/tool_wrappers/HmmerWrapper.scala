@@ -18,7 +18,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile Where to write the output to
     */
   def hmmalign(hmmFile: File, seqFile: File, outputFile: File): ShellJob = {
-    constructJob(HmmCommands.HmmAlign.get, HmmCommands.HmmAlign,
+    constructJob(HmmCommands.HmmAlign.getCommand, Option(HmmCommands.HmmAlign.getCommand),
       List("--amino", hmmFile.getAbsolutePath, seqFile.getAbsolutePath, "-o", outputFile.getAbsolutePath))
   }
 
@@ -30,8 +30,8 @@ object HmmerWrapper extends ToolWrapper {
     */
   def hmmbuild(outputHmmFile: File, msaFile: File): ShellJob  = {
     constructJob(
-      HmmCommands.HmmBuild.get,
-      HmmCommands.HmmBuild,
+      HmmCommands.HmmBuild.getCommand,
+      Option(HmmCommands.HmmBuild.getCommand),
       List("--amino", outputHmmFile.getAbsolutePath, msaFile.getAbsolutePath))
   }
 
@@ -43,12 +43,12 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile   Where to place output file
     */
   def hmmscan(hmmDatabase: String, sequenceFile: File, outputFile: File): ShellJob = {
-    val job = constructJob(HmmCommands.HmmScan.get, HmmCommands.HmmScan,
+    val job = constructJob(HmmCommands.HmmScan.getCommand, Option(HmmCommands.HmmScan.getCommand),
       List("-o", outputFile.getAbsolutePath, hmmDatabase, sequenceFile.getAbsolutePath))
 
     // Set a retry job of press if something goes wrong
     // If you want a laugh, read the documentation for this function with option -f , it will overwrite bad files
-    job.setJobToRunPriorToRetrying(constructJob(HmmCommands.HmmPress.get, HmmCommands.HmmPress,
+    job.setJobToRunPriorToRetrying(constructJob(HmmCommands.HmmPress.getCommand, Option(HmmCommands.HmmPress.getCommand),
       List("-f", hmmDatabase), retryJob = true))
     job
   }
@@ -64,7 +64,8 @@ object HmmerWrapper extends ToolWrapper {
     * @param hmmFile  File containing multiple HMM profiles
     */
   def hmmpress(hmmFile: File): ShellJob  = {
-    constructJob(HmmCommands.HmmPress.get, HmmCommands.HmmPress, List("-f", hmmFile.getAbsolutePath))
+    constructJob(HmmCommands.HmmPress.getCommand, Option(HmmCommands.HmmPress.getCommand),
+      List("-f", hmmFile.getAbsolutePath))
   }
 
 
@@ -76,7 +77,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile       Where to place the results
     */
   def hmmsearch(hmmFile: File, sequenceDatabase: File, outputFile: File): ShellJob = {
-    constructJob(HmmCommands.HmmSearch.get, HmmCommands.HmmSearch,
+    constructJob(HmmCommands.HmmSearch.getCommand, Option(HmmCommands.HmmSearch.getCommand),
       List("-o", outputFile.getAbsolutePath, hmmFile.getAbsolutePath, sequenceDatabase.getAbsolutePath))
   }
 
@@ -88,7 +89,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile       Where to place the results
     */
   def jackhmmer(sequenceFile: File, sequenceDatabase: String, outputFile: File): ShellJob  = {
-    constructJob(HmmCommands.JackHammr.get, HmmCommands.JackHammr,
+    constructJob(HmmCommands.JackHammr.getCommand, Option(HmmCommands.JackHammr.getCommand),
       List(sequenceFile.getAbsolutePath, sequenceDatabase, "-o", outputFile.getAbsolutePath))
   }
 
@@ -100,7 +101,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile       Where to place the results
     */
   def phmmer(sequenceFile: File, sequenceDatabase: String, outputFile: File): ShellJob  = {
-    constructJob(HmmCommands.Phmmer.get, HmmCommands.Phmmer,
+    constructJob(HmmCommands.Phmmer.getCommand, Option(HmmCommands.Phmmer.getCommand),
       List(sequenceFile.getAbsolutePath, sequenceDatabase, "-o", outputFile.getAbsolutePath))
     }
 
@@ -133,20 +134,23 @@ Other utilities - These do conversions or give added benefits to HMMs/Proteins
   }
 
   //TODO All commands that I plan to implement
-  object HmmCommands extends Enumeration {
-    type HmmCommands = Value
-    val HmmBuild = Option("hmmbuild")
-    val HmmAlign = Option("hmmalign")
-    val HmmScan = Option("hmmscan")
-    val HmmPress = Option("hmmpress")
-    val HmmSearch = Option("hmmsearch")
-    val JackHammr = Option("jackhmmr")
-    val Phmmer = Option("phmmer")
-    val HmmConvert = Option("hmmconvert")
-    val HmmEmit = Option("hmmemit")
-    val HmmFetch = Option("hmmfetch")
-    val HmmLogo = Option("hmmlogo")
-    val HmmPgmd = Option("hmmpgmd")
+  object HmmCommands {
+    sealed case class Command(command: String) {
+      def getCommand: String = command
+    }
+
+    object HmmBuild extends Command("hmmbuild")
+    object HmmAlign extends Command("hmmalign")
+    object HmmScan extends Command("hmmscan")
+    object HmmPress extends Command("hmmpress")
+    object HmmSearch extends Command("hmmsearch")
+    object JackHammr extends Command("jackhmmr")
+    object Phmmer extends Command("phmmer")
+    object HmmConvert extends Command("hmmconvert")
+    object HmmEmit extends Command("hmmemit")
+    object HmmFetch extends Command("hmmfetch")
+    object HmmLogo extends Command("hmmlogo")
+    object HmmPgmd extends Command("hmmpgmd")
   }
 
 }

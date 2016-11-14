@@ -151,7 +151,7 @@ object SparkSingleSubstrateROProjector {
         desc("A molecule string format. Currently valid types are inchi, stdInchi, smiles, and smarts.  " +
           s"By default, uses stdInChI which " +
           s"is the format '${MoleculeFormat.getExportString(MoleculeFormat.stdInchi)}'.  " +
-          s"Possible values are: \n${MoleculeFormat.listPossibleFormats().mkString("\n")}"),
+          s"Possible values are: \n${MoleculeFormat.listPossibleFormatStrings().mkString("\n")}"),
 
       CliOption.builder(OPTION_SAR_CORPUS_FILE).
         longOpt("sar-corpus").

@@ -11,65 +11,95 @@ import scala.collection.parallel.immutable.ParMap
   * Enumerates possible import and export formats to allow for consistent use.  Also standardizes cleaning.
   */
 // Format information be found at https://docs.chemaxon.com/display/docs/Molecule+Formats
-object MoleculeFormat extends Enumeration {
+object MoleculeFormat {
 
   private val cleaningSeparator = ">"
   private val LOGGER = LogManager.getLogger(getClass)
 
-  private val inchiString = "inchi"
-  private val stdInchiString = "stdInchi"
-  private val noAuxInchiString = "noAuxInchi"
-  private val strictInchiString = "strictInchi"
-  private val strictNoStereoInchiString = "strictNoStereoInchi"
-  private val smilesString = "smiles"
-  private val smartsString = "smarts"
-  private val noStereoSmartsString = "noStereoSmarts"
-  private val noStereoAromatizedSmartsString = "noStereoAromatizedSmarts"
+  sealed case class Format(name: String) {
+    override def toString: String = name
+  }
 
-  val inchi = MoleculeFormatType(Value(inchiString), List())
-  val stdInchi = MoleculeFormatType(Value(stdInchiString), List())
-  val noAuxInchi = MoleculeFormatType(Value(noAuxInchiString), List())
-  val strictInchi = MoleculeFormatType(Value(strictInchiString), List())
-  val strictNoStereoInchi = MoleculeFormatType(Value(strictNoStereoInchiString), List(CleaningOptions.removeStereo))
-  val smiles = MoleculeFormatType(Value(smilesString), List())
-  val smarts = MoleculeFormatType(Value(smartsString), List())
-  val noStereoSmarts = MoleculeFormatType(Value(noStereoSmartsString), List(CleaningOptions.removeStereo))
-  val noStereoAromatizedSmarts = MoleculeFormatType(Value(noStereoAromatizedSmartsString), List(CleaningOptions.removeStereo))
+  private val inchiFormat = Format("inchi")
+  private val stdInchiFormat = Format("stdInchi")
+  private val noAuxInchiFormat = Format("noAuxInchi")
+  private val strictInchiFormat = Format("strictInchi")
+  private val strictNoStereoInchiFormat = Format("strictNoStereoInchi")
+  private val smilesFormat = Format("smiles")
+  private val smartsFormat = Format("smarts")
+  private val noStereoSmartsFormat = Format("noStereoSmarts")
+  private val noStereoAromatizedSmartsFormat = Format("noStereoAromatizedSmarts")
 
-  private val exportMap: Map[MoleculeFormat.Value, String] = Map(
-    inchi.getValue -> "inchi",
-    noAuxInchi.getValue -> s"inchi:AuxNone",
-    stdInchi.getValue -> s"inchi:AuxNone,SAbs,Woff",
-    strictInchi.getValue -> s"inchi:AuxNone,SAbs,Woff,DoNotAddH",
-    strictNoStereoInchi.getValue -> s"inchi:AuxNone,SNon,Woff,DoNotAddH",
-    smiles.getValue -> smilesString,
-    smarts.getValue -> smartsString,
-    noStereoSmarts.getValue -> s"$smartsString:0",
-    noStereoAromatizedSmarts.getValue -> s"$smartsString:a0"
+  object inchi extends MoleculeFormatType(inchiFormat, List())
+  object stdInchi extends MoleculeFormatType(stdInchiFormat, List())
+  object noAuxInchi extends MoleculeFormatType(noAuxInchiFormat, List())
+  object strictInchi extends MoleculeFormatType(strictInchiFormat, List())
+  object strictNoStereoInchi extends MoleculeFormatType(strictNoStereoInchiFormat, List(Cleaning.removeStereo))
+  object smiles extends MoleculeFormatType(smilesFormat, List())
+  object smarts extends MoleculeFormatType(smartsFormat, List())
+  object noStereoSmarts extends MoleculeFormatType(noStereoSmartsFormat, List(Cleaning.removeStereo))
+  object noStereoAromatizedSmarts extends MoleculeFormatType(noStereoAromatizedSmartsFormat, List(Cleaning.removeStereo))
+
+  // InChI options are from https://docs.chemaxon.com/display/docs/InChi+and+InChiKey+export+options
+  // We prefix InChI options with "I"
+  private val InoAuxInformation = "AuxNone"
+  private val IforceAbsoluteStereo = "SAbs"
+  private val IforceNoStereo = "SNon"
+  private val IonlyExplicitHydrogen = "DoNotAddH"
+  private val IdoNotDisplayWarnings = "Woff"
+
+  // Smarts options can be found at https://docs.chemaxon.com/display/docs/SMILES+and+SMARTS+import+and+export+options
+  // We prefix smarts options with "S"
+  private val SnoStereo = "0"
+  private val Saromatic = "a"
+
+  private val exportMap: Map[Format, String] = Map(
+    inchiFormat -> inchiFormat.name,
+    noAuxInchiFormat-> s"${inchiFormat.name}:$InoAuxInformation",
+    stdInchiFormat ->
+      s"${inchiFormat.name}:$InoAuxInformation,$IforceAbsoluteStereo,$IdoNotDisplayWarnings",
+    strictInchiFormat ->
+      s"${inchiFormat.name}:$InoAuxInformation,$IforceAbsoluteStereo,$IdoNotDisplayWarnings,$IonlyExplicitHydrogen",
+    strictNoStereoInchiFormat ->
+      s"${inchiFormat.name}:$InoAuxInformation,$IforceNoStereo,$IdoNotDisplayWarnings,$IonlyExplicitHydrogen",
+    smilesFormat -> smilesFormat.name,
+    smartsFormat -> smartsFormat.name,
+    noStereoSmartsFormat -> s"${smartsFormat.name}:$SnoStereo",
+    noStereoAromatizedSmartsFormat -> s"${smartsFormat.name}:$Saromatic$SnoStereo"
   )
 
   // Don't add H according to usual valences: all H are explicit
-  private val importMap: Map[MoleculeFormat.Value, String] = Map(
-    inchi.getValue -> inchiString,
-    stdInchi.getValue -> inchiString,
-    noAuxInchi.getValue -> inchiString,
-    strictInchi.getValue -> inchiString,
-    strictNoStereoInchi.getValue -> inchiString,
-    smiles.getValue -> smilesString,
-    smarts.getValue -> smartsString,
-    noStereoSmarts.getValue -> smartsString,
-    noStereoAromatizedSmarts.getValue -> smartsString
+  private val importMap: Map[Format, String] = Map(
+    inchiFormat -> inchiFormat.name,
+    stdInchiFormat -> inchiFormat.name,
+    noAuxInchiFormat-> inchiFormat.name,
+    strictInchiFormat -> inchiFormat.name,
+    strictNoStereoInchiFormat -> inchiFormat.name,
+    smilesFormat -> smilesFormat.name,
+    smartsFormat -> smartsFormat.name,
+    noStereoSmartsFormat -> smartsFormat.name,
+    noStereoAromatizedSmartsFormat -> smartsFormat.name
   )
 
-  def listPossibleFormats(): List[String] = {
-    values.map(_.toString).toList
+  def listPossibleFormatStrings(): List[String] = {
+    listPossibleFormats().map(_.toString)
+  }
+
+  def listPossibleFormats(): List[Format] = {
+    importMap.keys.toList
   }
 
   def getExportString(chemicalFormat: MoleculeFormat.MoleculeFormatType): String = {
+    if (!exportMap.contains(chemicalFormat.getValue)){
+      throw new RuntimeException(s"Unable to find export format ${chemicalFormat.getValue}.")
+    }
     exportMap(chemicalFormat.getValue)
   }
 
   def getImportString(chemicalFormat: MoleculeFormat.MoleculeFormatType): String = {
+    if (!importMap.contains(chemicalFormat.getValue)){
+      throw new RuntimeException(s"Unable to find import format ${chemicalFormat.getValue}.")
+    }
     importMap(chemicalFormat.getValue)
   }
 
@@ -78,14 +108,14 @@ object MoleculeFormat extends Enumeration {
 
     val splitString = s.split(cleaningSeparator, 2).toList
 
-    val cleaningOptions: List[CleaningOptions.Value] =
+    val cleaningOptions: List[Cleaning.Options] =
       if (splitString.length == 1)
         List()
       else
         splitString(1).split(",").toList.flatMap(cleaningSetting => {
           try {
             if (!cleaningSetting.equals("")) {
-              Option(CleaningOptions.withName(cleaningSetting))
+              Cleaning.withName(cleaningSetting)
             } else
               None
           } catch {
@@ -99,26 +129,21 @@ object MoleculeFormat extends Enumeration {
         })
 
     try {
-      new MoleculeFormatType(withName(splitString.head), cleaningOptions)
+      val previousType: Option[Format] = importMap.keys.find(x => x.name.equals(splitString.head))
+      if (previousType.isEmpty) throw new NoSuchElementException
+      new MoleculeFormatType(previousType.get, cleaningOptions)
     } catch {
-      case e: NoSuchElementException => {
+      case e: NoSuchElementException =>
         val message = s"Unable to find format value ${splitString.head}."
         LOGGER.error(message, e)
         throw new NoSuchElementException(message)
-      }
     }
   }
 
 
-  object MoleculeFormatType {
-    def apply(moleculeFormatType: MoleculeFormatType, cleaning: List[CleaningOptions.Value]): MoleculeFormatType = {
-      new MoleculeFormatType(moleculeFormatType.getValue, (cleaning ::: moleculeFormatType.cleaningOptions).distinct)
-    }
-  }
 
-
-  case class MoleculeFormatType(value: Value, cleaningOptions: List[CleaningOptions.Value]) {
-    def this(moleculeFormatType: MoleculeFormatType, cleaning: List[CleaningOptions.Value]) {
+  case class MoleculeFormatType(value: Format, cleaningOptions: List[Cleaning.Options]) {
+    def this(moleculeFormatType: MoleculeFormatType, cleaning: List[Cleaning.Options]) {
       // Allow for concatenating of a native type and supplied types.
       this(moleculeFormatType.getValue, (cleaning ::: moleculeFormatType.cleaningOptions).distinct)
     }
@@ -127,13 +152,13 @@ object MoleculeFormat extends Enumeration {
       s"${value.toString}$cleaningSeparator${cleaningOptions.mkString(",")}"
     }
 
-    def getValue: Value = {
+    def getValue: Format = {
       value
     }
   }
 
 
-  object CleaningOptions extends Enumeration {
+  object Cleaning {
     private val neutralizeString = "neutralize"
     private val clean2dString = "clean2d"
     private val clean3dString = "clean3d"
@@ -141,12 +166,18 @@ object MoleculeFormat extends Enumeration {
     private val removeIsotopesString = "removeIsotopes"
     private val removeStereoString = "removeStereo"
 
-    val neutralize = Value(neutralizeString)
-    val clean2d = Value(clean2dString)
-    val clean3d = Value(clean3dString)
-    val aromatize = Value(aromatizeString)
-    val removeIsotopes = Value(removeIsotopesString)
-    val removeStereo = Value(removeStereoString)
+    sealed case class Options(name: String) {
+      def getName: String = name
+    }
+
+    object neutralize extends Options(neutralizeString)
+    object clean2d extends Options(clean2dString)
+    object clean3d extends Options(clean3dString)
+    object aromatize extends Options(aromatizeString)
+    object removeIsotopes extends Options(removeIsotopesString)
+    object removeStereo extends Options(removeStereoString)
+
+    private val options: List[Options] = List(neutralize, clean2d, clean3d, aromatize, removeIsotopes, removeStereo)
 
     private val cleaningFunctions = ParMap[String, (Molecule) => Unit](
       neutralizeString -> ((molecule: Molecule) => {new Standardizer("neutralize").standardize(molecule)}),
@@ -157,9 +188,13 @@ object MoleculeFormat extends Enumeration {
       removeStereoString -> ((molecule: Molecule) => {new Standardizer("clearstereo").standardize(molecule)})
     )
 
-    def applyCleaningOnMolecule(molecule: Molecule)(cleaningOption: CleaningOptions.Value): Unit = {
+    def applyCleaningOnMolecule(molecule: Molecule)(cleaningOption: Cleaning.Options): Unit = {
       // Get the correct option and apply it
-      cleaningFunctions(cleaningOption.toString)(molecule)
+      cleaningFunctions(cleaningOption.getName)(molecule)
+    }
+
+    def withName(name: String): Option[Cleaning.Options] = {
+      options.find(o => o.getName.equals(name))
     }
   }
 }

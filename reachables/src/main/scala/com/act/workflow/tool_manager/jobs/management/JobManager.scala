@@ -132,7 +132,7 @@ object JobManager {
   }
 
   def getOrderOfJobStatuses: List[String] = {
-    jobCompleteOrdering.toList.map(_.internalState.statusManager.getJobStatus)
+    jobCompleteOrdering.toList.map(_.internalState.statusManager.getJobStatus.toString)
   }
 
   /**

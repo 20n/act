@@ -103,15 +103,23 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     opts
   }
 
-  object WorkflowSteps extends Enumeration {
-    type WorkflowSteps = Value
+  object WorkflowSteps {
+    sealed case class Step(val value: String) {
+      override def toString: String = value
+    }
+    object EXPANSION extends Step("EXPANSION")
+    object LCMS extends Step("LCMS")
+    object CLUSTERING extends Step("CLUSTERING")
+    object SAR_SCORING extends Step("SAR_SCORING")
+    object PRODUCT_SCORING extends Step("PRODUCT_SCORING")
+    object MESH_RESULTS extends Step("MESH_RESULTS")
 
-    val EXPANSION = Value("EXPANSION")
-    val LCMS = Value("LCMS")
-    val CLUSTERING = Value("CLUSTERING")
-    val SAR_SCORING = Value("SAR_SCORING")
-    val PRODUCT_SCORING = Value("PRODUCT_SCORING")
-    val MESH_RESULTS = Value("MESH_RESULTS")
+    def withName(name: String): Option[Step] = {
+      names.find(n => n.value.equals(name))
+    }
+
+    def getNames: List[Step] = names
+    private def names = List(EXPANSION, LCMS, CLUSTERING, SAR_SCORING, PRODUCT_SCORING, MESH_RESULTS)
   }
 
   // Implement this with the job structure you want to run to define a workflow
@@ -285,14 +293,16 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     /**
       * Decide which steps to run based on the StartingPoint supplied, or run the entire workflow by default
       */
-    def getStepFromCommandline(optionVal: String, defaultStep: WorkflowSteps.Value): WorkflowSteps.Value = {
+    def getStepFromCommandline(optionVal: String, defaultStep: WorkflowSteps.Step): WorkflowSteps.Step = {
       if (cl.hasOption(optionVal)) {
         try {
-          return WorkflowSteps.withName(cl.getOptionValue(optionVal))
+          val step = WorkflowSteps.withName(cl.getOptionValue(optionVal))
+          if (step.isEmpty) throw new NoSuchElementException()
+          step.get
         } catch {
           case e: NoSuchElementException =>
-            logger.error(s"Workflow  point must be among ${WorkflowSteps.values.map(value => value.toString()).toList} " +
-              s"; Input: ${cl.getOptionValue(optionVal)}; ${e.getMessage()}")
+            logger.error(s"Workflow  point must be among ${WorkflowSteps.getNames.map(_.toString())} " +
+              s"; Input: ${cl.getOptionValue(optionVal)}; ${e.getMessage}")
             System.exit(1)
         }
       }
@@ -306,7 +316,7 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     /**
       * Pick out the correct steps to run, and add them to the workflow.
       */
-    val jobList: List[(WorkflowSteps.Value, () => Unit)] = List(
+    val jobList: List[(WorkflowSteps.Step, () => Unit)] = List(
       (WorkflowSteps.EXPANSION, addExpansionJobList() _),
       (WorkflowSteps.LCMS, addLcmsJob() _),
       (WorkflowSteps.CLUSTERING, addClusteringJobs() _),
@@ -373,13 +383,17 @@ class UntargetedMetabolomicsWorkflow extends Workflow with WorkingDirectoryUtili
     headerJob.thenRunBatch(jobs, batchSize)
   }
 
-  object StartingPoints extends Enumeration {
-    type StartingPoints = Value
+  object StartingPoints {
+    sealed case class StartingPoint(name: String){
+      override def toString = name
+    }
 
-    val EXPANSION = Value("EXPANSION")
-    val LCMS = Value("LCMS")
-    val CLUSTERING = Value("CLUSTERING")
-    val SCORING = Value("SCORING")
+    object EXPANSION extends StartingPoint("EXPANSION")
+    object LCMS extends StartingPoint("LCMS")
+    object CLUSTERING extends StartingPoint("CLUSTERING")
+    object SCORING extends StartingPoint("SCORING")
+
+    val values: List[StartingPoint] = List(EXPANSION, LCMS, CLUSTERING, SCORING)
   }
 
 }
