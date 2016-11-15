@@ -13,7 +13,7 @@ import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, M
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.act.workflow.tool_manager.jobs.management.JobManager
 import com.act.workflow.tool_manager.tool_wrappers.SparkWrapper
-import com.mongodb.{BasicDBObject, DBCollection, DBCursor, DBObject, Mongo}
+import com.mongodb._
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.jena.sparql.procedure.library.debug
 import org.apache.log4j.LogManager
@@ -193,6 +193,10 @@ object SparkROProjector {
   private val LOGGER = LogManager.getLogger(getClass)
   private val SPARK_LOG_LEVEL = "WARN"
   private val DEFAULT_SPARK_MASTER = "spark://spark-master:7077"
+
+  private val PRECURSOR_KEY = "prediction_precursors"
+  private val INCHI_KEY = "InChI"
+  private val RO_KEY = "ros"
 
   def main(args: Array[String]): Unit = {
     val cl = parseCommandLineOptions(args)
@@ -429,11 +433,18 @@ object SparkROProjector {
     def addProjectionToDatabase(projection: ProjectionResult): Unit = {
       projection.products.foreach(p => {
         val query = new BasicDBObject()
-        query.put("InChI", p)
+        query.put(INCHI_KEY, p)
 
         val update = new BasicDBObject()
-        update.put("InChI", p)
-        projection.substrates.foreach(s => update.put(s"precursors.$s", 1))
+        update.put(INCHI_KEY, p)
+
+        val roList = new BasicDBList()
+        roList.add(projection.ros)
+
+        val precursors = new BasicDBList()
+        projection.substrates.foreach(s => precursors.add(new BasicDBObject(s, roList)))
+
+        update.put(PRECURSOR_KEY, precursors)
 
         reachables.update(query, update, true, false)
       })
