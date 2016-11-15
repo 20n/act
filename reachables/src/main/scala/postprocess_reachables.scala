@@ -77,7 +77,7 @@ object postprocess_reachables {
     // create output directory for regression test reports, if not already exists
     mk_regression_test_reporting_dir(rdir)
     // run regression suites if provided
-    regression_suite_files.foreach(test => reachables.run_regression(r_inchis, test, rdir))
+    regression_suite_files.foreach(test => reachables.runRegression(r_inchis, test, rdir))
   }
 
   def write_reachable_tree(prefix: String, write_graph_too: Boolean, reachables: Map[Long, (String, String)]) {
