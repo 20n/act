@@ -104,7 +104,7 @@ object postprocess_reachables {
     val disjointtrees = tree.disjointTrees(db) // a JSONObject
     val treejson = disjointtrees.toString(2) // serialized using indent = 2
     write_to(t, treejson)
-    println("Done: Writing disjoint trees");
+    println("Done: Writing disjoint trees")
 
     if (write_graph_too) {
       println("scala/reachables.scala: You asked to write graph, in addition to default tree.")
@@ -112,7 +112,7 @@ object postprocess_reachables {
       val disjointgraphs = tree.disjointGraphs(db) // a JSONArray
       val graphjson = disjointgraphs.toString(2) // serialized using indent = 2
       write_to(g, graphjson)
-      println("scala/reachables.scala: Done writing disjoint graphs");
+      println("scala/reachables.scala: Done writing disjoint graphs")
     }
 
     println("Done: Written reachables to trees (and graphs, if requested).")
