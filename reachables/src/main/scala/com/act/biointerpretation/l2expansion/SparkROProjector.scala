@@ -175,7 +175,7 @@ object SparkInstance {
 object SparkROProjector {
   val OPTION_EXHAUSTIVE = "e"
   val OPTION_SUBSTRATES_LISTS = "i"
-  val OPTION_READ_FROM_REACHABLES_DB = "r"
+  val OPTION_READ_FROM_REACHABLES_DB = "R"
   val OPTION_LICENSE_FILE = "l"
   val OPTION_SPARK_MASTER = "m"
   val OPTION_OUTPUT_DIRECTORY = "o"
@@ -201,13 +201,16 @@ object SparkROProjector {
     LOGGER.info(s"Validating license file at $licenseFile")
     LicenseManager.setLicenseFile(licenseFile)
 
-    val outputDir = new File(cl.getOptionValue(OPTION_OUTPUT_DIRECTORY))
-    if (outputDir.exists() && !outputDir.isDirectory) {
-      LOGGER.error(s"Found output directory at ${outputDir.getAbsolutePath} but is not a directory")
-      exitWithHelp(getCommandLineOptions)
-    } else {
-      LOGGER.info(s"Creating output directory at ${outputDir.getAbsolutePath}")
-      outputDir.mkdirs()
+    var outputDir : File = null
+    if (!cl.hasOption(OPTION_WRITE_PROJECTIONS_TO_DB)) {
+      outputDir = new File(cl.getOptionValue(OPTION_OUTPUT_DIRECTORY))
+      if (outputDir.exists() && !outputDir.isDirectory) {
+        LOGGER.error(s"Found output directory at ${outputDir.getAbsolutePath} but is not a directory")
+        exitWithHelp(getCommandLineOptions)
+      } else {
+        LOGGER.info(s"Creating output directory at ${outputDir.getAbsolutePath}")
+        outputDir.mkdirs()
+      }
     }
 
     val dbPort = cl.getOptionValue(OPTION_DB_PORT, "27017").toInt
@@ -321,7 +324,7 @@ object SparkROProjector {
       CliOption.builder(OPTION_READ_FROM_REACHABLES_DB).
         longOpt("reachables-db").
         desc("Specifies  to read input inchis from a reachables DB."),
-      
+
       CliOption.builder(OPTION_SUBSTRATES_LISTS).
         required(true).
         hasArgs.
@@ -335,8 +338,8 @@ object SparkROProjector {
         desc("A directory in which to write per-RO result files"),
 
       CliOption.builder(OPTION_WRITE_PROJECTIONS_TO_DB).
-        longOpt("project-on-database").
-        desc("Whether to project the results into the database indicated instead of writing to a file."),
+        longOpt("write-to-database").
+        desc("Whether to write the results into the database indicated instead of writing to a file."),
 
       CliOption.builder(OPTION_VALID_CHEMICAL_TYPE).
         longOpt("valid-chemical-types").
