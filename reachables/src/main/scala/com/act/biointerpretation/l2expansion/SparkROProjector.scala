@@ -13,7 +13,7 @@ import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, M
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.act.workflow.tool_manager.jobs.management.JobManager
 import com.act.workflow.tool_manager.tool_wrappers.SparkWrapper
-import com.mongodb.{BasicDBObject, Mongo}
+import com.mongodb.{BasicDBObject, DBCollection, DBCursor, DBObject, Mongo}
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.jena.sparql.procedure.library.debug
 import org.apache.log4j.LogManager
@@ -23,10 +23,10 @@ import spray.json._
 
 import scala.collection.JavaConverters
 import scala.collection.JavaConverters._
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 // Basic storage class for serializing and deserializing projection results
-case class ProjectionResult(substrate: List[String], ros: String, products: List[String])
+case class ProjectionResult(substrates: List[String], ros: String, products: List[String])
 
 object ProjectionResultProtocol extends DefaultJsonProtocol {
   implicit val projectionFormat = jsonFormat3(ProjectionResult)
@@ -110,23 +110,23 @@ object SparkInstance {
     val resultingReactions: Stream[ProjectionResult] = importedMolecules.permutations.filter(possibleSubstrates(ro)).
       flatMap(substrateOrdering => {
 
-      // Setup reactor
-      reactor.setReactants(substrateOrdering.toArray)
+        // Setup reactor
+        reactor.setReactants(substrateOrdering.toArray)
 
-      // Generate reactions
-      val reactedValues: Stream[Array[Molecule]] = if (exhaustive) {
-        Stream.continually(Option(reactor.react())).takeWhile(_.isDefined).flatMap(_.toStream)
-      } else {
-        val result = Option(reactor.react())
-        if (result.isDefined) Stream(result.get) else Stream()
-      }
+        // Generate reactions
+        val reactedValues: Stream[Array[Molecule]] = if (exhaustive) {
+          Stream.continually(Option(reactor.react())).takeWhile(_.isDefined).flatMap(_.toStream)
+        } else {
+          val result = Option(reactor.react())
+          if (result.isDefined) Stream(result.get) else Stream()
+        }
 
-      // Map the resulting reactions to a consistent format.
-      val partiallyAppliedMapper: List[Molecule] => Option[ProjectionResult] =
+        // Map the resulting reactions to a consistent format.
+        val partiallyAppliedMapper: List[Molecule] => Option[ProjectionResult] =
         mapReactionsToResult(inputs, ro.getId.toString)
 
-      reactedValues.flatMap(potentialProducts => partiallyAppliedMapper(potentialProducts.toList))
-    }).toStream
+        reactedValues.flatMap(potentialProducts => partiallyAppliedMapper(potentialProducts.toList))
+      }).toStream
 
     // Output stream
     resultingReactions
@@ -175,6 +175,7 @@ object SparkInstance {
 object SparkROProjector {
   val OPTION_EXHAUSTIVE = "e"
   val OPTION_SUBSTRATES_LISTS = "i"
+  val OPTION_READ_FROM_REACHABLES_DB = "r"
   val OPTION_LICENSE_FILE = "l"
   val OPTION_SPARK_MASTER = "m"
   val OPTION_OUTPUT_DIRECTORY = "o"
@@ -210,10 +211,13 @@ object SparkROProjector {
     }
 
     val dbPort = cl.getOptionValue(OPTION_DB_PORT, "27017").toInt
-   val dbHost = cl.getOptionValue(OPTION_DB_HOST, "localhost")
+    val dbHost = cl.getOptionValue(OPTION_DB_HOST, "localhost")
 
     val validInchis: Stream[Stream[String]] =
-      if (cl.hasOption(OPTION_SUBSTRATES_LISTS)) {
+      if (cl.hasOption(OPTION_READ_FROM_REACHABLES_DB)) {
+        val inchiCorpus = readFromReachablesDatabase(cl.getOptionValue(OPTION_DB_NAME), dbPort, dbHost)
+        inchiSourceFromCorpuses(List[L2InchiCorpus](inchiCorpus))
+      } else if (cl.hasOption(OPTION_SUBSTRATES_LISTS)) {
         inchiSourceFromFiles(cl.getOptionValues(OPTION_SUBSTRATES_LISTS).toList)
       } else if (cl.hasOption(OPTION_DB_NAME)) {
         inchiSourceFromDB(cl.getOptionValue(OPTION_DB_NAME), dbPort, dbHost)
@@ -225,8 +229,11 @@ object SparkROProjector {
 
     // Setup spark connection
     val conf = new SparkConf().
-      setAppName(s"${if (cl.hasOption(OPTION_EXHAUSTIVE)) "Exhaustive" else ""} ${if (cl.hasOption(OPTION_REVERSE))
-        "Reverse" else ""} ${validInchis.head.length} RO Projection").
+      setAppName(s"${if (cl.hasOption(OPTION_EXHAUSTIVE)) "Exhaustive" else ""} ${
+        if (cl.hasOption(OPTION_REVERSE))
+          "Reverse"
+        else ""
+      } ${validInchis.head.length} RO Projection").
       setMaster(cl.getOptionValue(OPTION_SPARK_MASTER, DEFAULT_SPARK_MASTER))
 
     // Allow multiple jobs to allocate
@@ -255,22 +262,27 @@ object SparkROProjector {
     if (!cl.hasOption(OPTION_WRITE_PROJECTIONS_TO_DB)) {
       writeToJsonFile(resultsRDD, outputDir)
     } else {
-      projectOnDatabase(resultsRDD, cl.getOptionValue(OPTION_DB_NAME), dbPort, dbHost)
+      writeToReachablesDatabase(resultsRDD, cl.getOptionValue(OPTION_DB_NAME), dbPort, dbHost)
     }
   }
 
-  private def inchiSourceFromFiles(fileNames: List[String]) : Stream[Stream[String]] = {
+  private def inchiSourceFromFiles(fileNames: List[String]): Stream[Stream[String]] = {
     val substrateCorpuses: List[L2InchiCorpus] = fileNames.map(x => {
       val inchiCorpus = new L2InchiCorpus()
       inchiCorpus.loadCorpus(new File(x))
       inchiCorpus
     })
 
+    inchiSourceFromCorpuses(substrateCorpuses)
+  }
+
+  private def inchiSourceFromCorpuses(inchiCorpuses: List[L2InchiCorpus]): Stream[Stream[String]] = {
     // List of all unique InChIs in each corpus
-    val inchiCorpuses: List[List[String]] = substrateCorpuses.map(_.getInchiList.asScala.distinct.toList)
+    val inchiLists: List[List[String]] = inchiCorpuses.map(_.getInchiList.asScala.distinct.toList)
 
     // List of combinations of InChIs
-    val inchiCombinations: Stream[Stream[String]] = combinationList(inchiCorpuses.map(_.toStream).toStream)
+    val inchiCombinations: Stream[Stream[String]] = combinationList(inchiLists.map(_.toStream).toStream)
+
 
     // TODO Move this filtering into combinationsList so that it is lazily evaluated as we need the elements.
     LOGGER.info("Attempting to filter out combinations with invalid InChIs.  " +
@@ -306,6 +318,10 @@ object SparkROProjector {
         longOpt("license-file").
         desc("A path to the Chemaxon license file to load, mainly for checking license validity"),
 
+      CliOption.builder(OPTION_READ_FROM_REACHABLES_DB).
+        longOpt("reachables-db").
+        desc("Specifies  to read input inchis from a reachables DB."),
+      
       CliOption.builder(OPTION_SUBSTRATES_LISTS).
         required(true).
         hasArgs.
@@ -388,19 +404,33 @@ object SparkROProjector {
     System.exit(1)
   }
 
-  private def projectOnDatabase(resultsRDD: RDD[ProjectionResult], database: String, port: Int, host: String): Unit ={
-    val mongo = new Mongo(host, port)
-    val mongoDB = mongo.getDB(database)
-    val reachables = mongoDB.getCollection("reachables")
+  private def readFromReachablesDatabase(database: String, port: Int, host: String): L2InchiCorpus = {
+    val reachables = getReachablesCollection(database, port, host)
 
-    def addProjectionToDatabase(projection: ProjectionResult): Unit ={
+    val cursor: DBCursor = reachables.find()
+
+    val inchis: ArrayBuffer[String] = ArrayBuffer[String]()
+
+    while (cursor.hasNext) {
+      val entry: DBObject = cursor.next
+      val inchiString: String = entry.get("InChI").asInstanceOf[String]
+      inchis.append(inchiString)
+    }
+
+    new L2InchiCorpus(inchis.toList.asJava)
+  }
+
+  private def writeToReachablesDatabase(resultsRDD: RDD[ProjectionResult], database: String, port: Int, host: String): Unit = {
+    val reachables = getReachablesCollection(database, port, host)
+
+    def addProjectionToDatabase(projection: ProjectionResult): Unit = {
       projection.products.foreach(p => {
         val query = new BasicDBObject()
         query.put("InChI", p)
 
         val update = new BasicDBObject()
         update.put("InChI", p)
-        projection.substrate.foreach(s => update.put(s"precursors.$s", 1))
+        projection.substrates.foreach(s => update.put(s"precursors.$s", 1))
 
         reachables.update(query, update, true, false)
       })
@@ -412,6 +442,12 @@ object SparkROProjector {
 
     val resultsIterator = resultsRDD.toLocalIterator
     resultsIterator.foreach(addProjectionToDatabase)
+  }
+
+  private def getReachablesCollection(database: String, port: Int, host: String): DBCollection = {
+    val mongo = new Mongo(host, port)
+    val mongoDB = mongo.getDB(database)
+    mongoDB.getCollection("reachables")
   }
 
   private def writeToJsonFile(resultsRDD: RDD[ProjectionResult], outputDir: File): Unit = {
@@ -514,8 +550,8 @@ object SparkROProjector {
 
     // We need to replace the $ because scala ends the canonical name with that.
     val sparkJob =
-      SparkWrapper.runClassPath(
-        assembledJar.getAbsolutePath, sparkMaster)(getClass.getCanonicalName.replaceAll("\\$$", ""), classArgs)(memory)
+    SparkWrapper.runClassPath(
+      assembledJar.getAbsolutePath, sparkMaster)(getClass.getCanonicalName.replaceAll("\\$$", ""), classArgs)(memory)
 
     // Block until finished
     JobManager.startJobAndAwaitUntilWorkflowComplete(sparkJob)
