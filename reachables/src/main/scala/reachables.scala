@@ -16,7 +16,7 @@ object reachables {
       println("Example: run --prefix=r --extra=xref.CHEBI;xref.DEA;xref.DRUGBANK")
       println("         will make sure all CHEBI/DEA/DRUGBANK chemicals are included. Those that are already reachable will be in the normal part of the tree and those that are not will have parent_id < -1 ")
       System.exit(-1);
-    } 
+    }
 
     val params = new CmdLine(args)
     val prefix = params.get("prefix") match { 

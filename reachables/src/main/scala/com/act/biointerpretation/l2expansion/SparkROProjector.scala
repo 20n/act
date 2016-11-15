@@ -13,7 +13,7 @@ import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, M
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.act.workflow.tool_manager.jobs.management.JobManager
 import com.act.workflow.tool_manager.tool_wrappers.SparkWrapper
-import com.ibm.db2.jcc.am.{ro, so}
+import com.mongodb.{BasicDBObject, Mongo}
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.jena.sparql.procedure.library.debug
 import org.apache.log4j.LogManager
@@ -152,7 +152,7 @@ object SparkInstance {
   private def matchesSubstructure(query: Molecule, target: Molecule): Boolean = {
     val q = MoleculeExporter.exportAsSmarts(query)
     val t = MoleculeExporter.exportAsSmarts(target)
-    LOGGER.info(s"Running search ${q} on ${t}")
+    LOGGER.info(s"Running search $q on $t")
     val search = substructureSearch.get()
     search.setQuery(query)
     search.setTarget(target)
@@ -180,6 +180,10 @@ object SparkROProjector {
   val OPTION_OUTPUT_DIRECTORY = "o"
   val OPTION_REVERSE = "r"
   val OPTION_VALID_CHEMICAL_TYPE = "v"
+  val OPTION_DB_NAME = "d"
+  val OPTION_DB_PORT = "p"
+  val OPTION_DB_HOST = "t"
+  val OPTION_WRITE_PROJECTIONS_TO_DB = "w"
 
   private val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   HELP_FORMATTER.setWidth(100)
@@ -205,14 +209,14 @@ object SparkROProjector {
       outputDir.mkdirs()
     }
 
+    val dbPort = cl.getOptionValue(OPTION_DB_PORT, "27017").toInt
+   val dbHost = cl.getOptionValue(OPTION_DB_HOST, "localhost")
+
     val validInchis: Stream[Stream[String]] =
       if (cl.hasOption(OPTION_SUBSTRATES_LISTS)) {
         inchiSourceFromFiles(cl.getOptionValues(OPTION_SUBSTRATES_LISTS).toList)
       } else if (cl.hasOption(OPTION_DB_NAME)) {
-        inchiSourceFromDB(cl.getOptionValue(OPTION_DB_NAME),
-          cl.getOptionValue(OPTION_DB_PORT, "27017").toInt,
-          cl.getOptionValue(OPTION_DB_HOST, "localhost")
-        )
+        inchiSourceFromDB(cl.getOptionValue(OPTION_DB_NAME), dbPort, dbHost)
       } else {
         LOGGER.error("Must specify either substrate list(s) or a DB from which to read")
         exitWithHelp(getCommandLineOptions)
@@ -221,8 +225,8 @@ object SparkROProjector {
 
     // Setup spark connection
     val conf = new SparkConf().
-      setAppName(s"${if (cl.hasOption(OPTION_EXHAUSTIVE)) "Exhaustive"} ${if (cl.hasOption(OPTION_REVERSE)) "Reverse"} " +
-        s"${validInchis.head.length} Substrate${if (validInchis.head.length != 1) "s"} RO Projection").
+      setAppName(s"${if (cl.hasOption(OPTION_EXHAUSTIVE)) "Exhaustive" else ""} ${if (cl.hasOption(OPTION_REVERSE))
+        "Reverse" else ""} ${validInchis.head.length} RO Projection").
       setMaster(cl.getOptionValue(OPTION_SPARK_MASTER, DEFAULT_SPARK_MASTER))
 
     // Allow multiple jobs to allocate
@@ -248,7 +252,11 @@ object SparkROProjector {
       SparkInstance.project(licenseFileName)(cl.hasOption(OPTION_REVERSE), cl.hasOption(OPTION_EXHAUSTIVE))(inchi.toList)
     })
 
-    handleProjectionTermination(resultsRDD, outputDir)
+    if (!cl.hasOption(OPTION_WRITE_PROJECTIONS_TO_DB)) {
+      writeToJsonFile(resultsRDD, outputDir)
+    } else {
+      projectOnDatabase(resultsRDD, cl.getOptionValue(OPTION_DB_NAME), dbPort, dbHost)
+    }
   }
 
   private def inchiSourceFromFiles(fileNames: List[String]) : Stream[Stream[String]] = {
@@ -306,10 +314,13 @@ object SparkROProjector {
         desc("A list of substrate InChIs onto which to project ROs"),
 
       CliOption.builder(OPTION_OUTPUT_DIRECTORY).
-        required(true).
         hasArg.
         longOpt("output-directory").
         desc("A directory in which to write per-RO result files"),
+
+      CliOption.builder(OPTION_WRITE_PROJECTIONS_TO_DB).
+        longOpt("project-on-database").
+        desc("Whether to project the results into the database indicated instead of writing to a file."),
 
       CliOption.builder(OPTION_VALID_CHEMICAL_TYPE).
         longOpt("valid-chemical-types").
@@ -377,7 +388,33 @@ object SparkROProjector {
     System.exit(1)
   }
 
-  private def handleProjectionTermination(resultsRDD: RDD[ProjectionResult], outputDir: File): Unit = {
+  private def projectOnDatabase(resultsRDD: RDD[ProjectionResult], database: String, port: Int, host: String): Unit ={
+    val mongo = new Mongo(host, port)
+    val mongoDB = mongo.getDB(database)
+    val reachables = mongoDB.getCollection("reachables")
+
+    def addProjectionToDatabase(projection: ProjectionResult): Unit ={
+      projection.products.foreach(p => {
+        val query = new BasicDBObject()
+        query.put("InChI", p)
+
+        val update = new BasicDBObject()
+        update.put("InChI", p)
+        projection.substrate.foreach(s => update.put(s"precursors.$s", 1))
+
+        reachables.update(query, update, true, false)
+      })
+    }
+
+    val resultCount = resultsRDD.persist().count()
+    LOGGER.info(s"Projection completed with $resultCount results")
+
+
+    val resultsIterator = resultsRDD.toLocalIterator
+    resultsIterator.foreach(addProjectionToDatabase)
+  }
+
+  private def writeToJsonFile(resultsRDD: RDD[ProjectionResult], outputDir: File): Unit = {
     /* This next part represents us jumping through some hoops (that are possibly on fire) in order to make Spark do
      * the thing we want it to do: project in parallel but stream results back for storage.
      *
