@@ -3,6 +3,7 @@ package com.act.reachables
 import java.io.{File, PrintWriter}
 
 import act.server.MongoDB
+import com.act.biointerpretation.cofactorremoval.CofactorsCorpus
 
 import scala.collection.JavaConversions._
 import scala.io.Source
@@ -49,14 +50,18 @@ object reachables {
         case _ => null
       }
 
-    val universal_cofactors = 
+    val universal_cofactors: Set[String] =
       opts.get("useCofactorsFile") match { 
         case Some(file) => {
           val data = Source.fromFile(file).getLines
           val inchis = data.filter{ x => x.length > 0 && x.charAt(0) != '#' }
-          collection.mutable.Set(inchis.toSeq:_*)
+          collection.mutable.Set(inchis.toSeq:_*).toSet
         }
-        case _ => null
+        case _ => {
+          val corpy = new CofactorsCorpus()
+          corpy.loadCorpus()
+          corpy.getCofactors.map(x => x.getInchi).toSet
+        }
       }
 
     val regression_suite_files = 
@@ -116,14 +121,14 @@ object reachables {
     val testcols: List[List[String]] = testlines.map(line => line.split("\t").toList)
 
     val hdrs = Set("inchi", "name", "plausibility", "comment", "reference")
-    if (testcols.length == 0 || !testcols(0).toSet.equals(hdrs)) {
+    if (testcols.isEmpty || !testcols.head.toSet.equals(hdrs)) {
       println("Invalid test file: " + test_file)
       println("\tExpected: " + hdrs.toString)
-      println("\tFound: " + testcols(0).toString)
+      println("\tFound: " + testcols.head.toString)
     } else {
 
       // delete the header from the data set, leaving behind only the test rows
-      val hdr = testcols(0)
+      val hdr = testcols.head
       val rows = testcols.drop(1)
 
       def add_hdrs(row: List[String]) = hdr.zip(row)
