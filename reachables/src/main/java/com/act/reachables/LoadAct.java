@@ -5,6 +5,10 @@ import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Chemical.REFS;
 import act.shared.Reaction;
+import chemaxon.formats.MolFormatException;
+import com.act.analysis.chemicals.molecules.MoleculeExporter$;
+import com.act.analysis.chemicals.molecules.MoleculeFormat$;
+import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import com.mongodb.DBCursor;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONArray;
@@ -484,7 +488,15 @@ public class LoadAct extends SteppedTask {
       logProgress("\t pullChemicalsReferencedInRxns: %d\r", count++);
       Chemical c = this.db.getChemicalFromChemicalUUID(id);
       ActData.instance().chemInchis.put(c.getInChI(), id);
-      ActData.instance().chemId2Inchis.put(id, c.getInChI());
+
+      // Import and Export quickly to make consistent format
+      try {
+        String cleanedInchi = MoleculeExporter$.MODULE$.exportMolecule(MoleculeImporter.importMolecule(c), MoleculeFormat$.MODULE$.strictNoStereoInchi());
+        ActData.instance().chemId2Inchis.put(id, cleanedInchi);
+      } catch (MolFormatException e){
+        ActData.instance().chemId2Inchis.put(id, c.getInChI());
+      }
+
       ActData.instance().chemIdIsAbstraction.put(id, isAbstractInChI(c.getInChI()));
       String name = c.getShortestBRENDAName();
       if (name == null) {
