@@ -23,23 +23,29 @@ public class ReachablesProjectionUpdate {
 
   public void updateReachables(DBCollection reachables) {
     for (String product : JavaConversions.asJavaCollection(projectionResult.products())) {
-      BasicDBObject newProduct = new BasicDBObject().append(INCHI_KEY, product);
+      // The query object for this product
+      BasicDBObject newProductQuery = new BasicDBObject().append(INCHI_KEY, product);
 
+      // DB list of the substrates of this projection
       Collection<String> substrates = JavaConversions.asJavaCollection(projectionResult.substrates());
       BasicDBList substrateList = new BasicDBList();
       substrateList.addAll(substrates);
 
+      // DB list of the one RO associated with this projection
       BasicDBList roList = new BasicDBList();
       roList.add(projectionResult.ros());
 
+      // The full entry to be added to the product's precursor list
       BasicDBObject precursorEntry = new BasicDBObject()
           .append(SUBSTRATES_KEY, substrateList)
           .append(RO_KEY, roList);
 
+      // The command to push the precursor entry onto the precursor list
       BasicDBObject precursors = new BasicDBObject();
       precursors.append("$push", new BasicDBObject(PRECURSOR_KEY, precursorEntry));
 
-      reachables.update(newProduct, precursors, true, false);
+      // Do the update!
+      reachables.update(newProductQuery, precursors, true, false);
     }
   }
 }

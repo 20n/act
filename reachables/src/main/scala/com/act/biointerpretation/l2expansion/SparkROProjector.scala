@@ -194,7 +194,6 @@ object SparkROProjector {
   private val SPARK_LOG_LEVEL = "WARN"
   private val DEFAULT_SPARK_MASTER = "spark://spark-master:7077"
 
-
   def main(args: Array[String]): Unit = {
     val cl = parseCommandLineOptions(args)
 
@@ -233,11 +232,8 @@ object SparkROProjector {
 
     // Setup spark connection
     val conf = new SparkConf().
-      setAppName(s"${if (cl.hasOption(OPTION_EXHAUSTIVE)) "Exhaustive" else ""} ${
-        if (cl.hasOption(OPTION_REVERSE))
-          "Reverse"
-        else ""
-      } ${validInchis.head.length} RO Projection").
+      setAppName(s"${if (cl.hasOption(OPTION_EXHAUSTIVE)) "Exhaustive"} ${if (cl.hasOption(OPTION_REVERSE)) "Reverse"} " +
+        s"${validInchis.head.length} Substrate${if (validInchis.head.length != 1) "s"} RO Projection").
       setMaster(cl.getOptionValue(OPTION_SPARK_MASTER, DEFAULT_SPARK_MASTER))
 
     // Allow multiple jobs to allocate
@@ -340,7 +336,7 @@ object SparkROProjector {
 
       CliOption.builder(OPTION_WRITE_PROJECTIONS_TO_DB).
         longOpt("write-to-database").
-        desc("Whether to write the results into the database indicated instead of writing to a file."),
+        desc("Specifies to write the results into the supplied reachables database instead of writing to a file."),
 
       CliOption.builder(OPTION_VALID_CHEMICAL_TYPE).
         longOpt("valid-chemical-types").
@@ -408,11 +404,12 @@ object SparkROProjector {
     System.exit(1)
   }
 
+  /**
+    * Reads all the inchis from a reachables database, and returns them as an L2InchiCorpus.
+    */
   private def readFromReachablesDatabase(database: String, port: Int, host: String): L2InchiCorpus = {
     val reachables = getReachablesCollection(database, port, host)
-
     val cursor: DBCursor = reachables.find()
-
     val inchis: ArrayBuffer[String] = ArrayBuffer[String]()
 
     while (cursor.hasNext) {
@@ -424,21 +421,27 @@ object SparkROProjector {
     new L2InchiCorpus(inchis.toList.asJava)
   }
 
+  /**
+    * Writes the projection results to the reachables database.
+    * Creates new database entries for each predicted product (if none exists), and adds the substrates
+    * to that entry as precursors.
+    */
   private def writeToReachablesDatabase(resultsRDD: RDD[ProjectionResult], database: String, port: Int, host: String): Unit = {
     val reachables = getReachablesCollection(database, port, host)
 
-    def addProjectionToDatabase(projection: ProjectionResult): Unit = {
-      val updater = new ReachablesProjectionUpdate(projection)
-      updater.updateReachables(reachables)
-    }
-
     val resultCount = resultsRDD.persist().count()
     LOGGER.info(s"Projection completed with $resultCount results")
-
     val resultsIterator = resultsRDD.toLocalIterator
-    resultsIterator.foreach(addProjectionToDatabase)
+
+    resultsIterator.foreach( projection => {
+      val updater = new ReachablesProjectionUpdate(projection)
+      updater.updateReachables(reachables)
+    })
   }
 
+  /**
+    * Helper method to get the reachables collection from the wiki_reachables DB or equivalent.
+    */
   private def getReachablesCollection(database: String, port: Int, host: String): DBCollection = {
     val mongo = new Mongo(host, port)
     val mongoDB = mongo.getDB(database)
@@ -545,8 +548,8 @@ object SparkROProjector {
 
     // We need to replace the $ because scala ends the canonical name with that.
     val sparkJob =
-    SparkWrapper.runClassPath(
-      assembledJar.getAbsolutePath, sparkMaster)(getClass.getCanonicalName.replaceAll("\\$$", ""), classArgs)(memory)
+      SparkWrapper.runClassPath(
+        assembledJar.getAbsolutePath, sparkMaster)(getClass.getCanonicalName.replaceAll("\\$$", ""), classArgs)(memory)
 
     // Block until finished
     JobManager.startJobAndAwaitUntilWorkflowComplete(sparkJob)
