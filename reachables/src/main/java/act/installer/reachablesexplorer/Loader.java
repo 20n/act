@@ -3,7 +3,13 @@ package act.installer.reachablesexplorer;
 
 import act.server.MongoDB;
 import act.shared.Chemical;
+import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolFormatException;
+import chemaxon.struc.Molecule;
+import com.act.analysis.chemicals.molecules.MoleculeExporter;
+import com.act.analysis.chemicals.molecules.MoleculeFormat;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
+import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.act.biointerpretation.mechanisminspection.ReactionRenderer;
 import com.act.jobs.FileChecker;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,6 +18,8 @@ import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.mongojack.JacksonDBCollection;
 
 import java.io.File;
@@ -19,13 +27,15 @@ import java.io.IOException;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.List;
 
 public class Loader {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
 
-  private static final String ASSETS_LOCATION = "/Users/tom/test-cache/";
+  private static final String ASSETS_LOCATION = "/Volumes/data-level1/data/reachables-explorer-rendering-cache";
   private static final String PNG_EXTENSION = ".png";
   private static final String DATABASE_BING_ONLY_HOST = "localhost";
   private static final String DATABASE_BING_ONLY_PORT = "27017";
@@ -35,20 +45,25 @@ public class Loader {
   private ReactionRenderer renderer;
   private DBCollection reachablesCollection;
   private JacksonDBCollection<Reachable, String> jacksonReachablesCollection;
+  private L2InchiCorpus inchiCorpus;
 
   public Loader() throws UnknownHostException {
     db = new MongoDB();
     wcGenerator = new WordCloudGenerator(DATABASE_BING_ONLY_HOST, DATABASE_BING_ONLY_PORT);
     renderer = new ReactionRenderer();
 
-    MongoClient mongoClient = new MongoClient(new ServerAddress("localhost", 27017));
+    MongoClient mongoClient = new MongoClient(new ServerAddress("localhost", 27018));
     DB reachables = mongoClient.getDB("wiki_reachables");
     reachablesCollection = reachables.getCollection("test");
     jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
   }
 
 
-  public String generateWordcloud(String inchi) throws IOException {
+  public String generateWordcloud(String inchi) {
+
+    // TODO: improve wordcloud generation. Currently, each instance open a mongo connection on the R side.
+    // By doing data manipulation in Java and utilizing Rengine, we could make this much better
+    // Wordclouds could be generated ahead of time this way, using the inchi coprus
     String md5 = DigestUtils.md5Hex(inchi);
     String postfix = new StringBuilder("-").append(md5).append(PNG_EXTENSION).toString();
 
@@ -57,15 +72,20 @@ public class Loader {
     File wordcloud = Paths.get(ASSETS_LOCATION, wordcloudFilename).toFile();
 
     if (!Files.exists(wordcloud.toPath())) {
-      wcGenerator.generateWordCloud(inchi, wordcloud);
-      FileChecker.verifyInputFile(wordcloud);
+      try {
+        wcGenerator.generateWordCloud(inchi, wordcloud);
+        FileChecker.verifyInputFile(wordcloud);
+      } catch (IOException e) {
+        LOGGER.error("Unable to generate wordcloud for %s at location %s", inchi, wordcloud.toPath().toString());
+        return null;
+      }
     }
 
     return wordcloudFilename;
   }
 
 
-  public String generateRendering(String inchi, Chemical c) throws IOException {
+  public String generateRendering(String inchi, Molecule mol) {
     String md5 = DigestUtils.md5Hex(inchi);
     String postfix = new StringBuilder("-").append(md5).append(PNG_EXTENSION).toString();
 
@@ -73,36 +93,72 @@ public class Loader {
     File rendering = Paths.get(ASSETS_LOCATION, renderingFilename).toFile();
 
     if (!Files.exists(rendering.toPath())) {
-      renderer.drawMolecule(MoleculeImporter.importMolecule(c), rendering);
-      FileChecker.verifyInputFile(rendering);
+      try {
+        renderer.drawMolecule(mol, rendering);
+        FileChecker.verifyInputFile(rendering);
+      } catch (IOException e) {
+        LOGGER.error("Unable to generate rendering for %s at location %s", inchi, rendering.toPath().toString());
+        return null;
+      }
     }
 
     return renderingFilename;
   }
 
-  public Reachable constructReachable(String inchi) throws IOException {
+  public Reachable constructReachable(String inchi) {
+    Molecule mol;
+    String smiles;
+    String inchikey;
+    try {
+      mol = MoleculeImporter.importMolecule(inchi);
+    } catch (MolFormatException e) {
+      // TODO: add logging
+      return null;
+    }
+
     Chemical c = db.getChemicalFromInChI(inchi);
-    List<String> names = c.getBrendaNames();
-    String smiles = c.getSmiles();
-    String renderingFilename = generateRendering(inchi, c);
+    List<String> names = c != null ? c.getBrendaNames() : Collections.emptyList();
+
+    try {
+      smiles = MoleculeExporter.exportMolecule(mol, MoleculeFormat.smiles$.MODULE$);
+    } catch (Exception e) {
+      LOGGER.error("Failed to export molecule %s to smiles", inchi);
+      smiles = null;
+    }
+
+    try {
+      // TODO: add inchi key the Michael's Molecule Exporter
+      inchikey = MolExporter.exportToFormat(mol, "inchikey");
+    } catch (Exception e) {
+      LOGGER.error("Failed to export molecule %s to inchi key", inchi);
+      inchikey = null;
+    }
+
+    String renderingFilename = generateRendering(inchi, mol);
     String wordcloudFilename = generateWordcloud(inchi);
 
-    return new Reachable(inchi, smiles, renderingFilename, names, wordcloudFilename);
+    return new Reachable(inchi, smiles, inchikey, renderingFilename, names, wordcloudFilename);
   }
 
-  public void insertReachablesInDb(Reachable reachable) {
-    jacksonReachablesCollection.insert(reachable);
+  public void loadReachables(File inchiFile) throws IOException {
+    inchiCorpus = new L2InchiCorpus();
+    inchiCorpus.loadCorpus(inchiFile);
+    List<String> inchis = inchiCorpus.getInchiList();
+    Reachable reachable;
+    for (String inchi : inchis) {
+      reachable = constructReachable(inchi);
+      System.out.println(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(reachable));
+      // TODO: change the following to update the database maybe?
+      jacksonReachablesCollection.insert(reachable);
+    }
   }
 
 
 
   public static void main(String[] args) throws IOException {
 
-    String inchi = "InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)";
-    Loader l = new Loader();
-    Reachable r = l.constructReachable(inchi);
-    System.out.println(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(r));
-    l.jacksonReachablesCollection.insert(r);
+    Loader loader = new Loader();
+    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis"));
   }
 
 

@@ -9,10 +9,9 @@ output.file <- kArgs[2]
 host <- kArgs[3]
 port <- kArgs[4]
 mongo <- mongo.create(paste(host, port, sep = ":"))
-mongo.is.connected(mongo)
-mongo.get.databases(mongo)
+
 query <- list(InChI=input.inchi)
-print(query)
+
 result <- mongo.find.one(mongo, "actv01.chemicals", query)
 
 l <- mongo.bson.to.list(result)
