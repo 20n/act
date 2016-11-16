@@ -1,16 +1,22 @@
 package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.cross_db
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import act.server.MongoDB
 import act.shared.Reaction
 import chemaxon.struc.Molecule
-import com.act.analysis.chemicals.molecules.{MoleculeFormat, MoleculeImporter}
+import com.act.analysis.chemicals.molecules.MoleculeImporter
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.chemical_db.QueryChemicals
+import org.apache.logging.log4j.LogManager
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 
-trait ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities with QueryChemicals {
+object ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities {
+  // By default we say chemicals without coefficients have a coefficient of 1
+  private val defaultReactionChemicalCoefficient = 1
+  private val LOGGER = LogManager.getLogger(getClass)
   /**
     * Provides an easier converter from Inchi => Molecule such that the returned reactions is all in the Molecule format.
     */
@@ -39,23 +45,66 @@ trait ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities with Query
       return List()
     }
 
-    val rxnList = dbReactionIdsIterator.get.toList
+    createReactions(mongoConnection)(dbReactionIdsIterator.get).toList
+  }
 
-    // Get all chemicals in one query
-    val chemicals: List[Long] =
-      rxnList.flatMap(x => x.getProducts.toList.map(_.toLong) ::: x.getSubstrates.toList.map(_.toLong)).distinct
-    val chemicalInchis: Map[Long, Option[String]] = getChemicalStringsByIds(mongoConnection)(chemicals)
+  def querySubstrateAndProductInchis(mongoConnection: MongoDB): List[Option[InchiReaction]] = {
+    createReactions(mongoConnection)(mongoConnection.getReactionsIterator).toList
+  }
 
-    val moleculeMap: List[Option[InchiReaction]] = rxnList.toStream.map(result => {
+  def querySubstrateAndProductInchisIterator(mongoConnection: MongoDB): Iterator[Option[InchiReaction]] = {
+    createReactions(mongoConnection)(mongoConnection.getReactionsIterator)
+  }
+
+  /*
+    We flatten the array because `Option` is easier to handle in Scala than in Java.
+    The expected use case is to supply a list of reaction IDs and want a list of reactions
+    w/ InChIs back, so we just supply that for Java users.
+   */
+  def querySubstrateAndProductInchisJava(mongoConnection: MongoDB): java.util.List[InchiReaction] = {
+    createReactions(mongoConnection)(mongoConnection.getReactionsIterator).toList.flatten.asJava
+  }
+
+  def querySubstrateAndProductInchisJavaIterator(mongoConnection: MongoDB): java.util.Iterator[InchiReaction] = {
+    createReactions(mongoConnection)(mongoConnection.getReactionsIterator).flatten.asJava
+  }
+
+  private def createReactions(mongoConnection: MongoDB)(iter: Iterator[Reaction]): Iterator[Option[InchiReaction]] = {
+    def chemicalIdToStrings(chemicalStringCache: Map[Long, Option[String]])
+                           (substrateId: Long, rawCoefficient: Option[Integer]): List[Option[String]] ={
+      val chemicalString: Option[String] = chemicalStringCache(substrateId)
+      val coefficient = rawCoefficient.getOrElse[Integer](Integer.valueOf(defaultReactionChemicalCoefficient))
+      // Creates a list that has the chemical string repeated by the coefficient of that chemical string.
+      List.fill(coefficient)(chemicalString)
+    }
+
+    val count = new AtomicInteger()
+    iter.map(result => {
       val reactionId = result.getUUID
 
+      // Compute all the substrates and product strings for this reaction in one query
+      val chemicals = (result.getSubstrates.toList ::: result.getProducts.toList).distinct.map(x => x.toLong)
+      val thisReactionsChemicals: Map[Long, Option[String]] = QueryChemicals.getChemicalStringsByIds(mongoConnection)(chemicals)
+
+      // We create a mapper which uses the current cache to map a chemicalId and Coefficient
+      // to a list of one or more strings.
+      val chemicalMapper: (Long, Option[Integer]) => List[Option[String]] = chemicalIdToStrings(thisReactionsChemicals)
+
+      // Substrates first
       val substrateMolecules: List[Option[String]] = result.getSubstrates.toList.flatMap(substrateId => {
-        List.fill(result.getSubstrateCoefficient(substrateId))(chemicalInchis(substrateId))
+        val rawCoefficient: Option[Integer] = Option(result.getSubstrateCoefficient(substrateId))
+        chemicalMapper(substrateId, rawCoefficient)
       })
 
+      // Then products
       val productMolecules: List[Option[String]] = result.getProducts.toList.flatMap(productId => {
-        List.fill(result.getProductCoefficient(productId))(chemicalInchis(productId))
+        val rawCoefficient: Option[Integer] = Option(result.getProductCoefficient(productId))
+        chemicalMapper(productId, rawCoefficient)
       })
+
+      if (count.incrementAndGet() % 1000 == 0){
+        LOGGER.info(s"Parsed ${count.get()} reactions so far.")
+      }
 
       // This drops FAKE and Abstract InChIs.
       if (substrateMolecules.forall(_.isDefined) && productMolecules.forall(_.isDefined)) {
@@ -63,9 +112,7 @@ trait ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities with Query
       } else {
         None
       }
-    }).toList
-
-    moleculeMap
+    })
   }
 
   /**
@@ -92,5 +139,4 @@ trait ReactionsToSubstratesAndProducts extends MongoWorkflowUtilities with Query
   case class MoleculeReaction(id: Int, substrates: List[Molecule], products: List[Molecule])
 
   case class InchiReaction(id: Int, substrates: List[String], products: List[String])
-
 }
