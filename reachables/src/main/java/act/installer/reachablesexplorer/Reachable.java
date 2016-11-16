@@ -40,10 +40,10 @@ public class Reachable {
       @JsonProperty("precursor_inchis")
       private List<String> precursorMolcules;
       @JsonProperty("source")
-      private String source;
+      private List<String> sources;
     }
 
-    @JsonProperty("precusors")
+    @JsonProperty("prediction_precusors")
     private List<Precusor> precusors;
 
 
