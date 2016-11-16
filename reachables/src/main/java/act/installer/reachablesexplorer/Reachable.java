@@ -14,6 +14,16 @@ public class Reachable {
     this.structureFilename = structureFilename;
     this.names = names;
     this.wordCloudFilename = wordCloudFilename;
+    this.precursorData = null;
+  }
+
+  public Reachable(String inchi, String smiles, String structureFilename, List<String> names, String wordCloudFilename, PrecursorData precursors) {
+    this.inchi = inchi;
+    this.smiles = smiles;
+    this.structureFilename = structureFilename;
+    this.names = names;
+    this.wordCloudFilename = wordCloudFilename;
+    this.precursorData = precursors;
   }
 
   private class WikipediaData {
@@ -23,6 +33,20 @@ public class Reachable {
 
     @JsonProperty("text")
     private String text;
+  }
+
+  class PrecursorData {
+    private class Precusor {
+      @JsonProperty("precursor_inchis")
+      private List<String> precursorMolcules;
+      @JsonProperty("source")
+      private String source;
+    }
+
+    @JsonProperty("precusors")
+    private List<Precusor> precusors;
+
+
   }
 
   private class SynonymData {
@@ -62,4 +86,7 @@ public class Reachable {
 
   @JsonProperty("usage-wordcloud-filename")
   private String wordCloudFilename;
+
+  @JsonProperty("precursor")
+  private PrecursorData precursorData;
 }
