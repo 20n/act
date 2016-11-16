@@ -311,31 +311,32 @@ public class LoadAct extends SteppedTask {
         ActData.instance().noSubstrateRxnsToProducts.put(rxnid, new ArrayList<>(filteredProducts));
       }
     } else {
-      for (long s : substrates) {
-        if (isCofactor(s) || ActData.instance().metaCycBigMolsOrRgrp.contains(s))
-          continue;
-        Node sub = Node.get(s, true);
-        ActData.instance().chemsInAct.put(s, sub);
-        ActData.instance().Act.addNode(sub, s);
-        for (long p : products) {
-          if (isCofactor(p) || ActData.instance().metaCycBigMolsOrRgrp.contains(p))
-            continue;
+      substrates.
+              stream().
+              filter(s -> isCofactor(s) || ActData.instance().metaCycBigMolsOrRgrp.contains(s)).
+              forEach(s -> {
+                Node sub = Node.get(s, true);
+                ActData.instance().chemsInAct.put(s, sub);
+                ActData.instance().Act.addNode(sub, s);
+                products.
+                        stream().
+                        filter(p -> isCofactor(p) || ActData.instance().metaCycBigMolsOrRgrp.contains(p)).
+                        forEach(p -> {
+                            // TODO: rxnECNumber rxnEasyDesc and rxnDataSource are only used
+                            // for information in cascades output. Do not load them during
+                            // reachables computation....
+                            // TODO: There is no reason to load all 5M of them either. cascades
+                            // only needs the ones that are referenced in the reachables computation
+                            // anySmallMoleculeEdges = true;
 
-          // TODO: rxnECNumber rxnEasyDesc and rxnDataSource are only used
-          // for information in cascades output. Do not load them during
-          // reachables computation....
-          // TODO: There is no reason to load all 5M of them either. cascades
-          // only needs the ones that are referenced in the reachables computation
-          // anySmallMoleculeEdges = true;
+                            Node prd = Node.get(p, true);
+                            ActData.instance().Act.addNode(prd, p);
+                            ActData.instance().chemsInAct.put(p, prd);
 
-          Node prd = Node.get(p, true);
-          ActData.instance().Act.addNode(prd, p);
-          ActData.instance().chemsInAct.put(p, prd);
-
-          Edge r = Edge.get(sub, prd, true);
-          ActData.instance().Act.addEdge(r);
-        }
-      }
+                            Edge r = Edge.get(sub, prd, true);
+                            ActData.instance().Act.addEdge(r);
+                        });
+              });
     }
 
 
