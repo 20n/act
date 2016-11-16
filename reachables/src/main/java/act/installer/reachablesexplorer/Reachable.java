@@ -8,8 +8,6 @@ import java.util.List;
 
 public class Reachable {
 
-
-
   public Reachable(String inchi, String smiles, String structureFilename, List<String> names, String wordCloudFilename) {
     this.inchi = inchi;
     this.smiles = smiles;
@@ -35,7 +33,18 @@ public class Reachable {
     private List<String> meshSynonyms;
   }
 
+  private String id;
   @ObjectId
+  @JsonProperty("_id")
+  public String getId() {
+    return id;
+  }
+  @ObjectId
+  @JsonProperty("_id")
+  public void setId(String id) {
+    this.id = id;
+  }
+
   @JsonProperty("inchi")
   private String inchi;
 
