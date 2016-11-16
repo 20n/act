@@ -8,9 +8,10 @@ import java.util.List;
 
 public class Reachable {
 
-  public Reachable(String inchi, String smiles, String structureFilename, List<String> names, String wordCloudFilename) {
+  public Reachable(String inchi, String smiles, String inchikey, String structureFilename, List<String> names, String wordCloudFilename) {
     this.inchi = inchi;
     this.smiles = smiles;
+    this.inchikey = inchikey;
     this.structureFilename = structureFilename;
     this.names = names;
     this.wordCloudFilename = wordCloudFilename;
@@ -74,6 +75,9 @@ public class Reachable {
 
   @JsonProperty("smiles")
   private String smiles;
+
+  @JsonProperty("inchikey")
+  private String inchikey;
 
   @JsonProperty("rendering-filename")
   private String structureFilename;
