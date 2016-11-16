@@ -194,9 +194,6 @@ object SparkROProjector {
   private val SPARK_LOG_LEVEL = "WARN"
   private val DEFAULT_SPARK_MASTER = "spark://spark-master:7077"
 
-  private val PRECURSOR_KEY = "prediction_precursors"
-  private val INCHI_KEY = "InChI"
-  private val RO_KEY = "ros"
 
   def main(args: Array[String]): Unit = {
     val cl = parseCommandLineOptions(args)
@@ -431,29 +428,12 @@ object SparkROProjector {
     val reachables = getReachablesCollection(database, port, host)
 
     def addProjectionToDatabase(projection: ProjectionResult): Unit = {
-
-      projection.products.foreach(p => {
-        val query = new BasicDBObject()
-        query.put(INCHI_KEY, p)
-
-        // Insert product if doesn't exist
-        val newProduct = new BasicDBObject()
-        newProduct.put(INCHI_KEY, p)
-        reachables.insert(newProduct)
-
-        val updatePrecursors = new BasicDBObject()
-
-        projection.substrates.foreach(s => {
-          updatePrecursors.append("$addToSet", new BasicDBObject(s"$PRECURSOR_KEY.$s.$RO_KEY", projection.ros))
-        })
-
-        reachables.update(query, updatePrecursors, true, false)
-      })
+      val updater = new ReachablesProjectionUpdate(projection)
+      updater.updateReachables(reachables)
     }
 
     val resultCount = resultsRDD.persist().count()
     LOGGER.info(s"Projection completed with $resultCount results")
-
 
     val resultsIterator = resultsRDD.toLocalIterator
     resultsIterator.foreach(addProjectionToDatabase)
