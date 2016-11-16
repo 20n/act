@@ -3,9 +3,9 @@ package com.act.reachables
 import java.io.{File, FileOutputStream, PrintWriter}
 
 import act.server.MongoDB
-import act.shared.{Chemical, Reaction}
 import act.shared.Reaction.RxnDataSource
 import act.shared.helpers.MongoDBToJSON
+import act.shared.{Chemical, Reaction}
 import org.json.{JSONArray, JSONObject}
 
 import scala.collection.JavaConversions._
@@ -68,7 +68,7 @@ object cascades {
     val reachableSet = get_set(ActData.instance.ActTree.nids.values()) diff 
                         get_set(ActData.instance.chemicalsWithUserField_treeArtificial)
     // List(nodesIDs) = nids as a List
-    val reachables = reachableSet.toList 
+    val reachables = reachableSet.toList
 
     // do we use Classes of rxns or all unbinned rxns? Based on flag.
     val producers = if (GlobalParams.USE_RXN_CLASSES) ActData.instance.rxnClassesThatProduceChem else ActData.instance.rxnsThatProduceChem 
@@ -110,7 +110,7 @@ object cascades {
     ReachRxnDescs.init(rxnIdsInAndOutOfReachables.toList, db)
     Waterfall.init(reachables, upRxns)
     Cascade.init(reachables, upRxns)
-    Cascade.set_max_cascade_depth(depth);
+    Cascade.set_max_cascade_depth(depth)
 
     var cnt = 0
     for (reachid <- reachables) {
@@ -332,7 +332,12 @@ object cascades {
 
     def init(reachables: List[Long], upRxns: List[Set[ReachRxn]]) {
       upR = (reachables zip upRxns).toMap
-      natives = ActData.instance.natives.map(Long.unbox(_)).toList
+
+      // We consider both the normal natives as well as products added because they had only cofactor
+      // substrates as valid native sources.  This might cause interesting
+      natives = ActData.instance.natives.map(Long.unbox(_)).toList :::
+        ActData.instance().noSubstrateRxnsToProducts.values().flatten.toList.map(Long.unbox(_)) :::
+        ActData.instance().cofactors.toList.map(Long.unbox(_))
     }
 
     def is_universal(m: Long) = natives.contains(m)
@@ -398,7 +403,9 @@ object cascades {
 
       // to avoid circular paths, we require the precuror rxn to go towards natives
       val up = upNonTrivial.filter(higher_in_tree(m, _)) 
-    
+      if (up.isEmpty){
+        println(s"$m has no lower in tree places to go.")
+      }
       // ***************************************************************************
       // The reachable tree construction is much more heuristic than we need here.
       // The reason we need harsh heuristics there is because it *ensures* the tree
