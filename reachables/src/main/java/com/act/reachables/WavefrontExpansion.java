@@ -1,5 +1,8 @@
 package com.act.reachables;
 
+import act.server.MongoDB;
+import act.shared.helpers.P;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -8,11 +11,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.regex.Matcher;
-
-import act.server.MongoDB;
-import act.shared.helpers.P;
+import java.util.regex.Pattern;
 
 public class WavefrontExpansion {
 
@@ -496,7 +496,7 @@ public class WavefrontExpansion {
         parent_candidates.addAll(ActData.instance().rxnSubstratesCofactors.get(r));
 
         if (!this.R_parent_candidates.containsKey(p))
-          this.R_parent_candidates.put(p, new HashSet<Long>());
+          this.R_parent_candidates.put(p, new HashSet<>());
         this.R_parent_candidates.get(p).addAll(parent_candidates);
 
       }
