@@ -435,18 +435,19 @@ object SparkROProjector {
         val query = new BasicDBObject()
         query.put(INCHI_KEY, p)
 
-        val update = new BasicDBObject()
-        update.put(INCHI_KEY, p)
+        // Insert product if doesn't exist
+        val upsertProduct = new BasicDBObject()
+        upsertProduct.put(INCHI_KEY, p)
+        reachables.update(query, upsertProduct, true, false)
 
-        val roList = new BasicDBList()
-        roList.add(projection.ros)
+        val updatePrecursors = new BasicDBObject()
 
-        val precursors = new BasicDBList()
-        projection.substrates.foreach(s => precursors.add(new BasicDBObject(s, roList)))
 
-        update.put(PRECURSOR_KEY, precursors)
+        projection.substrates.foreach(s => {
+          updatePrecursors.append("$addToSet", new BasicDBObject(s"$PRECURSOR_KEY.$s.$RO_KEY", projection.ros))
+        })
 
-        reachables.update(query, update, true, false)
+        reachables.update(query, updatePrecursors, true, false)
       })
     }
 
