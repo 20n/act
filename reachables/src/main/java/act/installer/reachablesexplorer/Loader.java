@@ -1,6 +1,7 @@
 package act.installer.reachablesexplorer;
 
 
+import act.server.DBIterator;
 import act.server.MongoDB;
 import act.shared.Chemical;
 import chemaxon.formats.MolExporter;
@@ -10,6 +11,12 @@ import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeFormat;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import com.act.biointerpretation.l2expansion.L2InchiCorpus;
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.Keyword;
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.Keyword$;
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoKeywords;
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoKeywords$;
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities;
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities$class;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
@@ -27,8 +34,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,7 +48,7 @@ public class Loader {
 
 
   private static final String DATABASE_BING_ONLY_HOST = "localhost";
-  private static final String DATABASE_BING_ONLY_PORT = "27017";
+  private static final String DATABASE_BING_ONLY_PORT = "27018";
 
   private MongoDB db;
   private WordCloudGenerator wcGenerator;
@@ -52,6 +61,7 @@ public class Loader {
   public Loader() throws UnknownHostException {
     db = new MongoDB("localhost", 27017, "validator_profiling_2");
     wcGenerator = new WordCloudGenerator(DATABASE_BING_ONLY_HOST, DATABASE_BING_ONLY_PORT);
+
     renderer = new MoleculeRenderer();
 
     MongoClient mongoClient = new MongoClient(new ServerAddress("localhost", 27017));
@@ -233,12 +243,48 @@ public class Loader {
     updateFromReachableFiles(validFiles);
   }
 
+  public List<String> getBingInchis() {
+    MongoDB bingDb = new MongoDB(DATABASE_BING_ONLY_HOST, Integer.parseInt(DATABASE_BING_ONLY_PORT), "actv01");
+    BasicDBObject query = new BasicDBObject("xref.BING", new BasicDBObject("$exists", true));
+    BasicDBObject keys = new BasicDBObject("InChI", true);
+
+    DBIterator ite = bingDb.getIteratorOverChemicals(query, keys);
+    List<String> bingList = new ArrayList<>();
+    while (ite.hasNext()) {
+      BasicDBObject o = (BasicDBObject) ite.next();
+      String inchi = o.getString("InChI");
+      if (inchi != null) {
+        bingList.add(inchi);
+      }
+    }
+    return bingList;
+  }
+
+  public void updateWordClouds() throws IOException {
+    List<String> inchis = jacksonReachablesCollection.distinct("inchi");
+    LOGGER.info("Found %d inchis in the database, now querying for usage words", inchis.size());
+
+    List<String> bingInchis = getBingInchis();
+    LOGGER.info("Found %d inchis having bings results", bingInchis.size());
+
+    inchis.retainAll(bingInchis);
+    LOGGER.info("Now creating wordclouds for %d inchis", inchis.size());
+
+    for (String inchi : inchis) {
+      Reachable reachable = queryByInchi(inchi);
+      if (reachable.getWordCloudFilename() == null) {
+        updateReachableWithWordcloud(reachable);
+      }
+    }
+  }
+
   public static void main(String[] args) throws IOException {
   //    Loader loader = new Loader();
   //    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
   //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
     Loader loader = new Loader();
+    //loader.updateWordClouds();
     // Load all cascades
-    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
+     loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
   }
 }
