@@ -23,37 +23,6 @@ import java.util.List;
  * TODO: generalize this to iterate over reactions in addition to just substrates.
  */
 public class ValidReactionSubstratesIterator implements Iterator<String[]> {
-  // Have a cache for each format.
-
-  /*
-  def clearCache(): Unit = {
-    moleculeCache.keySet.foreach(key => moleculeCache.put(key, buildCache(key)))
-  }
-
-  /**
-   * Wipes all the current caches and changes their maximum sizes to the designated value
-   *
-   * @param size Maximum number of elements in the cache
-   */
-  /*
-  def setCacheSize(size: Long): Unit = {
-    LOGGER.info(s"${getClass.getCanonicalName} cache size has changed to $size " +
-            s"per ${MoleculeFormatType.getClass.getCanonicalName}.")
-    maxCacheSize = size
-    clearCache()
-  }
-
-  private def buildCache(moleculeFormatType: MoleculeFormatType): Cache[String, Molecule] = {
-    val caffeine = Caffeine.newBuilder().asInstanceOf[Caffeine[String, Molecule]]
-    caffeine.maximumSize(maxCacheSize)
-
-    // If you want to debug how the cache is doing
-    caffeine.recordStats()
-    caffeine.build[String, Molecule]()
-  }
-  */
-
-
   private static final int DEFAULT_CACHE_SIZE = 10000;
 
   private MongoDB db;
@@ -173,11 +142,11 @@ public class ValidReactionSubstratesIterator implements Iterator<String[]> {
    * @return True if the chemical has a valid InChI, false otherwise.
    */
   private boolean validateChemicalForId(Long id) {
-    if (invalidInchiCache.containsKey(id)) {
+    if (invalidInchiCache.getIfPresent(id) != null){
       return false;
     }
 
-    if (validInchiCache.containsKey(id)) {
+    if (validInchiCache.getIfPresent(id) != null) {
       return true;
     }
 
@@ -206,7 +175,7 @@ public class ValidReactionSubstratesIterator implements Iterator<String[]> {
    * @return A pair of the chemical's InChI and a boolean indicating whether the chemical was found in the valid cache.
    */
   private Pair<String, Boolean> getInChI(Long chemicalId) {
-    String inchi = validInchiCache.get(chemicalId);
+    String inchi = validInchiCache.getIfPresent(chemicalId);
     if (inchi != null) {
       return Pair.of(inchi, true);
     }
