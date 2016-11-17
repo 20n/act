@@ -219,7 +219,12 @@ public class Loader {
     } catch (IOException e){}
   }
 
+  public void updateFromReachableFiles(List<File> files){
+    files.stream().forEach(this::updateFromReachablesFile);
+  }
+
   public static void main(String[] args) throws IOException {
+
 
 //    Loader loader = new Loader();
 //    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
