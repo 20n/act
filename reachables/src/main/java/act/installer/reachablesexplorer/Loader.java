@@ -174,6 +174,7 @@ public class Loader {
     }
   }
 
+<<<<<<< f856f3d8755418cb5a4ef2367e1bb52bb5cdbce6
   public void assertNotFakeInchi(String inchi) throws FakeInchiException {
     if (inchi != null && inchi.contains("FAKE")) {
       throw new FakeInchiException(inchi);
@@ -186,6 +187,9 @@ public class Loader {
    * Tries to import to molecule and export names
    */
   public Reachable constructReachable(String inchi) throws IOException {
+=======
+  public Reachable constructReachable(String inchi) {
+>>>>>>> full update
     // Only construct a new one if one doesn't already exist.
     Reachable preconstructedReachable = queryByInchi(inchi);
     if (preconstructedReachable != null) {
@@ -520,7 +524,7 @@ public class Loader {
         }
 =======
       if (!substrates.isEmpty()) {
-        Precursor pre = new Precursor(substrates, Arrays.asList("reachables"));
+        Precursor pre = new Precursor(substrates, "reachables");
         updateWithPrecursor(current.getInChI(), pre);
 >>>>>>> Create Precursor from ProjectionResult
       } else {
@@ -555,6 +559,51 @@ public class Loader {
     updateFromReachableFiles(validFiles);
   }
 
+<<<<<<< f856f3d8755418cb5a4ef2367e1bb52bb5cdbce6
+=======
+  public void updateFromProjection(ReachablesProjectionUpdate projection) {
+    // Construct substrates
+    List<Reachable> substrates = projection.getSubstrates().
+            stream().
+            map(this::constructReachable).
+            collect(Collectors.toList());
+
+    // Add substrates in, or make sure they were added.
+    substrates.stream().forEach(this::upsert);
+
+    // Construct descriptors.
+    List<InchiDescriptor> precursors = substrates.
+            stream().
+            map(s -> new InchiDescriptor(s.getPageName(), s.getInchi(), s.getInchiKey())).
+            collect(Collectors.toList());
+
+    // For each product, create and add precursors.
+    projection.getProducts().stream().forEach(p -> {
+      // Get product
+      Reachable product = constructReachable(p);
+      product.getPrecursorData().addPrecursor(new Precursor(precursors, projection.getRos().get(0)));
+      upsert(product);
+    });
+  }
+
+  public List<String> getBingInchis() {
+    MongoDB bingDb = new MongoDB(DATABASE_BING_ONLY_HOST, Integer.parseInt(DATABASE_BING_ONLY_PORT), "actv01");
+    BasicDBObject query = new BasicDBObject("xref.BING", new BasicDBObject("$exists", true));
+    BasicDBObject keys = new BasicDBObject("InChI", true);
+
+    DBIterator ite = bingDb.getIteratorOverChemicals(query, keys);
+    List<String> bingList = new ArrayList<>();
+    while (ite.hasNext()) {
+      BasicDBObject o = (BasicDBObject) ite.next();
+      String inchi = o.getString("InChI");
+      if (inchi != null) {
+        bingList.add(inchi);
+      }
+    }
+    return bingList;
+  }
+
+>>>>>>> full update
   public void updateWordClouds() throws IOException {
     List<String> inchis = jacksonReachablesCollection.distinct("inchi");
     LOGGER.info("Found %d inchis in the database, now querying for usage words", inchis.size());
