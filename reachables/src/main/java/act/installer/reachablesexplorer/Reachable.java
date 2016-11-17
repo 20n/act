@@ -1,12 +1,11 @@
 package act.installer.reachablesexplorer;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.mongojack.ObjectId;
 
-import java.io.Serializable;
 import java.util.List;
 
 @JsonInclude(JsonInclude.Include.ALWAYS)
@@ -42,51 +41,13 @@ public class Reachable {
     this.precursorData = precursors;
   }
 
-  @JsonInclude(JsonInclude.Include.ALWAYS)
-  private class WikipediaData {
-
-    @JsonProperty("url")
-    private String url;
-
-    @JsonProperty("text")
-    private String text;
-  }
 
   public void setPrecursorData(PrecursorData precursorData) {
     this.precursorData = precursorData;
   }
 
-  @JsonInclude(JsonInclude.Include.ALWAYS)
-  class PrecursorData implements Serializable {
-
-    private class Precusor implements Serializable {
-
-      public Precusor() {}
-
-      public Precusor(List<String> precursorMolecules, List<String> sources) {
-        this.precursorMolecules = precursorMolecules;
-        this.sources = sources;
-      }
-
-      @JsonProperty("precursor_inchis")
-      private List<String> precursorMolecules;
-      @JsonProperty("source")
-      private List<String> sources;
-    }
-
-    @JsonProperty("prediction_precursors")
-    private List<Precusor> precursors;
-
-
-  }
-
-
-  private class SynonymData {
-    @JsonProperty("pubchem")
-    private List<String> pubchemSynonyms;
-
-    @JsonProperty("mesh")
-    private List<String> meshSynonyms;
+  public PrecursorData getPrecursorData() {
+    return this.precursorData;
   }
 
   private String id;
@@ -131,7 +92,6 @@ public class Reachable {
 
   @JsonProperty("precursor")
   private PrecursorData precursorData;
-
 
   /* -------- Getters must have JSON ignore if not a unique field. ------- */
   @JsonIgnore

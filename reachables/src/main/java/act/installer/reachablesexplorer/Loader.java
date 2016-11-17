@@ -11,12 +11,6 @@ import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeFormat;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import com.act.biointerpretation.l2expansion.L2InchiCorpus;
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.Keyword;
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.Keyword$;
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoKeywords;
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoKeywords$;
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities;
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities$class;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
@@ -24,7 +18,6 @@ import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -39,7 +32,6 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -54,7 +46,8 @@ public class Loader {
 
   private MongoDB db;
   private WordCloudGenerator wcGenerator;
-  private ReactionRenderer renderer;
+  private MoleculeRenderer renderer;
+
   private DBCollection reachablesCollection;
   private JacksonDBCollection<Reachable, String> jacksonReachablesCollection;
   private L2InchiCorpus inchiCorpus;
@@ -118,7 +111,7 @@ public class Loader {
     try {
       mol = MoleculeImporter.importMolecule(inchi);
     } catch (MolFormatException e) {
-      // TODO: add logging
+      LOGGER.error("Failed to import inchi %s", inchi);
       return null;
     }
 
@@ -170,18 +163,13 @@ public class Loader {
 
   }
   public void updateWithPrecursorData(String inchi, PrecursorData precursorData) {
-    // TODO: is there a better way to perform the update? probably!
+    // TODO: can we use updates instead of inserting a new precursor?
     Reachable reachable = jacksonReachablesCollection.findOne(new BasicDBObject("inchi", inchi));
     Reachable reachableOld = jacksonReachablesCollection.findOne(new BasicDBObject("inchi", inchi));
     if (reachable != null) {
       reachable.setPrecursorData(precursorData);
       jacksonReachablesCollection.update(reachableOld, reachable);
     }
-
-
-    //DBUpdate.Builder builder = new DBUpdate.Builder();
-    //builder.set("precursor", precursorData);
-    // jacksonReachablesCollection.update(new BasicDBObject("inchi", inchi), builder);
   }
 
   public void updateWithPrecursor(String inchi, Precursor pre) throws IOException {
@@ -199,7 +187,7 @@ public class Loader {
     return jacksonReachablesCollection.findOne(query);
   }
 
-  public void upsert(Reachable reachable) {
+  public void upsert(Reachable reachable){
     Reachable reachableOld = queryByInchi(reachable.getInchi());
 
     if (reachableOld != null) {
@@ -211,7 +199,7 @@ public class Loader {
     }
   }
 
-  public void updateFromReachablesFile(File file) {
+  public void updateFromReachablesFile(File file){
     try {
       // Read in the file and parse it as JSON
       String jsonTxt = IOUtils.toString(new FileInputStream(file));
@@ -259,13 +247,12 @@ public class Loader {
     }
   }
 
-  public void updateFromReachableFiles(List<File> files) {
+  public void updateFromReachableFiles(List<File> files){
     files.stream().forEach(this::updateFromReachablesFile);
   }
 
-  public void updateFromReachableDir(File file) {
-    File[] f = file.listFiles();
-    List<File> validFiles = Arrays.stream(f).filter(x ->
+  public void updateFromReachableDir(File file){
+    List<File> validFiles = Arrays.stream(file.listFiles()).filter(x ->
             x.getName().startsWith(("c")) && x.getName().endsWith("json")).collect(Collectors.toList());
     LOGGER.info("Found %d reachables files.",validFiles.size());
     updateFromReachableFiles(validFiles);
@@ -307,12 +294,12 @@ public class Loader {
   }
 
   public static void main(String[] args) throws IOException {
-  //    Loader loader = new Loader();
-  //    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
-  //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
+    //    Loader loader = new Loader();
+    //    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
+    //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
     Loader loader = new Loader();
     //loader.updateWordClouds();
     // Load all cascades
-     loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
+    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
   }
 }
