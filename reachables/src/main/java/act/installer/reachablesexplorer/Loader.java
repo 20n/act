@@ -82,11 +82,11 @@ public class Loader {
     }
   }
 
-  private String getPageName(String chemaxonTraditionalName, List<String> brendaNames, String inchiKey) {
+  private String getPageName(String chemaxonTraditionalName, List<String> brendaNames, String inchi) {
     if (chemaxonTraditionalName == null || chemaxonTraditionalName.length() > 50) {
       brendaNames.sort((n1, n2) -> Integer.compare(n1.length(), n2.length()));
       if (brendaNames.size() == 0) {
-        return inchiKey;
+        return inchi;
       } else {
         return brendaNames.get(0);
       }
@@ -130,7 +130,7 @@ public class Loader {
       LOGGER.error("Failed to export molecule %s to traditional name", inchi);
     }
 
-    String pageName = getPageName(chemaxonTraditionalName, names, inchikey);
+    String pageName = getPageName(chemaxonTraditionalName, names, inchi);
     return new Reachable(pageName, inchi, smiles, inchikey, names);
   }
 
