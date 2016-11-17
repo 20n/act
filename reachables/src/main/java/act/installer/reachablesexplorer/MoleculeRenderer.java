@@ -1,6 +1,7 @@
 package act.installer.reachablesexplorer;
 
 import chemaxon.struc.Molecule;
+import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import com.act.biointerpretation.mechanisminspection.ReactionRenderer;
 import com.act.jobs.FileChecker;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -20,13 +21,9 @@ public class MoleculeRenderer {
   private static final String ASSETS_LOCATION = "/Volumes/data-level1/data/reachables-explorer-rendering-cache";
   private static final String PNG_EXTENSION = ".png";
 
-  private ReactionRenderer renderer;
+  private static ReactionRenderer renderer = new ReactionRenderer();
 
-  MoleculeRenderer() {
-    renderer = new ReactionRenderer();
-  }
-
-  public String generateRendering(String inchi, Molecule mol) {
+  public static String generateRendering(String inchi) {
     String md5 = DigestUtils.md5Hex(inchi);
     String postfix = new StringBuilder("-").append(md5).append(PNG_EXTENSION).toString();
 
@@ -35,6 +32,7 @@ public class MoleculeRenderer {
 
     if (!Files.exists(rendering.toPath())) {
       try {
+        Molecule mol = MoleculeImporter.importMolecule(inchi);
         renderer.drawMolecule(mol, rendering);
         FileChecker.verifyInputFile(rendering);
       } catch (IOException e) {

@@ -59,6 +59,7 @@ public class WordCloudGenerator {
 
     if (!Files.exists(wordcloud.toPath())) {
       try {
+        // TODO: this call a CL to run the R script. Maybe use Rengine instead?
         String cmd = String.format("Rscript %s %s %s %s %s", rScript.getAbsolutePath(), inchi, wordcloud.getAbsolutePath(), host, port);
         rt.exec(cmd);
         FileChecker.verifyInputFile(wordcloud);
@@ -70,6 +71,7 @@ public class WordCloudGenerator {
     return wordcloud;
   }
 
+  // TODO: remove main method when done testing
   public static void main(String[] args) {
     WordCloudGenerator g = new WordCloudGenerator("localhost", "27017");
     try {
