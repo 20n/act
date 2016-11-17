@@ -20,18 +20,27 @@ import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.json.JSONObject;
 import org.mongojack.DBUpdate;
 import org.mongojack.JacksonDBCollection;
+import sun.misc.JavaIOAccess;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
+
+import static com.sun.tools.doclets.internal.toolkit.util.DocPath.parent;
+import static org.jcamp.spectrum.notes.NoteDescriptor.is;
 
 public class Loader {
 
@@ -177,7 +186,18 @@ public class Loader {
     //DBUpdate.Builder builder = new DBUpdate.Builder();
     //builder.set("precursor", precursorData);
     // jacksonReachablesCollection.update(new BasicDBObject("inchi", inchi), builder);
+  }
 
+  public void updateFromReachablesFile(File file){
+    MongoDB connection = new MongoDB("localhost", 27017, "validator_profiling_2");
+
+    try {
+      String jsonTxt = IOUtils.toString(new FileInputStream(file));
+
+      JSONObject fileContents = new JSONObject(jsonTxt);
+      Chemical current = connection.getChemicalFromChemicalUUID(fileContents.getLong("chemid"));
+      Chemical parent = connection.getChemicalFromChemicalUUID(fileContents.getLong("parent"));
+    } catch (JavaIOException e){}
   }
 
   public static void main(String[] args) throws IOException {
