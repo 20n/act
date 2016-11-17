@@ -34,9 +34,9 @@ public class ValidReactionSubstratesIterator implements Iterator<String[]> {
 
   public ValidReactionSubstratesIterator(MongoDB db) {
     this.db = db;
-    dbIter = db.getIteratorOverReactions();
-    validInchiCache = Caffeine.newBuilder().maximumSize(DEFAULT_CACHE_SIZE).build();
-    invalidInchiCache = Caffeine.newBuilder().maximumSize(DEFAULT_CACHE_SIZE).build();
+    this.dbIter = db.getIteratorOverReactions();
+    this.validInchiCache = Caffeine.newBuilder().maximumSize(DEFAULT_CACHE_SIZE).build();
+    this.invalidInchiCache = Caffeine.newBuilder().maximumSize(DEFAULT_CACHE_SIZE).build();
   }
 
   /* This iterator opportunistically loads a reaction when hasNext() is called, as it must inspect one more more
