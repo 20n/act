@@ -201,27 +201,23 @@ public class Loader {
     // jacksonReachablesCollection.update(new BasicDBObject("inchi", inchi), builder);
   }
 
-  public void updateWithPrecursor(String inchi, Precursor pre) {
-    // TODO: is there a better way to perform the update? probably!
-    DBObject query = new BasicDBObject("inchi", inchi);
-    Reachable reachableOld = jacksonReachablesCollection.findOne(query);
-    Reachable reachable = jacksonReachablesCollection.findOne(query);
+  public void updateWithPrecursor(String inchi, Precursor pre) throws IOException {
+    Reachable reachable = queryByInchi(inchi);
 
-    if (reachable != null) {
-      LOGGER.info("Found previous reachable at InChI " + inchi + ".  Adding additional precursors to it.");
-      reachable.getPrecursorData().addPrecursor(pre);
-      jacksonReachablesCollection.update(reachableOld, reachable);
-    } else {
-      LOGGER.info("Did not find InChI " + inchi + " in database.  Creating a new reachable.");
-      Reachable newReachable = constructReachable(inchi);
-      newReachable.getPrecursorData().addPrecursor(pre);
-      jacksonReachablesCollection.insert(newReachable);
-    }
+    // If is null we create a new one
+    reachable = reachable == null ? constructReachable(inchi) : reachable;
+    reachable.getPrecursorData().addPrecursor(pre);
+
+    upsert(reachable);
+  }
+
+  private Reachable queryByInchi(String inchi){
+    DBObject query = new BasicDBObject("inchi", inchi);
+    return jacksonReachablesCollection.findOne(query);
   }
 
   public void upsert(Reachable reachable){
-    DBObject query = new BasicDBObject("inchi", reachable.getInchi());
-    Reachable reachableOld = jacksonReachablesCollection.findOne(query);
+    Reachable reachableOld = queryByInchi(reachable.getInchi());
 
     if (reachableOld != null) {
       LOGGER.info("Found previous reachable at InChI " + reachable.getInchi() + ".  Adding additional precursors to it.");
@@ -239,14 +235,17 @@ public class Loader {
       // Read in the file and parse it as JSON
       String jsonTxt = IOUtils.toString(new FileInputStream(file));
       JSONObject fileContents = new JSONObject(jsonTxt);
+      // Parsing errors should happen as near to the point of loading as possible.
+      Long parentId = fileContents.getLong("parent");
+      Long currentId = fileContents.getLong("chemid");
 
       // Get the parent chemicals from the database.  JSON file contains ID.
       // We want to update it because it may not exist, but we also don't want to overwrite.
-      Chemical parent = connection.getChemicalFromChemicalUUID(fileContents.getLong("parent"));
+      Chemical parent = connection.getChemicalFromChemicalUUID(parentId);
       upsert(constructReachable(parent.getInChI()));
 
       // Get the actual chemical that is the product of the above chemical.
-      Chemical current = connection.getChemicalFromChemicalUUID(fileContents.getLong("chemid"));
+      Chemical current = connection.getChemicalFromChemicalUUID(currentId);
 
       InchiDescriptor parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
       List<InchiDescriptor> substrates = Arrays.asList(parentDescriptor);
