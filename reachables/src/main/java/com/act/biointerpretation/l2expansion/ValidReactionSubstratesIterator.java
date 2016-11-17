@@ -58,6 +58,7 @@ public class ValidReactionSubstratesIterator implements Iterator<String[]> {
 
     boolean foundValidReaction = false;
     Reaction r = db.getNextReaction(dbIter);
+    // TODO: simplify the logic of this loop, if possible
     do {
       if (r == null) {
         // TODO: this should not be possible, should it?
@@ -89,8 +90,8 @@ public class ValidReactionSubstratesIterator implements Iterator<String[]> {
 
       List<String> substrateInchis = new ArrayList<>(r.getSubstrates().length);
       for (Long id : r.getSubstrates()) {
-        Pair<String, Boolean> lookupResults = getInChI(id);
-        assert (lookupResults.getRight()); // We should always hit the cache here since we looked up to valide.
+        Pair<String, Boolean> lookupResults = getInchiAndIsCacheHit(id);
+        assert (lookupResults.getRight()); // We should always hit the cache here since we looked up to validate.
 
         Integer coefficient = r.getSubstrateCoefficient(id);
         if (coefficient == null) {
@@ -174,7 +175,7 @@ public class ValidReactionSubstratesIterator implements Iterator<String[]> {
    * @param chemicalId The id of the chemical to look up.
    * @return A pair of the chemical's InChI and a boolean indicating whether the chemical was found in the valid cache.
    */
-  private Pair<String, Boolean> getInChI(Long chemicalId) {
+  private Pair<String, Boolean> getInchiAndIsCacheHit(Long chemicalId) {
     String inchi = validInchiCache.getIfPresent(chemicalId);
     if (inchi != null) {
       return Pair.of(inchi, true);

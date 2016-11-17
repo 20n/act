@@ -15,6 +15,9 @@ public class ReachablesProjectionUpdate {
   public static final String SUBSTRATES_KEY = "substrates";
   public static final String RO_KEY = "ro";
 
+  private static final Boolean UPSERT = true;
+  private static final Boolean NO_MULTI = false;
+
   private final ProjectionResult projectionResult;
 
   public ReachablesProjectionUpdate(ProjectionResult projectionResult) {
@@ -45,7 +48,7 @@ public class ReachablesProjectionUpdate {
       precursors.append("$push", new BasicDBObject(PRECURSOR_KEY, precursorEntry));
 
       // Do the update!
-      reachables.update(newProductQuery, precursors, true, false);
+      reachables.update(newProductQuery, precursors, UPSERT, NO_MULTI);
     }
   }
 }
