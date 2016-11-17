@@ -510,6 +510,7 @@ public class Loader {
       assertNotFakeInchi(current.getInChI());
 
       // Update source as reachables, as these files are parsed from `cascade` construction
+<<<<<<< f6427738bebfbb72b456d603cf4eac8daa475ca3
       if (!precursors.isEmpty()) {
         Reachable rech = constructReachable(current.getInChI());
         if (rech != null) {
@@ -517,6 +518,11 @@ public class Loader {
           upsert(rech);
           updateWithPrecursors(current.getInChI(), precursors);
         }
+=======
+      if (!substrates.isEmpty()) {
+        Precursor pre = new Precursor(substrates, Arrays.asList("reachables"));
+        updateWithPrecursor(current.getInChI(), pre);
+>>>>>>> Create Precursor from ProjectionResult
       } else {
         try {
           // TODO add a special native class?

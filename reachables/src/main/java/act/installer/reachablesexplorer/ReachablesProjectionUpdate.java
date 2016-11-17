@@ -1,0 +1,108 @@
+package act.installer.reachablesexplorer;
+
+import com.act.biointerpretation.l2expansion.ProjectionResult;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.mongodb.BasicDBList;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBCollection;
+
+import scala.collection.JavaConversions;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
+public class ReachablesProjectionUpdate {
+
+  public static final String PRECURSOR_KEY = "prediction_precursors";
+  public static final String INCHI_KEY = "InChI";
+  public static final String SUBSTRATES_KEY = "substrates";
+  public static final String RO_KEY = "ro";
+
+  private static final Boolean UPSERT = true;
+  private static final Boolean NO_MULTI = false;
+
+  @JsonProperty("substrates")
+  private final List<String> substrates;
+
+  @JsonProperty("products")
+  private final List<String> products;
+
+  @JsonProperty("ros")
+  private final List<String> ros;
+
+  @JsonCreator
+  public ReachablesProjectionUpdate(
+      @JsonProperty("substrates") List<String> substrates,
+      @JsonProperty("products") List<String> products,
+      @JsonProperty("ros") List<String> ros) {
+    this.substrates = substrates;
+    this.products = products;
+    this.ros = ros;
+  }
+
+  public ReachablesProjectionUpdate(ProjectionResult projectionResult) {
+    this.ros = Arrays.asList(projectionResult.ros());
+    this.substrates = JavaConversions.asJavaList(projectionResult.substrates());
+    this.products = JavaConversions.asJavaList(projectionResult.products());
+  }
+
+  public void updateReachables(DBCollection reachables) {
+    for (String product : products) {
+      // The query object for this product
+      BasicDBObject newProductQuery = new BasicDBObject().append(INCHI_KEY, product);
+
+      // DB list of the substrates of this projection
+      BasicDBList substrateList = new BasicDBList();
+      substrateList.addAll(substrates);
+
+      // DB list of the one RO associated with this projection
+      BasicDBList roList = new BasicDBList();
+      roList.addAll(ros);
+
+      // The full entry to be added to the product's precursor list
+      BasicDBObject precursorEntry = new BasicDBObject()
+          .append(SUBSTRATES_KEY, substrateList)
+          .append(RO_KEY, roList);
+
+      // The command to push the precursor entry onto the precursor list
+      BasicDBObject precursors = new BasicDBObject();
+      precursors.append("$push", new BasicDBObject(PRECURSOR_KEY, precursorEntry));
+
+      // Do the update!
+      reachables.update(newProductQuery, precursors, UPSERT, NO_MULTI);
+    }
+  }
+
+  /**
+   * Gets the precursor data from this ProjectionResult. This is the same for every product, so we need only return
+   * one precursor, populated with the substrates and the RO. The names and inchikeys are for now supplied as null,
+   * as this module is not responsible for looking up those things based on inchis.
+   * @return A Precursor to be added to the reachables DB.
+   */
+  @JsonIgnore
+  public Precursor getPrecursor() {
+    List<InchiDescriptor> substrateDescriptors = substrates.stream()
+        .map(substrate -> new InchiDescriptor(null, substrate, null)).collect(Collectors.toList());
+    return new Precursor(substrateDescriptors, ros);
+  }
+
+  /**
+   * Get the products associated with this projection. This is especially needed since the Precursor data associated
+   * with this ProjectionResult will need to be associated with every product of the projection.
+   * @return The products of the projection.
+   */
+  public List<String> getProducts() {
+    return products;
+  }
+
+  public List<String> getSubstrates() {
+    return substrates;
+  }
+
+  public List<String> getRos() {
+    return ros;
+  }
+}
