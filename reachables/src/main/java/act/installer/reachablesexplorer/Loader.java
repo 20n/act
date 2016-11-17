@@ -65,58 +65,46 @@ public class Loader {
     jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
   }
 
-
-  public String generateWordcloud(String inchi) {
-
-    // TODO: improve wordcloud generation. Currently, each instance open a mongo connection on the R side.
-    // By doing data manipulation in Java and utilizing Rengine, we could make this much better
-    // Wordclouds could be generated ahead of time this way, using the inchi coprus
-    String md5 = DigestUtils.md5Hex(inchi);
-    String postfix = new StringBuilder("-").append(md5).append(PNG_EXTENSION).toString();
-
-    String wordcloudFilename = String.join("", "wordcloud", postfix);
-
-    File wordcloud = Paths.get(ASSETS_LOCATION, wordcloudFilename).toFile();
-
-    if (!Files.exists(wordcloud.toPath())) {
-      try {
-        wcGenerator.generateWordCloud(inchi, wordcloud);
-        FileChecker.verifyInputFile(wordcloud);
-      } catch (IOException e) {
-        LOGGER.error("Unable to generate wordcloud for %s at location %s", inchi, wordcloud.toPath().toString());
-        return null;
-      }
+  private String getSmiles(Molecule mol) {
+    try {
+      return MoleculeExporter.exportMolecule(mol, MoleculeFormat.smiles$.MODULE$);
+    } catch (Exception e) {
+      return null;
     }
-
-    return wordcloudFilename;
   }
 
-
-  public String generateRendering(String inchi, Molecule mol) {
-    String md5 = DigestUtils.md5Hex(inchi);
-    String postfix = new StringBuilder("-").append(md5).append(PNG_EXTENSION).toString();
-
-    String renderingFilename = String.join("", "molecule", postfix);
-    File rendering = Paths.get(ASSETS_LOCATION, renderingFilename).toFile();
-
-    if (!Files.exists(rendering.toPath())) {
-      try {
-        renderer.drawMolecule(mol, rendering);
-        FileChecker.verifyInputFile(rendering);
-      } catch (IOException e) {
-        LOGGER.error("Unable to generate rendering for %s at location %s", inchi, rendering.toPath().toString());
-        return null;
-      }
+  private String getInchiKey(Molecule mol) {
+    try {
+      // TODO: add inchi key the Michael's Molecule Exporter
+      return MolExporter.exportToFormat(mol, "inchikey");
+    } catch (Exception e) {
+      return null;
     }
-
-    return renderingFilename;
   }
 
-  public Reachable constructReachable(String inchi) {
+  private String getPageName(String chemaxonTraditionalName, List<String> brendaNames, String inchiKey) {
+    if (chemaxonTraditionalName == null || chemaxonTraditionalName.length() > 50) {
+      brendaNames.sort((n1, n2) -> Integer.compare(n1.length(), n2.length()));
+      if (brendaNames.size() == 0) {
+        return inchiKey;
+      } else {
+        return brendaNames.get(0);
+      }
+    }
+    return chemaxonTraditionalName;
+  }
+
+  private String getChemaxonTraditionalName(Molecule mol) {
+    try {
+      return MolExporter.exportToFormat(mol, "name:t");
+    } catch (IOException e) {
+      return null;
+    }
+  }
+
+  public Reachable constructReachable(String inchi) throws IOException {
+
     Molecule mol;
-    String smiles;
-    String inchikey;
-    String pageName;
     try {
       mol = MoleculeImporter.importMolecule(inchi);
     } catch (MolFormatException e) {
@@ -127,37 +115,22 @@ public class Loader {
     Chemical c = db.getChemicalFromInChI(inchi);
     List<String> names = c != null ? c.getBrendaNames() : Collections.emptyList();
 
-    try {
-      smiles = MoleculeExporter.exportMolecule(mol, MoleculeFormat.smiles$.MODULE$);
-    } catch (Exception e) {
+    String smiles = getSmiles(mol);
+    if (smiles == null) {
       LOGGER.error("Failed to export molecule %s to smiles", inchi);
-      smiles = null;
     }
 
-    try {
-      // TODO: add inchi key the Michael's Molecule Exporter
-      inchikey = MolExporter.exportToFormat(mol, "inchikey");
-    } catch (Exception e) {
+    String inchikey = getInchiKey(mol);
+    if (inchikey == null) {
       LOGGER.error("Failed to export molecule %s to inchi key", inchi);
-      inchikey = null;
     }
 
-    try {
-      pageName = MolExporter.exportToFormat(mol, "name:t");
-      int l = pageName.length();
-      if (l > 50) {
-        names.sort((n1, n2) -> Integer.compare(n1.length(), n2.length()));
-        if (names.size() == 0) {
-          pageName = inchikey;
-        } else {
-          pageName = names.get(0);
-        }
-      }
-    } catch (IOException e) {
+    String chemaxonTraditionalName = getChemaxonTraditionalName(mol);
+    if (chemaxonTraditionalName == null) {
       LOGGER.error("Failed to export molecule %s to traditional name", inchi);
-      pageName = null;
     }
 
+    String pageName = getPageName(chemaxonTraditionalName, names, inchikey);
     return new Reachable(pageName, inchi, smiles, inchikey, names);
   }
 
