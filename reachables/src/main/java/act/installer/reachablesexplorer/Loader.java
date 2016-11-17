@@ -27,6 +27,7 @@ import com.mongodb.ServerAddress;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.mongojack.JacksonDBCollection;
 
@@ -45,7 +46,7 @@ public class Loader {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
-
+  private static final MongoDB reachablesConnection = new MongoDB("localhost", 27017, "validator_profiling_2");
 
   private static final String DATABASE_BING_ONLY_HOST = "localhost";
   private static final String DATABASE_BING_ONLY_PORT = "27018";
@@ -108,7 +109,11 @@ public class Loader {
   }
 
   public Reachable constructReachable(String inchi) throws IOException {
-
+    // Only construct a new one if one doesn't already exist.
+    Reachable preconstructedReachable = queryByInchi(inchi);
+    if (preconstructedReachable != null) {
+      return preconstructedReachable;
+    }
     Molecule mol;
     try {
       mol = MoleculeImporter.importMolecule(inchi);
@@ -202,8 +207,6 @@ public class Loader {
   }
 
   public void updateFromReachablesFile(File file){
-    MongoDB connection = new MongoDB("localhost", 27017, "validator_profiling_2");
-
     try {
       // Read in the file and parse it as JSON
       String jsonTxt = IOUtils.toString(new FileInputStream(file));
@@ -214,22 +217,40 @@ public class Loader {
 
       // Get the parent chemicals from the database.  JSON file contains ID.
       // We want to update it because it may not exist, but we also don't want to overwrite.
-      Chemical parent = connection.getChemicalFromChemicalUUID(parentId);
-      upsert(constructReachable(parent.getInChI()));
+
+      List<InchiDescriptor> substrates = new ArrayList<>();
+      if (parentId >= 0) {
+        try {
+          Chemical parent = reachablesConnection.getChemicalFromChemicalUUID(parentId);
+          upsert(constructReachable(parent.getInChI()));
+          InchiDescriptor parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
+          substrates.add(parentDescriptor);
+        } catch (NullPointerException e){
+          LOGGER.info("Null pointer, unable to write parent.");
+        }
+      }
 
       // Get the actual chemical that is the product of the above chemical.
-      Chemical current = connection.getChemicalFromChemicalUUID(currentId);
-
-      InchiDescriptor parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
-      List<InchiDescriptor> substrates = Arrays.asList(parentDescriptor);
+      Chemical current = reachablesConnection.getChemicalFromChemicalUUID(currentId);
 
       // Update source as reachables, as these files are parsed from `cascade` construction
-      Precursor pre = new Precursor(substrates, "reachables");
-      updateWithPrecursor(current.getInChI(), pre);
+      if (!substrates.isEmpty()) {
+        Precursor pre = new Precursor(substrates, "reachables");
+        updateWithPrecursor(current.getInChI(), pre);
+      } else {
+        try {
+          // TODO add a special native class?
+          upsert(constructReachable(current.getInChI()));
+        } catch (NullPointerException e) {
+          LOGGER.info("Null pointer, unable tp parse InChI.");
+        }
+      }
     } catch (IOException e) {
       // We can only work with files we can parse, so if we can't
       // parse the file we just don't do anything and submit an error.
-      LOGGER.warn("Unable to parse file " + file.getAbsolutePath());
+      LOGGER.warn("Unable to load file " + file.getAbsolutePath());
+    } catch (JSONException e){
+      LOGGER.warn("Unable to parse JSON of file at " + file.getAbsolutePath());
     }
   }
 
@@ -238,7 +259,8 @@ public class Loader {
   }
 
   public void updateFromReachableDir(File file){
-    List<File> validFiles = Arrays.stream(file.listFiles()).filter(x -> x.getName().startsWith(("c"))).collect(Collectors.toList());
+    List<File> validFiles = Arrays.stream(file.listFiles()).filter(x ->
+            x.getName().startsWith(("c")) && x.getName().endsWith("json")).collect(Collectors.toList());
     LOGGER.info("Found %d reachables files.",validFiles.size());
     updateFromReachableFiles(validFiles);
   }
