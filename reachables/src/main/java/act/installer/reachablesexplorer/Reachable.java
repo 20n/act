@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.mongojack.ObjectId;
 
 import java.io.Serializable;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Reachable {
@@ -46,28 +46,6 @@ public class Reachable {
     this.precursorData = precursorData;
   }
 
-  static class PrecursorData implements Serializable {
-
-    private class Precusor implements Serializable {
-
-      public Precusor() {}
-
-      public Precusor(List<String> precursorMolecules, List<String> sources) {
-        this.precursorMolecules = precursorMolecules;
-        this.sources = sources;
-      }
-
-      @JsonProperty("precursor_inchis")
-      private List<String> precursorMolecules;
-      @JsonProperty("source")
-      private List<String> sources;
-    }
-
-    @JsonProperty("prediction_precursors")
-    private List<Precusor> precursors;
-
-
-  }
 
   private class SynonymData {
     @JsonProperty("pubchem")
