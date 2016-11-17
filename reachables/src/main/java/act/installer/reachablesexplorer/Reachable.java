@@ -81,6 +81,10 @@ public class Reachable {
   @JsonProperty("inchi")
   private String inchi;
 
+  public String getInchi(){
+    return inchi;
+  }
+
   @JsonProperty("smiles")
   private String smiles;
 
