@@ -7,7 +7,8 @@ import act.shared.Reaction;
 import chemaxon.formats.MolFormatException;
 import com.act.analysis.chemicals.molecules.MoleculeFormat;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
-import com.act.biointerpretation.Utils.LRUCache;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
@@ -22,20 +23,51 @@ import java.util.List;
  * TODO: generalize this to iterate over reactions in addition to just substrates.
  */
 public class ValidReactionSubstratesIterator implements Iterator<String[]> {
+  // Have a cache for each format.
+
+  /*
+  def clearCache(): Unit = {
+    moleculeCache.keySet.foreach(key => moleculeCache.put(key, buildCache(key)))
+  }
+
+  /**
+   * Wipes all the current caches and changes their maximum sizes to the designated value
+   *
+   * @param size Maximum number of elements in the cache
+   */
+  /*
+  def setCacheSize(size: Long): Unit = {
+    LOGGER.info(s"${getClass.getCanonicalName} cache size has changed to $size " +
+            s"per ${MoleculeFormatType.getClass.getCanonicalName}.")
+    maxCacheSize = size
+    clearCache()
+  }
+
+  private def buildCache(moleculeFormatType: MoleculeFormatType): Cache[String, Molecule] = {
+    val caffeine = Caffeine.newBuilder().asInstanceOf[Caffeine[String, Molecule]]
+    caffeine.maximumSize(maxCacheSize)
+
+    // If you want to debug how the cache is doing
+    caffeine.recordStats()
+    caffeine.build[String, Molecule]()
+  }
+  */
+
+
   private static final int DEFAULT_CACHE_SIZE = 10000;
 
   private MongoDB db;
   private DBIterator dbIter;
-  private LRUCache<Long, String> validInchiCache;
-  private LRUCache<Long, String> invalidInchiCache;
+  private Cache<Long, String> validInchiCache;
+  private  Cache<Long, String>invalidInchiCache;
 
   private Reaction nextValidReaction;
 
   public ValidReactionSubstratesIterator(MongoDB db) {
     this.db = db;
     dbIter = db.getIteratorOverReactions();
-    validInchiCache = new LRUCache<>(DEFAULT_CACHE_SIZE, true);
-    invalidInchiCache = new LRUCache<>(DEFAULT_CACHE_SIZE, true);
+    validInchiCache = Caffeine.newBuilder().maximumSize(DEFAULT_CACHE_SIZE).build();
+    invalidInchiCache = Caffeine.newBuilder().maximumSize(DEFAULT_CACHE_SIZE).build();
   }
 
   /* This iterator opportunistically loads a reaction when hasNext() is called, as it must inspect one more more
