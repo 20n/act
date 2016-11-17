@@ -266,15 +266,14 @@ public class Loader {
 
   public void updateFromReachableDir(File file){
     List<File> validFiles = Arrays.stream(file.listFiles()).filter(x -> x.getName().startsWith(("c"))).collect(Collectors.toList());
+    LOGGER.info("Found %d reachables files.",validFiles.size());
     updateFromReachableFiles(validFiles);
   }
 
   public static void main(String[] args) throws IOException {
-
-
-//    Loader loader = new Loader();
-//    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
-//    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
+  //    Loader loader = new Loader();
+  //    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
+  //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
     Loader loader = new Loader();
     // Load all cascades
     loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
