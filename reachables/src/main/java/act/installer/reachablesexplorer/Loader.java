@@ -229,8 +229,12 @@ public class Loader {
         Precursor pre = new Precursor(substrates, "reachables");
         updateWithPrecursor(current.getInChI(), pre);
       } else {
-        // TODO add a special native class?
-        upsert(constructReachable(current.getInChI()));
+        try {
+          // TODO add a special native class?
+          upsert(constructReachable(current.getInChI()));
+        } catch (NullPointerException e) {
+          LOGGER.info("Null pointer, unable tp parse InChI.");
+        }
       }
     } catch (IOException e) {
       // We can only work with files we can parse, so if we can't
