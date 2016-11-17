@@ -2,7 +2,7 @@ package com.act.biointerpretation.l2expansion
 
 import java.io.{BufferedWriter, File, FileWriter}
 
-import act.installer.reachablesexplorer.ReachablesProjectionUpdate
+import act.installer.reachablesexplorer.{Loader, ReachablesProjectionUpdate}
 import act.server.MongoDB
 import chemaxon.license.LicenseManager
 import chemaxon.marvin.io.MolExportException
@@ -261,7 +261,8 @@ object SparkROProjector {
     if (!cl.hasOption(OPTION_WRITE_PROJECTIONS_TO_DB)) {
       writeToJsonFile(resultsRDD, outputDir)
     } else {
-      writeToReachablesDatabase(resultsRDD, cl.getOptionValue(OPTION_DB_NAME), dbPort, dbHost)
+      writeToReachablesDatabaseThroughLoader(resultsRDD, new Loader())
+//      writeToReachablesDatabase(resultsRDD, cl.getOptionValue(OPTION_DB_NAME), dbPort, dbHost)
     }
   }
 
@@ -439,6 +440,30 @@ object SparkROProjector {
     resultsIterator.foreach(projection => {
       val updater = new ReachablesProjectionUpdate(projection)
       updater.updateReachables(reachables)
+    })
+  }
+
+  private def writeToReachablesDatabase(resultsRDD: RDD[ProjectionResult], database: String, port: Int, host: String): Unit = {
+    val reachables = getReachablesCollection(database, port, host)
+
+    val resultCount = resultsRDD.persist().count()
+    LOGGER.info(s"Projection completed with $resultCount results")
+    val resultsIterator = resultsRDD.toLocalIterator
+
+    resultsIterator.foreach(projection => {
+      val updater = new ReachablesProjectionUpdate(projection)
+      updater.updateReachables(reachables)
+    })
+  }
+
+  private def writeToReachablesDatabaseThroughLoader(resultsRDD: RDD[ProjectionResult], loader: Loader): Unit = {
+    val resultCount = resultsRDD.persist().count()
+    LOGGER.info(s"Projection completed with $resultCount results")
+    val resultsIterator = resultsRDD.toLocalIterator
+
+    resultsIterator.foreach(projection => {
+      val updater = new ReachablesProjectionUpdate(projection)
+      updater.updateByLoader(loader)
     })
   }
 
