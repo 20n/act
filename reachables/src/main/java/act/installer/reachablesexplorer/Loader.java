@@ -41,9 +41,8 @@ public class Loader {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
+  private static final MongoDB reachablesConnection = new MongoDB("localhost", 27017, "validator_profiling_2");
 
-  private static final String ASSETS_LOCATION = "/Volumes/data-level1/data/reachables-explorer-rendering-cache";
-  private static final String PNG_EXTENSION = ".png";
   private static final String DATABASE_BING_ONLY_HOST = "localhost";
   private static final String DATABASE_BING_ONLY_PORT = "27017";
 
@@ -206,8 +205,6 @@ public class Loader {
   }
 
   public void updateFromReachablesFile(File file){
-    MongoDB connection = new MongoDB("localhost", 27017, "validator_profiling_2");
-
     try {
       // Read in the file and parse it as JSON
       String jsonTxt = IOUtils.toString(new FileInputStream(file));
@@ -222,7 +219,7 @@ public class Loader {
       List<InchiDescriptor> substrates = new ArrayList<>();
       if (parentId >= 0) {
         try {
-          Chemical parent = connection.getChemicalFromChemicalUUID(parentId);
+          Chemical parent = reachablesConnection.getChemicalFromChemicalUUID(parentId);
           upsert(constructReachable(parent.getInChI()));
           InchiDescriptor parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
           substrates.add(parentDescriptor);
@@ -232,7 +229,7 @@ public class Loader {
       }
 
       // Get the actual chemical that is the product of the above chemical.
-      Chemical current = connection.getChemicalFromChemicalUUID(currentId);
+      Chemical current = reachablesConnection.getChemicalFromChemicalUUID(currentId);
 
       // Update source as reachables, as these files are parsed from `cascade` construction
       if (!substrates.isEmpty()) {

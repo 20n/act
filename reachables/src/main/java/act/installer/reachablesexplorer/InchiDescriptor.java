@@ -19,7 +19,7 @@ class InchiDescriptor implements Serializable {
     @JsonCreator
     public InchiDescriptor(@JsonProperty("molecule_name") String name,
                            @JsonProperty("inchi") String inchi,
-                           @JsonProperty("inchi_key") String inchiKey){
+                           @JsonProperty("inchiKey") String inchiKey){
         this.name = name;
         this.inchi = inchi;
         this.inchiKey = inchiKey;
