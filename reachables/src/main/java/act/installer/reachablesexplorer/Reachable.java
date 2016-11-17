@@ -1,15 +1,28 @@
 package act.installer.reachablesexplorer;
 
 
+import act.shared.Chemical;
+import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolFormatException;
+import chemaxon.struc.Molecule;
+import com.act.analysis.chemicals.molecules.MoleculeExporter;
+import com.act.analysis.chemicals.molecules.MoleculeFormat;
+import com.act.analysis.chemicals.molecules.MoleculeImporter;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.mongojack.ObjectId;
 
-import java.io.Serializable;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public class Reachable {
+
+
 
   public Reachable() {}
 
@@ -21,10 +34,17 @@ public class Reachable {
     this.structureFilename = structureFilename;
     this.names = names;
     this.wordCloudFilename = wordCloudFilename;
-    this.precursorData = null;
+    this.precursorData = new PrecursorData();
   }
 
-  public Reachable(String pageName, String inchi, String smiles, String structureFilename, List<String> names, String wordCloudFilename, PrecursorData precursors) {
+  @JsonCreator
+  public Reachable(@JsonProperty("page_name") String pageName,
+                   @JsonProperty("inchi") String inchi,
+                   @JsonProperty("smiles") String smiles,
+                   @JsonProperty("rendering-filename") String structureFilename,
+                   @JsonProperty("names") List<String> names,
+                   @JsonProperty("usage-wordcloud-filename") String wordCloudFilename,
+                   @JsonProperty("precursor") PrecursorData precursors) {
     this.pageName = pageName;
     this.inchi = inchi;
     this.smiles = smiles;
@@ -34,50 +54,13 @@ public class Reachable {
     this.precursorData = precursors;
   }
 
-  @JsonInclude(JsonInclude.Include.ALWAYS)
-  private class WikipediaData {
-
-    @JsonProperty("url")
-    private String url;
-
-    @JsonProperty("text")
-    private String text;
-  }
 
   public void setPrecursorData(PrecursorData precursorData) {
     this.precursorData = precursorData;
   }
 
-  @JsonInclude(JsonInclude.Include.ALWAYS)
-  class PrecursorData implements Serializable {
-
-    private class Precusor implements Serializable {
-
-      public Precusor() {}
-
-      public Precusor(List<String> precursorMolecules, List<String> sources) {
-        this.precursorMolecules = precursorMolecules;
-        this.sources = sources;
-      }
-
-      @JsonProperty("precursor_inchis")
-      private List<String> precursorMolecules;
-      @JsonProperty("source")
-      private List<String> sources;
-    }
-
-    @JsonProperty("prediction_precursors")
-    private List<Precusor> precursors;
-
-
-  }
-
-  private class SynonymData {
-    @JsonProperty("pubchem")
-    private List<String> pubchemSynonyms;
-
-    @JsonProperty("mesh")
-    private List<String> meshSynonyms;
+  public PrecursorData getPrecursorData() {
+    return this.precursorData;
   }
 
   private String id;
@@ -118,4 +101,5 @@ public class Reachable {
 
   @JsonProperty("precursor")
   private PrecursorData precursorData;
+  
 }
