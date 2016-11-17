@@ -32,7 +32,7 @@ import java.io.IOException;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -200,23 +200,38 @@ public class Loader {
     }
   }
 
+  public void update(Reachable reachable){
+    DBObject query = new BasicDBObject("inchi", reachable.getInchi());
+    Reachable reachableOld = jacksonReachablesCollection.findOne(query);
+
+    jacksonReachablesCollection.update(reachableOld, reachable);
+  }
+
   public void updateFromReachablesFile(File file){
     MongoDB connection = new MongoDB("localhost", 27017, "validator_profiling_2");
 
     try {
+      // Read in the file and parse it as JSON
       String jsonTxt = IOUtils.toString(new FileInputStream(file));
-
       JSONObject fileContents = new JSONObject(jsonTxt);
-      Chemical current = connection.getChemicalFromChemicalUUID(fileContents.getLong("chemid"));
-      Chemical parent = connection.getChemicalFromChemicalUUID(fileContents.getLong("parent"));
 
-      List<String> substrates = new ArrayList<>();
-      substrates.add(parent.getInChI());
+      // Get the parent chemicals from the database.  JSON file contains ID.
+      // We want to update it because it may not exist, but we also don't want to overwrite.
+      Chemical parent = connection.getChemicalFromChemicalUUID(fileContents.getLong("parent"));
+      update(constructReachable(parent.getInChI()));
+
+      // Get the actual chemical that is the product of the above chemical.
+      Chemical current = connection.getChemicalFromChemicalUUID(fileContents.getLong("chemid"));
+      List<String> substrates = Arrays.asList(parent.getInChI());
+
+      // Update source as reachables, as these files are parsed from `cascade` construction
       Precursor pre = new Precursor(substrates, "reachables");
-      Reachable l = constructReachable(parent.getInChI());
-      jacksonReachablesCollection.insert(l);
       updateWithPrecursor(current.getInChI(), pre);
-    } catch (IOException e){}
+    } catch (IOException e) {
+      // We can only work with files we can parse, so if we can't
+      // parse the file we just don't do anything and submit an error.
+      LOGGER.warn("Unable to parse file " + file.getAbsolutePath());
+    }
   }
 
   public void updateFromReachableFiles(List<File> files){
