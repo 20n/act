@@ -59,12 +59,46 @@ public class Loader {
     jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
   }
 
+  private String getSmiles(Molecule mol) {
+    try {
+      return MoleculeExporter.exportMolecule(mol, MoleculeFormat.smiles$.MODULE$);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private String getInchiKey(Molecule mol) {
+    try {
+      // TODO: add inchi key the Michael's Molecule Exporter
+      return MolExporter.exportToFormat(mol, "inchikey");
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private String getPageName(String chemaxonTraditionalName, List<String> brendaNames, String inchiKey) {
+    if (chemaxonTraditionalName == null || chemaxonTraditionalName.length() > 50) {
+      brendaNames.sort((n1, n2) -> Integer.compare(n1.length(), n2.length()));
+      if (brendaNames.size() == 0) {
+        return inchiKey;
+      } else {
+        return brendaNames.get(0);
+      }
+    }
+    return chemaxonTraditionalName;
+  }
+
+  private String getChemaxonTraditionalName(Molecule mol) {
+    try {
+      return MolExporter.exportToFormat(mol, "name:t");
+    } catch (IOException e) {
+      return null;
+    }
+  }
 
   public Reachable constructReachable(String inchi) throws IOException {
+
     Molecule mol;
-    String smiles;
-    String inchikey;
-    String pageName;
     try {
       mol = MoleculeImporter.importMolecule(inchi);
     } catch (MolFormatException e) {
@@ -75,37 +109,22 @@ public class Loader {
     Chemical c = db.getChemicalFromInChI(inchi);
     List<String> names = c != null ? c.getBrendaNames() : Collections.emptyList();
 
-    try {
-      smiles = MoleculeExporter.exportMolecule(mol, MoleculeFormat.smiles$.MODULE$);
-    } catch (Exception e) {
+    String smiles = getSmiles(mol);
+    if (smiles == null) {
       LOGGER.error("Failed to export molecule %s to smiles", inchi);
-      smiles = null;
     }
 
-    try {
-      // TODO: add inchi key the Michael's Molecule Exporter
-      inchikey = MolExporter.exportToFormat(mol, "inchikey");
-    } catch (Exception e) {
+    String inchikey = getInchiKey(mol);
+    if (inchikey == null) {
       LOGGER.error("Failed to export molecule %s to inchi key", inchi);
-      inchikey = null;
     }
 
-    try {
-      pageName = MolExporter.exportToFormat(mol, "name:t");
-      int l = pageName.length();
-      if (l > 50) {
-        names.sort((n1, n2) -> Integer.compare(n1.length(), n2.length()));
-        if (names.size() == 0) {
-          pageName = inchikey;
-        } else {
-          pageName = names.get(0);
-        }
-      }
-    } catch (IOException e) {
+    String chemaxonTraditionalName = getChemaxonTraditionalName(mol);
+    if (chemaxonTraditionalName == null) {
       LOGGER.error("Failed to export molecule %s to traditional name", inchi);
-      pageName = null;
     }
 
+    String pageName = getPageName(chemaxonTraditionalName, names, inchikey);
     return new Reachable(pageName, inchi, smiles, inchikey, names);
   }
 
