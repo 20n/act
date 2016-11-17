@@ -2,17 +2,14 @@ package act.installer.reachablesexplorer;
 
 import com.act.biointerpretation.l2expansion.ProjectionResult;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
-
 import scala.collection.JavaConversions;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class ReachablesProjectionUpdate {
 
@@ -76,17 +73,8 @@ public class ReachablesProjectionUpdate {
     }
   }
 
-  /**
-   * Gets the precursor data from this ProjectionResult. This is the same for every product, so we need only return
-   * one precursor, populated with the substrates and the RO. The names and inchikeys are for now supplied as null,
-   * as this module is not responsible for looking up those things based on inchis.
-   * @return A Precursor to be added to the reachables DB.
-   */
-  @JsonIgnore
-  public Precursor getPrecursor() {
-    List<InchiDescriptor> substrateDescriptors = substrates.stream()
-        .map(substrate -> new InchiDescriptor(null, substrate, null)).collect(Collectors.toList());
-    return new Precursor(substrateDescriptors, ros);
+  public void updateByLoader(Loader loader){
+    loader.updateFromProjection(this);
   }
 
   /**

@@ -1,10 +1,8 @@
 package act.installer.reachablesexplorer;
 
-import com.act.biointerpretation.l2expansion.ProjectionResult;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import scala.collection.JavaConversions;
 
 import java.io.Serializable;
 import java.util.List;
@@ -15,11 +13,11 @@ public class Precursor implements Serializable {
     private List<InchiDescriptor> precursorMolecules;
 
     @JsonProperty("source")
-    private List<String> sources;
+    private String sources;
 
     @JsonCreator
     public Precursor(@JsonProperty("precursor_inchis") List<InchiDescriptor> precursorMolecules,
-                     @JsonProperty("source") List<String> sources) {
+                     @JsonProperty("source") String sources) {
         this.precursorMolecules = precursorMolecules;
         this.sources = sources;
     }
@@ -30,7 +28,7 @@ public class Precursor implements Serializable {
     }
 
     @JsonIgnore
-    public List<String> getSources(){
+    public String getSources(){
         return sources;
     }
 

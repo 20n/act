@@ -101,7 +101,7 @@ public class Loader {
     }
   }
 
-  public Reachable constructReachable(String inchi) throws IOException {
+  public Reachable constructReachable(String inchi) {
     // Only construct a new one if one doesn't already exist.
     Reachable preconstructedReachable = queryByInchi(inchi);
     if (preconstructedReachable != null) {
@@ -228,7 +228,7 @@ public class Loader {
 
       // Update source as reachables, as these files are parsed from `cascade` construction
       if (!substrates.isEmpty()) {
-        Precursor pre = new Precursor(substrates, Arrays.asList("reachables"));
+        Precursor pre = new Precursor(substrates, "reachables");
         updateWithPrecursor(current.getInChI(), pre);
       } else {
         try {
@@ -256,6 +256,31 @@ public class Loader {
             x.getName().startsWith(("c")) && x.getName().endsWith("json")).collect(Collectors.toList());
     LOGGER.info("Found %d reachables files.",validFiles.size());
     updateFromReachableFiles(validFiles);
+  }
+
+  public void updateFromProjection(ReachablesProjectionUpdate projection) {
+    // Construct substrates
+    List<Reachable> substrates = projection.getSubstrates().
+            stream().
+            map(this::constructReachable).
+            collect(Collectors.toList());
+
+    // Add substrates in, or make sure they were added.
+    substrates.stream().forEach(this::upsert);
+
+    // Construct descriptors.
+    List<InchiDescriptor> precursors = substrates.
+            stream().
+            map(s -> new InchiDescriptor(s.getPageName(), s.getInchi(), s.getInchiKey())).
+            collect(Collectors.toList());
+
+    // For each product, create and add precursors.
+    projection.getProducts().stream().forEach(p -> {
+      // Get product
+      Reachable product = constructReachable(p);
+      product.getPrecursorData().addPrecursor(new Precursor(precursors, projection.getRos().get(0)));
+      upsert(product);
+    });
   }
 
   public List<String> getBingInchis() {
