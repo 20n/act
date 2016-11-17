@@ -164,7 +164,7 @@ public class Loader {
     }
 
   }
-  public void updateWithPrecursorData(String inchi, Reachable.PrecursorData precursorData) {
+  public void updateWithPrecursorData(String inchi, PrecursorData precursorData) {
     // TODO: is there a better way to perform the update? probably!
     Reachable reachable = jacksonReachablesCollection.findOne(new BasicDBObject("inchi", inchi));
     Reachable reachableOld = jacksonReachablesCollection.findOne(new BasicDBObject("inchi", inchi));
@@ -184,6 +184,6 @@ public class Loader {
 
     Loader loader = new Loader();
     loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
-    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new Reachable.PrecursorData());
+    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
   }
 }
