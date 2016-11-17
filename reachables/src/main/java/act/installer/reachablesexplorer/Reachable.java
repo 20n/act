@@ -1,7 +1,7 @@
 package act.installer.reachablesexplorer;
 
-
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.mongojack.ObjectId;
@@ -14,14 +14,14 @@ public class Reachable {
 
   public Reachable() {}
 
-  public Reachable(String pageName, String inchi, String smiles, String inchikey, String structureFilename, List<String> names, String wordCloudFilename) {
+  public Reachable(String pageName, String inchi, String smiles, String inchikey, List<String> names) {
     this.pageName = pageName;
     this.inchi = inchi;
     this.smiles = smiles;
     this.inchikey = inchikey;
-    this.structureFilename = structureFilename;
+    this.structureFilename = null;
     this.names = names;
-    this.wordCloudFilename = wordCloudFilename;
+    this.wordCloudFilename = null;
     this.precursorData = new PrecursorData();
   }
 
@@ -142,5 +142,13 @@ public class Reachable {
   @JsonIgnore
   public String getInchiKey(){
     return inchikey;
+  }
+
+  public void setWordCloudFilename(String wordCloudFilename) {
+    this.wordCloudFilename = wordCloudFilename;
+  }
+
+  public void setStructureFilename(String structureFilename) {
+    this.structureFilename = structureFilename;
   }
 }

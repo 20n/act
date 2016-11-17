@@ -158,10 +158,19 @@ public class Loader {
       pageName = null;
     }
 
-    String renderingFilename = generateRendering(inchi, mol);
-    String wordcloudFilename = generateWordcloud(inchi);
+    return new Reachable(pageName, inchi, smiles, inchikey, names);
+  }
 
-    return new Reachable(pageName, inchi, smiles, inchikey, renderingFilename, names, wordcloudFilename);
+  public void updateReachableWithWordcloud(Reachable reachable) throws IOException {
+    File wordcloud = wcGenerator.generateWordCloud(reachable.getInchi());
+    reachable.setWordCloudFilename(wordcloud.getName());
+    upsert(reachable);
+  }
+
+  public void updateReachableWithRendering(Reachable reachable) {
+    String renderingFilename = MoleculeRenderer.generateRendering(reachable.getInchi());
+    reachable.setStructureFilename(renderingFilename);
+    upsert(reachable);
   }
 
   public void loadReachables(File inchiFile) throws IOException {

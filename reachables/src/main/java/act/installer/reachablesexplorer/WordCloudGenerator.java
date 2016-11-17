@@ -7,6 +7,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 
 
 public class WordCloudGenerator {
@@ -41,24 +42,21 @@ public class WordCloudGenerator {
   public void generateWordCloud(String inchi, File file) throws IOException {
     String cmd = String.format("Rscript %s %s %s %s %s", rScript.getAbsolutePath(), inchi, file.getAbsolutePath(), host, port);
 
-    try {
-      Process p = rt.exec(cmd);
-      BufferedReader in = new BufferedReader(
-          new InputStreamReader(p.getInputStream()));
-      String line = null;
-      while ((line = in.readLine()) != null) {
-        System.out.println(line);
-      }
-      BufferedReader err = new BufferedReader(
-          new InputStreamReader(p.getErrorStream()));
-      while ((line = in.readLine()) != null) {
-        System.out.println(line);
-      }
-    } catch (IOException e) {
+    if (!Files.exists(wordcloud.toPath())) {
+      try {
+        // TODO: this call a CL to run the R script. Maybe use Rengine instead?
+        String cmd = String.format("Rscript %s %s %s %s %s", rScript.getAbsolutePath(), inchi, wordcloud.getAbsolutePath(), host, port);
+        rt.exec(cmd);
+        FileChecker.verifyInputFile(wordcloud);
+      } catch (IOException e) {
+        LOGGER.error("Unable to generate wordcloud for %s at location %s", inchi, wordcloud.toPath().toString());
+        return null;
+      } catch (IOException e) {
       e.printStackTrace();
     }
   }
 
+  // TODO: remove main method when done testing
   public static void main(String[] args) {
     WordCloudGenerator g = new WordCloudGenerator("localhost", "27017");
     try {
