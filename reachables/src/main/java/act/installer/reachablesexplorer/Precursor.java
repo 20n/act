@@ -10,19 +10,20 @@ import java.util.List;
 
 class Precursor implements Serializable {
     @JsonProperty("precursor_inchis")
-    private List<String> precursorMolecules;
+    private List<InchiDescriptor> precursorMolecules;
+
     @JsonProperty("source")
     private String source;
 
     @JsonCreator
-    public Precursor(@JsonProperty("precursor_inchis") List<String> precursorMolecules,
+    public Precursor(@JsonProperty("precursor_inchis") List<InchiDescriptor> precursorMolecules,
                      @JsonProperty("source") String source) {
         this.precursorMolecules = precursorMolecules;
         this.source = source;
     }
 
     @JsonIgnore
-    public List<String> getMolecules(){
+    public List<InchiDescriptor> getMolecules(){
         return precursorMolecules;
     }
 
@@ -42,8 +43,8 @@ class Precursor implements Serializable {
     public int hashCode() {
         int start = 31;
         start = 31 * start + source.hashCode();
-        for (String m: this.precursorMolecules){
-            start = 31*start + m.hashCode();
+        for (InchiDescriptor m: this.precursorMolecules){
+            start = 31*start + m.getInchi().hashCode();
         }
 
         return start;
