@@ -1,19 +1,17 @@
 package act.installer.reachablesexplorer;
 
 
+
 import act.server.DBIterator;
 import act.server.MongoDB;
 import com.act.jobs.FileChecker;
-import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -53,6 +51,7 @@ public class WordCloudGenerator {
     }
   }
 
+
   public List<String> getBingInchis() {
     MongoDB bingDb = new MongoDB(host, Integer.parseInt(port), "actv01");
 
@@ -90,11 +89,9 @@ public class WordCloudGenerator {
         rt.exec(cmd);
         FileChecker.verifyInputFile(wordcloud);
       } catch (IOException e) {
-        LOGGER.debug("Unable to generate wordcloud for %s: %s", inchi, e.getMessage());
+        LOGGER.error("Unable to generate wordcloud for %s at location %s", inchi, wordcloud.toPath().toString());
         return null;
       }
-    } else {
-      LOGGER.info("wordcloud for %s already exists at %s", inchi, wordcloud.toPath().toString());
     }
     return wordcloud;
   }

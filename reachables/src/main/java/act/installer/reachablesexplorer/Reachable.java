@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.mongojack.ObjectId;
 
-
 import java.util.List;
 
 @JsonInclude(JsonInclude.Include.ALWAYS)

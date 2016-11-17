@@ -32,7 +32,6 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -262,9 +261,29 @@ public class Loader {
     updateFromReachableFiles(validFiles);
   }
 
+
+  public List<String> getBingInchis() {
+    MongoDB bingDb = new MongoDB(DATABASE_BING_ONLY_HOST, Integer.parseInt(DATABASE_BING_ONLY_PORT), "actv01");
+    BasicDBObject query = new BasicDBObject("xref.BING", new BasicDBObject("$exists", true));
+    BasicDBObject keys = new BasicDBObject("InChI", true);
+
+    DBIterator ite = bingDb.getIteratorOverChemicals(query, keys);
+    List<String> bingList = new ArrayList<>();
+    while (ite.hasNext()) {
+      BasicDBObject o = (BasicDBObject) ite.next();
+      String inchi = o.getString("InChI");
+      if (inchi != null) {
+        bingList.add(inchi);
+      }
+    }
+    return bingList;
+  }
+
+
   public void updateWordClouds() throws IOException {
     List<String> inchis = jacksonReachablesCollection.distinct("inchi");
     LOGGER.info("Found %d inchis in the database, now querying for usage words", inchis.size());
+
 
     List<String> bingInchis = wcGenerator.getBingInchis();
     LOGGER.info("Found %d inchis having bings results", bingInchis.size());
@@ -285,6 +304,7 @@ public class Loader {
   }
 
   public static void main(String[] args) throws IOException {
+
   //    Loader loader = new Loader();
   //    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
   //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());

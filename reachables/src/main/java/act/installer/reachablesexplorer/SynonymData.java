@@ -21,6 +21,4 @@ public class SynonymData {
 
   @JsonProperty("mesh")
   private List<String> meshSynonyms;
-
-
 }
