@@ -192,7 +192,7 @@ public class Loader {
     return jacksonReachablesCollection.findOne(query);
   }
 
-  public void upsert(Reachable reachable){
+  public void upsert(Reachable reachable) {
     Reachable reachableOld = queryByInchi(reachable.getInchi());
 
     if (reachableOld != null) {
@@ -204,7 +204,7 @@ public class Loader {
     }
   }
 
-  public void updateFromReachablesFile(File file){
+  public void updateFromReachablesFile(File file) {
     try {
       // Read in the file and parse it as JSON
       String jsonTxt = IOUtils.toString(new FileInputStream(file));
@@ -252,12 +252,13 @@ public class Loader {
     }
   }
 
-  public void updateFromReachableFiles(List<File> files){
+  public void updateFromReachableFiles(List<File> files) {
     files.stream().forEach(this::updateFromReachablesFile);
   }
 
-  public void updateFromReachableDir(File file){
-    List<File> validFiles = Arrays.stream(file.listFiles()).filter(x ->
+  public void updateFromReachableDir(File file) {
+    File[] f = file.listFiles();
+    List<File> validFiles = Arrays.stream(f).filter(x ->
             x.getName().startsWith(("c")) && x.getName().endsWith("json")).collect(Collectors.toList());
     LOGGER.info("Found %d reachables files.",validFiles.size());
     updateFromReachableFiles(validFiles);
