@@ -1,11 +1,10 @@
 package act.installer.reachablesexplorer;
 
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.mongojack.ObjectId;
 
-import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 
 public class Reachable {
@@ -20,10 +19,17 @@ public class Reachable {
     this.structureFilename = structureFilename;
     this.names = names;
     this.wordCloudFilename = wordCloudFilename;
-    this.precursorData = null;
+    this.precursorData = new PrecursorData();
   }
 
-  public Reachable(String pageName, String inchi, String smiles, String structureFilename, List<String> names, String wordCloudFilename, PrecursorData precursors) {
+  @JsonCreator
+  public Reachable(@JsonProperty("page_name") String pageName,
+                   @JsonProperty("inchi") String inchi,
+                   @JsonProperty("smiles") String smiles,
+                   @JsonProperty("rendering-filename") String structureFilename,
+                   @JsonProperty("names") List<String> names,
+                   @JsonProperty("usage-wordcloud-filename") String wordCloudFilename,
+                   @JsonProperty("precursor") PrecursorData precursors) {
     this.pageName = pageName;
     this.inchi = inchi;
     this.smiles = smiles;
@@ -44,6 +50,10 @@ public class Reachable {
 
   public void setPrecursorData(PrecursorData precursorData) {
     this.precursorData = precursorData;
+  }
+
+  public PrecursorData getPrecursorData() {
+    return this.precursorData;
   }
 
 

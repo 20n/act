@@ -1,5 +1,6 @@
 package act.installer.reachablesexplorer;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -11,11 +12,13 @@ class Precursor implements Serializable {
     @JsonProperty("precursor_inchis")
     private List<String> precursorMolecules;
     @JsonProperty("source")
-    private List<String> sources;
+    private String source;
 
-    public Precursor(List<String> precursorMolecules, List<String> sources) {
+    @JsonCreator
+    public Precursor(@JsonProperty("precursor_inchis") List<String> precursorMolecules,
+                     @JsonProperty("source") String source) {
         this.precursorMolecules = precursorMolecules;
-        this.sources = sources;
+        this.source = source;
     }
 
     @JsonIgnore
@@ -24,7 +27,25 @@ class Precursor implements Serializable {
     }
 
     @JsonIgnore
-    public List<String> getSources(){
-        return sources;
+    public String getSources(){
+        return source;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return (o instanceof Precursor) &&
+                source.equals(((Precursor) o).getSources()) &&
+                precursorMolecules.equals(((Precursor) o).getMolecules());
+    }
+
+    @Override
+    public int hashCode() {
+        int start = 31;
+        start = 31 * start + source.hashCode();
+        for (String m: this.precursorMolecules){
+            start = 31*start + m.hashCode();
+        }
+
+        return start;
     }
 }
