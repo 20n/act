@@ -151,4 +151,12 @@ public class Reachable {
   public void setStructureFilename(String structureFilename) {
     this.structureFilename = structureFilename;
   }
+
+  public String getStructureFilename() {
+    return structureFilename;
+  }
+
+  public String getWordCloudFilename() {
+    return wordCloudFilename;
+  }
 }
