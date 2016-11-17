@@ -4,11 +4,16 @@ package act.installer.reachablesexplorer;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.mongojack.ObjectId;
 
+import java.io.Serializable;
+import java.util.Collections;
 import java.util.List;
 
 public class Reachable {
 
-  public Reachable(String inchi, String smiles, String inchikey, String structureFilename, List<String> names, String wordCloudFilename) {
+  public Reachable() {}
+
+  public Reachable(String pageName, String inchi, String smiles, String inchikey, String structureFilename, List<String> names, String wordCloudFilename) {
+    this.pageName = pageName;
     this.inchi = inchi;
     this.smiles = smiles;
     this.inchikey = inchikey;
@@ -18,7 +23,8 @@ public class Reachable {
     this.precursorData = null;
   }
 
-  public Reachable(String inchi, String smiles, String structureFilename, List<String> names, String wordCloudFilename, PrecursorData precursors) {
+  public Reachable(String pageName, String inchi, String smiles, String structureFilename, List<String> names, String wordCloudFilename, PrecursorData precursors) {
+    this.pageName = pageName;
     this.inchi = inchi;
     this.smiles = smiles;
     this.structureFilename = structureFilename;
@@ -36,16 +42,29 @@ public class Reachable {
     private String text;
   }
 
-  class PrecursorData {
-    private class Precusor {
+  public void setPrecursorData(PrecursorData precursorData) {
+    this.precursorData = precursorData;
+  }
+
+  static class PrecursorData implements Serializable {
+
+    private class Precusor implements Serializable {
+
+      public Precusor() {}
+
+      public Precusor(List<String> precursorMolecules, List<String> sources) {
+        this.precursorMolecules = precursorMolecules;
+        this.sources = sources;
+      }
+
       @JsonProperty("precursor_inchis")
-      private List<String> precursorMolcules;
+      private List<String> precursorMolecules;
       @JsonProperty("source")
       private List<String> sources;
     }
 
-    @JsonProperty("prediction_precusors")
-    private List<Precusor> precusors;
+    @JsonProperty("prediction_precursors")
+    private List<Precusor> precursors;
 
 
   }
@@ -69,6 +88,9 @@ public class Reachable {
   public void setId(String id) {
     this.id = id;
   }
+
+  @JsonProperty("page_name")
+  private String pageName;
 
   @JsonProperty("inchi")
   private String inchi;

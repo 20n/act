@@ -13,6 +13,8 @@ import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.act.biointerpretation.mechanisminspection.ReactionRenderer;
 import com.act.jobs.FileChecker;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.deser.impl.ExternalTypeHandler;
+import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
@@ -20,6 +22,7 @@ import com.mongodb.ServerAddress;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.mongojack.DBUpdate;
 import org.mongojack.JacksonDBCollection;
 
 import java.io.File;
@@ -109,6 +112,7 @@ public class Loader {
     Molecule mol;
     String smiles;
     String inchikey;
+    String pageName;
     try {
       mol = MoleculeImporter.importMolecule(inchi);
     } catch (MolFormatException e) {
@@ -134,10 +138,17 @@ public class Loader {
       inchikey = null;
     }
 
+    try {
+      pageName = MolExporter.exportToFormat(mol, "name:t");
+    } catch (IOException e) {
+      LOGGER.error("Failed to export molecule %s to traditional name", inchi);
+      pageName = null;
+    }
+
     String renderingFilename = generateRendering(inchi, mol);
     String wordcloudFilename = generateWordcloud(inchi);
 
-    return new Reachable(inchi, smiles, inchikey, renderingFilename, names, wordcloudFilename);
+    return new Reachable(pageName, inchi, smiles, inchikey, renderingFilename, names, wordcloudFilename);
   }
 
   public void loadReachables(File inchiFile) throws IOException {
@@ -151,15 +162,28 @@ public class Loader {
       // TODO: change the following to update the database maybe?
       jacksonReachablesCollection.insert(reachable);
     }
+
   }
+  public void updateWithPrecursorData(String inchi, Reachable.PrecursorData precursorData) {
+    // TODO: is there a better way to perform the update? probably!
+    Reachable reachable = jacksonReachablesCollection.findOne(new BasicDBObject("inchi", inchi));
+    Reachable reachableOld = jacksonReachablesCollection.findOne(new BasicDBObject("inchi", inchi));
+    if (reachable != null) {
+      reachable.setPrecursorData(precursorData);
+      jacksonReachablesCollection.update(reachableOld, reachable);
+    }
 
 
+    //DBUpdate.Builder builder = new DBUpdate.Builder();
+    //builder.set("precursor", precursorData);
+    // jacksonReachablesCollection.update(new BasicDBObject("inchi", inchi), builder);
+
+  }
 
   public static void main(String[] args) throws IOException {
 
     Loader loader = new Loader();
-    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis"));
+    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
+    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new Reachable.PrecursorData());
   }
-
-
 }
