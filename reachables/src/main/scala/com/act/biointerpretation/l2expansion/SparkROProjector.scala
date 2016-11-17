@@ -443,19 +443,6 @@ object SparkROProjector {
     })
   }
 
-  private def writeToReachablesDatabase(resultsRDD: RDD[ProjectionResult], database: String, port: Int, host: String): Unit = {
-    val reachables = getReachablesCollection(database, port, host)
-
-    val resultCount = resultsRDD.persist().count()
-    LOGGER.info(s"Projection completed with $resultCount results")
-    val resultsIterator = resultsRDD.toLocalIterator
-
-    resultsIterator.foreach(projection => {
-      val updater = new ReachablesProjectionUpdate(projection)
-      updater.updateReachables(reachables)
-    })
-  }
-
   private def writeToReachablesDatabaseThroughLoader(resultsRDD: RDD[ProjectionResult], loader: Loader): Unit = {
     val resultCount = resultsRDD.persist().count()
     LOGGER.info(s"Projection completed with $resultCount results")
