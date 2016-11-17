@@ -2,6 +2,7 @@ package com.act.biointerpretation.l2expansion
 
 import java.io.{BufferedWriter, File, FileWriter}
 
+import act.installer.reachablesexplorer.ReachablesProjectionUpdate
 import act.server.MongoDB
 import chemaxon.license.LicenseManager
 import chemaxon.marvin.io.MolExportException
@@ -321,7 +322,6 @@ object SparkROProjector {
         desc("Specifies  to read input inchis from a reachables DB."),
 
       CliOption.builder(OPTION_SUBSTRATES_LISTS).
-        required(true).
         hasArgs.
         valueSeparator(',').
         longOpt("substrates-list").
@@ -331,6 +331,11 @@ object SparkROProjector {
         hasArg.
         longOpt("output-directory").
         desc("A directory in which to write per-RO result files"),
+
+      CliOption.builder(OPTION_DB_NAME).
+        hasArg().
+        longOpt("db-name").
+        desc("The name of the mongo DB to use."),
 
       CliOption.builder(OPTION_WRITE_PROJECTIONS_TO_DB).
         longOpt("write-to-database").

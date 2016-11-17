@@ -1,25 +1,27 @@
 package act.installer.reachablesexplorer;
 
+import com.act.biointerpretation.l2expansion.ProjectionResult;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import scala.collection.JavaConversions;
 
 import java.io.Serializable;
 import java.util.List;
 
 
-class Precursor implements Serializable {
+public class Precursor implements Serializable {
     @JsonProperty("precursor_inchis")
     private List<InchiDescriptor> precursorMolecules;
 
     @JsonProperty("source")
-    private String source;
+    private List<String> sources;
 
     @JsonCreator
     public Precursor(@JsonProperty("precursor_inchis") List<InchiDescriptor> precursorMolecules,
-                     @JsonProperty("source") String source) {
+                     @JsonProperty("source") List<String> sources) {
         this.precursorMolecules = precursorMolecules;
-        this.source = source;
+        this.sources = sources;
     }
 
     @JsonIgnore
@@ -28,21 +30,21 @@ class Precursor implements Serializable {
     }
 
     @JsonIgnore
-    public String getSources(){
-        return source;
+    public List<String> getSources(){
+        return sources;
     }
 
     @Override
     public boolean equals(Object o) {
         return (o instanceof Precursor) &&
-                source.equals(((Precursor) o).getSources()) &&
+                sources.equals(((Precursor) o).getSources()) &&
                 precursorMolecules.equals(((Precursor) o).getMolecules());
     }
 
     @Override
     public int hashCode() {
         int start = 31;
-        start = 31 * start + source.hashCode();
+        start = 31 * start + sources.hashCode();
         for (InchiDescriptor m: this.precursorMolecules){
             start = 31*start + m.getInchi().hashCode();
         }

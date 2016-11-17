@@ -228,7 +228,7 @@ public class Loader {
 
       // Update source as reachables, as these files are parsed from `cascade` construction
       if (!substrates.isEmpty()) {
-        Precursor pre = new Precursor(substrates, "reachables");
+        Precursor pre = new Precursor(substrates, Arrays.asList("reachables"));
         updateWithPrecursor(current.getInChI(), pre);
       } else {
         try {
