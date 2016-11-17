@@ -61,7 +61,7 @@ object cascades {
       dirl.mkdir()
     }
     // we write the cascades for reachables back into the db, so need a connection
-    val backendDB = ("localhost", 27017, "marvin")
+    val backendDB = ("localhost", 27017, "validator_profiling_2")
     val db = new MongoDB(backendDB._1, backendDB._2, backendDB._3)
 
     // Set(nodeIDs) = nids from the tree minus those artificially asserted as reachable

@@ -124,7 +124,7 @@ object reachables {
                         nativesFile: String,
                         cofactorsFile: Option[String]) {
     // Connect to the DB so that extended attributes for chemicals can be fetched as we serialize.
-    val db = new MongoDB("localhost", 27017, "marvin")
+    val db = new MongoDB("localhost", 27017, "validator_profiling_2")
 
     /* --------------- Parse Options ------------------ */
     val regressionOutputDirectory = s"$prefix.regressions/"
