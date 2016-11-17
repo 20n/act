@@ -1,22 +1,13 @@
 package act.installer.reachablesexplorer;
 
-
-import act.shared.Chemical;
-import chemaxon.formats.MolExporter;
-import chemaxon.formats.MolFormatException;
-import chemaxon.struc.Molecule;
-import com.act.analysis.chemicals.molecules.MoleculeExporter;
-import com.act.analysis.chemicals.molecules.MoleculeFormat;
-import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import com.fasterxml.jackson.annotation.JsonCreator;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.mongojack.ObjectId;
 
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 
 @JsonInclude(JsonInclude.Include.ALWAYS)
@@ -78,12 +69,12 @@ public class Reachable {
   @JsonProperty("page_name")
   private String pageName;
 
+  public String getPageName(){
+    return pageName;
+  }
+
   @JsonProperty("inchi")
   private String inchi;
-
-  public String getInchi(){
-    return inchi;
-  }
 
   @JsonProperty("smiles")
   private String smiles;
@@ -105,5 +96,15 @@ public class Reachable {
 
   @JsonProperty("precursor")
   private PrecursorData precursorData;
-  
+
+  /* -------- Getters must have JSON ignore if not a unique field. ------- */
+  @JsonIgnore
+  public String getInchi(){
+    return inchi;
+  }
+
+  @JsonIgnore
+  public String getInchiKey(){
+    return inchikey;
+  }
 }
