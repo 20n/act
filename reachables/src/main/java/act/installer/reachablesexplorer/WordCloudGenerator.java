@@ -1,15 +1,23 @@
 package act.installer.reachablesexplorer;
 
 
+import act.server.DBIterator;
+import act.server.MongoDB;
 import com.act.jobs.FileChecker;
+import com.mongodb.BasicDBList;
+import com.mongodb.BasicDBObject;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class WordCloudGenerator {
@@ -45,6 +53,24 @@ public class WordCloudGenerator {
     }
   }
 
+  public List<String> getBingInchis() {
+    MongoDB bingDb = new MongoDB(host, Integer.parseInt(port), "actv01");
+
+    BasicDBObject query = new BasicDBObject("xref.BING.metadata.usage_terms.0", new BasicDBObject("$exists", true));
+    BasicDBObject keys = new BasicDBObject("InChI", true);
+
+    DBIterator ite = bingDb.getIteratorOverChemicals(query, keys);
+    List<String> bingList = new ArrayList<>();
+    while (ite.hasNext()) {
+      BasicDBObject o = (BasicDBObject) ite.next();
+      String inchi = o.getString("InChI");
+      if (inchi != null) {
+        bingList.add(inchi);
+      }
+    }
+    return bingList;
+  }
+
   public File generateWordCloud(String inchi) throws IOException {
 
     // TODO: improve wordcloud generation. Currently, each instance open a mongo connection on the R side.
@@ -64,9 +90,11 @@ public class WordCloudGenerator {
         rt.exec(cmd);
         FileChecker.verifyInputFile(wordcloud);
       } catch (IOException e) {
-        LOGGER.error("Unable to generate wordcloud for %s at location %s", inchi, wordcloud.toPath().toString());
+        LOGGER.debug("Unable to generate wordcloud for %s: %s", inchi, e.getMessage());
         return null;
       }
+    } else {
+      LOGGER.info("wordcloud for %s already exists at %s", inchi, wordcloud.toPath().toString());
     }
     return wordcloud;
   }

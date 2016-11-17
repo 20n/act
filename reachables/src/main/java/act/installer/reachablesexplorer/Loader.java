@@ -11,12 +11,6 @@ import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeFormat;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import com.act.biointerpretation.l2expansion.L2InchiCorpus;
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.Keyword;
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.Keyword$;
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoKeywords;
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoKeywords$;
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities;
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities$class;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
@@ -48,8 +42,8 @@ public class Loader {
   private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
   private static final MongoDB reachablesConnection = new MongoDB("localhost", 27017, "validator_profiling_2");
 
-  private static final String DATABASE_BING_ONLY_HOST = "localhost";
-  private static final String DATABASE_BING_ONLY_PORT = "27018";
+  private static final String DATABASE_BING_ONLY_HOST = "chimay";
+  private static final String DATABASE_BING_ONLY_PORT = "27017";
 
   private MongoDB db;
   private WordCloudGenerator wcGenerator;
@@ -82,7 +76,8 @@ public class Loader {
   private String getInchiKey(Molecule mol) {
     try {
       // TODO: add inchi key the Michael's Molecule Exporter
-      return MolExporter.exportToFormat(mol, "inchikey");
+      String inchikey = MolExporter.exportToFormat(mol, "inchikey");
+      return inchikey.replaceAll("InChIKey=", "");
     } catch (Exception e) {
       return null;
     }
@@ -146,8 +141,10 @@ public class Loader {
 
   public void updateReachableWithWordcloud(Reachable reachable) throws IOException {
     File wordcloud = wcGenerator.generateWordCloud(reachable.getInchi());
-    reachable.setWordCloudFilename(wordcloud.getName());
-    upsert(reachable);
+    if (wordcloud != null) {
+      reachable.setWordCloudFilename(wordcloud.getName());
+      upsert(reachable);
+    }
   }
 
   public void updateReachableWithRendering(Reachable reachable) {
@@ -265,34 +262,21 @@ public class Loader {
     updateFromReachableFiles(validFiles);
   }
 
-  public List<String> getBingInchis() {
-    MongoDB bingDb = new MongoDB(DATABASE_BING_ONLY_HOST, Integer.parseInt(DATABASE_BING_ONLY_PORT), "actv01");
-    BasicDBObject query = new BasicDBObject("xref.BING", new BasicDBObject("$exists", true));
-    BasicDBObject keys = new BasicDBObject("InChI", true);
-
-    DBIterator ite = bingDb.getIteratorOverChemicals(query, keys);
-    List<String> bingList = new ArrayList<>();
-    while (ite.hasNext()) {
-      BasicDBObject o = (BasicDBObject) ite.next();
-      String inchi = o.getString("InChI");
-      if (inchi != null) {
-        bingList.add(inchi);
-      }
-    }
-    return bingList;
-  }
-
   public void updateWordClouds() throws IOException {
     List<String> inchis = jacksonReachablesCollection.distinct("inchi");
     LOGGER.info("Found %d inchis in the database, now querying for usage words", inchis.size());
 
-    List<String> bingInchis = getBingInchis();
+    List<String> bingInchis = wcGenerator.getBingInchis();
     LOGGER.info("Found %d inchis having bings results", bingInchis.size());
 
-    inchis.retainAll(bingInchis);
-    LOGGER.info("Now creating wordclouds for %d inchis", inchis.size());
+    bingInchis.retainAll(inchis);
+    LOGGER.info("Now creating wordclouds for %d inchis", bingInchis.size());
 
-    for (String inchi : inchis) {
+    int i = 0;
+    for (String inchi : bingInchis) {
+      if (++i % 100 == 0) {
+        LOGGER.info("#%d", i);
+      }
       Reachable reachable = queryByInchi(inchi);
       if (reachable.getWordCloudFilename() == null) {
         updateReachableWithWordcloud(reachable);
@@ -305,8 +289,8 @@ public class Loader {
   //    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
   //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
     Loader loader = new Loader();
-    //loader.updateWordClouds();
+    loader.updateWordClouds();
     // Load all cascades
-     loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
+    //loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
   }
 }
