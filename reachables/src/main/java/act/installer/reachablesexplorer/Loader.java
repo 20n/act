@@ -210,11 +210,17 @@ public class Loader {
     }
   }
 
-  public void update(Reachable reachable){
+  public void upsert(Reachable reachable){
     DBObject query = new BasicDBObject("inchi", reachable.getInchi());
     Reachable reachableOld = jacksonReachablesCollection.findOne(query);
 
-    jacksonReachablesCollection.update(reachableOld, reachable);
+    if (reachableOld != null) {
+      LOGGER.info("Found previous reachable at InChI " + reachable.getInchi() + ".  Adding additional precursors to it.");
+      jacksonReachablesCollection.update(reachableOld, reachable);
+    } else {
+      LOGGER.info("Did not find InChI " + reachable.getInchi() + " in database.  Creating a new reachable.");
+      jacksonReachablesCollection.insert(reachable);
+    }
   }
 
   public void updateFromReachablesFile(File file){
@@ -228,11 +234,13 @@ public class Loader {
       // Get the parent chemicals from the database.  JSON file contains ID.
       // We want to update it because it may not exist, but we also don't want to overwrite.
       Chemical parent = connection.getChemicalFromChemicalUUID(fileContents.getLong("parent"));
-      update(constructReachable(parent.getInChI()));
+      upsert(constructReachable(parent.getInChI()));
 
       // Get the actual chemical that is the product of the above chemical.
       Chemical current = connection.getChemicalFromChemicalUUID(fileContents.getLong("chemid"));
-      List<String> substrates = Arrays.asList(parent.getInChI());
+
+      InchiDescriptor parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
+      List<InchiDescriptor> substrates = Arrays.asList(parentDescriptor);
 
       // Update source as reachables, as these files are parsed from `cascade` construction
       Precursor pre = new Precursor(substrates, "reachables");

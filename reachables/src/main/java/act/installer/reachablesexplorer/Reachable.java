@@ -1,7 +1,8 @@
 package act.installer.reachablesexplorer;
 
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.mongojack.ObjectId;
 
@@ -103,12 +104,12 @@ public class Reachable {
   @JsonProperty("page_name")
   private String pageName;
 
+  public String getPageName(){
+    return pageName;
+  }
+
   @JsonProperty("inchi")
   private String inchi;
-
-  public String getInchi(){
-    return inchi;
-  }
 
   @JsonProperty("smiles")
   private String smiles;
@@ -130,4 +131,16 @@ public class Reachable {
 
   @JsonProperty("precursor")
   private PrecursorData precursorData;
+
+
+  /* -------- Getters must have JSON ignore if not a unique field. ------- */
+  @JsonIgnore
+  public String getInchi(){
+    return inchi;
+  }
+
+  @JsonIgnore
+  public String getInchiKey(){
+    return inchikey;
+  }
 }
