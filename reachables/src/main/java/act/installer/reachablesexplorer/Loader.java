@@ -35,6 +35,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Loader {
 
@@ -143,6 +144,15 @@ public class Loader {
 
     try {
       pageName = MolExporter.exportToFormat(mol, "name:t");
+      int l = pageName.length();
+      if (l > 50) {
+        names.sort((n1, n2) -> Integer.compare(n1.length(), n2.length()));
+        if (names.size() == 0) {
+          pageName = inchikey;
+        } else {
+          pageName = names.get(0);
+        }
+      }
     } catch (IOException e) {
       LOGGER.error("Failed to export molecule %s to traditional name", inchi);
       pageName = null;
@@ -230,6 +240,6 @@ public class Loader {
 //    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
 //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
     Loader loader = new Loader();
-    loader.updateFromReachablesFile(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data", "c1121.json"));
+    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
   }
 }
