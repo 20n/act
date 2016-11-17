@@ -2,24 +2,29 @@ package com.act.biointerpretation.l2expansion
 
 import java.io.{BufferedWriter, File, FileWriter}
 
+import act.server.MongoDB
 import chemaxon.license.LicenseManager
 import chemaxon.marvin.io.MolExportException
+import chemaxon.sss.SearchConstants
+import chemaxon.sss.search.{MolSearch, MolSearchOptions}
 import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.act.workflow.tool_manager.jobs.management.JobManager
 import com.act.workflow.tool_manager.tool_wrappers.SparkWrapper
+import com.mongodb._
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
 import spray.json._
 
+import scala.collection.JavaConverters
 import scala.collection.JavaConverters._
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 // Basic storage class for serializing and deserializing projection results
-case class ProjectionResult(substrate: List[String], ros: String, products: List[String])
+case class ProjectionResult(substrates: List[String], ros: String, products: List[String])
 
 object ProjectionResultProtocol extends DefaultJsonProtocol {
   implicit val projectionFormat = jsonFormat3(ProjectionResult)
@@ -37,6 +42,32 @@ object SparkInstance {
   eros.loadValidationCorpus()
 
   var localLicenseFile: Option[String] = None
+
+  //var substructureSearch: MolSearch = new MolSearch // TODO: should this be `ThreadLocal` (or the scala-equivalent)?
+  var substructureSearch: ThreadLocal[MolSearch] = new ThreadLocal[MolSearch] {
+    override def initialValue(): MolSearch = {
+      val search: MolSearch = new MolSearch
+      val options: MolSearchOptions = new MolSearchOptions(SearchConstants.SUBSTRUCTURE)
+      // This allows H's in RO strings to match implicit hydrogens in our target molecules.
+      options.setImplicitHMatching(SearchConstants.IMPLICIT_H_MATCHING_ENABLED)
+      /* This allows for vague bond matching in ring structures.  From the Chemaxon Docs:
+       *    In the query all single ring bonds are replaced by "single or aromatic" and all double ring bonds are
+       *    replaced by "double or aromatic" prior to search.
+       *    (https://www.chemaxon.com/jchem/doc/dev/java/api/chemaxon/sss/SearchConstants.html)
+       *
+       * This should allow us to handle aromatized molecules gracefully without handling non-ring single and double
+       * bonds ambiguously. */
+      options.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL2)
+      // Few if any of our ROs concern stereo chemistry, so we can just ignore it.
+      options.setStereoSearchType(SearchConstants.STEREO_IGNORE)
+      /* Chemaxon's tautomer handling is weird, as sometimes it picks a non-representative tautomer as its default.
+       * As such, we'll allow tautomer matches to avoid excluding viable candidates. */
+      options.setTautomerSearch(SearchConstants.TAUTOMER_SEARCH_ON)
+      search.setSearchOptions(options)
+      search
+    }
+  }
+
 
   def project(licenseFileName: String)
              (reverse: Boolean, exhaustive: Boolean)
@@ -73,28 +104,57 @@ object SparkInstance {
     // because of the duplicates b. We should assess this as for higher number of molecule reactors this
     // may be the dominant case over the cost that could be imposed by hitting the MoleculeImporter's cache.
     val importedMolecules: List[Molecule] = inputs.map(x => MoleculeImporter.importMolecule(x, defaultMoleculeFormat))
-    val resultingReactions: Stream[ProjectionResult] = importedMolecules.permutations.flatMap(substrateOrdering => {
 
-      // Setup reactor
-      reactor.setReactants(substrateOrdering.toArray)
+    val resultingReactions: Stream[ProjectionResult] = importedMolecules.permutations.filter(possibleSubstrates(ro)).
+      flatMap(substrateOrdering => {
 
-      // Generate reactions
-      val reactedValues: Stream[Array[Molecule]] = if (exhaustive) {
-        Stream.continually(Option(reactor.react())).takeWhile(_.isDefined).flatMap(_.toStream)
-      } else {
-        val result = Option(reactor.react())
-        if (result.isDefined) Stream(result.get) else Stream()
-      }
+        // Setup reactor
+        reactor.setReactants(substrateOrdering.toArray)
 
-      // Map the resulting reactions to a consistent format.
-      val partiallyAppliedMapper: List[Molecule] => Option[ProjectionResult] =
-        mapReactionsToResult(inputs, ro.getId.toString)
+        // Generate reactions
+        val reactedValues: Stream[Array[Molecule]] = if (exhaustive) {
+          Stream.continually(Option(reactor.react())).takeWhile(_.isDefined).flatMap(_.toStream)
+        } else {
+          val result = Option(reactor.react())
+          if (result.isDefined) Stream(result.get) else Stream()
+        }
 
-      reactedValues.flatMap(potentialProducts => partiallyAppliedMapper(potentialProducts.toList))
-    }).toStream
+        // Map the resulting reactions to a consistent format.
+        val partiallyAppliedMapper: List[Molecule] => Option[ProjectionResult] =
+          mapReactionsToResult(inputs, ro.getId.toString)
+
+        reactedValues.flatMap(potentialProducts => partiallyAppliedMapper(potentialProducts.toList))
+      }).toStream
 
     // Output stream
     resultingReactions
+  }
+
+  // TODO: This is so much more elegant and concise in scala; can we bring this to the ReactionProjector?
+  private def possibleSubstrates(ro: Ero)(mols: List[Molecule]): Boolean = {
+    val substrateQueries: Array[Molecule] = ro.getReactor.getReaction.getReactants
+    if (substrateQueries == null) {
+      throw new RuntimeException(s"Got null substrate queries for ero ${ro.getId}")
+    }
+    if (mols == null) {
+      throw new RuntimeException(s"Got null molecules, but don't know where from.  ero is ${ro.getId}")
+    }
+    if (mols.size != substrateQueries.length) {
+      return false
+    }
+
+    val molsAndQueries: Array[(Molecule, Molecule)] = substrateQueries.zip(mols)
+    molsAndQueries.forall(p => matchesSubstructure(p._1, p._2))
+  }
+
+  private def matchesSubstructure(query: Molecule, target: Molecule): Boolean = {
+    val q = MoleculeExporter.exportAsSmarts(query)
+    val t = MoleculeExporter.exportAsSmarts(target)
+    LOGGER.info(s"Running search $q on $t")
+    val search = substructureSearch.get()
+    search.setQuery(query)
+    search.setTarget(target)
+    search.findFirst() != null
   }
 
   private def mapReactionsToResult(substrates: List[String], roNumber: String)
@@ -113,11 +173,16 @@ object SparkInstance {
 object SparkROProjector {
   val OPTION_EXHAUSTIVE = "e"
   val OPTION_SUBSTRATES_LISTS = "i"
+  val OPTION_READ_FROM_REACHABLES_DB = "R"
   val OPTION_LICENSE_FILE = "l"
   val OPTION_SPARK_MASTER = "m"
   val OPTION_OUTPUT_DIRECTORY = "o"
   val OPTION_REVERSE = "r"
   val OPTION_VALID_CHEMICAL_TYPE = "v"
+  val OPTION_DB_NAME = "d"
+  val OPTION_DB_PORT = "p"
+  val OPTION_DB_HOST = "t"
+  val OPTION_WRITE_PROJECTIONS_TO_DB = "w"
 
   private val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   HELP_FORMATTER.setWidth(100)
@@ -134,42 +199,34 @@ object SparkROProjector {
     LOGGER.info(s"Validating license file at $licenseFile")
     LicenseManager.setLicenseFile(licenseFile)
 
-    val outputDir = new File(cl.getOptionValue(OPTION_OUTPUT_DIRECTORY))
-    if (outputDir.exists() && !outputDir.isDirectory) {
-      LOGGER.error(s"Found output directory at ${outputDir.getAbsolutePath} but is not a directory")
-      exitWithHelp(getCommandLineOptions)
-    } else {
-      LOGGER.info(s"Creating output directory at ${outputDir.getAbsolutePath}")
-      outputDir.mkdirs()
+    var outputDir: File = null
+    if (!cl.hasOption(OPTION_WRITE_PROJECTIONS_TO_DB)) {
+      outputDir = new File(cl.getOptionValue(OPTION_OUTPUT_DIRECTORY))
+      if (outputDir.exists() && !outputDir.isDirectory) {
+        LOGGER.error(s"Found output directory at ${outputDir.getAbsolutePath} but is not a directory")
+        exitWithHelp(getCommandLineOptions)
+      } else {
+        LOGGER.info(s"Creating output directory at ${outputDir.getAbsolutePath}")
+        outputDir.mkdirs()
+      }
     }
 
-    val substrateCorpuses: List[L2InchiCorpus] = cl.getOptionValues(OPTION_SUBSTRATES_LISTS).toList.map(x => {
-      val inchiCorpus = new L2InchiCorpus()
-      inchiCorpus.loadCorpus(new File(x))
-      inchiCorpus
-    })
+    val dbPort = cl.getOptionValue(OPTION_DB_PORT, "27017").toInt
+    val dbHost = cl.getOptionValue(OPTION_DB_HOST, "localhost")
 
-    // List of all unique InChIs in each corpus
-    val inchiCorpuses: List[List[String]] = substrateCorpuses.map(_.getInchiList.asScala.distinct.toList)
-
-    // List of combinations of InChIs
-    val inchiCombinations: Stream[Stream[String]] = combinationList(inchiCorpuses.map(_.toStream).toStream)
-
-    // TODO Move this filtering into combinationsList so that it is lazily evaluated as we need the elements.
-    LOGGER.info("Attempting to filter out combinations with invalid InChIs.  " +
-      s"Starting with ${inchiCombinations.length} inchis.")
-    val validInchis: Stream[Stream[String]] = inchiCombinations.filter(group => {
-      try {
-        group.foreach(inchi => {
-          MoleculeImporter.importMolecule(inchi)
-        })
-        true
-      } catch {
-        case e: Exception => false
+    val validInchis: Stream[Stream[String]] =
+      if (cl.hasOption(OPTION_READ_FROM_REACHABLES_DB)) {
+        val inchiCorpus = readFromReachablesDatabase(cl.getOptionValue(OPTION_DB_NAME), dbPort, dbHost)
+        inchiSourceFromCorpuses(List[L2InchiCorpus](inchiCorpus))
+      } else if (cl.hasOption(OPTION_SUBSTRATES_LISTS)) {
+        inchiSourceFromFiles(cl.getOptionValues(OPTION_SUBSTRATES_LISTS).toList)
+      } else if (cl.hasOption(OPTION_DB_NAME)) {
+        inchiSourceFromDB(cl.getOptionValue(OPTION_DB_NAME), dbPort, dbHost)
+      } else {
+        LOGGER.error("Must specify either substrate list(s) or a DB from which to read")
+        exitWithHelp(getCommandLineOptions)
+        Stream()
       }
-    })
-    LOGGER.info(s"Filtering removed ${inchiCombinations.length - validInchis.length}" +
-      s" combinations, ${validInchis.length} remain.")
 
     // Setup spark connection
     val conf = new SparkConf().
@@ -200,7 +257,55 @@ object SparkROProjector {
       SparkInstance.project(licenseFileName)(cl.hasOption(OPTION_REVERSE), cl.hasOption(OPTION_EXHAUSTIVE))(inchi.toList)
     })
 
-    handleProjectionTermination(resultsRDD, outputDir)
+    if (!cl.hasOption(OPTION_WRITE_PROJECTIONS_TO_DB)) {
+      writeToJsonFile(resultsRDD, outputDir)
+    } else {
+      writeToReachablesDatabase(resultsRDD, cl.getOptionValue(OPTION_DB_NAME), dbPort, dbHost)
+    }
+  }
+
+  private def inchiSourceFromFiles(fileNames: List[String]): Stream[Stream[String]] = {
+    val substrateCorpuses: List[L2InchiCorpus] = fileNames.map(x => {
+      val inchiCorpus = new L2InchiCorpus()
+      inchiCorpus.loadCorpus(new File(x))
+      inchiCorpus
+    })
+
+    inchiSourceFromCorpuses(substrateCorpuses)
+  }
+
+  private def inchiSourceFromCorpuses(inchiCorpuses: List[L2InchiCorpus]): Stream[Stream[String]] = {
+    // List of all unique InChIs in each corpus
+    val inchiLists: List[List[String]] = inchiCorpuses.map(_.getInchiList.asScala.distinct.toList)
+
+    // List of combinations of InChIs
+    val inchiCombinations: Stream[Stream[String]] = combinationList(inchiLists.map(_.toStream).toStream)
+
+
+    // TODO Move this filtering into combinationsList so that it is lazily evaluated as we need the elements.
+    LOGGER.info("Attempting to filter out combinations with invalid InChIs.  " +
+      s"Starting with ${inchiCombinations.length} inchis.")
+    val validInchis: Stream[Stream[String]] = inchiCombinations.filter(group => {
+      try {
+        group.foreach(inchi => {
+          MoleculeImporter.importMolecule(inchi)
+        })
+        true
+      } catch {
+        case e: Exception => false
+      }
+    })
+    LOGGER.info(s"Filtering removed ${inchiCombinations.length - validInchis.length}" +
+      s" combinations, ${validInchis.length} remain.")
+
+    validInchis
+  }
+
+  private def inchiSourceFromDB(dbName: String, dbPort: Int, dbHost: String): Stream[Stream[String]] = {
+    val db: MongoDB = new MongoDB(dbHost, dbPort, dbName)
+    val reactionIter = new ValidReactionSubstratesIterator(db)
+
+    JavaConverters.asScalaIteratorConverter(reactionIter).asScala.toStream.map(_.toList.toStream)
   }
 
   private def getCommandLineOptions: Options = {
@@ -211,6 +316,10 @@ object SparkROProjector {
         longOpt("license-file").
         desc("A path to the Chemaxon license file to load, mainly for checking license validity"),
 
+      CliOption.builder(OPTION_READ_FROM_REACHABLES_DB).
+        longOpt("reachables-db").
+        desc("Specifies  to read input inchis from a reachables DB."),
+
       CliOption.builder(OPTION_SUBSTRATES_LISTS).
         required(true).
         hasArgs.
@@ -219,10 +328,13 @@ object SparkROProjector {
         desc("A list of substrate InChIs onto which to project ROs"),
 
       CliOption.builder(OPTION_OUTPUT_DIRECTORY).
-        required(true).
         hasArg.
         longOpt("output-directory").
         desc("A directory in which to write per-RO result files"),
+
+      CliOption.builder(OPTION_WRITE_PROJECTIONS_TO_DB).
+        longOpt("write-to-database").
+        desc("Specifies to write the results into the supplied reachables database instead of writing to a file."),
 
       CliOption.builder(OPTION_VALID_CHEMICAL_TYPE).
         longOpt("valid-chemical-types").
@@ -290,7 +402,51 @@ object SparkROProjector {
     System.exit(1)
   }
 
-  private def handleProjectionTermination(resultsRDD: RDD[ProjectionResult], outputDir: File): Unit = {
+  /**
+    * Reads all the inchis from a reachables database, and returns them as an L2InchiCorpus.
+    */
+  private def readFromReachablesDatabase(database: String, port: Int, host: String): L2InchiCorpus = {
+    val reachables = getReachablesCollection(database, port, host)
+    val cursor: DBCursor = reachables.find()
+    val inchis: ArrayBuffer[String] = ArrayBuffer[String]()
+
+    while (cursor.hasNext) {
+      val entry: DBObject = cursor.next
+      val inchiString: String = entry.get("InChI").asInstanceOf[String]
+      inchis.append(inchiString)
+    }
+
+    new L2InchiCorpus(inchis.toList.asJava)
+  }
+
+  /**
+    * Writes the projection results to the reachables database.
+    * Creates new database entries for each predicted product (if none exists), and adds the substrates
+    * to that entry as precursors.
+    */
+  private def writeToReachablesDatabase(resultsRDD: RDD[ProjectionResult], database: String, port: Int, host: String): Unit = {
+    val reachables = getReachablesCollection(database, port, host)
+
+    val resultCount = resultsRDD.persist().count()
+    LOGGER.info(s"Projection completed with $resultCount results")
+    val resultsIterator = resultsRDD.toLocalIterator
+
+    resultsIterator.foreach(projection => {
+      val updater = new ReachablesProjectionUpdate(projection)
+      updater.updateReachables(reachables)
+    })
+  }
+
+  /**
+    * Helper method to get the reachables collection from the wiki_reachables DB or equivalent.
+    */
+  private def getReachablesCollection(database: String, port: Int, host: String): DBCollection = {
+    val mongo = new Mongo(host, port)
+    val mongoDB = mongo.getDB(database)
+    mongoDB.getCollection("reachables")
+  }
+
+  private def writeToJsonFile(resultsRDD: RDD[ProjectionResult], outputDir: File): Unit = {
     /* This next part represents us jumping through some hoops (that are possibly on fire) in order to make Spark do
      * the thing we want it to do: project in parallel but stream results back for storage.
      *
