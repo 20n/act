@@ -1,13 +1,14 @@
 package act.installer.reachablesexplorer;
 
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.mongojack.ObjectId;
 
 import java.io.Serializable;
-import java.util.Collections;
 import java.util.List;
 
+@JsonInclude(JsonInclude.Include.ALWAYS)
 public class Reachable {
 
   public Reachable() {}
@@ -33,6 +34,7 @@ public class Reachable {
     this.precursorData = precursors;
   }
 
+  @JsonInclude(JsonInclude.Include.ALWAYS)
   private class WikipediaData {
 
     @JsonProperty("url")
@@ -46,7 +48,8 @@ public class Reachable {
     this.precursorData = precursorData;
   }
 
-  static class PrecursorData implements Serializable {
+  @JsonInclude(JsonInclude.Include.ALWAYS)
+  class PrecursorData implements Serializable {
 
     private class Precusor implements Serializable {
 
