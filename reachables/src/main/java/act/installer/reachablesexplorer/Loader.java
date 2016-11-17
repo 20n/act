@@ -30,6 +30,7 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Loader {
 
@@ -164,26 +165,22 @@ public class Loader {
   }
 
   public void updateWithPrecursor(String inchi, Precursor pre) throws IOException {
-    // TODO: can we use updates instead of inserting a new precursor?
-    DBObject query = new BasicDBObject("inchi", inchi);
-    Reachable reachableOld = jacksonReachablesCollection.findOne(query);
-    Reachable reachable = jacksonReachablesCollection.findOne(query);
+    Reachable reachable = queryByInchi(inchi);
 
-    if (reachable != null) {
-      LOGGER.info("Found previous reachable at InChI " + inchi + ".  Adding additional precursors to it.");
-      reachable.getPrecursorData().addPrecursor(pre);
-      jacksonReachablesCollection.update(reachableOld, reachable);
-    } else {
-      LOGGER.info("Did not find InChI " + inchi + " in database.  Creating a new reachable.");
-      Reachable newReachable = constructReachable(inchi);
-      newReachable.getPrecursorData().addPrecursor(pre);
-      jacksonReachablesCollection.insert(newReachable);
-    }
+    // If is null we create a new one
+    reachable = reachable == null ? constructReachable(inchi) : reachable;
+    reachable.getPrecursorData().addPrecursor(pre);
+
+    upsert(reachable);
+  }
+
+  private Reachable queryByInchi(String inchi){
+    DBObject query = new BasicDBObject("inchi", inchi);
+    return jacksonReachablesCollection.findOne(query);
   }
 
   public void upsert(Reachable reachable){
-    DBObject query = new BasicDBObject("inchi", reachable.getInchi());
-    Reachable reachableOld = jacksonReachablesCollection.findOne(query);
+    Reachable reachableOld = queryByInchi(reachable.getInchi());
 
     if (reachableOld != null) {
       LOGGER.info("Found previous reachable at InChI " + reachable.getInchi() + ".  Adding additional precursors to it.");
@@ -201,14 +198,17 @@ public class Loader {
       // Read in the file and parse it as JSON
       String jsonTxt = IOUtils.toString(new FileInputStream(file));
       JSONObject fileContents = new JSONObject(jsonTxt);
+      // Parsing errors should happen as near to the point of loading as possible.
+      Long parentId = fileContents.getLong("parent");
+      Long currentId = fileContents.getLong("chemid");
 
       // Get the parent chemicals from the database.  JSON file contains ID.
       // We want to update it because it may not exist, but we also don't want to overwrite.
-      Chemical parent = connection.getChemicalFromChemicalUUID(fileContents.getLong("parent"));
+      Chemical parent = connection.getChemicalFromChemicalUUID(parentId);
       upsert(constructReachable(parent.getInChI()));
 
       // Get the actual chemical that is the product of the above chemical.
-      Chemical current = connection.getChemicalFromChemicalUUID(fileContents.getLong("chemid"));
+      Chemical current = connection.getChemicalFromChemicalUUID(currentId);
 
       InchiDescriptor parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
       List<InchiDescriptor> substrates = Arrays.asList(parentDescriptor);
@@ -227,13 +227,18 @@ public class Loader {
     files.stream().forEach(this::updateFromReachablesFile);
   }
 
+  public void updateFromReachableDir(File file){
+    List<File> validFiles = Arrays.stream(file.listFiles()).filter(x -> x.getName().startsWith(("c"))).collect(Collectors.toList());
+    LOGGER.info("Found %d reachables files.",validFiles.size());
+    updateFromReachableFiles(validFiles);
+  }
+
   public static void main(String[] args) throws IOException {
-
-
-//    Loader loader = new Loader();
-//    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
-//    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
+  //    Loader loader = new Loader();
+  //    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
+  //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
     Loader loader = new Loader();
-    loader.updateFromReachablesFile(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data", "c1121.json"));
+    // Load all cascades
+    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
   }
 }
