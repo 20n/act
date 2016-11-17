@@ -13,10 +13,10 @@ import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.act.biointerpretation.mechanisminspection.ReactionRenderer;
 import com.act.jobs.FileChecker;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.deser.impl.ExternalTypeHandler;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
+import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -24,23 +24,17 @@ import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
-import org.mongojack.DBUpdate;
 import org.mongojack.JacksonDBCollection;
-import sun.misc.JavaIOAccess;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import static com.sun.tools.doclets.internal.toolkit.util.DocPath.parent;
-import static org.jcamp.spectrum.notes.NoteDescriptor.is;
 
 public class Loader {
 
@@ -60,11 +54,11 @@ public class Loader {
   private L2InchiCorpus inchiCorpus;
 
   public Loader() throws UnknownHostException {
-    db = new MongoDB();
+    db = new MongoDB("localhost", 27017, "validator_profiling_2");
     wcGenerator = new WordCloudGenerator(DATABASE_BING_ONLY_HOST, DATABASE_BING_ONLY_PORT);
     renderer = new ReactionRenderer();
 
-    MongoClient mongoClient = new MongoClient(new ServerAddress("localhost", 27018));
+    MongoClient mongoClient = new MongoClient(new ServerAddress("localhost", 27017));
     DB reachables = mongoClient.getDB("wiki_reachables");
     reachablesCollection = reachables.getCollection("test");
     jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
@@ -188,6 +182,24 @@ public class Loader {
     // jacksonReachablesCollection.update(new BasicDBObject("inchi", inchi), builder);
   }
 
+  public void updateWithPrecursor(String inchi, Precursor pre) {
+    // TODO: is there a better way to perform the update? probably!
+    DBObject query = new BasicDBObject("inchi", inchi);
+    Reachable reachableOld = jacksonReachablesCollection.findOne(query);
+    Reachable reachable = jacksonReachablesCollection.findOne(query);
+
+    if (reachable != null) {
+      LOGGER.info("Found previous reachable at InChI " + inchi + ".  Adding additional precursors to it.");
+      reachable.getPrecursorData().addPrecursor(pre);
+      jacksonReachablesCollection.update(reachableOld, reachable);
+    } else {
+      LOGGER.info("Did not find InChI " + inchi + " in database.  Creating a new reachable.");
+      Reachable newReachable = constructReachable(inchi);
+      newReachable.getPrecursorData().addPrecursor(pre);
+      jacksonReachablesCollection.insert(newReachable);
+    }
+  }
+
   public void updateFromReachablesFile(File file){
     MongoDB connection = new MongoDB("localhost", 27017, "validator_profiling_2");
 
@@ -197,13 +209,22 @@ public class Loader {
       JSONObject fileContents = new JSONObject(jsonTxt);
       Chemical current = connection.getChemicalFromChemicalUUID(fileContents.getLong("chemid"));
       Chemical parent = connection.getChemicalFromChemicalUUID(fileContents.getLong("parent"));
-    } catch (JavaIOException e){}
+
+      List<String> substrates = new ArrayList<>();
+      substrates.add(parent.getInChI());
+      Precursor pre = new Precursor(substrates, "reachables");
+      Reachable l = constructReachable(parent.getInChI());
+      jacksonReachablesCollection.insert(l);
+      updateWithPrecursor(current.getInChI(), pre);
+    } catch (IOException e){}
   }
 
   public static void main(String[] args) throws IOException {
 
+//    Loader loader = new Loader();
+//    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
+//    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
     Loader loader = new Loader();
-    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
-    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
+    loader.updateFromReachablesFile(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data", "c1121.json"));
   }
 }

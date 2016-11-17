@@ -1,21 +1,23 @@
 package act.installer.reachablesexplorer;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 class PrecursorData implements Serializable {
     @JsonProperty("prediction_precursors")
-    private List<Precursor> precursors;
+    private Set<Precursor> precursors;
+
 
     public PrecursorData() {
-        this.precursors = new ArrayList<>();
+        this.precursors = new HashSet<>();
     }
-
-    public PrecursorData(List<Precursor> precursors) {
+    @JsonCreator
+    public PrecursorData(@JsonProperty("prediction_precursors") Set<Precursor> precursors) {
         this.precursors = precursors;
     }
 
@@ -25,7 +27,7 @@ class PrecursorData implements Serializable {
     }
 
     @JsonIgnore
-    public List<Precursor> getPrecursors() {
+    public Set<Precursor> getPrecursors() {
         return this.precursors;
     }
 }
