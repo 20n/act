@@ -30,6 +30,7 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Loader {
 
@@ -207,6 +208,11 @@ public class Loader {
     files.stream().forEach(this::updateFromReachablesFile);
   }
 
+  public void updateFromReachableDir(File file){
+    List<File> validFiles = Arrays.stream(file.listFiles()).filter(x -> x.getName().startsWith(("c"))).collect(Collectors.toList());
+    updateFromReachableFiles(validFiles);
+  }
+
   public static void main(String[] args) throws IOException {
 
 
@@ -214,6 +220,7 @@ public class Loader {
 //    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
 //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
     Loader loader = new Loader();
-    loader.updateFromReachablesFile(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data", "c1121.json"));
+    // Load all cascades
+    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
   }
 }
