@@ -3,7 +3,6 @@ package com.act.biointerpretation.l2expansion
 import java.io.{BufferedWriter, File, FileWriter}
 
 import act.server.MongoDB
-import breeze.linalg.reverse
 import chemaxon.license.LicenseManager
 import chemaxon.marvin.io.MolExportException
 import chemaxon.sss.SearchConstants
@@ -15,7 +14,6 @@ import com.act.workflow.tool_manager.jobs.management.JobManager
 import com.act.workflow.tool_manager.tool_wrappers.SparkWrapper
 import com.mongodb._
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
-import org.apache.jena.sparql.procedure.library.debug
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
@@ -123,7 +121,7 @@ object SparkInstance {
 
         // Map the resulting reactions to a consistent format.
         val partiallyAppliedMapper: List[Molecule] => Option[ProjectionResult] =
-        mapReactionsToResult(inputs, ro.getId.toString)
+          mapReactionsToResult(inputs, ro.getId.toString)
 
         reactedValues.flatMap(potentialProducts => partiallyAppliedMapper(potentialProducts.toList))
       }).toStream
@@ -201,7 +199,7 @@ object SparkROProjector {
     LOGGER.info(s"Validating license file at $licenseFile")
     LicenseManager.setLicenseFile(licenseFile)
 
-    var outputDir : File = null
+    var outputDir: File = null
     if (!cl.hasOption(OPTION_WRITE_PROJECTIONS_TO_DB)) {
       outputDir = new File(cl.getOptionValue(OPTION_OUTPUT_DIRECTORY))
       if (outputDir.exists() && !outputDir.isDirectory) {
@@ -433,7 +431,7 @@ object SparkROProjector {
     LOGGER.info(s"Projection completed with $resultCount results")
     val resultsIterator = resultsRDD.toLocalIterator
 
-    resultsIterator.foreach( projection => {
+    resultsIterator.foreach(projection => {
       val updater = new ReachablesProjectionUpdate(projection)
       updater.updateReachables(reachables)
     })
