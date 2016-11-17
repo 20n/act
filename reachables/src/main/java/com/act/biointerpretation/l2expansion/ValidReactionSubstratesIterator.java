@@ -5,7 +5,6 @@ import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.formats.MolFormatException;
-import chemaxon.formats.MolImporter;
 import com.act.analysis.chemicals.molecules.MoleculeFormat;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import com.act.biointerpretation.Utils.LRUCache;
@@ -158,7 +157,7 @@ public class ValidReactionSubstratesIterator implements Iterator<String[]> {
 
     // TODO: can we skip this step and let the SPARK nodes do it?
     try {
-      MoleculeImporter.importMolecule(inchi, MoleculeFormat.inchi());
+      MoleculeImporter.importMolecule(inchi, MoleculeFormat.inchi$.MODULE$);
     } catch (MolFormatException e) {
       invalidInchiCache.put(id, inchi);
       return false;
