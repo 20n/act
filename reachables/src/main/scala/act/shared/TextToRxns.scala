@@ -112,7 +112,7 @@ object TextToRxns {
     val extractor = new TextToRxns
     val rxns = extractor.extract(dataSrc)
     extractor.flushWebCache
-    rxns.toString
+    rxns
   }
 
   val optOutFile = new OptDesc(
@@ -264,7 +264,6 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
     println(s"Removed cofactors found [${cofactors.size}]: $cofactors")
     println(s"Finding reactions using [${chems.size}]: $chems")
     val chemSubsets = limitedSzSubsets(chems)
-    println(s"Subsets built [${chems.size}]: ${chemSubsets.size}")
     val subsProdCandidates = for (s <- chemSubsets; p <- chemSubsets; if (!s.equals(p))) yield (s, p)
     val passValidation = subsProdCandidates.map(passThroughEROs).filter(_.validatingROs != None)
     passValidation
@@ -284,15 +283,6 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
     val subsInchis = substrates.map(_.inchi).toList
     val prodInchis = products.map(_.inchi).toList
     val passingEros = SparkInstance.validateReactionNoLicense(true)(subsInchis, prodInchis).toList
-
-    if (passingEros.size > 0) {
-      val substrateNames = substrates.map(_.name).toList
-      val productNames = products.map(_.name).toList
-      val roIds = passingEros.toList.map(_.getName)
-
-      println(s"Validated: $substrateNames -> $productNames")
-      println(s"           Using mechanism: $roIds")
-    }
 
     val validatingROs = passingEros.size match {
       case 0 => None
