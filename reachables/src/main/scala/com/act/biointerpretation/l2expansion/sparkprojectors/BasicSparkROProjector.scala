@@ -3,7 +3,7 @@ package com.act.biointerpretation.l2expansion.sparkprojectors
 import java.io.File
 
 import chemaxon.license.LicenseManager
-import com.act.analysis.chemicals.molecules.MoleculeFormat
+import com.act.analysis.chemicals.molecules.{MoleculeFormat, MoleculeImporter}
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
@@ -89,16 +89,18 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
   def getValidInchiCommandLineOptions: List[CliOption.Builder]
   def getTerminationCommandLineOptions: List[CliOption.Builder]
   def handleTermination(cli: CommandLine)(results: Iterator[ProjectionResult])
-  def getValidInchis(cli: CommandLine): Stream[Stream[String]]
+
+  def getInChIGroups(cli: CommandLine): Stream[Stream[String]]
 
   final def main(args: Array[String]): Unit = {
     val cli = parseCommandLineOptions(args)
     // Get valid InChIs
-    val validInchis: Stream[Stream[String]] = getValidInchis(cli)
+    val inchiCombinations: Stream[Stream[String]] = getInChIGroups(cli)
+    val validInChIs = validateInChIs(inchiCombinations)
 
     val spark = setupSpark(cli)
 
-    val resultsRDD = callProjector(cli)(spark, validInchis)
+    val resultsRDD = callProjector(cli)(spark, validInChIs)
 
     val collectedResults: Iterator[ProjectionResult] = collectAndPersistRdd(resultsRDD)
 
@@ -118,9 +120,6 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     }
     opts
   }
-
-
-  /* ----- Ordered methods by the processing that happens in main ------ */
 
   private def getMinimumCommandLineArgs: List[CliOption.Builder] ={
     val options = List[CliOption.Builder](
@@ -160,13 +159,33 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     options
   }
 
+  /* ----- Ordered methods by the processing that happens in main ------ */
+
+  private def validateInChIs(combinations: Stream[Stream[String]]): Stream[Stream[String]] = {
+    LOGGER.info("Attempting to filter out combinations with invalid InChIs.  " +
+      s"Starting with ${combinations.length} inchis.")
+    val validInChIs: Stream[Stream[String]] = combinations.filter(group => {
+      try {
+        group.foreach(inchi => {
+          MoleculeImporter.importMolecule(inchi)
+        })
+        true
+      } catch {
+        case e: Exception => false
+      }
+    })
+    LOGGER.info(s"Filtering removed ${combinations.length - validInChIs.length}" +
+      s" combinations, ${validInChIs.length} remain.")
+    validInChIs
+  }
+
   private def setupSpark(cli: CommandLine): SparkContext ={
     /* --------- Setup Spark ---------- */
     // Spark name and connection
     val sparkName = "" +
-      s"${if (isExhaustive(cli)) "Exhaustive"}" +
-      s"${if (isReverse(cli)) "Reverse"} " +
-      s"${runningClass.getSimpleName}"
+      s"${if (isExhaustive(cli)) "Exhaustive " else ""}" +
+      s"${if (isReverse(cli)) "Reverse " else ""}" +
+      s"${runningClass.getSimpleName.replace("$", "")}"
 
     val sparkMaster = getSparkMaster(cli)
     val conf = new SparkConf().setAppName(sparkName).setMaster(sparkMaster)
@@ -188,18 +207,6 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     cli.getOptionValue(OPTION_SPARK_MASTER, DEFAULT_SPARK_MASTER)
   }
 
-  private def isExhaustive(cli: CommandLine): Boolean = {
-    cli.hasOption(OPTION_EXHAUSTIVE)
-  }
-
-  private def isReverse(cli: CommandLine): Boolean = {
-    cli.hasOption(OPTION_REVERSE)
-  }
-
-  private def getChemaxonLicenseFile(cli: CommandLine): File = {
-    new File(cli.getOptionValue(OPTION_LICENSE_FILE))
-  }
-
   private def callProjector(cli: CommandLine)
                            (spark: SparkContext, validInchis: Stream[Stream[String]]): RDD[ProjectionResult]= {
     /* ------ Projection ------- */
@@ -210,6 +217,18 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     LOGGER.info("Starting execution")
     // PROJECT!  Run ERO projection over all InChIs.
     scopedProjection(getChemaxonLicenseFile(cli).getName)(isReverse(cli), isExhaustive(cli))(inchiRDD)
+  }
+
+  private def isExhaustive(cli: CommandLine): Boolean = {
+    cli.hasOption(OPTION_EXHAUSTIVE)
+  }
+
+  private def isReverse(cli: CommandLine): Boolean = {
+    cli.hasOption(OPTION_REVERSE)
+  }
+
+  private def getChemaxonLicenseFile(cli: CommandLine): File = {
+    new File(cli.getOptionValue(OPTION_LICENSE_FILE))
   }
 
   private def scopedProjection(licenseFileName: String)

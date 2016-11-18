@@ -14,7 +14,7 @@ import org.apache.spark.SparkFiles
 
 import scala.collection.JavaConverters._
 
-object SparkProjectionInstance {
+object SparkProjectionInstance extends Serializable {
   val defaultMoleculeFormat = MoleculeFormat.strictNoStereoInchi
 
   private val LOGGER = LogManager.getLogger(getClass)

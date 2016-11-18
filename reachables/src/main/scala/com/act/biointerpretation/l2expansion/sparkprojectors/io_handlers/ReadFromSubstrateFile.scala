@@ -26,7 +26,7 @@ trait ReadFromSubstrateFile extends BasicSparkROProjector {
     options
   }
 
-  final def getValidInchis(cli: CommandLine): Stream[Stream[String]] = {
+  final def getInChIGroups(cli: CommandLine): Stream[Stream[String]] = {
     inchiSourceFromFiles(getSubstrateFileList(cli))
   }
 
