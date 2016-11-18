@@ -1,10 +1,9 @@
 package act.shared
 
-import java.io.PrintWriter
-import java.io.File
-import java.net.URLEncoder
-import java.net.URI
+import java.io.{PrintWriter, File, ObjectOutputStream, ObjectInputStream, FileOutputStream, FileInputStream}
 import java.io.FileNotFoundException
+import java.net.{URI, URLEncoder}
+import java.util.InputMismatchException
 import uk.ac.cam.ch.wwmm.chemicaltagger.ChemistryPOSTagger
 import uk.ac.cam.ch.wwmm.chemicaltagger.ChemistrySentenceParser
 import uk.ac.cam.ch.wwmm.chemicaltagger.Utils
@@ -21,6 +20,10 @@ import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.util.PDFTextStripper
 
 import com.act.biointerpretation.l2expansion.SparkInstance
+import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
+import com.act.biointerpretation.cofactorremoval.CofactorsCorpus
+
+import scala.collection.JavaConverters._
 
 sealed trait InputType
 case class TextFile(val fname: String) extends InputType
@@ -29,6 +32,21 @@ case class RawText(val text: String) extends InputType
 case class PdfFile(val fname: String) extends InputType
 
 object TextToRxns {
+
+  val MIN_CHEM_NAME_LEN = 3
+  val MAX_CHEM_COMBINATION_SZ = 2
+
+  val cofactors: List[String] = {
+    val defaultMoleculeFormat = MoleculeFormat.strictNoStereoInchi
+    def sanitize(inchi: String) = {
+      val mol = MoleculeImporter.importMolecule(inchi)
+      MoleculeExporter.exportMolecule(mol, defaultMoleculeFormat)
+    }
+    val c = new CofactorsCorpus()
+    c.loadCorpus()
+    c.getInchiToName.asScala.keys.map(sanitize).toList
+  }
+
   def main(args: Array[String]) {
     val opts = List(optOutFile, optRawText, optPdfFile, optTextFile, optUrl, optChecks)
     val className = this.getClass.getCanonicalName
@@ -56,15 +74,13 @@ object TextToRxns {
         else None
       }
 
-      val extractor = new TextToRxns
-      extractor.extract(data, out)
+      getRxnsFrom(data)
     }
   }
 
   def runChecks(out: PrintWriter) {
-    val extractor = new TextToRxns
-    
-    val testURL = "https://www.ncbi.nlm.nih.gov/pubmed/20564561?dopt=Abstract&report=abstract&format=text"
+
+    // test extractions from sample sentences
     val testSentences = List(
       // p-aminophenylphosphocholine + H2O  p-aminophenol + choline phosphate
       """Convert p-aminophenylphosphocholine and H2O to p-aminophenol and choline phosphate in 3.1.4.38""",
@@ -74,10 +90,23 @@ object TextToRxns {
       the presence of water and O2 and released ammonia and H2O2.
       This happened in Rhodosporidium toruloides and BRENDA has it under 1.4.3.3"""
     )
-    for (testSent <- testSentences)
-      extractor.extract(Some(new RawText(testSent)), out)
+    for (testSent <- testSentences) {
+      println(s"Extracting from: '${testSent.substring(0,75)}...'")
+      getRxnsFrom(Some(new RawText(testSent)))
+    }
 
-    // extractor.extract(Some(new WebURL(testURL)), out)
+    // test extractions from a web url
+    val testURL = "https://www.ncbi.nlm.nih.gov/pubmed/20564561?dopt=Abstract&report=abstract&format=text"
+    getRxnsFrom(Some(new WebURL(testURL)))
+
+    // test extractions from a PDF file
+    getRxnsFrom(Some(new PdfFile("/Volumes/shared-data/Saurabh/text2rxns/coli-paper.pdf")))
+  }
+
+  def getRxnsFrom(dataSrc: Option[InputType]) = {
+    val extractor = new TextToRxns
+    extractor.extract(dataSrc)
+    extractor.flushWebCache
   }
 
   val optOutFile = new OptDesc(
@@ -123,14 +152,46 @@ object TextToRxns {
                     isReqd = false, hasArg = false)
 }
 
-class TextToRxns {
+class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
 
-  def extract(dataSrc: Option[InputType], out: PrintWriter) = {
+  var webCache: Map[URI, String] = {
+    val webc: Map[URI, String] = try {
+      val ois = new ObjectInputStream(new FileInputStream(webCacheLoc))
+      val obj = ois.readObject
+      obj match {
+        case cache: Map[URI, String] => cache
+        case _ => throw new InputMismatchException 
+      }
+    } catch {
+      case e: FileNotFoundException => {
+        println(s"Web cache not found. Initializing new.")
+        Map()
+      }
+      case e: InputMismatchException => {
+        println(s"Invalid web cache. Resetting.")
+        Map()
+      }
+    }
+    println(s"Cache retrieved. Size = ${webc.size}")
+    webc
+  }
+
+  def flushWebCache() = {
+    val oos = new ObjectOutputStream(new FileOutputStream(webCacheLoc))
+    oos.writeObject(webCache)
+    oos.close
+    println(s"Web cache flushed.")
+  }
+
+  def extract(dataSrc: Option[InputType]) = {
     dataSrc match {
       case None => 
       case Some(incoming) => {
         val textData = incoming match {
-          case WebURL(url) => scala.io.Source.fromURL(url).mkString
+          case WebURL(url) => {
+            val uri = new URI(url)
+            retrieve(uri)
+          }
           case RawText(text) => text
           case PdfFile(file) => {
             val pdf = PDDocument.load(new File(file))
@@ -142,7 +203,6 @@ class TextToRxns {
         getChemicals(textData)
       }
     }
-    out close
   }
 
   val MOLECULE_PATH = "//MOLECULE"
@@ -174,50 +234,53 @@ class TextToRxns {
     val domImpl = docBuilder.getDOMImplementation
     val w3cDoc = DOMConverter.convert(doc, domImpl)
 
-    val chems = extractChemicals(w3cDoc)
-    val chemSubsets = chems.toSet.subsets.toList
+    val (chems, cofactors) = extractChemicals(w3cDoc)
+    println(s"Removed cofactors found [${cofactors.size}]: $cofactors")
+    println(s"Finding reactions using [${chems.size}]: $chems")
+    val chemSubsets = limitedSzSubsets(chems)
+    println(s"Subsets built [${chems.size}]: ${chemSubsets.size}")
     val subsProdCandidates = for (s <- chemSubsets; p <- chemSubsets; if (!s.equals(p))) yield (s, p)
-    println(s"Pairs to check for: ${subsProdCandidates.size}")
     val passValidation = subsProdCandidates.map(fromPairSetToMap).filter(validate)
-    println(s"Found valid: ${passValidation.size}")
   }
 
-  def fromPairSetToMap(subPrd: (Set[(String, String)], Set[(String, String)])): 
+  def limitedSzSubsets(chems: Map[String, String]): List[List[(String, String)]] = {
+    val candidates = chems.toList
+    val diffSzCombs = for (sz <- 1 to TextToRxns.MAX_CHEM_COMBINATION_SZ) yield {
+      candidates.combinations(sz).toList
+    }
+    diffSzCombs.toList.flatten
+  }
+
+  def fromPairSetToMap(subPrd: (List[(String, String)], List[(String, String)])): 
     (Map[String, String], Map[String, String]) = {
     (subPrd._1.toMap, subPrd._2.toMap)
   }
 
   def validate(subPrd: (Map[String, String], Map[String, String])): Boolean = {
-    val substrateNames = subPrd._1.keys.toList
-    val productNames = subPrd._2.keys.toList
-
     val substrates = subPrd._1.values.toList
     val products = subPrd._2.values.toList
     val passingEros = SparkInstance.validateReactionNoLicense(true)(substrates, products)
+
     if (passingEros.size > 0) {
+      val substrateNames = subPrd._1.keys.toList
+      val productNames = subPrd._2.keys.toList
+
       println(s"Validated: $substrateNames -> $productNames")
       val roIds = passingEros.toList.map(_.getName)
       println(s"           Using mechanism: $roIds")
     }
+
     passingEros.size > 0
   }
 
   def chemNameToInChI(name: String) = {
     val nameEncoded = URLEncoder.encode(name, "UTF-8")
     val uri = new URI("https", "cactus.nci.nih.gov", "/chemical/structure/" + name + "/stdinchi", null)
-    try {
-      val ret = scala.io.Source.fromURL(uri.toString).mkString
-      if (ret startsWith "InChI=")
-        Some((name, ret))
-      else {
-        println(s"Gotten bad response for: $name")
-        None
-      }
-    } catch {
-      case e: FileNotFoundException => {
-        println(s"Gotten null response for: $name")
-        None
-      }
+    val ret = retrieve(uri)
+    if (ret startsWith "InChI=")
+      Some((name, ret))
+    else {
+      None
     }
   }
 
@@ -237,10 +300,46 @@ class TextToRxns {
     }
     val nodesTrav = for (idx <- 0 to nodes.getLength) yield nodes.item(idx)
     val mols = nodesTrav.map(getText).map(tokens => if (tokens.isEmpty) "" else tokens.reduce(_ + " " + _))
-    // return sort|uniq
     val chemNames = mols.sortWith(_ > _).distinct
-    val inchis = chemNames.map(chemNameToInChI).filter(_ != None).map{ case Some((n,i)) => n -> i }.toMap
-    inchis
+
+    // some names are just too short, e.g. "DAO", to be good chemical tokens. remove those
+    val chemNamesNotTooShort = chemNames.filter(_.size > TextToRxns.MIN_CHEM_NAME_LEN)
+
+    // from names "n" get inchis "i", and get pairs (n, i)
+    val withInchis = chemNamesNotTooShort.map(chemNameToInChI) 
+    val taggedInchis = withInchis.filter(_ != None).map{ case Some((n,i)) => (n,i) }
+
+    // report those inchis that we could not resolve
+    val mappedNames = taggedInchis.map(_._1)
+    val didNotResolveInchis = chemNames.filterNot(x => mappedNames.contains(x))
+    println(s"Not resolved: $didNotResolveInchis")
+
+    // identify the chemicals that resolved to cofactors
+    def isCofactor(nameInchi: (String, String)) = TextToRxns.cofactors.contains(nameInchi._2)
+    val taggedChems = taggedInchis.filterNot(isCofactor).toMap
+    val taggedCofactors = taggedInchis.filter(isCofactor).toMap
+
+    (taggedChems, taggedCofactors)
+  }
+
+  def retrieve(uri: URI): String = {
+    if (webCache contains uri) {
+      webCache(uri)
+    } else {
+      println(s"Cache miss. Going to the web.")
+      val retrieved = try {
+        scala.io.Source.fromURL(uri.toString).mkString
+      } catch {
+        // incurred a 404. cache that as empty string
+        case e: FileNotFoundException => ""
+      }
+      // update the webcache
+      // mutable store!
+      webCache = webCache + (uri -> retrieved)
+
+      // return web retrieval
+      retrieved
+    }
   }
 
 }
