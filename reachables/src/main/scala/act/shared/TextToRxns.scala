@@ -103,17 +103,17 @@ object TextToRxns {
     getRxnsFromPDF("/Volumes/shared-data/Saurabh/text2rxns/coli-paper.pdf")
   }
 
-  def getRxnsFromURL(url: String) = getRxnsFrom(Some(new WebURL(url)))
-  def getRxnsFromPDF(fileLoc: String) = getRxnsFrom(Some(new PdfFile(fileLoc)))
-  def getRxnsFromTxt(fileLoc: String) = getRxnsFrom(Some(new TextFile(fileLoc)))
-  def getRxnsFromString(sentence: String) = getRxnsFrom(Some(new RawText(sentence)))
-
-  def getRxnsFrom(dataSrc: Option[InputType]) = {
+  def getRxnsFrom(dataSrc: Option[InputType]): List[ValidatedRxn] = {
     val extractor = new TextToRxns
     val rxns = extractor.extract(dataSrc)
     extractor.flushWebCache
     rxns
   }
+
+  def getRxnsFromURL(url: String): List[ValidatedRxn] = getRxnsFrom(Some(new WebURL(url)))
+  def getRxnsFromPDF(fileLoc: String): List[ValidatedRxn] = getRxnsFrom(Some(new PdfFile(fileLoc)))
+  def getRxnsFromTxt(fileLoc: String): List[ValidatedRxn] = getRxnsFrom(Some(new TextFile(fileLoc)))
+  def getRxnsFromString(sentence: String): List[ValidatedRxn] = getRxnsFrom(Some(new RawText(sentence)))
 
   val optOutFile = new OptDesc(
                     param = "o",
