@@ -123,9 +123,24 @@ public class Loader {
 
   }
 
+<<<<<<< b5db6ffe70283bfbf0ff537f752f36fb1300b060
   /**
    * Get smiles from molecule
    */
+=======
+  public Loader(String database, int port, String host, String collection) throws UnknownHostException {
+    db = new MongoDB(host, port, "validator_profiling_2");
+    wcGenerator = new WordCloudGenerator(DATABASE_BING_ONLY_HOST, DATABASE_BING_ONLY_PORT);
+
+    renderer = new MoleculeRenderer();
+
+    MongoClient mongoClient = new MongoClient(new ServerAddress(host, port));
+    DB reachables = mongoClient.getDB(database);
+    reachablesCollection = reachables.getCollection(collection);
+    jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
+  }
+
+>>>>>>> New constructor
   private String getSmiles(Molecule mol) {
     try {
       return MoleculeExporter.exportMolecule(mol, MoleculeFormat.smiles$.MODULE$);
