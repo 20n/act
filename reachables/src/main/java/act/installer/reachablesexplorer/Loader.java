@@ -140,7 +140,20 @@ public class Loader {
     jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
   }
 
+<<<<<<< 6d682c8279513ecc90ace10e11310c7c27313939
 >>>>>>> New constructor
+=======
+  public static void main(String[] args) throws IOException {
+    //    Loader loader = new Loader();
+    //    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
+    //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
+    Loader loader = new Loader("wiki_reachables", 27017, "localhost", "test_michael");
+    //loader.updateWordClouds();
+    // Load all cascades
+    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
+  }
+
+>>>>>>> last change
   private String getSmiles(Molecule mol) {
     try {
       return MoleculeExporter.exportMolecule(mol, MoleculeFormat.smiles$.MODULE$);
@@ -641,6 +654,7 @@ public class Loader {
       }
     }
   }
+<<<<<<< 6d682c8279513ecc90ace10e11310c7c27313939
 
   public void updateMoleculeRenderings() throws IOException {
     List<String> inchis = jacksonReachablesCollection.distinct("inchi");
@@ -686,4 +700,6 @@ public class Loader {
       super(String.format("Found FAKE inchi: %s", inchi));
     }
   }
+=======
+>>>>>>> last change
 }
