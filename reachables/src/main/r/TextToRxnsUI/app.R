@@ -13,7 +13,14 @@ server <- function(input, output, session) {
     shiny::validate(
       need(input$text != "", "Please input text!")
     )
-    print(extractFrom(input$text))
+    rxns <- extractFrom(input$text)
+    print(str(rxns))
+    rxn1 <- rxns[[1]]
+    print(rxn1)
+    rxn1substrates <- rxn1[[1]]
+    rxn1substrates1 <- rxn1substrates[[1]]
+    rxn1substrates1name <- rxn1substrates1[[1]]
+    print(rxn1substrates1name)
   })
 }
 

@@ -109,11 +109,26 @@ object TextToRxns {
     extractor.flushWebCache
     rxns
   }
+  def getRxnsFromWO(dataSrc: Option[InputType]) = unObjectify(getRxnsFrom(dataSrc))
 
-  def getRxnsFromURL(url: String) = getRxnsFrom(Some(new WebURL(url)))
-  def getRxnsFromPDF(fileLoc: String) = getRxnsFrom(Some(new PdfFile(fileLoc)))
-  def getRxnsFromTxt(fileLoc: String) = getRxnsFrom(Some(new TextFile(fileLoc)))
-  def getRxnsFromString(sentence: String) = getRxnsFrom(Some(new RawText(sentence)))
+  def unObjectify(rxns: List[ValidatedRxn]): Array[Array[Array[Array[String]]]] = {
+    def deconstructNameInChI(x: NamedInChI) = Array(x.name, x.inchi) // array 1-deep
+    def deconstructRxn(r: ValidatedRxn): Array[Array[Array[String]]] = {
+      val substrates = r.substrates.map(deconstructNameInChI).toArray // array 2-deep
+      val products = r.products.map(deconstructNameInChI).toArray // array 2-deep
+      val ros = r.validatingROs match { 
+        case None => Array(Array[String]())
+        case Some(rrs) => Array(rrs.map(_.getName).toArray)
+      }  // array 2-deep
+      Array(substrates, products, ros) // array 3-deep
+    }
+    rxns.map(deconstructRxn).toArray // array 4-deep
+  }
+
+  def getRxnsFromURL(url: String) = getRxnsFromWO(Some(new WebURL(url)))
+  def getRxnsFromPDF(fileLoc: String) = getRxnsFromWO(Some(new PdfFile(fileLoc)))
+  def getRxnsFromTxt(fileLoc: String) = getRxnsFromWO(Some(new TextFile(fileLoc)))
+  def getRxnsFromString(sentence: String) = getRxnsFromWO(Some(new RawText(sentence)))
 
   val optOutFile = new OptDesc(
                     param = "o",
