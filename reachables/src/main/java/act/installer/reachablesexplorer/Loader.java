@@ -76,6 +76,16 @@ public class Loader {
     jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
   }
 
+  public static void main(String[] args) throws IOException {
+    //    Loader loader = new Loader();
+    //    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
+    //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
+    Loader loader = new Loader("wiki_reachables", 27017, "localhost", "test_michael");
+    //loader.updateWordClouds();
+    // Load all cascades
+    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
+  }
+
   private String getSmiles(Molecule mol) {
     try {
       return MoleculeExporter.exportMolecule(mol, MoleculeFormat.smiles$.MODULE$);
@@ -174,6 +184,7 @@ public class Loader {
     }
 
   }
+
   public void updateWithPrecursorData(String inchi, PrecursorData precursorData) {
     // TODO: can we use updates instead of inserting a new precursor?
     Reachable reachable = jacksonReachablesCollection.findOne(new BasicDBObject("inchi", inchi));
@@ -328,15 +339,5 @@ public class Loader {
         updateReachableWithWordcloud(reachable);
       }
     }
-  }
-
-  public static void main(String[] args) throws IOException {
-    //    Loader loader = new Loader();
-    //    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
-    //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
-    Loader loader = new Loader();
-    //loader.updateWordClouds();
-    // Load all cascades
-    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
   }
 }
