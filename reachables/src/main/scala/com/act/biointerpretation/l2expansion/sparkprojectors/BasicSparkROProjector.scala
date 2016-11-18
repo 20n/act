@@ -12,7 +12,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 // Basic storage class for serializing and deserializing projection results
 case class ProjectionResult(substrates: List[String], ros: String, products: List[String])
 
-private trait ProjectorCliHelper {
+protected trait ProjectorCliHelper {
   val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   /**
     * A class full of a few command line helpers for SparkRoProjectors
@@ -64,7 +64,7 @@ private trait ProjectorCliHelper {
     cl.get
   }
 
-  abstract def getCommandLineOptions: Options
+  def getCommandLineOptions: Options
 }
 
 trait BasicSparkROProjector extends ProjectorCliHelper {
@@ -78,17 +78,20 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
   final val OPTION_VALID_CHEMICAL_TYPE = "v"
   final val OPTION_HELP = "h"
 
-  abstract val runningClass: Class
+  val runningClass: Class[_]
+
   protected val DEFAULT_SPARK_MASTER = "spark://spark-master:7077"
   private val LOGGER = LogManager.getLogger(getClass)
   private val SPARK_LOG_LEVEL = "WARN"
 
   // Modify classes
-  abstract def getValidInchiCommandLineOptions: List[CliOption.Builder]
-  abstract def getTerminationCommandLineOptions: List[CliOption.Builder]
+  def getValidInchiCommandLineOptions: List[CliOption.Builder]
 
-  abstract def handleTermination(cli: CommandLine)(results: Iterator[ProjectionResult])
-  abstract def getValidInchis(cli: CommandLine): Stream[Stream[String]]
+  def getTerminationCommandLineOptions: List[CliOption.Builder]
+
+  def handleTermination(cli: CommandLine)(results: Iterator[ProjectionResult])
+
+  def getValidInchis(cli: CommandLine): Stream[Stream[String]]
 
   final def main(args: Array[String]): Unit = {
     val cli = parseCommandLineOptions(args)

@@ -9,10 +9,12 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
 trait ReadFromDatabase extends BasicSparkROProjector {
-  abstract val OPTION_READ_DB_NAME: String
-  abstract val OPTION_READ_DB_PORT: String
-  abstract val OPTION_READ_DB_HOST: String
-  abstract val OPTION_READ_DB_COLLECTION: String
+  val OPTION_READ_DB_NAME: String
+  val OPTION_READ_DB_PORT: String
+  val OPTION_READ_DB_HOST: String
+  val OPTION_READ_DB_COLLECTION: String
+
+  private val DEFAULT_PORT: String = "27017"
 
   final def getValidInchiCommandLineOptions: List[CliOption.Builder] = {
     val options = List[CliOption.Builder](
@@ -44,22 +46,22 @@ trait ReadFromDatabase extends BasicSparkROProjector {
   }
 
   final def getValidInchis(cli: CommandLine): Stream[Stream[String]] = {
-    inchiSourceFromDB(getDbName(cli), getDbPort(cli), getDbHost(cli), getDbCollection(cli))
+    inchiSourceFromDB(getReadDbName(cli), getReadDbPort(cli), getReadDbHost(cli), getReadDbCollection(cli))
   }
 
-  final protected def getDbName(cli: CommandLine): String = {
+  final protected def getReadDbName(cli: CommandLine): String = {
     cli.getOptionValue(OPTION_READ_DB_NAME)
   }
 
-  final protected def getDbPort(cli: CommandLine): Int = {
-    cli.getOptionValue(OPTION_READ_DB_PORT, "27017").toInt
+  final protected def getReadDbPort(cli: CommandLine): Int = {
+    cli.getOptionValue(OPTION_READ_DB_PORT, DEFAULT_PORT).toInt
   }
 
-  final protected def getDbHost(cli: CommandLine): String = {
+  final protected def getReadDbHost(cli: CommandLine): String = {
     cli.getOptionValue(OPTION_READ_DB_HOST)
   }
 
-  final protected def getDbCollection(cli: CommandLine): String = {
+  final protected def getReadDbCollection(cli: CommandLine): String = {
     cli.getOptionValue(OPTION_READ_DB_COLLECTION)
   }
 
