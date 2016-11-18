@@ -73,6 +73,40 @@ public class WordCloudGenerator {
   }
 
 
+  // This method is simply used to update the database with Bing results. Don't use it otherwise
+  public static void updateBingUsageWordsInNewDB() {
+    MongoDB bingDb = new MongoDB("chimay", 27017, "actv01");
+
+    MongoDB db = new MongoDB("localhost", 27017, "validator_profiling_2");
+
+    BasicDBObject query = new BasicDBObject("xref.BING.metadata.usage_terms.0", new BasicDBObject("$exists", true));
+    BasicDBObject keys = new BasicDBObject("InChI", true).append("xref.BING", true);
+
+    DBIterator ite = bingDb.getIteratorOverChemicals(query, keys);
+
+
+    int i = 0;
+    while (ite.hasNext()) {
+
+
+      BasicDBObject o = (BasicDBObject) ite.next();
+      String inchi = o.getString("InChI");
+      if (inchi != null) {
+        BasicDBObject xref = (BasicDBObject) o.get("xref");
+        BasicDBObject bingXref = (BasicDBObject) xref.get("BING");
+        String bestName = bingXref.getString("dbid");
+        BasicDBObject metadata = (BasicDBObject) bingXref.get("metadata");
+        if (++i % 1000 == 0) {
+          LOGGER.info("#%d", i);
+          LOGGER.info(bestName);
+          LOGGER.info(metadata.toString());
+        }
+        db.updateChemicalWithBingSearchResults(inchi, bestName, metadata);
+      }
+    }
+  }
+
+
 
   public File generateWordCloud(String inchi) throws IOException {
 

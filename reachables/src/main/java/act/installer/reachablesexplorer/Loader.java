@@ -326,7 +326,7 @@ public class Loader {
   //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
    // Loader loader = new Loader();
     //loader.updateMoleculeRenderings();
-   // WordCloudGenerator.updateBingUsageWordsInNewDB();
+    WordCloudGenerator.updateBingUsageWordsInNewDB();
     //loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
     //loader.updateXREFS();
     // Load all cascades
