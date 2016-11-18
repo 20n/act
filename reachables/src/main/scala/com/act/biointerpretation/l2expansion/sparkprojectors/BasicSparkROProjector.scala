@@ -10,10 +10,10 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
 // Basic storage class for serializing and deserializing projection results
-case class ProjectionResult(substrates: List[String], ros: String, products: List[String])
+case class ProjectionResult(substrates: List[String], ros: String, products: List[String]) extends Serializable
 
 protected trait ProjectorCliHelper {
-  val HELP_FORMATTER: HelpFormatter = new HelpFormatter with Serializable
+  val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   val HELP_MESSAGE: String
   /**
     * A class full of a few command line helpers for SparkRoProjectors
@@ -35,11 +35,6 @@ protected trait ProjectorCliHelper {
       LOGGER.info(s"Creating output directory at ${directory.getAbsolutePath}")
       directory.mkdirs()
     }
-  }
-
-  private def exitWithHelp(opts: Options): Unit = {
-    HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
-    System.exit(1)
   }
 
   final def parse(opts: Options, args: Array[String]): CommandLine ={
@@ -64,10 +59,15 @@ protected trait ProjectorCliHelper {
     cl.get
   }
 
+  private def exitWithHelp(opts: Options): Unit = {
+    HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
+    System.exit(1)
+  }
+
   def getCommandLineOptions: Options
 }
 
-trait BasicSparkROProjector extends ProjectorCliHelper with Serializable {
+trait BasicSparkROProjector extends ProjectorCliHelper {
   /**
     * The most basic SparkROProjector, contains the abstract methods that each actual projector will implement.
     */
@@ -77,9 +77,10 @@ trait BasicSparkROProjector extends ProjectorCliHelper with Serializable {
   final val OPTION_SPARK_MASTER = "m"
   final val OPTION_VALID_CHEMICAL_TYPE = "v"
   final val OPTION_HELP = "h"
-  final val HELP_MESSAGE = "A Spark job that will project the set of validation ROs over a group of substrates.  " +
-    s"You are currently running the projector version ${runningClass}"
+
   val runningClass: Class[_]
+  val HELP_MESSAGE = "A Spark job that will project the set of validation ROs over a group of substrates.  " +
+    s"You are currently running the projector version $runningClass"
   protected val DEFAULT_SPARK_MASTER = "spark://spark-master:7077"
   private val LOGGER = LogManager.getLogger(getClass)
   private val SPARK_LOG_LEVEL = "WARN"
@@ -165,7 +166,7 @@ trait BasicSparkROProjector extends ProjectorCliHelper with Serializable {
     val sparkName = "" +
       s"${if (isExhaustive(cli)) "Exhaustive"}" +
       s"${if (isReverse(cli)) "Reverse"} " +
-      s"${runningClass.getCanonicalName}"
+      s"${runningClass.getSimpleName}"
 
     val sparkMaster = getSparkMaster(cli)
     val conf = new SparkConf().setAppName(sparkName).setMaster(sparkMaster)
@@ -187,19 +188,6 @@ trait BasicSparkROProjector extends ProjectorCliHelper with Serializable {
     cli.getOptionValue(OPTION_SPARK_MASTER, DEFAULT_SPARK_MASTER)
   }
 
-  private def callProjector(cli: CommandLine)
-                           (spark: SparkContext, validInchis: Stream[Stream[String]]): RDD[ProjectionResult]= {
-    /* ------ Projection ------- */
-    LOGGER.info("Building InChI RDD")
-    val groupSize = 1000
-    val inchiRDD: RDD[Seq[String]] = spark.makeRDD(validInchis, groupSize)
-
-    LOGGER.info("Starting execution")
-    // PROJECT!  Run ERO projection over all InChIs.
-    val result = inchiRDD.flatMap(i => SparkProjectionInstance.project(getChemaxonLicenseFile(cli).getName)(isReverse(cli), isExhaustive(cli))(i.toList))
-    result
-  }
-
   private def isExhaustive(cli: CommandLine): Boolean = {
     cli.hasOption(OPTION_EXHAUSTIVE)
   }
@@ -210,6 +198,33 @@ trait BasicSparkROProjector extends ProjectorCliHelper with Serializable {
 
   private def getChemaxonLicenseFile(cli: CommandLine): File = {
     new File(cli.getOptionValue(OPTION_LICENSE_FILE))
+  }
+
+  private def callProjector(cli: CommandLine)
+                           (spark: SparkContext, validInchis: Stream[Stream[String]]): RDD[ProjectionResult]= {
+    /* ------ Projection ------- */
+    LOGGER.info("Building InChI RDD")
+    val groupSize = 1000
+    val inchiRDD: RDD[Seq[String]] = spark.makeRDD(validInchis, groupSize)
+
+    LOGGER.info("Starting execution")
+    // PROJECT!  Run ERO projection over all InChIs.
+    scopedProjection(getChemaxonLicenseFile(cli).getName)(isReverse(cli), isExhaustive(cli))(inchiRDD)
+  }
+
+  private def scopedProjection(licenseFileName: String)
+                              (reverse: Boolean, exhaustive: Boolean)
+                              (inchiRDD: RDD[Seq[String]]): RDD[ProjectionResult] = {
+    /**
+      * We need to set the scope of the projection to as smaller unit so that
+      * we don't need to ensure a bunch of other stuff serializes.
+      */
+    val mapper: List[String] => Stream[ProjectionResult] =
+      SparkProjectionInstance.project(licenseFileName)(reverse, exhaustive)
+    val seqMapper: Seq[String] => Stream[ProjectionResult] =
+      i => mapper(i.toList)
+
+    inchiRDD.flatMap(seqMapper)
   }
 
   private def collectAndPersistRdd(results: RDD[ProjectionResult]): Iterator[ProjectionResult] ={
@@ -250,7 +265,7 @@ trait BasicSparkROProjector extends ProjectorCliHelper with Serializable {
      * See http://stackoverflow.com/questions/31383904/how-can-i-force-spark-to-execute-code/31384084#31384084
      * for more context on Spark's laziness.
      */
-    val resultCount = results.persist().count()
+    val resultCount: Long = results.persist().count()
     LOGGER.info(s"Projection completed with $resultCount results")
     results.toLocalIterator
   }
