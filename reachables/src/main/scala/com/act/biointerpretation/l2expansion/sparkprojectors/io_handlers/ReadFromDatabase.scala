@@ -81,7 +81,7 @@ trait ReadFromDatabase extends BasicSparkROProjector {
     }
 
     // List of combinations of InChIs
-    combinationList(inchis.toList.map(Stream(_)).toStream)
+    combinationList(Stream(inchis.toStream))
   }
 
   private def getReachablesCollection(database: String, port: Int, host: String)(collection: String): DBCollection = {
