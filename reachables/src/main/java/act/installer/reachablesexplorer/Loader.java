@@ -21,6 +21,7 @@ import com.mongodb.ServerAddress;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.mongojack.JacksonDBCollection;
@@ -211,10 +212,31 @@ public class Loader {
       Long parentId = fileContents.getLong("parent");
       Long currentId = fileContents.getLong("chemid");
 
+      JSONArray upstreamSubstrates = fileContents.getJSONArray("upstream");
+
       // Get the parent chemicals from the database.  JSON file contains ID.
       // We want to update it because it may not exist, but we also don't want to overwrite.
 
       List<InchiDescriptor> substrates = new ArrayList<>();
+
+      for (int i = 0; i < upstreamSubstrates.length(); i++) {
+        JSONObject obj = upstreamSubstrates.getJSONObject(i);
+        JSONArray substratesArrays = (JSONArray) obj.get("substrates");
+        for (int j = 0; j < substratesArrays.length(); j++) {
+          Long subId = substratesArrays.getLong(j);
+          if (subId >= 0) {
+            try {
+              Chemical parent = reachablesConnection.getChemicalFromChemicalUUID(substratesArrays.getLong(j));
+              upsert(constructReachable(parent.getInChI()));
+              InchiDescriptor parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
+              substrates.add(parentDescriptor);
+            } catch (NullPointerException e){
+              LOGGER.info("Null pointer, unable to write parent.");
+            }
+          }
+        }
+      }
+
       if (parentId >= 0) {
         try {
           Chemical parent = reachablesConnection.getChemicalFromChemicalUUID(parentId);
@@ -309,8 +331,8 @@ public class Loader {
   //    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
   //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
     Loader loader = new Loader();
-    loader.updateWordClouds();
+    //loader.updateWordClouds();
     // Load all cascades
-    //loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
+    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
   }
 }
