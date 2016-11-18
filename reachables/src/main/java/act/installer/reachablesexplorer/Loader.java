@@ -388,6 +388,5 @@ public class Loader {
     Loader loader = new Loader();
     // loader.updateMoleculeRenderings();
     loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
-
   }
 }
