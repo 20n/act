@@ -70,8 +70,14 @@ trait ReadFromDatabase extends BasicSparkROProjector {
 
     while (cursor.hasNext) {
       val entry: DBObject = cursor.next
-      val inchiString: String = entry.get("InChI").asInstanceOf[String]
-      inchis.append(inchiString)
+      var rawString: Option[AnyRef] = Option(entry.get("InChI"))
+      if (rawString.isEmpty) {
+        rawString = Option(entry.get("inchi"))
+      }
+
+      if (rawString.isDefined) {
+        inchis.append(rawString.get.asInstanceOf[String])
+      }
     }
 
     Stream(new L2InchiCorpus(inchis.toList.asJava).getInchiList.asScala.toStream)
