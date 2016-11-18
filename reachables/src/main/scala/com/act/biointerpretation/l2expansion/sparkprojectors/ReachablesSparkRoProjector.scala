@@ -5,8 +5,8 @@ import com.act.biointerpretation.l2expansion.sparkprojectors.io_handlers.WriteTo
 object ReachablesSparkRoProjector extends WriteToReachablesDatabase {
   val runningClass = getClass
 
-  val OPTION_READ_DB_NAME: String = "d"
-  val OPTION_READ_DB_PORT: String = "p"
-  val OPTION_READ_DB_HOST: String = "h"
-  val OPTION_READ_DB_COLLECTION: String = "c"
+  val OPTION_READ_DB_NAME: String = "md"
+  val OPTION_READ_DB_PORT: String = "mp"
+  val OPTION_READ_DB_HOST: String = "mh"
+  val OPTION_READ_DB_COLLECTION: String = "mc"
 }
