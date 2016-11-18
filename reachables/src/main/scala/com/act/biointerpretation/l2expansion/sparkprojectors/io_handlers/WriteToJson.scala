@@ -37,11 +37,11 @@ trait WriteToJson extends BasicSparkROProjector {
     // Start array and write
     buffer.write("[")
 
-    buffer.write(s"${results.next().toJson.prettyPrint}")
+    buffer.write(s"${results.head.toJson.prettyPrint}")
 
     // For each element in the iterator, write as a new element
     // TODO Consider buffer flushing after each write?
-    results.foreach(result => {
+    results.tail.foreach(result => {
       buffer.write(s",${result.toJson.prettyPrint}")
     })
 

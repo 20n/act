@@ -9,8 +9,7 @@ import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
-// Basic storage class for serializing and deserializing projection results
-case class ProjectionResult(substrates: List[String], ros: String, products: List[String]) extends Serializable
+
 
 protected trait ProjectorCliHelper {
   val HELP_FORMATTER: HelpFormatter = new HelpFormatter
@@ -83,7 +82,8 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     s"You are currently running the projector version $runningClass"
   protected val DEFAULT_SPARK_MASTER = "spark://spark-master:7077"
   private val LOGGER = LogManager.getLogger(getClass)
-  private val SPARK_LOG_LEVEL = "WARN"
+  // Careful, this also changes our logger's status.
+  private val SPARK_LOG_LEVEL = "INFO"
 
   // Basic methods that implementing objects utilize.
   def getValidInchiCommandLineOptions: List[CliOption.Builder]
@@ -105,11 +105,9 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     val validInChIs = validateInChIs(inchiCombinations)
     val spark = setupSpark(cli)
 
-    val resultsRDD: RDD[ProjectionResult] = callProjector(cli)(spark, validInChIs)
-    val collectedResults: Stream[ProjectionResult] = collectAndPersistRdd(resultsRDD)
+    val results: Stream[ProjectionResult] = callProjector(cli)(spark, validInChIs)
 
-    handleTermination(cli)(collectedResults)
-    cleanup(resultsRDD)
+    handleTermination(cli)(results)
   }
 
   private def parseCommandLineOptions(args: Array[String]): CommandLine = {
@@ -145,6 +143,7 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
              |""".stripMargin),
 
       CliOption.builder(OPTION_SPARK_MASTER).
+        hasArg().
         longOpt("spark-master").
         desc("Where to look for the spark master connection. " +
           s"Uses $DEFAULT_SPARK_MASTER by default."),
@@ -196,14 +195,18 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
 
     // Spark Configurations
     conf.set("spark.scheduler.mode", "FAIR")
+    conf.set("spark.eventLog.dir", "/Volumes/shared-data/Michael/SparkLogs/")
+    conf.set("spark.eventLog.enabled", "true")
+
     conf.getAll.foreach(x => LOGGER.info(s"Spark config pair: ${x._1}: ${x._2}"))
 
     // Actual spark instance
     val spark = new SparkContext(conf)
     spark.setLogLevel(SPARK_LOG_LEVEL)
     LOGGER.info("Distributing Chemaxon license file to spark workers")
-
-    spark.addFile(getChemaxonLicenseFile(cli).getAbsolutePath)
+    val licenseFile = getChemaxonLicenseFile(cli).getAbsolutePath
+    LicenseManager.setLicenseFile(licenseFile)
+    spark.addFile(licenseFile)
     spark
   }
 
@@ -224,32 +227,31 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
   }
 
   private def callProjector(cli: CommandLine)
-                           (spark: SparkContext, validInchis: Stream[Stream[String]]): RDD[ProjectionResult] = {
+                           (spark: SparkContext, validInchis: Stream[Stream[String]]): Stream[ProjectionResult] = {
     /* ------ Projection ------- */
-    LOGGER.info("Building InChI RDD")
-    // No need to launch a bunch of parallel tasks if we have a small InChI list.
-    val chunkSize = 1000
-    val groupSize: Int = (validInchis.length % chunkSize) + 1
-    val inchiRDD: RDD[Seq[String]] = spark.makeRDD(validInchis, groupSize)
-
-    LOGGER.info(s"Starting execution.  Projection ${validInchis.length} substrate groups.")
+    LOGGER.warn(s"Starting execution.  Substrate Group Count: ${validInchis.length}")
     // PROJECT!  Run ERO projection over all InChIs.
-    scopedProjection(getChemaxonLicenseFile(cli).getName)(isReverse(cli), isExhaustive(cli))(inchiRDD)
+    scopedProjection(getChemaxonLicenseFile(cli).getName)(isReverse(cli), isExhaustive(cli))(spark, validInchis)
   }
 
   private def scopedProjection(licenseFileName: String)
                               (reverse: Boolean, exhaustive: Boolean)
-                              (inchiRDD: RDD[Seq[String]]): RDD[ProjectionResult] = {
+                              (spark: SparkContext, validInchis: Stream[Stream[String]]): Stream[ProjectionResult] = {
     /**
       * We need to set the scope of the projection to as smaller unit so that
       * we don't need to ensure a bunch of other stuff serializes.
       */
-    val mapper: List[String] => Stream[ProjectionResult] =
-      SparkProjectionInstance.project(licenseFileName)(reverse, exhaustive)
-    val seqMapper: Seq[String] => Stream[ProjectionResult] =
-      i => mapper(i.toList)
+    val seqMapper: Seq[String] => Stream[ProjectionResult] = i => {
+      SparkProjectionInstance.project(licenseFileName)(reverse, exhaustive)(i.toList)
+    }
 
-    inchiRDD.flatMap(seqMapper)
+    // No need to launch a bunch of parallel tasks if we have a small InChI list.
+    val chunkSize = 1000
+    val groupSize: Int = (validInchis.length % chunkSize) + 1
+
+    val inchiRDD: RDD[Seq[String]] = spark.makeRDD(validInchis, groupSize)
+    val resultRdd: RDD[ProjectionResult] = inchiRDD.flatMap(seqMapper)
+    collectAndPersistRdd(resultRdd)
   }
 
   private def collectAndPersistRdd(results: RDD[ProjectionResult]): Stream[ProjectionResult] = {
@@ -291,11 +293,12 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
      * for more context on Spark's laziness.
      */
     val resultCount: Long = results.persist().count()
-    LOGGER.info(s"Projection completed with $resultCount results")
+    LOGGER.warn(s"Projection completed with $resultCount results")
     results.toLocalIterator.toStream
   }
 
   private def cleanup(resultsRDD: RDD[ProjectionResult]): Unit = {
+    LOGGER.info("Cleaning up data.  Should finish soon.")
     resultsRDD.unpersist()
   }
 }
