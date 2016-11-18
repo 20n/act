@@ -58,9 +58,7 @@ public class Loader {
   private static final String TARGET_COLLECTION = "test";
 
   private MongoDB db;
-  private MongoDB dbWithXREF;
   private WordCloudGenerator wcGenerator;
-  private MoleculeRenderer renderer;
 
   private DBCollection reachablesCollection;
   private JacksonDBCollection<Reachable, String> jacksonReachablesCollection;
@@ -69,7 +67,6 @@ public class Loader {
   public Loader(String host, Integer port, String targetDB, String targetCollection) throws UnknownHostException {
     db = new MongoDB(host, port, VALIDATOR_PROFILING_DATABASE);
     wcGenerator = new WordCloudGenerator(host, port, ACTV01_DATABASE);
-    renderer = new MoleculeRenderer();
 
     MongoClient mongoClient = new MongoClient(new ServerAddress(host, port));
     DB reachables = mongoClient.getDB(targetDB);
@@ -78,9 +75,18 @@ public class Loader {
   }
 
   public Loader() throws UnknownHostException {
-    new Loader(DEFAULT_HOST, DEFAULT_PORT, TARGET_DATABASE, TARGET_COLLECTION);
+    db = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, VALIDATOR_PROFILING_DATABASE);
+    wcGenerator = new WordCloudGenerator(DEFAULT_HOST, DEFAULT_PORT, ACTV01_DATABASE);
+
+    MongoClient mongoClient = new MongoClient(new ServerAddress(DEFAULT_HOST, DEFAULT_PORT));
+    DB reachables = mongoClient.getDB(TARGET_DATABASE);
+    reachablesCollection = reachables.getCollection(TARGET_COLLECTION);
+    jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
   }
 
+  /**
+   * Get smiles from molecule
+   */
   private String getSmiles(Molecule mol) {
     try {
       return MoleculeExporter.exportMolecule(mol, MoleculeFormat.smiles$.MODULE$);
@@ -89,6 +95,9 @@ public class Loader {
     }
   }
 
+  /**
+   * Get inchi key from molecule
+   */
   private String getInchiKey(Molecule mol) {
     try {
       // TODO: add inchi key the Michael's Molecule Exporter
@@ -99,6 +108,9 @@ public class Loader {
     }
   }
 
+  /**
+   * Heuristic to choose the best page name
+   */
   private String getPageName(String chemaxonTraditionalName, List<String> brendaNames, String inchi) {
     if (chemaxonTraditionalName == null || chemaxonTraditionalName.length() > 50) {
       brendaNames.sort((n1, n2) -> Integer.compare(n1.length(), n2.length()));
@@ -111,6 +123,10 @@ public class Loader {
     return chemaxonTraditionalName;
   }
 
+  /**
+   * Use Chemaxon to get the traditional name.
+   * If no common name, Chemaxon will generate one
+   */
   private String getChemaxonTraditionalName(Molecule mol) {
     try {
       return MolExporter.exportToFormat(mol, "name:t");
@@ -119,6 +135,11 @@ public class Loader {
     }
   }
 
+  /**
+   * Construct a Reachable.
+   * Gets names and xref from `db` collection `chemicals`
+   * Tries to import to molecule and export names
+   */
   public Reachable constructReachable(String inchi) throws IOException {
     // Only construct a new one if one doesn't already exist.
     Reachable preconstructedReachable = queryByInchi(inchi);
@@ -156,6 +177,9 @@ public class Loader {
     return new Reachable(pageName, inchi, smiles, inchikey, names, xref);
   }
 
+  /**
+   * Update a single reachable with wordcloud info
+   */
   public void updateReachableWithWordcloud(Reachable reachable) throws IOException {
     File wordcloud = wcGenerator.generateWordCloud(reachable.getInchi());
     if (wordcloud != null) {
@@ -164,6 +188,9 @@ public class Loader {
     }
   }
 
+  /**
+   * Update a single reachable with rendering info
+   */
   public void updateReachableWithRendering(Reachable reachable) {
     String renderingFilename = MoleculeRenderer.generateRendering(reachable.getInchi());
     LOGGER.info("Generated rendering at %s", renderingFilename);
@@ -181,8 +208,8 @@ public class Loader {
       // TODO: change the following to update the database maybe?
       jacksonReachablesCollection.insert(reachable);
     }
-
   }
+
   public void updateWithPrecursorData(String inchi, PrecursorData precursorData) {
     // TODO: can we use updates instead of inserting a new precursor?
     Reachable reachable = jacksonReachablesCollection.findOne(new BasicDBObject("inchi", inchi));
@@ -321,14 +348,9 @@ public class Loader {
 
   public static void main(String[] args) throws IOException {
 
-  //    Loader loader = new Loader();
+    Loader loader = new Loader();
+    // loader.updateMoleculeRenderings();
+    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
 
-  //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
-   // Loader loader = new Loader();
-    //loader.updateMoleculeRenderings();
-   // WordCloudGenerator.updateBingUsageWordsInNewDB();
-    //loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
-    //loader.updateXREFS();
-    // Load all cascades
   }
 }

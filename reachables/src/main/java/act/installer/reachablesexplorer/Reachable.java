@@ -7,7 +7,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mongodb.BasicDBObject;
-import com.mongodb.DBObject;
 import org.mongojack.ObjectId;
 
 import java.util.HashMap;
@@ -112,6 +111,8 @@ public class Reachable {
     return this.xref;
   }
 
+  // This is used only when loading xrefs separately from the rest
+  // Let's leave it here for now!
   @JsonIgnore
   public void setXREFS(BasicDBObject xrefs) {
     this.xref = new HashMap<>();
