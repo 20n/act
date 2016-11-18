@@ -170,9 +170,11 @@ public class Loader {
 
   public void updateReachableWithRendering(Reachable reachable) {
     String renderingFilename = MoleculeRenderer.generateRendering(reachable.getInchi());
-    LOGGER.info("Generated rendering at %s", renderingFilename);
-    reachable.setStructureFilename(renderingFilename);
-    upsert(reachable);
+    if (renderingFilename != null) {
+      LOGGER.info("Generated rendering at %s", renderingFilename);
+      reachable.setStructureFilename(renderingFilename);
+      upsert(reachable);
+    }
   }
 
   public void loadReachables(File inchiFile) throws IOException {
