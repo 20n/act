@@ -11,6 +11,26 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public class Reachable {
 
+  private String id;
+  @JsonProperty("page_name")
+  private String pageName;
+  @JsonProperty("inchi")
+  private String inchi;
+  @JsonProperty("smiles")
+  private String smiles;
+  @JsonProperty("inchikey")
+  private String inchikey;
+  @JsonProperty("rendering-filename")
+  private String structureFilename;
+  @JsonProperty("names")
+  private List<String> names;
+  @JsonProperty("wikipedia-data")
+  private WikipediaData wikipediaData;
+  @JsonProperty("usage-wordcloud-filename")
+  private String wordCloudFilename;
+  @JsonProperty("precursor")
+  private PrecursorData precursorData;
+
   public Reachable() {}
 
   public Reachable(String pageName, String inchi, String smiles, String inchikey, List<String> names) {
@@ -41,57 +61,36 @@ public class Reachable {
     this.precursorData = precursors;
   }
 
+  public PrecursorData getPrecursorData() {
+    if (this.precursorData == null) {
+      return new PrecursorData();
+    }
+    return this.precursorData;
+  }
 
   public void setPrecursorData(PrecursorData precursorData) {
     this.precursorData = precursorData;
   }
 
-  public PrecursorData getPrecursorData() {
-    return this.precursorData;
-  }
-
-  private String id;
   @ObjectId
   @JsonProperty("_id")
   public String getId() {
     return id;
   }
+
   @ObjectId
   @JsonProperty("_id")
   public void setId(String id) {
     this.id = id;
   }
 
-  @JsonProperty("page_name")
-  private String pageName;
-
   public String getPageName(){
     return pageName;
   }
 
-  @JsonProperty("inchi")
-  private String inchi;
-
-  @JsonProperty("smiles")
-  private String smiles;
-
-  @JsonProperty("inchikey")
-  private String inchikey;
-
-  @JsonProperty("rendering-filename")
-  private String structureFilename;
-
-  @JsonProperty("names")
-  private List<String> names;
-
-  @JsonProperty("wikipedia-data")
-  private WikipediaData wikipediaData;
-
-  @JsonProperty("usage-wordcloud-filename")
-  private String wordCloudFilename;
-
-  @JsonProperty("precursor")
-  private PrecursorData precursorData;
+  public void setPageName(String pageName) {
+    this.pageName = pageName;
+  }
 
   /* -------- Getters must have JSON ignore if not a unique field. ------- */
   @JsonIgnore
@@ -104,19 +103,31 @@ public class Reachable {
     return inchikey;
   }
 
-  public void setWordCloudFilename(String wordCloudFilename) {
-    this.wordCloudFilename = wordCloudFilename;
-  }
-
-  public void setStructureFilename(String structureFilename) {
-    this.structureFilename = structureFilename;
+  public void setInchiKey(String inchikey) {
+    this.inchikey = inchikey;
   }
 
   public String getStructureFilename() {
     return structureFilename;
   }
 
+  public void setStructureFilename(String structureFilename) {
+    this.structureFilename = structureFilename;
+  }
+
   public String getWordCloudFilename() {
     return wordCloudFilename;
+  }
+
+  public void setWordCloudFilename(String wordCloudFilename) {
+    this.wordCloudFilename = wordCloudFilename;
+  }
+
+  public void setSmiles(String smiles) {
+    this.smiles = smiles;
+  }
+
+  public void setNames(List<String> names) {
+    this.names = names;
   }
 }

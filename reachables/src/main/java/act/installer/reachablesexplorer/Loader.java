@@ -124,11 +124,6 @@ public class Loader {
   }
 
   public Reachable constructReachable(String inchi) {
-    // Only construct a new one if one doesn't already exist.
-    Reachable preconstructedReachable = queryByInchi(inchi);
-    if (preconstructedReachable != null) {
-      return preconstructedReachable;
-    }
     Molecule mol;
     try {
       mol = MoleculeImporter.importMolecule(inchi);
@@ -156,6 +151,15 @@ public class Loader {
     }
 
     String pageName = getPageName(chemaxonTraditionalName, names, inchi);
+    // Only construct a new one if one doesn't already exist.
+    Reachable preconstructedReachable = queryByInchi(inchi);
+    if (preconstructedReachable != null) {
+      preconstructedReachable.setPageName(pageName);
+      preconstructedReachable.setSmiles(smiles);
+      preconstructedReachable.setInchiKey(inchikey);
+      preconstructedReachable.setNames(names);
+      return preconstructedReachable;
+    }
     return new Reachable(pageName, inchi, smiles, inchikey, names);
   }
 

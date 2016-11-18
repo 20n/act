@@ -23,11 +23,15 @@ class PrecursorData implements Serializable {
 
     @JsonIgnore
     public void addPrecursor(Precursor precursor) {
-        this.precursors.add(precursor);
+        getPrecursors().add(precursor);
     }
 
     @JsonIgnore
     public Set<Precursor> getPrecursors() {
+        if (this.precursors == null) {
+            this.precursors = new HashSet<>();
+            return this.precursors;
+        }
         return this.precursors;
     }
 }
