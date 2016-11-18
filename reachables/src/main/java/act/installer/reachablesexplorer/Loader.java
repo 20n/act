@@ -75,7 +75,14 @@ public class Loader {
   }
 
   public Loader() throws UnknownHostException {
-    new Loader(DEFAULT_HOST, DEFAULT_PORT, TARGET_DATABASE, TARGET_COLLECTION);
+    db = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, VALIDATOR_PROFILING_DATABASE);
+    wcGenerator = new WordCloudGenerator(DEFAULT_HOST, DEFAULT_PORT, VALIDATOR_PROFILING_DATABASE);
+    renderer = new MoleculeRenderer();
+
+    MongoClient mongoClient = new MongoClient(new ServerAddress(DEFAULT_HOST, DEFAULT_PORT));
+    DB reachables = mongoClient.getDB(TARGET_DATABASE);
+    reachablesCollection = reachables.getCollection(TARGET_COLLECTION);
+    jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
   }
 
   private String getSmiles(Molecule mol) {
