@@ -36,6 +36,11 @@ protected trait ProjectorCliHelper {
     }
   }
 
+  private def exitWithHelp(opts: Options): Unit = {
+    HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
+    System.exit(1)
+  }
+
   final def parse(opts: Options, args: Array[String]): CommandLine ={
     // Parse command line options
     var cl: Option[CommandLine] = None
@@ -56,11 +61,6 @@ protected trait ProjectorCliHelper {
     if (cl.get.hasOption("help")) exitWithHelp(opts)
 
     cl.get
-  }
-
-  private def exitWithHelp(opts: Options): Unit = {
-    HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
-    System.exit(1)
   }
 
   def getCommandLineOptions: Options
@@ -131,6 +131,7 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
         longOpt("license-file").
         desc("A path to the Chemaxon license file to load, mainly for checking license validity"),
 
+      // TODO Make this true again
       CliOption.builder(OPTION_VALID_CHEMICAL_TYPE).
         longOpt("valid-chemical-types").
         hasArg.
@@ -302,159 +303,3 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     resultsRDD.unpersist()
   }
 }
-
-
-
-
-
-
-
-/*
-
-  private def inchiSourceFromDB(dbName: String, dbPort: Int, dbHost: String): Stream[Stream[String]] = {
-    val db: MongoDB = new MongoDB(dbHost, dbPort, dbName)
-    val reactionIter = new ValidReactionSubstratesIterator(db)
-
-    JavaConverters.asScalaIteratorConverter(reactionIter).asScala.toStream.map(_.toList.toStream)
-  }
-
-  def getOptions(): Unit ={
-    val options = List[CliOption.Builder](
-
-      CliOption.builder(OPTION_READ_FROM_REACHABLES_DB).
-        longOpt("reachables-db").
-        desc("Specifies  to read input inchis from a reachables DB."),
-
-
-      CliOption.builder(OPTION_DB_NAME).
-        hasArg().
-        longOpt("db-name").
-        desc("The name of the mongo DB to use."),
-
-      CliOption.builder(OPTION_WRITE_PROJECTIONS_TO_DB).
-        longOpt("write-to-database").
-        desc("Specifies to write the results into the supplied reachables database instead of writing to a file."),
-    )
-  }
-
-  /**
-    * Reads all the inchis from a reachables database, and returns them as an L2InchiCorpus.
-    */
-  private def readFromReachablesDatabase(database: String, port: Int, host: String): L2InchiCorpus = {
-    val reachables = getReachablesCollection(database, port, host)
-    val cursor: DBCursor = reachables.find()
-    val inchis: ArrayBuffer[String] = ArrayBuffer[String]()
-
-    while (cursor.hasNext) {
-      val entry: DBObject = cursor.next
-      val inchiString: String = entry.get("InChI").asInstanceOf[String]
-      inchis.append(inchiString)
-    }
-
-    new L2InchiCorpus(inchis.toList.asJava)
-  }
-
-  /**
-    * Writes the projection results to the reachables database.
-    * Creates new database entries for each predicted product (if none exists), and adds the substrates
-    * to that entry as precursors.
-    */
-  private def writeToReachablesDatabase(resultsRDD: RDD[ProjectionResult], database: String, port: Int, host: String): Unit = {
-    val reachables = getReachablesCollection(database, port, host)
-
-    val resultCount = resultsRDD.persist().count()
-    LOGGER.info(s"Projection completed with $resultCount results")
-    val resultsIterator = resultsRDD.toLocalIterator
-
-    resultsIterator.foreach(projection => {
-      val updater = new ReachablesProjectionUpdate(projection)
-      updater.updateReachables(reachables)
-    })
-  }
-
-  private def writeToReachablesDatabaseThroughLoader(resultsRDD: RDD[ProjectionResult], loader: Loader): Unit = {
-    val resultCount = resultsRDD.persist().count()
-    LOGGER.info(s"Projection completed with $resultCount results")
-    val resultsIterator = resultsRDD.toLocalIterator
-
-    resultsIterator.foreach(projection => {
-      val updater = new ReachablesProjectionUpdate(projection)
-      updater.updateByLoader(loader)
-    })
-  }
-
-  /**
-    * Helper method to get the reachables collection from the wiki_reachables DB or equivalent.
-    */
-
-  private def writeToJsonFile(resultsRDD: RDD[ProjectionResult], outputDir: File): Unit = {
-
-    // Stream output to file so that we can keep our memory footprint low, while still writing files efficiently.
-    val projectedReactionsFile = new File(outputDir, "projectedReactions")
-    val buffer = new BufferedWriter(new FileWriter(projectedReactionsFile))
-
-    // TODO Consider if we want to try using jackson/spray's streaming API?
-    // Start array and write
-    buffer.write("[")
-
-    val resultsIterator = resultsRDD.toLocalIterator
-    buffer.write(s"${resultsIterator.next().toJson.prettyPrint}")
-
-    // For each element in the iterator, write as a new element
-    // TODO Consider buffer flushing after each write?
-    resultsIterator.foreach(result => {
-      buffer.write(s",${result.toJson.prettyPrint}")
-    })
-
-    // Close up the array and close the file.
-    buffer.write("]")
-    buffer.close()
-
-    resultsRDD.unpersist()
-  }
-
-  def projectInChIsAndReturnResults(chemaxonLicense: File, assembledJar: File, workingDirectory: File)
-                                   (memory: String = "4GB", sparkMaster: String = DEFAULT_SPARK_MASTER)
-                                   (inputInchis: List[L2InchiCorpus])
-                                   (exhaustive: Boolean = false, reverse: Boolean = false): List[ProjectionResult] = {
-    if (!workingDirectory.exists()) workingDirectory.mkdirs()
-
-    val filePrefix = "tmpInchiCorpus"
-    val fileSuffix = "txt"
-
-    // Write to a file
-    val substrateFiles: List[String] = inputInchis.zipWithIndex.map({
-      case (file, index) =>
-        val substrateFile = new File(workingDirectory, s"$filePrefix.$index.$fileSuffix")
-        file.writeToFile(substrateFile)
-        substrateFile.getAbsolutePath
-    })
-
-    val conditionalArgs: ListBuffer[String] = new ListBuffer()
-    if (exhaustive) conditionalArgs.append(s"-$OPTION_EXHAUSTIVE")
-    if (reverse) conditionalArgs.append(s"-$OPTION_REVERSE")
-
-
-    val classArgs: List[String] = List(
-      s"-$OPTION_LICENSE_FILE", chemaxonLicense.getAbsolutePath,
-      s"-$OPTION_OUTPUT_DIRECTORY", workingDirectory.getAbsolutePath,
-      s"-$OPTION_SUBSTRATES_LISTS", substrateFiles.mkString(",")
-    ) ::: conditionalArgs.toList
-
-    // We need to replace the $ because scala ends the canonical name with that.
-    val sparkJob =
-      SparkWrapper.runClassPath(
-        assembledJar.getAbsolutePath, sparkMaster)(getClass.getCanonicalName.replaceAll("\\$$", ""), classArgs)(memory)
-
-    // Block until finished
-    JobManager.startJobAndAwaitUntilWorkflowComplete(sparkJob)
-
-    // Reload file from disk
-    val outputResults = new File(workingDirectory, "projectedReactions")
-
-    // TODO Consider if it is worthwhile or desired to remove all created files,
-    // effectively leveraging files just as temporary intermediates.
-
-    scala.io.Source.fromFile(outputResults).getLines().mkString.parseJson.convertTo[List[ProjectionResult]]
-  }
- */
