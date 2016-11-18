@@ -79,7 +79,6 @@ object TextToRxns {
   }
 
   def runChecks(out: PrintWriter) {
-
     // test extractions from sample sentences
     val testSentences = List(
       // p-aminophenylphosphocholine + H2O  p-aminophenol + choline phosphate
@@ -92,21 +91,27 @@ object TextToRxns {
     )
     for (testSent <- testSentences) {
       println(s"Extracting from: '${testSent.substring(0,75)}...'")
-      getRxnsFrom(Some(new RawText(testSent)))
+      getRxnsFromString(testSent)
     }
 
     // test extractions from a web url
     val testURL = "https://www.ncbi.nlm.nih.gov/pubmed/20564561?dopt=Abstract&report=abstract&format=text"
-    getRxnsFrom(Some(new WebURL(testURL)))
+    getRxnsFromURL(testURL)
 
     // test extractions from a PDF file
-    getRxnsFrom(Some(new PdfFile("/Volumes/shared-data/Saurabh/text2rxns/coli-paper.pdf")))
+    getRxnsFromPDF("/Volumes/shared-data/Saurabh/text2rxns/coli-paper.pdf")
   }
+
+  def getRxnsFromURL(url: String) = getRxnsFrom(Some(new WebURL(url)))
+  def getRxnsFromPDF(fileLoc: String) = getRxnsFrom(Some(new PdfFile(fileLoc)))
+  def getRxnsFromTxt(fileLoc: String) = getRxnsFrom(Some(new TextFile(fileLoc)))
+  def getRxnsFromString(sentence: String) = getRxnsFrom(Some(new RawText(sentence)))
 
   def getRxnsFrom(dataSrc: Option[InputType]) = {
     val extractor = new TextToRxns
-    extractor.extract(dataSrc)
+    val rxns = extractor.extract(dataSrc)
     extractor.flushWebCache
+    rxns
   }
 
   val optOutFile = new OptDesc(
@@ -241,6 +246,7 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
     println(s"Subsets built [${chems.size}]: ${chemSubsets.size}")
     val subsProdCandidates = for (s <- chemSubsets; p <- chemSubsets; if (!s.equals(p))) yield (s, p)
     val passValidation = subsProdCandidates.map(fromPairSetToMap).filter(validate)
+    passValidation
   }
 
   def limitedSzSubsets(chems: Map[String, String]): List[List[(String, String)]] = {
