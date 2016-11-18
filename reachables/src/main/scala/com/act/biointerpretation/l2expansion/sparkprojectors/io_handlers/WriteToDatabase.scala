@@ -42,11 +42,11 @@ trait WriteToDatabase extends BasicSparkROProjector {
     options
   }
 
-  final def handleTermination(cli: CommandLine)(results: Iterator[ProjectionResult]) = {
+  final def handleTermination(cli: CommandLine)(results: Stream[ProjectionResult]) = {
     writeToDatabase(getWriteDbName(cli), getWriteDbPort(cli), getWriteDbHost(cli))(getWriteDbCollection(cli))(results)
   }
 
-  private def writeToDatabase(database: String, port: Int, host: String)(collection: String)(results: Iterator[ProjectionResult]): Unit = {
+  private def writeToDatabase(database: String, port: Int, host: String)(collection: String)(results: Stream[ProjectionResult]): Unit = {
     val reachables = getReachablesCollection(database, port, host)(collection)
 
     results.foreach(projection => {
