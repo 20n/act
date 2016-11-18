@@ -43,9 +43,6 @@ public class Loader {
   private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
   private static final MongoDB reachablesConnection = new MongoDB("localhost", 27017, "validator_profiling_2");
 
-  // This database contains the Bing XREF that we need!
-  private static final String ACTV01_DATABASE = "actv01";
-
   // We extract the chemicals from this database
   private static final String VALIDATOR_PROFILING_DATABASE = "validator_profiling_2";
 
@@ -68,7 +65,7 @@ public class Loader {
 
   public Loader(String host, Integer port, String targetDB, String targetCollection) throws UnknownHostException {
     db = new MongoDB(host, port, VALIDATOR_PROFILING_DATABASE);
-    wcGenerator = new WordCloudGenerator(host, port, ACTV01_DATABASE);
+    wcGenerator = new WordCloudGenerator(host, port, VALIDATOR_PROFILING_DATABASE);
     renderer = new MoleculeRenderer();
 
     MongoClient mongoClient = new MongoClient(new ServerAddress(host, port));
@@ -324,9 +321,9 @@ public class Loader {
   //    Loader loader = new Loader();
 
   //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
-   // Loader loader = new Loader();
-    //loader.updateMoleculeRenderings();
-    WordCloudGenerator.updateBingUsageWordsInNewDB();
+   Loader loader = new Loader();
+   loader.updateMoleculeRenderings();
+
     //loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
     //loader.updateXREFS();
     // Load all cascades
