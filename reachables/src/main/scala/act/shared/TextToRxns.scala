@@ -110,10 +110,10 @@ object TextToRxns {
     rxns
   }
 
-  def getRxnsFromURL(url: String): List[ValidatedRxn] = getRxnsFrom(Some(new WebURL(url)))
-  def getRxnsFromPDF(fileLoc: String): List[ValidatedRxn] = getRxnsFrom(Some(new PdfFile(fileLoc)))
-  def getRxnsFromTxt(fileLoc: String): List[ValidatedRxn] = getRxnsFrom(Some(new TextFile(fileLoc)))
-  def getRxnsFromString(sentence: String): List[ValidatedRxn] = getRxnsFrom(Some(new RawText(sentence)))
+  def getRxnsFromURL(url: String) = getRxnsFrom(Some(new WebURL(url)))
+  def getRxnsFromPDF(fileLoc: String) = getRxnsFrom(Some(new PdfFile(fileLoc)))
+  def getRxnsFromTxt(fileLoc: String) = getRxnsFrom(Some(new TextFile(fileLoc)))
+  def getRxnsFromString(sentence: String) = getRxnsFrom(Some(new RawText(sentence)))
 
   val optOutFile = new OptDesc(
                     param = "o",
@@ -211,7 +211,7 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
 
   def extract(dataSrc: Option[InputType]) = {
     dataSrc match {
-      case None => 
+      case None => List()
       case Some(incoming) => {
         val textData = incoming match {
           case WebURL(url) => {
