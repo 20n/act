@@ -45,7 +45,7 @@ trait ReadFromDatabase extends BasicSparkROProjector {
     options
   }
 
-  final def getValidInchis(cli: CommandLine): Stream[Stream[String]] = {
+  final def getInChIGroups(cli: CommandLine): Stream[Stream[String]] = {
     inchiSourceFromDB(getReadDbName(cli), getReadDbPort(cli), getReadDbHost(cli), getReadDbCollection(cli))
   }
 
