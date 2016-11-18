@@ -1,11 +1,9 @@
 package com.act.biointerpretation.l2expansion.sparkprojectors.io_handlers
 
-import com.act.biointerpretation.l2expansion.L2InchiCorpus
 import com.act.biointerpretation.l2expansion.sparkprojectors.BasicSparkROProjector
 import com.mongodb.{DBCollection, DBCursor, DBObject, Mongo}
 import org.apache.commons.cli.{CommandLine, Option => CliOption}
 
-import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
 trait ReadFromDatabase extends BasicSparkROProjector {
@@ -82,7 +80,8 @@ trait ReadFromDatabase extends BasicSparkROProjector {
       }
     }
 
-    Stream(new L2InchiCorpus(inchis.toList.asJava).getInchiList.asScala.toStream)
+    // List of combinations of InChIs
+    combinationList(inchis.toList.map(Stream(_)).toStream)
   }
 
   private def getReachablesCollection(database: String, port: Int, host: String)(collection: String): DBCollection = {
