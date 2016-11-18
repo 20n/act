@@ -30,6 +30,17 @@ public class Reachable {
     this.xref = xref;
   }
 
+  public Reachable(String pageName, String inchi, String smiles, String inchikey, String structureFilename, List<String> names, Map<Chemical.REFS, BasicDBObject> xref) {
+    this.pageName = pageName;
+    this.inchi = inchi;
+    this.smiles = smiles;
+    this.inchikey = inchikey;
+    this.structureFilename = structureFilename;
+    this.names = names;
+    this.precursorData = new PrecursorData();
+    this.xref = xref;
+  }
+
   @JsonCreator
   public Reachable(@JsonProperty("page_name") String pageName,
                    @JsonProperty("inchi") String inchi,

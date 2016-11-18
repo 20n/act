@@ -55,7 +55,7 @@ public class Loader {
 
   // Target database and collection. We populate these with reachables
   private static final String TARGET_DATABASE = "wiki_reachables";
-  private static final String TARGET_COLLECTION = "test";
+  private static final String TARGET_COLLECTION = "reachablesv0";
 
   private MongoDB db;
   private WordCloudGenerator wcGenerator;
@@ -174,6 +174,12 @@ public class Loader {
     }
 
     String pageName = getPageName(chemaxonTraditionalName, names, inchi);
+
+    File rendering = MoleculeRenderer.getRenderingFile(inchi);
+    if (rendering.exists()) {
+      return new Reachable(pageName, inchi, smiles, inchikey, rendering.getName(), names, xref);
+    }
+
     return new Reachable(pageName, inchi, smiles, inchikey, names, xref);
   }
 
@@ -225,6 +231,11 @@ public class Loader {
 
     // If is null we create a new one
     reachable = reachable == null ? constructReachable(inchi) : reachable;
+
+    if (reachable == null) {
+      return;
+    }
+
     reachable.getPrecursorData().addPrecursor(pre);
 
     upsert(reachable);
@@ -273,6 +284,10 @@ public class Loader {
 
       // Get the actual chemical that is the product of the above chemical.
       Chemical current = reachablesConnection.getChemicalFromChemicalUUID(currentId);
+
+      if (current == null) {
+        return;
+      }
 
       // Update source as reachables, as these files are parsed from `cascade` construction
       if (!substrates.isEmpty()) {

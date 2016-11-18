@@ -10,7 +10,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Paths;
 
 
@@ -23,14 +22,20 @@ public class MoleculeRenderer {
 
   private static ReactionRenderer renderer = new ReactionRenderer();
 
-  public static String generateRendering(String inchi) {
+
+  public static File getRenderingFile(String inchi) {
     String md5 = DigestUtils.md5Hex(inchi);
     String postfix = new StringBuilder("-").append(md5).append(PNG_EXTENSION).toString();
 
     String renderingFilename = String.join("", "molecule", postfix);
-    File rendering = Paths.get(ASSETS_LOCATION, renderingFilename).toFile();
+    return Paths.get(ASSETS_LOCATION, renderingFilename).toFile();
+  }
 
-    if (!Files.exists(rendering.toPath())) {
+  public static String generateRendering(String inchi) {
+
+    File rendering = getRenderingFile(inchi);
+
+    if (!rendering.exists()) {
       try {
         Molecule mol = MoleculeImporter.importMolecule(inchi);
         renderer.drawMolecule(mol, rendering);
@@ -41,6 +46,6 @@ public class MoleculeRenderer {
       }
     }
 
-    return renderingFilename;
+    return rendering.getName();
   }
 }
