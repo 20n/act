@@ -19,9 +19,10 @@ import nu.xom.converters.DOMConverter
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.util.PDFTextStripper
 
-import com.act.biointerpretation.l2expansion.SparkInstance
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
+import com.act.biointerpretation.l2expansion.SparkInstance
 import com.act.biointerpretation.cofactorremoval.CofactorsCorpus
+import com.act.biointerpretation.mechanisminspection.Ero
 
 import scala.collection.JavaConverters._
 
@@ -157,6 +158,26 @@ object TextToRxns {
                     isReqd = false, hasArg = false)
 }
 
+class NamedInChI(val name: String, val inchi: String) {
+  override def toString = name
+}
+
+class ValidatedRxn(
+  val substrates: List[NamedInChI], 
+  val products: List[NamedInChI],
+  val validatingROs: Option[List[Ero]]
+) {
+  override def toString = {
+    val s = substrates.map(_.toString).reduce(_ + " + " + _)
+    val p = products.map(_.toString).reduce(_ + " + " + _)
+    val ros = validatingROs match {
+      case None => "no ROs"
+      case Some(ros) => ros.map(_.getName).toString
+    }
+    s"$s -> $p [$ros]"
+  }
+}
+
 class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
 
   var webCache: Map[URI, String] = {
@@ -214,18 +235,18 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
 
   def getChemicals(text: String) = {
     // Calling ChemistryPOSTagger
-    val posContainer = ChemistryPOSTagger.getDefaultInstance().runTaggers(text);
+    val posContainer = ChemistryPOSTagger.getDefaultInstance().runTaggers(text)
 
     // Returns a string of TAG TOKEN format (e.g.: DT The NN cat VB sat IN on DT the NN matt)
     // Call ChemistrySentenceParser either by passing the POSContainer or by InputStream
-    val chemistrySentenceParser = new ChemistrySentenceParser(posContainer);
+    val chemistrySentenceParser = new ChemistrySentenceParser(posContainer)
 
     // Create a parseTree of the tagged input
-    chemistrySentenceParser.parseTags();
+    chemistrySentenceParser.parseTags()
 
     // Return an XMLDoc
-    val doc = chemistrySentenceParser.makeXMLDocument();
-    Utils.writeXMLToFile(doc,"file1.xml");
+    val doc = chemistrySentenceParser.makeXMLDocument()
+    Utils.writeXMLToFile(doc,"text2rxns.NLPed.xml")
 
     val docFactory = DocumentBuilderFactory.newInstance
     docFactory.setValidating(false)
@@ -245,38 +266,40 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
     val chemSubsets = limitedSzSubsets(chems)
     println(s"Subsets built [${chems.size}]: ${chemSubsets.size}")
     val subsProdCandidates = for (s <- chemSubsets; p <- chemSubsets; if (!s.equals(p))) yield (s, p)
-    val passValidation = subsProdCandidates.map(fromPairSetToMap).filter(validate)
+    val passValidation = subsProdCandidates.map(passThroughEROs).filter(_.validatingROs != None)
     passValidation
   }
 
-  def limitedSzSubsets(chems: Map[String, String]): List[List[(String, String)]] = {
-    val candidates = chems.toList
+  def limitedSzSubsets(candidates: List[NamedInChI]): List[List[NamedInChI]] = {
     val diffSzCombs = for (sz <- 1 to TextToRxns.MAX_CHEM_COMBINATION_SZ) yield {
       candidates.combinations(sz).toList
     }
     diffSzCombs.toList.flatten
   }
 
-  def fromPairSetToMap(subPrd: (List[(String, String)], List[(String, String)])): 
-    (Map[String, String], Map[String, String]) = {
-    (subPrd._1.toMap, subPrd._2.toMap)
-  }
+  def passThroughEROs(subPrd: (List[NamedInChI], List[NamedInChI])): ValidatedRxn = {
+    val substrates = subPrd._1
+    val products = subPrd._2
 
-  def validate(subPrd: (Map[String, String], Map[String, String])): Boolean = {
-    val substrates = subPrd._1.values.toList
-    val products = subPrd._2.values.toList
-    val passingEros = SparkInstance.validateReactionNoLicense(true)(substrates, products)
+    val subsInchis = substrates.map(_.inchi).toList
+    val prodInchis = products.map(_.inchi).toList
+    val passingEros = SparkInstance.validateReactionNoLicense(true)(subsInchis, prodInchis).toList
 
     if (passingEros.size > 0) {
-      val substrateNames = subPrd._1.keys.toList
-      val productNames = subPrd._2.keys.toList
+      val substrateNames = substrates.map(_.name).toList
+      val productNames = products.map(_.name).toList
+      val roIds = passingEros.toList.map(_.getName)
 
       println(s"Validated: $substrateNames -> $productNames")
-      val roIds = passingEros.toList.map(_.getName)
       println(s"           Using mechanism: $roIds")
     }
 
-    passingEros.size > 0
+    val validatingROs = passingEros.size match {
+      case 0 => None
+      case _ => Some(passingEros)
+    }
+
+    new ValidatedRxn(substrates, products, validatingROs)
   }
 
   def chemNameToInChI(name: String) = {
@@ -313,17 +336,17 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
 
     // from names "n" get inchis "i", and get pairs (n, i)
     val withInchis = chemNamesNotTooShort.map(chemNameToInChI) 
-    val taggedInchis = withInchis.filter(_ != None).map{ case Some((n,i)) => (n,i) }
+    val taggedInchis = withInchis.filter(_ != None).map{ case Some((n,i)) => new NamedInChI(n,i) }
 
     // report those inchis that we could not resolve
-    val mappedNames = taggedInchis.map(_._1)
+    val mappedNames = taggedInchis.map(_.name)
     val didNotResolveInchis = chemNames.filterNot(x => mappedNames.contains(x))
     println(s"Not resolved: $didNotResolveInchis")
 
     // identify the chemicals that resolved to cofactors
-    def isCofactor(nameInchi: (String, String)) = TextToRxns.cofactors.contains(nameInchi._2)
-    val taggedChems = taggedInchis.filterNot(isCofactor).toMap
-    val taggedCofactors = taggedInchis.filter(isCofactor).toMap
+    def isCofactor(nameInchi: NamedInChI) = TextToRxns.cofactors.contains(nameInchi.inchi)
+    val taggedChems = taggedInchis.filterNot(isCofactor).toList
+    val taggedCofactors = taggedInchis.filter(isCofactor).toList
 
     (taggedChems, taggedCofactors)
   }
