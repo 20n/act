@@ -3,6 +3,7 @@ package act.installer.reachablesexplorer;
 
 import act.server.MongoDB;
 import act.shared.Chemical;
+import act.shared.Seq;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.struc.Molecule;
@@ -34,6 +35,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,7 +45,6 @@ public class Loader {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
-  private static final MongoDB reachablesConnection = new MongoDB("localhost", 27017, "validator_profiling_2");
 
   // This database contains the Bing XREF that we need!
   private static final String ACTV01_DATABASE = "actv01";
@@ -59,12 +60,24 @@ public class Loader {
   private static final String TARGET_DATABASE = "wiki_reachables";
   private static final String TARGET_COLLECTION = "reachablesv0";
 
+  private static final int ORGANISM_CACHE_SIZE = 1000;
+  private static final float ORGANISM_CACHE_LOAD = 1.0f;
+  private static final String ORGANISM_UNKNOWN = "(unknown)";
+
   private MongoDB db;
   private WordCloudGenerator wcGenerator;
 
   private DBCollection reachablesCollection;
   private JacksonDBCollection<Reachable, String> jacksonReachablesCollection;
   private L2InchiCorpus inchiCorpus;
+
+  private final LinkedHashMap<Long, String> organismCache =
+      new LinkedHashMap<Long, String>(ORGANISM_CACHE_SIZE + 1, ORGANISM_CACHE_LOAD, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry eldest) {
+          return this.size() == ORGANISM_CACHE_SIZE;
+        }
+      };
 
   public Loader(String host, Integer port, String targetDB, String targetCollection) throws UnknownHostException {
     db = new MongoDB(host, port, VALIDATOR_PROFILING_DATABASE);
@@ -75,6 +88,7 @@ public class Loader {
     reachablesCollection = reachables.getCollection(targetCollection);
     jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
   }
+
 
   public Loader() throws UnknownHostException {
     db = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, VALIDATOR_PROFILING_DATABASE);
@@ -266,6 +280,92 @@ public class Loader {
     }
   }
 
+  /**
+   * Finds the set of reaction ids in a cascade document that have parentId as a substrate.  Assuming the cascade is
+   * loaded for a fixed childId, this will find all ids that represent reactions that convert the parent into the child.
+   * @param cascadeDoc The cascade JSON doc to search for matching reactions.
+   * @param childId The id of the child or current chemical.  Used only for logging.
+   * @param parentId The parent id for which to search.
+   * @return A set of reaction ids from the cascade document that include parentId as a substrate.
+   */
+  private Set<Long> gatherReactionIdsWithParentFromCascade(JSONObject cascadeDoc, Long childId, Long parentId) {
+    Set<Long> rxnIds = new HashSet<>();
+
+    // TODO: add better error checking to this method.  Right now, any malformed cascades doc will break us.
+    JSONArray upstreamRxns = cascadeDoc.getJSONArray("upstream");
+    for (int i = 0; i < upstreamRxns.length(); i++) {
+      JSONObject rxn = upstreamRxns.getJSONObject(i);
+      JSONArray substrates = rxn.getJSONArray("substrates");
+      boolean foundParent = false;
+      for (int j = 0; j < substrates.length(); j++) {
+        long id = substrates.getLong(j);
+        if (Long.valueOf(id).equals(parentId)) {
+          foundParent = true;
+          break;
+        }
+      }
+
+      if (foundParent) {
+        rxnIds.add(rxn.getLong("rxnid"));
+      }
+    }
+
+    if (rxnIds.size() == 0) {
+      LOGGER.error("Found zero matching reactions for parent/child ids %d/%d", parentId, childId);
+    }
+    return rxnIds;
+  }
+
+  /**
+   * Get an organism name using an organism name id, with a healthy dose of caching since there are only about 21k
+   * organisms for 9M reactions.
+   * @param id The organism name id to fetch.
+   * @return The organism name or "(unknown)" if that organism can't be found, which should never ever happen.
+   */
+  private String getOrganismName(Long id) {
+    String cachedName = organismCache.get(id);
+    if (cachedName != null) {
+      return cachedName;
+    }
+
+    String name = db.getOrganismNameFromId(id);
+    if (name != null) {
+      this.organismCache.put(id, name);
+    } else {
+      // Hopefully this will never happen, but better not allow a null string to pass through.
+      LOGGER.error("Got null organism name for id %d, defaulting to %s", ORGANISM_UNKNOWN);
+      name = ORGANISM_UNKNOWN;
+    }
+
+    return name;
+  }
+
+  /**
+   * Fetches all (organism name, sequence) pairs (as SequenceData objects) for a set of reaction ids.  Results are
+   * de-duplicated and sorted on organism/sequence.  If the set of reaction ids captures all reactions that represent
+   * parentId -> childId from a cascade, then this should return the complete, unique set of sequences that encode the
+   * enzymes that catalize that family of reactions.
+   * @param rxnIds The set of reaction ids whose sequences should be fetched.
+   * @return SequenceData objects for each of the sequences associated with the specified reactions.
+   */
+  private List<SequenceData> extractOrganismsAndSequencesForReactions(Set<Long> rxnIds) {
+    Set<SequenceData> uniqueSequences = new HashSet<>();
+    for (Long rxnId : rxnIds) {
+      // Note: this exploits a new index on seq.rxn_refs to make this quicker than an indirect lookup through rxns.
+      List<Seq> sequences = db.getSeqWithRxnRef(rxnId);
+      for (Seq seq : sequences) {
+        String organismName = getOrganismName(seq.getOrgId());
+        uniqueSequences.add(new SequenceData(organismName, seq.getSequence()));
+      }
+    }
+
+    List<SequenceData> sortedSequences = new ArrayList<>(uniqueSequences);
+    // Sort for stability and sanity.  Hurrah.
+    Collections.sort(sortedSequences);
+
+    return sortedSequences;
+  }
+
   public void updateFromReachablesFile(File file){
     LOGGER.info("File name is: " + file.toString());
     try {
@@ -286,6 +386,8 @@ public class Loader {
       List<InchiDescriptor> substrates = new ArrayList<>();
       Set<Long> substrateCache = new HashSet<>();
 
+      List<SequenceData> sequences = Collections.emptyList();
+
       for (int i = 0; i < upstreamSubstrates.length(); i++) {
         JSONObject obj = upstreamSubstrates.getJSONObject(i);
         if (!obj.getBoolean("reachable")) {
@@ -297,7 +399,7 @@ public class Loader {
           Long subId = substratesArrays.getLong(j);
           if (subId >= 0 && !substrateCache.contains(subId)) {
             try {
-              Chemical parent = reachablesConnection.getChemicalFromChemicalUUID(substratesArrays.getLong(j));
+              Chemical parent = db.getChemicalFromChemicalUUID(substratesArrays.getLong(j));
               upsert(constructReachable(parent.getInChI()));
               InchiDescriptor parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
               substrates.add(parentDescriptor);
@@ -307,11 +409,13 @@ public class Loader {
             }
           }
         }
+
+        sequences = extractOrganismsAndSequencesForReactions(Collections.singleton(obj.getLong("rxnid")));
       }
 
       if (parentId >= 0 && !substrateCache.contains(parentId)) {
         try {
-          Chemical parent = reachablesConnection.getChemicalFromChemicalUUID(parentId);
+          Chemical parent = db.getChemicalFromChemicalUUID(parentId);
           upsert(constructReachable(parent.getInChI()));
           InchiDescriptor parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
           substrates.add(parentDescriptor);
@@ -321,14 +425,15 @@ public class Loader {
       }
 
       // Get the actual chemical that is the product of the above chemical.
-      Chemical current = reachablesConnection.getChemicalFromChemicalUUID(currentId);
+      Chemical current = db.getChemicalFromChemicalUUID(currentId);
+
       if (current == null) {
         return;
       }
 
       // Update source as reachables, as these files are parsed from `cascade` construction
       if (!substrates.isEmpty()) {
-        Precursor pre = new Precursor(substrates, "reachables");
+        Precursor pre = new Precursor(substrates, "reachables", sequences);
         Reachable rech = constructReachable(current.getInChI());
         if (rech != null) {
           rech.setDotGraph("cscd" + String.valueOf(currentId) + ".dot");

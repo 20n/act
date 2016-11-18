@@ -15,11 +15,16 @@ class Precursor implements Serializable {
     @JsonProperty("source")
     private String source;
 
+    @JsonProperty("sequences")
+    private List<SequenceData> sequences;
+
     @JsonCreator
     public Precursor(@JsonProperty("precursor_inchis") List<InchiDescriptor> precursorMolecules,
-                     @JsonProperty("source") String source) {
+                     @JsonProperty("source") String source,
+                     @JsonProperty("sequences") List<SequenceData> sequences) {
         this.precursorMolecules = precursorMolecules;
         this.source = source;
+        this.sequences = sequences;
     }
 
     @JsonIgnore
@@ -32,19 +37,28 @@ class Precursor implements Serializable {
         return source;
     }
 
+    @JsonIgnore
+    public List<SequenceData> getSequences() {
+        return sequences;
+    }
+
     @Override
     public boolean equals(Object o) {
-        return (o instanceof Precursor) && hashCode() == o.hashCode();
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Precursor precursor = (Precursor) o;
+
+        if (!precursorMolecules.equals(precursor.precursorMolecules)) return false;
+        if (!source.equals(precursor.source)) return false;
+        return sequences != null ? sequences.equals(precursor.sequences) : precursor.sequences == null;
     }
 
     @Override
     public int hashCode() {
-        int start = 31;
-        start = 31 * start + source.hashCode();
-        for (InchiDescriptor m: this.precursorMolecules){
-            start = 31*start + m.getInchi().hashCode();
-        }
-
-        return start;
+        int result = precursorMolecules.hashCode();
+        result = 31 * result + source.hashCode();
+        result = 31 * result + (sequences != null ? sequences.hashCode() : 0);
+        return result;
     }
 }
