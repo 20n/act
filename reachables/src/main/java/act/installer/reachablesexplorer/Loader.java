@@ -217,12 +217,15 @@ public class Loader {
   public Reachable constructReachable(String inchi) throws IOException {
 =======
   public Reachable constructReachable(String inchi) {
+<<<<<<< 3ac37f9f98f583bad9ef162bf14adfd80b509d2e
 >>>>>>> full update
     // Only construct a new one if one doesn't already exist.
     Reachable preconstructedReachable = queryByInchi(inchi);
     if (preconstructedReachable != null) {
       return preconstructedReachable;
     }
+=======
+>>>>>>> complete end to end
     Molecule mol;
     try {
       mol = MoleculeImporter.importMolecule(inchi);
@@ -251,6 +254,7 @@ public class Loader {
     }
 
     String pageName = getPageName(chemaxonTraditionalName, names, inchi);
+<<<<<<< 3ac37f9f98f583bad9ef162bf14adfd80b509d2e
 
     File rendering = MoleculeRenderer.getRenderingFile(inchi);
     File wordcloud = WordCloudGenerator.getWordcloudFile(inchi);
@@ -264,6 +268,18 @@ public class Loader {
     }
 
     return new Reachable(pageName, inchi, smiles, inchikey, renderingFilename, names, wordcloudFilename, xref);
+=======
+    // Only construct a new one if one doesn't already exist.
+    Reachable preconstructedReachable = queryByInchi(inchi);
+    if (preconstructedReachable != null) {
+      preconstructedReachable.setPageName(pageName);
+      preconstructedReachable.setSmiles(smiles);
+      preconstructedReachable.setInchiKey(inchikey);
+      preconstructedReachable.setNames(names);
+      return preconstructedReachable;
+    }
+    return new Reachable(pageName, inchi, smiles, inchikey, names);
+>>>>>>> complete end to end
   }
 
   /**
