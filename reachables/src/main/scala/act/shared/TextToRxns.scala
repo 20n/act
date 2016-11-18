@@ -111,7 +111,7 @@ object TextToRxns {
     val extractor = new TextToRxns
     val rxns = extractor.extract(dataSrc)
     extractor.flushWebCache
-    rxns
+    rxns.toString
   }
 
   val optOutFile = new OptDesc(

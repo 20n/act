@@ -6,7 +6,7 @@ library(rscala)
 library(logging)
 
 source("text_to_rxns.R")
-source("../LCMSDataVisualization/molecule_renderer.R")
+# source("../LCMSDataVisualization/molecule_renderer.R")
 
 server <- function(input, output, session) {
   output$textData <- renderText({
