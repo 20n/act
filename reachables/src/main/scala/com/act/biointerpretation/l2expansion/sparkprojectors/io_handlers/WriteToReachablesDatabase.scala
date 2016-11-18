@@ -5,14 +5,12 @@ import com.act.biointerpretation.l2expansion.sparkprojectors.ProjectionResult
 import org.apache.commons.cli.{CommandLine, Option => CliOption}
 
 trait WriteToReachablesDatabase extends ReadFromDatabase {
-  final def handleTermination(cli: CommandLine)(results: Iterator[ProjectionResult]) = {
+  final def handleTermination(cli: CommandLine)(results: Stream[ProjectionResult]) = {
     val loader = new Loader(getReadDbName(cli), getReadDbPort(cli), getReadDbHost(cli), getReadDbCollection(cli))
     writeToReachablesDatabaseThroughLoader(results, loader)
   }
 
-  private def writeToReachablesDatabaseThroughLoader(results: Iterator[ProjectionResult], loader: Loader): Unit = {
-    val rL = results.toList
-    println(s"Projection size is ${rL.length}")
+  private def writeToReachablesDatabaseThroughLoader(results: Stream[ProjectionResult], loader: Loader): Unit = {
     results.foreach(projection => {
       println(projection)
       val updater: ReachablesProjectionUpdate = new ReachablesProjectionUpdate(projection)

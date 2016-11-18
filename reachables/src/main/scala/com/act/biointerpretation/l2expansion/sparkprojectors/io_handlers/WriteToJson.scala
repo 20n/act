@@ -27,7 +27,7 @@ trait WriteToJson extends BasicSparkROProjector {
     options
   }
 
-  final def handleTermination(cli: CommandLine)(results: Iterator[ProjectionResult]) = {
+  final def handleTermination(cli: CommandLine)(results: Stream[ProjectionResult]) = {
     val outputDir = getOutputDirectory(cli)
     createOutputDirectory(outputDir)
     val projectedReactionsFile = new File(outputDir, "projectedReactions")

@@ -88,7 +88,8 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
   // Basic methods that implementing objects utilize.
   def getValidInchiCommandLineOptions: List[CliOption.Builder]
   def getTerminationCommandLineOptions: List[CliOption.Builder]
-  def handleTermination(cli: CommandLine)(results: Iterator[ProjectionResult])
+
+  def handleTermination(cli: CommandLine)(results: Stream[ProjectionResult])
 
   def getInChIGroups(cli: CommandLine): Stream[Stream[String]]
 
@@ -102,10 +103,10 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     // Get valid InChIs
     val inchiCombinations: Stream[Stream[String]] = getInChIGroups(cli)
     val validInChIs = validateInChIs(inchiCombinations)
-
     val spark = setupSpark(cli)
-    val resultsRDD = callProjector(cli)(spark, validInChIs)
-    val collectedResults: Iterator[ProjectionResult] = collectAndPersistRdd(resultsRDD)
+
+    val resultsRDD: RDD[ProjectionResult] = callProjector(cli)(spark, validInChIs)
+    val collectedResults: Stream[ProjectionResult] = collectAndPersistRdd(resultsRDD)
 
     handleTermination(cli)(collectedResults)
     cleanup(resultsRDD)
@@ -210,18 +211,6 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     cli.getOptionValue(OPTION_SPARK_MASTER, DEFAULT_SPARK_MASTER)
   }
 
-  private def callProjector(cli: CommandLine)
-                           (spark: SparkContext, validInchis: Stream[Stream[String]]): RDD[ProjectionResult]= {
-    /* ------ Projection ------- */
-    LOGGER.info("Building InChI RDD")
-    val groupSize = 1000
-    val inchiRDD: RDD[Seq[String]] = spark.makeRDD(validInchis, groupSize)
-
-    LOGGER.info("Starting execution")
-    // PROJECT!  Run ERO projection over all InChIs.
-    scopedProjection(getChemaxonLicenseFile(cli).getName)(isReverse(cli), isExhaustive(cli))(inchiRDD)
-  }
-
   private def isExhaustive(cli: CommandLine): Boolean = {
     cli.hasOption(OPTION_EXHAUSTIVE)
   }
@@ -232,6 +221,20 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
 
   private def getChemaxonLicenseFile(cli: CommandLine): File = {
     new File(cli.getOptionValue(OPTION_LICENSE_FILE))
+  }
+
+  private def callProjector(cli: CommandLine)
+                           (spark: SparkContext, validInchis: Stream[Stream[String]]): RDD[ProjectionResult] = {
+    /* ------ Projection ------- */
+    LOGGER.info("Building InChI RDD")
+    // No need to launch a bunch of parallel tasks if we have a small InChI list.
+    val chunkSize = 1000
+    val groupSize: Int = (validInchis.length % chunkSize) + 1
+    val inchiRDD: RDD[Seq[String]] = spark.makeRDD(validInchis, groupSize)
+
+    LOGGER.info(s"Starting execution.  Projection ${validInchis.length} substrate groups.")
+    // PROJECT!  Run ERO projection over all InChIs.
+    scopedProjection(getChemaxonLicenseFile(cli).getName)(isReverse(cli), isExhaustive(cli))(inchiRDD)
   }
 
   private def scopedProjection(licenseFileName: String)
@@ -249,7 +252,7 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     inchiRDD.flatMap(seqMapper)
   }
 
-  private def collectAndPersistRdd(results: RDD[ProjectionResult]): Iterator[ProjectionResult] ={
+  private def collectAndPersistRdd(results: RDD[ProjectionResult]): Stream[ProjectionResult] = {
     /* This next part represents us jumping through some hoops (that are possibly on fire) in order to make Spark do
      * the thing we want it to do: project in parallel but stream results back for storage.
      *
@@ -289,7 +292,7 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
      */
     val resultCount: Long = results.persist().count()
     LOGGER.info(s"Projection completed with $resultCount results")
-    results.toLocalIterator
+    results.toLocalIterator.toStream
   }
 
   private def cleanup(resultsRDD: RDD[ProjectionResult]): Unit = {

@@ -48,7 +48,6 @@ object SparkProjectionInstance extends Serializable {
     }
   }
 
-
   def project(licenseFileName: String)
              (reverse: Boolean, exhaustive: Boolean)
              (substrates: List[String]): Stream[ProjectionResult] = {
@@ -147,5 +146,12 @@ object SparkProjectionInstance extends Serializable {
         LOGGER.warn(s"Unable to export a projected project.  Projected projects were $potentialProducts")
         None
     }
+  }
+
+  def project(reverse: Boolean, exhaustive: Boolean)
+             (substrates: List[String]): Stream[ProjectionResult] = {
+    val getResults: Ero => Stream[ProjectionResult] = getResultsForSubstrate(substrates, reverse, exhaustive)
+    val results: Stream[ProjectionResult] = this.eros.getRos.asScala.toStream.flatMap(getResults)
+    results
   }
 }
