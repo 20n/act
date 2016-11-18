@@ -5,7 +5,6 @@ package act.installer.reachablesexplorer;
 import act.server.DBIterator;
 import act.server.MongoDB;
 import com.act.jobs.FileChecker;
-import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.logging.log4j.LogManager;
@@ -36,12 +35,14 @@ public class WordCloudGenerator {
   private File rScript;
 
   private String host;
-  private String port;
+  private Integer port;
+  private String database;
 
 
-  public WordCloudGenerator(String host, String port) {
+  public WordCloudGenerator(String host, Integer port, String database) {
     this.host = host;
     this.port = port;
+    this.database = database;
 
     rt = Runtime.getRuntime();
     rScript = new File(RSCRIPT_LOCATION);
@@ -54,7 +55,7 @@ public class WordCloudGenerator {
 
 
   public List<String> getBingInchis() {
-    MongoDB bingDb = new MongoDB(host, Integer.parseInt(port), "actv01");
+    MongoDB bingDb = new MongoDB(host, port, database);
 
     BasicDBObject query = new BasicDBObject("xref.BING.metadata.usage_terms.0", new BasicDBObject("$exists", true));
     BasicDBObject keys = new BasicDBObject("InChI", true);
@@ -101,7 +102,7 @@ public class WordCloudGenerator {
 
   // TODO: remove main method when done testing
   public static void main(String[] args) {
-    WordCloudGenerator g = new WordCloudGenerator("localhost", "27017");
+    WordCloudGenerator g = new WordCloudGenerator("localhost", 27017, "actv01");
     try {
       g.generateWordCloud("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)");
     } catch (IOException e) {System.out.println(String.format("Caught expection %s", e.getMessage()));}

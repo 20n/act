@@ -1,7 +1,6 @@
 package act.installer.reachablesexplorer;
 
 
-import act.server.DBIterator;
 import act.server.MongoDB;
 import act.shared.Chemical;
 import chemaxon.formats.MolExporter;
@@ -12,7 +11,6 @@ import com.act.analysis.chemicals.molecules.MoleculeFormat;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
@@ -45,10 +43,22 @@ public class Loader {
   private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
   private static final MongoDB reachablesConnection = new MongoDB("localhost", 27017, "validator_profiling_2");
 
-  private static final String DATABASE_BING_ONLY_HOST = "localhost";
-  private static final String DATABASE_BING_ONLY_PORT = "27018";
+  // This database contains the Bing XREF that we need!
+  private static final String ACTV01_DATABASE = "actv01";
+
+  // We extract the chemicals from this database
+  private static final String VALIDATOR_PROFILING_DATABASE = "validator_profiling_2";
+
+  // Default host. If running on a laptop, please set a SSH bridge to access speeakeasy
+  private static final String DEFAULT_HOST = "localhost";
+  private static final Integer DEFAULT_PORT = 27017;
+
+  // Target database and collection. We populate these with reachables
+  private static final String TARGET_DATABASE = "wiki_reachables";
+  private static final String TARGET_COLLECTION = "test";
 
   private MongoDB db;
+  private MongoDB dbWithXREF;
   private WordCloudGenerator wcGenerator;
   private MoleculeRenderer renderer;
 
@@ -56,16 +66,19 @@ public class Loader {
   private JacksonDBCollection<Reachable, String> jacksonReachablesCollection;
   private L2InchiCorpus inchiCorpus;
 
-  public Loader() throws UnknownHostException {
-    db = new MongoDB("localhost", 27017, "validator_profiling_2");
-    wcGenerator = new WordCloudGenerator(DATABASE_BING_ONLY_HOST, DATABASE_BING_ONLY_PORT);
-
+  public Loader(String host, Integer port, String targetDB, String targetCollection) throws UnknownHostException {
+    db = new MongoDB(host, port, VALIDATOR_PROFILING_DATABASE);
+    wcGenerator = new WordCloudGenerator(host, port, ACTV01_DATABASE);
     renderer = new MoleculeRenderer();
 
-    MongoClient mongoClient = new MongoClient(new ServerAddress("localhost", 27017));
-    DB reachables = mongoClient.getDB("wiki_reachables");
-    reachablesCollection = reachables.getCollection("test");
+    MongoClient mongoClient = new MongoClient(new ServerAddress(host, port));
+    DB reachables = mongoClient.getDB(targetDB);
+    reachablesCollection = reachables.getCollection(targetCollection);
     jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
+  }
+
+  public Loader() throws UnknownHostException {
+    new Loader(DEFAULT_HOST, DEFAULT_PORT, TARGET_DATABASE, TARGET_COLLECTION);
   }
 
   private String getSmiles(Molecule mol) {
@@ -165,7 +178,6 @@ public class Loader {
     Reachable reachable;
     for (String inchi : inchis) {
       reachable = constructReachable(inchi);
-      System.out.println(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(reachable));
       // TODO: change the following to update the database maybe?
       jacksonReachablesCollection.insert(reachable);
     }
@@ -307,38 +319,14 @@ public class Loader {
     }
   }
 
-
-  public void updateXREFS() {
-
-    MongoDB db = new MongoDB("localhost", 27017, "actv01");
-    List<String> inchis = jacksonReachablesCollection.distinct("inchi");
-    BasicDBList basicDBListInchis = new BasicDBList();
-    basicDBListInchis.addAll(inchis);
-    BasicDBObject query = new BasicDBObject("xref", new BasicDBObject("$exists", true));
-    query.append("InChI", new BasicDBObject("$in", basicDBListInchis));
-    BasicDBObject keys = new BasicDBObject("InChI", true).append("xref", true);
-
-    DBIterator ite = db.getIteratorOverChemicals(query, keys);
-
-    while (ite.hasNext()) {
-      BasicDBObject o = (BasicDBObject) ite.next();
-      String inchi = o.getString("InChI");
-      if (inchis.contains(inchi)) {
-        BasicDBObject xref = (BasicDBObject) o.get("xref");
-        Reachable reachable = queryByInchi(inchi);
-        reachable.setXREFS(xref);
-        upsert(reachable);
-      }
-    }
-  }
-
   public static void main(String[] args) throws IOException {
 
   //    Loader loader = new Loader();
 
   //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
-    Loader loader = new Loader();
-    loader.updateMoleculeRenderings();
+   // Loader loader = new Loader();
+    //loader.updateMoleculeRenderings();
+   // WordCloudGenerator.updateBingUsageWordsInNewDB();
     //loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
     //loader.updateXREFS();
     // Load all cascades
