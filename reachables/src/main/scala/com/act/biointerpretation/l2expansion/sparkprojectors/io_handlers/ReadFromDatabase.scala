@@ -47,19 +47,19 @@ trait ReadFromDatabase extends BasicSparkROProjector {
     inchiSourceFromDB(getDbName(cli), getDbPort(cli), getDbHost(cli), getDbCollection(cli))
   }
 
-  private def getDbName(cli: CommandLine): String ={
+  final protected def getDbName(cli: CommandLine): String = {
     cli.getOptionValue(OPTION_READ_DB_NAME)
   }
 
-  private def getDbPort(cli: CommandLine): Int ={
+  final protected def getDbPort(cli: CommandLine): Int = {
     cli.getOptionValue(OPTION_READ_DB_PORT, "27017").toInt
   }
 
-  private def getDbHost(cli: CommandLine): String ={
+  final protected def getDbHost(cli: CommandLine): String = {
     cli.getOptionValue(OPTION_READ_DB_HOST)
   }
 
-  private def getDbCollection(cli: CommandLine): String ={
+  final protected def getDbCollection(cli: CommandLine): String = {
     cli.getOptionValue(OPTION_READ_DB_COLLECTION)
   }
 
