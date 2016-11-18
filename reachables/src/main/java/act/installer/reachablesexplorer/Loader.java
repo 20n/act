@@ -64,6 +64,18 @@ public class Loader {
     jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
   }
 
+  public Loader(String database, int port, String host, String collection) throws UnknownHostException {
+    db = new MongoDB(host, port, "validator_profiling_2");
+    wcGenerator = new WordCloudGenerator(DATABASE_BING_ONLY_HOST, DATABASE_BING_ONLY_PORT);
+
+    renderer = new MoleculeRenderer();
+
+    MongoClient mongoClient = new MongoClient(new ServerAddress(host, port));
+    DB reachables = mongoClient.getDB(database);
+    reachablesCollection = reachables.getCollection(collection);
+    jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
+  }
+
   private String getSmiles(Molecule mol) {
     try {
       return MoleculeExporter.exportMolecule(mol, MoleculeFormat.smiles$.MODULE$);
