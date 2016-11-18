@@ -1,6 +1,6 @@
 package act.installer.reachablesexplorer;
 
-import com.act.biointerpretation.l2expansion.ProjectionResult;
+import com.act.biointerpretation.l2expansion.sparkprojectors.ProjectionResult;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mongodb.BasicDBList;
