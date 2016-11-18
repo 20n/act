@@ -13,23 +13,19 @@ server <- function(input, output, session) {
     shiny::validate(
       need(input$text != "", "Please input text!")
     )
-    print(extractFrom(input$text))
-
     rxns <- extractFrom(input$text)
     print(rxns)
 
+    name <- rxns$apply(0L)$apply(0L)$apply(0L)$apply(0L)
+    print(name)
 
-    rxn1 <- rxns[[1]]
-    rxn1substrates <- rxn1[[1]]
-    rxn1substrates1 <- rxn1substrates[[1]]
-    rxn1substrates1name <- rxn1substrates1[[1]]
   })
 }
 
 ui <- pageWithSidebar(
   headerPanel('20n Biochemical Reactions Miner'),
   sidebarPanel(
-    textInput("text", label = "Biochemical text", value = ""),
+    textInput("text", label = "Biochemical text", value = "Convert p-aminophenylphosphocholine and H2O to p-aminophenol and choline phosphate in 3.1.4.38"),
     textInput("url", label = "Internet location of text", value = ""),
     fileInput("pdf", label = "PDF file")
   ),

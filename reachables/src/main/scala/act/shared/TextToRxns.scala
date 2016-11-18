@@ -125,10 +125,10 @@ object TextToRxns {
     rxns.map(deconstructRxn).toList // array 4-deep
   }
 
-  def getRxnsFromURL(url: String) = getRxnsFromWO(Some(new WebURL(url)))
-  def getRxnsFromPDF(fileLoc: String) = getRxnsFromWO(Some(new PdfFile(fileLoc)))
-  def getRxnsFromTxt(fileLoc: String) = getRxnsFromWO(Some(new TextFile(fileLoc)))
-  def getRxnsFromString(sentence: String) = getRxnsFromWO(Some(new RawText(sentence)))
+  def getRxnsFromURL(url: String) = getRxnsFrom(Some(new WebURL(url)))
+  def getRxnsFromPDF(fileLoc: String) = getRxnsFrom(Some(new PdfFile(fileLoc)))
+  def getRxnsFromTxt(fileLoc: String) = getRxnsFrom(Some(new TextFile(fileLoc)))
+  def getRxnsFromString(sentence: String) = getRxnsFrom(Some(new RawText(sentence)))
 
   val optOutFile = new OptDesc(
                     param = "o",

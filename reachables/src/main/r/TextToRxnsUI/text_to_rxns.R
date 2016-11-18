@@ -2,13 +2,14 @@
 kFatJarLocation <- "reachables-assembly-0.1.jar"
 
 loginfo("Loading Scala interpreter from fat jar at %s.", kFatJarLocation)
-kScalaInterpreter=scalaInterpreter(kFatJarLocation, heap.maximum="2096M")
+sc=scalaInterpreter(kFatJarLocation, heap.maximum="2096M")
 loginfo("Done loading Scala interpreter.")
 
 extractFrom <- {
-  kScalaInterpreter%~%'import act.shared.TextToRxns'
-  extractor <- 'TextToRxns.getRxnsFromString(textStr).toString'
-  intpDef(kScalaInterpreter, 'textStr: String', extractor)
+  sc%~%'import act.shared.TextToRxns'
+  extractor <- 'TextToRxns.getRxnsFromString(textStr)'
+#  extractor <- 'TextToRxns.getRxnsFromString(textStr).flatten.flatten.flatten.reduce(_ + " " + _)'
+  intpDef(sc, 'textStr: String', extractor)
 }
 
 saveMoleculeStructure <- {
@@ -18,11 +19,11 @@ saveMoleculeStructure <- {
   # Args:
   #   inchiString: input inchi string 
   #   file: absolute file path for saving the structure image file
-  kScalaInterpreter%~%'import com.act.analysis.chemicals.molecules.MoleculeImporter'
-  kScalaInterpreter%~%'import com.act.biointerpretation.mechanisminspection.ReactionRenderer'
-  kScalaInterpreter%~%'import java.io.File'
+  sc%~%'import com.act.analysis.chemicals.molecules.MoleculeImporter'
+  sc%~%'import com.act.biointerpretation.mechanisminspection.ReactionRenderer'
+  sc%~%'import java.io.File'
   defineReactionRenderer <- 'val reactionRenderer: ReactionRenderer = new ReactionRenderer'
-  kScalaInterpreter%~%defineReactionRenderer
+  sc%~%defineReactionRenderer
   getSaveMolStructFunctionDef <- 'reactionRenderer.drawMolecule(MoleculeImporter.importMolecule(inchiString), new File(file))'
-  intpDef(kScalaInterpreter, 'inchiString: String, file: String', getSaveMolStructFunctionDef) 
+  intpDef(sc, 'inchiString: String, file: String', getSaveMolStructFunctionDef) 
 }
