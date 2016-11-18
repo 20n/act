@@ -8,10 +8,11 @@ import com.act.biointerpretation.l2expansion.sparkprojectors.BasicSparkROProject
 import org.apache.commons.cli.{CommandLine, Option => CliOption}
 import org.apache.log4j.LogManager
 
-trait ReadFromSubstrateFile extends BasicSparkROProjector {
-  private val LOGGER = LogManager.getLogger(getClass)
+import scala.collection.JavaConverters._
 
+trait ReadFromSubstrateFile extends BasicSparkROProjector {
   abstract val OPTION_SUBSTRATES_LISTS: String
+  private val LOGGER = LogManager.getLogger(getClass)
 
   final def getValidInchiCommandLineOptions: List[CliOption.Builder] = {
     val options = List[CliOption.Builder](
