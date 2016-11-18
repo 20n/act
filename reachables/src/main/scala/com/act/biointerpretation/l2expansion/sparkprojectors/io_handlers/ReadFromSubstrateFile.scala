@@ -11,7 +11,7 @@ import org.apache.log4j.LogManager
 import scala.collection.JavaConverters._
 
 trait ReadFromSubstrateFile extends BasicSparkROProjector {
-  abstract val OPTION_SUBSTRATES_LISTS: String
+  val OPTION_SUBSTRATES_LISTS: String
   private val LOGGER = LogManager.getLogger(getClass)
 
   final def getValidInchiCommandLineOptions: List[CliOption.Builder] = {

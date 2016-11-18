@@ -6,7 +6,7 @@ import org.apache.commons.cli.{CommandLine, Option => CliOption}
 
 trait WriteToReachablesDatabase extends ReadFromDatabase {
   final def handleTermination(cli: CommandLine)(results: Iterator[ProjectionResult]) = {
-    val loader = new Loader(getDbName(cli), getDbPort(cli), getDbHost(cli), getDbCollection(cli))
+    val loader = new Loader(getReadDbName(cli), getReadDbPort(cli), getReadDbHost(cli), getReadDbCollection(cli))
     writeToReachablesDatabaseThroughLoader(results, loader)
   }
 

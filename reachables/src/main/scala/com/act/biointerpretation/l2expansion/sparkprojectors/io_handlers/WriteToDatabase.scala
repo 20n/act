@@ -6,10 +6,12 @@ import com.mongodb.{DBCollection, Mongo}
 import org.apache.commons.cli.{CommandLine, Option => CliOption}
 
 trait WriteToDatabase extends BasicSparkROProjector {
-  abstract val OPTION_WRITE_DB_NAME: String
-  abstract val OPTION_WRITE_DB_PORT: String
-  abstract val OPTION_WRITE_DB_HOST: String
-  abstract val OPTION_WRITE_DB_COLLECTION: String
+  val OPTION_WRITE_DB_NAME: String
+  val OPTION_WRITE_DB_PORT: String
+  val OPTION_WRITE_DB_HOST: String
+  val OPTION_WRITE_DB_COLLECTION: String
+
+  private val DEFAULT_PORT: String = "27017"
 
   final def getTerminationCommandLineOptions: List[CliOption.Builder] = {
     val options = List[CliOption.Builder](
@@ -41,7 +43,7 @@ trait WriteToDatabase extends BasicSparkROProjector {
   }
 
   final def handleTermination(cli: CommandLine)(results: Iterator[ProjectionResult]) = {
-    writeToDatabase(getDbName(cli), getDbPort(cli), getDbHost(cli))(getDbCollection(cli))(results)
+    writeToDatabase(getWriteDbName(cli), getWriteDbPort(cli), getWriteDbHost(cli))(getWriteDbCollection(cli))(results)
   }
 
   private def writeToDatabase(database: String, port: Int, host: String)(collection: String)(results: Iterator[ProjectionResult]): Unit = {
@@ -59,19 +61,19 @@ trait WriteToDatabase extends BasicSparkROProjector {
     mongoDB.getCollection(collection)
   }
 
-  private def getDbName(cli: CommandLine): String ={
+  final protected def getWriteDbName(cli: CommandLine): String = {
     cli.getOptionValue(OPTION_WRITE_DB_NAME)
   }
 
-  private def getDbPort(cli: CommandLine): Int ={
-    cli.getOptionValue(OPTION_WRITE_DB_PORT, "27017").toInt
+  final protected def getWriteDbPort(cli: CommandLine): Int = {
+    cli.getOptionValue(OPTION_WRITE_DB_PORT, DEFAULT_PORT).toInt
   }
 
-  private def getDbHost(cli: CommandLine): String ={
+  final protected def getWriteDbHost(cli: CommandLine): String = {
     cli.getOptionValue(OPTION_WRITE_DB_HOST)
   }
 
-  private def getDbCollection(cli: CommandLine): String ={
+  final protected def getWriteDbCollection(cli: CommandLine): String = {
     cli.getOptionValue(OPTION_WRITE_DB_COLLECTION)
   }
 }
