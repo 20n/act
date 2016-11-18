@@ -111,18 +111,18 @@ object TextToRxns {
   }
   def getRxnsFromWO(dataSrc: Option[InputType]) = unObjectify(getRxnsFrom(dataSrc))
 
-  def unObjectify(rxns: List[ValidatedRxn]): Array[Array[Array[Array[String]]]] = {
-    def deconstructNameInChI(x: NamedInChI) = Array(x.name, x.inchi) // array 1-deep
-    def deconstructRxn(r: ValidatedRxn): Array[Array[Array[String]]] = {
-      val substrates = r.substrates.map(deconstructNameInChI).toArray // array 2-deep
-      val products = r.products.map(deconstructNameInChI).toArray // array 2-deep
+  def unObjectify(rxns: List[ValidatedRxn]): List[List[List[List[String]]]] = {
+    def deconstructNameInChI(x: NamedInChI) = List(x.name, x.inchi) // array 1-deep
+    def deconstructRxn(r: ValidatedRxn): List[List[List[String]]] = {
+      val substrates = r.substrates.map(deconstructNameInChI).toList // array 2-deep
+      val products = r.products.map(deconstructNameInChI).toList // array 2-deep
       val ros = r.validatingROs match { 
-        case None => Array(Array[String]())
-        case Some(rrs) => Array(rrs.map(_.getName).toArray)
+        case None => List(List[String]())
+        case Some(rrs) => List(rrs.map(_.getName).toList)
       }  // array 2-deep
-      Array(substrates, products, ros) // array 3-deep
+      List(substrates, products, ros) // array 3-deep
     }
-    rxns.map(deconstructRxn).toArray // array 4-deep
+    rxns.map(deconstructRxn).toList // array 4-deep
   }
 
   def getRxnsFromURL(url: String) = getRxnsFromWO(Some(new WebURL(url)))

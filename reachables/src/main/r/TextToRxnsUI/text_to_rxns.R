@@ -7,7 +7,7 @@ loginfo("Done loading Scala interpreter.")
 
 extractFrom <- {
   kScalaInterpreter%~%'import act.shared.TextToRxns'
-  extractor <- 'val rxns = TextToRxns.getRxnsFromString(textStr)'
+  extractor <- 'TextToRxns.getRxnsFromString(textStr).toString'
   intpDef(kScalaInterpreter, 'textStr: String', extractor)
 }
 
