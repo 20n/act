@@ -92,6 +92,11 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
 
   def getInChIGroups(cli: CommandLine): Stream[Stream[String]]
 
+  final def combinationList(suppliedInchiLists: Stream[Stream[String]]): Stream[Stream[String]] = {
+    if (suppliedInchiLists.isEmpty) Stream(Stream.empty)
+    else suppliedInchiLists.head.flatMap(i => combinationList(suppliedInchiLists.tail).map(i #:: _))
+  }
+
   final def main(args: Array[String]): Unit = {
     val cli = parseCommandLineOptions(args)
     // Get valid InChIs
@@ -99,13 +104,11 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     val validInChIs = validateInChIs(inchiCombinations)
 
     val spark = setupSpark(cli)
-
     val resultsRDD = callProjector(cli)(spark, validInChIs)
-
     val collectedResults: Iterator[ProjectionResult] = collectAndPersistRdd(resultsRDD)
 
     handleTermination(cli)(collectedResults)
-    cleanupRDD(resultsRDD)
+    cleanup(resultsRDD)
   }
 
   private def parseCommandLineOptions(args: Array[String]): CommandLine = {
@@ -289,7 +292,7 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     results.toLocalIterator
   }
 
-  private def cleanupRDD(resultsRDD: RDD[ProjectionResult]): Unit ={
+  private def cleanup(resultsRDD: RDD[ProjectionResult]): Unit = {
     resultsRDD.unpersist()
   }
 }

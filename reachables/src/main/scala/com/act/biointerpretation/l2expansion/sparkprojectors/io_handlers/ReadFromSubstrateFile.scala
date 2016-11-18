@@ -2,7 +2,6 @@ package com.act.biointerpretation.l2expansion.sparkprojectors.io_handlers
 
 import java.io.File
 
-import com.act.analysis.chemicals.molecules.MoleculeImporter
 import com.act.biointerpretation.l2expansion.L2InchiCorpus
 import com.act.biointerpretation.l2expansion.sparkprojectors.BasicSparkROProjector
 import org.apache.commons.cli.{CommandLine, Option => CliOption}
@@ -49,30 +48,6 @@ trait ReadFromSubstrateFile extends BasicSparkROProjector {
     val inchiLists: List[List[String]] = inchiCorpuses.map(_.getInchiList.asScala.distinct.toList)
 
     // List of combinations of InChIs
-    val inchiCombinations: Stream[Stream[String]] = combinationList(inchiLists.map(_.toStream).toStream)
-
-
-    // TODO Move this filtering into combinationsList so that it is lazily evaluated as we need the elements.
-    LOGGER.info("Attempting to filter out combinations with invalid InChIs.  " +
-      s"Starting with ${inchiCombinations.length} inchis.")
-    val validInchis: Stream[Stream[String]] = inchiCombinations.filter(group => {
-      try {
-        group.foreach(inchi => {
-          MoleculeImporter.importMolecule(inchi)
-        })
-        true
-      } catch {
-        case e: Exception => false
-      }
-    })
-    LOGGER.info(s"Filtering removed ${inchiCombinations.length - validInchis.length}" +
-      s" combinations, ${validInchis.length} remain.")
-
-    validInchis
-  }
-
-  private def combinationList(suppliedInchiLists: Stream[Stream[String]]): Stream[Stream[String]] = {
-    if (suppliedInchiLists.isEmpty) Stream(Stream.empty)
-    else suppliedInchiLists.head.flatMap(i => combinationList(suppliedInchiLists.tail).map(i #:: _))
+    combinationList(inchiLists.map(_.toStream).toStream)
   }
 }

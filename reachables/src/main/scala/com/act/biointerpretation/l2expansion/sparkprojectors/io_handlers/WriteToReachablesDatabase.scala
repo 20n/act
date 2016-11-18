@@ -11,7 +11,10 @@ trait WriteToReachablesDatabase extends ReadFromDatabase {
   }
 
   private def writeToReachablesDatabaseThroughLoader(results: Iterator[ProjectionResult], loader: Loader): Unit = {
+    val rL = results.toList
+    println(s"Projection size is ${rL.length}")
     results.foreach(projection => {
+      println(projection)
       val updater: ReachablesProjectionUpdate = new ReachablesProjectionUpdate(projection)
       updater.updateByLoader(loader)
     })
