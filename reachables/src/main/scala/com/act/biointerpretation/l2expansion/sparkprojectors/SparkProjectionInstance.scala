@@ -15,7 +15,7 @@ import org.apache.spark.SparkFiles
 import scala.collection.JavaConverters._
 
 object SparkProjectionInstance extends Serializable {
-  val defaultMoleculeFormat = MoleculeFormat.strictNoStereoInchi
+  val defaultMoleculeFormat = MoleculeFormat.stdInchi
 
   private val LOGGER = LogManager.getLogger(getClass)
   var eros = new ErosCorpus()
@@ -111,18 +111,18 @@ object SparkProjectionInstance extends Serializable {
 
   // TODO: This is so much more elegant and concise in scala; can we bring this to the ReactionProjector?
   private def possibleSubstrates(ro: Ero)(mols: List[Molecule]): Boolean = {
-    val substrateQueries: Array[Molecule] = ro.getReactor.getReaction.getReactants
-    if (substrateQueries == null) {
+    val substrateQueries: Option[Array[Molecule]] = Option(ro.getReactor.getReaction.getReactants)
+    if (substrateQueries.isDefined) {
       throw new RuntimeException(s"Got null substrate queries for ero ${ro.getId}")
     }
     if (mols == null) {
       throw new RuntimeException(s"Got null molecules, but don't know where from.  ero is ${ro.getId}")
     }
-    if (mols.size != substrateQueries.length) {
+    if (mols.size != substrateQueries.get.length) {
       return false
     }
 
-    val molsAndQueries: Array[(Molecule, Molecule)] = substrateQueries.zip(mols)
+    val molsAndQueries: Array[(Molecule, Molecule)] = substrateQueries.get.zip(mols)
     molsAndQueries.forall(p => matchesSubstructure(p._1, p._2))
   }
 
@@ -133,7 +133,7 @@ object SparkProjectionInstance extends Serializable {
     val search = substructureSearch.get()
     search.setQuery(query)
     search.setTarget(target)
-    search.findFirst() != null
+    Option(search.findFirst()).isDefined
   }
 
   private def mapReactionsToResult(substrates: List[String], roNumber: String)
