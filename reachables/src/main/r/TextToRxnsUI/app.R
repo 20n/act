@@ -6,9 +6,15 @@ library(rscala)
 library(logging)
 
 source("text_to_rxns.R")
+source("../LCMSDataVisualization/molecule_renderer.R")
 
 server <- function(input, output, session) {
-  output$textData <- renderText({print(extractFrom(input$text))})
+  output$textData <- renderText({
+    shiny::validate(
+      need(input$text != "", "Please input text!")
+    )
+    print(extractFrom(input$text))
+  })
 }
 
 ui <- pageWithSidebar(
