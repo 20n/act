@@ -13,13 +13,12 @@ import org.apache.spark.{SparkConf, SparkContext}
 case class ProjectionResult(substrates: List[String], ros: String, products: List[String])
 
 private trait ProjectorCliHelper {
+  val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   /**
     * A class full of a few command line helpers for SparkRoProjectors
     */
   private val LOGGER = LogManager.getLogger(getClass)
-
   private val HELP_MESSAGE = "A Spark job that will project the set of validation ROs over a list of substrates."
-  val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   HELP_FORMATTER.setWidth(100)
 
   final def checkLicenseFile(licenseFile: String): File = {
@@ -79,10 +78,10 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
   final val OPTION_VALID_CHEMICAL_TYPE = "v"
   final val OPTION_HELP = "h"
 
-  private val LOGGER = LogManager.getLogger(getClass)
-
-  private val SPARK_LOG_LEVEL = "WARN"
+  abstract val runningClass: Class
   protected val DEFAULT_SPARK_MASTER = "spark://spark-master:7077"
+  private val LOGGER = LogManager.getLogger(getClass)
+  private val SPARK_LOG_LEVEL = "WARN"
 
   // Modify classes
   abstract def getValidInchiCommandLineOptions: List[CliOption.Builder]
@@ -90,6 +89,39 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
 
   abstract def handleTermination(cli: CommandLine)(results: Iterator[ProjectionResult])
   abstract def getValidInchis(cli: CommandLine): Stream[Stream[String]]
+
+  final def main(args: Array[String]): Unit = {
+    val cli = parseCommandLineOptions(args)
+    // Get valid InChIs
+    val validInchis: Stream[Stream[String]] = getValidInchis(cli)
+
+    // Setup the spark instance
+    val spark = setupSpark(cli)
+
+    // Project
+    val resultsRDD = callProjector(cli)(spark, validInchis)
+
+    val collectedResults: Iterator[ProjectionResult] = collectAndPersistRdd(resultsRDD)
+    // Finish up
+    handleTermination(cli)(collectedResults)
+    cleanupRDD(resultsRDD)
+  }
+
+  private def parseCommandLineOptions(args: Array[String]): CommandLine = {
+    parse(getCommandLineOptions, args)
+  }
+
+  final def getCommandLineOptions: Options = {
+    val optionsList = getMinimumCommandLineArgs ::: getValidInchiCommandLineOptions ::: getTerminationCommandLineOptions
+    val opts: Options = new Options()
+    for (opt <- optionsList) {
+      opts.addOption(opt.build)
+    }
+    opts
+  }
+
+
+  /* ----- Ordered methods by the processing that happens in main ------ */
 
   private def getMinimumCommandLineArgs: List[CliOption.Builder] ={
     val options = List[CliOption.Builder](
@@ -129,46 +161,13 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     options
   }
 
-  final def main(args: Array[String]): Unit = {
-    val cli = parseCommandLineOptions(args)
-    // Get valid InChIs
-    val validInchis: Stream[Stream[String]] = getValidInchis(cli)
-
-    // Setup the spark instance
-    val spark = setupSpark(cli)
-
-    // Project
-    val resultsRDD = callProjector(cli)(spark, validInchis)
-
-    val collectedResults: Iterator[ProjectionResult] = collectAndPersistRdd(resultsRDD)
-    // Finish up
-    handleTermination(cli)(collectedResults)
-    cleanupRDD(resultsRDD)
-  }
-
-  final def getCommandLineOptions: Options ={
-    val optionsList = getMinimumCommandLineArgs ::: getValidInchiCommandLineOptions ::: getTerminationCommandLineOptions
-    val opts: Options = new Options()
-    for (opt <- optionsList) {
-      opts.addOption(opt.build)
-    }
-    opts
-  }
-
-
-  /* ----- Ordered methods by the processing that happens in main ------ */
-
-  private def parseCommandLineOptions(args: Array[String]): CommandLine = {
-    parse(getCommandLineOptions, args)
-  }
-
   private def setupSpark(cli: CommandLine): SparkContext ={
     /* --------- Setup Spark ---------- */
     // Spark name and connection
     val sparkName = "" +
       s"${if (isExhaustive(cli)) "Exhaustive"}" +
       s"${if (isReverse(cli)) "Reverse"} " +
-      s"$getClass"
+      s"${runningClass.getCanonicalName}"
 
     val sparkMaster = getSparkMaster(cli)
     val conf = new SparkConf().setAppName(sparkName).setMaster(sparkMaster)
@@ -184,6 +183,22 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
 
     spark.addFile(getChemaxonLicenseFile(cli).getAbsolutePath)
     spark
+  }
+
+  private def isExhaustive(cli: CommandLine): Boolean = {
+    cli.hasOption(OPTION_EXHAUSTIVE)
+  }
+
+  private def isReverse(cli: CommandLine): Boolean = {
+    cli.hasOption(OPTION_REVERSE)
+  }
+
+  private def getSparkMaster(cli: CommandLine): String = {
+    cli.getOptionValue(OPTION_SPARK_MASTER, DEFAULT_SPARK_MASTER)
+  }
+
+  private def getChemaxonLicenseFile(cli: CommandLine): File = {
+    new File(cli.getOptionValue(OPTION_LICENSE_FILE))
   }
 
   private def callProjector(cli: CommandLine)
@@ -243,22 +258,6 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
 
   private def cleanupRDD(resultsRDD: RDD[ProjectionResult]): Unit ={
     resultsRDD.unpersist()
-  }
-
-  private def isExhaustive(cli: CommandLine): Boolean ={
-    cli.hasOption(OPTION_EXHAUSTIVE)
-  }
-
-  private def isReverse(cli: CommandLine): Boolean ={
-    cli.hasOption(OPTION_REVERSE)
-  }
-
-  private def getSparkMaster(cli: CommandLine): String = {
-    cli.getOptionValue(OPTION_SPARK_MASTER, DEFAULT_SPARK_MASTER)
-  }
-
-  private def getChemaxonLicenseFile(cli: CommandLine): File = {
-    new File(cli.getOptionValue(OPTION_LICENSE_FILE))
   }
 }
 
