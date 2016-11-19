@@ -53,6 +53,7 @@ public class Reachable {
     this.names = names;
     this.precursorData = new PrecursorData();
     this.xref = xref;
+    this.isNative = false;
   }
 
   @JsonCreator
@@ -76,24 +77,6 @@ public class Reachable {
     this.isNative = isNative;
   }
 
-  @JsonCreator
-  public Reachable(@JsonProperty("page_name") String pageName,
-                   @JsonProperty("inchi") String inchi,
-                   @JsonProperty("smiles") String smiles,
-                   @JsonProperty("rendering-filename") String structureFilename,
-                   @JsonProperty("names") List<String> names,
-                   @JsonProperty("usage-wordcloud-filename") String wordCloudFilename,
-                   @JsonProperty("precursor") PrecursorData precursors,
-                   @JsonProperty("xref") Map<Chemical.REFS, BasicDBObject> xref) {
-    this.pageName = pageName;
-    this.inchi = inchi;
-    this.smiles = smiles;
-    this.structureFilename = structureFilename;
-    this.names = names;
-    this.wordCloudFilename = wordCloudFilename;
-    this.precursorData = precursors;
-    this.xref = xref;
-  }
 
   public void setIsNative(Boolean isNative) {
     this.isNative = isNative;
@@ -188,10 +171,12 @@ public class Reachable {
     return inchikey;
   }
 
+  @JsonIgnore
   public void setWordCloudFilename(String wordCloudFilename) {
     this.wordCloudFilename = wordCloudFilename;
   }
 
+  @JsonIgnore
   public void setStructureFilename(String structureFilename) {
     this.structureFilename = structureFilename;
   }
