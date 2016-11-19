@@ -89,7 +89,7 @@ public class Loader {
   public static void main(String[] args) throws IOException {
 
     Loader loader = new Loader();
-    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
+    loader.updateMoleculeRenderings();
   }
 
   /**
