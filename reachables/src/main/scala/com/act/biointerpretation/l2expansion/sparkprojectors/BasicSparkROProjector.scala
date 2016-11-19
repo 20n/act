@@ -73,33 +73,31 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     validInChIs
   }
 
-  private def setupSpark(cli: CommandLine): SparkContext ={
-    /* --------- Setup Spark ---------- */
+  private def setupSpark(cli: CommandLine): SparkContext = {
     // Spark name and connection
     val sparkName = "" +
       s"${if (isExhaustive(cli)) "Exhaustive " else ""}" +
       s"${if (isReverse(cli)) "Reverse " else ""}" +
       s"${runningClass.getSimpleName.replace("$", "")}"
 
-    val sparkMaster = getSparkMaster(cli)
-    val conf = new SparkConf().setAppName(sparkName).setMaster(sparkMaster)
-
     // Spark Configurations
-    conf.set("spark.scheduler.mode", "FAIR")
-
+    val conf = new SparkConf().
+      setAppName(sparkName).
+      setMaster(getSparkMaster(cli)).
+      set("spark.scheduler.mode", "FAIR")
     conf.getAll.foreach(x => LOGGER.info(s"Spark config pair: ${x._1}: ${x._2}"))
 
     // Actual spark instance
     val spark = new SparkContext(conf)
+
     spark.setLogLevel(SPARK_LOG_LEVEL)
+
     LOGGER.info("Distributing Chemaxon license file to spark workers")
     val licenseFile = getChemaxonLicenseFile(cli).getAbsolutePath
     LicenseManager.setLicenseFile(licenseFile)
     spark.addFile(licenseFile)
     spark
   }
-
-  /* ----- Ordered methods by the processing that happens in main ------ */
 
   private def getSparkMaster(cli: CommandLine): String = {
     cli.getOptionValue(OPTION_SPARK_MASTER, DEFAULT_SPARK_MASTER)
@@ -108,6 +106,8 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
   private def isExhaustive(cli: CommandLine): Boolean = {
     cli.hasOption(OPTION_EXHAUSTIVE)
   }
+
+  /* ----- Ordered methods by the processing that happens in main ------ */
 
   private def isReverse(cli: CommandLine): Boolean = {
     cli.hasOption(OPTION_REVERSE)
@@ -120,7 +120,7 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
   private def callProjector(cli: CommandLine)
                            (spark: SparkContext, validInchis: Stream[Stream[String]]): Stream[ProjectionResult] = {
     /* ------ Projection ------- */
-    LOGGER.warn(s"Starting execution.  Substrate Group Count: ${validInchis.length}")
+    LOGGER.warn(s"Starting execution.  Substrate Groups Count: ${validInchis.length}")
     // PROJECT!  Run ERO projection over all InChIs.
     closedScopeProjection(getChemaxonLicenseFile(cli).getName)(isReverse(cli), isExhaustive(cli))(spark, validInchis)
   }
