@@ -25,7 +25,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.mongojack.JacksonDBCollection;
 
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -85,6 +84,12 @@ public class Loader {
     DB reachables = mongoClient.getDB(TARGET_DATABASE);
     reachablesCollection = reachables.getCollection(TARGET_COLLECTION);
     jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
+  }
+
+  public static void main(String[] args) throws IOException {
+
+    Loader loader = new Loader();
+    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
   }
 
   /**
@@ -317,7 +322,6 @@ public class Loader {
 
       // Get the actual chemical that is the product of the above chemical.
       Chemical current = reachablesConnection.getChemicalFromChemicalUUID(currentId);
-
       if (current == null) {
         return;
       }
@@ -331,9 +335,10 @@ public class Loader {
           // TODO add a special native class?
           Reachable rech = constructReachable(current.getInChI());
           rech.setIsNative(currentId == -1);
+          rech.setDotGraph("cscd" + String.valueOf(currentId) + ".dot");
           upsert(rech);
         } catch (NullPointerException e) {
-          LOGGER.info("Null pointer, unable tp parse InChI.");
+          LOGGER.info("Null pointer, unable to parse InChI.");
         }
       }
     } catch (IOException e) {
@@ -355,7 +360,6 @@ public class Loader {
     LOGGER.info("Found %d reachables files.",validFiles.size());
     updateFromReachableFiles(validFiles);
   }
-
 
   public void updateWordClouds() throws IOException {
     List<String> inchis = jacksonReachablesCollection.distinct("inchi");
@@ -394,11 +398,5 @@ public class Loader {
         updateReachableWithRendering(reachable);
       }
     }
-  }
-
-  public static void main(String[] args) throws IOException {
-
-    Loader loader = new Loader();
-    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
   }
 }
