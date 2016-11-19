@@ -36,6 +36,11 @@ protected trait ProjectorCliHelper {
     }
   }
 
+  private def exitWithHelp(opts: Options): Unit = {
+    HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
+    System.exit(1)
+  }
+
   final def parse(opts: Options, args: Array[String]): CommandLine ={
     // Parse command line options
     var cl: Option[CommandLine] = None
@@ -56,11 +61,6 @@ protected trait ProjectorCliHelper {
     if (cl.get.hasOption("help")) exitWithHelp(opts)
 
     cl.get
-  }
-
-  private def exitWithHelp(opts: Options): Unit = {
-    HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
-    System.exit(1)
   }
 
   def getCommandLineOptions: Options
@@ -245,8 +245,8 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     }
 
     // No need to launch a bunch of parallel tasks if we have a small InChI list.
-    val chunkSize = 1000
-    val groupSize: Int = (validInchis.length % chunkSize) + 1
+    val chunkSize = 100
+    val groupSize: Int = (validInchis.length / chunkSize) + 1
 
     val inchiRDD: RDD[Seq[String]] = spark.makeRDD(validInchis, groupSize)
     val resultRdd: RDD[ProjectionResult] = inchiRDD.flatMap(seqMapper)
