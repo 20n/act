@@ -36,11 +36,6 @@ protected trait ProjectorCliHelper {
     }
   }
 
-  private def exitWithHelp(opts: Options): Unit = {
-    HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
-    System.exit(1)
-  }
-
   final def parse(opts: Options, args: Array[String]): CommandLine ={
     // Parse command line options
     var cl: Option[CommandLine] = None
@@ -61,6 +56,11 @@ protected trait ProjectorCliHelper {
     if (cl.get.hasOption("help")) exitWithHelp(opts)
 
     cl.get
+  }
+
+  private def exitWithHelp(opts: Options): Unit = {
+    HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
+    System.exit(1)
   }
 
   def getCommandLineOptions: Options
@@ -196,8 +196,6 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
 
     // Spark Configurations
     conf.set("spark.scheduler.mode", "FAIR")
-    conf.set("spark.eventLog.dir", "/Volumes/shared-data/Michael/SparkLogs/")
-    conf.set("spark.eventLog.enabled", "true")
 
     conf.getAll.foreach(x => LOGGER.info(s"Spark config pair: ${x._1}: ${x._2}"))
 

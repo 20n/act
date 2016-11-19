@@ -204,6 +204,10 @@ public class Loader {
 
     // If is null we create a new one
     reachable = reachable == null ? constructReachable(inchi) : reachable;
+    // hella broken, return
+    if (reachable == null) {
+      return;
+    }
     reachable.getPrecursorData().addPrecursor(pre);
 
     upsert(reachable);
@@ -252,6 +256,10 @@ public class Loader {
 
       // Get the actual chemical that is the product of the above chemical.
       Chemical current = reachablesConnection.getChemicalFromChemicalUUID(currentId);
+      if (current == null) {
+        LOGGER.info("Unable to parse InChI, skipping.");
+        return;
+      }
 
       // Update source as reachables, as these files are parsed from `cascade` construction
       if (!substrates.isEmpty()) {
