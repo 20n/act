@@ -185,7 +185,7 @@ class ValidatedRxn(
   override def toString = {
     val s = substrates.map(_.toString).reduce(_ + " + " + _)
     val p = products.map(_.toString).reduce(_ + " + " + _)
-    val ros = getROs
+    val ros = getRONames
     s"$s -> $p [$ros]"
   }
 
