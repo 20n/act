@@ -7,7 +7,7 @@ loginfo("Done loading Scala interpreter.")
 
 extractFrom <- {
   sc%~%'import act.shared.TextToRxns'
-  extractor <- 'TextToRxns.getRxnsFromString(textStr)'
+  extractor <- 'TextToRxns.getRxnsFromStringUI(textStr)'
   intpDef(sc, 'textStr: String', extractor)
 }
 

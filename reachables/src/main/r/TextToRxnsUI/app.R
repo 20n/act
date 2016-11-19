@@ -6,7 +6,8 @@ library(rscala)
 library(logging)
 
 source("text_to_rxns.R")
-# source("../LCMSDataVisualization/molecule_renderer.R")
+
+chemStructureCacheFolder <- "test2rxns.chem.structs"
 
 server <- function(input, output, session) {
   output$textData <- renderText({
@@ -19,31 +20,34 @@ server <- function(input, output, session) {
     for (rxnid in 0:num_rxns) {
       rxn <- rxns$apply(rxnid)
 
-      # substrates
-      substrates <- rxn$substrates()
-      num_substrates <- substrates$size() - 1
-      for (sid in 0:num_substrates) {
-        name <- substrates$apply(sid)$name()
-        inchi <- substrates$apply(sid)$inchi()
-        cat('Substrate:', name, ' ', inchi, '\n')
-      }
+      rxnDesc <- rxn$_1
+      rxnImg <- rxn$_2
 
-      #products
-      products <- rxn$products()
-      num_products <- products$size() - 1
-      for (pid in 0:num_products) {
-        name <- products$apply(pid)$name()
-        inchi <- products$apply(pid)$inchi()
-        cat('Product:', name, ' ', inchi, '\n')
-      }
+      # # substrates
+      # substrates <- rxn$substrates()
+      # num_substrates <- substrates$size() - 1
+      # for (sid in 0:num_substrates) {
+      #   name <- substrates$apply(sid)$name()
+      #   inchi <- substrates$apply(sid)$inchi()
+      #   cat('Substrate:', name, ' ', inchi, '\n')
+      # }
 
-      # ros
-      ros <- rxn$getRONames()
-      ro_count <- ros$size() - 1
-      for (roid in 0:ro_count) {
-        ro <- ros$apply(roid)
-        cat('Mechanism:', ro, '\n')
-      }
+      # #products
+      # products <- rxn$products()
+      # num_products <- products$size() - 1
+      # for (pid in 0:num_products) {
+      #   name <- products$apply(pid)$name()
+      #   inchi <- products$apply(pid)$inchi()
+      #   cat('Product:', name, ' ', inchi, '\n')
+      # }
+
+      # # ros
+      # ros <- rxn$getRONames()
+      # ro_count <- ros$size() - 1
+      # for (roid in 0:ro_count) {
+      #   ro <- ros$apply(roid)
+      #   cat('Mechanism:', ro, '\n')
+      # }
     }
 
   })

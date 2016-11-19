@@ -23,6 +23,10 @@ import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, M
 import com.act.biointerpretation.l2expansion.SparkInstance
 import com.act.biointerpretation.cofactorremoval.CofactorsCorpus
 import com.act.biointerpretation.mechanisminspection.Ero
+import com.act.biointerpretation.mechanisminspection.ReactionRenderer
+
+import chemaxon.struc.RxnMolecule
+import chemaxon.formats.MolImporter
 
 import scala.collection.JavaConverters._
 
@@ -109,26 +113,44 @@ object TextToRxns {
     extractor.flushWebCache
     rxns
   }
-  def getRxnsFromWO(dataSrc: Option[InputType]) = unObjectify(getRxnsFrom(dataSrc))
-
-  def unObjectify(rxns: List[ValidatedRxn]): List[List[List[List[String]]]] = {
-    def deconstructNameInChI(x: NamedInChI) = List(x.name, x.inchi) // array 1-deep
-    def deconstructRxn(r: ValidatedRxn): List[List[List[String]]] = {
-      val substrates = r.substrates.map(deconstructNameInChI).toList // array 2-deep
-      val products = r.products.map(deconstructNameInChI).toList // array 2-deep
-      val ros = r.validatingROs match { 
-        case None => List(List[String]())
-        case Some(rrs) => List(rrs.map(_.getName).toList)
-      }  // array 2-deep
-      List(substrates, products, ros) // array 3-deep
-    }
-    rxns.map(deconstructRxn).toList // array 4-deep
-  }
 
   def getRxnsFromURL(url: String) = getRxnsFrom(Some(new WebURL(url)))
   def getRxnsFromPDF(fileLoc: String) = getRxnsFrom(Some(new PdfFile(fileLoc)))
   def getRxnsFromTxt(fileLoc: String) = getRxnsFrom(Some(new TextFile(fileLoc)))
   def getRxnsFromString(sentence: String) = getRxnsFrom(Some(new RawText(sentence)))
+
+  def getRxnsFromURLUI(url: String) = pretty(getRxnsFromURL(url))
+  def getRxnsFromPDFUI(fileLoc: String) = pretty(getRxnsFromPDF(fileLoc))
+  def getRxnsFromTxtUI(fileLoc: String) = pretty(getRxnsFromTxt(fileLoc))
+  def getRxnsFromStringUI(sentence: String) = pretty(getRxnsFromString(sentence))
+
+  def pretty(rxns: List[ValidatedRxn]): List[(String, String)] = {
+    val dir = "."
+    rxns.map(r => {
+      val readableRxnString = r.toString
+      val strHash = List(r.substrates, r.products).hashCode
+      val fname = strHash + ".png"
+      val renderedFilePath = renderRxn(r, dir, fname)
+      (readableRxnString, renderedFilePath.getName)
+    })
+  }
+
+  def renderRxn(r: ValidatedRxn, dirPath: String, fileName: String): File = {
+    val renderer = new ReactionRenderer
+    val fileLoc = new File(dirPath, fileName)
+    val renderedRxn = new RxnMolecule
+    for (s <- r.substrates) {
+      val smol = MolImporter.importMol(s.inchi, "inchi")
+      renderedRxn.addComponent(smol, RxnMolecule.REACTANTS)
+    }
+    for (p <- r.products) {
+      val pmol = MolImporter.importMol(p.inchi, "inchi")
+      renderedRxn.addComponent(pmol, RxnMolecule.PRODUCTS)
+    }
+
+    renderer.drawRxnMolecule(renderedRxn, fileLoc)
+    fileLoc
+  }
 
   val optOutFile = new OptDesc(
                     param = "o",
