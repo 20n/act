@@ -185,11 +185,13 @@ class ValidatedRxn(
   override def toString = {
     val s = substrates.map(_.toString).reduce(_ + " + " + _)
     val p = products.map(_.toString).reduce(_ + " + " + _)
-    val ros = validatingROs match {
-      case None => "no ROs"
-      case Some(ros) => ros.map(_.getName).toString
-    }
+    val ros = getROs
     s"$s -> $p [$ros]"
+  }
+
+  def getROs = validatingROs match { 
+    case None => List()
+    case Some(ros) => ros.map(_.getName).toString
   }
 }
 

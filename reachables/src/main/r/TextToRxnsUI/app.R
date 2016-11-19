@@ -14,10 +14,31 @@ server <- function(input, output, session) {
       need(input$text != "", "Please input text!")
     )
     rxns <- extractFrom(input$text)
-    print(rxns)
+    num_rxns <- rxns$size() - 1
 
-    name <- rxns$apply(0L)$apply(0L)$apply(0L)$apply(0L)
-    print(name)
+    for (rxnid in 0:num_rxns) {
+      rxn <- rxns$apply(rxnid)
+
+      # substrates
+      substrates <- rxn$substrates()
+      num_substrates <- substrates$size() - 1
+      for (sid in 0:num_substrates) {
+        name <- substrates$apply(sid)$name()
+        cat('Substrate:', name, '\n')
+      }
+
+      #products
+      products <- rxn$products()
+      num_products <- products$size() - 1
+      for (pid in 0:num_products) {
+        name <- products$apply(pid)$name()
+        cat('Product', name, '\n')
+      }
+
+      # ros
+      ros <- rxn$validatingROs()$toString()
+      cat('Mechanisms', ros, '\n')
+    }
 
   })
 }

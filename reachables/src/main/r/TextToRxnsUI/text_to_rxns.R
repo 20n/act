@@ -8,7 +8,6 @@ loginfo("Done loading Scala interpreter.")
 extractFrom <- {
   sc%~%'import act.shared.TextToRxns'
   extractor <- 'TextToRxns.getRxnsFromString(textStr)'
-#  extractor <- 'TextToRxns.getRxnsFromString(textStr).flatten.flatten.flatten.reduce(_ + " " + _)'
   intpDef(sc, 'textStr: String', extractor)
 }
 
