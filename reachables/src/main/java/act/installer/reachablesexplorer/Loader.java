@@ -157,6 +157,12 @@ public class Loader {
     }
   }
 
+  public void assertNotFakeInchi(String inchi) throws FakeInchiException {
+    if (inchi != null && inchi.contains("FAKE")) {
+      throw new FakeInchiException(inchi);
+    }
+  }
+
   /**
    * Construct a Reachable.
    * Gets names and xref from `db` collection `chemicals`
@@ -232,9 +238,14 @@ public class Loader {
     List<String> inchis = inchiCorpus.getInchiList();
     Reachable reachable;
     for (String inchi : inchis) {
-      reachable = constructReachable(inchi);
-      // TODO: change the following to update the database maybe?
-      jacksonReachablesCollection.insert(reachable);
+      try {
+        assertNotFakeInchi(inchi);
+        reachable = constructReachable(inchi);
+        // TODO: change the following to update the database maybe?
+        jacksonReachablesCollection.insert(reachable);
+      } catch (FakeInchiException e) {
+        LOGGER.info("Skipping fake inchi, %s", inchi);
+      }
     }
   }
 
@@ -255,6 +266,7 @@ public class Loader {
     reachable = reachable == null ? constructReachable(inchi) : reachable;
 
     if (reachable == null) {
+      LOGGER.warn("Still couldn't construct InChI after retry, aborting");
       return;
     }
 
@@ -354,6 +366,10 @@ public class Loader {
       // Note: this exploits a new index on seq.rxn_refs to make this quicker than an indirect lookup through rxns.
       List<Seq> sequences = db.getSeqWithRxnRef(rxnId);
       for (Seq seq : sequences) {
+        if (seq.getSequence() == null) {
+          LOGGER.warn("Found seq entry with id %d has null sequence.  How did that happen?", seq.getUUID());
+          continue;
+        }
         String organismName = getOrganismName(seq.getOrgId());
         uniqueSequences.add(new SequenceData(organismName, seq.getSequence()));
       }
@@ -367,7 +383,7 @@ public class Loader {
   }
 
   public void updateFromReachablesFile(File file){
-    LOGGER.info("File name is: " + file.toString());
+    LOGGER.info("Processing file %s", file.getName());
     try {
       // Read in the file and parse it as JSON
       String jsonTxt = IOUtils.toString(new FileInputStream(file));
@@ -416,16 +432,19 @@ public class Loader {
       if (parentId >= 0 && !substrateCache.contains(parentId)) {
         try {
           Chemical parent = db.getChemicalFromChemicalUUID(parentId);
+          assertNotFakeInchi(parent.getInChI());
           upsert(constructReachable(parent.getInChI()));
           InchiDescriptor parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
           substrates.add(parentDescriptor);
-        } catch (NullPointerException e){
+        } catch (NullPointerException e) {
           LOGGER.info("Null pointer, unable to write parent.");
         }
       }
 
       // Get the actual chemical that is the product of the above chemical.
       Chemical current = db.getChemicalFromChemicalUUID(currentId);
+      LOGGER.info("Tried to fetch chemical id %d: %s", currentId, current);
+      assertNotFakeInchi(current.getInChI());
 
       if (current == null) {
         return;
@@ -447,9 +466,11 @@ public class Loader {
           rech.setIsNative(currentId == -1);
           upsert(rech);
         } catch (NullPointerException e) {
-          LOGGER.info("Null pointer, unable to parse InChI.");
+          LOGGER.info("Null pointer, unable to parse InChI %s.", current == null ? "null" : current.getInChI());
         }
       }
+    } catch (FakeInchiException e) {
+      LOGGER.warn("Skipping file %s due to fake InChI exception", file.getName());
     } catch (IOException e) {
       // We can only work with files we can parse, so if we can't
       // parse the file we just don't do anything and submit an error.
@@ -506,6 +527,12 @@ public class Loader {
       if (reachable.getStructureFilename() == null) {
         updateReachableWithRendering(reachable);
       }
+    }
+  }
+
+  private static class FakeInchiException extends Exception {
+    public FakeInchiException(String inchi) {
+      super(String.format("Found FAKE inchi: %s", inchi));
     }
   }
 }
