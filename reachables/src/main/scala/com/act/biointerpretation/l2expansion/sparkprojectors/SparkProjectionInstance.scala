@@ -112,7 +112,7 @@ object SparkProjectionInstance extends Serializable {
   // TODO: This is so much more elegant and concise in scala; can we bring this to the ReactionProjector?
   private def possibleSubstrates(ro: Ero)(mols: List[Molecule]): Boolean = {
     val substrateQueries: Option[Array[Molecule]] = Option(ro.getReactor.getReaction.getReactants)
-    if (substrateQueries.isDefined) {
+    if (substrateQueries.isEmpty) {
       throw new RuntimeException(s"Got null substrate queries for ero ${ro.getId}")
     }
     if (mols == null) {
