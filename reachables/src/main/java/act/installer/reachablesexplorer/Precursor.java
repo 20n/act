@@ -34,21 +34,17 @@ class Precursor implements Serializable {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        Precursor precursor = (Precursor) o;
-
-        if (precursorMolecules != null ? !precursorMolecules.equals(precursor.precursorMolecules) : precursor.precursorMolecules != null)
-            return false;
-        return source != null ? source.equals(precursor.source) : precursor.source == null;
-
+        return (o instanceof Precursor) && hashCode() == o.hashCode();
     }
 
     @Override
     public int hashCode() {
-        int result = precursorMolecules != null ? precursorMolecules.hashCode() : 0;
-        result = 31 * result + (source != null ? source.hashCode() : 0);
-        return result;
+        int start = 31;
+        start = 31 * start + source.hashCode();
+        for (InchiDescriptor m: this.precursorMolecules){
+            start = 31*start + m.getInchi().hashCode();
+        }
+
+        return start;
     }
 }

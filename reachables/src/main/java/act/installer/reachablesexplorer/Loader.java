@@ -57,7 +57,7 @@ public class Loader {
 
   // Target database and collection. We populate these with reachables
   private static final String TARGET_DATABASE = "wiki_reachables";
-  private static final String TARGET_COLLECTION = "reachablesv0";
+  private static final String TARGET_COLLECTION = "reachablesv1";
 
   private MongoDB db;
   private WordCloudGenerator wcGenerator;
@@ -89,7 +89,8 @@ public class Loader {
   public static void main(String[] args) throws IOException {
 
     Loader loader = new Loader();
-    loader.updateMoleculeRenderings();
+    //loader.updateFromReachablesFile(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data","c13038.json"));
+    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
   }
 
   /**
@@ -245,6 +246,7 @@ public class Loader {
     }
 
     reachable.getPrecursorData().addPrecursor(pre);
+    System.out.println(reachable.getPrecursorData().getPrecursors().size());
 
     upsert(reachable);
   }
@@ -332,6 +334,7 @@ public class Loader {
         Reachable rech = constructReachable(current.getInChI());
         if (rech != null) {
           rech.setDotGraph("cscd" + String.valueOf(currentId) + ".dot");
+          rech.setIsNative(parentId == -1);
           upsert(rech);
           updateWithPrecursor(current.getInChI(), pre);
         }
@@ -339,7 +342,7 @@ public class Loader {
         try {
           // TODO add a special native class?
           Reachable rech = constructReachable(current.getInChI());
-          rech.setIsNative(currentId == -1);
+          rech.setIsNative(parentId == -1);
           upsert(rech);
         } catch (NullPointerException e) {
           LOGGER.info("Null pointer, unable to parse InChI.");
