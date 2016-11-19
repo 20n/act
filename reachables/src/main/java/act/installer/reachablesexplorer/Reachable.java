@@ -18,6 +18,19 @@ public class Reachable {
 
   public Reachable() {}
 
+  public Reachable(String pageName, String inchi, String smiles, String inchikey, List<String> names, Boolean isNative, Map<Chemical.REFS, BasicDBObject> xref) {
+    this.pageName = pageName;
+    this.inchi = inchi;
+    this.smiles = smiles;
+    this.inchikey = inchikey;
+    this.structureFilename = null;
+    this.names = names;
+    this.wordCloudFilename = null;
+    this.precursorData = new PrecursorData();
+    this.xref = xref;
+    this.isNative = isNative;
+  }
+
   public Reachable(String pageName, String inchi, String smiles, String inchikey, List<String> names, Map<Chemical.REFS, BasicDBObject> xref) {
     this.pageName = pageName;
     this.inchi = inchi;
@@ -28,6 +41,7 @@ public class Reachable {
     this.wordCloudFilename = null;
     this.precursorData = new PrecursorData();
     this.xref = xref;
+    this.isNative = false;
   }
 
   public Reachable(String pageName, String inchi, String smiles, String inchikey, String structureFilename, List<String> names, Map<Chemical.REFS, BasicDBObject> xref) {
@@ -49,6 +63,27 @@ public class Reachable {
                    @JsonProperty("names") List<String> names,
                    @JsonProperty("usage-wordcloud-filename") String wordCloudFilename,
                    @JsonProperty("precursor") PrecursorData precursors,
+                   @JsonProperty("is_native") Boolean isNative,
+                   @JsonProperty("xref") Map<Chemical.REFS, BasicDBObject> xref) {
+    this.pageName = pageName;
+    this.inchi = inchi;
+    this.smiles = smiles;
+    this.structureFilename = structureFilename;
+    this.names = names;
+    this.wordCloudFilename = wordCloudFilename;
+    this.precursorData = precursors;
+    this.xref = xref;
+    this.isNative = isNative;
+  }
+
+  @JsonCreator
+  public Reachable(@JsonProperty("page_name") String pageName,
+                   @JsonProperty("inchi") String inchi,
+                   @JsonProperty("smiles") String smiles,
+                   @JsonProperty("rendering-filename") String structureFilename,
+                   @JsonProperty("names") List<String> names,
+                   @JsonProperty("usage-wordcloud-filename") String wordCloudFilename,
+                   @JsonProperty("precursor") PrecursorData precursors,
                    @JsonProperty("xref") Map<Chemical.REFS, BasicDBObject> xref) {
     this.pageName = pageName;
     this.inchi = inchi;
@@ -60,6 +95,9 @@ public class Reachable {
     this.xref = xref;
   }
 
+  public void setIsNative(Boolean isNative) {
+    this.isNative = isNative;
+  }
 
   public void setPrecursorData(PrecursorData precursorData) {
     this.precursorData = precursorData;
@@ -89,6 +127,9 @@ public class Reachable {
     return pageName;
   }
 
+  @JsonProperty("is_native")
+  private Boolean isNative;
+
   @JsonProperty("inchi")
   private String inchi;
 
@@ -115,7 +156,6 @@ public class Reachable {
 
   @JsonProperty("xref")
   private Map<Chemical.REFS, BasicDBObject> xref;
-
 
   @JsonIgnore
   public Map<Chemical.REFS, BasicDBObject> getXREFS() {

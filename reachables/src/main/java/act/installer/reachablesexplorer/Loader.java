@@ -34,8 +34,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Loader {
@@ -260,6 +262,7 @@ public class Loader {
   }
 
   public void updateFromReachablesFile(File file){
+    LOGGER.info("File name is: " + file.toString());
     try {
       // Read in the file and parse it as JSON
       String jsonTxt = IOUtils.toString(new FileInputStream(file));
@@ -268,24 +271,32 @@ public class Loader {
       Long parentId = fileContents.getLong("parent");
       Long currentId = fileContents.getLong("chemid");
 
+      LOGGER.info("Chem id is: " + currentId);
+
       JSONArray upstreamSubstrates = fileContents.getJSONArray("upstream");
 
       // Get the parent chemicals from the database.  JSON file contains ID.
       // We want to update it because it may not exist, but we also don't want to overwrite.
 
       List<InchiDescriptor> substrates = new ArrayList<>();
+      Set<Long> substrateCache = new HashSet<>();
 
       for (int i = 0; i < upstreamSubstrates.length(); i++) {
         JSONObject obj = upstreamSubstrates.getJSONObject(i);
+        if (!obj.getBoolean("reachable")) {
+          continue;
+        }
+
         JSONArray substratesArrays = (JSONArray) obj.get("substrates");
         for (int j = 0; j < substratesArrays.length(); j++) {
           Long subId = substratesArrays.getLong(j);
-          if (subId >= 0) {
+          if (subId >= 0 && !substrateCache.contains(subId)) {
             try {
               Chemical parent = reachablesConnection.getChemicalFromChemicalUUID(substratesArrays.getLong(j));
               upsert(constructReachable(parent.getInChI()));
               InchiDescriptor parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
               substrates.add(parentDescriptor);
+              substrateCache.add(subId);
             } catch (NullPointerException e){
               LOGGER.info("Null pointer, unable to write parent.");
             }
@@ -293,7 +304,7 @@ public class Loader {
         }
       }
 
-      if (parentId >= 0) {
+      if (parentId >= 0 && !substrateCache.contains(parentId)) {
         try {
           Chemical parent = reachablesConnection.getChemicalFromChemicalUUID(parentId);
           upsert(constructReachable(parent.getInChI()));
@@ -318,7 +329,9 @@ public class Loader {
       } else {
         try {
           // TODO add a special native class?
-          upsert(constructReachable(current.getInChI()));
+          Reachable rech = constructReachable(current.getInChI());
+          rech.setIsNative(currentId == -1);
+          upsert(rech);
         } catch (NullPointerException e) {
           LOGGER.info("Null pointer, unable tp parse InChI.");
         }
@@ -386,7 +399,6 @@ public class Loader {
   public static void main(String[] args) throws IOException {
 
     Loader loader = new Loader();
-    // loader.updateMoleculeRenderings();
     loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
   }
 }
