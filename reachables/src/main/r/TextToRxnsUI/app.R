@@ -32,12 +32,16 @@ server <- function(input, output, session) {
       num_products <- products$size() - 1
       for (pid in 0:num_products) {
         name <- products$apply(pid)$name()
-        cat('Product', name, '\n')
+        cat('Product:', name, '\n')
       }
 
       # ros
-      ros <- rxn$validatingROs()$toString()
-      cat('Mechanisms', ros, '\n')
+      ros <- rxn$getRONames()
+      ro_count <- ros$size() - 1
+      for (roid in 0:ro_count) {
+        ro <- ros$apply(roid)
+        cat('Mechanism:', ro, '\n')
+      }
     }
 
   })

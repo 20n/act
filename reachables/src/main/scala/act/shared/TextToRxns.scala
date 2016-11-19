@@ -189,8 +189,8 @@ class ValidatedRxn(
     s"$s -> $p [$ros]"
   }
 
-  def getROs = validatingROs match { 
-    case None => List()
+  def getRONames() = validatingROs match { 
+    case None => List[String]()
     case Some(ros) => ros.map(_.getName).toString
   }
 }
