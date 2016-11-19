@@ -10,50 +10,45 @@ source("text_to_rxns.R")
 chemStructureCacheFolder <- "test2rxns.chem.structs"
 
 server <- function(input, output, session) {
-  output$textData <- renderText({
+  reactions <- reactive({
     shiny::validate(
       need(input$text != "", "Please input text!")
     )
+
     rxns <- extractFrom(input$text)
     num_rxns <- rxns$size() - 1
 
+    acc <- c()
     for (rxnid in 0:num_rxns) {
       rxn <- rxns$apply(rxnid)
 
       rxnDesc <- rxn$apply(0L)
       rxnImg <- rxn$apply(1L)
-
-      print(rxnDesc)
-      print(rxnImg)
-
-      # # substrates
-      # substrates <- rxn$substrates()
-      # num_substrates <- substrates$size() - 1
-      # for (sid in 0:num_substrates) {
-      #   name <- substrates$apply(sid)$name()
-      #   inchi <- substrates$apply(sid)$inchi()
-      #   cat('Substrate:', name, ' ', inchi, '\n')
-      # }
-
-      # #products
-      # products <- rxn$products()
-      # num_products <- products$size() - 1
-      # for (pid in 0:num_products) {
-      #   name <- products$apply(pid)$name()
-      #   inchi <- products$apply(pid)$inchi()
-      #   cat('Product:', name, ' ', inchi, '\n')
-      # }
-
-      # # ros
-      # ros <- rxn$getRONames()
-      # ro_count <- ros$size() - 1
-      # for (roid in 0:ro_count) {
-      #   ro <- ros$apply(roid)
-      #   cat('Mechanism:', ro, '\n')
-      # }
+      newR <- c(rxnDesc, rxnImg)
+      acc <- cbind(acc, newR)
     }
 
+    acc
   })
+  
+  output$textData <- renderUI({
+    rr <- reactions()
+    descs <- c()
+    for (i in 1:ncol(rr)) {
+      desc <- paste("<b>Reaction ", i, "</b> ", rr[1,i])
+      descs <- c(descs, desc)
+    }
+    allrxns <- paste(descs, collapse="<br/>")
+    print(allrxns)
+    HTML(allrxns)
+  })
+
+  output$molecule <- renderImage({
+    rr <- reactions()
+    list(src = rr[2,1],
+         contentType = "image/png",
+         alt = "reaction")
+  }, deleteFile = FALSE)
 }
 
 ui <- pageWithSidebar(
@@ -63,7 +58,10 @@ ui <- pageWithSidebar(
     textInput("url", label = "Internet location of text", value = ""),
     fileInput("pdf", label = "PDF file")
   ),
-  mainPanel(textOutput("textData"))
+  mainPanel(
+    htmlOutput("textData"),
+    imageOutput("molecule")
+  )
 )
 
 shinyApp(ui = ui, server = server)
