@@ -2,10 +2,12 @@ package com.act.biointerpretation.l2expansion.sparkprojectors.io_handlers
 
 import java.io.{BufferedWriter, File, FileWriter}
 
-import com.act.biointerpretation.l2expansion.sparkprojectors.{BasicSparkROProjector, ProjectionResult}
+import com.act.biointerpretation.l2expansion.sparkprojectors.BasicSparkROProjector
+import com.act.biointerpretation.l2expansion.sparkprojectors.utility.ProjectionResult
 import org.apache.commons.cli.{CommandLine, Option => CliOption}
 import spray.json.{DefaultJsonProtocol, _}
 
+// Defines how we convert a Projection Result into a JSON document
 object ProjectionResultProtocol extends DefaultJsonProtocol {
   implicit val projectionFormat = jsonFormat3(ProjectionResult)
 }

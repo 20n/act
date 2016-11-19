@@ -13,7 +13,7 @@ trait ReadFromSubstrateFile extends BasicSparkROProjector {
   val OPTION_SUBSTRATES_LISTS: String
   private val LOGGER = LogManager.getLogger(getClass)
 
-  final def getValidInchiCommandLineOptions: List[CliOption.Builder] = {
+  final def getInputCommandLineOptions: List[CliOption.Builder] = {
     val options = List[CliOption.Builder](
       CliOption.builder(OPTION_SUBSTRATES_LISTS).
         required(true).
@@ -25,7 +25,7 @@ trait ReadFromSubstrateFile extends BasicSparkROProjector {
     options
   }
 
-  final def getInChIGroups(cli: CommandLine): Stream[Stream[String]] = {
+  final def getInputMolecules(cli: CommandLine): Stream[Stream[String]] = {
     inchiSourceFromFiles(getSubstrateFileList(cli))
   }
 
