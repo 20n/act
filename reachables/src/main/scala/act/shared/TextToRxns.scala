@@ -124,14 +124,14 @@ object TextToRxns {
   def getRxnsFromTxtUI(fileLoc: String) = pretty(getRxnsFromTxt(fileLoc))
   def getRxnsFromStringUI(sentence: String) = pretty(getRxnsFromString(sentence))
 
-  def pretty(rxns: List[ValidatedRxn]): List[(String, String)] = {
+  def pretty(rxns: List[ValidatedRxn]): List[List[String]] = {
     val dir = "."
     rxns.map(r => {
       val readableRxnString = r.toString
       val strHash = List(r.substrates, r.products).hashCode
       val fname = strHash + ".png"
       val renderedFilePath = renderRxn(r, dir, fname)
-      (readableRxnString, renderedFilePath.getName)
+      List(readableRxnString, renderedFilePath.getName)
     })
   }
 

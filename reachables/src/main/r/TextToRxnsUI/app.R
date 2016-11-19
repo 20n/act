@@ -20,8 +20,11 @@ server <- function(input, output, session) {
     for (rxnid in 0:num_rxns) {
       rxn <- rxns$apply(rxnid)
 
-      rxnDesc <- rxn$_1
-      rxnImg <- rxn$_2
+      rxnDesc <- rxn$apply(0L)
+      rxnImg <- rxn$apply(1L)
+
+      print(rxnDesc)
+      print(rxnImg)
 
       # # substrates
       # substrates <- rxn$substrates()
