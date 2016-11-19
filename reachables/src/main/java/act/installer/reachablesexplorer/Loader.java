@@ -329,13 +329,15 @@ public class Loader {
       // Update source as reachables, as these files are parsed from `cascade` construction
       if (!substrates.isEmpty()) {
         Precursor pre = new Precursor(substrates, "reachables");
+        Reachable rech = constructReachable(current.getInChI());
+        rech.setDotGraph("cscd" + String.valueOf(currentId) + ".dot");
+        upsert(rech);
         updateWithPrecursor(current.getInChI(), pre);
       } else {
         try {
           // TODO add a special native class?
           Reachable rech = constructReachable(current.getInChI());
           rech.setIsNative(currentId == -1);
-          rech.setDotGraph("cscd" + String.valueOf(currentId) + ".dot");
           upsert(rech);
         } catch (NullPointerException e) {
           LOGGER.info("Null pointer, unable to parse InChI.");
