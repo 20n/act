@@ -24,7 +24,8 @@ server <- function(input, output, session) {
       num_substrates <- substrates$size() - 1
       for (sid in 0:num_substrates) {
         name <- substrates$apply(sid)$name()
-        cat('Substrate:', name, '\n')
+        inchi <- substrates$apply(sid)$inchi()
+        cat('Substrate:', name, ' ', inchi, '\n')
       }
 
       #products
@@ -32,7 +33,8 @@ server <- function(input, output, session) {
       num_products <- products$size() - 1
       for (pid in 0:num_products) {
         name <- products$apply(pid)$name()
-        cat('Product:', name, '\n')
+        inchi <- products$apply(pid)$inchi()
+        cat('Product:', name, ' ', inchi, '\n')
       }
 
       # ros
