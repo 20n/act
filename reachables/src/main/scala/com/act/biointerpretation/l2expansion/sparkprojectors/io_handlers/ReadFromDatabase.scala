@@ -14,7 +14,7 @@ trait ReadFromDatabase extends BasicSparkROProjector {
 
   private val DEFAULT_PORT: String = "27017"
 
-  final def getValidInchiCommandLineOptions: List[CliOption.Builder] = {
+  final def getInputCommandLineOptions: List[CliOption.Builder] = {
     val options = List[CliOption.Builder](
       CliOption.builder(OPTION_READ_DB_NAME).
         required(true).
@@ -43,7 +43,7 @@ trait ReadFromDatabase extends BasicSparkROProjector {
     options
   }
 
-  final def getInChIGroups(cli: CommandLine): Stream[Stream[String]] = {
+  final def getInputMolecules(cli: CommandLine): Stream[Stream[String]] = {
     inchiSourceFromDB(getReadDbName(cli), getReadDbPort(cli), getReadDbHost(cli), getReadDbCollection(cli))
   }
 

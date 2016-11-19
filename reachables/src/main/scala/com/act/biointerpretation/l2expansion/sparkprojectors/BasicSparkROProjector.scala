@@ -4,67 +4,11 @@ import java.io.File
 
 import chemaxon.license.LicenseManager
 import com.act.analysis.chemicals.molecules.{MoleculeFormat, MoleculeImporter}
-import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
+import com.act.biointerpretation.l2expansion.sparkprojectors.utility.{ProjectionResult, ProjectorCliHelper}
+import org.apache.commons.cli.{CommandLine, Option => CliOption}
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
-
-
-
-protected trait ProjectorCliHelper {
-  val HELP_FORMATTER: HelpFormatter = new HelpFormatter
-  val HELP_MESSAGE: String
-  /**
-    * A class full of a few command line helpers for SparkRoProjectors
-    */
-  private val LOGGER = LogManager.getLogger(getClass)
-  HELP_FORMATTER.setWidth(100)
-
-  final def checkLicenseFile(licenseFile: String): File = {
-    LOGGER.info(s"Validating license file at $licenseFile")
-    LicenseManager.setLicenseFile(licenseFile)
-    new File(licenseFile)
-  }
-
-  final def createOutputDirectory(directory: File): Unit = {
-    if (directory.exists() && !directory.isDirectory) {
-      LOGGER.error(s"Found output directory at ${directory.getAbsolutePath} but is not a directory")
-      exitWithHelp(getCommandLineOptions)
-    } else {
-      LOGGER.info(s"Creating output directory at ${directory.getAbsolutePath}")
-      directory.mkdirs()
-    }
-  }
-
-  private def exitWithHelp(opts: Options): Unit = {
-    HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
-    System.exit(1)
-  }
-
-  final def parse(opts: Options, args: Array[String]): CommandLine ={
-    // Parse command line options
-    var cl: Option[CommandLine] = None
-    try {
-      val parser = new DefaultParser()
-      cl = Option(parser.parse(opts, args))
-    } catch {
-      case e: ParseException =>
-        LOGGER.error(s"Argument parsing failed: ${e.getMessage}\n")
-        exitWithHelp(opts)
-    }
-
-    if (cl.isEmpty) {
-      LOGGER.error("Detected that command line parser failed to be constructed.")
-      exitWithHelp(opts)
-    }
-
-    if (cl.get.hasOption("help")) exitWithHelp(opts)
-
-    cl.get
-  }
-
-  def getCommandLineOptions: Options
-}
 
 trait BasicSparkROProjector extends ProjectorCliHelper {
   /**
@@ -75,95 +19,41 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
   final val OPTION_LICENSE_FILE = "l"
   final val OPTION_SPARK_MASTER = "m"
   final val OPTION_VALID_CHEMICAL_TYPE = "v"
-  final val OPTION_HELP = "h"
 
   val runningClass: Class[_]
+
   val HELP_MESSAGE = "A Spark job that will project the set of validation ROs over a group of substrates.  " +
     s"You are currently running the projector version $runningClass"
   protected val DEFAULT_SPARK_MASTER = "spark://spark-master:7077"
-  private val LOGGER = LogManager.getLogger(getClass)
-  // Careful, this also changes our logger's status.
+  private val LOGGER = LogManager.getLogger(runningClass)
+
+  // TODO Careful, this also changes our logger's status.
   private val SPARK_LOG_LEVEL = "INFO"
 
-  // Basic methods that implementing objects utilize.
-  def getValidInchiCommandLineOptions: List[CliOption.Builder]
-  def getTerminationCommandLineOptions: List[CliOption.Builder]
+  // These two methods handle the input of molecules into the projector and the command line args associated with that.
+  def getInputMolecules(cli: CommandLine): Stream[Stream[String]]
 
+  def getInputCommandLineOptions: List[CliOption.Builder]
+
+  // These two methods handle the output of projection results and the command line args associated with that.
+  def getTerminationCommandLineOptions: List[CliOption.Builder]
   def handleTermination(cli: CommandLine)(results: Stream[ProjectionResult])
 
-  def getInChIGroups(cli: CommandLine): Stream[Stream[String]]
-
-  final def combinationList(suppliedInchiLists: Stream[Stream[String]]): Stream[Stream[String]] = {
-    if (suppliedInchiLists.isEmpty) Stream(Stream.empty)
-    else suppliedInchiLists.head.flatMap(i => combinationList(suppliedInchiLists.tail).map(i #:: _))
-  }
-
   final def main(args: Array[String]): Unit = {
-    val cli = parseCommandLineOptions(args)
-    // Get valid InChIs
-    val inchiCombinations: Stream[Stream[String]] = getInChIGroups(cli)
-    val validInChIs = validateInChIs(inchiCombinations)
-    val spark = setupSpark(cli)
+    // Parse CLI options
+    val cli = parseCommandLine(args)
 
+    // Handle Input
+    val inchiCombinations: Stream[Stream[String]] = getInputMolecules(cli)
+    val validInChIs = validateInChIs(inchiCombinations)
+
+    // Handle Projection
+    val spark = setupSpark(cli)
     val results: Stream[ProjectionResult] = callProjector(cli)(spark, validInChIs)
 
+    // Output projections
     handleTermination(cli)(results)
   }
-
-  private def parseCommandLineOptions(args: Array[String]): CommandLine = {
-    parse(getCommandLineOptions, args)
-  }
-
-  final def getCommandLineOptions: Options = {
-    val optionsList = getMinimumCommandLineArgs ::: getValidInchiCommandLineOptions ::: getTerminationCommandLineOptions
-    val opts: Options = new Options()
-    for (opt <- optionsList) {
-      opts.addOption(opt.build)
-    }
-    opts
-  }
-
-  private def getMinimumCommandLineArgs: List[CliOption.Builder] ={
-    val options = List[CliOption.Builder](
-      CliOption.builder(OPTION_LICENSE_FILE).
-        required(true).
-        hasArg.
-        longOpt("license-file").
-        desc("A path to the Chemaxon license file to load, mainly for checking license validity"),
-
-      // TODO Make this true again
-      CliOption.builder(OPTION_VALID_CHEMICAL_TYPE).
-        longOpt("valid-chemical-types").
-        hasArg.
-        desc(
-          s"""
-             |A molecule string format. Currently valid types are inchi, stdInchi, smiles, and smarts.
-             |By default, uses stdInChI which is the format: ${MoleculeFormat.getExportString(MoleculeFormat.stdInchi)}.
-             |Possible values are:
-             |${MoleculeFormat.listPossibleFormats().mkString("|")}
-             |""".stripMargin),
-
-      CliOption.builder(OPTION_SPARK_MASTER).
-        hasArg().
-        longOpt("spark-master").
-        desc("Where to look for the spark master connection. " +
-          s"Uses $DEFAULT_SPARK_MASTER by default."),
-
-      CliOption.builder(OPTION_REVERSE).
-        longOpt("reverse").
-        desc("Flag to reverse all reactions."),
-
-      CliOption.builder(OPTION_EXHAUSTIVE).
-        longOpt("exhaustive").
-        desc("Flag to indicate that substrates should be reacted until exhaustion, " +
-          "meaning all possible reactions occur and are returned.  " +
-          "Can be quite expensive for substrates with a large quantity of reaction sites."),
-
-      CliOption.builder(OPTION_HELP).argName("help").desc("Prints this help message").longOpt("help"))
-    options
-  }
-
-  /* ----- Ordered methods by the processing that happens in main ------ */
 
   private def validateInChIs(combinations: Stream[Stream[String]]): Stream[Stream[String]] = {
     LOGGER.info("Attempting to filter out combinations with invalid InChIs.  " +
@@ -209,6 +99,8 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     spark
   }
 
+  /* ----- Ordered methods by the processing that happens in main ------ */
+
   private def getSparkMaster(cli: CommandLine): String = {
     cli.getOptionValue(OPTION_SPARK_MASTER, DEFAULT_SPARK_MASTER)
   }
@@ -230,15 +122,16 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     /* ------ Projection ------- */
     LOGGER.warn(s"Starting execution.  Substrate Group Count: ${validInchis.length}")
     // PROJECT!  Run ERO projection over all InChIs.
-    scopedProjection(getChemaxonLicenseFile(cli).getName)(isReverse(cli), isExhaustive(cli))(spark, validInchis)
+    closedScopeProjection(getChemaxonLicenseFile(cli).getName)(isReverse(cli), isExhaustive(cli))(spark, validInchis)
   }
 
-  private def scopedProjection(licenseFileName: String)
-                              (reverse: Boolean, exhaustive: Boolean)
-                              (spark: SparkContext, validInchis: Stream[Stream[String]]): Stream[ProjectionResult] = {
+  private def closedScopeProjection(licenseFileName: String)
+                                   (reverse: Boolean, exhaustive: Boolean)
+                                   (spark: SparkContext, validInchis: Stream[Stream[String]]): Stream[ProjectionResult] = {
     /**
-      * We need to set the scope of the projection to as smaller unit so that
-      * we don't need to ensure a bunch of other stuff serializes.
+      * We need to set the scope of the projection to a smaller unit so that
+      * we don't need to ensure a bunch of other stuff serializes.  We don't do any logging or anything in this
+      * function, so that we don't need to serialize things like that.
       */
     val seqMapper: Seq[String] => Stream[ProjectionResult] = i => {
       SparkProjectionInstance.project(licenseFileName)(reverse, exhaustive)(i.toList)
@@ -294,6 +187,60 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     val resultCount: Long = results.persist().count()
     LOGGER.warn(s"Projection completed with $resultCount results")
     results.toLocalIterator.toStream
+  }
+
+  final def getCommandLineOptions: List[CliOption.Builder] = {
+    getMinimumCommandLineArgs ::: getInputCommandLineOptions ::: getTerminationCommandLineOptions
+  }
+
+  private def getMinimumCommandLineArgs: List[CliOption.Builder] = {
+    val options = List[CliOption.Builder](
+      CliOption.builder(OPTION_LICENSE_FILE).
+        required(true).
+        hasArg.
+        longOpt("license-file").
+        desc("A path to the Chemaxon license file to load, mainly for checking license validity"),
+
+      // TODO Make this true again
+      CliOption.builder(OPTION_VALID_CHEMICAL_TYPE).
+        longOpt("valid-chemical-types").
+        hasArg.
+        desc(
+          s"""
+             |A molecule string format. Currently valid types are inchi, stdInchi, smiles, and smarts.
+             |By default, uses stdInChI which is the format: ${MoleculeFormat.getExportString(MoleculeFormat.stdInchi)}.
+             |Possible values are:
+             |${MoleculeFormat.listPossibleFormats().mkString("|")}
+             |""".stripMargin),
+
+      CliOption.builder(OPTION_SPARK_MASTER).
+        hasArg().
+        longOpt("spark-master").
+        desc("Where to look for the spark master connection. " +
+          s"Uses $DEFAULT_SPARK_MASTER by default."),
+
+      CliOption.builder(OPTION_REVERSE).
+        longOpt("reverse").
+        desc("Flag to reverse all reactions."),
+
+      CliOption.builder(OPTION_EXHAUSTIVE).
+        longOpt("exhaustive").
+        desc("Flag to indicate that substrates should be reacted until exhaustion, " +
+          "meaning all possible reactions occur and are returned.  " +
+          "Can be quite expensive for substrates with a large quantity of reaction sites."),
+
+      CliOption.builder(OPTION_HELP).argName("help").desc("Prints this help message").longOpt("help"))
+    options
+  }
+
+  final protected def combinationList(suppliedInchiLists: Stream[Stream[String]]): Stream[Stream[String]] = {
+    /**
+      * Small utility function that takes in a streams and creates combinations of members of the multiple streams.
+      * For example, with two input streams of InChIs we would construct a new stream containing all the
+      * possible streams of size 2, where one element comes from each initial stream.
+      */
+    if (suppliedInchiLists.isEmpty) Stream(Stream.empty)
+    else suppliedInchiLists.head.flatMap(i => combinationList(suppliedInchiLists.tail).map(i #:: _))
   }
 
   private def cleanup(resultsRDD: RDD[ProjectionResult]): Unit = {

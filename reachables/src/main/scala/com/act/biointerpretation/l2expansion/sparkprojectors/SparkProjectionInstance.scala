@@ -8,6 +8,7 @@ import chemaxon.sss.SearchConstants
 import chemaxon.sss.search.{MolSearch, MolSearchOptions}
 import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
+import com.act.biointerpretation.l2expansion.sparkprojectors.utility.ProjectionResult
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import org.apache.log4j.LogManager
 import org.apache.spark.SparkFiles
@@ -146,12 +147,5 @@ object SparkProjectionInstance extends Serializable {
         LOGGER.warn(s"Unable to export a projected project.  Projected projects were $potentialProducts")
         None
     }
-  }
-
-  def project(reverse: Boolean, exhaustive: Boolean)
-             (substrates: List[String]): Stream[ProjectionResult] = {
-    val getResults: Ero => Stream[ProjectionResult] = getResultsForSubstrate(substrates, reverse, exhaustive)
-    val results: Stream[ProjectionResult] = this.eros.getRos.asScala.toStream.flatMap(getResults)
-    results
   }
 }

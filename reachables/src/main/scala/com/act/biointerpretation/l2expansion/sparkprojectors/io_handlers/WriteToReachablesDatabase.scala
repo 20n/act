@@ -1,7 +1,7 @@
 package com.act.biointerpretation.l2expansion.sparkprojectors.io_handlers
 
 import act.installer.reachablesexplorer.{Loader, ReachablesProjectionUpdate}
-import com.act.biointerpretation.l2expansion.sparkprojectors.ProjectionResult
+import com.act.biointerpretation.l2expansion.sparkprojectors.utility.ProjectionResult
 import org.apache.commons.cli.{CommandLine, Option => CliOption}
 
 trait WriteToReachablesDatabase extends ReadFromDatabase {
