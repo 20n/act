@@ -12,6 +12,7 @@ import com.act.analysis.chemicals.molecules.MoleculeFormat;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
@@ -26,6 +27,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.mongojack.JacksonDBCollection;
 
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -33,7 +35,11 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Loader {
@@ -42,8 +48,8 @@ public class Loader {
   private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
   private static final MongoDB reachablesConnection = new MongoDB("localhost", 27017, "validator_profiling_2");
 
-  private static final String DATABASE_BING_ONLY_HOST = "chimay";
-  private static final String DATABASE_BING_ONLY_PORT = "27017";
+  private static final String DATABASE_BING_ONLY_HOST = "localhost";
+  private static final String DATABASE_BING_ONLY_PORT = "27018";
 
   private MongoDB db;
   private WordCloudGenerator wcGenerator;
@@ -119,6 +125,7 @@ public class Loader {
 
     Chemical c = db.getChemicalFromInChI(inchi);
     List<String> names = c != null ? c.getBrendaNames() : Collections.emptyList();
+    Map<Chemical.REFS, BasicDBObject> xref = c != null ? c.getXrefMap() : new HashMap<>();
 
     String smiles = getSmiles(mol);
     if (smiles == null) {
@@ -136,7 +143,7 @@ public class Loader {
     }
 
     String pageName = getPageName(chemaxonTraditionalName, names, inchi);
-    return new Reachable(pageName, inchi, smiles, inchikey, names);
+    return new Reachable(pageName, inchi, smiles, inchikey, names, xref);
   }
 
   public void updateReachableWithWordcloud(Reachable reachable) throws IOException {
@@ -149,6 +156,7 @@ public class Loader {
 
   public void updateReachableWithRendering(Reachable reachable) {
     String renderingFilename = MoleculeRenderer.generateRendering(reachable.getInchi());
+    LOGGER.info("Generated rendering at %s", renderingFilename);
     reachable.setStructureFilename(renderingFilename);
     upsert(reachable);
   }
@@ -181,6 +189,11 @@ public class Loader {
 
     // If is null we create a new one
     reachable = reachable == null ? constructReachable(inchi) : reachable;
+
+    if (reachable == null) {
+      return;
+    }
+
     reachable.getPrecursorData().addPrecursor(pre);
 
     upsert(reachable);
@@ -204,6 +217,7 @@ public class Loader {
   }
 
   public void updateFromReachablesFile(File file){
+    LOGGER.info("File name is: " + file.toString());
     try {
       // Read in the file and parse it as JSON
       String jsonTxt = IOUtils.toString(new FileInputStream(file));
@@ -212,24 +226,32 @@ public class Loader {
       Long parentId = fileContents.getLong("parent");
       Long currentId = fileContents.getLong("chemid");
 
+      LOGGER.info("Chem id is: " + currentId);
+
       JSONArray upstreamSubstrates = fileContents.getJSONArray("upstream");
 
       // Get the parent chemicals from the database.  JSON file contains ID.
       // We want to update it because it may not exist, but we also don't want to overwrite.
 
       List<InchiDescriptor> substrates = new ArrayList<>();
+      Set<Long> substrateCache = new HashSet<>();
 
       for (int i = 0; i < upstreamSubstrates.length(); i++) {
         JSONObject obj = upstreamSubstrates.getJSONObject(i);
+        if (!obj.getBoolean("reachable")) {
+          continue;
+        }
+
         JSONArray substratesArrays = (JSONArray) obj.get("substrates");
         for (int j = 0; j < substratesArrays.length(); j++) {
           Long subId = substratesArrays.getLong(j);
-          if (subId >= 0) {
+          if (subId >= 0 && !substrateCache.contains(subId)) {
             try {
               Chemical parent = reachablesConnection.getChemicalFromChemicalUUID(substratesArrays.getLong(j));
               upsert(constructReachable(parent.getInChI()));
               InchiDescriptor parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
               substrates.add(parentDescriptor);
+              substrateCache.add(subId);
             } catch (NullPointerException e){
               LOGGER.info("Null pointer, unable to write parent.");
             }
@@ -237,7 +259,7 @@ public class Loader {
         }
       }
 
-      if (parentId >= 0) {
+      if (parentId >= 0 && !substrateCache.contains(parentId)) {
         try {
           Chemical parent = reachablesConnection.getChemicalFromChemicalUUID(parentId);
           upsert(constructReachable(parent.getInChI()));
@@ -251,6 +273,10 @@ public class Loader {
       // Get the actual chemical that is the product of the above chemical.
       Chemical current = reachablesConnection.getChemicalFromChemicalUUID(currentId);
 
+      if (current == null) {
+        return;
+      }
+
       // Update source as reachables, as these files are parsed from `cascade` construction
       if (!substrates.isEmpty()) {
         Precursor pre = new Precursor(substrates, "reachables");
@@ -258,7 +284,9 @@ public class Loader {
       } else {
         try {
           // TODO add a special native class?
-          upsert(constructReachable(current.getInChI()));
+          Reachable rech = constructReachable(current.getInChI());
+          rech.setIsNative(currentId == -1);
+          upsert(rech);
         } catch (NullPointerException e) {
           LOGGER.info("Null pointer, unable tp parse InChI.");
         }
@@ -281,24 +309,6 @@ public class Loader {
             x.getName().startsWith(("c")) && x.getName().endsWith("json")).collect(Collectors.toList());
     LOGGER.info("Found %d reachables files.",validFiles.size());
     updateFromReachableFiles(validFiles);
-  }
-
-
-  public List<String> getBingInchis() {
-    MongoDB bingDb = new MongoDB(DATABASE_BING_ONLY_HOST, Integer.parseInt(DATABASE_BING_ONLY_PORT), "actv01");
-    BasicDBObject query = new BasicDBObject("xref.BING", new BasicDBObject("$exists", true));
-    BasicDBObject keys = new BasicDBObject("InChI", true);
-
-    DBIterator ite = bingDb.getIteratorOverChemicals(query, keys);
-    List<String> bingList = new ArrayList<>();
-    while (ite.hasNext()) {
-      BasicDBObject o = (BasicDBObject) ite.next();
-      String inchi = o.getString("InChI");
-      if (inchi != null) {
-        bingList.add(inchi);
-      }
-    }
-    return bingList;
   }
 
 
@@ -325,10 +335,51 @@ public class Loader {
     }
   }
 
+  public void updateMoleculeRenderings() throws IOException {
+    List<String> inchis = jacksonReachablesCollection.distinct("inchi");
+    LOGGER.info("Found %d inchis in the database", inchis.size());
+
+    int i = 0;
+    for (String inchi : inchis) {
+      if (++i % 100 == 0) {
+        LOGGER.info("#%d", i);
+      }
+      Reachable reachable = queryByInchi(inchi);
+      if (reachable.getStructureFilename() == null) {
+        updateReachableWithRendering(reachable);
+      }
+    }
+  }
+
+
+  public void updateXREFS() {
+
+    MongoDB db = new MongoDB("localhost", 27017, "actv01");
+    List<String> inchis = jacksonReachablesCollection.distinct("inchi");
+    BasicDBList basicDBListInchis = new BasicDBList();
+    basicDBListInchis.addAll(inchis);
+    BasicDBObject query = new BasicDBObject("xref", new BasicDBObject("$exists", true));
+    query.append("InChI", new BasicDBObject("$in", basicDBListInchis));
+    BasicDBObject keys = new BasicDBObject("InChI", true).append("xref", true);
+
+    DBIterator ite = db.getIteratorOverChemicals(query, keys);
+
+    while (ite.hasNext()) {
+      BasicDBObject o = (BasicDBObject) ite.next();
+      String inchi = o.getString("InChI");
+      if (inchis.contains(inchi)) {
+        BasicDBObject xref = (BasicDBObject) o.get("xref");
+        Reachable reachable = queryByInchi(inchi);
+        reachable.setXREFS(xref);
+        upsert(reachable);
+      }
+    }
+  }
+
   public static void main(String[] args) throws IOException {
 
   //    Loader loader = new Loader();
-  //    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
+
   //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
     Loader loader = new Loader();
     //loader.updateWordClouds();

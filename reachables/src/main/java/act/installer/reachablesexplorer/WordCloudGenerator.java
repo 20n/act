@@ -5,6 +5,7 @@ package act.installer.reachablesexplorer;
 import act.server.DBIterator;
 import act.server.MongoDB;
 import com.act.jobs.FileChecker;
+import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.logging.log4j.LogManager;
@@ -69,6 +70,8 @@ public class WordCloudGenerator {
     }
     return bingList;
   }
+
+
 
   public File generateWordCloud(String inchi) throws IOException {
 
