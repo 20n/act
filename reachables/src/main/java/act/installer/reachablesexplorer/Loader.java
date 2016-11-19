@@ -330,9 +330,11 @@ public class Loader {
       if (!substrates.isEmpty()) {
         Precursor pre = new Precursor(substrates, "reachables");
         Reachable rech = constructReachable(current.getInChI());
-        rech.setDotGraph("cscd" + String.valueOf(currentId) + ".dot");
-        upsert(rech);
-        updateWithPrecursor(current.getInChI(), pre);
+        if (rech != null) {
+          rech.setDotGraph("cscd" + String.valueOf(currentId) + ".dot");
+          upsert(rech);
+          updateWithPrecursor(current.getInChI(), pre);
+        }
       } else {
         try {
           // TODO add a special native class?

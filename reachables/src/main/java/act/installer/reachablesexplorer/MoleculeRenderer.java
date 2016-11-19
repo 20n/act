@@ -43,6 +43,10 @@ public class MoleculeRenderer {
       } catch (IOException e) {
         LOGGER.error("Unable to generate rendering for %s at location %s", inchi, rendering.toPath().toString());
         return null;
+      } catch (StackOverflowError e) {
+        // Very rarely, a very large molecule will trigger a StackOverFlowError. Catch it and move on!
+        LOGGER.error("Unable to generate rendering for %s at location %s", inchi, rendering.toPath().toString());
+        return null;
       }
     }
 
