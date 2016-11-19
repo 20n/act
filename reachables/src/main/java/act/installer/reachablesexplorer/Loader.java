@@ -353,6 +353,7 @@ public class Loader {
 
     // If is null we create a new one
     reachable = reachable == null ? constructReachable(inchi) : reachable;
+<<<<<<< b69db8d08d3d7956727692c4fce7910e98847ab6
 
     if (reachable == null) {
       LOGGER.warn("Still couldn't construct InChI after retry, aborting");
@@ -360,6 +361,13 @@ public class Loader {
     }
 
     reachable.getPrecursorData().addPrecursors(pre);
+=======
+    // hella broken, return
+    if (reachable == null) {
+      return;
+    }
+    reachable.getPrecursorData().addPrecursor(pre);
+>>>>>>> spark
 
     upsert(reachable);
   }
@@ -550,12 +558,21 @@ public class Loader {
         }
       }
 
+<<<<<<< b69db8d08d3d7956727692c4fce7910e98847ab6
       if (parentId >= 0 && !substrateCache.containsKey(parentId)) {
         // Note: this should be impossible.
         LOGGER.error("substrate cache does not contain parent id %d after all upstream reactions processed", parentId);
       }
 
       assertNotFakeInchi(current.getInChI());
+=======
+      // Get the actual chemical that is the product of the above chemical.
+      Chemical current = reachablesConnection.getChemicalFromChemicalUUID(currentId);
+      if (current == null) {
+        LOGGER.info("Unable to parse InChI, skipping.");
+        return;
+      }
+>>>>>>> spark
 
       // Update source as reachables, as these files are parsed from `cascade` construction
 <<<<<<< f6427738bebfbb72b456d603cf4eac8daa475ca3
