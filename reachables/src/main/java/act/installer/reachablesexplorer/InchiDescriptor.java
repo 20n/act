@@ -46,4 +46,23 @@ class InchiDescriptor implements Serializable {
         return inchiKey;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        InchiDescriptor that = (InchiDescriptor) o;
+
+        if (name != null ? !name.equals(that.name) : that.name != null) return false;
+        if (inchi != null ? !inchi.equals(that.inchi) : that.inchi != null) return false;
+        return inchiKey != null ? inchiKey.equals(that.inchiKey) : that.inchiKey == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = name != null ? name.hashCode() : 0;
+        result = 31 * result + (inchi != null ? inchi.hashCode() : 0);
+        result = 31 * result + (inchiKey != null ? inchiKey.hashCode() : 0);
+        return result;
+    }
 }

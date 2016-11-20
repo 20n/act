@@ -259,7 +259,7 @@ public class Loader {
     }
   }
 
-  public void updateWithPrecursor(String inchi, Precursor pre) throws IOException {
+  public void updateWithPrecursors(String inchi, List<Precursor> pre) throws IOException {
     Reachable reachable = queryByInchi(inchi);
 
     // If is null we create a new one
@@ -270,7 +270,7 @@ public class Loader {
       return;
     }
 
-    reachable.getPrecursorData().addPrecursor(pre);
+    reachable.getPrecursorData().addPrecursors(pre);
 
     upsert(reachable);
   }
@@ -394,70 +394,70 @@ public class Loader {
 
       LOGGER.info("Chem id is: " + currentId);
 
-      JSONArray upstreamSubstrates = fileContents.getJSONArray("upstream");
-
-      // Get the parent chemicals from the database.  JSON file contains ID.
-      // We want to update it because it may not exist, but we also don't want to overwrite.
-
-      List<InchiDescriptor> substrates = new ArrayList<>();
-      Set<Long> substrateCache = new HashSet<>();
-
-      List<SequenceData> sequences = Collections.emptyList();
-
-      for (int i = 0; i < upstreamSubstrates.length(); i++) {
-        JSONObject obj = upstreamSubstrates.getJSONObject(i);
-        if (!obj.getBoolean("reachable")) {
-          continue;
-        }
-
-        JSONArray substratesArrays = (JSONArray) obj.get("substrates");
-        for (int j = 0; j < substratesArrays.length(); j++) {
-          Long subId = substratesArrays.getLong(j);
-          if (subId >= 0 && !substrateCache.contains(subId)) {
-            try {
-              Chemical parent = db.getChemicalFromChemicalUUID(substratesArrays.getLong(j));
-              upsert(constructReachable(parent.getInChI()));
-              InchiDescriptor parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
-              substrates.add(parentDescriptor);
-              substrateCache.add(subId);
-            } catch (NullPointerException e){
-              LOGGER.info("Null pointer, unable to write parent.");
-            }
-          }
-        }
-
-        sequences = extractOrganismsAndSequencesForReactions(Collections.singleton(obj.getLong("rxnid")));
-      }
-
-      if (parentId >= 0 && !substrateCache.contains(parentId)) {
-        try {
-          Chemical parent = db.getChemicalFromChemicalUUID(parentId);
-          assertNotFakeInchi(parent.getInChI());
-          upsert(constructReachable(parent.getInChI()));
-          InchiDescriptor parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
-          substrates.add(parentDescriptor);
-        } catch (NullPointerException e) {
-          LOGGER.info("Null pointer, unable to write parent.");
-        }
-      }
-
-      // Get the actual chemical that is the product of the above chemical.
+      // Get the actual chemical that is the product of the above chemical.  Bail quickly if we can't find it.
       Chemical current = db.getChemicalFromChemicalUUID(currentId);
       LOGGER.info("Tried to fetch chemical id %d: %s", currentId, current);
-      assertNotFakeInchi(current.getInChI());
 
       if (current == null) {
         return;
       }
 
+      JSONArray upstreamReactions = fileContents.getJSONArray("upstream");
+
+      // Get the parent chemicals from the database.  JSON file contains ID.
+      // We want to update it because it may not exist, but we also don't want to overwrite.
+
+      Map<Long, InchiDescriptor> substrateCache = new HashMap<>();
+      List<Precursor> precursors = new ArrayList<>();
+
+      for (int i = 0; i < upstreamReactions.length(); i++) {
+        JSONObject obj = upstreamReactions.getJSONObject(i);
+        if (!obj.getBoolean("reachable")) {
+          continue;
+        }
+
+        List<InchiDescriptor> thisRxnSubstrates = new ArrayList<>();
+
+        JSONArray substratesArrays = (JSONArray) obj.get("substrates");
+        for (int j = 0; j < substratesArrays.length(); j++) {
+          Long subId = substratesArrays.getLong(j);
+          InchiDescriptor parentDescriptor;
+          if (subId >= 0 && !substrateCache.containsKey(subId)) {
+            try {
+              Chemical parent = db.getChemicalFromChemicalUUID(subId);
+              upsert(constructReachable(parent.getInChI()));
+              parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
+              thisRxnSubstrates.add(parentDescriptor);
+              substrateCache.put(subId, parentDescriptor);
+            } catch (NullPointerException e){
+              LOGGER.info("Null pointer, unable to write parent.");
+            }
+          } else if (substrateCache.containsKey(subId)) {
+            thisRxnSubstrates.add(substrateCache.get(subId));
+          }
+        }
+
+        if (!thisRxnSubstrates.isEmpty()) {
+          List<SequenceData> rxnSequences =
+              extractOrganismsAndSequencesForReactions(Collections.singleton(obj.getLong("rxnid")));
+          precursors.add(new Precursor(thisRxnSubstrates, "reachables", rxnSequences));
+        }
+      }
+
+      if (parentId >= 0 && !substrateCache.containsKey(parentId)) {
+        // Note: this should be impossible.
+        LOGGER.error("substrate cache does not contain parent id %d after all upstream reactions processed", parentId);
+      }
+
+      assertNotFakeInchi(current.getInChI());
+
       // Update source as reachables, as these files are parsed from `cascade` construction
-      if (!substrates.isEmpty()) {
-        Precursor pre = new Precursor(substrates, "reachables", sequences);
+      if (!precursors.isEmpty()) {
         Reachable rech = constructReachable(current.getInChI());
         if (rech != null) {
           rech.setDotGraph("cscd" + String.valueOf(currentId) + ".dot");
           upsert(rech);
-          updateWithPrecursor(current.getInChI(), pre);
+          updateWithPrecursors(current.getInChI(), precursors);
         }
       } else {
         try {

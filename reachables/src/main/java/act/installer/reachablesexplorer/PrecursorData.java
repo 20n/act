@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -24,6 +25,10 @@ class PrecursorData implements Serializable {
     @JsonIgnore
     public void addPrecursor(Precursor precursor) {
         this.precursors.add(precursor);
+    }
+
+    public void addPrecursors(Collection<Precursor> precursors) {
+        this.precursors.addAll(precursors);
     }
 
     @JsonIgnore
