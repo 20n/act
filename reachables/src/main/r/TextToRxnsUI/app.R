@@ -18,17 +18,11 @@ server <- function(input, output, session) {
 
     acc <- c()
 
-    print(paste("text:", input$text))
-    print(paste("pdf:", input$pdf))
-    print(paste("url:", input$url))
     if (input$text != "") {
-      print("Extracting rxns from plain text")
       rxns <- extractFromPlainText(input$text)
     } else if (input$url != "") {
-      print("Extracting rxns from url")
       rxns <- extractFromURL(input$url)
     } else if (!is.null(input$pdf)) {
-      print("Extracting rxns from pdf")
       print(paste("PDF:", input$pdf$datapath))
       rxns <- extractFromPDF(input$pdf$datapath)
     }
@@ -152,7 +146,8 @@ ui <- pageWithSidebar(
   sidebarPanel(
     # textInput("text", label = "Biochemical text", value = "Convert H2O and p-aminophenylphosphocholine to p-aminophenol and choline phosphate, a reaction that is from the EC class 3.1.4.38. The cell also converted pyruvate to lactate."),
     textInput("text", label = "Biochemical text", value = ""),
-    textInput("url", label = "Internet location of text", value = "https://www.ncbi.nlm.nih.gov/pubmed/20564561?dopt=Abstract&report=abstract&format=text"),
+    # textInput("url", label = "Internet location of text", value = "https://www.ncbi.nlm.nih.gov/pubmed/20564561?dopt=Abstract&report=abstract&format=text"),
+    textInput("url", label = "Internet location of text", value = "http://www.nature.com/articles/ncomms5037"),
     fileInput("pdf", label = "PDF file")
   ),
   mainPanel(

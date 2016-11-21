@@ -40,6 +40,7 @@ object TextToRxns {
 
   val MIN_CHEM_NAME_LEN = 3
   val MAX_CHEM_COMBINATION_SZ = 2
+  val PICK_FIRST_K = 12
 
   val cofactors: List[String] = {
     val defaultMoleculeFormat = MoleculeFormat.strictNoStereoInchi
@@ -104,7 +105,8 @@ object TextToRxns {
     getRxnsFromURL(testURL)
 
     // test extractions from a PDF file
-    getRxnsFromPDF("/Volumes/shared-data/Saurabh/text2rxns/coli-paper.pdf")
+    // getRxnsFromPDF("/Volumes/shared-data/Saurabh/text2rxns/coli-paper.pdf")
+    getRxnsFromPDF("/Volumes/shared-data/Saurabh/text2rxns/limitedchems.pdf")
   }
 
   def getRxnsFrom(dataSrc: Option[InputType]): List[ValidatedRxn] = {
@@ -302,7 +304,7 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
     val (chems, cofactors) = extractChemicals(w3cDoc)
     println(s"Removed cofactors found [${cofactors.size}]: $cofactors")
     println(s"Finding reactions using [${chems.size}]: $chems")
-    val chemSubsets = limitedSzSubsets(chems)
+    val chemSubsets = limitedSzSubsets(chems.take(TextToRxns.PICK_FIRST_K))
     val subsProdCandidates = for (s <- chemSubsets; p <- chemSubsets; if (!s.equals(p))) yield (s, p)
     val passValidation = subsProdCandidates.map(passThroughEROs).filter(_.validatingROs != None)
     passValidation
@@ -328,7 +330,13 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
       case _ => Some(passingEros)
     }
 
-    new ValidatedRxn(substrates, products, validatingROs)
+    val mapped = new ValidatedRxn(substrates, products, validatingROs)
+
+    if (validatingROs.isDefined) {
+      println("Extracted: " + mapped)
+    }
+
+    mapped
   }
 
   def chemNameToInChI(name: String) = {
