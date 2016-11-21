@@ -57,7 +57,7 @@ public class Loader {
 
   // Target database and collection. We populate these with reachables
   private static final String TARGET_DATABASE = "wiki_reachables";
-  private static final String TARGET_COLLECTION = "reachablesv0";
+  private static final String TARGET_COLLECTION = "reachablesv1";
 
   private MongoDB db;
   private WordCloudGenerator wcGenerator;
