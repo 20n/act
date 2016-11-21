@@ -31,6 +31,7 @@ object reachables {
   private val OPTION_COFACTORS_FILE = "c"
   private val OPTION_REGRESSION_DIR = "r"
   private val OPTION_EXTRA_INFORMATION = "e"
+  private val OPTION_OUTPUT_DIRECTORY = "o"
 
   private def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -66,6 +67,12 @@ object reachables {
         hasArgs.valueSeparator(';').
         longOpt("extra").
         desc("Ensure chemicals with certain information are included."),
+
+      CliOption.builder(OPTION_OUTPUT_DIRECTORY).
+        hasArg.
+        longOpt("output-dir").
+        desc("Ensure chemicals with certain information are included."),
+
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -116,13 +123,14 @@ object reachables {
       Option(params.getOptionValues(OPTION_EXTRA_INFORMATION)),
       Option(params.getOptionValue(OPTION_REGRESSION_DIR)),
       params.getOptionValue(OPTION_NATIVES_FILE),
-      Option(params.getOptionValue(OPTION_COFACTORS_FILE)))
+      Option(params.getOptionValue(OPTION_COFACTORS_FILE)),
+      Option(params.getOptionValue(OPTION_OUTPUT_DIRECTORY)))
   }
 
   def writeReachableTree(prefix: String, needSeq: Boolean, extraInformation: Option[Array[String]],
-                        regressionDir: Option[String],
-                        nativesFile: String,
-                        cofactorsFile: Option[String]) {
+                         regressionDir: Option[String],
+                         nativesFile: String,
+                         cofactorsFile: Option[String], outputFile: Option[String]) {
     // Connect to the DB so that extended attributes for chemicals can be fetched as we serialize.
     val db = new MongoDB("localhost", 27017, "validator_profiling_2")
 
@@ -157,6 +165,10 @@ object reachables {
       null
     }
 
+    val outputDirectory = outputFile match {
+      case Some(x) => outputFile.get
+      case None => null
+    }
 
     /* --------------- Construct Reachable Tree ------------------ */
     // set parameter for whether we want to exclude rxns that dont have seq
@@ -185,7 +197,7 @@ object reachables {
 
     // serialize ActData, which contains a summary of the relevant act
     // data and the corresponding computed reachables state
-    ActData.instance.serialize(s"$prefix.actdata")
+    ActData.instance.serialize(new File(outputDirectory, s"$prefix.actdata").getAbsolutePath)
   }
 
   def runRegression(reachable_inchis: Set[String], test_file: String, output_report_dir: String) {
