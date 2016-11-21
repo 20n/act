@@ -1685,7 +1685,7 @@ public class MongoDB {
 
     BasicDBObject conditions = new BasicDBObject("$or", conditionList);
 
-    return constructCursorForMatchingChemicals("InChI", conditions, new BasicDBObject("_id", true));
+    return this.dbChemicals.find(new BasicDBObject("InChI", conditions));
   }
 
   private DBCursor constructCursorForAllChemicals() {
