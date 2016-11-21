@@ -13,13 +13,25 @@ emptyPNG <- "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJA
 server <- function(input, output, session) {
   reactions <- reactive({
     shiny::validate(
-      need(input$text != "", "Please input text!")
+      need(input$text != "" || input$url != "" || input$pdf != "", "Please input text!")
     )
 
-    rxns <- extractFrom(input$text)
-    num_rxns <- rxns$size() - 1
-
     acc <- c()
+
+    print(paste("text:", input$text))
+    print(paste("pdf:", input$pdf))
+    print(paste("url:", input$url))
+    if (input$text != "") {
+      print("Extracting rxns from plain text")
+      rxns <- extractFromPlainText(input$text)
+    } else if (input$url != "") {
+      print("Extracting rxns from url")
+      rxns <- extractFromURL(input$url)
+    }
+
+    num_rxns <- rxns$size() - 1
+    print(paste("Found reactions. Count:", num_rxns))
+
     for (rxnid in 0:num_rxns) {
       rxn <- rxns$apply(rxnid)
 
@@ -129,8 +141,9 @@ server <- function(input, output, session) {
 ui <- pageWithSidebar(
   headerPanel('20n Biochemical Reactions Miner'),
   sidebarPanel(
-    textInput("text", label = "Biochemical text", value = "Convert H2O and p-aminophenylphosphocholine to p-aminophenol and choline phosphate, a reaction that is from the EC class 3.1.4.38. The cell also converted pyruvate to lactate."),
-    textInput("url", label = "Internet location of text", value = ""),
+    # textInput("text", label = "Biochemical text", value = "Convert H2O and p-aminophenylphosphocholine to p-aminophenol and choline phosphate, a reaction that is from the EC class 3.1.4.38. The cell also converted pyruvate to lactate."),
+    textInput("text", label = "Biochemical text", value = ""),
+    textInput("url", label = "Internet location of text", value = "https://www.ncbi.nlm.nih.gov/pubmed/20564561?dopt=Abstract&report=abstract&format=text"),
     fileInput("pdf", label = "PDF file")
   ),
   mainPanel(
