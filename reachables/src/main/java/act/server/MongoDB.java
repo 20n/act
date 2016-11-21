@@ -1672,8 +1672,17 @@ public class MongoDB {
 
   public DBCursor getIdCursorForFakeChemicals() {
     DBObject fakeRegex = new BasicDBObject();
+    DBObject abstractInchi = new BasicDBObject();
     fakeRegex.put("$regex", "^InChI=/FAKE");
-    return constructCursorForMatchingChemicals("InChI", fakeRegex, new BasicDBObject("_id", true));
+    abstractInchi.put("$regex", "R");
+
+    BasicDBList conditionList = new BasicDBList();
+    conditionList.add(fakeRegex);
+    conditionList.add(abstractInchi);
+
+    BasicDBObject conditions = new BasicDBObject("$OR", conditionList);
+
+    return constructCursorForMatchingChemicals("InChI", conditions, new BasicDBObject("_id", true));
   }
 
   private DBCursor constructCursorForAllChemicals() {
