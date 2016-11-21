@@ -1,8 +1,14 @@
 package act.installer.reachablesexplorer;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.mongojack.ObjectId;
 
 public class SequenceData implements Comparable<SequenceData> {
+
+  @ObjectId
+  @JsonProperty("_id")
+  private Long id;
+
   @JsonProperty("organism_name")
   private String organismName;
 
@@ -17,6 +23,14 @@ public class SequenceData implements Comparable<SequenceData> {
   public SequenceData(String organismName, String sequence) {
     this.organismName = organismName;
     this.sequence = sequence;
+  }
+
+  public Long getId() {
+    return id;
+  }
+
+  private void setId(Long id) {
+    this.id = id;
   }
 
   public String getOrganismName() {

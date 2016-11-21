@@ -25,6 +25,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.mongojack.JacksonDBCollection;
+import org.mongojack.WriteResult;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -59,6 +60,7 @@ public class Loader {
   // Target database and collection. We populate these with reachables
   private static final String TARGET_DATABASE = "wiki_reachables";
   private static final String TARGET_COLLECTION = "reachablesv0";
+  private static final String SEQUENCE_COLLECTION = "sequencesv0";
 
   private static final int ORGANISM_CACHE_SIZE = 1000;
   private static final float ORGANISM_CACHE_LOAD = 1.0f;
@@ -69,6 +71,7 @@ public class Loader {
 
   private DBCollection reachablesCollection;
   private JacksonDBCollection<Reachable, String> jacksonReachablesCollection;
+  private JacksonDBCollection<SequenceData, Long> jacksonSequenceCollection;
   private L2InchiCorpus inchiCorpus;
 
   private final LinkedHashMap<Long, String> organismCache =
@@ -98,6 +101,10 @@ public class Loader {
     DB reachables = mongoClient.getDB(TARGET_DATABASE);
     reachablesCollection = reachables.getCollection(TARGET_COLLECTION);
     jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
+    jacksonSequenceCollection =
+        JacksonDBCollection.wrap(reachables.getCollection(SEQUENCE_COLLECTION), SequenceData.class, Long.class);
+    jacksonSequenceCollection.createIndex(new BasicDBObject("sequence", 1));
+    jacksonSequenceCollection.createIndex(new BasicDBObject("organism_name", 1));
   }
 
   public static void main(String[] args) throws IOException {
@@ -440,7 +447,12 @@ public class Loader {
         if (!thisRxnSubstrates.isEmpty()) {
           List<SequenceData> rxnSequences =
               extractOrganismsAndSequencesForReactions(Collections.singleton(obj.getLong("rxnid")));
-          precursors.add(new Precursor(thisRxnSubstrates, "reachables", rxnSequences));
+          List<Long> sequenceIds = new ArrayList<>();
+          for (SequenceData seq : rxnSequences) {
+            WriteResult<SequenceData, Long> result = jacksonSequenceCollection.insert(seq);
+            sequenceIds.add(result.getSavedId());
+          }
+          precursors.add(new Precursor(thisRxnSubstrates, "reachables", sequenceIds));
         }
       }
 

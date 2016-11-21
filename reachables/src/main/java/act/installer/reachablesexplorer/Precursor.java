@@ -16,12 +16,12 @@ class Precursor implements Serializable {
     private String source;
 
     @JsonProperty("sequences")
-    private List<SequenceData> sequences;
+    private List<Long> sequences;
 
     @JsonCreator
     public Precursor(@JsonProperty("precursor_inchis") List<InchiDescriptor> precursorMolecules,
                      @JsonProperty("source") String source,
-                     @JsonProperty("sequences") List<SequenceData> sequences) {
+                     @JsonProperty("sequences") List<Long> sequences) {
         this.precursorMolecules = precursorMolecules;
         this.source = source;
         this.sequences = sequences;
@@ -38,7 +38,7 @@ class Precursor implements Serializable {
     }
 
     @JsonIgnore
-    public List<SequenceData> getSequences() {
+    public List<Long> getSequences() {
         return sequences;
     }
 
