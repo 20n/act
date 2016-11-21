@@ -1670,7 +1670,7 @@ public class MongoDB {
     return chems;
   }
 
-  public DBCursor getIdCursorForFakeChemicals() {
+  public DBIterator getIdCursorForFakeChemicals() {
     DBObject fakeRegex = new BasicDBObject();
     DBObject abstractInchi = new BasicDBObject();
     fakeRegex.put("$regex", "^InChI=/FAKE");
@@ -1682,7 +1682,7 @@ public class MongoDB {
 
     BasicDBObject conditions = new BasicDBObject("$or", conditionList);
 
-    return this.dbChemicals.find(new BasicDBObject("InChI", conditions));
+    return getIteratorOverChemicals(conditions, true, new BasicDBObject("_id", true));
   }
 
   private DBCursor constructCursorForAllChemicals() {
