@@ -110,7 +110,6 @@ object TextToRxns {
   def getRxnsFrom(dataSrc: Option[InputType]): List[ValidatedRxn] = {
     val extractor = new TextToRxns
     val rxns = extractor.extract(dataSrc)
-    println("(scala side) rxns.size = " + rxns.size)
     extractor.flushWebCache
     rxns
   }

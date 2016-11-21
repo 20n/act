@@ -13,7 +13,7 @@ emptyPNG <- "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJA
 server <- function(input, output, session) {
   reactions <- reactive({
     shiny::validate(
-      need(input$text != "" || input$url != "" || input$pdf != "", "Please input text!")
+      need(input$text != "" || input$url != "" || !is.null(input$pdf), "Please input text!")
     )
 
     acc <- c()
@@ -27,18 +27,27 @@ server <- function(input, output, session) {
     } else if (input$url != "") {
       print("Extracting rxns from url")
       rxns <- extractFromURL(input$url)
+    } else if (!is.null(input$pdf)) {
+      print("Extracting rxns from pdf")
+      print(paste("PDF:", input$pdf$datapath))
+      rxns <- extractFromPDF(input$pdf$datapath)
     }
 
-    num_rxns <- rxns$size() - 1
-    print(paste("Found reactions. Count:", num_rxns))
+    if (rxns$size() > 0) {
+      print(paste("Found reactions. Count:", rxns$size()))
+      num_rxns <- rxns$size() - 1
 
-    for (rxnid in 0:num_rxns) {
-      rxn <- rxns$apply(rxnid)
+      for (rxnid in 0:num_rxns) {
+        rxn <- rxns$apply(rxnid)
 
-      rxnDesc <- rxn$apply(0L)
-      rxnImg <- rxn$apply(1L)
-      newR <- c(rxnDesc, rxnImg)
-      acc <- cbind(acc, newR)
+        rxnDesc <- rxn$apply(0L)
+        rxnImg <- rxn$apply(1L)
+        newR <- c(rxnDesc, rxnImg)
+        acc <- cbind(acc, newR)
+      }
+    } else {
+      # we need to add an empty column, other exceptions are thrown downstream
+      acc <- cbind(acc, c("No reactions extracted!", ""))
     }
 
     acc
