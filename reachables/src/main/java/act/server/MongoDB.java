@@ -1683,7 +1683,7 @@ public class MongoDB {
     conditionList.add(fakeRegex);
     conditionList.add(abstractInchi);
 
-    BasicDBObject conditions = new BasicDBObject("$OR", conditionList);
+    BasicDBObject conditions = new BasicDBObject("$or", conditionList);
 
     return constructCursorForMatchingChemicals("InChI", conditions, new BasicDBObject("_id", true));
   }
