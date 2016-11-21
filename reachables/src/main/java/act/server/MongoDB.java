@@ -1674,7 +1674,7 @@ public class MongoDB {
     DBObject fakeRegex = new BasicDBObject();
     DBObject abstractInchi = new BasicDBObject();
     fakeRegex.put("$regex", "^InChI=/FAKE");
-    abstractInchi.put("$regex", "R");
+    abstractInchi.put("$regex", "^InChI=.*\\/.*R.*\\/\"");
 
     BasicDBList conditionList = new BasicDBList();
     conditionList.add(fakeRegex);
