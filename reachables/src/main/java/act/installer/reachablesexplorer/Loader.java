@@ -52,12 +52,12 @@ public class Loader {
   private static final String VALIDATOR_PROFILING_DATABASE = "validator_profiling_2";
 
   // Default host. If running on a laptop, please set a SSH bridge to access speeakeasy
-  private static final String DEFAULT_HOST = "localhost";
+  private static final String DEFAULT_HOST = "speakeasy";
   private static final Integer DEFAULT_PORT = 27017;
 
   // Target database and collection. We populate these with reachables
   private static final String TARGET_DATABASE = "wiki_reachables";
-  private static final String TARGET_COLLECTION = "reachablesv1";
+  private static final String TARGET_COLLECTION = "reachablesv0";
 
   private MongoDB db;
   private WordCloudGenerator wcGenerator;
@@ -89,8 +89,9 @@ public class Loader {
   public static void main(String[] args) throws IOException {
 
     Loader loader = new Loader();
+    loader.updateMoleculeRenderings();
     //loader.updateFromReachablesFile(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data","c13038.json"));
-    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
+    //loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
   }
 
   /**
