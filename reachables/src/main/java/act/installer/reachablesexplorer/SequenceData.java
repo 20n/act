@@ -7,7 +7,7 @@ public class SequenceData implements Comparable<SequenceData> {
 
   @ObjectId
   @JsonProperty("_id")
-  private Long id;
+  private String id;
 
   @JsonProperty("organism_name")
   private String organismName;
@@ -25,11 +25,11 @@ public class SequenceData implements Comparable<SequenceData> {
     this.sequence = sequence;
   }
 
-  public Long getId() {
+  public String getId() {
     return id;
   }
 
-  private void setId(Long id) {
+  private void setId(String id) {
     this.id = id;
   }
 

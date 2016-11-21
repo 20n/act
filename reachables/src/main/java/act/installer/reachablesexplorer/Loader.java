@@ -71,7 +71,7 @@ public class Loader {
 
   private DBCollection reachablesCollection;
   private JacksonDBCollection<Reachable, String> jacksonReachablesCollection;
-  private JacksonDBCollection<SequenceData, Long> jacksonSequenceCollection;
+  private JacksonDBCollection<SequenceData, String> jacksonSequenceCollection;
   private L2InchiCorpus inchiCorpus;
 
   private final LinkedHashMap<Long, String> organismCache =
@@ -102,8 +102,8 @@ public class Loader {
     reachablesCollection = reachables.getCollection(TARGET_COLLECTION);
     jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
     jacksonSequenceCollection =
-        JacksonDBCollection.wrap(reachables.getCollection(SEQUENCE_COLLECTION), SequenceData.class, Long.class);
-    jacksonSequenceCollection.createIndex(new BasicDBObject("sequence", 1));
+        JacksonDBCollection.wrap(reachables.getCollection(SEQUENCE_COLLECTION), SequenceData.class, String.class);
+    jacksonSequenceCollection.createIndex(new BasicDBObject("sequence", "hashed"));
     jacksonSequenceCollection.createIndex(new BasicDBObject("organism_name", 1));
   }
 
@@ -447,9 +447,9 @@ public class Loader {
         if (!thisRxnSubstrates.isEmpty()) {
           List<SequenceData> rxnSequences =
               extractOrganismsAndSequencesForReactions(Collections.singleton(obj.getLong("rxnid")));
-          List<Long> sequenceIds = new ArrayList<>();
+          List<String> sequenceIds = new ArrayList<>();
           for (SequenceData seq : rxnSequences) {
-            WriteResult<SequenceData, Long> result = jacksonSequenceCollection.insert(seq);
+            WriteResult<SequenceData, String> result = jacksonSequenceCollection.insert(seq);
             sequenceIds.add(result.getSavedId());
           }
           precursors.add(new Precursor(thisRxnSubstrates, "reachables", sequenceIds));
