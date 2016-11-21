@@ -167,14 +167,11 @@ public class LoadAct extends SteppedTask {
       // cofactors are ONLY in the cofactors group.
       ActData.instance().rxnSubstrates.put(rxnid, incomingCofactors);
       ActData.instance().rxnSubstratesCofactors.put(rxnid, new HashSet<>());
-    } else if (incoming.isEmpty() && !substrates.isEmpty()) {
-      // Junk reaction, contains an abstract or too large InChI.  We don't want to falsly put forward a reaction, so we make it have no substrates at all.
-      ActData.instance().rxnSubstrates.put(rxnid, incoming);
-      ActData.instance().rxnSubstratesCofactors.put(rxnid, incomingCofactors);
     } else {
       ActData.instance().rxnSubstrates.put(rxnid, incoming);
       ActData.instance().rxnSubstratesCofactors.put(rxnid, incomingCofactors);
     }
+
     ActData.instance().rxnProducts.put(rxnid, outgoing);
     ActData.instance().rxnProductsCofactors.put(rxnid, outgoingCofactors);
 
