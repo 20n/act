@@ -10,6 +10,8 @@ import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
+import scala.util.Random
+
 trait BasicSparkROProjector extends ProjectorCliHelper {
   /**
     * The most basic SparkROProjector, contains the abstract methods that each actual projector will implement.
@@ -25,19 +27,19 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
   val HELP_MESSAGE = "A Spark job that will project the set of validation ROs over a group of substrates.  " +
     s"You are currently running the projector version $runningClass"
   protected val DEFAULT_SPARK_MASTER = "spark://spark-master:7077"
-  private val LOGGER = LogManager.getLogger(runningClass)
+  private val LOGGER = LogManager.getLogger(getClass)
 
   // TODO Careful, this also changes our logger's status.
   private val SPARK_LOG_LEVEL = "INFO"
 
   // These two methods handle the input of molecules into the projector and the command line args associated with that.
   def getInputMolecules(cli: CommandLine): Stream[Stream[String]]
-
   def getInputCommandLineOptions: List[CliOption.Builder]
 
   // These two methods handle the output of projection results and the command line args associated with that.
-  def getTerminationCommandLineOptions: List[CliOption.Builder]
   def handleTermination(cli: CommandLine)(results: Stream[ProjectionResult])
+
+  def getTerminationCommandLineOptions: List[CliOption.Builder]
 
   final def main(args: Array[String]): Unit = {
     // Parse CLI options
@@ -103,11 +105,19 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     cli.getOptionValue(OPTION_SPARK_MASTER, DEFAULT_SPARK_MASTER)
   }
 
-  private def isExhaustive(cli: CommandLine): Boolean = {
-    cli.hasOption(OPTION_EXHAUSTIVE)
+  private def callProjector(cli: CommandLine)
+                           (spark: SparkContext, validInchis: Stream[Stream[String]]): Stream[ProjectionResult] = {
+    /* ------ Projection ------- */
+    LOGGER.warn(s"Starting execution.  Substrate Groups Count: ${validInchis.length}")
+    // PROJECT!  Run ERO projection over all InChIs.
+    closedScopeProjection(getChemaxonLicenseFile(cli).getName)(isReverse(cli), isExhaustive(cli))(spark, validInchis)
   }
 
   /* ----- Ordered methods by the processing that happens in main ------ */
+
+  private def isExhaustive(cli: CommandLine): Boolean = {
+    cli.hasOption(OPTION_EXHAUSTIVE)
+  }
 
   private def isReverse(cli: CommandLine): Boolean = {
     cli.hasOption(OPTION_REVERSE)
@@ -115,14 +125,6 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
 
   private def getChemaxonLicenseFile(cli: CommandLine): File = {
     new File(cli.getOptionValue(OPTION_LICENSE_FILE))
-  }
-
-  private def callProjector(cli: CommandLine)
-                           (spark: SparkContext, validInchis: Stream[Stream[String]]): Stream[ProjectionResult] = {
-    /* ------ Projection ------- */
-    LOGGER.warn(s"Starting execution.  Substrate Groups Count: ${validInchis.length}")
-    // PROJECT!  Run ERO projection over all InChIs.
-    closedScopeProjection(getChemaxonLicenseFile(cli).getName)(isReverse(cli), isExhaustive(cli))(spark, validInchis)
   }
 
   private def closedScopeProjection(licenseFileName: String)
@@ -141,7 +143,9 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     val chunkSize = 100
     val groupSize: Int = (validInchis.length / chunkSize) + 1
 
-    val inchiRDD: RDD[Seq[String]] = spark.makeRDD(validInchis, groupSize)
+    // We shuffle before putting into the RDD as it is likely that large InChIs will be placed next to each other,
+    // exacerbating the runtime problems that they can pose.
+    val inchiRDD: RDD[Seq[String]] = spark.makeRDD(Random.shuffle(validInchis), groupSize)
     val resultRdd: RDD[ProjectionResult] = inchiRDD.flatMap(seqMapper)
     collectAndPersistRdd(resultRdd)
   }
@@ -186,7 +190,17 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
      */
     val resultCount: Long = results.persist().count()
     LOGGER.warn(s"Projection completed with $resultCount results")
-    results.toLocalIterator.toStream
+    // Use the to list to collect everything
+    // TODO Work out a way so that we can do blocking operations
+    // in spark so that it can be done in parallel across the cluster
+    val resultingStream = results.toLocalIterator.toList.toStream
+    cleanup(results)
+    resultingStream
+  }
+
+  private def cleanup(resultsRDD: RDD[ProjectionResult]): Unit = {
+    LOGGER.info("Cleaning up data.  Should finish soon.")
+    resultsRDD.unpersist()
   }
 
   final def getCommandLineOptions: List[CliOption.Builder] = {
@@ -241,10 +255,5 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
       */
     if (suppliedInchiLists.isEmpty) Stream(Stream.empty)
     else suppliedInchiLists.head.flatMap(i => combinationList(suppliedInchiLists.tail).map(i #:: _))
-  }
-
-  private def cleanup(resultsRDD: RDD[ProjectionResult]): Unit = {
-    LOGGER.info("Cleaning up data.  Should finish soon.")
-    resultsRDD.unpersist()
   }
 }
