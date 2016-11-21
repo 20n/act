@@ -10,8 +10,10 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -86,11 +88,34 @@ public class WordCloudGenerator {
 
     File wordcloud = Paths.get(ASSETS_LOCATION, wordcloudFilename).toFile();
 
-    if (!Files.exists(wordcloud.toPath())) {
+
+    LOGGER.info("Generating wordcloud by running %s", String.format("Rscript %s \"%s\" %s %s %s", rScript.getAbsolutePath(), inchi, wordcloud.getAbsolutePath(), host, port));
+    if (!wordcloud.exists()) {
       try {
         // TODO: this call a CL to run the R script. Maybe use Rengine instead?
-        String cmd = String.format("Rscript %s %s %s %s %s", rScript.getAbsolutePath(), inchi, wordcloud.getAbsolutePath(), host, port);
-        rt.exec(cmd);
+        String cmd = String.format("Rscript %s \"%s\" %s %s %s", rScript.getAbsolutePath(), inchi, wordcloud.getAbsolutePath(), host, port);
+        Process p = rt.exec(cmd);
+        BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
+        String line = null;
+
+        try {
+          while ((line = input.readLine()) != null) {
+            System.out.println(line);
+          }
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+
+        BufferedReader output = new BufferedReader(new InputStreamReader(p.getErrorStream()));
+        line = null;
+
+        try {
+          while ((line = output.readLine()) != null) {
+            System.out.println(line);
+          }
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
         FileChecker.verifyInputFile(wordcloud);
       } catch (IOException e) {
         LOGGER.error("Unable to generate wordcloud for %s at location %s", inchi, wordcloud.toPath().toString());

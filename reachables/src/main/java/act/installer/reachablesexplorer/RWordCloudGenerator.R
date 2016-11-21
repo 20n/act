@@ -25,7 +25,7 @@ db <- mongo(collection = collectionName,
               databaseName))
 
 
-result <- db$find(sprintf('{"InChI": "%s"}', input.inchi))
+result <- db$find(sprintf('{"InChI": %s}', input.inchi))
 
 
 usage.terms.urls <- as.data.frame(result$xref$BING$metadata$usage_terms)
