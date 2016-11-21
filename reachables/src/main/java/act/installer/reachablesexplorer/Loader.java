@@ -90,6 +90,7 @@ public class Loader {
     DB reachables = mongoClient.getDB(targetDB);
     reachablesCollection = reachables.getCollection(targetCollection);
     jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
+    jacksonReachablesCollection.ensureIndex(new BasicDBObject("inchi", "hashed"));
   }
 
 
@@ -103,6 +104,7 @@ public class Loader {
     jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
     jacksonSequenceCollection =
         JacksonDBCollection.wrap(reachables.getCollection(SEQUENCE_COLLECTION), SequenceData.class, String.class);
+    jacksonReachablesCollection.ensureIndex(new BasicDBObject("inchi", "hashed"));
     jacksonSequenceCollection.createIndex(new BasicDBObject("sequence", "hashed"));
     jacksonSequenceCollection.createIndex(new BasicDBObject("organism_name", 1));
   }
