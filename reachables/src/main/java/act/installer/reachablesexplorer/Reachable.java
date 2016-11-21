@@ -41,6 +41,8 @@ public class Reachable {
   private Map<Chemical.REFS, BasicDBObject> xref;
   @JsonProperty("page_name")
   private String pageName;
+  @JsonProperty("synonyms")
+  private SynonymData synonyms;
 
   public Reachable() {}
 
@@ -96,7 +98,8 @@ public class Reachable {
                    @JsonProperty("precursor") PrecursorData precursors,
                    @JsonProperty("is_native") Boolean isNative,
                    @JsonProperty("pathway_vis") String dotGraph,
-                   @JsonProperty("xref") Map<Chemical.REFS, BasicDBObject> xref) {
+                   @JsonProperty("xref") Map<Chemical.REFS, BasicDBObject> xref,
+                   @JsonProperty("synonyms") SynonymData synonyms) {
     this.pageName = pageName;
     this.inchi = inchi;
     this.smiles = smiles;
@@ -107,6 +110,7 @@ public class Reachable {
     this.xref = xref;
     this.isNative = isNative;
     this.dotGraph = dotGraph;
+    this.synonyms = synonyms;
   }
 
   public void setIsNative(Boolean isNative) {
@@ -193,4 +197,15 @@ public class Reachable {
   public void setWordCloudFilename(String wordCloudFilename) {
     this.wordCloudFilename = wordCloudFilename;
   }
+
+  @JsonIgnore
+  public SynonymData getSynonyms() {
+    return synonyms;
+  }
+
+  @JsonIgnore
+  public void setSynonyms(SynonymData synonyms) {
+    this.synonyms = synonyms;
+  }
+
 }

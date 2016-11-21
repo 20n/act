@@ -1,6 +1,9 @@
 package act.installer.reachablesexplorer;
 
 
+import act.installer.pubchem.MeshTermType;
+import act.installer.pubchem.PubchemMeshSynonyms;
+import act.installer.pubchem.PubchemSynonymType;
 import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Seq;
@@ -59,7 +62,7 @@ public class Loader {
 
   // Target database and collection. We populate these with reachables
   private static final String TARGET_DATABASE = "wiki_reachables";
-  private static final String TARGET_COLLECTION = "reachablesv3";
+  private static final String TARGET_COLLECTION = "reachablesv4";
   private static final String SEQUENCE_COLLECTION = "sequencesv0";
 
   private static final int ORGANISM_CACHE_SIZE = 1000;
@@ -72,6 +75,7 @@ public class Loader {
   private DBCollection reachablesCollection;
   private JacksonDBCollection<Reachable, String> jacksonReachablesCollection;
   private JacksonDBCollection<SequenceData, String> jacksonSequenceCollection;
+  private PubchemMeshSynonyms pubchemSynonymsDriver;
   private L2InchiCorpus inchiCorpus;
 
   private final LinkedHashMap<Long, String> organismCache =
@@ -85,6 +89,7 @@ public class Loader {
   public Loader(String host, Integer port, String targetDB, String targetCollection) throws UnknownHostException {
     db = new MongoDB(host, port, VALIDATOR_PROFILING_DATABASE);
     wcGenerator = new WordCloudGenerator(host, port, ACTV01_DATABASE);
+    pubchemSynonymsDriver = new PubchemMeshSynonyms();
 
     MongoClient mongoClient = new MongoClient(new ServerAddress(host, port));
     DB reachables = mongoClient.getDB(targetDB);
@@ -97,6 +102,7 @@ public class Loader {
   public Loader() throws UnknownHostException {
     db = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, VALIDATOR_PROFILING_DATABASE);
     wcGenerator = new WordCloudGenerator(DEFAULT_HOST, DEFAULT_PORT, ACTV01_DATABASE);
+    pubchemSynonymsDriver = new PubchemMeshSynonyms();
 
     MongoClient mongoClient = new MongoClient(new ServerAddress(DEFAULT_HOST, DEFAULT_PORT));
     DB reachables = mongoClient.getDB(TARGET_DATABASE);
@@ -113,6 +119,7 @@ public class Loader {
 
     Loader loader = new Loader();
     loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
+    loader.updatePubchemSynonyms();
 
   }
 
@@ -245,6 +252,24 @@ public class Loader {
     String renderingFilename = MoleculeRenderer.generateRendering(reachable.getInchi());
     LOGGER.info("Generated rendering at %s", renderingFilename);
     reachable.setStructureFilename(renderingFilename);
+    upsert(reachable);
+  }
+
+  public void updateReachableWithSynonyms(Reachable reachable) {
+    String inchi = reachable.getInchi();
+    String compoundID = pubchemSynonymsDriver.fetchCIDFromInchi(inchi);
+    Map<MeshTermType, List<String>> meshSynonyms = pubchemSynonymsDriver.fetchMeshTermsFromCID(compoundID).
+        entrySet().stream().
+        collect(Collectors.toMap(
+            Map.Entry::getKey,
+            e -> new ArrayList<>(e.getValue())));
+    Map<PubchemSynonymType, List<String>> pubchemSynonyms = pubchemSynonymsDriver.fetchPubchemSynonymsFromCID(compoundID).
+        entrySet().stream().
+        collect(Collectors.toMap(
+            Map.Entry::getKey,
+            e -> new ArrayList<>(e.getValue())));
+    SynonymData synonymData = new SynonymData(pubchemSynonyms, meshSynonyms);
+    reachable.setSynonyms(synonymData);
     upsert(reachable);
   }
 
@@ -559,6 +584,29 @@ public class Loader {
       Reachable reachable = queryByInchi(inchi);
       if (reachable.getStructureFilename() == null) {
         updateReachableWithRendering(reachable);
+      }
+    }
+  }
+
+  public void updatePubchemSynonyms() {
+
+    PubchemMeshSynonyms synonyms = new PubchemMeshSynonyms();
+
+
+    List<String> inchis = jacksonReachablesCollection.distinct("inchi");
+    LOGGER.info("Found %d inchis in the database", inchis.size());
+
+    int i = 0;
+    for (String inchi : inchis) {
+
+      Reachable reachable = queryByInchi(inchi);
+      if (reachable.getSynonyms() == null) {
+        updateReachableWithSynonyms(reachable);
+      }
+
+
+      if (++i % 100 == 0) {
+        LOGGER.info("#%d", i);
       }
     }
   }
