@@ -3,15 +3,12 @@ package com.act.biointerpretation.l2expansion.sparkprojectors.io_handlers
 import java.io.File
 
 import com.act.biointerpretation.l2expansion.L2InchiCorpus
-import com.act.biointerpretation.l2expansion.sparkprojectors.BasicSparkROProjector
 import org.apache.commons.cli.{CommandLine, Option => CliOption}
-import org.apache.log4j.LogManager
 
 import scala.collection.JavaConverters._
 
-trait ReadFromSubstrateFile extends BasicSparkROProjector {
+trait ReadFromSubstrateFile extends BasicInput {
   val OPTION_SUBSTRATES_LISTS: String
-  private val LOGGER = LogManager.getLogger(getClass)
 
   final def getInputCommandLineOptions: List[CliOption.Builder] = {
     val options = List[CliOption.Builder](

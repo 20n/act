@@ -1,12 +1,11 @@
 package com.act.biointerpretation.l2expansion.sparkprojectors.io_handlers
 
 import act.installer.reachablesexplorer.ReachablesProjectionUpdate
-import com.act.biointerpretation.l2expansion.sparkprojectors.BasicSparkROProjector
 import com.act.biointerpretation.l2expansion.sparkprojectors.utility.ProjectionResult
 import com.mongodb.{DBCollection, Mongo}
 import org.apache.commons.cli.{CommandLine, Option => CliOption}
 
-trait WriteToDatabase extends BasicSparkROProjector {
+trait WriteToDatabase extends BasicOutput {
   val OPTION_WRITE_DB_NAME: String
   val OPTION_WRITE_DB_PORT: String
   val OPTION_WRITE_DB_HOST: String
@@ -43,7 +42,7 @@ trait WriteToDatabase extends BasicSparkROProjector {
     options
   }
 
-  final def handleTermination(cli: CommandLine)(results: Stream[ProjectionResult]) = {
+  final def handleOutput(cli: CommandLine)(results: Stream[ProjectionResult]) = {
     writeToDatabase(getWriteDbName(cli), getWriteDbPort(cli), getWriteDbHost(cli))(getWriteDbCollection(cli))(results)
   }
 

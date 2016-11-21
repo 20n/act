@@ -4,6 +4,7 @@ import java.io.File
 
 import chemaxon.license.LicenseManager
 import com.act.analysis.chemicals.molecules.{MoleculeFormat, MoleculeImporter}
+import com.act.biointerpretation.l2expansion.sparkprojectors.io_handlers.{BasicInput, BasicOutput}
 import com.act.biointerpretation.l2expansion.sparkprojectors.utility.{ProjectionResult, ProjectorCliHelper}
 import org.apache.commons.cli.{CommandLine, Option => CliOption}
 import org.apache.log4j.LogManager
@@ -12,7 +13,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.util.Random
 
-trait BasicSparkROProjector extends ProjectorCliHelper {
+trait BasicSparkROProjector extends BasicInput with BasicOutput with ProjectorCliHelper {
   /**
     * The most basic SparkROProjector, contains the abstract methods that each actual projector will implement.
     */
@@ -32,15 +33,6 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
   // TODO Careful, this also changes our logger's status.
   private val SPARK_LOG_LEVEL = "INFO"
 
-  // These two methods handle the input of molecules into the projector and the command line args associated with that.
-  def getInputMolecules(cli: CommandLine): Stream[Stream[String]]
-  def getInputCommandLineOptions: List[CliOption.Builder]
-
-  // These two methods handle the output of projection results and the command line args associated with that.
-  def handleTermination(cli: CommandLine)(results: Stream[ProjectionResult])
-
-  def getTerminationCommandLineOptions: List[CliOption.Builder]
-
   final def main(args: Array[String]): Unit = {
     // Parse CLI options
     val cli = parseCommandLine(args)
@@ -54,7 +46,7 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
     val results: Stream[ProjectionResult] = callProjector(cli)(spark, validInChIs)
 
     // Output projections
-    handleTermination(cli)(results)
+    handleOutput(cli)(results)
   }
 
   private def validateInChIs(combinations: Stream[Stream[String]]): Stream[Stream[String]] = {
@@ -245,15 +237,5 @@ trait BasicSparkROProjector extends ProjectorCliHelper {
 
       CliOption.builder(OPTION_HELP).argName("help").desc("Prints this help message").longOpt("help"))
     options
-  }
-
-  final protected def combinationList(suppliedInchiLists: Stream[Stream[String]]): Stream[Stream[String]] = {
-    /**
-      * Small utility function that takes in a streams and creates combinations of members of the multiple streams.
-      * For example, with two input streams of InChIs we would construct a new stream containing all the
-      * possible streams of size 2, where one element comes from each initial stream.
-      */
-    if (suppliedInchiLists.isEmpty) Stream(Stream.empty)
-    else suppliedInchiLists.head.flatMap(i => combinationList(suppliedInchiLists.tail).map(i #:: _))
   }
 }

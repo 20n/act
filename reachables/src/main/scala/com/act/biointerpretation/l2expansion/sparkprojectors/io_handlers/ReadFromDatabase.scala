@@ -1,12 +1,11 @@
 package com.act.biointerpretation.l2expansion.sparkprojectors.io_handlers
 
-import com.act.biointerpretation.l2expansion.sparkprojectors.BasicSparkROProjector
 import com.mongodb.{DBCollection, DBCursor, DBObject, Mongo}
 import org.apache.commons.cli.{CommandLine, Option => CliOption}
 
 import scala.collection.mutable.ArrayBuffer
 
-trait ReadFromDatabase extends BasicSparkROProjector {
+trait ReadFromDatabase extends BasicInput {
   val OPTION_READ_DB_NAME: String
   val OPTION_READ_DB_PORT: String
   val OPTION_READ_DB_HOST: String

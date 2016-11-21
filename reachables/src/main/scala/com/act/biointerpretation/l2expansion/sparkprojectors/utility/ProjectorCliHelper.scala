@@ -23,16 +23,6 @@ trait ProjectorCliHelper {
     new File(licenseFile)
   }
 
-  final def createOutputDirectory(directory: File): Unit = {
-    if (directory.exists() && !directory.isDirectory) {
-      LOGGER.error(s"Found file instead of directory at ${directory.getAbsolutePath}.")
-      exitWithHelp(buildOptions(getCommandLineOptions))
-    } else {
-      LOGGER.info(s"Creating output directory at ${directory.getAbsolutePath}")
-      directory.mkdirs()
-    }
-  }
-
   final def parseCommandLine(args: Array[String]): CommandLine = {
     val opts: Options = buildOptions(getCommandLineOptions)
     // Parse command line options
