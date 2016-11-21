@@ -2,7 +2,7 @@ package com.act.biointerpretation.l2expansion.sparkprojectors
 
 import com.act.biointerpretation.l2expansion.sparkprojectors.io_handlers.{ReadFromDatabase, WriteToDatabase}
 
-object DatabaseSparkRoProjector extends ReadFromDatabase with WriteToDatabase {
+object DatabaseSparkRoProjector extends BasicSparkROProjector with ReadFromDatabase with WriteToDatabase {
   val runningClass = getClass
 
   val OPTION_READ_DB_NAME: String = "rd"
