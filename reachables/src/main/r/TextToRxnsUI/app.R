@@ -28,7 +28,6 @@ server <- function(input, output, session) {
       newR <- c(rxnDesc, rxnImg)
       acc <- cbind(acc, newR)
     }
-    print("computed reactions, reactively!")
 
     acc
   })
@@ -130,7 +129,7 @@ server <- function(input, output, session) {
 ui <- pageWithSidebar(
   headerPanel('20n Biochemical Reactions Miner'),
   sidebarPanel(
-    textInput("text", label = "Biochemical text", value = "Convert p-aminophenylphosphocholine and H2O to p-aminophenol and choline phosphate in 3.1.4.38"),
+    textInput("text", label = "Biochemical text", value = "Convert H2O and p-aminophenylphosphocholine to p-aminophenol and choline phosphate, a reaction that is from the EC class 3.1.4.38. The cell also converted pyruvate to lactate."),
     textInput("url", label = "Internet location of text", value = ""),
     fileInput("pdf", label = "PDF file")
   ),
