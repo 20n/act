@@ -1676,8 +1676,8 @@ public class MongoDB {
   public DBIterator getIdCursorForFakeChemicals() {
     DBObject fakeRegex = new BasicDBObject();
     DBObject abstractInchi = new BasicDBObject();
-    fakeRegex.put("$regex", "^InChI=/FAKE");
-    abstractInchi.put("$regex", "^InChI=.*\\/.*R.*\\/\"");
+    fakeRegex.put("InChI", new BasicDBObject("$regex", "^InChI=/FAKE"));
+    abstractInchi.put("InChI", new BasicDBObject("$regex", "^InChI=.*\\/.*R.*\\/\""));
 
     BasicDBList conditionList = new BasicDBList();
     conditionList.add(fakeRegex);
