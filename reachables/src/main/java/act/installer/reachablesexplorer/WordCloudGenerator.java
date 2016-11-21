@@ -26,7 +26,7 @@ public class WordCloudGenerator {
    */
 
   private static final String RSCRIPT_LOCATION = "src/main/java/act/installer/reachablesexplorer/RWordCloudGenerator.R";
-  private static final String ASSETS_LOCATION = "/Volumes/data-level1/data/reachables-explorer-rendering-cache";
+  private static final String ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
   private static final Logger LOGGER = LogManager.getFormatterLogger(WordCloudGenerator.class);
   private static final String PNG_EXTENSION = ".png";
 
