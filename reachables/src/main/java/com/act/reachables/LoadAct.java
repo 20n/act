@@ -112,7 +112,6 @@ public class LoadAct extends SteppedTask {
 
   public static void addToNw(Reaction rxn) {
 
-
     /* --------------- Setup data on this particular reaction ------------------ */
 
     long rxnid = rxn.getUUID();
@@ -120,81 +119,6 @@ public class LoadAct extends SteppedTask {
     Set<Long> substrateCofactors = new HashSet<>(Arrays.asList(rxn.getSubstrateCofactors()));
     Set<Long> products = new HashSet<>(Arrays.asList(rxn.getProducts()));
     Set<Long> productCofactors = new HashSet<>(Arrays.asList(rxn.getProductCofactors()));
-
-
-    /* --------------- Add anything that doesn't exist to the ActData ------------------ */
-
-    substrates.
-            stream().
-            filter(p -> !ActData.instance().metaCycBigMolsOrRgrp.contains(p)).
-            forEach(ActData.instance().chemsReferencedInRxns::add);
-
-    products.
-            stream().
-            filter(p -> !ActData.instance().metaCycBigMolsOrRgrp.contains(p)).
-            forEach(ActData.instance().chemsReferencedInRxns::add);
-
-
-
-    /* --------------- Setup data structures to be used in ActData update ------------------ */
-
-    // If a reaction has no substrates but does include substrate cofactors, include it.
-    if (substrates.isEmpty() && !substrateCofactors.isEmpty() && !products.isEmpty()) {
-      List<Long> filteredProducts = products.stream().
-          filter(p -> !isCofactor(p) && !ActData.instance().metaCycBigMolsOrRgrp.contains(p)).
-          collect(Collectors.toList());
-
-      if (!filteredProducts.isEmpty()) {
-        substrateCofactors.
-                stream().
-                filter(LoadAct::isCofactor).
-                forEach(s -> {
-
-                  // Cofactor is now the substrate
-                  Node sub = Node.get(s, true);
-
-                  filteredProducts.
-                          stream().
-                          forEach(p -> {
-                            Node prd = Node.get(p, true);
-                            ActData.instance().Act.addNode(prd, p);
-                            ActData.instance().chemsInAct.put(p, prd);
-
-                            Edge r = Edge.get(sub, prd, true);
-                            ActData.instance().Act.addEdge(r);
-                });
-        });
-        logProgress("Installing reaction with zero substrates in separate ActData collection: %d\n", rxn.getUUID());
-        ActData.instance().noSubstrateRxnsToProducts.put(rxnid, new ArrayList<>(filteredProducts));
-      }
-    } else {
-      substrates.
-              stream().
-              filter(s -> isCofactor(s) || ActData.instance().metaCycBigMolsOrRgrp.contains(s)).
-              forEach(s -> {
-                Node sub = Node.get(s, true);
-                ActData.instance().chemsInAct.put(s, sub);
-                ActData.instance().Act.addNode(sub, s);
-                products.
-                        stream().
-                        filter(p -> isCofactor(p) || ActData.instance().metaCycBigMolsOrRgrp.contains(p)).
-                        forEach(p -> {
-                            // TODO: rxnECNumber rxnEasyDesc and rxnDataSource are only used
-                            // for information in cascades output. Do not load them during
-                            // reachables computation....
-                            // TODO: There is no reason to load all 5M of them either. cascades
-                            // only needs the ones that are referenced in the reachables computation
-                            // anySmallMoleculeEdges = true;
-
-                            Node prd = Node.get(p, true);
-                            ActData.instance().Act.addNode(prd, p);
-                            ActData.instance().chemsInAct.put(p, prd);
-
-                            Edge r = Edge.get(sub, prd, true);
-                            ActData.instance().Act.addEdge(r);
-                        });
-              });
-    }
 
 
     /* --------------- Setup data structures to be used in ActData update ------------------ */
@@ -234,9 +158,6 @@ public class LoadAct extends SteppedTask {
     /* --------------- Update ActData ------------------ */
     // TODO Have some way of bundling all this ActData stuff up into more transparent state.
 
-    // add to internal copy of network
-    ActData.instance().rxnHasSeq.put(rxnid, rxn.hasProteinSeq());
-
     // If it has no substrates, but only cofactors, we effectively make the
     // cofactors the substrates as a way to resolve the 'blacklist' used in WavefrontExpansion correctly
     // We need the substrates to be empty otherwise we may end up adding fake reactions.
@@ -246,6 +167,10 @@ public class LoadAct extends SteppedTask {
       // cofactors are ONLY in the cofactors group.
       ActData.instance().rxnSubstrates.put(rxnid, incomingCofactors);
       ActData.instance().rxnSubstratesCofactors.put(rxnid, new HashSet<>());
+    } else if (incoming.isEmpty() && !substrates.isEmpty()) {
+      // Junk reaction, contains an abstract or too large InChI.  We don't want to falsly put forward a reaction, so we make it have no substrates at all.
+      ActData.instance().rxnSubstrates.put(rxnid, incoming);
+      ActData.instance().rxnSubstratesCofactors.put(rxnid, incomingCofactors);
     } else {
       ActData.instance().rxnSubstrates.put(rxnid, incoming);
       ActData.instance().rxnSubstratesCofactors.put(rxnid, incomingCofactors);
@@ -265,6 +190,9 @@ public class LoadAct extends SteppedTask {
         ActData.instance().rxnsThatProduceChem.put(p, new HashSet<>());
       ActData.instance().rxnsThatProduceChem.get(p).add(rxnid);
     });
+
+    // add to internal copy of network
+    ActData.instance().rxnHasSeq.put(rxnid, rxn.hasProteinSeq());
 
     // now see if this is a new "class" of rxn,
     // we only use classes to expand reactions
@@ -288,6 +216,81 @@ public class LoadAct extends SteppedTask {
           ActData.instance().rxnClassesThatProduceChem.put(p, new HashSet<>());
         ActData.instance().rxnClassesThatProduceChem.get(p).add(rxnid);
       }
+    }
+
+    /* --------------- Add anything that doesn't exist to the ActData ------------------ */
+
+    substrates.
+            stream().
+            filter(p -> !ActData.instance().metaCycBigMolsOrRgrp.contains(p)).
+            forEach(ActData.instance().chemsReferencedInRxns::add);
+
+    products.
+            stream().
+            filter(p -> !ActData.instance().metaCycBigMolsOrRgrp.contains(p)).
+            forEach(ActData.instance().chemsReferencedInRxns::add);
+
+
+
+    /* --------------- Setup data structures to be used in ActData update ------------------ */
+
+    // If a reaction has no substrates but does include substrate cofactors, include it.
+    if (substrates.isEmpty() && !substrateCofactors.isEmpty() && !products.isEmpty()) {
+      List<Long> filteredProducts = products.stream().
+              filter(p -> !isCofactor(p) && !ActData.instance().metaCycBigMolsOrRgrp.contains(p)).
+              collect(Collectors.toList());
+
+      if (!filteredProducts.isEmpty()) {
+        substrateCofactors.
+                stream().
+                filter(LoadAct::isCofactor).
+                forEach(s -> {
+
+                  // Cofactor is now the substrate
+                  Node sub = Node.get(s, true);
+
+                  filteredProducts.
+                          stream().
+                          forEach(p -> {
+                            Node prd = Node.get(p, true);
+                            ActData.instance().Act.addNode(prd, p);
+                            ActData.instance().chemsInAct.put(p, prd);
+
+                            Edge r = Edge.get(sub, prd, true);
+                            ActData.instance().Act.addEdge(r);
+                          });
+                });
+        // This is only done if there are TRULY no substrates, not if we filter them out
+        logProgress("Installing reaction with zero substrates in separate ActData collection: %d\n", rxn.getUUID());
+        ActData.instance().noSubstrateRxnsToProducts.put(rxnid, new ArrayList<>(filteredProducts));
+      }
+    } else {
+      substrates.
+              stream().
+              filter(s -> isCofactor(s) || ActData.instance().metaCycBigMolsOrRgrp.contains(s)).
+              forEach(s -> {
+                Node sub = Node.get(s, true);
+                ActData.instance().chemsInAct.put(s, sub);
+                ActData.instance().Act.addNode(sub, s);
+                products.
+                        stream().
+                        filter(p -> isCofactor(p) || ActData.instance().metaCycBigMolsOrRgrp.contains(p)).
+                        forEach(p -> {
+                          // TODO: rxnECNumber rxnEasyDesc and rxnDataSource are only used
+                          // for information in cascades output. Do not load them during
+                          // reachables computation....
+                          // TODO: There is no reason to load all 5M of them either. cascades
+                          // only needs the ones that are referenced in the reachables computation
+                          // anySmallMoleculeEdges = true;
+
+                          Node prd = Node.get(p, true);
+                          ActData.instance().Act.addNode(prd, p);
+                          ActData.instance().chemsInAct.put(p, prd);
+
+                          Edge r = Edge.get(sub, prd, true);
+                          ActData.instance().Act.addEdge(r);
+                        });
+              });
     }
 
   }

@@ -16,34 +16,34 @@ import java.util.regex.Pattern;
 
 public class WavefrontExpansion {
 
+  private static String _fileloc = "com.act.reachables.WavefrontExpansion";
   // these are computed once and are finalized thereafter
   Set<Long> cofactors_and_natives;
   Long root = -1L;
   Long rootProxyInLayer1 = -2L;
-
   // everything below changes as part of the reachables expansion
   Set<Long> R; // list of reachable chems
   HashMap<Integer, Set<Long>> R_by_layers;
   HashMap<Integer, Set<Long>> R_by_layers_in_host;
-
   HashMap<Long, Long> R_parent; // chosen parent at layer i-1 for a chem at layer i
   HashMap<Long, Set<Long>> R_owned_children; // final set of children owned by parent (key)
   HashMap<Long, Set<Long>> R_parent_candidates; // list of candidates in layer i-1 that could be parents for layer i chem
   HashMap<Long, List<Long>> rxn_needs; // list of precondition chemicals for each chem
   Set<Long> roots; // under "CreateUnreachableTrees" we also compute conditionally reachable trees rooted at important assumed nodes
   int currentLayer;
-
   // when computing reachables, we log the sequences
   // that create new reachables
   Set<Long> seqThatCreatedNewReachable;
   // and the sequences that have enabled substrates,
   // irrespective of whether they create new or not
   Set<Long> seqWithReachableSubstrates;
-
   // when doing assumed_reachable world, the parents of a node deep in the tree get stolen,
   // and then we have to attach the node directly to the root of the tree. We log those in
   // this hashmap to make sure that we can annotate those edges in the front-end
   Set<Long> isAncestorAndNotDirectParent;
+  Set<Long> R_assumed_reachable;
+  Set<Long> R_saved;
+  HashMap<Long, List<Long>> rxn_needs_saved;
 
   WavefrontExpansion () {
     this.R = new HashSet<Long>();
@@ -61,6 +61,43 @@ public class WavefrontExpansion {
 
     this.roots = new HashSet<Long>();
     roots.add(this.root);
+  }
+
+  private static void logProgress(String format, Object... args) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.format(_fileloc + ": " + format, args);
+  }
+
+  private static void logProgress(String msg) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.println(_fileloc + ": " + msg);
+  }
+
+  public static Integer countCarbons(String inchi) {
+    String[] spl = inchi.split("/");
+    // For lone atoms like carbon, the inchi is InChI=1S/C, which is valid. So any other inchi with less than 2
+    // components is invalid.
+    if (spl.length < 2)
+      return null;
+
+    String formula = spl[1];
+
+    // The below regex pattern will match all atoms and their counts. ASSUMPTION: The first letter of the atom is
+    // a capital letter followed by lower case letters.
+    Pattern patternToMatchAllAtomsAndTheirCounts = Pattern.compile("([A-Z][a-z]*)([0-9]*)");
+    Matcher matcher = patternToMatchAllAtomsAndTheirCounts.matcher(formula);
+    while (matcher.find()) {
+      // We are guaranteed to have two groups based on the pattern, but the numeric category could be an empty string.
+      if (matcher.group(1).equals("C")) {
+        return matcher.group(2).equals("") ? 1 : Integer.parseInt(matcher.group(2));
+      }
+    }
+
+    return 0;
   }
 
   public Tree<Long> expandAndPickParents() {
@@ -136,21 +173,6 @@ public class WavefrontExpansion {
     return new Tree<Long>(getRoots(), this.R_parent, this.R_owned_children, constructAttributes());
   }
 
-  private static String _fileloc = "com.act.reachables.WavefrontExpansion";
-  private static void logProgress(String format, Object... args) {
-    if (!GlobalParams.LOG_PROGRESS)
-      return;
-
-    System.err.format(_fileloc + ": " + format, args);
-  }
-
-  private static void logProgress(String msg) {
-    if (!GlobalParams.LOG_PROGRESS)
-      return;
-
-    System.err.println(_fileloc + ": " + msg);
-  }
-
   private void addNodesThatHaveUserSpecifiedFields() {
     Long artificialSubtreeID = -100L;
 
@@ -224,14 +246,6 @@ public class WavefrontExpansion {
         singles.add(e.fst());
     List<EnvCond>[] a = new List[] { singles, tuples };
     return a;
-  }
-
-  public class DescendingComparor<T> implements Comparator<P<T,Integer>> {
-    @Override
-    public int compare(P<T,Integer> o1, P<T,Integer> o2) {
-      return o2.snd().compareTo(o1.snd()); // o2.compare(o1): invert comparison to sort in descending
-    }
-
   }
 
   private Set<Long> addUnreachableTrees(List<EnvCond> worklist, Set<Long> alreadyReached) {
@@ -329,24 +343,6 @@ public class WavefrontExpansion {
     return allReach;
   }
 
-  class EnvCondEffect {
-    EnvCond e;
-    int sizeNewReach;
-    int startingLayer, endingLayer;
-    Set<Long> newReach;
-    EnvCondEffect(EnvCond e, int sz, Set<Long> newReach, int startL, int endL) {
-      this.e = e;
-      this.sizeNewReach = sz;
-      this.newReach = newReach;
-      this.startingLayer = startL;
-      this.endingLayer = endL;
-    }
-  }
-
-  Set<Long> R_assumed_reachable;
-  Set<Long> R_saved;
-  HashMap<Long, List<Long>> rxn_needs_saved;
-
   private void saveState() {
     this.R_saved = deepCopy(this.R);
     this.rxn_needs_saved = deepCopy(this.rxn_needs);
@@ -434,8 +430,7 @@ public class WavefrontExpansion {
       // do not add reactions whose substrate list is empty (happens when we parse metacyc)
       if (GlobalParams._actTreeIgnoreReactionsWithNoSubstrates) {
         // If a reaction has no substrates but does have substrate cofactors, we should keep it.
-        Set<Long> substrateCofactors = ActData.instance().rxnSubstratesCofactors.get(r);
-        if (substrates.size() == 0 && (substrateCofactors == null || substrateCofactors.size() == 0)) {
+        if (substrates.size() == 0) {
           ignored_nosub++;
           continue;
         }
@@ -533,29 +528,6 @@ public class WavefrontExpansion {
       }
     }
     return closestID;
-  }
-
-  public static Integer countCarbons(String inchi) {
-    String[] spl = inchi.split("/");
-    // For lone atoms like carbon, the inchi is InChI=1S/C, which is valid. So any other inchi with less than 2
-    // components is invalid.
-    if (spl.length < 2)
-      return null;
-
-    String formula = spl[1];
-
-    // The below regex pattern will match all atoms and their counts. ASSUMPTION: The first letter of the atom is
-    // a capital letter followed by lower case letters.
-    Pattern patternToMatchAllAtomsAndTheirCounts = Pattern.compile("([A-Z][a-z]*)([0-9]*)");
-    Matcher matcher = patternToMatchAllAtomsAndTheirCounts.matcher(formula);
-    while (matcher.find()) {
-      // We are guaranteed to have two groups based on the pattern, but the numeric category could be an empty string.
-      if (matcher.group(1).equals("C")) {
-        return matcher.group(2).equals("") ? 1 : Integer.parseInt(matcher.group(2));
-      }
-    }
-
-    return 0;
   }
 
   /* checks "rxn_needs" for the enabled reactions
@@ -840,7 +812,6 @@ public class WavefrontExpansion {
     }
   }
 
-
   private Long pick_with_largest_candidate_children(HashMap<Long, Set<Long>> map, Set<Long> blackList) {
     int max = -1; Long maxId = -1L;
     for (Long k : map.keySet()) {
@@ -889,6 +860,29 @@ public class WavefrontExpansion {
       if (this.R_by_layers.containsKey(1))
         aggregatedLayer1Nodes.addAll(this.R_by_layers.get(1));
       this.R_by_layers.put(1, aggregatedLayer1Nodes);
+    }
+  }
+
+  public class DescendingComparor<T> implements Comparator<P<T, Integer>> {
+    @Override
+    public int compare(P<T, Integer> o1, P<T, Integer> o2) {
+      return o2.snd().compareTo(o1.snd()); // o2.compare(o1): invert comparison to sort in descending
+    }
+
+  }
+
+  class EnvCondEffect {
+    EnvCond e;
+    int sizeNewReach;
+    int startingLayer, endingLayer;
+    Set<Long> newReach;
+
+    EnvCondEffect(EnvCond e, int sz, Set<Long> newReach, int startL, int endL) {
+      this.e = e;
+      this.sizeNewReach = sz;
+      this.newReach = newReach;
+      this.startingLayer = startL;
+      this.endingLayer = endL;
     }
   }
 
