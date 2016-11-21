@@ -418,6 +418,7 @@ public class Loader {
 
       Map<Long, InchiDescriptor> substrateCache = new HashMap<>();
       List<Precursor> precursors = new ArrayList<>();
+      Map<List<InchiDescriptor>, Precursor> substratesToPrecursor = new HashMap<>();
 
       for (int i = 0; i < upstreamReactions.length(); i++) {
         JSONObject obj = upstreamReactions.getJSONObject(i);
@@ -447,6 +448,7 @@ public class Loader {
         }
 
         if (!thisRxnSubstrates.isEmpty()) {
+          // This is a previously unseen reaction, so add it to the list of precursors.
           List<SequenceData> rxnSequences =
               extractOrganismsAndSequencesForReactions(Collections.singleton(obj.getLong("rxnid")));
           List<String> sequenceIds = new ArrayList<>();
@@ -454,7 +456,17 @@ public class Loader {
             WriteResult<SequenceData, String> result = jacksonSequenceCollection.insert(seq);
             sequenceIds.add(result.getSavedId());
           }
-          precursors.add(new Precursor(thisRxnSubstrates, "reachables", sequenceIds));
+
+          // TODO: make sure this is what we actually want to do, and figure out why it's happening.
+          // De-duplicate reactions based on substrates; somehow some duplicate cascade paths are appearing.
+          if (substratesToPrecursor.containsKey(thisRxnSubstrates)) {
+            substratesToPrecursor.get(thisRxnSubstrates).getSequences().addAll(sequenceIds);
+          } else {
+            Precursor precursor = new Precursor(thisRxnSubstrates, "reachables", sequenceIds);
+            precursors.add(precursor);
+            // Map substrates to precursor for merging later.
+            substratesToPrecursor.put(thisRxnSubstrates, precursor);
+          }
         }
       }
 
