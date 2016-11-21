@@ -7,7 +7,7 @@ trait BasicInput {
 
   def getInputMolecules(cli: CommandLine): Stream[Stream[String]]
 
-  final protected def combinationList(suppliedInchiLists: Stream[Stream[String]]): Stream[Stream[String]] = {
+  final def combinationList(suppliedInchiLists: Stream[Stream[String]]): Stream[Stream[String]] = {
     /**
       * Small utility function that takes in a streams and creates combinations of members of the multiple streams.
       * For example, with two input streams of InChIs we would construct a new stream containing all the
