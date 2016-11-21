@@ -423,7 +423,7 @@ public class LoadAct extends SteppedTask {
 
   private Set<Long> getMetaCycBigMolsOrRgrp() {
     HashSet<Long> ids = new HashSet();
-    DBCursor chemCursor = this.db.getIdCursorForFakeChemicals();
+    DBIterator chemCursor = this.db.getIdCursorForFakeChemicals();
     while (chemCursor.hasNext()) {
       ids.add((Long) chemCursor.next().get("_id"));
     }
