@@ -23,12 +23,47 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class LoadAct extends SteppedTask {
-  private int step = 100;
-  private int loaded, total;
+  private static String _fileloc = "com.act.reachables.LoadAct";
+  public MongoDB db;
   boolean SET_METADATA_ON_NW_NODES = false;
-  private List<String> fieldSetForChemicals;
   Set<String> optional_universal_inchis;
   Set<String> optional_cofactor_inchis;
+  private int step = 100;
+  private int loaded, total;
+  private List<String> fieldSetForChemicals;
+
+  private LoadAct(Set<String> optional_universal_inchis, Set<String> optional_cofactor_inchis) {
+    this.optional_universal_inchis = optional_universal_inchis;
+    this.optional_cofactor_inchis = optional_cofactor_inchis;
+    this.fieldSetForChemicals = new ArrayList<String>();
+    this.db = new MongoDB("localhost", 27017, "validator_profiling_2");
+
+    if (this.db == null) {
+      logProgress( "No connection to Act MongoDB." );
+      return;
+    }
+
+    ActData.instance().Act = new Network("Act");
+    ActData.instance().ActTree = new Network("Act Tree");
+
+    // the following take time, so will be done in init();
+    ActData.instance().allrxnids = null;
+    ActData.instance().cofactors = null;
+    ActData.instance().natives = null;
+    ActData.instance().chemInchis = null;
+    ActData.instance().chemId2Inchis = null;
+    ActData.instance().chemId2ReadableName = null;
+    ActData.instance().chemToxicity = null;
+    ActData.instance().chemsReferencedInRxns = null;
+
+    GlobalParams._hostOrganismIDs = new Long[GlobalParams._hostOrganisms.length];
+    for (int i = 0; i<GlobalParams._hostOrganisms.length; i++) {
+      GlobalParams._hostOrganismIDs[i] = this.db.getOrganismId(GlobalParams._hostOrganisms[i]);
+    }
+
+    total = -1;
+    loaded = -1;
+  }
 
   public static Network getReachablesTree(Set<String> natives, Set<String> cofactors, boolean restrictToSeq, String[] extra_chem_fields) {
     GlobalParams._actTreeOnlyIncludeRxnsWithSequences = restrictToSeq;
@@ -73,184 +108,6 @@ public class LoadAct extends SteppedTask {
 
   public static String toInChI(Long id) {
     return ActData.instance().chemId2Inchis.get(id);
-  }
-
-  public MongoDB db;
-  private LoadAct(Set<String> optional_universal_inchis, Set<String> optional_cofactor_inchis) {
-    this.optional_universal_inchis = optional_universal_inchis;
-    this.optional_cofactor_inchis = optional_cofactor_inchis;
-    this.fieldSetForChemicals = new ArrayList<String>();
-    this.db = new MongoDB("localhost", 27017, "validator_profiling_2");
-
-    if (this.db == null) {
-      logProgress( "No connection to Act MongoDB." );
-      return;
-    }
-
-    ActData.instance().Act = new Network("Act");
-    ActData.instance().ActTree = new Network("Act Tree");
-
-    // the following take time, so will be done in init();
-    ActData.instance().allrxnids = null;
-    ActData.instance().cofactors = null;
-    ActData.instance().natives = null;
-    ActData.instance().chemInchis = null;
-    ActData.instance().chemId2Inchis = null;
-    ActData.instance().chemId2ReadableName = null;
-    ActData.instance().chemToxicity = null;
-    ActData.instance().chemsReferencedInRxns = null;
-
-    GlobalParams._hostOrganismIDs = new Long[GlobalParams._hostOrganisms.length];
-    for (int i = 0; i<GlobalParams._hostOrganisms.length; i++) {
-      GlobalParams._hostOrganismIDs[i] = this.db.getOrganismId(GlobalParams._hostOrganisms[i]);
-    }
-
-    total = -1;
-    loaded = -1;
-  }
-
-  private List<Long> getAllIDsSorted() {
-    List<Long> allids = this.db.getAllReactionUUIDs();
-    Collections.sort(allids);
-    return allids;
-  }
-
-  private Set<Long> getNatives() {
-    Set<Long> natives_ids = new HashSet<Long>();
-
-    if (this.optional_universal_inchis == null) {
-
-      // pull whatever is in the DB
-      List<Chemical> cs = this.db.getNativeMetaboliteChems();
-      for (Chemical c : cs)
-        natives_ids.add(c.getUuid());
-
-    } else {
-
-      // use the inchis provided to the constructor
-      for (String inchi : this.optional_universal_inchis) {
-        Chemical c = this.db.getChemicalFromInChI(inchi);
-
-        if (c == null) {
-          logProgress("LoadAct: WARNING: Starting native not in db.");
-          logProgress("LoadAct:        : InChI = " + inchi);
-          continue;
-        }
-
-        natives_ids.add(c.getUuid());
-      }
-
-    }
-
-    return natives_ids;
-  }
-
-  private Set<Long> getCofactors() {
-    Set<Long> cofactor_ids = new HashSet<Long>();
-
-    if (this.optional_cofactor_inchis == null) {
-
-      // pull whatever is in the DB
-      List<Chemical> cs = this.db.getCofactorChemicals();
-      for (Chemical c : cs)
-        cofactor_ids.add(c.getUuid());
-
-    } else {
-
-      // use the inchis provided to the constructor
-      for (String inchi : this.optional_cofactor_inchis) {
-        Chemical c = this.db.getChemicalFromInChI(inchi);
-
-        if (c == null) {
-          logProgress("LoadAct: SEVERE WARNING: Starting cofactor not in db.");
-          logProgress("LoadAct:               : InChI = " + inchi);
-          continue;
-        }
-
-        cofactor_ids.add(c.getUuid());
-      }
-    }
-
-    /*
-    Set<Long> dbCofactorIds = new HashSet<>();
-    // TODO: query by isCofactor = true instead of doing that here.
-    DBIterator iterator = this.db.getIteratorOverChemicals();
-    while (iterator.hasNext()) {
-      Chemical c = this.db.getNextChemical(iterator);
-      if (c.isCofactor()) {
-        dbCofactorIds.add(c.getUuid());
-      }
-    }
-
-    logProgress("Loaded %d cofactors directly from the db\n", dbCofactorIds.size());
-    HashSet<Long> intersection = new HashSet<Long>(cofactor_ids);
-    intersection.retainAll(dbCofactorIds);
-    logProgress("Intersection of cofactors list and db cofactors: %d ^ %d = %d\n",
-        cofactor_ids.size(), dbCofactorIds.size(), intersection.size());
-    cofactor_ids.addAll(dbCofactorIds);
-    logProgress("Union of cofactors list and db cofactors: %d\n", cofactor_ids.size());
-    */
-
-    return cofactor_ids;
-  }
-
-  public void setFieldForExtraChemicals(String f) {
-    this.fieldSetForChemicals.add(f);
-  }
-
-  private HashMap<String, List<Long>> getChemicalWithUserSpecFields() {
-    HashMap<String, List<Long>> specials = new HashMap<String, List<Long>>();
-
-    for (String f : this.fieldSetForChemicals) {
-      List<Chemical> cs = this.db.getChemicalsThatHaveField(f);
-      specials.put(f, extractChemicalIDs(cs));
-    }
-    return specials;
-  }
-
-  private Set<Long> getMetaCycBigMolsOrRgrp() {
-    HashSet<Long> ids = new HashSet();
-    DBCursor chemCursor = this.db.getIdCursorForFakeChemicals();
-    while (chemCursor.hasNext()) {
-      ids.add((Long)chemCursor.next().get("_id"));
-    }
-    chemCursor.close();
-    return ids;
-  }
-
-  private List<Long> extractChemicalIDs(List<Chemical> cs) {
-    List<Long> cids = new ArrayList<Long>();
-    for (Chemical c : cs)
-      cids.add(c.getUuid());
-    return cids;
-  }
-
-  private void addReactionsToNetwork() {
-    DBIterator iterator = this.db.getIteratorOverReactions(true);
-    Reaction r;
-    Map<Reaction.RxnDataSource, Integer> counts = new HashMap<>();
-    for (Reaction.RxnDataSource src : Reaction.RxnDataSource.values())
-      counts.put(src, 0);
-    // since we are iterating until the end,
-    // the getNextReaction call will close the DB cursor...
-
-    while ((r = this.db.getNextReaction(iterator)) != null) {
-      // this rxn comes from a datasource, METACYC, BRENDA or KEGG.
-      // ensure the configuration tells us to include this datasource...
-      Reaction.RxnDataSource src = r.getDataSource();
-      Set<Reaction> reactionsWithAccurateDirections = r.correctForReactionDirection();
-      counts.put(src, counts.get(src) + reactionsWithAccurateDirections.size());
-      logProgress("Pulled: %s\r", counts.toString());
-
-      // Correct for right-to-left and reversible actions, adding all appropriate directions to the graph.
-      for (Reaction directedRxn : reactionsWithAccurateDirections) {
-        addToNw(directedRxn);
-      }
-
-    }
-    logProgress("");
-
-    logProgress("Rxn aggregate into %d classes.\n", ActData.instance().rxnClasses.size());
   }
 
   public static void addToNw(Reaction rxn) {
@@ -382,7 +239,8 @@ public class LoadAct extends SteppedTask {
 
     // If it has no substrates, but only cofactors, we effectively make the
     // cofactors the substrates as a way to resolve the 'blacklist' used in WavefrontExpansion correctly
-    if (incoming.isEmpty()){
+    // We need the substrates to be empty otherwise we may end up adding fake reactions.
+    if (incoming.isEmpty() && substrates.isEmpty()) {
       // Import Note: This causes cofactors to become kinda cofactors, as we don't include them as cofactors,
       // but as the primary reactants here.  Therefore, one cannot assume that
       // cofactors are ONLY in the cofactors group.
@@ -449,19 +307,6 @@ public class LoadAct extends SteppedTask {
     return ActData.instance().cofactors.contains(m);
   }
 
-  @Override
-  public double percentDone() {
-    return 100.0 * ((double)this.loaded / this.total);
-  }
-
-  @Override
-  public void doMoreWork() {
-    logProgress("Pulling %d reactions from MongoDB:\n", this.total);
-    addReactionsToNetwork();
-    this.loaded = this.total;
-  }
-
-  private static String _fileloc = "com.act.reachables.LoadAct";
   private static void logProgress(String format, Object... args) {
     if (!GlobalParams.LOG_PROGRESS)
       return;
@@ -476,6 +321,161 @@ public class LoadAct extends SteppedTask {
     System.err.println(_fileloc + ": " + msg);
   }
 
+  private List<Long> getAllIDsSorted() {
+    List<Long> allids = this.db.getAllReactionUUIDs();
+    Collections.sort(allids);
+    return allids;
+  }
+
+  private Set<Long> getNatives() {
+    Set<Long> natives_ids = new HashSet<Long>();
+
+    if (this.optional_universal_inchis == null) {
+
+      // pull whatever is in the DB
+      List<Chemical> cs = this.db.getNativeMetaboliteChems();
+      for (Chemical c : cs)
+        natives_ids.add(c.getUuid());
+
+    } else {
+
+      // use the inchis provided to the constructor
+      for (String inchi : this.optional_universal_inchis) {
+        Chemical c = this.db.getChemicalFromInChI(inchi);
+
+        if (c == null) {
+          logProgress("LoadAct: WARNING: Starting native not in db.");
+          logProgress("LoadAct:        : InChI = " + inchi);
+          continue;
+        }
+
+        natives_ids.add(c.getUuid());
+      }
+
+    }
+
+    return natives_ids;
+  }
+
+  private Set<Long> getCofactors() {
+    Set<Long> cofactor_ids = new HashSet<Long>();
+
+    if (this.optional_cofactor_inchis == null) {
+
+      // pull whatever is in the DB
+      List<Chemical> cs = this.db.getCofactorChemicals();
+      for (Chemical c : cs)
+        cofactor_ids.add(c.getUuid());
+
+    } else {
+
+      // use the inchis provided to the constructor
+      for (String inchi : this.optional_cofactor_inchis) {
+        Chemical c = this.db.getChemicalFromInChI(inchi);
+
+        if (c == null) {
+          logProgress("LoadAct: SEVERE WARNING: Starting cofactor not in db.");
+          logProgress("LoadAct:               : InChI = " + inchi);
+          continue;
+        }
+
+        cofactor_ids.add(c.getUuid());
+      }
+    }
+
+    /*
+    Set<Long> dbCofactorIds = new HashSet<>();
+    // TODO: query by isCofactor = true instead of doing that here.
+    DBIterator iterator = this.db.getIteratorOverChemicals();
+    while (iterator.hasNext()) {
+      Chemical c = this.db.getNextChemical(iterator);
+      if (c.isCofactor()) {
+        dbCofactorIds.add(c.getUuid());
+      }
+    }
+
+    logProgress("Loaded %d cofactors directly from the db\n", dbCofactorIds.size());
+    HashSet<Long> intersection = new HashSet<Long>(cofactor_ids);
+    intersection.retainAll(dbCofactorIds);
+    logProgress("Intersection of cofactors list and db cofactors: %d ^ %d = %d\n",
+        cofactor_ids.size(), dbCofactorIds.size(), intersection.size());
+    cofactor_ids.addAll(dbCofactorIds);
+    logProgress("Union of cofactors list and db cofactors: %d\n", cofactor_ids.size());
+    */
+
+    return cofactor_ids;
+  }
+
+  public void setFieldForExtraChemicals(String f) {
+    this.fieldSetForChemicals.add(f);
+  }
+
+  private HashMap<String, List<Long>> getChemicalWithUserSpecFields() {
+    HashMap<String, List<Long>> specials = new HashMap<String, List<Long>>();
+
+    for (String f : this.fieldSetForChemicals) {
+      List<Chemical> cs = this.db.getChemicalsThatHaveField(f);
+      specials.put(f, extractChemicalIDs(cs));
+    }
+    return specials;
+  }
+
+  private Set<Long> getMetaCycBigMolsOrRgrp() {
+    HashSet<Long> ids = new HashSet();
+    DBCursor chemCursor = this.db.getIdCursorForFakeChemicals();
+    while (chemCursor.hasNext()) {
+      ids.add((Long) chemCursor.next().get("_id"));
+    }
+    chemCursor.close();
+    return ids;
+  }
+
+  private List<Long> extractChemicalIDs(List<Chemical> cs) {
+    List<Long> cids = new ArrayList<Long>();
+    for (Chemical c : cs)
+      cids.add(c.getUuid());
+    return cids;
+  }
+
+  private void addReactionsToNetwork() {
+    DBIterator iterator = this.db.getIteratorOverReactions(true);
+    Reaction r;
+    Map<Reaction.RxnDataSource, Integer> counts = new HashMap<>();
+    for (Reaction.RxnDataSource src : Reaction.RxnDataSource.values())
+      counts.put(src, 0);
+    // since we are iterating until the end,
+    // the getNextReaction call will close the DB cursor...
+
+    while ((r = this.db.getNextReaction(iterator)) != null) {
+      // this rxn comes from a datasource, METACYC, BRENDA or KEGG.
+      // ensure the configuration tells us to include this datasource...
+      Reaction.RxnDataSource src = r.getDataSource();
+      Set<Reaction> reactionsWithAccurateDirections = r.correctForReactionDirection();
+      counts.put(src, counts.get(src) + reactionsWithAccurateDirections.size());
+      logProgress("Pulled: %s\r", counts.toString());
+
+      // Correct for right-to-left and reversible actions, adding all appropriate directions to the graph.
+      for (Reaction directedRxn : reactionsWithAccurateDirections) {
+        addToNw(directedRxn);
+      }
+
+    }
+    logProgress("");
+
+    logProgress("Rxn aggregate into %d classes.\n", ActData.instance().rxnClasses.size());
+  }
+
+  @Override
+  public double percentDone() {
+    return 100.0 * ((double) this.loaded / this.total);
+  }
+
+  @Override
+  public void doMoreWork() {
+    logProgress("Pulling %d reactions from MongoDB:\n", this.total);
+    addReactionsToNetwork();
+    this.loaded = this.total;
+  }
 
   @Override
   public void init() {
