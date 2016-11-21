@@ -17,7 +17,7 @@ public class MoleculeRenderer {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(MoleculeRenderer.class);
 
-  private static final String ASSETS_LOCATION = "/Volumes/data-level1/data/reachables-explorer-rendering-cache";
+  private static final String ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
   private static final String PNG_EXTENSION = ".png";
 
   private static ReactionRenderer renderer = new ReactionRenderer();

@@ -72,13 +72,14 @@ public class Reachable {
     this.dotGraph = null;
   }
 
-  public Reachable(String pageName, String inchi, String smiles, String inchikey, String structureFilename, List<String> names, Map<Chemical.REFS, BasicDBObject> xref) {
+  public Reachable(String pageName, String inchi, String smiles, String inchikey, String structureFilename, List<String> names, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref) {
     this.pageName = pageName;
     this.inchi = inchi;
     this.smiles = smiles;
     this.inchikey = inchikey;
     this.structureFilename = structureFilename;
     this.names = names;
+    this.wordCloudFilename = wordCloudFilename;
     this.precursorData = new PrecursorData();
     this.xref = xref;
     this.isNative = false;

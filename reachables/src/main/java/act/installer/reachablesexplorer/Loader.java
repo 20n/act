@@ -59,7 +59,7 @@ public class Loader {
 
   // Target database and collection. We populate these with reachables
   private static final String TARGET_DATABASE = "wiki_reachables";
-  private static final String TARGET_COLLECTION = "reachablesv0";
+  private static final String TARGET_COLLECTION = "reachablesv3";
   private static final String SEQUENCE_COLLECTION = "sequencesv0";
 
   private static final int ORGANISM_CACHE_SIZE = 1000;
@@ -113,6 +113,7 @@ public class Loader {
 
     Loader loader = new Loader();
     loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
+
   }
 
   /**
@@ -213,11 +214,17 @@ public class Loader {
     String pageName = getPageName(chemaxonTraditionalName, names, inchi);
 
     File rendering = MoleculeRenderer.getRenderingFile(inchi);
+    File wordcloud = WordCloudGenerator.getWordcloudFile(inchi);
+    String renderingFilename = null;
+    String wordcloudFilename = null;
     if (rendering.exists()) {
-      return new Reachable(pageName, inchi, smiles, inchikey, rendering.getName(), names, xref);
+      renderingFilename = rendering.getName();
+    }
+    if (wordcloud.exists()) {
+      wordcloudFilename = wordcloud.getName();
     }
 
-    return new Reachable(pageName, inchi, smiles, inchikey, names, xref);
+    return new Reachable(pageName, inchi, smiles, inchikey, renderingFilename, names, wordcloudFilename, xref);
   }
 
   /**

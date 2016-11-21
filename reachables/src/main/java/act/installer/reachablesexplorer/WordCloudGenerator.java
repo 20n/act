@@ -26,7 +26,7 @@ public class WordCloudGenerator {
    */
 
   private static final String RSCRIPT_LOCATION = "src/main/java/act/installer/reachablesexplorer/RWordCloudGenerator.R";
-  private static final String ASSETS_LOCATION = "/Volumes/data-level1/data/reachables-explorer-rendering-cache";
+  private static final String ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
   private static final Logger LOGGER = LogManager.getFormatterLogger(WordCloudGenerator.class);
   private static final String PNG_EXTENSION = ".png";
 
@@ -74,17 +74,22 @@ public class WordCloudGenerator {
 
 
 
-  public File generateWordCloud(String inchi) throws IOException {
-
-    // TODO: improve wordcloud generation. Currently, each instance open a mongo connection on the R side.
-    // By doing data manipulation in Java and utilizing Rengine, we could make this much better
-    // Wordclouds could be generated ahead of time this way, using the inchi coprus
+  public static File getWordcloudFile(String inchi) {
     String md5 = DigestUtils.md5Hex(inchi);
     String postfix = new StringBuilder("-").append(md5).append(PNG_EXTENSION).toString();
 
     String wordcloudFilename = String.join("", "wordcloud", postfix);
 
-    File wordcloud = Paths.get(ASSETS_LOCATION, wordcloudFilename).toFile();
+    return Paths.get(ASSETS_LOCATION, wordcloudFilename).toFile();
+  }
+
+  public File generateWordCloud(String inchi) throws IOException {
+
+    // TODO: improve wordcloud generation. Currently, each instance open a mongo connection on the R side.
+    // By doing data manipulation in Java and utilizing Rengine, we could make this much better
+    // Wordclouds could be generated ahead of time this way, using the inchi coprus
+
+    File wordcloud = getWordcloudFile(inchi);
 
     if (!Files.exists(wordcloud.toPath())) {
       try {
