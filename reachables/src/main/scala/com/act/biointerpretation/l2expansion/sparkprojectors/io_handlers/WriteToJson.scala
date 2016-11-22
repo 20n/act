@@ -13,7 +13,7 @@ object ProjectionResultProtocol extends DefaultJsonProtocol {
 
 import com.act.biointerpretation.l2expansion.sparkprojectors.io_handlers.ProjectionResultProtocol._
 
-trait WriteToJson extends BasicFileOutput {
+trait WriteToJson extends BasicFileProjectorOutput {
   val OPTION_OUTPUT_DIRECTORY: String
 
   final def getTerminationCommandLineOptions: List[CliOption.Builder] = {

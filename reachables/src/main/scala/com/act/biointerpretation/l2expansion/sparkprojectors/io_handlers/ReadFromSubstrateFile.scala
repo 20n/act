@@ -7,7 +7,7 @@ import org.apache.commons.cli.{CommandLine, Option => CliOption}
 
 import scala.collection.JavaConverters._
 
-trait ReadFromSubstrateFile extends BasicInput {
+trait ReadFromSubstrateFile extends BasicProjectorInput {
   val OPTION_SUBSTRATES_LISTS: String
 
   final def getInputCommandLineOptions: List[CliOption.Builder] = {

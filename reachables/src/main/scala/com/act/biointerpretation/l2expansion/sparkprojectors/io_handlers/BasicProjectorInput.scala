@@ -2,7 +2,7 @@ package com.act.biointerpretation.l2expansion.sparkprojectors.io_handlers
 
 import org.apache.commons.cli.{CommandLine, Option => CliOption}
 
-trait BasicInput {
+trait BasicProjectorInput {
   def getInputCommandLineOptions: List[CliOption.Builder]
 
   def getInputMolecules(cli: CommandLine): Stream[Stream[String]]

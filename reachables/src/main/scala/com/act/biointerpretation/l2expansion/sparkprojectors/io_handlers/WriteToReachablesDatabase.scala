@@ -4,7 +4,7 @@ import act.installer.reachablesexplorer.{Loader, ReachablesProjectionUpdate}
 import com.act.biointerpretation.l2expansion.sparkprojectors.utility.ProjectionResult
 import org.apache.commons.cli.{CommandLine, Option => CliOption}
 
-trait WriteToReachablesDatabase extends ReadFromDatabase with BasicOutput {
+trait WriteToReachablesDatabase extends ReadFromDatabase with BasicProjectorOutput {
   final def handleOutput(cli: CommandLine)(results: Stream[ProjectionResult]) = {
     val loader = new Loader(getReadDbName(cli), getReadDbPort(cli), getReadDbHost(cli), getReadDbCollection(cli))
     writeToReachablesDatabaseThroughLoader(results, loader)

@@ -5,7 +5,7 @@ import org.apache.commons.cli.{CommandLine, Option => CliOption}
 
 import scala.collection.mutable.ArrayBuffer
 
-trait ReadFromDatabase extends BasicInput {
+trait ReadFromDatabase extends BasicProjectorInput {
   val OPTION_READ_DB_NAME: String
   val OPTION_READ_DB_PORT: String
   val OPTION_READ_DB_HOST: String
