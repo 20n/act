@@ -10,7 +10,10 @@ import java.util.HashSet;
 import java.util.Set;
 
 class PrecursorData implements Serializable {
-    @JsonProperty("prediction_precursors")
+    @JsonIgnore
+    private static final String precursorsName = "prediction_precursors";
+
+    @JsonProperty(precursorsName)
     private Set<Precursor> precursors;
 
 
@@ -18,7 +21,7 @@ class PrecursorData implements Serializable {
         this.precursors = new HashSet<>();
     }
     @JsonCreator
-    public PrecursorData(@JsonProperty("prediction_precursors") Set<Precursor> precursors) {
+    public PrecursorData(@JsonProperty(precursorsName) Set<Precursor> precursors) {
         this.precursors = precursors;
     }
 
@@ -27,6 +30,7 @@ class PrecursorData implements Serializable {
         getPrecursors().add(precursor);
     }
 
+    @JsonIgnore
     public void addPrecursors(Collection<Precursor> precursors) {
         this.precursors.addAll(precursors);
     }
