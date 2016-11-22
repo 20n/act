@@ -17,7 +17,7 @@ import java.util.Map;
  */
 
 
-@JsonPropertyOrder({"inchi", "pubchem-synonyms", "mesh-terms", "chemaxon-traditional-name", "chemaxon-common-names"})
+@JsonPropertyOrder({"inchi", "brenda-synonyms", "pubchem-synonyms", "mesh-terms", "chemaxon-traditional-name", "chemaxon-common-names"})
 public class Synonyms {
   public Synonyms(String inchi) {
     this.inchi = inchi;
@@ -94,10 +94,12 @@ public class Synonyms {
     this.chemaxonCommonNames = chemaxonCommonNames;
   }
 
+  @JsonIgnore
   public List<String> getBrendaSynonyms() {
     return brendaSynonyms;
   }
 
+  @JsonIgnore
   public void setBrendaSynonyms(List<String> brendaSynonyms) {
     this.brendaSynonyms = brendaSynonyms;
   }
