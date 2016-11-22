@@ -56,7 +56,7 @@ object cascades {
   def write_node_cascades(p: String, depth: Integer, outputDirectory: String) {
     var dir = p + "-data/"
     var chemlist = p + ".chemicals.tsv"
-    val dirl = new File(dir)
+    val dirl = new File(outputDirectory, dir)
     if (dirl exists) {
       if (dirl.isFile) {
         println(dir + " already exists as a file. Need to dump data to that dir")
