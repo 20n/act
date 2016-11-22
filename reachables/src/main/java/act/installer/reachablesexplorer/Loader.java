@@ -68,16 +68,6 @@ public class Loader {
   private static final int ORGANISM_CACHE_SIZE = 1000;
   private static final float ORGANISM_CACHE_LOAD = 1.0f;
   private static final String ORGANISM_UNKNOWN = "(unknown)";
-
-  private MongoDB db;
-  private WordCloudGenerator wcGenerator;
-
-  private DBCollection reachablesCollection;
-  private JacksonDBCollection<Reachable, String> jacksonReachablesCollection;
-  private JacksonDBCollection<SequenceData, String> jacksonSequenceCollection;
-  private PubchemMeshSynonyms pubchemSynonymsDriver;
-  private L2InchiCorpus inchiCorpus;
-
   private final LinkedHashMap<Long, String> organismCache =
       new LinkedHashMap<Long, String>(ORGANISM_CACHE_SIZE + 1, ORGANISM_CACHE_LOAD, true) {
         @Override
@@ -85,6 +75,13 @@ public class Loader {
           return this.size() == ORGANISM_CACHE_SIZE;
         }
       };
+  private MongoDB db;
+  private WordCloudGenerator wcGenerator;
+  private DBCollection reachablesCollection;
+  private JacksonDBCollection<Reachable, String> jacksonReachablesCollection;
+  private JacksonDBCollection<SequenceData, String> jacksonSequenceCollection;
+  private PubchemMeshSynonyms pubchemSynonymsDriver;
+  private L2InchiCorpus inchiCorpus;
 
   public Loader(String host, Integer port, String targetDB, String targetCollection) throws UnknownHostException {
     db = new MongoDB(host, port, VALIDATOR_PROFILING_DATABASE);
@@ -123,37 +120,6 @@ public class Loader {
 
   }
 
-<<<<<<< b5db6ffe70283bfbf0ff537f752f36fb1300b060
-  /**
-   * Get smiles from molecule
-   */
-=======
-  public Loader(String database, int port, String host, String collection) throws UnknownHostException {
-    db = new MongoDB(host, port, "validator_profiling_2");
-    wcGenerator = new WordCloudGenerator(DATABASE_BING_ONLY_HOST, DATABASE_BING_ONLY_PORT);
-
-    renderer = new MoleculeRenderer();
-
-    MongoClient mongoClient = new MongoClient(new ServerAddress(host, port));
-    DB reachables = mongoClient.getDB(database);
-    reachablesCollection = reachables.getCollection(collection);
-    jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
-  }
-
-<<<<<<< 6d682c8279513ecc90ace10e11310c7c27313939
->>>>>>> New constructor
-=======
-  public static void main(String[] args) throws IOException {
-    //    Loader loader = new Loader();
-    //    loader.loadReachables(new File("/Volumes/shared-data/Thomas/L2inchis.test20"));
-    //    loader.updateWithPrecursorData("InChI=1S/C2H5NO2/c3-1-2(4)5/h1,3H2,(H,4,5)", new PrecursorData());
-    Loader loader = new Loader("wiki_reachables", 27017, "localhost", "test_michael");
-    //loader.updateWordClouds();
-    // Load all cascades
-    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
-  }
-
->>>>>>> last change
   private String getSmiles(Molecule mol) {
     try {
       return MoleculeExporter.exportMolecule(mol, MoleculeFormat.smiles$.MODULE$);
@@ -202,7 +168,6 @@ public class Loader {
     }
   }
 
-<<<<<<< f856f3d8755418cb5a4ef2367e1bb52bb5cdbce6
   public void assertNotFakeInchi(String inchi) throws FakeInchiException {
     if (inchi != null && inchi.contains("FAKE")) {
       throw new FakeInchiException(inchi);
@@ -214,18 +179,13 @@ public class Loader {
    * Gets names and xref from `db` collection `chemicals`
    * Tries to import to molecule and export names
    */
-  public Reachable constructReachable(String inchi) throws IOException {
-=======
   public Reachable constructReachable(String inchi) {
-<<<<<<< 3ac37f9f98f583bad9ef162bf14adfd80b509d2e
->>>>>>> full update
     // Only construct a new one if one doesn't already exist.
     Reachable preconstructedReachable = queryByInchi(inchi);
     if (preconstructedReachable != null) {
       return preconstructedReachable;
     }
-=======
->>>>>>> complete end to end
+
     Molecule mol;
     try {
       mol = MoleculeImporter.importMolecule(inchi);
@@ -254,7 +214,6 @@ public class Loader {
     }
 
     String pageName = getPageName(chemaxonTraditionalName, names, inchi);
-<<<<<<< 3ac37f9f98f583bad9ef162bf14adfd80b509d2e
 
     File rendering = MoleculeRenderer.getRenderingFile(inchi);
     File wordcloud = WordCloudGenerator.getWordcloudFile(inchi);
@@ -268,18 +227,6 @@ public class Loader {
     }
 
     return new Reachable(pageName, inchi, smiles, inchikey, renderingFilename, names, wordcloudFilename, xref);
-=======
-    // Only construct a new one if one doesn't already exist.
-    Reachable preconstructedReachable = queryByInchi(inchi);
-    if (preconstructedReachable != null) {
-      preconstructedReachable.setPageName(pageName);
-      preconstructedReachable.setSmiles(smiles);
-      preconstructedReachable.setInchiKey(inchikey);
-      preconstructedReachable.setNames(names);
-      return preconstructedReachable;
-    }
-    return new Reachable(pageName, inchi, smiles, inchikey, names);
->>>>>>> complete end to end
   }
 
   /**
@@ -353,7 +300,6 @@ public class Loader {
 
     // If is null we create a new one
     reachable = reachable == null ? constructReachable(inchi) : reachable;
-<<<<<<< b69db8d08d3d7956727692c4fce7910e98847ab6
 
     if (reachable == null) {
       LOGGER.warn("Still couldn't construct InChI after retry, aborting");
@@ -361,13 +307,6 @@ public class Loader {
     }
 
     reachable.getPrecursorData().addPrecursors(pre);
-=======
-    // hella broken, return
-    if (reachable == null) {
-      return;
-    }
-    reachable.getPrecursorData().addPrecursor(pre);
->>>>>>> spark
 
     upsert(reachable);
   }
@@ -558,24 +497,14 @@ public class Loader {
         }
       }
 
-<<<<<<< b69db8d08d3d7956727692c4fce7910e98847ab6
       if (parentId >= 0 && !substrateCache.containsKey(parentId)) {
         // Note: this should be impossible.
         LOGGER.error("substrate cache does not contain parent id %d after all upstream reactions processed", parentId);
       }
 
       assertNotFakeInchi(current.getInChI());
-=======
-      // Get the actual chemical that is the product of the above chemical.
-      Chemical current = reachablesConnection.getChemicalFromChemicalUUID(currentId);
-      if (current == null) {
-        LOGGER.info("Unable to parse InChI, skipping.");
-        return;
-      }
->>>>>>> spark
 
       // Update source as reachables, as these files are parsed from `cascade` construction
-<<<<<<< f6427738bebfbb72b456d603cf4eac8daa475ca3
       if (!precursors.isEmpty()) {
         Reachable rech = constructReachable(current.getInChI());
         if (rech != null) {
@@ -583,11 +512,6 @@ public class Loader {
           upsert(rech);
           updateWithPrecursors(current.getInChI(), precursors);
         }
-=======
-      if (!substrates.isEmpty()) {
-        Precursor pre = new Precursor(substrates, "reachables");
-        updateWithPrecursor(current.getInChI(), pre);
->>>>>>> Create Precursor from ProjectionResult
       } else {
         try {
           // TODO add a special native class?
@@ -620,8 +544,6 @@ public class Loader {
     updateFromReachableFiles(validFiles);
   }
 
-<<<<<<< f856f3d8755418cb5a4ef2367e1bb52bb5cdbce6
-=======
   public void updateFromProjection(ReachablesProjectionUpdate projection) {
     // Construct substrates
     List<Reachable> substrates = projection.getSubstrates().
@@ -642,67 +564,10 @@ public class Loader {
     projection.getProducts().stream().forEach(p -> {
       // Get product
       Reachable product = constructReachable(p);
-      product.getPrecursorData().addPrecursor(new Precursor(precursors, projection.getRos().get(0)));
+      // TODO Don't punt on sequences
+      product.getPrecursorData().addPrecursor(new Precursor(precursors, projection.getRos().get(0), new ArrayList<>()));
       upsert(product);
     });
-  }
-
-  public List<String> getBingInchis() {
-    MongoDB bingDb = new MongoDB(DATABASE_BING_ONLY_HOST, Integer.parseInt(DATABASE_BING_ONLY_PORT), "actv01");
-    BasicDBObject query = new BasicDBObject("xref.BING", new BasicDBObject("$exists", true));
-    BasicDBObject keys = new BasicDBObject("InChI", true);
-
-    DBIterator ite = bingDb.getIteratorOverChemicals(query, keys);
-    List<String> bingList = new ArrayList<>();
-    while (ite.hasNext()) {
-      BasicDBObject o = (BasicDBObject) ite.next();
-      String inchi = o.getString("InChI");
-      if (inchi != null) {
-        bingList.add(inchi);
-      }
-    }
-    return bingList;
-  }
-
->>>>>>> full update
-  public void updateWordClouds() throws IOException {
-    List<String> inchis = jacksonReachablesCollection.distinct("inchi");
-    LOGGER.info("Found %d inchis in the database, now querying for usage words", inchis.size());
-
-
-    List<String> bingInchis = wcGenerator.getBingInchis();
-    LOGGER.info("Found %d inchis having bings results", bingInchis.size());
-
-    bingInchis.retainAll(inchis);
-    LOGGER.info("Now creating wordclouds for %d inchis", bingInchis.size());
-
-    int i = 0;
-    for (String inchi : bingInchis) {
-      if (++i % 100 == 0) {
-        LOGGER.info("#%d", i);
-      }
-      Reachable reachable = queryByInchi(inchi);
-      if (reachable.getWordCloudFilename() == null) {
-        updateReachableWithWordcloud(reachable);
-      }
-    }
-  }
-<<<<<<< 6d682c8279513ecc90ace10e11310c7c27313939
-
-  public void updateMoleculeRenderings() throws IOException {
-    List<String> inchis = jacksonReachablesCollection.distinct("inchi");
-    LOGGER.info("Found %d inchis in the database", inchis.size());
-
-    int i = 0;
-    for (String inchi : inchis) {
-      if (++i % 100 == 0) {
-        LOGGER.info("#%d", i);
-      }
-      Reachable reachable = queryByInchi(inchi);
-      if (reachable.getStructureFilename() == null) {
-        updateReachableWithRendering(reachable);
-      }
-    }
   }
 
   public void updatePubchemSynonyms() {
@@ -733,6 +598,4 @@ public class Loader {
       super(String.format("Found FAKE inchi: %s", inchi));
     }
   }
-=======
->>>>>>> last change
 }
