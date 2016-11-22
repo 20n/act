@@ -62,8 +62,8 @@ public class Loader {
 
   // Target database and collection. We populate these with reachables
   private static final String TARGET_DATABASE = "wiki_reachables";
-  private static final String TARGET_COLLECTION = "reachablesv4";
-  private static final String SEQUENCE_COLLECTION = "sequencesv0";
+  private static final String TARGET_COLLECTION = "reachablesv6_min";
+  private static final String SEQUENCE_COLLECTION = "sequencesv6";
 
   private static final int ORGANISM_CACHE_SIZE = 1000;
   private static final float ORGANISM_CACHE_LOAD = 1.0f;
@@ -118,7 +118,7 @@ public class Loader {
   public static void main(String[] args) throws IOException {
 
     Loader loader = new Loader();
-    loader.updateFromReachableDir(new File("/mnt/shared-data/Michael/WikipediaProject/Reachables/r-2016-11-16-data"));
+    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/MinimalReachables/r-2016-11-21-data"));
     loader.updatePubchemSynonyms();
 
   }
