@@ -30,8 +30,10 @@ import org.json.JSONObject;
 import org.mongojack.JacksonDBCollection;
 import org.mongojack.WriteResult;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -62,8 +64,8 @@ public class Loader {
 
   // Target database and collection. We populate these with reachables
   private static final String TARGET_DATABASE = "wiki_reachables";
-  private static final String TARGET_COLLECTION = "reachablesv6_min";
-  private static final String SEQUENCE_COLLECTION = "sequencesv6";
+  private static final String TARGET_COLLECTION = "reachablesv6_test_rebase_min";
+  private static final String SEQUENCE_COLLECTION = "sequences_test_rebase_v6";
 
   private static final int ORGANISM_CACHE_SIZE = 1000;
   private static final float ORGANISM_CACHE_LOAD = 1.0f;
@@ -115,7 +117,7 @@ public class Loader {
   public static void main(String[] args) throws IOException {
 
     Loader loader = new Loader();
-    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/MinimalReachables/r-2016-11-21-data"));
+    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/MinimalReachables"));
     loader.updatePubchemSynonyms();
 
   }
@@ -134,6 +136,7 @@ public class Loader {
   private String getInchiKey(Molecule mol) {
     try {
       // TODO: add inchi key the Michael's Molecule Exporter
+      // Michael's comment: Definitely doable, all current formats are symmetric, can we import w/ inchikey too?
       String inchikey = MolExporter.exportToFormat(mol, "inchikey");
       return inchikey.replaceAll("InChIKey=", "");
     } catch (Exception e) {
@@ -466,6 +469,7 @@ public class Loader {
               parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
               thisRxnSubstrates.add(parentDescriptor);
               substrateCache.put(subId, parentDescriptor);
+              // TODO Remove null pointer exception check
             } catch (NullPointerException e){
               LOGGER.info("Null pointer, unable to write parent.");
             }
@@ -514,10 +518,10 @@ public class Loader {
         }
       } else {
         try {
-          // TODO add a special native class?
           Reachable rech = constructReachable(current.getInChI());
           rech.setIsNative(currentId == -1);
           upsert(rech);
+          // TODO Remove null pointer exception check
         } catch (NullPointerException e) {
           LOGGER.info("Null pointer, unable to parse InChI %s.", current == null ? "null" : current.getInChI());
         }
@@ -537,9 +541,25 @@ public class Loader {
     files.stream().forEach(this::updateFromReachablesFile);
   }
 
-  public void updateFromReachableDir(File file){
-    List<File> validFiles = Arrays.stream(file.listFiles()).filter(x ->
-            x.getName().startsWith(("c")) && x.getName().endsWith("json")).collect(Collectors.toList());
+  public void updateFromReachableDir(File file) throws IOException {
+    // Get all the reachables from the teachables text file.
+    
+    File dataDirectory = new File(file, Arrays.stream(file.listFiles()).filter(x -> x.getName().endsWith("data") && x.isDirectory()).collect(Collectors.toList()).get(0).getName());
+    File reachablesFile = new File(file, Arrays.stream(file.listFiles()).filter(x -> x.getName().endsWith("reachables.txt") && x.isFile()).collect(Collectors.toList()).get(0).getName());
+
+    List<Integer> chemicalIds = new ArrayList<>();
+    try (BufferedReader br = new BufferedReader(new FileReader(reachablesFile))) {
+      String line;
+      while ((line = br.readLine()) != null) {
+        chemicalIds.add(Integer.valueOf(line.split("\t")[0]));
+      }
+    }
+
+    List<File> validFiles = chemicalIds.
+            stream().
+            map(i -> new File(dataDirectory, "c" + String.valueOf(i) + ".json")).
+            collect(Collectors.toList());
+
     LOGGER.info("Found %d reachables files.",validFiles.size());
     updateFromReachableFiles(validFiles);
   }
