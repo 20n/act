@@ -4,7 +4,7 @@ import java.io.File
 
 import chemaxon.license.LicenseManager
 import com.act.analysis.chemicals.molecules.{MoleculeFormat, MoleculeImporter}
-import com.act.biointerpretation.l2expansion.sparkprojectors.io_handlers.{BasicInput, BasicOutput}
+import com.act.biointerpretation.l2expansion.sparkprojectors.io_handlers.{BasicProjectorInput, BasicProjectorOutput}
 import com.act.biointerpretation.l2expansion.sparkprojectors.utility.{ProjectionResult, ProjectorCliHelper}
 import org.apache.commons.cli.{CommandLine, Option => CliOption}
 import org.apache.log4j.LogManager
@@ -13,7 +13,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.util.Random
 
-trait BasicSparkROProjector extends BasicInput with BasicOutput with ProjectorCliHelper {
+trait BasicSparkROProjector extends BasicProjectorInput with BasicProjectorOutput with ProjectorCliHelper {
   /**
     * The most basic SparkROProjector, contains the abstract methods that each actual projector will implement.
     */

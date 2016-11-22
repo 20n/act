@@ -4,7 +4,7 @@ import java.io.File
 
 import org.apache.log4j.LogManager
 
-trait BasicFileOutput extends BasicOutput {
+trait BasicFileProjectorOutput extends BasicProjectorOutput {
   private val LOGGER = LogManager.getLogger(getClass)
 
   final def createOutputDirectory(directory: File): Unit = {
