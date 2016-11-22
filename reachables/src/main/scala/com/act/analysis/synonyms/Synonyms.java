@@ -5,6 +5,7 @@ import act.installer.pubchem.PubchemSynonymType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.fasterxml.jackson.annotation.JsonUnwrapped;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,9 +34,11 @@ public class Synonyms {
   @JsonProperty("brenda-synonyms")
   private List<String> brendaSynonyms;
 
+  @JsonUnwrapped
   @JsonProperty("pubchem-synonyms")
   private Map<PubchemSynonymType, List<String>> pubchemSynonyms;
 
+  @JsonUnwrapped
   @JsonProperty("mesh-terms")
   private Map<MeshTermType, List<String>> meshTerms;
 
