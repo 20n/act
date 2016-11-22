@@ -40,7 +40,7 @@ object TextToRxns {
 
   val MIN_CHEM_NAME_LEN = 3
   val MAX_CHEM_COMBINATION_SZ = 2
-  val PICK_FIRST_K = 12
+  val SLIDING_WINDOW_SZ = 5
 
   val cofactors: List[String] = {
     val defaultMoleculeFormat = MoleculeFormat.strictNoStereoInchi
@@ -304,13 +304,14 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
     val (chems, cofactors) = extractChemicals(w3cDoc)
     println(s"Removed cofactors found [${cofactors.size}]: $cofactors")
     println(s"Finding reactions using [${chems.size}]: $chems")
-    val chemSubsets = limitedSzSubsets(chems.take(TextToRxns.PICK_FIRST_K))
+    val windows = chems.sliding(TextToRxns.SLIDING_WINDOW_SZ, 1).toList
+    val chemSubsets = windows.map(subsetsWithMaxArity).flatten
     val subsProdCandidates = for (s <- chemSubsets; p <- chemSubsets; if (!s.equals(p))) yield (s, p)
     val passValidation = subsProdCandidates.map(passThroughEROs).filter(_.validatingROs != None)
     passValidation
   }
 
-  def limitedSzSubsets(candidates: List[NamedInChI]): List[List[NamedInChI]] = {
+  def subsetsWithMaxArity[A](candidates: List[A]): List[List[A]] = {
     val diffSzCombs = for (sz <- 1 to TextToRxns.MAX_CHEM_COMBINATION_SZ) yield {
       candidates.combinations(sz).toList
     }
@@ -366,7 +367,7 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
     }
     val nodesTrav = for (idx <- 0 to nodes.getLength) yield nodes.item(idx)
     val mols = nodesTrav.map(getText).map(tokens => if (tokens.isEmpty) "" else tokens.reduce(_ + " " + _))
-    val chemNames = mols.sortWith(_ > _).distinct
+    val chemNames = mols.map(_.toLowerCase).distinct
 
     // some names are just too short, e.g. "DAO", to be good chemical tokens. remove those
     val chemNamesNotTooShort = chemNames.filter(_.size > TextToRxns.MIN_CHEM_NAME_LEN)
