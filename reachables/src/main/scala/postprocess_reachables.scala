@@ -69,15 +69,15 @@ object postprocess_reachables {
     }
 
     if (regression_suite_files.nonEmpty) {
-      run_regression_suite(prefix, regression_suite_files, r_inchis)
+      run_regression_suite(prefix, regression_suite_files, r_inchis, outputDirectory)
     }
   }
 
   def id2InChIName(id: Long) = id ->
     (ActData.instance().mapChemId2Inchis(id), ActData.instance().mapChemId2ReadableName(id))
 
-  def run_regression_suite(prefix: String, regression_suite_files : Set[String], r_inchis: Set[String]): Unit = {
-    val rdir = prefix + ".regressions/" // regression output directory
+  def run_regression_suite(prefix: String, regression_suite_files : Set[String], r_inchis: Set[String], outputDirectory: String): Unit = {
+    val rdir = new File(outputDirectory, prefix + ".regressions/").getAbsolutePath // regression output directory
 
     // create output directory for regression test reports, if not already exists
     mk_regression_test_reporting_dir(rdir)
