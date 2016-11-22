@@ -13,8 +13,6 @@ import chemaxon.struc.Molecule;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeFormat;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
-import com.act.biointerpretation.l2expansion.L2InchiCorpus;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
@@ -48,8 +46,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Loader {
-
-  private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
 
   // This database contains the Bing XREF that we need!
@@ -78,12 +74,13 @@ public class Loader {
         }
       };
   private MongoDB db;
+
+  // TODO We use word cloud statically, figure out if there is a use case for this variable
   private WordCloudGenerator wcGenerator;
   private DBCollection reachablesCollection;
   private JacksonDBCollection<Reachable, String> jacksonReachablesCollection;
   private JacksonDBCollection<SequenceData, String> jacksonSequenceCollection;
   private PubchemMeshSynonyms pubchemSynonymsDriver;
-  private L2InchiCorpus inchiCorpus;
 
   public Loader(String host, Integer port, String targetDB, String targetCollection) throws UnknownHostException {
     db = new MongoDB(host, port, VALIDATOR_PROFILING_DATABASE);
@@ -99,6 +96,8 @@ public class Loader {
 
 
   public Loader() throws UnknownHostException {
+    // TODO Make this less specific constructor call the more specific one
+
     db = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, VALIDATOR_PROFILING_DATABASE);
     wcGenerator = new WordCloudGenerator(DEFAULT_HOST, DEFAULT_PORT, ACTV01_DATABASE);
     pubchemSynonymsDriver = new PubchemMeshSynonyms();
@@ -109,22 +108,24 @@ public class Loader {
     jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
     jacksonSequenceCollection =
         JacksonDBCollection.wrap(reachables.getCollection(SEQUENCE_COLLECTION), SequenceData.class, String.class);
+    // TODO Text or hashed index?
     jacksonReachablesCollection.ensureIndex(new BasicDBObject("inchi", "hashed"));
     jacksonSequenceCollection.createIndex(new BasicDBObject("sequence", "hashed"));
     jacksonSequenceCollection.createIndex(new BasicDBObject("organism_name", 1));
   }
 
   public static void main(String[] args) throws IOException {
-
     Loader loader = new Loader();
     loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/MinimalReachables"));
     loader.updatePubchemSynonyms();
-
   }
 
+  // TODO Move these getters to a different place/divide up concerns better?
   private String getSmiles(Molecule mol) {
     try {
+      // TODO Add a smiles export in the exporter?
       return MoleculeExporter.exportMolecule(mol, MoleculeFormat.smiles$.MODULE$);
+      // TODO Do correct error handling on the specific exceptions here
     } catch (Exception e) {
       return null;
     }
@@ -149,8 +150,9 @@ public class Loader {
    */
   private String getPageName(String chemaxonTraditionalName, List<String> brendaNames, String inchi) {
     if (chemaxonTraditionalName == null || chemaxonTraditionalName.length() > 50) {
+      // TODO Solve edge case where really short names are picked
       brendaNames.sort((n1, n2) -> Integer.compare(n1.length(), n2.length()));
-      if (brendaNames.size() == 0) {
+      if (brendaNames.isEmpty()) {
         return inchi;
       } else {
         return brendaNames.get(0);
@@ -171,7 +173,9 @@ public class Loader {
     }
   }
 
-  public void assertNotFakeInchi(String inchi) throws FakeInchiException {
+  private void assertNotFakeInchi(String inchi) throws FakeInchiException {
+    // TODO Also add in R groups here.
+    // TODO Assess if this is still necessary
     if (inchi != null && inchi.contains("FAKE")) {
       throw new FakeInchiException(inchi);
     }
@@ -182,7 +186,8 @@ public class Loader {
    * Gets names and xref from `db` collection `chemicals`
    * Tries to import to molecule and export names
    */
-  public Reachable constructReachable(String inchi) {
+  private Reachable constructReachable(String inchi) {
+    // TODO Better break the logic into discrete components
     // Only construct a new one if one doesn't already exist.
     Reachable preconstructedReachable = queryByInchi(inchi);
     if (preconstructedReachable != null) {
@@ -232,28 +237,7 @@ public class Loader {
     return new Reachable(pageName, inchi, smiles, inchikey, renderingFilename, names, wordcloudFilename, xref);
   }
 
-  /**
-   * Update a single reachable with wordcloud info
-   */
-  public void updateReachableWithWordcloud(Reachable reachable) throws IOException {
-    File wordcloud = wcGenerator.generateWordCloud(reachable.getInchi());
-    if (wordcloud != null) {
-      reachable.setWordCloudFilename(wordcloud.getName());
-      upsert(reachable);
-    }
-  }
-
-  /**
-   * Update a single reachable with rendering info
-   */
-  public void updateReachableWithRendering(Reachable reachable) {
-    String renderingFilename = MoleculeRenderer.generateRendering(reachable.getInchi());
-    LOGGER.info("Generated rendering at %s", renderingFilename);
-    reachable.setStructureFilename(renderingFilename);
-    upsert(reachable);
-  }
-
-  public void updateReachableWithSynonyms(Reachable reachable) {
+  private void updateReachableWithSynonyms(Reachable reachable) {
     String inchi = reachable.getInchi();
     String compoundID = pubchemSynonymsDriver.fetchCIDFromInchi(inchi);
     Map<MeshTermType, List<String>> meshSynonyms = pubchemSynonymsDriver.fetchMeshTermsFromCID(compoundID).
@@ -271,34 +255,7 @@ public class Loader {
     upsert(reachable);
   }
 
-  public void loadReachables(File inchiFile) throws IOException {
-    inchiCorpus = new L2InchiCorpus();
-    inchiCorpus.loadCorpus(inchiFile);
-    List<String> inchis = inchiCorpus.getInchiList();
-    Reachable reachable;
-    for (String inchi : inchis) {
-      try {
-        assertNotFakeInchi(inchi);
-        reachable = constructReachable(inchi);
-        // TODO: change the following to update the database maybe?
-        jacksonReachablesCollection.insert(reachable);
-      } catch (FakeInchiException e) {
-        LOGGER.info("Skipping fake inchi, %s", inchi);
-      }
-    }
-  }
-
-  public void updateWithPrecursorData(String inchi, PrecursorData precursorData) {
-    // TODO: can we use updates instead of inserting a new precursor?
-    Reachable reachable = jacksonReachablesCollection.findOne(new BasicDBObject("inchi", inchi));
-    Reachable reachableOld = jacksonReachablesCollection.findOne(new BasicDBObject("inchi", inchi));
-    if (reachable != null) {
-      reachable.setPrecursorData(precursorData);
-      jacksonReachablesCollection.update(reachableOld, reachable);
-    }
-  }
-
-  public void updateWithPrecursors(String inchi, List<Precursor> pre) throws IOException {
+  private void updateWithPrecursors(String inchi, List<Precursor> pre) throws IOException {
     Reachable reachable = queryByInchi(inchi);
 
     // If is null we create a new one
@@ -319,7 +276,8 @@ public class Loader {
     return jacksonReachablesCollection.findOne(query);
   }
 
-  public void upsert(Reachable reachable){
+  private void upsert(Reachable reachable) {
+    // TODO Can we make this more efficient in any way?
     Reachable reachableOld = queryByInchi(reachable.getInchi());
 
     if (reachableOld != null) {
@@ -421,13 +379,15 @@ public class Loader {
     return sortedSequences;
   }
 
-  public void updateFromReachablesFile(File file){
+  private void updateFromReachablesFile(File file) {
+    // TODO Break this into a bunch of unique functions, quite long
     LOGGER.info("Processing file %s", file.getName());
     try {
       // Read in the file and parse it as JSON
       String jsonTxt = IOUtils.toString(new FileInputStream(file));
       JSONObject fileContents = new JSONObject(jsonTxt);
       // Parsing errors should happen as near to the point of loading as possible.
+      // TODO Add all json parsing up here.
       Long parentId = fileContents.getLong("parent");
       Long currentId = fileContents.getLong("chemid");
 
@@ -537,15 +497,15 @@ public class Loader {
     }
   }
 
-  public void updateFromReachableFiles(List<File> files){
+  private void updateFromReachableFiles(List<File> files) {
     files.stream().forEach(this::updateFromReachablesFile);
   }
 
-  public void updateFromReachableDir(File file) throws IOException {
+  private void updateFromReachableDir(File file) throws IOException {
     // Get all the reachables from the teachables text file.
-    
-    File dataDirectory = new File(file, Arrays.stream(file.listFiles()).filter(x -> x.getName().endsWith("data") && x.isDirectory()).collect(Collectors.toList()).get(0).getName());
-    File reachablesFile = new File(file, Arrays.stream(file.listFiles()).filter(x -> x.getName().endsWith("reachables.txt") && x.isFile()).collect(Collectors.toList()).get(0).getName());
+
+    File dataDirectory = Arrays.stream(file.listFiles()).filter(x -> x.getName().endsWith("data") && x.isDirectory()).collect(Collectors.toList()).get(0).getAbsoluteFile();
+    File reachablesFile = Arrays.stream(file.listFiles()).filter(x -> x.getName().endsWith("reachables.txt") && x.isFile()).collect(Collectors.toList()).get(0).getAbsoluteFile();
 
     List<Integer> chemicalIds = new ArrayList<>();
     try (BufferedReader br = new BufferedReader(new FileReader(reachablesFile))) {
@@ -566,8 +526,7 @@ public class Loader {
 
   public void updateFromProjection(ReachablesProjectionUpdate projection) {
     // Construct substrates
-    List<Reachable> substrates = projection.getSubstrates().
-            stream().
+    List<Reachable> substrates = projection.getSubstrates().stream().
             map(this::constructReachable).
             collect(Collectors.toList());
 
@@ -590,11 +549,8 @@ public class Loader {
     });
   }
 
-  public void updatePubchemSynonyms() {
-
-    PubchemMeshSynonyms synonyms = new PubchemMeshSynonyms();
-
-
+  private void updatePubchemSynonyms() {
+    // TODO Check conversion to string
     List<String> inchis = jacksonReachablesCollection.distinct("inchi");
     LOGGER.info("Found %d inchis in the database", inchis.size());
 
@@ -613,6 +569,7 @@ public class Loader {
     }
   }
 
+  // TODO Move into unique class?  This issues comes up a good bit.
   private static class FakeInchiException extends Exception {
     public FakeInchiException(String inchi) {
       super(String.format("Found FAKE inchi: %s", inchi));
