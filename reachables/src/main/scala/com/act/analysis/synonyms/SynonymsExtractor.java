@@ -71,7 +71,10 @@ public class SynonymsExtractor {
 
   public void populateBrendaSynonyms(Synonyms synonyms) {
     Chemical c = db.getChemicalFromInChI(synonyms.getInchi());
-    List<String> brendaNames = c.getBrendaNames();
-    synonyms.setBrendaSynonyms(brendaNames);
+    if (c != null) {
+      List<String> brendaNames = c.getBrendaNames();
+      synonyms.setBrendaSynonyms(brendaNames);
+    }
+
   }
 }
