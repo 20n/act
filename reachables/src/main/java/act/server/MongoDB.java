@@ -1676,16 +1676,19 @@ public class MongoDB {
   public DBIterator getIdCursorForFakeChemicals() {
     DBObject fakeRegex = new BasicDBObject();
     DBObject abstractInchi = new BasicDBObject();
-    fakeRegex.put("InChI", new BasicDBObject("$regex", "^InChI=/FAKE"));
-    abstractInchi.put("InChI", new BasicDBObject("$regex", "^InChI=.*\\/.*R.*\\/\""));
+    fakeRegex.put(ChemicalKeywords.INCHI$.MODULE$.toString(),
+            new BasicDBObject(MongoKeywords.REGEX$.MODULE$.toString(), "^InChI=/FAKE"));
+
+    abstractInchi.put(ChemicalKeywords.INCHI$.MODULE$.toString(),
+            new BasicDBObject(MongoKeywords.REGEX$.MODULE$.toString(), "^InChI=.*R.*"));
 
     BasicDBList conditionList = new BasicDBList();
     conditionList.add(fakeRegex);
     conditionList.add(abstractInchi);
 
-    BasicDBObject conditions = new BasicDBObject("$or", conditionList);
+    BasicDBObject conditions = new BasicDBObject(MongoKeywords.OR$.MODULE$.toString(), conditionList);
 
-    return getIteratorOverChemicals(conditions, true, new BasicDBObject("_id", true));
+    return getIteratorOverChemicals(conditions, true, new BasicDBObject(ChemicalKeywords.ID$.MODULE$.toString(), true));
   }
 
   private DBCursor constructCursorForAllChemicals() {

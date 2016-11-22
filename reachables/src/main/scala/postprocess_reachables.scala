@@ -47,7 +47,7 @@ object postprocess_reachables {
     val write_graph_too = params.get("writeGraphToo") != None
 
     println("Deserializing reachables graph")
-    ActData.instance.deserialize(prefix + ".actdata")
+    ActData.instance.deserialize(new File(outputDirectory, prefix + ".actdata").getAbsolutePath)
 
     val tree = ActData.instance().getActTree
 
