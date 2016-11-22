@@ -54,9 +54,9 @@ object cascades {
   }
 
   def write_node_cascades(p: String, depth: Integer, outputDirectory: String) {
-    var dir = p + "-data/"
-    var chemlist = p + ".chemicals.tsv"
-    val dirl = new File(outputDirectory, dir)
+    val dir = new File(outputDirectory, p + "-data/").getAbsolutePath
+    val chemlist = new File(outputDirectory, p + ".chemicals.tsv").getAbsolutePath
+    val dirl = new File(dir)
     if (dirl exists) {
       if (dirl.isFile) {
         println(dir + " already exists as a file. Need to dump data to that dir")
@@ -102,7 +102,7 @@ object cascades {
       val reachid = tuple._1._1
       val json = updowns_json(tuple)
       val jsonstr = json.toString(2)
-      write_to(new File(outputDirectory, dir + "c" + reachid + ".json").getAbsolutePath, jsonstr)
+      write_to(new File(dir, s"c$reachid.json").getAbsolutePath, jsonstr)
     }
 
     println("Done: Written node updowns.")
@@ -125,7 +125,7 @@ object cascades {
       val waterfall = new Waterfall(reachid)
       val json    = waterfall.json
       val jsonstr = json.toString(2)
-      write_to(dir + "p" + reachid + ".json", jsonstr)
+      write_to(new File(dir, s"p$reachid.json").getAbsolutePath, jsonstr)
 
       // reachid == -1 and -2 are proxy nodes and not real chemicals
       if (reachid >= 0) {
@@ -139,7 +139,7 @@ object cascades {
       // write to disk; cascade as dot file
       val cascade = new Cascade(reachid)
       val dot     = cascade.dot
-      write_to(new File(outputDirectory, dir + "cscd" + reachid + ".dot").getAbsolutePath, dot)
+      write_to(new File(dir, s"cscd$reachid.dot").getAbsolutePath, dot)
 
       cnt = cnt + 1
     }
@@ -152,7 +152,7 @@ object cascades {
     for (rxnid <- rxnids) {
       val json = rxn_json(get_reaction_by_UUID(db, rxnid))
       val jsonstr = json.toString(2)
-      write_to(new File(outputDirectory,dir + "r" + rxnid + ".json").getAbsolutePath, jsonstr)
+      write_to(new File(dir, s"r$rxnid.json").getAbsolutePath, jsonstr)
     }
 
     println("Done: Written reactions.")
@@ -172,7 +172,7 @@ object cascades {
     for ( mid <- molecules ) {
       val mjson = mol_json(db.getChemicalFromChemicalUUID(mid))
       val jsonstr = mjson.toString(2)
-      write_to(new File(outputDirectory, dir + "m" + mid + ".json").getAbsolutePath, jsonstr)
+      write_to(new File(dir, s"m$mid.json").getAbsolutePath, jsonstr)
     }
 
     println("Done: Written molecules.")
@@ -180,7 +180,7 @@ object cascades {
     // now write a big tab-sep file with the "id smiles inchi synonyms" 
     // of all chemicals referenced so that later we can run a process 
     // to render each one of those chemicals.
-    val chemfile = to_append_file(chemlist, outputDirectory)
+    val chemfile = to_append_file(chemlist)
     for (mid <- molecules) {
       val torender = torender_meta(db.getChemicalFromChemicalUUID(mid))
       append_to(chemfile, torender)
@@ -959,8 +959,8 @@ object cascades {
     (a zip b).filter{ case (ae, be) => bpredicate(be) }.unzip._1
   }
 
-  def to_append_file(fname: String, directory: String) = {
-    new PrintWriter(new FileOutputStream(new File(directory, fname)), true)
+  def to_append_file(fname: String) = {
+    new PrintWriter(new FileOutputStream(fname), true)
   }
 
   def append_to(file: PrintWriter, line: String) {
