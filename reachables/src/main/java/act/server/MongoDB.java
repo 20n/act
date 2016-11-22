@@ -12,6 +12,8 @@ import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.helpers.P;
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.ChemicalKeywords;
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoKeywords;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoException;
@@ -1673,16 +1675,19 @@ public class MongoDB {
   public DBIterator getIdCursorForFakeChemicals() {
     DBObject fakeRegex = new BasicDBObject();
     DBObject abstractInchi = new BasicDBObject();
-    fakeRegex.put("InChI", new BasicDBObject("$regex", "^InChI=/FAKE"));
-    abstractInchi.put("InChI", new BasicDBObject("$regex", "^InChI=.*\\/.*R.*\\/\""));
+    fakeRegex.put(ChemicalKeywords.INCHI$.MODULE$.toString(),
+            new BasicDBObject(MongoKeywords.REGEX$.MODULE$.toString(), "^InChI=/FAKE"));
+
+    abstractInchi.put(ChemicalKeywords.INCHI$.MODULE$.toString(),
+            new BasicDBObject(MongoKeywords.REGEX$.MODULE$.toString(), "^InChI=.*R.*"));
 
     BasicDBList conditionList = new BasicDBList();
     conditionList.add(fakeRegex);
     conditionList.add(abstractInchi);
 
-    BasicDBObject conditions = new BasicDBObject("$or", conditionList);
+    BasicDBObject conditions = new BasicDBObject(MongoKeywords.OR$.MODULE$.toString(), conditionList);
 
-    return getIteratorOverChemicals(conditions, true, new BasicDBObject("_id", true));
+    return getIteratorOverChemicals(conditions, true, new BasicDBObject(ChemicalKeywords.ID$.MODULE$.toString(), true));
   }
 
   private DBCursor constructCursorForAllChemicals() {

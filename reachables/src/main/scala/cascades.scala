@@ -32,7 +32,7 @@ object cascades {
     // the reachables computation should have been run prior
     // to calling cascades, and it would have serialized the
     // the state of ActData. Now read it back in
-    ActData.instance.deserialize(prefix + ".actdata")
+    ActData.instance.deserialize(new File(outputDirectory, prefix + ".actdata").getAbsolutePath)
     println("Done deserializing data.")
     
     val cascade_depth = params.get("max-depth") match {
