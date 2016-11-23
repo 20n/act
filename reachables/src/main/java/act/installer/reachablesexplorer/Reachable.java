@@ -15,7 +15,7 @@ import java.util.Map;
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public class Reachable {
   @JsonIgnore
-  static final String inchiName = "InChI";
+  static final String inchiFieldName = "InChI";
 
   private String id;
   @JsonProperty("pathway_vis")

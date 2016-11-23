@@ -99,6 +99,12 @@ object MoleculeExporter {
   }
 
   @throws[MolExportException]
+  def exportAsSmiles(mol: Molecule): String = {
+    exportMolecule(mol, MoleculeFormat.smiles)
+  }
+
+
+  @throws[MolExportException]
   def exportAsStdInchi(mol: Molecule): String = {
     exportMolecule(mol, MoleculeFormat.stdInchi)
   }

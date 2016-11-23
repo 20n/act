@@ -9,10 +9,12 @@ import act.shared.Chemical;
 import act.shared.Seq;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
+import chemaxon.marvin.io.MolExportException;
 import chemaxon.struc.Molecule;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
-import com.act.analysis.chemicals.molecules.MoleculeFormat;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
@@ -39,7 +41,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -49,7 +50,7 @@ public class Loader {
   private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
 
   // We extract the chemicals from this database
-  private static final String VALIDATOR_PROFILING_DATABASE = "validator_profiling_2";
+  private static final String DEFAULT_CHEMICALS_DATABASE = "validator_profiling_2";
 
   // Default host. If running on a laptop, please set a SSH bridge to access speakeasy
   private static final String DEFAULT_HOST = "localhost";
@@ -61,43 +62,14 @@ public class Loader {
   private static final String DEFAULT_SEQUENCE_COLLECTION = "sequences_test_rebase_v6";
 
   private static final int ORGANISM_CACHE_SIZE = 1000;
-  private static final float ORGANISM_CACHE_LOAD = 1.0f;
   private static final String ORGANISM_UNKNOWN = "(unknown)";
-  private final LinkedHashMap<Long, String> organismCache =
-      new LinkedHashMap<Long, String>(ORGANISM_CACHE_SIZE + 1, ORGANISM_CACHE_LOAD, true) {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry eldest) {
-          return this.size() == ORGANISM_CACHE_SIZE;
-        }
-      };
-  private MongoDB db;
+  private final Cache<Long, String> organismCache = Caffeine.newBuilder().maximumSize(ORGANISM_CACHE_SIZE).build();
 
-  private DBCollection reachablesCollection;
+  // Database stuff
+  private MongoDB db;
   private JacksonDBCollection<Reachable, String> jacksonReachablesCollection;
   private JacksonDBCollection<SequenceData, String> jacksonSequenceCollection;
   private PubchemMeshSynonyms pubchemSynonymsDriver;
-
-  public Loader(String host, Integer port, String targetDB, String targetCollection) throws UnknownHostException {
-    db = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, VALIDATOR_PROFILING_DATABASE);
-    pubchemSynonymsDriver = new PubchemMeshSynonyms();
-
-    MongoClient mongoClient = new MongoClient(new ServerAddress(host, port));
-    DB reachables = mongoClient.getDB(targetDB);
-    reachablesCollection = reachables.getCollection(targetCollection);
-    jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
-    jacksonSequenceCollection =
-            JacksonDBCollection.wrap(reachables.getCollection(DEFAULT_SEQUENCE_COLLECTION), SequenceData.class, String.class);
-
-    jacksonReachablesCollection.ensureIndex(new BasicDBObject(Reachable.inchiName, "hashed"));
-    jacksonSequenceCollection.createIndex(new BasicDBObject("sequence", "hashed"));
-    jacksonSequenceCollection.createIndex(new BasicDBObject("organism_name", 1));
-  }
-
-
-  public Loader() throws UnknownHostException {
-    // TODO Make this less specific constructor call the more specific one
-    this(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_TARGET_DATABASE, DEFAULT_TARGET_COLLECTION);
-  }
 
   public static void main(String[] args) throws IOException {
     Loader loader = new Loader();
@@ -105,13 +77,40 @@ public class Loader {
     loader.updatePubchemSynonyms();
   }
 
+  /**
+   * // TODO
+   * @param host
+   * @param port
+   * @param targetDB
+   * @param targetCollection
+   * @throws UnknownHostException
+     */
+  public Loader(String host, Integer port, String targetDB, String targetCollection) throws UnknownHostException {
+    db = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_CHEMICALS_DATABASE);
+    pubchemSynonymsDriver = new PubchemMeshSynonyms();
+
+    MongoClient mongoClient = new MongoClient(new ServerAddress(host, port));
+    DB reachables = mongoClient.getDB(targetDB);
+    DBCollection reachablesCollection = reachables.getCollection(targetCollection);
+    jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
+    jacksonSequenceCollection =
+            JacksonDBCollection.wrap(reachables.getCollection(DEFAULT_SEQUENCE_COLLECTION), SequenceData.class, String.class);
+
+    jacksonReachablesCollection.ensureIndex(new BasicDBObject(Reachable.inchiFieldName, "hashed"));
+    jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.sequenceFieldName, "hashed"));
+    jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.organismFieldName, 1));
+  }
+
+  public Loader() throws UnknownHostException {
+    // TODO Make this less specific constructor call the more specific one
+    this(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_TARGET_DATABASE, DEFAULT_TARGET_COLLECTION);
+  }
+
   // TODO Move these getters to a different place/divide up concerns better?
   private String getSmiles(Molecule mol) {
     try {
-      // TODO Add a smiles export in the exporter?
-      return MoleculeExporter.exportMolecule(mol, MoleculeFormat.smiles$.MODULE$);
-      // TODO Do correct error handling on the specific exceptions here
-    } catch (Exception e) {
+      return MoleculeExporter.exportAsSmarts(mol);
+    } catch (MolExportException e) {
       return null;
     }
   }
@@ -155,14 +154,6 @@ public class Loader {
       return MolExporter.exportToFormat(mol, "name:t");
     } catch (IOException e) {
       return null;
-    }
-  }
-
-  private void assertNotFakeInchi(String inchi) throws FakeInchiException {
-    // TODO Also add in R groups here.
-    // TODO Assess if this is still necessary
-    if (inchi != null && inchi.contains("FAKE")) {
-      throw new FakeInchiException(inchi);
     }
   }
 
@@ -257,7 +248,7 @@ public class Loader {
   }
 
   private Reachable queryByInchi(String inchi){
-    DBObject query = new BasicDBObject("inchi", inchi);
+    DBObject query = new BasicDBObject(Reachable.inchiFieldName, inchi);
     return jacksonReachablesCollection.findOne(query);
   }
 
@@ -275,49 +266,13 @@ public class Loader {
   }
 
   /**
-   * Finds the set of reaction ids in a cascade document that have parentId as a substrate.  Assuming the cascade is
-   * loaded for a fixed childId, this will find all ids that represent reactions that convert the parent into the child.
-   * @param cascadeDoc The cascade JSON doc to search for matching reactions.
-   * @param childId The id of the child or current chemical.  Used only for logging.
-   * @param parentId The parent id for which to search.
-   * @return A set of reaction ids from the cascade document that include parentId as a substrate.
-   */
-  private Set<Long> gatherReactionIdsWithParentFromCascade(JSONObject cascadeDoc, Long childId, Long parentId) {
-    Set<Long> rxnIds = new HashSet<>();
-
-    // TODO: add better error checking to this method.  Right now, any malformed cascades doc will break us.
-    JSONArray upstreamRxns = cascadeDoc.getJSONArray("upstream");
-    for (int i = 0; i < upstreamRxns.length(); i++) {
-      JSONObject rxn = upstreamRxns.getJSONObject(i);
-      JSONArray substrates = rxn.getJSONArray("substrates");
-      boolean foundParent = false;
-      for (int j = 0; j < substrates.length(); j++) {
-        long id = substrates.getLong(j);
-        if (Long.valueOf(id).equals(parentId)) {
-          foundParent = true;
-          break;
-        }
-      }
-
-      if (foundParent) {
-        rxnIds.add(rxn.getLong("rxnid"));
-      }
-    }
-
-    if (rxnIds.size() == 0) {
-      LOGGER.error("Found zero matching reactions for parent/child ids %d/%d", parentId, childId);
-    }
-    return rxnIds;
-  }
-
-  /**
    * Get an organism name using an organism name id, with a healthy dose of caching since there are only about 21k
    * organisms for 9M reactions.
    * @param id The organism name id to fetch.
    * @return The organism name or "(unknown)" if that organism can't be found, which should never ever happen.
    */
   private String getOrganismName(Long id) {
-    String cachedName = organismCache.get(id);
+    String cachedName = organismCache.getIfPresent(id);
     if (cachedName != null) {
       return cachedName;
     }
@@ -364,6 +319,91 @@ public class Loader {
     return sortedSequences;
   }
 
+  private void updateCurrentChemical(Chemical current, Long parentId, List<Precursor> precursors) throws IOException {
+    // Update source as reachables, as these files are parsed from `cascade` construction
+    if (!precursors.isEmpty()) {
+      Reachable rech = constructReachable(current.getInChI());
+      if (rech != null) {
+        rech.setPathwayVisualization("cscd" + String.valueOf(current.getPubchemID()) + ".dot");
+        upsert(rech);
+        updateWithPrecursors(current.getInChI(), precursors);
+      }
+    } else {
+      try {
+        Reachable rech = constructReachable(current.getInChI());
+        rech.setIsNative(parentId == -1);
+        upsert(rech);
+        // TODO Remove null pointer exception check
+      } catch (NullPointerException e) {
+        LOGGER.info("Null pointer, unable to parse InChI %s.", current == null ? "null" : current.getInChI());
+      }
+    }
+  }
+
+  private List<Precursor> getUpstreamPrecursors(Long parentId, JSONArray upstreamReactions){
+    Map<Long, InchiDescriptor> substrateCache = new HashMap<>();
+    Map<List<InchiDescriptor>, Precursor> substratesToPrecursor = new HashMap<>();
+    List<Precursor> precursors = new ArrayList<>();
+
+    for (int i = 0; i < upstreamReactions.length(); i++) {
+      JSONObject obj = upstreamReactions.getJSONObject(i);
+      if (!obj.getBoolean("reachable")) {
+        continue;
+      }
+
+      List<InchiDescriptor> thisRxnSubstrates = new ArrayList<>();
+
+      JSONArray substratesArrays = (JSONArray) obj.get("substrates");
+      for (int j = 0; j < substratesArrays.length(); j++) {
+        Long subId = substratesArrays.getLong(j);
+        InchiDescriptor parentDescriptor;
+        if (subId >= 0 && !substrateCache.containsKey(subId)) {
+          try {
+            Chemical parent = db.getChemicalFromChemicalUUID(subId);
+            upsert(constructReachable(parent.getInChI()));
+            parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
+            thisRxnSubstrates.add(parentDescriptor);
+            substrateCache.put(subId, parentDescriptor);
+            // TODO Remove null pointer exception check
+          } catch (NullPointerException e){
+            LOGGER.info("Null pointer, unable to write parent.");
+          }
+        } else if (substrateCache.containsKey(subId)) {
+          thisRxnSubstrates.add(substrateCache.get(subId));
+        }
+      }
+
+      if (!thisRxnSubstrates.isEmpty()) {
+        // This is a previously unseen reaction, so add it to the list of precursors.
+        List<SequenceData> rxnSequences =
+                extractOrganismsAndSequencesForReactions(Collections.singleton(obj.getLong("rxnid")));
+        List<String> sequenceIds = new ArrayList<>();
+        for (SequenceData seq : rxnSequences) {
+          WriteResult<SequenceData, String> result = jacksonSequenceCollection.insert(seq);
+          sequenceIds.add(result.getSavedId());
+        }
+
+        // TODO: make sure this is what we actually want to do, and figure out why it's happening.
+        // De-duplicate reactions based on substrates; somehow some duplicate cascade paths are appearing.
+        if (substratesToPrecursor.containsKey(thisRxnSubstrates)) {
+          substratesToPrecursor.get(thisRxnSubstrates).getSequences().addAll(sequenceIds);
+        } else {
+          Precursor precursor = new Precursor(thisRxnSubstrates, "reachables", sequenceIds);
+          precursors.add(precursor);
+          // Map substrates to precursor for merging later.
+          substratesToPrecursor.put(thisRxnSubstrates, precursor);
+        }
+      }
+    }
+
+    if (parentId >= 0 && !substrateCache.containsKey(parentId)) {
+      // Note: this should be impossible.
+      LOGGER.error("substrate cache does not contain parent id %d after all upstream reactions processed", parentId);
+    }
+
+    return precursors;
+  }
+
   private void updateFromReachablesFile(File file) {
     // TODO Break this into a bunch of unique functions, quite long
     LOGGER.info("Processing file %s", file.getName());
@@ -371,9 +411,10 @@ public class Loader {
       // Read in the file and parse it as JSON
       String jsonTxt = IOUtils.toString(new FileInputStream(file));
       JSONObject fileContents = new JSONObject(jsonTxt);
-      // Parsing errors should happen as near to the point of loading as possible.
-      // TODO Add all json parsing up here.
+
+      // Parsing errors should happen as near to the point of loading as possible so it crashes fast.
       Long parentId = fileContents.getLong("parent");
+      JSONArray upstreamReactions = fileContents.getJSONArray("upstream");
       Long currentId = fileContents.getLong("chemid");
 
       LOGGER.info("Chem id is: " + currentId);
@@ -385,93 +426,12 @@ public class Loader {
       if (current == null) {
         return;
       }
+      MoleculeImporter.assertNotFakeInchi(current.getInChI());
 
-      JSONArray upstreamReactions = fileContents.getJSONArray("upstream");
+      List<Precursor> precursors = getUpstreamPrecursors(parentId, upstreamReactions);
+      updateCurrentChemical(current, parentId, precursors);
 
-      // Get the parent chemicals from the database.  JSON file contains ID.
-      // We want to update it because it may not exist, but we also don't want to overwrite.
-
-      Map<Long, InchiDescriptor> substrateCache = new HashMap<>();
-      List<Precursor> precursors = new ArrayList<>();
-      Map<List<InchiDescriptor>, Precursor> substratesToPrecursor = new HashMap<>();
-
-      for (int i = 0; i < upstreamReactions.length(); i++) {
-        JSONObject obj = upstreamReactions.getJSONObject(i);
-        if (!obj.getBoolean("reachable")) {
-          continue;
-        }
-
-        List<InchiDescriptor> thisRxnSubstrates = new ArrayList<>();
-
-        JSONArray substratesArrays = (JSONArray) obj.get("substrates");
-        for (int j = 0; j < substratesArrays.length(); j++) {
-          Long subId = substratesArrays.getLong(j);
-          InchiDescriptor parentDescriptor;
-          if (subId >= 0 && !substrateCache.containsKey(subId)) {
-            try {
-              Chemical parent = db.getChemicalFromChemicalUUID(subId);
-              upsert(constructReachable(parent.getInChI()));
-              parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
-              thisRxnSubstrates.add(parentDescriptor);
-              substrateCache.put(subId, parentDescriptor);
-              // TODO Remove null pointer exception check
-            } catch (NullPointerException e){
-              LOGGER.info("Null pointer, unable to write parent.");
-            }
-          } else if (substrateCache.containsKey(subId)) {
-            thisRxnSubstrates.add(substrateCache.get(subId));
-          }
-        }
-
-        if (!thisRxnSubstrates.isEmpty()) {
-          // This is a previously unseen reaction, so add it to the list of precursors.
-          List<SequenceData> rxnSequences =
-              extractOrganismsAndSequencesForReactions(Collections.singleton(obj.getLong("rxnid")));
-          List<String> sequenceIds = new ArrayList<>();
-          for (SequenceData seq : rxnSequences) {
-            WriteResult<SequenceData, String> result = jacksonSequenceCollection.insert(seq);
-            sequenceIds.add(result.getSavedId());
-          }
-
-          // TODO: make sure this is what we actually want to do, and figure out why it's happening.
-          // De-duplicate reactions based on substrates; somehow some duplicate cascade paths are appearing.
-          if (substratesToPrecursor.containsKey(thisRxnSubstrates)) {
-            substratesToPrecursor.get(thisRxnSubstrates).getSequences().addAll(sequenceIds);
-          } else {
-            Precursor precursor = new Precursor(thisRxnSubstrates, "reachables", sequenceIds);
-            precursors.add(precursor);
-            // Map substrates to precursor for merging later.
-            substratesToPrecursor.put(thisRxnSubstrates, precursor);
-          }
-        }
-      }
-
-      if (parentId >= 0 && !substrateCache.containsKey(parentId)) {
-        // Note: this should be impossible.
-        LOGGER.error("substrate cache does not contain parent id %d after all upstream reactions processed", parentId);
-      }
-
-      assertNotFakeInchi(current.getInChI());
-
-      // Update source as reachables, as these files are parsed from `cascade` construction
-      if (!precursors.isEmpty()) {
-        Reachable rech = constructReachable(current.getInChI());
-        if (rech != null) {
-          rech.setPathwayVisualization("cscd" + String.valueOf(currentId) + ".dot");
-          upsert(rech);
-          updateWithPrecursors(current.getInChI(), precursors);
-        }
-      } else {
-        try {
-          Reachable rech = constructReachable(current.getInChI());
-          rech.setIsNative(currentId == -1);
-          upsert(rech);
-          // TODO Remove null pointer exception check
-        } catch (NullPointerException e) {
-          LOGGER.info("Null pointer, unable to parse InChI %s.", current == null ? "null" : current.getInChI());
-        }
-      }
-    } catch (FakeInchiException e) {
+    } catch (MoleculeImporter.FakeInchiException e) {
       LOGGER.warn("Skipping file %s due to fake InChI exception", file.getName());
     } catch (IOException e) {
       // We can only work with files we can parse, so if we can't
@@ -487,10 +447,15 @@ public class Loader {
   }
 
   private void updateFromReachableDir(File file) throws IOException {
-    // Get all the reachables from the teachables text file.
+    // Get all the reachables from the reachables text file so it doesn't take forever to look for all the files.
 
-    File dataDirectory = Arrays.stream(file.listFiles()).filter(x -> x.getName().endsWith("data") && x.isDirectory()).collect(Collectors.toList()).get(0).getAbsoluteFile();
-    File reachablesFile = Arrays.stream(file.listFiles()).filter(x -> x.getName().endsWith("reachables.txt") && x.isFile()).collect(Collectors.toList()).get(0).getAbsoluteFile();
+    File dataDirectory = Arrays.stream(file.listFiles())
+            .filter(x -> x.getName().endsWith("data") && x.isDirectory())
+            .collect(Collectors.toList()).get(0).getAbsoluteFile();
+
+    File reachablesFile = Arrays.stream(file.listFiles())
+            .filter(x -> x.getName().endsWith("reachables.txt") && x.isFile())
+            .collect(Collectors.toList()).get(0).getAbsoluteFile();
 
     List<Integer> chemicalIds = new ArrayList<>();
     try (BufferedReader br = new BufferedReader(new FileReader(reachablesFile))) {
@@ -511,18 +476,17 @@ public class Loader {
 
   public void updateFromProjection(ReachablesProjectionUpdate projection) {
     // Construct substrates
-    List<Reachable> substrates = projection.getSubstrates().stream().
-            map(this::constructReachable).
-            collect(Collectors.toList());
+    List<Reachable> substrates = projection.getSubstrates().stream()
+            .map(this::constructReachable)
+            .collect(Collectors.toList());
 
     // Add substrates in, or make sure they were added.
     substrates.stream().forEach(this::upsert);
 
     // Construct descriptors.
-    List<InchiDescriptor> precursors = substrates.
-            stream().
-            map(s -> new InchiDescriptor(s.getPageName(), s.getInchi(), s.getInchiKey())).
-            collect(Collectors.toList());
+    List<InchiDescriptor> precursors = substrates.stream()
+            .map(s -> new InchiDescriptor(s.getPageName(), s.getInchi(), s.getInchiKey()))
+            .collect(Collectors.toList());
 
     // For each product, create and add precursors.
     projection.getProducts().stream().forEach(p -> {
@@ -551,13 +515,6 @@ public class Loader {
       if (++i % 100 == 0) {
         LOGGER.info("#%d", i);
       }
-    }
-  }
-
-  // TODO Move into unique class?  This issues comes up a good bit.
-  private static class FakeInchiException extends Exception {
-    public FakeInchiException(String inchi) {
-      super(String.format("Found FAKE inchi: %s", inchi));
     }
   }
 }

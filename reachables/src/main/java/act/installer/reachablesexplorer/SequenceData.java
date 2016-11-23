@@ -1,9 +1,14 @@
 package act.installer.reachablesexplorer;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.mongojack.ObjectId;
 
 public class SequenceData implements Comparable<SequenceData> {
+  @JsonIgnore
+  static final String organismFieldName = "organism_name";
+  @JsonIgnore
+  static final String sequenceFieldName = "sequence";
 
   @ObjectId
   @JsonProperty("_id")
