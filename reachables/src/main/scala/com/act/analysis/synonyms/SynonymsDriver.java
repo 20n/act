@@ -5,10 +5,8 @@ import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedWriter;
+
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Collections;
@@ -20,7 +18,7 @@ public class SynonymsDriver {
   private static final Logger LOGGER = LogManager.getFormatterLogger(SynonymsDriver.class);
 
   private static final String LOCATION = "/mnt/shared-data/Thomas/L2inchis";
-  private static final String OUTPUT_LOCATION = "/mnt/shared-data/Thomas/synonyms-test/L2inchis-synonyms";
+  private static final String OUTPUT_LOCATION = "/mnt/shared-data/Thomas/synonyms-test/L2inchis-synonyms.csv";
 
   public static List<String> getInchis(File file) {
     L2InchiCorpus inchiCorpus = new L2InchiCorpus();
