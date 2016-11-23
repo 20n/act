@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,7 +17,7 @@ import java.util.Map;
  */
 
 @JsonPropertyOrder({"inchi", "brendaSynonyms", "pubchemSynonyms", "meshTerms", "chemaxonTraditionalName", "chemaxonCommonNames"})
-public class Synonyms {
+public class Synonyms implements Serializable {
   public Synonyms(String inchi) {
     this.inchi = inchi;
     this.brendaSynonyms = new ArrayList<>();
