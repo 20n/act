@@ -2,10 +2,10 @@ package com.act.analysis.synonyms;
 
 import act.installer.pubchem.MeshTermType;
 import act.installer.pubchem.PubchemSynonymType;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.annotation.JsonUnwrapped;
+import scala.util.parsing.json.JSONFormat;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,8 +16,6 @@ import java.util.Map;
  * A class holding synonyms for a chemical
  */
 
-
-@JsonPropertyOrder({"inchi", "brenda-synonyms", "pubchem-synonyms", "mesh-terms", "chemaxon-traditional-name", "chemaxon-common-names"})
 public class Synonyms {
   public Synonyms(String inchi) {
     this.inchi = inchi;
@@ -31,20 +29,22 @@ public class Synonyms {
   @JsonProperty("inchi")
   private String inchi;
 
+  @JsonFormat(shape = JsonFormat.Shape.STRING)
   @JsonProperty("brenda-synonyms")
   private List<String> brendaSynonyms;
 
-  @JsonUnwrapped
+  @JsonFormat(shape = JsonFormat.Shape.STRING)
   @JsonProperty("pubchem-synonyms")
   private Map<PubchemSynonymType, List<String>> pubchemSynonyms;
 
-  @JsonUnwrapped
+  @JsonFormat(shape = JsonFormat.Shape.STRING)
   @JsonProperty("mesh-terms")
   private Map<MeshTermType, List<String>> meshTerms;
 
   @JsonProperty("chemaxon-traditional-name")
   private String chemaxonTraditionalName;
 
+  @JsonFormat(shape = JsonFormat.Shape.STRING)
   @JsonProperty("chemaxon-common-names")
   // https://docs.chemaxon.com/display/docs/Name+import+and+export+options
   private List<String> chemaxonCommonNames;
