@@ -21,8 +21,6 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static org.apache.jena.system.JenaSystem.forEach;
-
 public class LoadAct extends SteppedTask {
   // Constants
   private static String _fileloc = "com.act.reachables.LoadAct";
@@ -366,6 +364,7 @@ public class LoadAct extends SteppedTask {
 
       // pull whatever is in the DB
       List<Chemical> cs = this.db.getCofactorChemicals();
+      // TODO Add filter for chemicals w/o inchis
       for (Chemical c : cs)
         cofactor_ids.add(c.getUuid());
 
