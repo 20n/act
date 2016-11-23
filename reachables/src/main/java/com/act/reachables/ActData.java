@@ -1,5 +1,6 @@
 package com.act.reachables;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
@@ -100,6 +101,9 @@ public class ActData implements Serializable {
   }
 
   public void serialize(String toFile) {
+    // Create directories
+    new File(toFile).mkdirs();
+
     try {
       OutputStream file = new FileOutputStream(toFile);
       OutputStream buffer = new BufferedOutputStream(file);
