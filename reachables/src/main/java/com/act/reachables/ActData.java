@@ -1,26 +1,22 @@
 package com.act.reachables;
 
-import java.io.File;
+import org.apache.commons.lang3.tuple.Pair;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
-
-import act.shared.Chemical;
-import act.shared.Reaction;
-import org.apache.commons.lang3.tuple.Pair;
-
-import java.io.Serializable;
-import java.io.IOException;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.ObjectInputStream;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.ObjectOutputStream;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
 
 public class ActData implements Serializable {
   private static final long serialVersionUID = -1016179639411233872L;
@@ -101,9 +97,6 @@ public class ActData implements Serializable {
   }
 
   public void serialize(String toFile) {
-    // Create directories
-    new File(toFile).mkdirs();
-
     try {
       OutputStream file = new FileOutputStream(toFile);
       OutputStream buffer = new BufferedOutputStream(file);

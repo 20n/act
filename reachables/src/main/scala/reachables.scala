@@ -166,7 +166,13 @@ object reachables {
     }
 
     val outputDirectory = outputFile match {
-      case Some(x) => outputFile.get
+      case Some(x) => {
+        val gottenDir = new File(outputFile.get)
+        if (!gottenDir.exists()) {
+          gottenDir.mkdirs()
+        }
+        gottenDir.getAbsolutePath
+      }
       case None => null
     }
 
