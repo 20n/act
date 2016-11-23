@@ -39,7 +39,7 @@ case class PdfFile(val fname: String) extends InputType
 object TextToRxns {
 
   val MIN_CHEM_NAME_LEN = 3
-  val MAX_CHEM_COMBINATION_SZ = 2
+  val MAX_ARITY_ROS = 2
   val SLIDING_WINDOW_SZ = 5
 
   val cofactors: List[String] = {
@@ -87,13 +87,22 @@ object TextToRxns {
   def runChecks(out: PrintWriter) {
     // test extractions from sample sentences
     val testSentences = List(
-      // p-aminophenylphosphocholine + H2O  p-aminophenol + choline phosphate
+      // Should extract 1 reaction:
+      // p-aminophenylphosphocholine + H2O -> p-aminophenol + choline phosphate
       """Convert p-aminophenylphosphocholine and H2O to p-aminophenol and choline phosphate in 3.1.4.38""",
-      // the following triple set should be validated:
+
+      // should extract:
       // 4-chloro-phenylglycine + H2O + O2 -> (4-chlorophenyl)acetic acid + NH3 + H2O2
       """The cell converted 4-chloro-phenylglycine to (4-chlorophenyl)acetic acid in 
       the presence of water and O2 and released ammonia and H2O2.
-      This happened in Rhodosporidium toruloides and BRENDA has it under 1.4.3.3"""
+      This happened in Rhodosporidium toruloides and BRENDA has it under 1.4.3.3""",
+
+      // Should extract 3 reactions:
+      // p-aminophenylphosphocholine -> p-aminophenol + choline phosphate
+      // pyruvate -> lactate
+      // lactate -> pyruvate
+      """Convert H2O and p-aminophenylphosphocholine to p-aminophenol and choline phosphate,
+      a reaction that is from the EC class 3.1.4.38. The cell also converted pyruvate to lactate."""
     )
     for (testSent <- testSentences) {
       println(s"Extracting from: '${testSent.substring(0,75)}...'")
@@ -101,12 +110,13 @@ object TextToRxns {
     }
 
     // test extractions from a web url
-    val testURL = "https://www.ncbi.nlm.nih.gov/pubmed/20564561?dopt=Abstract&report=abstract&format=text"
-    getRxnsFromURL(testURL)
+    val testURL1 = "https://www.ncbi.nlm.nih.gov/pubmed/20564561?dopt=Abstract&report=abstract&format=text"
+    val testURL2 = "http://www.nature.com/articles/ncomms5037"
+    getRxnsFromURL(testURL1)
 
     // test extractions from a PDF file
-    // getRxnsFromPDF("/Volumes/shared-data/Saurabh/text2rxns/coli-paper.pdf")
-    getRxnsFromPDF("/Volumes/shared-data/Saurabh/text2rxns/limitedchems.pdf")
+    // getRxnsFromPDF("/mnt/shared-data/Saurabh/text2rxns/coli-paper.pdf")
+    getRxnsFromPDF("/mnt/shared-data/Saurabh/text2rxns/limitedchems.pdf")
   }
 
   def getRxnsFrom(dataSrc: Option[InputType]): List[ValidatedRxn] = {
@@ -305,22 +315,31 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
     println(s"Removed cofactors found [${cofactors.size}]: $cofactors")
     println(s"Finding reactions using [${chems.size}]: $chems")
     val windows = chems.sliding(TextToRxns.SLIDING_WINDOW_SZ, 1).toList
-    val chemSubsets = windows.map(subsetsWithMaxArity).flatten
-    val subsProdCandidates = for (s <- chemSubsets; p <- chemSubsets; if (!s.equals(p))) yield (s, p)
-    val passValidation = subsProdCandidates.map(passThroughEROs).filter(_.validatingROs != None)
+    val substrateProductPairs = windows.map(constructLHSRHS).flatten.distinct
+    val passValidation = substrateProductPairs.map(passThroughEROs).filter(_.validatingROs != None)
     passValidation
   }
 
+  def constructLHSRHS(window: List[NamedInChI]) = {
+    val arityLimited = subsetsWithMaxArity(window)
+    val subsProdCandidates = for (s <- arityLimited; p <- arityLimited; if (!s.equals(p))) yield (s, p)
+    subsProdCandidates
+  }
+
   def subsetsWithMaxArity[A](candidates: List[A]): List[List[A]] = {
-    val diffSzCombs = for (sz <- 1 to TextToRxns.MAX_CHEM_COMBINATION_SZ) yield {
+    val diffSzCombs = for (sz <- 1 to TextToRxns.MAX_ARITY_ROS) yield {
       candidates.combinations(sz).toList
     }
     diffSzCombs.toList.flatten
   }
 
+  // var checks = 0
   def passThroughEROs(subPrd: (List[NamedInChI], List[NamedInChI])): ValidatedRxn = {
     val substrates = subPrd._1
     val products = subPrd._2
+
+    // checks = checks + 1
+    // println(s"Checking [$checks]: " + substrates.map(_.name) + " -> " + products.map(_.name))
 
     val subsInchis = substrates.map(_.inchi).toList
     val prodInchis = products.map(_.inchi).toList
