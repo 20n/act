@@ -11,27 +11,36 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Optional;
 
 
 public class MoleculeRenderer {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(MoleculeRenderer.class);
-
-  private static final String ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
   private static final String PNG_EXTENSION = ".png";
 
   private static ReactionRenderer renderer = new ReactionRenderer();
+  private File assetLocation;
 
-
-  public static File getRenderingFile(String inchi) {
-    String md5 = DigestUtils.md5Hex(inchi);
-    String postfix = new StringBuilder("-").append(md5).append(PNG_EXTENSION).toString();
-
-    String renderingFilename = String.join("", "molecule", postfix);
-    return Paths.get(ASSETS_LOCATION, renderingFilename).toFile();
+  public MoleculeRenderer(File assetLocation) {
+    try {
+      FileChecker.verifyOrCreateDirectory(assetLocation);
+      this.assetLocation = assetLocation;
+    } catch (IOException e) {
+      LOGGER.error("Could not find or create directory at %s for storing assets.", assetLocation.getAbsolutePath());
+      throw new RuntimeException(e);
+    }
   }
 
-  public static String generateRendering(String inchi) {
+  public File getRenderingFile(String inchi) {
+    String md5 = DigestUtils.md5Hex(inchi);
+    String postfix = String.format("%s-%s", md5, PNG_EXTENSION);
+
+    String renderingFilename = String.join("", "molecule", postfix);
+    return Paths.get(this.assetLocation.getPath(), renderingFilename).toFile();
+  }
+
+  public Optional<String> generateRendering(String inchi) {
 
     File rendering = getRenderingFile(inchi);
 
@@ -50,6 +59,6 @@ public class MoleculeRenderer {
       }
     }
 
-    return rendering.getName();
+    return Optional.of(rendering.getName());
   }
 }

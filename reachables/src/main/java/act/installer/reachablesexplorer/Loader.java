@@ -48,6 +48,8 @@ import java.util.stream.Collectors;
 public class Loader {
   private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
 
+  private static final String ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
+
   // All of the source data on reactions and chemicals comes from validator_profiling_2
   private static final String DEFAULT_CHEMICALS_DATABASE = "validator_profiling_2";
 
@@ -77,6 +79,10 @@ public class Loader {
   private JacksonDBCollection<SequenceData, String> jacksonSequenceCollection;
   private PubchemMeshSynonyms pubchemSynonymsDriver;
 
+  // Renderers
+  private WordCloudGenerator wordCloudGenerator;
+  private MoleculeRenderer moleculeRenderer;
+
   public static void main(String[] args) throws IOException {
     Loader loader = new Loader();
     loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/MinimalReachables"));
@@ -93,6 +99,7 @@ public class Loader {
   public Loader(String host, Integer port, String targetDB, String targetCollection) {
     db = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_CHEMICALS_DATABASE);
     pubchemSynonymsDriver = new PubchemMeshSynonyms();
+    moleculeRenderer = new MoleculeRenderer(new File(ASSETS_LOCATION));
 
     MongoClient mongoClient;
     try {
@@ -211,7 +218,7 @@ public class Loader {
 
     String pageName = getPageName(mol, names, inchi);
 
-    File rendering = MoleculeRenderer.getRenderingFile(inchi);
+    File rendering = moleculeRenderer.getRenderingFile(inchi);
     File wordcloud = WordCloudGenerator.getWordcloudFile(inchi);
     String renderingFilename = null;
     String wordcloudFilename = null;
@@ -224,7 +231,7 @@ public class Loader {
 
     SynonymData synonymData = getSynonymData(inchi);
 
-    return new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, renderingFilename, names, wordcloudFilename, xref, synonymData);
+    return new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename, wordcloudFilename, xref);
   }
 
 

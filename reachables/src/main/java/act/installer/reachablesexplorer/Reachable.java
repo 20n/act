@@ -99,49 +99,63 @@ public class Reachable {
 
   public Reachable() {}
 
-  public Reachable(String pageName, String inchi, String smiles, String inchiKey, List<String> names, Boolean isNative, Map<Chemical.REFS, BasicDBObject> xref) {
-    this.pageName = pageName;
-    this.inchi = inchi;
-    this.smiles = smiles;
-    this.inchiKey = inchiKey;
-    this.structureFilename = null;
-    this.names = names;
-    this.wordCloudFilename = null;
-    this.precursorData = new PrecursorData();
-    this.xref = xref;
-    this.isNative = isNative;
-    this.pathwayVisualization = null;
-  }
-
-  public Reachable(String pageName, String inchi, String smiles, String inchiKey, List<String> names, Map<Chemical.REFS, BasicDBObject> xref) {
-    this.pageName = pageName;
-    this.inchi = inchi;
-    this.smiles = smiles;
-    this.inchiKey = inchiKey;
-    this.structureFilename = null;
-    this.names = names;
-    this.wordCloudFilename = null;
-    this.precursorData = new PrecursorData();
-    this.xref = xref;
-    this.isNative = false;
-    this.pathwayVisualization = null;
-  }
-
-  public Reachable(Long id, String pageName, String inchi, String smiles, String inchiKey, String structureFilename,
-                   List<String> names, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref, SynonymData synonyms) {
+  public Reachable(Long id,
+                   String pageName,
+                   String inchi,
+                   String smiles,
+                   String inchiKey,
+                   List<String> names,
+                   PrecursorData precursors,
+                   SynonymData synonyms,
+                   Boolean isNative,
+                   String structureFilename,
+                   String wordCloudFilename,
+                   String pathwayVisualization,
+                   Map<Chemical.REFS, BasicDBObject> xref) {
     this.id = id;
     this.pageName = pageName;
     this.inchi = inchi;
     this.smiles = smiles;
     this.inchiKey = inchiKey;
-    this.structureFilename = structureFilename;
     this.names = names;
-    this.wordCloudFilename = wordCloudFilename;
+    this.precursorData = precursors;
     this.synonyms = synonyms;
-    this.precursorData = new PrecursorData();
+    this.isNative = isNative;
+    this.structureFilename = structureFilename;
+    this.wordCloudFilename = wordCloudFilename;
+    this.pathwayVisualization = pathwayVisualization;
     this.xref = xref;
-    this.isNative = null;
-    this.pathwayVisualization = null;
+  }
+
+  public Reachable(String pageName,
+                   String inchi,
+                   String smiles,
+                   String inchiKey,
+                   List<String> names,
+                   PrecursorData precursors,
+                   SynonymData synonyms,
+                   Boolean isNative,
+                   String structureFilename,
+                   String wordCloudFilename,
+                   String pathwayVisualization,
+                   Map<Chemical.REFS, BasicDBObject> xref) {
+    this.pageName = pageName;
+    this.inchi = inchi;
+    this.smiles = smiles;
+    this.inchiKey = inchiKey;
+    this.names = names;
+    this.precursorData = precursors;
+    this.synonyms = synonyms;
+    this.isNative = isNative;
+    this.structureFilename = structureFilename;
+    this.wordCloudFilename = wordCloudFilename;
+    this.pathwayVisualization = pathwayVisualization;
+    this.xref = xref;
+  }
+
+  public Reachable(Long id, String pageName, String inchi, String smiles, String inchiKey, List<String> names,
+                   SynonymData synonymData, String structureFilename, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref) {
+    this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null, structureFilename, wordCloudFilename, null, xref);
   }
 
   public SynonymData getSynonyms() {
@@ -176,29 +190,7 @@ public class Reachable {
     this.wordCloudFilename = wordCloudFilename;
   }
 
-  public Reachable(String pageName,
-                   String inchi,
-                   String smiles,
-                   String structureFilename,
-                   List<String> names,
-                   String wordCloudFilename,
-                   PrecursorData precursors,
-                   Boolean isNative,
-                   String pathwayVisualization,
-                   Map<Chemical.REFS, BasicDBObject> xref,
-                   SynonymData synonyms) {
-    this.pageName = pageName;
-    this.inchi = inchi;
-    this.smiles = smiles;
-    this.structureFilename = structureFilename;
-    this.names = names;
-    this.wordCloudFilename = wordCloudFilename;
-    this.precursorData = precursors;
-    this.xref = xref;
-    this.isNative = isNative;
-    this.pathwayVisualization = pathwayVisualization;
-    this.synonyms = synonyms;
-  }
+
 
   public void setIsNative(Boolean isNative) {
     this.isNative = isNative;
