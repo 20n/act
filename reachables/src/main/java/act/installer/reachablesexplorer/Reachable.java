@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mongodb.BasicDBObject;
-import org.mongojack.ObjectId;
 
 import java.util.HashMap;
 import java.util.List;
@@ -18,6 +17,71 @@ public class Reachable {
   static final String inchiFieldName = "InChI";
 
   private String id;
+
+  public static String getInchiFieldName() {
+    return inchiFieldName;
+  }
+
+  public String getPathwayVisualization() {
+    return pathwayVisualization;
+  }
+
+  public Boolean getNative() {
+    return isNative;
+  }
+
+  public void setNative(Boolean aNative) {
+    isNative = aNative;
+  }
+
+  public void setInchi(String inchi) {
+    this.inchi = inchi;
+  }
+
+  public String getSmiles() {
+    return smiles;
+  }
+
+  public void setSmiles(String smiles) {
+    this.smiles = smiles;
+  }
+
+  public String getInchiKey() {
+    return inchiKey;
+  }
+
+  public void setInchiKey(String inchiKey) {
+    this.inchiKey = inchiKey;
+  }
+
+  public List<String> getNames() {
+    return names;
+  }
+
+  public void setNames(List<String> names) {
+    this.names = names;
+  }
+
+  public WikipediaData getWikipediaData() {
+    return wikipediaData;
+  }
+
+  public void setWikipediaData(WikipediaData wikipediaData) {
+    this.wikipediaData = wikipediaData;
+  }
+
+  public Map<Chemical.REFS, BasicDBObject> getXref() {
+    return xref;
+  }
+
+  public void setXref(Map<Chemical.REFS, BasicDBObject> xref) {
+    this.xref = xref;
+  }
+
+  public void setPageName(String pageName) {
+    this.pageName = pageName;
+  }
+
   @JsonProperty("pathway_vis")
   private String pathwayVisualization;
   @JsonProperty("is_native")
@@ -27,7 +91,7 @@ public class Reachable {
   @JsonProperty("smiles")
   private String smiles;
   @JsonProperty("inchikey")
-  private String inchikey;
+  private String inchiKey;
   @JsonProperty("rendering-filename")
   private String structureFilename;
   @JsonProperty("names")
@@ -47,11 +111,11 @@ public class Reachable {
 
   public Reachable() {}
 
-  public Reachable(String pageName, String inchi, String smiles, String inchikey, List<String> names, Boolean isNative, Map<Chemical.REFS, BasicDBObject> xref) {
+  public Reachable(String pageName, String inchi, String smiles, String inchiKey, List<String> names, Boolean isNative, Map<Chemical.REFS, BasicDBObject> xref) {
     this.pageName = pageName;
     this.inchi = inchi;
     this.smiles = smiles;
-    this.inchikey = inchikey;
+    this.inchiKey = inchiKey;
     this.structureFilename = null;
     this.names = names;
     this.wordCloudFilename = null;
@@ -61,11 +125,11 @@ public class Reachable {
     this.pathwayVisualization = null;
   }
 
-  public Reachable(String pageName, String inchi, String smiles, String inchikey, List<String> names, Map<Chemical.REFS, BasicDBObject> xref) {
+  public Reachable(String pageName, String inchi, String smiles, String inchiKey, List<String> names, Map<Chemical.REFS, BasicDBObject> xref) {
     this.pageName = pageName;
     this.inchi = inchi;
     this.smiles = smiles;
-    this.inchikey = inchikey;
+    this.inchiKey = inchiKey;
     this.structureFilename = null;
     this.names = names;
     this.wordCloudFilename = null;
@@ -75,11 +139,11 @@ public class Reachable {
     this.pathwayVisualization = null;
   }
 
-  public Reachable(String pageName, String inchi, String smiles, String inchikey, String structureFilename, List<String> names, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref) {
+  public Reachable(String pageName, String inchi, String smiles, String inchiKey, String structureFilename, List<String> names, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref) {
     this.pageName = pageName;
     this.inchi = inchi;
     this.smiles = smiles;
-    this.inchikey = inchikey;
+    this.inchiKey = inchiKey;
     this.structureFilename = structureFilename;
     this.names = names;
     this.wordCloudFilename = wordCloudFilename;
@@ -87,6 +151,38 @@ public class Reachable {
     this.xref = xref;
     this.isNative = false;
     this.pathwayVisualization = null;
+  }
+
+  public SynonymData getSynonyms() {
+    return synonyms;
+  }
+
+  public void setSynonyms(SynonymData synonyms) {
+    this.synonyms = synonyms;
+  }
+
+  public void setPathwayVisualization(String pathwayVisualization) {
+    this.pathwayVisualization = pathwayVisualization;
+  }
+
+  public String getInchi() {
+    return inchi;
+  }
+
+  public String getStructureFilename() {
+    return structureFilename;
+  }
+
+  public void setStructureFilename(String structureFilename) {
+    this.structureFilename = structureFilename;
+  }
+
+  public String getWordCloudFilename() {
+    return wordCloudFilename;
+  }
+
+  public void setWordCloudFilename(String wordCloudFilename) {
+    this.wordCloudFilename = wordCloudFilename;
   }
 
   public Reachable(String pageName,
@@ -101,6 +197,7 @@ public class Reachable {
                    Map<Chemical.REFS, BasicDBObject> xref,
                    SynonymData synonyms) {
     this.pageName = pageName;
+
     this.inchi = inchi;
     this.smiles = smiles;
     this.structureFilename = structureFilename;
@@ -125,24 +222,18 @@ public class Reachable {
     this.precursorData = precursorData;
   }
 
-  @ObjectId
-  @JsonProperty("_id")
   public String getId() {
     return id;
   }
 
-  @ObjectId
-  @JsonProperty("_id")
   public void setId(String id) {
     this.id = id;
   }
 
-  @JsonIgnore
   public String getPageName(){
     return pageName;
   }
 
-  @JsonIgnore
   public Map<Chemical.REFS, BasicDBObject> getXREFS() {
     return this.xref;
   }
@@ -160,51 +251,5 @@ public class Reachable {
         continue;
       this.xref.put(Chemical.REFS.valueOf(typ), (BasicDBObject) xrefs.get(typ));
     }
-  }
-
-  /* -------- Getters must have JSON ignore if not a unique field. ------- */
-  @JsonIgnore
-  public String getInchi(){
-    return inchi;
-  }
-
-  @JsonIgnore
-  public String getInchiKey(){
-    return inchikey;
-  }
-
-  @JsonIgnore
-  public void setPathwayVisualization(String graphName) {
-    this.pathwayVisualization = graphName;
-  }
-
-  @JsonIgnore
-  public String getStructureFilename() {
-    return structureFilename;
-  }
-
-  @JsonIgnore
-  public void setStructureFilename(String structureFilename) {
-    this.structureFilename = structureFilename;
-  }
-
-  @JsonIgnore
-  public String getWordCloudFilename() {
-    return wordCloudFilename;
-  }
-
-  @JsonIgnore
-  public void setWordCloudFilename(String wordCloudFilename) {
-    this.wordCloudFilename = wordCloudFilename;
-  }
-
-  @JsonIgnore
-  public SynonymData getSynonyms() {
-    return synonyms;
-  }
-
-  @JsonIgnore
-  public void setSynonyms(SynonymData synonyms) {
-    this.synonyms = synonyms;
   }
 }

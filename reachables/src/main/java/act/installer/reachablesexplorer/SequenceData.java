@@ -20,11 +20,6 @@ public class SequenceData implements Comparable<SequenceData> {
   @JsonProperty("sequence")
   private String sequence;
 
-  // No serialization errors, please.
-  private SequenceData() {
-
-  }
-
   public SequenceData(String organismName, String sequence) {
     this.organismName = organismName;
     this.sequence = sequence;

@@ -386,7 +386,7 @@ public class Loader {
         // TODO: make sure this is what we actually want to do, and figure out why it's happening.
         // De-duplicate reactions based on substrates; somehow some duplicate cascade paths are appearing.
         if (substratesToPrecursor.containsKey(thisRxnSubstrates)) {
-          substratesToPrecursor.get(thisRxnSubstrates).getSequences().addAll(sequenceIds);
+          substratesToPrecursor.get(thisRxnSubstrates).addSequences(sequenceIds);
         } else {
           Precursor precursor = new Precursor(thisRxnSubstrates, "reachables", sequenceIds);
           precursors.add(precursor);

@@ -1,6 +1,5 @@
 package act.installer.reachablesexplorer;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -18,28 +17,44 @@ public class Precursor implements Serializable {
     @JsonProperty("sequences")
     private List<String> sequences;
 
-    @JsonCreator
-    public Precursor(@JsonProperty("precursor_inchis") List<InchiDescriptor> precursorMolecules,
-                     @JsonProperty("source") String source,
-                     @JsonProperty("sequences") List<String> sequences) {
+    public Precursor(List<InchiDescriptor> precursorMolecules, String source, List<String> sequences) {
         this.precursorMolecules = precursorMolecules;
         this.source = source;
         this.sequences = sequences;
     }
 
-    @JsonIgnore
     public List<InchiDescriptor> getMolecules(){
         return precursorMolecules;
     }
 
-    @JsonIgnore
     public String getSources(){
         return source;
     }
 
-    @JsonIgnore
     public List<String> getSequences() {
         return sequences;
+    }
+
+    public void setMolecules(List<InchiDescriptor> precursorMolecules){
+        this.precursorMolecules = precursorMolecules;
+    }
+
+    public void setSources(String source){
+        this.source = source;
+    }
+
+    public void setSequences(List<String> sequences) {
+        this.sequences = sequences;
+    }
+
+    @JsonIgnore
+    public void addSequence(String sequence){
+        getSequences().add(sequence);
+    }
+
+    @JsonIgnore
+    public void addSequences(List<String> sequence){
+        getSequences().addAll(sequence);
     }
 
     @Override
