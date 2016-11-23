@@ -19,7 +19,14 @@ import java.util.Map;
  * A class holding synonyms for a chemical
  */
 
-@JsonPropertyOrder({"inchi", "brendaSynonyms", "pubchemSynonyms", "meshTerms", "chemaxonTraditionalName", "chemaxonCommonNames"})
+@JsonPropertyOrder({
+    "inchi",
+    "brenda-synonyms",
+    "pubchem-synonyms",
+    "mesh-terms",
+    "chemaxon-traditional-name",
+    "chemaxon-common-names"
+})
 public class Synonyms implements Serializable {
   public Synonyms(String inchi) {
     this.inchi = inchi;
@@ -36,15 +43,22 @@ public class Synonyms implements Serializable {
   private String inchi;
 
   @JsonSerialize(using = ToStringSerializer.class)
-  @JsonProperty("brendaSynonyms")
+  @JsonProperty("brenda-synonyms")
   private List<String> brendaSynonyms;
 
+  @JsonSerialize(using = ToStringSerializer.class)
+  @JsonProperty("pubchem-synonyms")
   private Map<PubchemSynonymType, List<String>> pubchemSynonyms;
 
+  @JsonSerialize(using = ToStringSerializer.class)
+  @JsonProperty("mesh-terms")
   private Map<MeshTermType, List<String>> meshTerms;
 
+  @JsonProperty("chemaxon-traditional-name")
   private String chemaxonTraditionalName;
 
+  @JsonSerialize(using = ToStringSerializer.class)
+  @JsonProperty("chemaxon-common-names")
   // https://docs.chemaxon.com/display/docs/Name+import+and+export+options
   private List<String> chemaxonCommonNames;
 
