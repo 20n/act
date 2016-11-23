@@ -34,7 +34,7 @@ public class SynonymsDriver {
 
     SynonymsExtractor extractor = new SynonymsExtractor();
     List<String> inchis = SynonymsDriver.getInchis(new File(LOCATION));
-    inchis = inchis.subList(0,10);
+    // inchis = inchis.subList(0,10);
     List<Synonyms> synonymses = inchis.stream().map(Synonyms::new).collect(Collectors.toList());
     LOGGER.info("Constructed list of %d synonymses", synonymses.size());
     synonymses.forEach(SynonymsExtractor::populateChemaxonSynonyms);
