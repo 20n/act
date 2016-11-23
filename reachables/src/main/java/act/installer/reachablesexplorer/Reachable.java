@@ -16,8 +16,6 @@ public class Reachable {
   @JsonIgnore
   static final String inchiFieldName = "InChI";
 
-  private String id;
-
   public static String getInchiFieldName() {
     return inchiFieldName;
   }
@@ -82,9 +80,12 @@ public class Reachable {
     this.pageName = pageName;
   }
 
+  @JsonProperty("_id")
+  private Long id;
+  @JsonProperty("page_name")
+  private String pageName;
   @JsonProperty("pathway_vis")
   private String pathwayVisualization;
-  @JsonProperty("is_native")
   private Boolean isNative;
   @JsonProperty("InChI")
   private String inchi;
@@ -104,8 +105,6 @@ public class Reachable {
   private PrecursorData precursorData;
   @JsonProperty("xref")
   private Map<Chemical.REFS, BasicDBObject> xref;
-  @JsonProperty("page_name")
-  private String pageName;
   @JsonProperty("synonyms")
   private SynonymData synonyms;
 
@@ -139,7 +138,8 @@ public class Reachable {
     this.pathwayVisualization = null;
   }
 
-  public Reachable(String pageName, String inchi, String smiles, String inchiKey, String structureFilename, List<String> names, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref) {
+  public Reachable(Long id, String pageName, String inchi, String smiles, String inchiKey, String structureFilename, List<String> names, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref) {
+    this.id = id;
     this.pageName = pageName;
     this.inchi = inchi;
     this.smiles = smiles;
@@ -149,7 +149,7 @@ public class Reachable {
     this.wordCloudFilename = wordCloudFilename;
     this.precursorData = new PrecursorData();
     this.xref = xref;
-    this.isNative = false;
+    this.isNative = null;
     this.pathwayVisualization = null;
   }
 
@@ -222,11 +222,11 @@ public class Reachable {
     this.precursorData = precursorData;
   }
 
-  public String getId() {
+  public Long getId() {
     return id;
   }
 
-  public void setId(String id) {
+  public void setId(Long id) {
     this.id = id;
   }
 

@@ -1,20 +1,14 @@
 package act.installer.reachablesexplorer;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.Serializable;
 import java.util.List;
 
 
 public class Precursor implements Serializable {
-    @JsonProperty("precursor_inchis")
     private List<InchiDescriptor> precursorMolecules;
-
-    @JsonProperty("source")
     private String source;
-
-    @JsonProperty("sequences")
     private List<String> sequences;
 
     public Precursor(List<InchiDescriptor> precursorMolecules, String source, List<String> sequences) {

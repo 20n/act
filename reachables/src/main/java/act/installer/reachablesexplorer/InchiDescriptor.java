@@ -1,7 +1,5 @@
 package act.installer.reachablesexplorer;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.Serializable;
@@ -16,7 +14,6 @@ class InchiDescriptor implements Serializable {
     @JsonProperty("inchi_key")
     private String inchiKey;
 
-    @JsonCreator
     public InchiDescriptor(String name,
                            String inchi,
                            String inchiKey){
@@ -31,19 +28,28 @@ class InchiDescriptor implements Serializable {
         this.inchiKey = reachable.getInchiKey();
     }
 
-    @JsonIgnore
-    public String getPageName(){
+    public String getName() {
         return name;
     }
 
-    @JsonIgnore
-    public String getInchi(){
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getInchi() {
         return inchi;
     }
 
-    @JsonIgnore
-    public String getInchiKey(){
+    public void setInchi(String inchi) {
+        this.inchi = inchi;
+    }
+
+    public String getInchiKey() {
         return inchiKey;
+    }
+
+    public void setInchiKey(String inchiKey) {
+        this.inchiKey = inchiKey;
     }
 
     @Override

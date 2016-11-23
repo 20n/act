@@ -17,7 +17,6 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
-import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
@@ -91,8 +90,9 @@ public class Loader {
 
     MongoClient mongoClient = new MongoClient(new ServerAddress(host, port));
     DB reachables = mongoClient.getDB(targetDB);
-    DBCollection reachablesCollection = reachables.getCollection(targetCollection);
-    jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
+
+    jacksonReachablesCollection =
+            JacksonDBCollection.wrap(reachables.getCollection(targetCollection), Reachable.class, String.class);
     jacksonSequenceCollection =
             JacksonDBCollection.wrap(reachables.getCollection(DEFAULT_SEQUENCE_COLLECTION), SequenceData.class, String.class);
 
@@ -210,7 +210,7 @@ public class Loader {
       wordcloudFilename = wordcloud.getName();
     }
 
-    return new Reachable(pageName, inchi, smiles, inchikey, renderingFilename, names, wordcloudFilename, xref);
+    return new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, renderingFilename, names, wordcloudFilename, xref);
   }
 
   private void updateReachableWithSynonyms(Reachable reachable) {
@@ -304,7 +304,7 @@ public class Loader {
       List<Seq> sequences = db.getSeqWithRxnRef(rxnId);
       for (Seq seq : sequences) {
         if (seq.getSequence() == null) {
-          LOGGER.warn("Found seq entry with id %d has null sequence.  How did that happen?", seq.getUUID());
+          LOGGER.debug("Found seq entry with id %d has null sequence.  How did that happen?", seq.getUUID());
           continue;
         }
         String organismName = getOrganismName(seq.getOrgId());
@@ -319,19 +319,18 @@ public class Loader {
     return sortedSequences;
   }
 
-  private void updateCurrentChemical(Chemical current, Long parentId, List<Precursor> precursors) throws IOException {
+  private void updateCurrentChemical(Chemical current, Long currentId, Long parentId, List<Precursor> precursors) throws IOException {
     // Update source as reachables, as these files are parsed from `cascade` construction
+    Reachable rech = constructReachable(current.getInChI());
+    rech.setIsNative(parentId == -1);
     if (!precursors.isEmpty()) {
-      Reachable rech = constructReachable(current.getInChI());
       if (rech != null) {
-        rech.setPathwayVisualization("cscd" + String.valueOf(current.getPubchemID()) + ".dot");
+        rech.setPathwayVisualization("cscd" + currentId + ".dot");
         upsert(rech);
         updateWithPrecursors(current.getInChI(), precursors);
       }
     } else {
       try {
-        Reachable rech = constructReachable(current.getInChI());
-        rech.setIsNative(parentId == -1);
         upsert(rech);
         // TODO Remove null pointer exception check
       } catch (NullPointerException e) {
@@ -405,7 +404,6 @@ public class Loader {
   }
 
   private void updateFromReachablesFile(File file) {
-    // TODO Break this into a bunch of unique functions, quite long
     LOGGER.info("Processing file %s", file.getName());
     try {
       // Read in the file and parse it as JSON
@@ -429,8 +427,7 @@ public class Loader {
       MoleculeImporter.assertNotFakeInchi(current.getInChI());
 
       List<Precursor> precursors = getUpstreamPrecursors(parentId, upstreamReactions);
-      updateCurrentChemical(current, parentId, precursors);
-
+      updateCurrentChemical(current, currentId, parentId, precursors);
     } catch (MoleculeImporter.FakeInchiException e) {
       LOGGER.warn("Skipping file %s due to fake InChI exception", file.getName());
     } catch (IOException e) {
