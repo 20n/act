@@ -7,8 +7,10 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -48,7 +50,8 @@ public class SynonymsDriver {
     try {
       csvSynonyms = SynonymsTSVWriter.toCSV(synonymses);
       LOGGER.info(csvSynonyms);
-      new BufferedWriter(new FileWriter(OUTPUT_LOCATION)).write(csvSynonyms);
+      PrintWriter output = new PrintWriter(OUTPUT_LOCATION);
+      output.write(csvSynonyms);
     } catch (IOException e) {
       e.printStackTrace();
     }
