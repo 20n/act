@@ -7,19 +7,19 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public class SynonymData {
   @JsonProperty("pubchem")
-  private Map<PubchemSynonymType, List<String>> pubchemSynonyms;
+  private Map<PubchemSynonymType, Set<String>> pubchemSynonyms;
   @JsonProperty("mesh")
-  private Map<MeshTermType, List<String>> meshHeadings;
+  private Map<MeshTermType, Set<String>> meshHeadings;
 
   @JsonCreator
-  public SynonymData(@JsonProperty("pubchem") Map<PubchemSynonymType, List<String>> pubchemSynonyms,
-                  @JsonProperty("mesh") Map<MeshTermType, List<String>> meshHeadings) {
+  public SynonymData(@JsonProperty("pubchem") Map<PubchemSynonymType, Set<String>> pubchemSynonyms,
+                  @JsonProperty("mesh") Map<MeshTermType, Set<String>> meshHeadings) {
     this.pubchemSynonyms = pubchemSynonyms;
     this.meshHeadings = meshHeadings;
   }

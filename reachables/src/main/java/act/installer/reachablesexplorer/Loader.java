@@ -48,7 +48,7 @@ import java.util.stream.Collectors;
 public class Loader {
   private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
 
-  // We extract the chemicals from this database
+  // All of the source data on reactions and chemicals comes from validator_profiling_2
   private static final String DEFAULT_CHEMICALS_DATABASE = "validator_profiling_2";
 
   // Default host. If running on a laptop, please set a SSH bridge to access speakeasy
@@ -64,6 +64,13 @@ public class Loader {
   private static final String ORGANISM_UNKNOWN = "(unknown)";
   private final Cache<Long, String> organismCache = Caffeine.newBuilder().maximumSize(ORGANISM_CACHE_SIZE).build();
 
+  // Constants related to Chemaxon name generation.
+  // The format tag "name:t" refers to traditional name
+  private static final String CHEMAXON_TRADITIONAL_NAME_FORMAT = "name:t";
+  // The above format sometimes generates very long names (type IUPAC). We default to using inchis when the
+  // generated name is too long.
+  private static final Integer MAX_CHEMAXON_NAME_LENGTH = 50;
+
   // Database stuff
   private MongoDB db;
   private JacksonDBCollection<Reachable, String> jacksonReachablesCollection;
@@ -73,22 +80,27 @@ public class Loader {
   public static void main(String[] args) throws IOException {
     Loader loader = new Loader();
     loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/MinimalReachables"));
-    loader.updatePubchemSynonyms();
   }
 
   /**
-   * // TODO
-   * @param host
-   * @param port
-   * @param targetDB
-   * @param targetCollection
-   * @throws UnknownHostException
-     */
-  public Loader(String host, Integer port, String targetDB, String targetCollection) throws UnknownHostException {
+   * Constructor for Loader. Instantiates connexions to Mongo databases
+   * and Virtuoso triple store (Pubchem synonyms only)
+   * @param host The host for the target Reachables MongoDB
+   * @param port The port for the target Reachables MongoDB
+   * @param targetDB The database for the target Reachables MongoDB
+   * @param targetCollection The collection for the target Reachables MongoDB
+   */
+  public Loader(String host, Integer port, String targetDB, String targetCollection) {
     db = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_CHEMICALS_DATABASE);
     pubchemSynonymsDriver = new PubchemMeshSynonyms();
 
-    MongoClient mongoClient = new MongoClient(new ServerAddress(host, port));
+    MongoClient mongoClient;
+    try {
+      mongoClient = new MongoClient(new ServerAddress(host, port));
+    } catch (UnknownHostException e) {
+      LOGGER.error("Connexion to MongoClient failed. Please double check the target database's host and port.");
+      throw new RuntimeException(e);
+    }
     DB reachables = mongoClient.getDB(targetDB);
 
     jacksonReachablesCollection =
@@ -101,15 +113,14 @@ public class Loader {
     jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.organismFieldName, 1));
   }
 
-  public Loader() throws UnknownHostException {
-    // TODO Make this less specific constructor call the more specific one
+  public Loader() {
     this(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_TARGET_DATABASE, DEFAULT_TARGET_COLLECTION);
   }
 
   // TODO Move these getters to a different place/divide up concerns better?
   private String getSmiles(Molecule mol) {
     try {
-      return MoleculeExporter.exportAsSmarts(mol);
+      return MoleculeExporter.exportAsSmiles(mol);
     } catch (MolExportException e) {
       return null;
     }
@@ -120,11 +131,9 @@ public class Loader {
    */
   private String getInchiKey(Molecule mol) {
     try {
-      // TODO: add inchi key the Michael's Molecule Exporter
-      // Michael's comment: Definitely doable, all current formats are symmetric, can we import w/ inchikey too?
-      String inchikey = MolExporter.exportToFormat(mol, "inchikey");
+      String inchikey = MoleculeExporter.exportAsInchiKey(mol);
       return inchikey.replaceAll("InChIKey=", "");
-    } catch (Exception e) {
+    } catch (MolExportException e) {
       return null;
     }
   }
@@ -132,29 +141,31 @@ public class Loader {
   /**
    * Heuristic to choose the best page name
    */
-  private String getPageName(String chemaxonTraditionalName, List<String> brendaNames, String inchi) {
-    if (chemaxonTraditionalName == null || chemaxonTraditionalName.length() > 50) {
-      // TODO Solve edge case where really short names are picked
-      brendaNames.sort((n1, n2) -> Integer.compare(n1.length(), n2.length()));
-      if (brendaNames.isEmpty()) {
-        return inchi;
-      } else {
-        return brendaNames.get(0);
-      }
+  private String getPageName(Molecule mol, List<String> brendaNames, String inchi) {
+    // If we have some brenda names, get the first one. This is equivalent to Chemical.getFirstName()
+    if (!brendaNames.isEmpty()) {
+      return brendaNames.get(0);
     }
-    return chemaxonTraditionalName;
+    // Otherwise, generate a Chemaxon name
+    String chemaxonTraditionalName;
+    try {
+      chemaxonTraditionalName = MolExporter.exportToFormat(mol, CHEMAXON_TRADITIONAL_NAME_FORMAT);
+    } catch (IOException e) {
+      chemaxonTraditionalName = null;
+    }
+    // If a Chemaxon name was successfully generated, and is of reasonable length, get it
+    if (chemaxonTraditionalName != null && chemaxonTraditionalName.length() < MAX_CHEMAXON_NAME_LENGTH) {
+      return chemaxonTraditionalName;
+    }
+    // Finally default to returning the InChI if nothing better :(
+    return inchi;
   }
 
-  /**
-   * Use Chemaxon to get the traditional name.
-   * If no common name, Chemaxon will generate one
-   */
-  private String getChemaxonTraditionalName(Molecule mol) {
-    try {
-      return MolExporter.exportToFormat(mol, "name:t");
-    } catch (IOException e) {
-      return null;
-    }
+  private SynonymData getSynonymData(String inchi) {
+    String compoundID = pubchemSynonymsDriver.fetchCIDFromInchi(inchi);
+    Map<MeshTermType, Set<String>> meshSynonyms = pubchemSynonymsDriver.fetchMeshTermsFromCID(compoundID);
+    Map<PubchemSynonymType, Set<String>> pubchemSynonyms = pubchemSynonymsDriver.fetchPubchemSynonymsFromCID(compoundID);
+    return new SynonymData(pubchemSynonyms, meshSynonyms);
   }
 
   /**
@@ -162,6 +173,7 @@ public class Loader {
    * Gets names and xref from `db` collection `chemicals`
    * Tries to import to molecule and export names
    */
+  // TODO let's have Optional<Reachable> be the return type here
   private Reachable constructOrFindReachable(String inchi) {
     // TODO Better break the logic into discrete components
     // Only construct a new one if one doesn't already exist.
@@ -176,6 +188,7 @@ public class Loader {
       mol = MoleculeImporter.importMolecule(inchi);
     } catch (MolFormatException e) {
       LOGGER.error("Failed to import inchi %s", inchi);
+
       return null;
     } catch (MoleculeImporter.FakeInchiException e) {
       LOGGER.error("Failed to import inchi %s as it is fake.", inchi);
@@ -196,12 +209,7 @@ public class Loader {
       LOGGER.error("Failed to export molecule %s to inchi key", inchi);
     }
 
-    String chemaxonTraditionalName = getChemaxonTraditionalName(mol);
-    if (chemaxonTraditionalName == null) {
-      LOGGER.error("Failed to export molecule %s to traditional name", inchi);
-    }
-
-    String pageName = getPageName(chemaxonTraditionalName, names, inchi);
+    String pageName = getPageName(mol, names, inchi);
 
     File rendering = MoleculeRenderer.getRenderingFile(inchi);
     File wordcloud = WordCloudGenerator.getWordcloudFile(inchi);
@@ -214,26 +222,11 @@ public class Loader {
       wordcloudFilename = wordcloud.getName();
     }
 
-    return new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, renderingFilename, names, wordcloudFilename, xref);
+    SynonymData synonymData = getSynonymData(inchi);
+
+    return new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, renderingFilename, names, wordcloudFilename, xref, synonymData);
   }
 
-  private void updateReachableWithSynonyms(Reachable reachable) {
-    String inchi = reachable.getInchi();
-    String compoundID = pubchemSynonymsDriver.fetchCIDFromInchi(inchi);
-    Map<MeshTermType, List<String>> meshSynonyms = pubchemSynonymsDriver.fetchMeshTermsFromCID(compoundID).
-        entrySet().stream().
-        collect(Collectors.toMap(
-            Map.Entry::getKey,
-            e -> new ArrayList<>(e.getValue())));
-    Map<PubchemSynonymType, List<String>> pubchemSynonyms = pubchemSynonymsDriver.fetchPubchemSynonymsFromCID(compoundID).
-        entrySet().stream().
-        collect(Collectors.toMap(
-            Map.Entry::getKey,
-            e -> new ArrayList<>(e.getValue())));
-    SynonymData synonymData = new SynonymData(pubchemSynonyms, meshSynonyms);
-    reachable.setSynonyms(synonymData);
-    upsert(reachable);
-  }
 
   private void updateWithPrecursors(String inchi, List<Precursor> pre) throws IOException {
     Reachable reachable = queryByInchi(inchi);
@@ -486,7 +479,7 @@ public class Loader {
 
     // Construct descriptors.
     List<InchiDescriptor> precursors = substrates.stream()
-            .map(s -> new InchiDescriptor(s.getPageName(), s.getInchi(), s.getInchiKey()))
+            .map(InchiDescriptor::new)
             .collect(Collectors.toList());
 
     // For each product, create and add precursors.
@@ -497,25 +490,5 @@ public class Loader {
       product.getPrecursorData().addPrecursor(new Precursor(precursors, projection.getRos().get(0), new ArrayList<>()));
       upsert(product);
     });
-  }
-
-  private void updatePubchemSynonyms() {
-    // TODO Check conversion to string
-    List<String> inchis = jacksonReachablesCollection.distinct("inchi");
-    LOGGER.info("Found %d inchis in the database", inchis.size());
-
-    int i = 0;
-    for (String inchi : inchis) {
-
-      Reachable reachable = queryByInchi(inchi);
-      if (reachable.getSynonyms() == null) {
-        updateReachableWithSynonyms(reachable);
-      }
-
-
-      if (++i % 100 == 0) {
-        LOGGER.info("#%d", i);
-      }
-    }
   }
 }

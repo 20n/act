@@ -127,7 +127,8 @@ public class Reachable {
     this.pathwayVisualization = null;
   }
 
-  public Reachable(Long id, String pageName, String inchi, String smiles, String inchiKey, String structureFilename, List<String> names, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref) {
+  public Reachable(Long id, String pageName, String inchi, String smiles, String inchiKey, String structureFilename,
+                   List<String> names, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref, SynonymData synonyms) {
     this.id = id;
     this.pageName = pageName;
     this.inchi = inchi;
@@ -136,6 +137,7 @@ public class Reachable {
     this.structureFilename = structureFilename;
     this.names = names;
     this.wordCloudFilename = wordCloudFilename;
+    this.synonyms = synonyms;
     this.precursorData = new PrecursorData();
     this.xref = xref;
     this.isNative = null;
@@ -186,7 +188,6 @@ public class Reachable {
                    Map<Chemical.REFS, BasicDBObject> xref,
                    SynonymData synonyms) {
     this.pageName = pageName;
-
     this.inchi = inchi;
     this.smiles = smiles;
     this.structureFilename = structureFilename;
