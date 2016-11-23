@@ -340,9 +340,7 @@ object cascades {
 
       // We consider both the normal natives as well as products added because they had only cofactor
       // substrates as valid native sources.  This might cause interesting
-      natives = ActData.instance.natives.map(Long.unbox(_)).toList :::
-        ActData.instance().noSubstrateRxnsToProducts.values().flatten.toList.map(Long.unbox(_)) :::
-        ActData.instance().cofactors.toList.map(Long.unbox(_))
+      natives = ActData.instance.natives.map(Long.unbox(_)).toList ::: ActData.instance().cofactors.toList.map(Long.unbox(_))
     }
 
     def is_universal(m: Long) = natives.contains(m)

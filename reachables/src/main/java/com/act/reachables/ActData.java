@@ -86,7 +86,7 @@ public class ActData implements Serializable {
 
   /* Hack to work around the fact that static fields don't get serialized.  Edge and Node both now call
    * ActData.instance() a lot, which is gross but hopefully functional. */
-  HashMap<Long, List<Node>> nodeCache = new HashMap<Long, List<Node>>();
+  HashMap<Long, List<Node>> nodeCache = new HashMap<>();
   HashMap<Long, HashMap<String, Serializable>> nodeAttributes = new HashMap<>();
 
   HashMap<Edge, Edge> edgeCache = new HashMap<>();
