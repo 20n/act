@@ -3,6 +3,7 @@ package com.act.analysis.synonyms;
 import act.installer.pubchem.MeshTermType;
 import act.installer.pubchem.PubchemSynonymType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import java.util.ArrayList;
@@ -26,8 +27,10 @@ public class Synonyms {
   }
 
 
+  @JsonProperty("inchi")
   private String inchi;
 
+  @JsonProperty("brendaSynonyms")
   private List<String> brendaSynonyms;
 
   private Map<PubchemSynonymType, List<String>> pubchemSynonyms;
