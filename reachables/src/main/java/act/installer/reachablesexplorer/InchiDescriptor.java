@@ -1,8 +1,5 @@
 package act.installer.reachablesexplorer;
 
-import com.act.analysis.chemicals.molecules.MoleculeFormat;
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.ChemicalKeywords;
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.ChemicalKeywords$;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -10,26 +7,19 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.Serializable;
 
 class InchiDescriptor implements Serializable {
-    @JsonIgnore
-    private static final String moleculeName = "molecule_name";
-    @JsonIgnore
-    private static final String inchiName = "InChI";
-    @JsonIgnore
-    private static final String inchiKeyName = "inchi_key";
-
-    @JsonProperty(moleculeName)
+    @JsonProperty("molecule_name")
     private String name;
 
-    @JsonProperty(inchiName)
+    @JsonProperty("InChI")
     private String inchi;
 
-    @JsonProperty(inchiKeyName)
+    @JsonProperty("inchi_key")
     private String inchiKey;
 
     @JsonCreator
-    public InchiDescriptor(@JsonProperty(moleculeName) String name,
-                           @JsonProperty(inchiName) String inchi,
-                           @JsonProperty(inchiKeyName) String inchiKey){
+    public InchiDescriptor(String name,
+                           String inchi,
+                           String inchiKey){
         this.name = name;
         this.inchi = inchi;
         this.inchiKey = inchiKey;

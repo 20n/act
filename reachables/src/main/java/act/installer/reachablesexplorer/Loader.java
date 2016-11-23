@@ -48,20 +48,17 @@ import java.util.stream.Collectors;
 public class Loader {
   private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
 
-  // This database contains the Bing XREF that we need!
-  private static final String ACTV01_DATABASE = "actv01";
-
   // We extract the chemicals from this database
   private static final String VALIDATOR_PROFILING_DATABASE = "validator_profiling_2";
 
-  // Default host. If running on a laptop, please set a SSH bridge to access speeakeasy
+  // Default host. If running on a laptop, please set a SSH bridge to access speakeasy
   private static final String DEFAULT_HOST = "localhost";
   private static final Integer DEFAULT_PORT = 27017;
 
   // Target database and collection. We populate these with reachables
-  private static final String TARGET_DATABASE = "wiki_reachables";
-  private static final String TARGET_COLLECTION = "reachablesv6_test_rebase_min";
-  private static final String SEQUENCE_COLLECTION = "sequences_test_rebase_v6";
+  private static final String DEFAULT_TARGET_DATABASE = "wiki_reachables";
+  private static final String DEFAULT_TARGET_COLLECTION = "reachablesv6_test_rebase_min";
+  private static final String DEFAULT_SEQUENCE_COLLECTION = "sequences_test_rebase_v6";
 
   private static final int ORGANISM_CACHE_SIZE = 1000;
   private static final float ORGANISM_CACHE_LOAD = 1.0f;
@@ -75,43 +72,31 @@ public class Loader {
       };
   private MongoDB db;
 
-  // TODO We use word cloud statically, figure out if there is a use case for this variable
-  private WordCloudGenerator wcGenerator;
   private DBCollection reachablesCollection;
   private JacksonDBCollection<Reachable, String> jacksonReachablesCollection;
   private JacksonDBCollection<SequenceData, String> jacksonSequenceCollection;
   private PubchemMeshSynonyms pubchemSynonymsDriver;
 
   public Loader(String host, Integer port, String targetDB, String targetCollection) throws UnknownHostException {
-    db = new MongoDB(host, port, VALIDATOR_PROFILING_DATABASE);
-    wcGenerator = new WordCloudGenerator(host, port, ACTV01_DATABASE);
+    db = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, VALIDATOR_PROFILING_DATABASE);
     pubchemSynonymsDriver = new PubchemMeshSynonyms();
 
     MongoClient mongoClient = new MongoClient(new ServerAddress(host, port));
     DB reachables = mongoClient.getDB(targetDB);
     reachablesCollection = reachables.getCollection(targetCollection);
     jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
-    jacksonReachablesCollection.ensureIndex(new BasicDBObject("inchi", "hashed"));
+    jacksonSequenceCollection =
+            JacksonDBCollection.wrap(reachables.getCollection(DEFAULT_SEQUENCE_COLLECTION), SequenceData.class, String.class);
+
+    jacksonReachablesCollection.ensureIndex(new BasicDBObject(Reachable.inchiName, "hashed"));
+    jacksonSequenceCollection.createIndex(new BasicDBObject("sequence", "hashed"));
+    jacksonSequenceCollection.createIndex(new BasicDBObject("organism_name", 1));
   }
 
 
   public Loader() throws UnknownHostException {
     // TODO Make this less specific constructor call the more specific one
-
-    db = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, VALIDATOR_PROFILING_DATABASE);
-    wcGenerator = new WordCloudGenerator(DEFAULT_HOST, DEFAULT_PORT, ACTV01_DATABASE);
-    pubchemSynonymsDriver = new PubchemMeshSynonyms();
-
-    MongoClient mongoClient = new MongoClient(new ServerAddress(DEFAULT_HOST, DEFAULT_PORT));
-    DB reachables = mongoClient.getDB(TARGET_DATABASE);
-    reachablesCollection = reachables.getCollection(TARGET_COLLECTION);
-    jacksonReachablesCollection = JacksonDBCollection.wrap(reachablesCollection, Reachable.class, String.class);
-    jacksonSequenceCollection =
-        JacksonDBCollection.wrap(reachables.getCollection(SEQUENCE_COLLECTION), SequenceData.class, String.class);
-    // TODO Text or hashed index?
-    jacksonReachablesCollection.ensureIndex(new BasicDBObject("inchi", "hashed"));
-    jacksonSequenceCollection.createIndex(new BasicDBObject("sequence", "hashed"));
-    jacksonSequenceCollection.createIndex(new BasicDBObject("organism_name", 1));
+    this(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_TARGET_DATABASE, DEFAULT_TARGET_COLLECTION);
   }
 
   public static void main(String[] args) throws IOException {
@@ -472,7 +457,7 @@ public class Loader {
       if (!precursors.isEmpty()) {
         Reachable rech = constructReachable(current.getInChI());
         if (rech != null) {
-          rech.setDotGraph("cscd" + String.valueOf(currentId) + ".dot");
+          rech.setPathwayVisualization("cscd" + String.valueOf(currentId) + ".dot");
           upsert(rech);
           updateWithPrecursors(current.getInChI(), precursors);
         }

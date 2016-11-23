@@ -2,7 +2,6 @@ package act.installer.reachablesexplorer;
 
 
 import act.shared.Chemical;
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -15,13 +14,15 @@ import java.util.Map;
 
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public class Reachable {
+  @JsonIgnore
+  static final String inchiName = "InChI";
 
   private String id;
   @JsonProperty("pathway_vis")
-  private String dotGraph;
+  private String pathwayVisualization;
   @JsonProperty("is_native")
   private Boolean isNative;
-  @JsonProperty("inchi")
+  @JsonProperty("InChI")
   private String inchi;
   @JsonProperty("smiles")
   private String smiles;
@@ -57,7 +58,7 @@ public class Reachable {
     this.precursorData = new PrecursorData();
     this.xref = xref;
     this.isNative = isNative;
-    this.dotGraph = null;
+    this.pathwayVisualization = null;
   }
 
   public Reachable(String pageName, String inchi, String smiles, String inchikey, List<String> names, Map<Chemical.REFS, BasicDBObject> xref) {
@@ -71,7 +72,7 @@ public class Reachable {
     this.precursorData = new PrecursorData();
     this.xref = xref;
     this.isNative = false;
-    this.dotGraph = null;
+    this.pathwayVisualization = null;
   }
 
   public Reachable(String pageName, String inchi, String smiles, String inchikey, String structureFilename, List<String> names, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref) {
@@ -85,21 +86,20 @@ public class Reachable {
     this.precursorData = new PrecursorData();
     this.xref = xref;
     this.isNative = false;
-    this.dotGraph = null;
+    this.pathwayVisualization = null;
   }
 
-  @JsonCreator
-  public Reachable(@JsonProperty("page_name") String pageName,
-                   @JsonProperty("inchi") String inchi,
-                   @JsonProperty("smiles") String smiles,
-                   @JsonProperty("rendering-filename") String structureFilename,
-                   @JsonProperty("names") List<String> names,
-                   @JsonProperty("usage-wordcloud-filename") String wordCloudFilename,
-                   @JsonProperty("precursor") PrecursorData precursors,
-                   @JsonProperty("is_native") Boolean isNative,
-                   @JsonProperty("pathway_vis") String dotGraph,
-                   @JsonProperty("xref") Map<Chemical.REFS, BasicDBObject> xref,
-                   @JsonProperty("synonyms") SynonymData synonyms) {
+  public Reachable(String pageName,
+                   String inchi,
+                   String smiles,
+                   String structureFilename,
+                   List<String> names,
+                   String wordCloudFilename,
+                   PrecursorData precursors,
+                   Boolean isNative,
+                   String pathwayVisualization,
+                   Map<Chemical.REFS, BasicDBObject> xref,
+                   SynonymData synonyms) {
     this.pageName = pageName;
     this.inchi = inchi;
     this.smiles = smiles;
@@ -109,7 +109,7 @@ public class Reachable {
     this.precursorData = precursors;
     this.xref = xref;
     this.isNative = isNative;
-    this.dotGraph = dotGraph;
+    this.pathwayVisualization = pathwayVisualization;
     this.synonyms = synonyms;
   }
 
@@ -174,8 +174,8 @@ public class Reachable {
   }
 
   @JsonIgnore
-  public void setDotGraph(String graphName) {
-    this.dotGraph = graphName;
+  public void setPathwayVisualization(String graphName) {
+    this.pathwayVisualization = graphName;
   }
 
   @JsonIgnore
