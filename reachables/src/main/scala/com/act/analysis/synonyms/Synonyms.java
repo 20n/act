@@ -5,6 +5,9 @@ import act.installer.pubchem.PubchemSynonymType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -25,12 +28,14 @@ public class Synonyms implements Serializable {
     this.meshTerms = new HashMap<>();
     this.chemaxonTraditionalName = null;
     this.chemaxonCommonNames = new ArrayList<>();
+
   }
 
 
   @JsonProperty("inchi")
   private String inchi;
 
+  @JsonSerialize(using = ToStringSerializer.class)
   @JsonProperty("brendaSynonyms")
   private List<String> brendaSynonyms;
 
