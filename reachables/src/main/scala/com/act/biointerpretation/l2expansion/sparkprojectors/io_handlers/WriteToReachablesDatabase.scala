@@ -19,6 +19,8 @@ trait WriteToReachablesDatabase extends ReadFromDatabase with BasicProjectorOutp
   }
 
   def getTerminationCommandLineOptions: List[CliOption.Builder] = {
+    // This adds no new command line options, so we leave this as not final so that it can be overridden,
+    // but have it return list as it does need to return a list type.
     List()
   }
 }

@@ -69,10 +69,7 @@ trait ReadFromDatabase extends BasicProjectorInput {
 
     while (cursor.hasNext) {
       val entry: DBObject = cursor.next
-      var rawString: Option[AnyRef] = Option(entry.get("InChI"))
-      if (rawString.isEmpty) {
-        rawString = Option(entry.get("inchi"))
-      }
+      val rawString: Option[AnyRef] = Option(entry.get("InChI"))
 
       if (rawString.isDefined) {
         inchis.append(rawString.get.asInstanceOf[String])

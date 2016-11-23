@@ -46,7 +46,7 @@ public class ReachablesProjectionUpdate {
     this.products = JavaConversions.asJavaList(projectionResult.products());
   }
 
-  public void updateReachables(DBCollection reachables) {
+  public void updateDatabase(DBCollection reachables) {
     for (String product : products) {
       // The query object for this product
       BasicDBObject newProductQuery = new BasicDBObject().append(INCHI_KEY, product);

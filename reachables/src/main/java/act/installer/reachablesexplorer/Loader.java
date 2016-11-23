@@ -162,7 +162,7 @@ public class Loader {
    * Gets names and xref from `db` collection `chemicals`
    * Tries to import to molecule and export names
    */
-  private Reachable constructReachable(String inchi) {
+  private Reachable constructOrFindReachable(String inchi) {
     // TODO Better break the logic into discrete components
     // Only construct a new one if one doesn't already exist.
     Reachable preconstructedReachable = queryByInchi(inchi);
@@ -172,9 +172,13 @@ public class Loader {
 
     Molecule mol;
     try {
+      MoleculeImporter.assertNotFakeInchi(inchi);
       mol = MoleculeImporter.importMolecule(inchi);
     } catch (MolFormatException e) {
       LOGGER.error("Failed to import inchi %s", inchi);
+      return null;
+    } catch (MoleculeImporter.FakeInchiException e) {
+      LOGGER.error("Failed to import inchi %s as it is fake.", inchi);
       return null;
     }
 
@@ -235,7 +239,7 @@ public class Loader {
     Reachable reachable = queryByInchi(inchi);
 
     // If is null we create a new one
-    reachable = reachable == null ? constructReachable(inchi) : reachable;
+    reachable = reachable == null ? constructOrFindReachable(inchi) : reachable;
 
     if (reachable == null) {
       LOGGER.warn("Still couldn't construct InChI after retry, aborting");
@@ -321,7 +325,7 @@ public class Loader {
 
   private void updateCurrentChemical(Chemical current, Long currentId, Long parentId, List<Precursor> precursors) throws IOException {
     // Update source as reachables, as these files are parsed from `cascade` construction
-    Reachable rech = constructReachable(current.getInChI());
+    Reachable rech = constructOrFindReachable(current.getInChI());
     rech.setIsNative(parentId == -1);
     if (!precursors.isEmpty()) {
       if (rech != null) {
@@ -359,8 +363,8 @@ public class Loader {
         if (subId >= 0 && !substrateCache.containsKey(subId)) {
           try {
             Chemical parent = db.getChemicalFromChemicalUUID(subId);
-            upsert(constructReachable(parent.getInChI()));
-            parentDescriptor = new InchiDescriptor(constructReachable(parent.getInChI()));
+            upsert(constructOrFindReachable(parent.getInChI()));
+            parentDescriptor = new InchiDescriptor(constructOrFindReachable(parent.getInChI()));
             thisRxnSubstrates.add(parentDescriptor);
             substrateCache.put(subId, parentDescriptor);
             // TODO Remove null pointer exception check
@@ -434,8 +438,8 @@ public class Loader {
       // We can only work with files we can parse, so if we can't
       // parse the file we just don't do anything and submit an error.
       LOGGER.warn("Unable to load file " + file.getAbsolutePath());
-    } catch (JSONException e){
-      LOGGER.warn("Unable to parse JSON of file at " + file.getAbsolutePath());
+    } catch (JSONException e) {
+      LOGGER.error("Unable to parse JSON of file at " + file.getAbsolutePath());
     }
   }
 
@@ -474,7 +478,7 @@ public class Loader {
   public void updateFromProjection(ReachablesProjectionUpdate projection) {
     // Construct substrates
     List<Reachable> substrates = projection.getSubstrates().stream()
-            .map(this::constructReachable)
+            .map(this::constructOrFindReachable)
             .collect(Collectors.toList());
 
     // Add substrates in, or make sure they were added.
@@ -488,7 +492,7 @@ public class Loader {
     // For each product, create and add precursors.
     projection.getProducts().stream().forEach(p -> {
       // Get product
-      Reachable product = constructReachable(p);
+      Reachable product = constructOrFindReachable(p);
       // TODO Don't punt on sequences
       product.getPrecursorData().addPrecursor(new Precursor(precursors, projection.getRos().get(0), new ArrayList<>()));
       upsert(product);

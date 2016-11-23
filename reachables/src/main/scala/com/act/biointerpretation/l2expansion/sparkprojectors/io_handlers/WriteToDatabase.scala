@@ -51,7 +51,7 @@ trait WriteToDatabase extends BasicProjectorOutput {
 
     results.foreach(projection => {
       val updater = new ReachablesProjectionUpdate(projection)
-      updater.updateReachables(reachables)
+      updater.updateDatabase(reachables)
     })
   }
 
