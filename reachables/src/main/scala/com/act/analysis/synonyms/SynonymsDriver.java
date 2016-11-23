@@ -51,7 +51,7 @@ public class SynonymsDriver {
       csvSynonyms = SynonymsTSVWriter.toCSV(synonymses);
       LOGGER.info(csvSynonyms);
       PrintWriter output = new PrintWriter(OUTPUT_LOCATION);
-      output.write(csvSynonyms);
+      output.print(csvSynonyms);
     } catch (IOException e) {
       e.printStackTrace();
     }
