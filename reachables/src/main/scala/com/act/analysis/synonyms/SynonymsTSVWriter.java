@@ -11,7 +11,7 @@ public class SynonymsTSVWriter {
 
   public static String toCSV(List<Synonyms> synonyms) throws JsonProcessingException {
     CsvMapper mapper = new CsvMapper();
-    CsvSchema schema = mapper.schemaFor(Synonyms.class);
+    CsvSchema schema = mapper.schemaFor(Synonyms.class).withHeader();
     return mapper.writer(schema).writeValueAsString(synonyms);
   }
 }
