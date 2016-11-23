@@ -52,6 +52,7 @@ public class SynonymsDriver {
       LOGGER.info(csvSynonyms);
       PrintWriter output = new PrintWriter(OUTPUT_LOCATION);
       output.print(csvSynonyms);
+      output.close();
     } catch (IOException e) {
       e.printStackTrace();
     }
