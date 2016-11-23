@@ -111,13 +111,13 @@ public class WavefrontExpansion {
 
     System.out.format("Size of cofactors_and_natives: %d\n", this.cofactors_and_natives.size());
 
-    logProgress("Adding products of reactions without substrates.\n");
-    for (Map.Entry<Long, List<Long>> entry : ActData.instance().noSubstrateRxnsToProducts.entrySet()) {
-      for (Long c : entry.getValue()) {
-        addToReachablesAndCofactorNatives(c);
-      }
-    }
-    logProgress("Reachables size after adding products of substrate-free reactions: %d\n", this.R.size());
+//    logProgress("Adding products of reactions without substrates.\n");
+//    for (Map.Entry<Long, List<Long>> entry : ActData.instance().noSubstrateRxnsToProducts.entrySet()) {
+//      for (Long c : entry.getValue()) {
+//        addToReachablesAndCofactorNatives(c);
+//      }
+//    }
+//    logProgress("Reachables size after adding products of substrate-free reactions: %d\n", this.R.size());
 
     logProgress("Starting computeTree");
     logProgress("Cofactors and natives = " + this.cofactors_and_natives);
