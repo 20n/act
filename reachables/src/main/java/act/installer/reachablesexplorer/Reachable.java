@@ -82,30 +82,19 @@ public class Reachable {
 
   @JsonProperty("_id")
   private Long id;
-  @JsonProperty("page_name")
   private String pageName;
-  @JsonProperty("pathway_vis")
   private String pathwayVisualization;
   private Boolean isNative;
   @JsonProperty("InChI")
   private String inchi;
-  @JsonProperty("smiles")
   private String smiles;
-  @JsonProperty("inchikey")
   private String inchiKey;
-  @JsonProperty("rendering-filename")
   private String structureFilename;
-  @JsonProperty("names")
   private List<String> names;
-  @JsonProperty("wikipedia-data")
   private WikipediaData wikipediaData;
-  @JsonProperty("usage-wordcloud-filename")
   private String wordCloudFilename;
-  @JsonProperty("precursor")
   private PrecursorData precursorData;
-  @JsonProperty("xref")
   private Map<Chemical.REFS, BasicDBObject> xref;
-  @JsonProperty("synonyms")
   private SynonymData synonyms;
 
   public Reachable() {}
