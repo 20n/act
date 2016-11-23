@@ -1,10 +1,10 @@
 package act.installer.reachablesexplorer;
 
 
-
 import act.server.DBIterator;
 import act.server.MongoDB;
 import com.act.jobs.FileChecker;
+import com.act.utils.ProcessRunner;
 import com.mongodb.BasicDBObject;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.logging.log4j.LogManager;
@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 
@@ -25,10 +26,12 @@ public class WordCloudGenerator {
    * It requires an R script, that takes an InChI as argument and writes a word cloud to a file
    */
 
+  private static final String RSCRIPT_EXE_PATH = "/usr/bin/Rscript"; // TODO: find this using `env` instead.
   private static final String RSCRIPT_LOCATION = "src/main/java/act/installer/reachablesexplorer/RWordCloudGenerator.R";
-  private static final String ASSETS_LOCATION = "/mnt/data-level1-1/data/reachables-explorer-rendering-cache";
+  private static final String ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
   private static final Logger LOGGER = LogManager.getFormatterLogger(WordCloudGenerator.class);
   private static final String PNG_EXTENSION = ".png";
+  private static final long CHILD_PROCESS_TIMEOUT_IN_SECONDS = 60; // Thomas thinks this is plenty of time for a cloud.
 
 
   private File rScript;
@@ -92,17 +95,22 @@ public class WordCloudGenerator {
 
     if (!Files.exists(wordcloud.toPath())) {
       try {
-        // TODO: this call a CL to run the R script. Maybe use Rengine instead?
-        String cmd = String.format("Rscript %s %s %s %s %s", rScript.getAbsolutePath(), inchi, wordcloud.getAbsolutePath(), host, port);
-        Runtime.getRuntime().exec(cmd);
+        ProcessRunner.runProcess(
+            RSCRIPT_EXE_PATH,
+            Arrays.asList(rScript.getAbsolutePath(), inchi, wordcloud.getAbsolutePath(), host, port.toString()),
+            CHILD_PROCESS_TIMEOUT_IN_SECONDS);
         FileChecker.verifyInputFile(wordcloud);
       } catch (IOException e) {
         LOGGER.error("Unable to generate wordcloud for %s at location %s", inchi, wordcloud.toPath().toString());
+        return null;
+      } catch (InterruptedException e) {
+        LOGGER.error("Child process was interrupted: %s", e.getMessage());
         return null;
       }
     }
     return wordcloud;
   }
+
 
   // TODO: remove main method when done testing
   public static void main(String[] args) {
