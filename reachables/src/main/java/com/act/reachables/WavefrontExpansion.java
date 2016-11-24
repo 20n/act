@@ -9,7 +9,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -101,13 +100,12 @@ public class WavefrontExpansion {
   }
 
   public Tree<Long> expandAndPickParents() {
-    for (Long c : ActData.instance().cofactors) {
-      addToReachablesAndCofactorNatives(c);
-    }
+    ActData.instance().natives.forEach(this::addToReachablesAndCofactorNatives);
+    ActData.instance().cofactors.forEach(this::addToReachablesAndCofactorNatives);
 
-    for (Long c : ActData.instance().natives) {
-      addToReachablesAndCofactorNatives(c);
-    }
+//    for (List<Long> c : ActData.instance().noSubstrateRxnsToProducts.values()) {
+//      c.stream().forEach(this::addToReachablesAndCofactorNatives);
+//    }
 
     System.out.format("Size of cofactors_and_natives: %d\n", this.cofactors_and_natives.size());
 
@@ -135,7 +133,7 @@ public class WavefrontExpansion {
       // add all host organism reachables
       int host_layer = 0;
       while (anyEnabledReactions(GlobalParams.gethostOrganismID())) {
-        logProgress("Current layeri (inside host expansion): " + this.currentLayer);
+        logProgress("Current layer (inside host expansion): " + this.currentLayer);
         boolean newAdded = pushWaveFront(GlobalParams.gethostOrganismID(), host_layer);
         if (newAdded) { // temporary....
           pickParentsForNewReachables(this.currentLayer, host_layer++, doNotAssignParentsTo, possibleBigMols, null /*no assumptions*/);
@@ -421,20 +419,11 @@ public class WavefrontExpansion {
     // use the following as the universe of reactions to enumerate over
     HashMap<Long, Set<Long>> substrates_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.instance().rxnClassesSubstrates : ActData.instance().rxnSubstrates;
 
-    HashMap<Long, List<Long>> needs = new HashMap<Long, List<Long>>();
-    int ignored_nosub = 0, ignored_noseq = 0, total = 0;
+    HashMap<Long, List<Long>> needs = new HashMap<>();
+    int ignored_noseq = 0, total = 0;
     logProgress("Processing all rxns for rxn_needs: %d\n", substrates_dataset.size());
     for (Long r : substrates_dataset.keySet()) {
       Set<Long> substrates = substrates_dataset.get(r);
-
-      // do not add reactions whose substrate list is empty (happens when we parse metacyc)
-      if (GlobalParams._actTreeIgnoreReactionsWithNoSubstrates) {
-        // If a reaction has no substrates but does have substrate cofactors, we should keep it.
-        if (substrates.size() == 0) {
-          ignored_nosub++;
-          continue;
-        }
-      }
 
       // do not add reactions that don't have a sequence; unless the flag to be liberal is set
       if (GlobalParams._actTreeOnlyIncludeRxnsWithSequences) {
@@ -445,10 +434,8 @@ public class WavefrontExpansion {
       }
 
       total++;
-      needs.put(r, new ArrayList<Long>(substrates));
+      needs.put(r, new ArrayList<>(substrates));
     }
-    if (GlobalParams._actTreeIgnoreReactionsWithNoSubstrates)
-      logProgress("Ignored %d reactions that had zero substrates. Total were %d\n", ignored_nosub, total);
     if (GlobalParams._actTreeOnlyIncludeRxnsWithSequences)
       logProgress("Ignored %d reactions that had no sequence. Total were %d\n", ignored_noseq, total);
     return needs;
@@ -488,7 +475,7 @@ public class WavefrontExpansion {
         // so we have to allow cofactors in the parent candidates
         // but at the same time, some are really bad parents,
         // e.g., water and ATP, so at the end we blacklist them as owning parents
-        parent_candidates.addAll(ActData.instance().rxnSubstratesCofactors.get(r));
+//        parent_candidates.addAll(ActData.instance().rxnSubstratesCofactors.get(r));
 
         if (!this.R_parent_candidates.containsKey(p))
           this.R_parent_candidates.put(p, new HashSet<>());
@@ -662,7 +649,7 @@ public class WavefrontExpansion {
       boolean at_least_one_parent = false;
 
       Set<Long> candidates = this.R_parent_candidates.get(child);
-      removeBlackListedCofactorsAsParents(candidates, child);
+      //removeBlackListedCofactorsAsParents(candidates, child);
       Long most_similar = pickMostSimilar(child, candidates);
 
       if (most_similar != null && possible_children.containsKey(most_similar)) {
@@ -736,7 +723,7 @@ public class WavefrontExpansion {
           for (Long n : still_orphan) {
             // first, if there are multiple elements in the root assumptions, then pick the most similar
             Set<Long> candidates = deepCopy(treeRoot.speculatedChems());
-            removeBlackListedCofactorsAsParents(candidates, n);
+//            removeBlackListedCofactorsAsParents(candidates, n);
             Long most_similar = pickMostSimilar(n, candidates);
             if (most_similar == null) {
               // we do not have structure information (either for n, or for any of the candidates)
