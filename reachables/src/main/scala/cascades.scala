@@ -334,16 +334,18 @@ object cascades {
     // natives
     // markedReachables (list in MongoDB.java)
     var natives = List[Long]()
+    var cofactors = List[Long]()
 
     def init(reachables: List[Long], upRxns: List[Set[ReachRxn]]) {
       upR = (reachables zip upRxns).toMap
 
       // We consider both the normal natives as well as products added because they had only cofactor
       // substrates as valid native sources.  This might cause interesting
-      natives = ActData.instance.natives.map(Long.unbox(_)).toList ::: ActData.instance().cofactors.toList.map(Long.unbox(_))
+      natives = ActData.instance.natives.map(Long.unbox(_)).toList
+      cofactors = ActData.instance.cofactors.map(Long.unbox(_)).toList
     }
 
-    def is_universal(m: Long) = natives.contains(m)
+    def is_universal(m: Long) = natives.contains(m) || cofactors.contains(m)
 
     def has_substrates(r: ReachRxn) = ! r.substrates.isEmpty
 
