@@ -85,7 +85,7 @@ public class Loader {
 
   public static void main(String[] args) throws IOException {
     Loader loader = new Loader();
-    loader.updateFromReachableDir(new File("/Volumes/shared-data/Michael/WikipediaProject/MinimalReachables"));
+    loader.updateFromReachableDir(new File("/mnt/shared-data/Michael/WikipediaProject/MinimalReachables"));
   }
 
   /**
