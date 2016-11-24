@@ -16,61 +16,6 @@ public class Reachable {
   @JsonIgnore
   static final String inchiFieldName = "InChI";
 
-  public static String getInchiFieldName() {
-    return inchiFieldName;
-  }
-
-  public String getPathwayVisualization() {
-    return pathwayVisualization;
-  }
-
-  public Boolean getNative() {
-    return isNative;
-  }
-
-  public void setNative(Boolean aNative) {
-    isNative = aNative;
-  }
-
-  public void setInchi(String inchi) {
-    this.inchi = inchi;
-  }
-
-  public String getSmiles() {
-    return smiles;
-  }
-
-  public void setSmiles(String smiles) {
-    this.smiles = smiles;
-  }
-
-  public String getInchiKey() {
-    return inchiKey;
-  }
-
-  public void setInchiKey(String inchiKey) {
-    this.inchiKey = inchiKey;
-  }
-
-  public List<String> getNames() {
-    return names;
-  }
-
-  public void setNames(List<String> names) {
-    this.names = names;
-  }
-
-  public Map<Chemical.REFS, BasicDBObject> getXref() {
-    return xref;
-  }
-
-  public void setXref(Map<Chemical.REFS, BasicDBObject> xref) {
-    this.xref = xref;
-  }
-
-  public void setPageName(String pageName) {
-    this.pageName = pageName;
-  }
 
   @JsonProperty("_id")
   private Long id;
@@ -149,20 +94,54 @@ public class Reachable {
     this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null, structureFilename, wordCloudFilename, null, xref);
   }
 
-  public SynonymData getSynonyms() {
-    return synonyms;
+  public String getPageName() {
+    return pageName;
   }
 
-  public void setSynonyms(SynonymData synonyms) {
-    this.synonyms = synonyms;
+  public void setPageName(String pageName) {
+    this.pageName = pageName;
+  }
+
+  public String getPathwayVisualization() {
+    return pathwayVisualization;
   }
 
   public void setPathwayVisualization(String pathwayVisualization) {
     this.pathwayVisualization = pathwayVisualization;
   }
 
+  public Boolean getNative() {
+    return isNative;
+  }
+
+  public void setNative(Boolean aNative) {
+    isNative = aNative;
+  }
+
+  @JsonIgnore
   public String getInchi() {
     return inchi;
+  }
+
+  @JsonIgnore
+  public void setInchi(String inchi) {
+    this.inchi = inchi;
+  }
+
+  public String getSmiles() {
+    return smiles;
+  }
+
+  public void setSmiles(String smiles) {
+    this.smiles = smiles;
+  }
+
+  public String getInchiKey() {
+    return inchiKey;
+  }
+
+  public void setInchiKey(String inchiKey) {
+    this.inchiKey = inchiKey;
   }
 
   public String getStructureFilename() {
@@ -173,6 +152,14 @@ public class Reachable {
     this.structureFilename = structureFilename;
   }
 
+  public List<String> getNames() {
+    return names;
+  }
+
+  public void setNames(List<String> names) {
+    this.names = names;
+  }
+
   public String getWordCloudFilename() {
     return wordCloudFilename;
   }
@@ -181,33 +168,27 @@ public class Reachable {
     this.wordCloudFilename = wordCloudFilename;
   }
 
-
-
-  public void setIsNative(Boolean isNative) {
-    this.isNative = isNative;
-  }
-
   public PrecursorData getPrecursorData() {
-    return this.precursorData;
+    return precursorData;
   }
 
   public void setPrecursorData(PrecursorData precursorData) {
     this.precursorData = precursorData;
   }
 
-  public Long getId() {
-    return id;
+  public Map<Chemical.REFS, BasicDBObject> getXref() {
+    return xref;
   }
 
-  public void setId(Long id) {
-    this.id = id;
+  public void setXref(Map<Chemical.REFS, BasicDBObject> xref) {
+    this.xref = xref;
   }
 
-  public String getPageName(){
-    return pageName;
+  public SynonymData getSynonyms() {
+    return synonyms;
   }
 
-  public Map<Chemical.REFS, BasicDBObject> getXREFS() {
-    return this.xref;
+  public void setSynonyms(SynonymData synonyms) {
+    this.synonyms = synonyms;
   }
 }

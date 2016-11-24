@@ -11,8 +11,6 @@ public class Precursor implements Serializable {
     private String source;
     private List<String> sequences;
 
-    public Precursor() {}
-
     public Precursor(List<InchiDescriptor> precursorMolecules, String source, List<String> sequences) {
         this.precursorMolecules = precursorMolecules;
         this.source = source;
