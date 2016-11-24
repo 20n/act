@@ -5,22 +5,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.Serializable;
 
 class InchiDescriptor implements Serializable {
-    @JsonProperty("molecule_name")
     private String name;
 
     @JsonProperty("InChI")
     private String inchi;
 
-    @JsonProperty("inchi_key")
     private String inchiKey;
-
-    public InchiDescriptor(String name,
-                           String inchi,
-                           String inchiKey){
-        this.name = name;
-        this.inchi = inchi;
-        this.inchiKey = inchiKey;
-    }
 
     InchiDescriptor(Reachable reachable){
         this.name = reachable.getPageName();

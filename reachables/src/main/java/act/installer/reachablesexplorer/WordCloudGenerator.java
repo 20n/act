@@ -31,7 +31,6 @@ public class WordCloudGenerator {
   private static final String PNG_EXTENSION = ".png";
 
 
-  private Runtime rt;
   private File rScript;
 
   private String host;
@@ -44,7 +43,7 @@ public class WordCloudGenerator {
     this.port = port;
     this.database = database;
 
-    rt = Runtime.getRuntime();
+
     rScript = new File(RSCRIPT_LOCATION);
     try {
       FileChecker.verifyInputFile(rScript);
@@ -95,7 +94,7 @@ public class WordCloudGenerator {
       try {
         // TODO: this call a CL to run the R script. Maybe use Rengine instead?
         String cmd = String.format("Rscript %s %s %s %s %s", rScript.getAbsolutePath(), inchi, wordcloud.getAbsolutePath(), host, port);
-        rt.exec(cmd);
+        Runtime.getRuntime().exec(cmd);
         FileChecker.verifyInputFile(wordcloud);
       } catch (IOException e) {
         LOGGER.error("Unable to generate wordcloud for %s at location %s", inchi, wordcloud.toPath().toString());

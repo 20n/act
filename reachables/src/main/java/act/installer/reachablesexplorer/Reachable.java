@@ -60,14 +60,6 @@ public class Reachable {
     this.names = names;
   }
 
-  public WikipediaData getWikipediaData() {
-    return wikipediaData;
-  }
-
-  public void setWikipediaData(WikipediaData wikipediaData) {
-    this.wikipediaData = wikipediaData;
-  }
-
   public Map<Chemical.REFS, BasicDBObject> getXref() {
     return xref;
   }
@@ -91,7 +83,6 @@ public class Reachable {
   private String inchiKey;
   private String structureFilename;
   private List<String> names;
-  private WikipediaData wikipediaData;
   private String wordCloudFilename;
   private PrecursorData precursorData;
   private Map<Chemical.REFS, BasicDBObject> xref;
@@ -218,20 +209,5 @@ public class Reachable {
 
   public Map<Chemical.REFS, BasicDBObject> getXREFS() {
     return this.xref;
-  }
-
-  // This is used only when loading xrefs separately from the rest
-  // Let's leave it here for now!
-  @JsonIgnore
-  public void setXREFS(BasicDBObject xrefs) {
-    this.xref = new HashMap<>();
-    if (xrefs == null) {
-      return;
-    }
-    for (String typ : xrefs.keySet()) {
-      if (typ.equals("pubchem"))
-        continue;
-      this.xref.put(Chemical.REFS.valueOf(typ), (BasicDBObject) xrefs.get(typ));
-    }
   }
 }
