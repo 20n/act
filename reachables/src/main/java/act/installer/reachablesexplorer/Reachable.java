@@ -63,32 +63,6 @@ public class Reachable {
     this.xref = xref;
   }
 
-  public Reachable(String pageName,
-                   String inchi,
-                   String smiles,
-                   String inchiKey,
-                   List<String> names,
-                   PrecursorData precursors,
-                   SynonymData synonyms,
-                   Boolean isNative,
-                   String structureFilename,
-                   String wordCloudFilename,
-                   String pathwayVisualization,
-                   Map<Chemical.REFS, BasicDBObject> xref) {
-    this.pageName = pageName;
-    this.inchi = inchi;
-    this.smiles = smiles;
-    this.inchiKey = inchiKey;
-    this.names = names;
-    this.precursorData = precursors;
-    this.synonyms = synonyms;
-    this.isNative = isNative;
-    this.structureFilename = structureFilename;
-    this.wordCloudFilename = wordCloudFilename;
-    this.pathwayVisualization = pathwayVisualization;
-    this.xref = xref;
-  }
-
   public Reachable(Long id, String pageName, String inchi, String smiles, String inchiKey, List<String> names,
                    SynonymData synonymData, String structureFilename, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref) {
     this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null, structureFilename, wordCloudFilename, null, xref);

@@ -23,18 +23,18 @@ public class MoleculeRenderer {
   private File assetLocation;
 
   public MoleculeRenderer(File assetLocation) {
-    try {
-      FileChecker.verifyOrCreateDirectory(assetLocation);
+    if (assetLocation.exists()) {
       this.assetLocation = assetLocation;
-    } catch (IOException e) {
-      LOGGER.error("Could not find or create directory at %s for storing assets.", assetLocation.getAbsolutePath());
-      throw new RuntimeException(e);
+    } else {
+      String msg = String.format("Could not find or create directory at %s for storing assets.", assetLocation.getAbsolutePath());
+      LOGGER.error(msg);
+      throw new RuntimeException(msg);
     }
   }
 
   public File getRenderingFile(String inchi) {
     String md5 = DigestUtils.md5Hex(inchi);
-    String postfix = String.format("%s-%s", md5, PNG_EXTENSION);
+    String postfix = String.format("-%s%s", md5, PNG_EXTENSION);
 
     String renderingFilename = String.join("", "molecule", postfix);
     return Paths.get(this.assetLocation.getPath(), renderingFilename).toFile();
