@@ -139,7 +139,7 @@ object reachables {
 
     val universal_natives = {
       val data = Source.fromFile(nativesFile).getLines
-      val inchis = data.filter { x => x.length > 0 && x.charAt(0) != '#' }
+      val inchis = data.filter { x => x.length > 0 && x.charAt(0) != '#' }.map(x => x.trim)
       collection.mutable.Set(inchis.toSeq: _*).toSet.asJava
     }
 
