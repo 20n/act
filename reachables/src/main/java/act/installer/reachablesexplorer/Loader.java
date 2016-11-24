@@ -326,7 +326,7 @@ public class Loader {
   private void updateCurrentChemical(Chemical current, Long currentId, Long parentId, List<Precursor> precursors) throws IOException {
     // Update source as reachables, as these files are parsed from `cascade` construction
     Reachable rech = constructOrFindReachable(current.getInChI());
-    rech.setIsNative(parentId == -1);
+    rech.setNative(parentId == -1);
     if (!precursors.isEmpty()) {
       if (rech != null) {
         rech.setPathwayVisualization("cscd" + currentId + ".dot");
