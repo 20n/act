@@ -5,6 +5,7 @@ import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Chemical.REFS;
 import act.shared.Reaction;
+import com.mongodb.BasicDBObject;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONArray;
@@ -111,7 +112,7 @@ public class LoadAct extends SteppedTask {
     inputChemicalsArray = ArrayUtils.addAll(inputChemicalsArray, rxn.getCoenzymes());
 
     if (Arrays.stream(inputChemicalsArray).anyMatch(x -> ActData.instance().metaCycBigMolsOrRgrp.contains(x))){
-      //logProgress(String.format("Skipping reaction %d as it contains an abstract substrate.", rxnid));
+      logProgress(String.format("Skipping reaction %d as it contains an abstract substrate.", rxnid));
       return;
     }
 
@@ -128,7 +129,7 @@ public class LoadAct extends SteppedTask {
 
     // Don't bother if we don't get any new chemicals from this.
     if (outputChemicals.isEmpty()){
-//      logProgress(String.format("Skipping reaction %d as it has no non-abstract products.", rxnid));
+      logProgress(String.format("Skipping reaction %d as it has no non-abstract products.", rxnid));
       return;
     }
 
@@ -321,7 +322,8 @@ public class LoadAct extends SteppedTask {
   }
 
   private void addReactionsToNetwork() {
-    DBIterator iterator = this.db.getIteratorOverReactions(true);
+    BasicDBObject noFakeReactions = new BasicDBObject("easy_desc", new BasicDBObject("$regex", "^((?!protein).)*$"));
+    DBIterator iterator = this.db.getIteratorOverReactions(noFakeReactions, true, null);
     Reaction r;
     Map<Reaction.RxnDataSource, Integer> counts = new HashMap<>();
     for (Reaction.RxnDataSource src : Reaction.RxnDataSource.values())
