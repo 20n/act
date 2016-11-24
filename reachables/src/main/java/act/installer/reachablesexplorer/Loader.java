@@ -48,7 +48,7 @@ import java.util.stream.Collectors;
 public class Loader {
   private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
 
-  private static final String ASSETS_LOCATION = "/mnt/data-level1-1/data/reachables-explorer-rendering-cache";
+  private static final String ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
 
   // All of the source data on reactions and chemicals comes from validator_profiling_2
   private static final String DEFAULT_CHEMICALS_DATABASE = "validator_profiling_2";
