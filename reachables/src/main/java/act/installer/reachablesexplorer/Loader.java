@@ -225,6 +225,13 @@ public class Loader {
     jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.sequenceFieldName, "hashed"));
     jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.organismFieldName, 1));
   }
+  public JacksonDBCollection<Reachable, String> getJacksonReachablesCollection() {
+    return jacksonReachablesCollection;
+  }
+
+  public JacksonDBCollection<SequenceData, String> getJacksonSequenceCollection() {
+    return jacksonSequenceCollection;
+  }
 
   /**
    * A convenience constructor for users who don't care about sequences or cached images.
