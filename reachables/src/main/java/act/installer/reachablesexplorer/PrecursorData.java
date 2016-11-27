@@ -1,6 +1,7 @@
 package act.installer.reachablesexplorer;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.Serializable;
 import java.util.Collection;
@@ -8,6 +9,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 class PrecursorData implements Serializable {
+    @JsonProperty("precursors")
     private Set<Precursor> precursors;
 
     public PrecursorData() {
