@@ -1,5 +1,6 @@
 package act.installer.reachablesexplorer;
 
+import chemaxon.marvin.io.formats.inchi.Inchi;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.Serializable;
@@ -12,9 +13,13 @@ class InchiDescriptor implements Serializable {
 
     private String inchiKey;
 
-    InchiDescriptor() {}
+    private InchiDescriptor() {
 
-    InchiDescriptor(String name, String inchi, String inchiKey){
+    }
+
+    public InchiDescriptor(String name,
+                           String inchi,
+                           String inchiKey){
         this.name = name;
         this.inchi = inchi;
         this.inchiKey = inchiKey;
