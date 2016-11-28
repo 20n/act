@@ -3,10 +3,21 @@ package act.installer.reachablesexplorer;
 
 import act.server.DBIterator;
 import act.server.MongoDB;
+import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.act.jobs.FileChecker;
+import com.act.utils.CLIUtil;
 import com.act.utils.ProcessRunner;
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.ChemicalKeywords;
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.Keyword;
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.Keyword$;
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoKeywords;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.mongodb.BasicDBObject;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -16,7 +27,9 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 
 public class WordCloudGenerator {
@@ -27,54 +40,106 @@ public class WordCloudGenerator {
    */
 
   private static final String RSCRIPT_EXE_PATH = "/usr/bin/Rscript"; // TODO: find this using `env` instead.
-  private static final String RSCRIPT_LOCATION = "src/main/java/act/installer/reachablesexplorer/RWordCloudGenerator.R";
+  private static final String RSCRIPT_LOCATION = "src/main/r/RWordCloudGenerator.R";
   private static final String ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
   private static final Logger LOGGER = LogManager.getFormatterLogger(WordCloudGenerator.class);
   private static final String PNG_EXTENSION = ".png";
   private static final long CHILD_PROCESS_TIMEOUT_IN_SECONDS = 60; // Thomas thinks this is plenty of time for a cloud.
 
+  private static final String OPTION_DB_HOST = "H";
+  private static final String OPTION_DB_PORT = "p";
+  private static final String OPTION_INSTALLER_SOURCE_DB = "i";
+  private static final String OPTION_RENDERING_CACHE = "e";
+  private static final String OPTION_INPUT_INCHIS = "l";
+
+  private static final String DEFAULT_ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
+
+  // Default host. If running on a laptop, please set a SSH bridge to access speakeasy
+  private static final String DEFAULT_HOST = "localhost";
+  private static final String DEFAULT_PORT = "27017";
+  private static final String DEFAULT_CHEMICALS_DATABASE = "validator_profiling_2";
+
+
+  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
+      "This class allows WordCloud generation as a separate process from the Loader"
+  }, " ");
+
+  public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
+    add(Option.builder(OPTION_DB_HOST)
+        .argName("DB host")
+        .desc(String.format("The database host to which to connect (default: %s)", DEFAULT_HOST))
+        .hasArg()
+        .longOpt("db-host")
+    );
+    add(Option.builder(OPTION_DB_PORT)
+        .argName("DB port")
+        .desc(String.format("The port on which to connect to the database (default: %d)", DEFAULT_PORT))
+        .hasArg()
+        .longOpt("db-port")
+    );
+    add(Option.builder(OPTION_INSTALLER_SOURCE_DB)
+        .argName("DB name")
+        .desc(String.format(
+            "The name of the database from which to fetch chemicals and reactions (default: %s)",
+            DEFAULT_CHEMICALS_DATABASE))
+        .hasArg()
+        .longOpt("source-db-name")
+    );
+    add(Option.builder(OPTION_RENDERING_CACHE)
+        .argName("path to cache")
+        .desc(String.format(
+            "A directory in which to cache rendered images for reachables documents (default: %s)",
+            DEFAULT_ASSETS_LOCATION))
+        .hasArg()
+        .longOpt("cache-dir")
+    );
+    add(Option.builder(OPTION_INPUT_INCHIS)
+        .argName("path to inchis list")
+        .desc("A list of input inchis for which to compute word clouds")
+        .hasArg()
+        .required()
+        .longOpt("inchis-path")
+    );
+  }};
 
   private File rScript;
 
   private String host;
   private Integer port;
-  private String database;
-
+  private MongoDB bingDb;
+  private Set<String> inchisSet;
 
   public WordCloudGenerator(String host, Integer port, String database) {
     this.host = host;
     this.port = port;
-    this.database = database;
-
-
+    this.bingDb = new MongoDB(host, port, database);
+    this.inchisSet = getBingInchis();
     rScript = new File(RSCRIPT_LOCATION);
     try {
       FileChecker.verifyInputFile(rScript);
     } catch (IOException e) {
-      System.out.println("Error reading r script");
+      String msg = String.format("Failed to locate R script at %s", RSCRIPT_LOCATION);
+      LOGGER.error(msg);
+      throw new RuntimeException(msg);
     }
   }
 
+  public Set<String> getBingInchis() {
 
-  public List<String> getBingInchis() {
-    MongoDB bingDb = new MongoDB(host, port, database);
-
-    BasicDBObject query = new BasicDBObject("xref.BING.metadata.usage_terms.0", new BasicDBObject("$exists", true));
-    BasicDBObject keys = new BasicDBObject("InChI", true);
+    BasicDBObject query = new BasicDBObject("xref.BING.metadata.usage_terms.0", new BasicDBObject(MongoKeywords.EXISTS$.MODULE$.value(), true));
+    BasicDBObject keys = new BasicDBObject(ChemicalKeywords.INCHI$.MODULE$.value(), true);
 
     DBIterator ite = bingDb.getIteratorOverChemicals(query, keys);
-    List<String> bingList = new ArrayList<>();
+    Set<String> bingSet = new HashSet<>();
     while (ite.hasNext()) {
       BasicDBObject o = (BasicDBObject) ite.next();
-      String inchi = o.getString("InChI");
+      String inchi = o.getString(ChemicalKeywords.INCHI$.MODULE$.value());
       if (inchi != null) {
-        bingList.add(inchi);
+        bingSet.add(inchi);
       }
     }
-    return bingList;
+    return bingSet;
   }
-
-
 
   public static File getWordcloudFile(String inchi) {
     String md5 = DigestUtils.md5Hex(inchi);
@@ -85,7 +150,7 @@ public class WordCloudGenerator {
     return Paths.get(ASSETS_LOCATION, wordcloudFilename).toFile();
   }
 
-  public File generateWordCloud(String inchi) throws IOException {
+  public File generateWordCloud(String inchi) {
 
     // TODO: improve wordcloud generation. Currently, each instance open a mongo connection on the R side.
     // By doing data manipulation in Java and utilizing Rengine, we could make this much better
@@ -93,10 +158,11 @@ public class WordCloudGenerator {
 
     File wordcloud = getWordcloudFile(inchi);
 
-    if (!Files.exists(wordcloud.toPath())) {
+    if (!Files.exists(wordcloud.toPath()) && inchisSet.contains(inchi)) {
       try {
         ProcessRunner.runProcess(
             RSCRIPT_EXE_PATH,
+            // TODO: remove hardcoded database from R script
             Arrays.asList(rScript.getAbsolutePath(), inchi, wordcloud.getAbsolutePath(), host, port.toString()),
             CHILD_PROCESS_TIMEOUT_IN_SECONDS);
         FileChecker.verifyInputFile(wordcloud);
@@ -112,12 +178,23 @@ public class WordCloudGenerator {
   }
 
 
-  // TODO: remove main method when done testing
   public static void main(String[] args) {
-    WordCloudGenerator g = new WordCloudGenerator("localhost", 27017, "actv01");
-    try {
-      g.generateWordCloud("InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)");
-    } catch (IOException e) {System.out.println(String.format("Caught expection %s", e.getMessage()));}
-  }
 
+    CLIUtil cliUtil = new CLIUtil(Loader.class, HELP_MESSAGE, OPTION_BUILDERS);
+    CommandLine cl = cliUtil.parseCommandLine(args);
+
+    File inchisFile = new File(cl.getOptionValue(OPTION_INPUT_INCHIS));
+    L2InchiCorpus inchiCorpus = new L2InchiCorpus();
+    try {
+      inchiCorpus.loadCorpus(inchisFile);
+    } catch (IOException e) {
+      cliUtil.failWithMessage("Could not load inchi corpus from input file %s", inchisFile.getAbsolutePath());
+    }
+    WordCloudGenerator wordCloudGenerator = new WordCloudGenerator(
+        cl.getOptionValue(OPTION_DB_HOST, DEFAULT_HOST),
+        Integer.parseInt(cl.getOptionValue(OPTION_DB_PORT, DEFAULT_PORT)),
+        cl.getOptionValue(OPTION_INSTALLER_SOURCE_DB, DEFAULT_CHEMICALS_DATABASE)
+    );
+    inchiCorpus.getInchiList().forEach(wordCloudGenerator::generateWordCloud);
+  }
 }
