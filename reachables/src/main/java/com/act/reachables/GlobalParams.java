@@ -9,53 +9,53 @@ public class GlobalParams {
 
   // LOG_PROGRESS says the computation should
   // output verbose messages while process dataset
-  static boolean LOG_PROGRESS = true;
+  public static boolean LOG_PROGRESS = true;
 
   // MAX_CASCADE_DEPTH parametrizes how far many steps
   // back in the acyclic graph do we dump to the output
   // DOT of the cascade. This is measured in # chems
   // of path backwards from the specific reachable
-  static int MAX_CASCADE_DEPTH = 2;
+  public static int MAX_CASCADE_DEPTH = 2;
   // MAX_CASCADE_UPFANOUT parametrizes how many reactions
   // upwards from each node are allowed. If more than
   // those exist then a fake rxn node with a msg is shown
-  static int MAX_CASCADE_UPFANOUT = 10;
+  public static int MAX_CASCADE_UPFANOUT = 10;
   // and when the # rxns > MAX_CASCADE_UPFANOUT we dump
   // out a fake reaction, that is annotated as such
   // the ID for this fake reaction in the
   // (FAKE_RXN_ID + #omitted)
-  static long FAKE_RXN_ID = 999999999L;
+  public static long FAKE_RXN_ID = 999999999L;
   // do we write the waterfalls to the DB?
-  static boolean _writeWaterfallsToDB = false;
+  public static boolean _writeWaterfallsToDB = false;
 
   /*
    * TUNABLE PARAMETERS
    */
-  static boolean USE_RXN_CLASSES = false;
-  static int _max_layers = 18; // cap at 18 layer
-  static int _num_waves = 2;
-  static int _startX = 40;
-  static int _bufferX = 500;
-  static int _bufferY = 50;
-  static int _startY = 40;
-  static int _width = 500;
-  static int _height = 8000;
-  static int _catch_all_height = 2000;
-  static int _catch_all_span = 10; // 10 times _width + _bufferX
-  static boolean _do_inertial_waves = false; // the waves avg both fwd and bwd's so that the layout looks more organic
-  static int _inertial_wave_periphery_nudge = 800;
-  static boolean _do_clustered_unreachables = true;
-  static boolean _do_render_chemicals = false;
-  static int _actTreeSignificantFanout = 10; // 15 will give 28, 10 will give 58 important ancestors
-  static int _actTreePickNameOfLengthAbout = 20; // 15 characters
-  static int _actTreeMinimumSizeOfConditionalTree = 1; // the "assumed" chemical, has to enable at least 10 new reachables
-  static boolean _actTreeCreateHostCentricMap = false;
-  static boolean _actTreeDumpClades = false;
-  static boolean _actTreeCreateUnreachableTrees = false;
-  static int _actTreeCompressNodesWithChildrenLessThan = 0;
+  public static boolean USE_RXN_CLASSES = false;
+  public static int _max_layers = 18; // cap at 18 layer
+  public static int _num_waves = 2;
+  public static int _startX = 40;
+  public static int _bufferX = 500;
+  public static int _bufferY = 50;
+  public static int _startY = 40;
+  public static int _width = 500;
+  public static int _height = 8000;
+  public static int _catch_all_height = 2000;
+  public static int _catch_all_span = 10; // 10 times _width + _bufferX
+  public static boolean _do_inertial_waves = false; // the waves avg both fwd and bwd's so that the layout looks more organic
+  public static int _inertial_wave_periphery_nudge = 800;
+  public static boolean _do_clustered_unreachables = true;
+  public static boolean _do_render_chemicals = false;
+  public static int _actTreeSignificantFanout = 10; // 15 will give 28, 10 will give 58 important ancestors
+  public static int _actTreePickNameOfLengthAbout = 20; // 15 characters
+  public static int _actTreeMinimumSizeOfConditionalTree = 1; // the "assumed" chemical, has to enable at least 10 new reachables
+  public static boolean _actTreeCreateHostCentricMap = false;
+  public static boolean _actTreeDumpClades = false;
+  public static boolean _actTreeCreateUnreachableTrees = false;
+  public static int _actTreeCompressNodesWithChildrenLessThan = 0;
 
-  static boolean _actTreeIgnoreReactionsWithNoSubstrates = true;
-  static boolean _actTreeOnlyIncludeRxnsWithSequences = true;
+  public static boolean _actTreeIgnoreReactionsWithNoSubstrates = true;
+  public static boolean _actTreeOnlyIncludeRxnsWithSequences = true;
 
   private static RxnDataSource[] _includedRxnSources = { RxnDataSource.METACYC, RxnDataSource.BRENDA };
   static List<RxnDataSource> _ReachablesIncludeRxnSources = Arrays.asList(_includedRxnSources);
