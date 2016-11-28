@@ -103,7 +103,7 @@ public class LoadAct extends SteppedTask {
      *
      * Special handling is afforded to abstract reactions and reactions w/ only cofactors as substrates.
      */
-    Long rxnid = Long.valueOf(rxn.getUUID());
+    Long rxnid = (long) rxn.getUUID();
 
     // Filter out abstract substrates.  These reactions are invalid
     Long[] inputChemicalsArray = ArrayUtils.addAll(rxn.getSubstrates(), rxn.getSubstrateCofactors());
@@ -322,6 +322,8 @@ public class LoadAct extends SteppedTask {
   }
 
   private void addReactionsToNetwork() {
+    // Ignore reactions with "protein" in their description. This is only necessary because there are some problems in
+    // data parsing where we don't always put the proteins into the data, so sometimes fake data looks real.
     BasicDBObject noFakeReactions = new BasicDBObject("easy_desc", new BasicDBObject("$regex", "^((?!protein).)*$"));
     DBIterator iterator = this.db.getIteratorOverReactions(noFakeReactions, true, null);
     Reaction r;
