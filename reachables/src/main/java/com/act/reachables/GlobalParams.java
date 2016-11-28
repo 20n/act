@@ -1,9 +1,10 @@
 package com.act.reachables;
 
 import act.shared.Reaction.RxnDataSource;
-import java.util.List;
+
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 public class GlobalParams {
 
@@ -15,7 +16,7 @@ public class GlobalParams {
   // back in the acyclic graph do we dump to the output
   // DOT of the cascade. This is measured in # chems
   // of path backwards from the specific reachable
-  public static int MAX_CASCADE_DEPTH = 2;
+  public static int MAX_CASCADE_DEPTH = 5;
   // MAX_CASCADE_UPFANOUT parametrizes how many reactions
   // upwards from each node are allowed. If more than
   // those exist then a fake rxn node with a msg is shown
