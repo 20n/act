@@ -206,6 +206,7 @@ public class Loader {
     db = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_CHEMICALS_DATABASE);
     pubchemSynonymsDriver = new PubchemMeshSynonyms();
     moleculeRenderer = new MoleculeRenderer(new File(renderingCache));
+    wordCloudGenerator = new WordCloudGenerator(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_CHEMICALS_DATABASE);
 
     MongoClient mongoClient;
     try {
@@ -337,7 +338,7 @@ public class Loader {
     String pageName = getPageName(mol, names, inchi);
 
     File rendering = moleculeRenderer.getRenderingFile(inchi);
-    File wordcloud = WordCloudGenerator.getWordcloudFile(inchi);
+    File wordcloud = wordCloudGenerator.getWordcloudFile(inchi);
     String renderingFilename = null;
     String wordcloudFilename = null;
     if (rendering.exists()) {
