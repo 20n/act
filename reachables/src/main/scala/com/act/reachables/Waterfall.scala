@@ -101,7 +101,12 @@ object Waterfall extends Falls {
       val unimplemented_msg = "UNIMPLEMENTED: get_rxn_metadata"
       val cloningData = unimplemented_msg // rxn.getCloningData
       val exprData = Set[String](unimplemented_msg) // cloningData.map(d => d.reference + ":" + d.organism + ":" + d.notes)
-      val orgs_ids = Array[String](unimplemented_msg) // rxn.getOrganismIDs.map("id:" + _.toString)
+      val orgs_ids = {
+        ReachRxnDescs.rxnOrganismNames(r) match {
+          case None => Array()
+          case Some(orgs) => orgs.toArray
+        }
+      }
 
       // the organism data is a mess: while there are organismIDs/organismData fields
       // that hold structured information; they sometimes do not have all the organisms

@@ -42,7 +42,19 @@ object ReachRxnDescs {
     }
   }
 
-  // TODO @Mark add organisms here.
+  // TODO: cache organism names instead of looking them up in the DB every time.  Use caffeine after a rebase.
+
+  val rxnOrganismNames = Memo.mutableHashMapMemo[Long, Option[Set[String]]] { rid =>
+    if (meta(rid).isDefined) {
+      val organisms: Set[String] = meta(rid).get.getProteinData.
+        map(x => if (x.has("organism")) Option(x.getLong("organism")) else None).
+        filter(_.isDefined).map(_.get).
+        map(id => db.getOrganismNameFromId(id)).toSet
+      Option(organisms)
+    } else {
+      None
+    }
+  }
 
 }
 
