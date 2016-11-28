@@ -100,49 +100,60 @@ public class Loader {
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_DB_HOST)
         .argName("DB host")
-        .desc("The database host to which to connect")
+        .desc(String.format("The database host to which to connect (default: %s)", DEFAULT_HOST))
         .hasArg()
         .longOpt("db-host")
     );
     add(Option.builder(OPTION_DB_PORT)
         .argName("DB port")
-        .desc("The port on which to connect to the database")
+        .desc(String.format("The port on which to connect to the database (default: %d)", DEFAULT_PORT))
         .hasArg()
         .longOpt("db-port")
     );
     add(Option.builder(OPTION_INSTALLER_SOURCE_DB)
-        .argName("source DB name")
-        .desc("The name of the database from which to fetch information on reachable chemicals and reactions")
+        .argName("DB name")
+        .desc(String.format(
+            "The name of the database from which to fetch chemicals and reactions (default: %s)",
+            DEFAULT_CHEMICALS_DATABASE))
         .hasArg()
         .longOpt("source-db-name")
     );
     add(Option.builder(OPTION_REACHABLES_SOURCE_DATA)
-        .argName("reachables directory")
-        .desc("A path to a directory containing the output of reachables and cascades computation to ingest")
+        .argName("path")
+        .desc(String.format(
+            "A path to a directory containing the output of reachables and cascades computation to read (default: %s)",
+            DEFAULT_REACHABLES_PATH))
         .hasArg()
         .longOpt("reachables-dir")
     );
     add(Option.builder(OPTION_TARGET_DB)
-        .argName("dest DB name")
-        .desc("The name of the DB into which to write reachable molecule documents")
+        .argName("DB name")
+        .desc(String.format("The name of the DB into which to write reachable molecule documents (default: %s)",
+            DEFAULT_TARGET_DATABASE))
         .hasArg()
         .longOpt("dest-db-name")
     );
     add(Option.builder(OPTION_TARGET_REACHABLES_COLLECTION)
-        .argName("dest reachables collection name")
-        .desc("The name of the collection in the dest DB into which to write reachables documents")
+        .argName("collection name")
+        .desc(String.format(
+            "The name of the collection in the dest DB into which to write reachables documents (default: %s)",
+            DEFAULT_TARGET_COLLECTION))
         .hasArg()
         .longOpt("reachables-collection")
     );
     add(Option.builder(OPTION_TARGET_SEQUENCES_COLLECTION)
-        .argName("dest sequences collection name")
-        .desc("The name of the collection in the dest DB into which to write seqeunce documents")
+        .argName("collection name")
+        .desc(String.format(
+            "The name of the collection in the dest DB into which to write seqeunce documents (default: %s)",
+            DEFAULT_SEQUENCE_COLLECTION))
         .hasArg()
-        .longOpt("sequences-collection")
+        .longOpt("seq-collection")
     );
     add(Option.builder(OPTION_RENDERING_CACHE)
         .argName("path to cache")
-        .desc("A directory in which to cache rendered images for reachables documents")
+        .desc(String.format(
+            "A directory in which to cache rendered images for reachables documents (default: %s)",
+            DEFAULT_ASSETS_LOCATION))
         .hasArg()
         .longOpt("cache-dir")
     );
