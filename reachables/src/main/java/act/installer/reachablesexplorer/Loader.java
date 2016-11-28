@@ -13,6 +13,7 @@ import chemaxon.marvin.io.MolExportException;
 import chemaxon.struc.Molecule;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
+import com.act.utils.CLIUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.mongodb.BasicDBObject;
@@ -20,7 +21,10 @@ import com.mongodb.DB;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
@@ -48,7 +52,20 @@ import java.util.stream.Collectors;
 public class Loader {
   private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
 
-  private static final String ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
+
+  private static final String OPTION_DB_HOST = "H";
+  private static final String OPTION_DB_PORT = "p";
+
+  private static final String OPTION_INSTALLER_SOURCE_DB = "i";
+  private static final String OPTION_REACHABLES_SOURCE_DATA = "r";
+  private static final String OPTION_TARGET_DB = "t";
+  private static final String OPTION_TARGET_REACHABLES_COLLECTION = "c";
+  private static final String OPTION_TARGET_SEQUENCES_COLLECTION = "s";
+  private static final String OPTION_RENDERING_CACHE = "e";
+
+  private static final String DEFAULT_ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
+
+  private static final String DEFAULT_REACHABLES_PATH = "/mnt/shared-data/Michael/WikipediaProject/MinimalReachables";
 
   // All of the source data on reactions and chemicals comes from validator_profiling_2
   private static final String DEFAULT_CHEMICALS_DATABASE = "validator_profiling_2";
@@ -73,6 +90,65 @@ public class Loader {
   // generated name is too long.
   private static final Integer MAX_CHEMAXON_NAME_LENGTH = 50;
 
+  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
+      "This class compiles reachables and cascades data into a DB of documents that can be used to render a collection",
+      "of pages (one per reachable molecule) that is navigable by humans.  The data model employed by this class can",
+      "be read by downstream modules to seamlessly fetch and deserialize these documents for rendering into some",
+      "presentable form."
+  }, " ");
+
+  public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
+    add(Option.builder(OPTION_DB_HOST)
+        .argName("DB host")
+        .desc("The database host to which to connect")
+        .hasArg()
+        .longOpt("db-host")
+    );
+    add(Option.builder(OPTION_DB_PORT)
+        .argName("DB port")
+        .desc("The port on which to connect to the database")
+        .hasArg()
+        .longOpt("db-port")
+    );
+    add(Option.builder(OPTION_INSTALLER_SOURCE_DB)
+        .argName("source DB name")
+        .desc("The name of the database from which to fetch information on reachable chemicals and reactions")
+        .hasArg()
+        .longOpt("source-db-name")
+    );
+    add(Option.builder(OPTION_REACHABLES_SOURCE_DATA)
+        .argName("reachables directory")
+        .desc("A path to a directory containing the output of reachables and cascades computation to ingest")
+        .hasArg()
+        .longOpt("reachables-dir")
+    );
+    add(Option.builder(OPTION_TARGET_DB)
+        .argName("dest DB name")
+        .desc("The name of the DB into which to write reachable molecule documents")
+        .hasArg()
+        .longOpt("dest-db-name")
+    );
+    add(Option.builder(OPTION_TARGET_REACHABLES_COLLECTION)
+        .argName("dest reachables collection name")
+        .desc("The name of the collection in the dest DB into which to write reachables documents")
+        .hasArg()
+        .longOpt("reachables-collection")
+    );
+    add(Option.builder(OPTION_TARGET_SEQUENCES_COLLECTION)
+        .argName("dest sequences collection name")
+        .desc("The name of the collection in the dest DB into which to write seqeunce documents")
+        .hasArg()
+        .longOpt("sequences-collection")
+    );
+    add(Option.builder(OPTION_RENDERING_CACHE)
+        .argName("path to cache")
+        .desc("A directory in which to cache rendered images for reachables documents")
+        .hasArg()
+        .longOpt("cache-dir")
+    );
+  }};
+
+
   // Database stuff
   private MongoDB db;
   private JacksonDBCollection<Reachable, String> jacksonReachablesCollection;
@@ -84,8 +160,24 @@ public class Loader {
   private MoleculeRenderer moleculeRenderer;
 
   public static void main(String[] args) throws IOException {
-    Loader loader = new Loader();
-    loader.updateFromReachableDir(new File("/mnt/shared-data/Michael/WikipediaProject/MinimalReachables"));
+    CLIUtil cliUtil = new CLIUtil(Loader.class, HELP_MESSAGE, OPTION_BUILDERS);
+    CommandLine cl = cliUtil.parseCommandLine(args);
+
+    File reachablesDir = new File(cl.getOptionValue(OPTION_REACHABLES_SOURCE_DATA, DEFAULT_REACHABLES_PATH));
+    if (!reachablesDir.exists() && reachablesDir.isDirectory()) {
+      cliUtil.failWithMessage("Reachables directory at %s does not exist or is not a directory",
+          reachablesDir.getAbsolutePath());
+    }
+
+    Loader loader = new Loader(
+        cl.getOptionValue(OPTION_DB_HOST, DEFAULT_HOST),
+        Integer.parseInt(cl.getOptionValue(OPTION_DB_PORT, DEFAULT_PORT.toString())),
+        cl.getOptionValue(OPTION_TARGET_DB, DEFAULT_TARGET_DATABASE),
+        cl.getOptionValue(OPTION_TARGET_REACHABLES_COLLECTION, DEFAULT_TARGET_COLLECTION),
+        cl.getOptionValue(OPTION_TARGET_SEQUENCES_COLLECTION, DEFAULT_SEQUENCE_COLLECTION),
+        cl.getOptionValue(OPTION_RENDERING_CACHE, DEFAULT_ASSETS_LOCATION)
+    );
+    loader.updateFromReachableDir(reachablesDir);
   }
 
   /**
@@ -95,11 +187,14 @@ public class Loader {
    * @param port The port for the target Reachables MongoDB
    * @param targetDB The database for the target Reachables MongoDB
    * @param targetCollection The collection for the target Reachables MongoDB
+   * @param targetSequenceCollection The collection for the target SequenceData MongoDB
+   * @param renderingCache A directory where rendered images should live
    */
-  public Loader(String host, Integer port, String targetDB, String targetCollection) {
+  public Loader(String host, Integer port, String targetDB,
+                String targetCollection, String targetSequenceCollection, String renderingCache) {
     db = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_CHEMICALS_DATABASE);
     pubchemSynonymsDriver = new PubchemMeshSynonyms();
-    moleculeRenderer = new MoleculeRenderer(new File(ASSETS_LOCATION));
+    moleculeRenderer = new MoleculeRenderer(new File(renderingCache));
 
     MongoClient mongoClient;
     try {
@@ -113,15 +208,27 @@ public class Loader {
     jacksonReachablesCollection =
             JacksonDBCollection.wrap(reachables.getCollection(targetCollection), Reachable.class, String.class);
     jacksonSequenceCollection =
-            JacksonDBCollection.wrap(reachables.getCollection(DEFAULT_SEQUENCE_COLLECTION), SequenceData.class, String.class);
+            JacksonDBCollection.wrap(reachables.getCollection(targetSequenceCollection), SequenceData.class, String.class);
 
     jacksonReachablesCollection.ensureIndex(new BasicDBObject(Reachable.inchiFieldName, "hashed"));
     jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.sequenceFieldName, "hashed"));
     jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.organismFieldName, 1));
   }
 
+  /**
+   * A convenience constructor for users who don't care about sequences or cached images.
+   * @param host The host for the target Reachables MongoDB
+   * @param port The port for the target Reachables MongoDB
+   * @param targetDB The database for the target Reachables MongoDB
+   * @param targetCollection The collection for the target Reachables MongoDB
+   */
+  public Loader(String host, Integer port, String targetDB, String targetCollection) {
+    this(host, port, targetDB, targetCollection, DEFAULT_SEQUENCE_COLLECTION, DEFAULT_ASSETS_LOCATION);
+  }
+
   public Loader() {
-    this(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_TARGET_DATABASE, DEFAULT_TARGET_COLLECTION);
+    this(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_TARGET_DATABASE,
+        DEFAULT_TARGET_COLLECTION, DEFAULT_SEQUENCE_COLLECTION, DEFAULT_ASSETS_LOCATION);
   }
 
   // TODO Move these getters to a different place/divide up concerns better?
