@@ -111,7 +111,10 @@ libraryDependencies ++= {
       "com.github.ben-manes.caffeine" % "caffeine" % "2.3.5",
       "org.mongojack" % "mongojack" % "2.0.0-RC1",
       "org.scalaz" %% "scalaz-core" % "7.2.7",
-       "org.freemarker" % "freemarker" % "2.3.25-incubating",
+      /* Note: while this version of freemarker includes "incubating" in its artifact name, it is in
+       * fact a proper release.  Apparently the "incubating" suffix is required of projects in the
+       * Apache incubator program, and does not reflect immaturity of the artifact. */
+      "org.freemarker" % "freemarker" % "2.3.25-incubating",
   /*
    * the maven repo jar seem to be outdated, or incompatible.
    * we posted to the indigo group bugs. The current resolution
