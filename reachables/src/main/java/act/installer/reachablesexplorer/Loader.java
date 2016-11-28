@@ -358,7 +358,7 @@ public class Loader {
     upsert(reachable);
   }
 
-  private Reachable queryByInchi(String inchi){
+  private Reachable queryByInchi(String inchi) {
     DBObject query = new BasicDBObject(Reachable.inchiFieldName, inchi);
     return jacksonReachablesCollection.findOne(query);
   }
@@ -450,7 +450,7 @@ public class Loader {
     }
   }
 
-  private List<Precursor> getUpstreamPrecursors(Long parentId, JSONArray upstreamReactions){
+  private List<Precursor> getUpstreamPrecursors(Long parentId, JSONArray upstreamReactions) {
     Map<Long, InchiDescriptor> substrateCache = new HashMap<>();
     Map<List<InchiDescriptor>, Precursor> substratesToPrecursor = new HashMap<>();
     List<Precursor> precursors = new ArrayList<>();
@@ -475,7 +475,7 @@ public class Loader {
             thisRxnSubstrates.add(parentDescriptor);
             substrateCache.put(subId, parentDescriptor);
             // TODO Remove null pointer exception check
-          } catch (NullPointerException e){
+          } catch (NullPointerException e) {
             LOGGER.info("Null pointer, unable to write parent.");
           }
         } else if (substrateCache.containsKey(subId)) {
@@ -573,8 +573,7 @@ public class Loader {
       }
     }
 
-    List<File> validFiles = chemicalIds.
-            stream().
+    List<File> validFiles = chemicalIds.stream().
             map(i -> new File(dataDirectory, "c" + String.valueOf(i) + ".json")).
             collect(Collectors.toList());
 
