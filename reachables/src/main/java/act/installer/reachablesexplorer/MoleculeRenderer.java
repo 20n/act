@@ -40,7 +40,7 @@ public class MoleculeRenderer {
     return Paths.get(this.assetLocation.getPath(), renderingFilename).toFile();
   }
 
-  public Optional<String> generateRendering(String inchi) {
+  public Optional<File> generateRendering(String inchi) {
 
     File rendering = getRenderingFile(inchi);
 
@@ -59,6 +59,6 @@ public class MoleculeRenderer {
       }
     }
 
-    return Optional.of(rendering.getName());
+    return Optional.of(rendering);
   }
 }

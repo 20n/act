@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -337,13 +338,14 @@ public class Loader {
 
     String pageName = getPageName(mol, names, inchi);
 
-    File rendering = moleculeRenderer.getRenderingFile(inchi);
-    File wordcloud = wordCloudGenerator.getWordcloudFile(inchi);
     String renderingFilename = null;
-    String wordcloudFilename = null;
-    if (rendering.exists()) {
-      renderingFilename = rendering.getName();
+    Optional<File> rendering = moleculeRenderer.generateRendering(inchi);
+    if (rendering.isPresent()) {
+      renderingFilename = rendering.get().getName();
     }
+
+    File wordcloud = wordCloudGenerator.getWordcloudFile(inchi);
+    String wordcloudFilename = null;
     if (wordcloud.exists()) {
       wordcloudFilename = wordcloud.getName();
     }

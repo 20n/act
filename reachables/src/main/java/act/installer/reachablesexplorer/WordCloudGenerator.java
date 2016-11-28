@@ -8,11 +8,7 @@ import com.act.jobs.FileChecker;
 import com.act.utils.CLIUtil;
 import com.act.utils.ProcessRunner;
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.ChemicalKeywords;
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.Keyword;
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.Keyword$;
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoKeywords;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import com.mongodb.BasicDBObject;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -207,6 +203,7 @@ public class WordCloudGenerator {
     CLIUtil cliUtil = new CLIUtil(Loader.class, HELP_MESSAGE, OPTION_BUILDERS);
     CommandLine cl = cliUtil.parseCommandLine(args);
 
+    // TODO add possibility to run wordcloud generation as a post processing step, from a loaded reachables database
     File inchisFile = new File(cl.getOptionValue(OPTION_INPUT_INCHIS));
     L2InchiCorpus inchiCorpus = new L2InchiCorpus();
     try {
