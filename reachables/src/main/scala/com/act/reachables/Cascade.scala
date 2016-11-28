@@ -3,6 +3,7 @@ package com.act.reachables
 import org.apache.commons.codec.digest.DigestUtils
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 
 object Cascade extends Falls {
 
@@ -14,7 +15,7 @@ object Cascade extends Falls {
 
   // the cache of the cascade if it has been
   // previously computed
-  var cache_nw = Map[Long, Network]()
+  var cache_nw = mutable.HashMap[Long, Network]()
 
   // We only pick rxns that lead monotonically backwards in the tree.
   // This is conservative to avoid cycles (we could be optimistic and jump
@@ -29,7 +30,7 @@ object Cascade extends Falls {
     val upNonTrivial = upReach.filter(has_substrates)
 
     // to avoid circular paths, we require the precuror rxn to go towards natives
-    val up = upNonTrivial.filter(higher_in_tree(m, _))
+    val up = upNonTrivial
 
     // add to cache
     cache_bestpre_rxn = cache_bestpre_rxn + (m -> up)
@@ -127,47 +128,41 @@ object Cascade extends Falls {
     max_cascade_depth = depth
   }
 
-  def get_cascade(m: Long, depth: Int): Network = if (cache_nw contains m) cache_nw(m) else {
-    val nw = new Network("cascade_" + m)
-    nw.addNode(mol_node(m), m)
+  def get_cascade(m: Long, depth: Int, seenReactions: Set[Long] = Set()): Network = {
+    if (cache_nw contains m) return cache_nw(m)
 
-    if (depth > max_cascade_depth || is_universal(m)) {
+    val network = new Network("cascade_" + m)
+    network.addNode(mol_node(m), m)
+
+    if (is_universal(m)) {
       // do nothing, base case
     } else {
       val rxnsup = pre_rxns(m)
 
       // limit the # of up reactions to output to MAX_CASCADE_UPFANOUT
       // compute all substrates "s" of all rxnsups (upto 10 of them)
-      rxnsup.take(GlobalParams.MAX_CASCADE_UPFANOUT).foreach{ rxn =>
+      rxnsup.foreach{ rxn =>
         // add all rxnsup as "r" nodes to the network
-        nw.addNode(rxn_node(rxn.rxnid), rxn.rxnid)
+        network.addNode(rxn_node(rxn.rxnid), rxn.rxnid)
 
         // add edges of form "r" node -> m into the network
-        nw.addEdge(create_edge(rxn_node(rxn.rxnid), mol_node(m)))
+        network.addEdge(create_edge(rxn_node(rxn.rxnid), mol_node(m)))
 
         rxn.substrates.foreach{ s =>
           // get_cascade on each of "s" and merge that network into nw
-          val cascade_s = get_cascade(s, depth + 1)
-          nw.mergeInto(cascade_s)
+          println(depth)
+          val cascade_s = get_cascade(s, depth + 1, seenReactions ++ rxnsup.map(_.rxnid))
+          network.mergeInto(cascade_s)
 
           // add edges of form "s" -> respective "r" nodes
-          nw.addEdge(create_edge(mol_node(s), rxn_node(rxn.rxnid)))
+          network.addEdge(create_edge(mol_node(s), rxn_node(rxn.rxnid)))
         }
-      }
-
-      // if the rxns set contains a lot of up rxns (that we dropped)
-      // add a message on the network so that its clear not all
-      // are being shown in the output
-      if (rxnsup.size > GlobalParams.MAX_CASCADE_UPFANOUT) {
-        val num_omitted = rxnsup.size - GlobalParams.MAX_CASCADE_UPFANOUT
-        val fakerxnid = GlobalParams.FAKE_RXN_ID + num_omitted
-        nw.addNode(rxn_node(fakerxnid), fakerxnid)
-        nw.addEdge(create_edge(rxn_node(fakerxnid), mol_node(m)))
       }
     }
 
+    cache_nw.put(m, network)
     // return this accumulated network
-    nw
+    network
   }
 
 }

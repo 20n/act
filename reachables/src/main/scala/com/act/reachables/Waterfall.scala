@@ -3,8 +3,6 @@ package com.act.reachables
 import act.shared.Reaction.RxnDataSource
 import org.json.{JSONArray, JSONObject}
 
-import scala.collection.JavaConversions._
-
 object Waterfall extends Falls {
   // cache of computed best precusors from a node
 
@@ -51,7 +49,7 @@ object Waterfall extends Falls {
 
     // to avoid circular paths, we require the precuror rxn to go towards natives
     val up = upNonTrivial.filter(higher_in_tree(m, _))
-    if (up.isEmpty){
+    if (up.isEmpty) {
       println(s"$m has no lower in tree places to go.")
     }
     // ***************************************************************************
