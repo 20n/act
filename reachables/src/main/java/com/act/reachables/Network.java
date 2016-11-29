@@ -7,10 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.json.JSONWriter;
 
-import java.io.FileWriter;
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,8 +16,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
 
 public class Network implements Serializable {
   private static final long serialVersionUID = 4643733150478812924L;
@@ -84,11 +79,30 @@ public class Network implements Serializable {
     for (Node n : this.nodes) {
       // create a line for nodes like so:
       // nident [label="displayname"];
-      Long id = n.getIdentifier();
-      String label = (String)Node.getAttribute(id, "label_string");
-      String tooltip = (String)Node.getAttribute(id, "tooltip_string");
-      String url = (String)Node.getAttribute(id, "url_string");
-      boolean isRxn = Boolean.parseBoolean((String)Node.getAttribute(id, "isrxn"));
+      String id;
+      String label;
+      String tooltip;
+      String url;
+
+      if (Boolean.valueOf((String)Node.getAttribute(n.id, "isrxn"))) {
+        id = String.valueOf(n.getIdentifier());
+
+        List<String> rawLabel = Arrays.asList(((String)Node.getAttribute(n.id, "label_string")).split("&&&&"));
+
+        label = Cascade.quote(StringUtils.join(new HashSet<>(rawLabel), ", ") + " Count " + rawLabel.size());
+
+        List<String> rawTooltip = Arrays.asList(((String)Node.getAttribute(n.id, "tooltip_string")).split("&&&&"));
+        tooltip = Cascade.quote(rawTooltip.get(0));
+
+        url = Cascade.quote((String)Node.getAttribute(n.id, "url_string"));
+
+      } else {
+        id = String.valueOf(n.getIdentifier());
+        label = (String)Node.getAttribute(n.id, "label_string");
+        tooltip = (String)Node.getAttribute(n.id, "tooltip_string");
+        url = (String)Node.getAttribute(n.id, "url_string");
+      }
+
       String node_line = id
         + " [shape=box,"
         + " label=" + label + ","
@@ -97,11 +111,13 @@ public class Network implements Serializable {
         + "];";
       lines.add(node_line);
     }
+
     for (Edge e : this.edges) {
       // create a line for nodes like so:
       // id -> id;
       Long src_id = e.getSrc().getIdentifier();
       Long dst_id = e.getDst().getIdentifier();
+
       String edge_line = src_id + " -> " + dst_id + ";";
       lines.add(edge_line);
     }

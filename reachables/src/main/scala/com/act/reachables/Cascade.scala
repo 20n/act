@@ -1,11 +1,16 @@
 package com.act.reachables
 
 import org.apache.commons.codec.digest.DigestUtils
+import java.lang.Long
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
 object Cascade extends Falls {
+
+  case class SubProductPair(substrates: List[Long], products: List[Long])
+
+  val nodeMerger: mutable.HashMap[SubProductPair, Node] = new mutable.HashMap()
 
   // depth upto which to generate cascade data
   var max_cascade_depth = GlobalParams.MAX_CASCADE_DEPTH
@@ -21,7 +26,7 @@ object Cascade extends Falls {
   // This is conservative to avoid cycles (we could be optimistic and jump
   // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
 
-  def pre_rxns(m: Long): Set[ReachRxn] = if (cache_bestpre_rxn contains m) cache_bestpre_rxn(m) else {
+  def pre_rxns(m: Long, higherInTree: Boolean = true): Set[ReachRxn] = if (cache_bestpre_rxn contains m) cache_bestpre_rxn(m) else {
 
     // incoming unreachable rxns ignored
     val upReach = upR(m).filter(_.isreachable)
@@ -30,7 +35,11 @@ object Cascade extends Falls {
     val upNonTrivial = upReach.filter(has_substrates)
 
     // to avoid circular paths, we require the precuror rxn to go towards natives
-    val up = upNonTrivial
+    val up = if (higherInTree) {
+      upNonTrivial.filter(higher_in_tree(m, _))
+    } else {
+      upNonTrivial
+    }
 
     // add to cache
     cache_bestpre_rxn = cache_bestpre_rxn + (m -> up)
@@ -61,22 +70,36 @@ object Cascade extends Falls {
       case Some(ecnum) => "javascript:window.open('http://brenda-enzymes.org/enzyme.php?ecno=" + ecnum + "'); "
     }
   }
-  def rxn_node(id: Long) = {
+
+  def rxn_node(id: Long, unique: SubProductPair): Node = {
+    if (nodeMerger.contains(unique)){
+      val previouslyCreatedNode = nodeMerger(unique)
+      val ident = previouslyCreatedNode.id
+      Node.setAttribute(ident, "reaction_ids", Node.getAttribute(ident, "reaction_ids") + s"_$id")
+      Node.setAttribute(ident, "label_string", Node.getAttribute(ident, "label_string") + "&&&&" + rxn_node_label_string(id))
+      Node.setAttribute(ident, "tooltip_string", Node.getAttribute(ident, "tooltip_string") + "&&&&" + rxn_node_tooltip_string(id))
+      return nodeMerger(unique)
+    }
+
     if (id > GlobalParams.FAKE_RXN_ID) {
       val num_omitted = id - GlobalParams.FAKE_RXN_ID
       val node = Node.get(id, true)
       Node.setAttribute(id, "isrxn", "true")
-      Node.setAttribute(id, "label_string", quote(num_omitted + " more"))
-      Node.setAttribute(id, "tooltip_string", quote(num_omitted + " more"))
-      Node.setAttribute(id, "url_string", quote(""))
+      Node.setAttribute(id, "reaction_ids", s"$id")
+      Node.setAttribute(id, "label_string", num_omitted + " more")
+      Node.setAttribute(id, "tooltip_string", num_omitted + " more")
+      Node.setAttribute(id, "url_string", "")
+      nodeMerger.put(unique, node)
       node
     } else {
       val ident = rxn_node_ident(id)
       val node = Node.get(ident, true)
       Node.setAttribute(ident, "isrxn", "true")
-      Node.setAttribute(ident, "label_string", quote(rxn_node_label_string(id)))
-      Node.setAttribute(ident, "tooltip_string", quote(rxn_node_tooltip_string(id)))
-      Node.setAttribute(ident, "url_string", quote(rxn_node_url_string(id)))
+      Node.setAttribute(ident, "reaction_ids", s"$id")
+      Node.setAttribute(ident, "label_string", rxn_node_label_string(id))
+      Node.setAttribute(ident, "tooltip_string", rxn_node_tooltip_string(id))
+      Node.setAttribute(ident, "url_string", rxn_node_url_string(id))
+      nodeMerger.put(unique, node)
       node
     }
   }
@@ -122,49 +145,58 @@ object Cascade extends Falls {
     "\"" + str + "\""
   }
 
-  def create_edge(src: Node, dst: Node) = Edge.get(src, dst, true);
+  def create_edge(src: Node, dst: Node) = Edge.get(src, dst, true)
 
   def set_max_cascade_depth(depth: Integer) {
     max_cascade_depth = depth
   }
 
-  def get_cascade(m: Long, depth: Int, seenReactions: Set[Long] = Set()): Network = {
+  def get_cascade(m: Long, depth: Int): Network = {
     if (cache_nw contains m) return cache_nw(m)
 
     val network = new Network("cascade_" + m)
+    cache_nw.put(m, network)
     network.addNode(mol_node(m), m)
+
 
     if (is_universal(m)) {
       // do nothing, base case
     } else {
-      val rxnsup = pre_rxns(m)
+      val rxnsup = if (depth == 0) {
+        // Let the initial product look layer above it as well
+        pre_rxns(m, higherInTree = false)
+      } else {
+        // Any subsequent layer must move towards center
+        pre_rxns(m)
+      }
 
       // limit the # of up reactions to output to MAX_CASCADE_UPFANOUT
       // compute all substrates "s" of all rxnsups (upto 10 of them)
       rxnsup.foreach{ rxn =>
+        val subProductPair = SubProductPair(rxn.substrates.toList.sorted, rxn.products.toList.sorted)
+
+        // All for one reaction
+
         // add all rxnsup as "r" nodes to the network
-        network.addNode(rxn_node(rxn.rxnid), rxn.rxnid)
+        network.addNode(rxn_node(rxn.rxnid, subProductPair), rxn.rxnid)
 
         // add edges of form "r" node -> m into the network
-        network.addEdge(create_edge(rxn_node(rxn.rxnid), mol_node(m)))
+        network.addEdge(create_edge(rxn_node(rxn.rxnid, subProductPair), mol_node(m)))
 
         rxn.substrates.foreach{ s =>
           // get_cascade on each of "s" and merge that network into nw
-          println(depth)
-          val cascade_s = get_cascade(s, depth + 1, seenReactions ++ rxnsup.map(_.rxnid))
+          val cascade_s = get_cascade(s, depth + 1)
           network.mergeInto(cascade_s)
 
           // add edges of form "s" -> respective "r" nodes
-          network.addEdge(create_edge(mol_node(s), rxn_node(rxn.rxnid)))
+          network.addEdge(create_edge(mol_node(s), rxn_node(rxn.rxnid, subProductPair)))
         }
       }
     }
 
-    cache_nw.put(m, network)
     // return this accumulated network
     network
   }
-
 }
 
 class Cascade(target: Long) {
