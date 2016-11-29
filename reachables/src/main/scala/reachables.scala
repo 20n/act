@@ -51,8 +51,7 @@ object reachables {
       CliOption.builder(OPTION_COFACTORS_FILE).
         hasArg().
         longOpt("useCofactorsFile").
-        desc("Path to file containing cofactor chemicals.").
-        required(true),
+        desc("Path to file containing cofactor chemicals."),
 
       CliOption.builder(OPTION_HAS_SEQ).
         longOpt("hasSeq").
