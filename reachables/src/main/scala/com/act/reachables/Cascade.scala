@@ -1,10 +1,12 @@
 package com.act.reachables
 
-import org.apache.commons.codec.digest.DigestUtils
 import java.lang.Long
+
+import org.apache.commons.codec.digest.DigestUtils
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
+
 
 object Cascade extends Falls {
 
@@ -26,7 +28,8 @@ object Cascade extends Falls {
   // This is conservative to avoid cycles (we could be optimistic and jump
   // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
 
-  def pre_rxns(m: Long, higherInTree: Boolean = true): Set[ReachRxn] = if (cache_bestpre_rxn contains m) cache_bestpre_rxn(m) else {
+  def pre_rxns(m: Long, higherInTree: Boolean = true): Set[ReachRxn] = {
+//    if (cache_bestpre_rxn contains m) cache_bestpre_rxn(m) else {
 
     // incoming unreachable rxns ignored
     val upReach = upR(m).filter(_.isreachable)
@@ -42,14 +45,15 @@ object Cascade extends Falls {
     }
 
     // add to cache
-    cache_bestpre_rxn = cache_bestpre_rxn + (m -> up)
+//    cache_bestpre_rxn = cache_bestpre_rxn + (m -> up)
 
     // onwards, and upwards!
     up
   }
 
+  val rxnIdShift = 4000000000l
   // dot does not like - in identifiers. Replace those with underscores
-  def rxn_node_ident(id: Long) = 4000000000l + id
+  def rxn_node_ident(id: Long) = rxnIdShift + id
   def mol_node_ident(id: Long) = id
 
   def rxn_node_tooltip_string(id: Long) = {
@@ -71,13 +75,41 @@ object Cascade extends Falls {
     }
   }
 
+  def rxn_node(ids: List[Long], unique: SubProductPair): Node = {
+    val labelBuilder = new StringBuilder
+    ids.foreach(id => labelBuilder.append("&&&&").append(rxn_node_label_string(id)))
+
+    val tooltipBuilder = new StringBuilder
+    ids.foreach(id => tooltipBuilder.append("&&&&").append(rxn_node_tooltip_string(id)))
+
+    if (nodeMerger.contains(unique)){
+      val previouslyCreatedNode = nodeMerger(unique)
+      val ident = previouslyCreatedNode.id
+
+      Node.setAttribute(ident, "reaction_ids", Node.getAttribute(ident, "reaction_ids") + s"_$ident")
+      Node.setAttribute(ident, "label_string", Node.getAttribute(ident, "label_string") + labelBuilder.toString())
+      Node.setAttribute(ident, "tooltip_string", Node.getAttribute(ident, "tooltip_string") + tooltipBuilder.toString())
+      return nodeMerger(unique)
+    }
+
+    val ident = rxn_node_ident(ids.head)
+    val node = Node.get(ident, true)
+    Node.setAttribute(ident, "isrxn", "true")
+    Node.setAttribute(ident, "reaction_ids", s"$ident")
+    Node.setAttribute(ident, "label_string", labelBuilder.toString())
+    Node.setAttribute(ident, "tooltip_string", tooltipBuilder.toString)
+    Node.setAttribute(ident, "url_string", rxn_node_url_string(ids.head))
+    nodeMerger.put(unique, node)
+    node
+  }
+
   def rxn_node(id: Long, unique: SubProductPair): Node = {
     if (nodeMerger.contains(unique)){
       val previouslyCreatedNode = nodeMerger(unique)
       val ident = previouslyCreatedNode.id
       Node.setAttribute(ident, "reaction_ids", Node.getAttribute(ident, "reaction_ids") + s"_$id")
       Node.setAttribute(ident, "label_string", Node.getAttribute(ident, "label_string") + "&&&&" + rxn_node_label_string(id))
-      Node.setAttribute(ident, "tooltip_string", Node.getAttribute(ident, "tooltip_string") + "&&&&" + rxn_node_tooltip_string(id))
+//      Node.setAttribute(ident, "tooltip_string", Node.getAttribute(ident, "tooltip_string") + "&&&&" + rxn_node_tooltip_string(id))
       return nodeMerger(unique)
     }
 
@@ -151,9 +183,8 @@ object Cascade extends Falls {
     max_cascade_depth = depth
   }
 
-  def get_cascade(m: Long, depth: Int, cache: mutable.HashMap[Long, Network] = mutable.HashMap[Long, Network]()): Network = {
+  def get_cascade(m: Long, depth: Int): Network = {
     val network = new Network("cascade_" + m)
-    cache.put(m, network)
 
     network.addNode(mol_node(m), m)
 
@@ -162,35 +193,30 @@ object Cascade extends Falls {
     } else {
       // We don't filter by higher in tree on the first iteration, so that all possible
       // reactions producing this product are shown on the graph.
-      val rxnsup = pre_rxns(m, higherInTree = depth != 0)
+      val rxnsup: List[ReachRxn] = pre_rxns(m, higherInTree = depth != 0).toList
 
       // limit the # of up reactions to output to MAX_CASCADE_UPFANOUT
       // compute all substrates "s" of all rxnsups (upto 10 of them)
-      rxnsup.foreach{ rxn =>
-        val subProductPair = SubProductPair(rxn.substrates.toList.sorted, rxn.products.toList.sorted)
+      val groupedSubProduct: Map[SubProductPair, List[ReachRxn]] = rxnsup
+        .map(rxn => (SubProductPair(rxn.substrates.toList.sorted, List(m)), rxn)).
+        groupBy(_._1).
+        mapValues(_.map(_._2))
 
-        // All for one reaction
+      groupedSubProduct.foreach({case (subProduct, reactions) =>
+        val reactionsNode = rxn_node(reactions.map(r => Long.valueOf(r.rxnid)), subProduct)
+        network.addNode(reactionsNode, reactions.head.rxnid)
 
-        // add all rxnsup as "r" nodes to the network
-        network.addNode(rxn_node(rxn.rxnid, subProductPair), rxn.rxnid)
+        subProduct.products.foreach(p => network.addEdge(create_edge(reactionsNode, mol_node(p))))
 
-        // add edges of form "r" node -> m into the network
-        network.addEdge(create_edge(rxn_node(rxn.rxnid, subProductPair), mol_node(m)))
+        subProduct.substrates.foreach(s => {
+            val cascade_s: Network = get_cascade(s, depth + 1)
 
-        rxn.substrates.foreach { s =>
-          // get_cascade on each of "s" and merge that network into nw
-          val cachedSubstrate = cache.get(s)
-          val cascade_s = if (cachedSubstrate.isDefined) {
-            cachedSubstrate.get
-          } else {
-            get_cascade(s, depth + 1, cache)
-          }
-          network.mergeInto(cascade_s)
+            network.mergeInto(cascade_s)
 
-          // add edges of form "s" -> respective "r" nodes
-          network.addEdge(create_edge(mol_node(s), rxn_node(rxn.rxnid, subProductPair)))
-        }
-      }
+            // add edges of form "s" -> respective "r" nodes
+            network.addEdge(create_edge(mol_node(s), reactionsNode))
+        })
+      })
     }
     // return this accumulated network
     network
