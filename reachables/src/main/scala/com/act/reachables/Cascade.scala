@@ -162,13 +162,9 @@ object Cascade extends Falls {
     if (is_universal(m)) {
       // do nothing, base case
     } else {
-      val rxnsup = if (depth == 0) {
-        // Let the initial product look layer above it as well
-        pre_rxns(m, higherInTree = false)
-      } else {
-        // Any subsequent layer must move towards center
-        pre_rxns(m)
-      }
+      // We don't filter by higher in tree on the first iteration, so that all possible
+      // reactions producing this product are shown on the graph.
+      val rxnsup = pre_rxns(m, higherInTree = depth != 0)
 
       // limit the # of up reactions to output to MAX_CASCADE_UPFANOUT
       // compute all substrates "s" of all rxnsups (upto 10 of them)
