@@ -2,8 +2,6 @@ package com.act.reachables
 
 import java.lang.Long
 
-import org.apache.commons.codec.digest.DigestUtils
-
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
@@ -150,21 +148,16 @@ object Cascade extends Falls {
   }
 
   def fixed_sz_svg_img(id: Long): String = {
-    return ""
     // From: http://www.graphviz.org/content/images-nodes-label-below
     // Put DOT label like so:
     // <<TABLE border="0" cellborder="0"> <TR><TD width="60" height="50" fixedsize="true">
     // <IMG SRC="20n.png" scale="true"/></TD><td><font point-size="10">protein2ppw</font></td></TR></TABLE>>
+    val imgfile = "img" + id + ".svg"
 
-    // Generate md5 hash for inchi
-    val md5 = DigestUtils.md5Hex(ActData.instance().chemId2Inchis.get(id))
-    // Format the rendering filename
-    val renderingFilename = String.format("molecule-%s.png", md5)
-
-    // Construct the string
+    // return the constructed string
     "<<TABLE border=\"0\" cellborder=\"0\"> " +
       "<TR><TD width=\"120\" height=\"100\" fixedsize=\"true\"><IMG SRC=\"" +
-      renderingFilename +
+      imgfile +
       "\" scale=\"true\"/></TD><td><font point-size=\"12\">" +
       ActData.instance.chemId2ReadableName.get(id) +
       "</font></td></TR></TABLE>>"
@@ -207,19 +200,22 @@ object Cascade extends Falls {
         mapValues(_.map(_._2))
 
       groupedSubProduct.foreach({case (subProduct, reactions) =>
-        val reactionsNode = rxn_node(reactions.map(r => Long.valueOf(r.rxnid)), subProduct)
-        network.addNode(reactionsNode, reactions.head.rxnid)
+        // Let's not show cofactor only reactions for now
+        if (!subProduct.substrates.forall(cofactors.contains)) {
+          val reactionsNode = rxn_node(reactions.map(r => Long.valueOf(r.rxnid)), subProduct)
+          network.addNode(reactionsNode, reactions.head.rxnid)
 
-        subProduct.products.foreach(p => network.addEdge(create_edge(reactionsNode, mol_node(p))))
+          subProduct.products.foreach(p => network.addEdge(create_edge(reactionsNode, mol_node(p))))
 
-        subProduct.substrates.foreach(s => {
+          subProduct.substrates.foreach(s => {
             val cascade_s: Network = get_cascade(s, depth + 1)
 
             network.mergeInto(cascade_s)
 
             // add edges of form "s" -> respective "r" nodes
             network.addEdge(create_edge(mol_node(s), reactionsNode))
-        })
+          })
+        }
       })
     }
     // return this accumulated network

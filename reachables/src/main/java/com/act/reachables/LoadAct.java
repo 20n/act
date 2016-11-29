@@ -269,7 +269,9 @@ public class LoadAct extends SteppedTask {
       List<Chemical> cs = this.db.getCofactorChemicals();
       // TODO Add filter for chemicals w/o inchis
       for (Chemical c : cs)
-        cofactor_ids.add(c.getUuid());
+        if (c.getInChI() != null) {
+          cofactor_ids.add(c.getUuid());
+        }
 
     } else {
 
