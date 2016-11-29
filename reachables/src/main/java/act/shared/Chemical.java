@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import act.shared.helpers.MongoDBToJSON;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
@@ -17,6 +18,8 @@ import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
@@ -284,6 +287,12 @@ public class Chemical implements Serializable {
 
   public String getInChIKey() {
     return inchiKey;
+  }
+
+  public Map<REFS, BasicDBObject> getXrefMap() {
+    Map<REFS, BasicDBObject> newXrefs = new HashMap<>();
+    this.refs.forEach((key, value) -> newXrefs.put(key, (BasicDBObject) MongoDBToJSON.conv(value)));
+    return newXrefs;
   }
 
   public JSONObject getRef(REFS type) {

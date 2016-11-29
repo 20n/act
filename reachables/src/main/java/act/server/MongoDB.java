@@ -183,6 +183,7 @@ public class MongoDB {
 
     this.createSeqIndex("metadata.accession", false);
     this.createSeqIndex("seq", true);
+    this.createSeqIndex("rxn_refs", false);
   }
 
   public int port() {
@@ -2543,6 +2544,25 @@ public class MongoDB {
     return seqs;
   }
 
+  public List<Seq> getSeqWithRxnRef(Long rxnId) {
+    List<Seq> seqs = new ArrayList<>();
+    BasicDBObject query = new BasicDBObject();
+    query.put("rxn_refs", rxnId);
+
+    DBCursor cur = this.dbSeq.find(query, new BasicDBObject());
+    try {
+      while (cur.hasNext()) {
+        DBObject o = cur.next();
+        seqs.add(convertDBObjectToSeq(o));
+      }
+    } finally {
+      if (cur != null) {
+        cur.close();
+      }
+    }
+
+    return seqs;
+  }
 
   public Iterator<Seq> getSeqIterator() {
     final DBIterator iter = getDbIteratorOverSeq();
