@@ -155,7 +155,6 @@ object Cascade extends Falls {
     if (cache_nw contains m) return cache_nw(m)
 
     val network = new Network("cascade_" + m)
-    cache_nw.put(m, network)
     network.addNode(mol_node(m), m)
 
 
@@ -190,6 +189,7 @@ object Cascade extends Falls {
       }
     }
 
+    cache_nw.put(m, network)
     // return this accumulated network
     network
   }
