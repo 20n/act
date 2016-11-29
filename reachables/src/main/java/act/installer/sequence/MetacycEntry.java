@@ -25,7 +25,7 @@ public class MetacycEntry extends SequenceEntry {
 
     this.sequence = sequence;
     this.org_id = org_id;
-    this.refs = new ArrayList<>();
+    this.refs = new ArrayList<>(metacyc_refs);
     this.ec = ec;
     this.accessions = new HashSet<String>();
 
