@@ -180,7 +180,8 @@ object Cascade extends Falls {
     max_cascade_depth = depth
   }
 
-  def get_cascade(m: Long, depth: Int): Network = {
+  def get_cascade(m: Long, depth: Int, source: Option[Long] = None): Option[Network] = {
+    if (source.isDefined && source.get == m) return None
     val network = new Network("cascade_" + m)
 
     network.addNode(mol_node(m), m)
@@ -199,34 +200,43 @@ object Cascade extends Falls {
         groupBy(_._1).
         mapValues(_.map(_._2))
 
-      groupedSubProduct.foreach({case (subProduct, reactions) =>
+      var oneValid = false
+      groupedSubProduct.foreach({ case (subProduct, reactions) =>
         // Let's not show cofactor only reactions for now
         if (!subProduct.substrates.forall(cofactors.contains)) {
           val reactionsNode = rxn_node(reactions.map(r => Long.valueOf(r.rxnid)), subProduct)
-          network.addNode(reactionsNode, reactions.head.rxnid)
 
-          subProduct.products.foreach(p => network.addEdge(create_edge(reactionsNode, mol_node(p))))
+          val subProductNetworks = subProduct.substrates.map(s => (s, get_cascade(s, depth + 1, Option(if (depth == 0) m else source.get))))
+          if (subProductNetworks.forall(_._2.isDefined)) {
+            oneValid = true
+            subProductNetworks.foreach(s => {
+              network.addNode(reactionsNode, reactions.head.rxnid)
 
-          subProduct.substrates.foreach(s => {
-            val cascade_s: Network = get_cascade(s, depth + 1)
+              subProduct.products.foreach(p => network.addEdge(create_edge(reactionsNode, mol_node(p))))
 
-            network.mergeInto(cascade_s)
+              network.mergeInto(s._2.get)
 
-            // add edges of form "s" -> respective "r" nodes
-            network.addEdge(create_edge(mol_node(s), reactionsNode))
-          })
+              // add edges of form "s" -> respective "r" nodes
+              network.addEdge(create_edge(mol_node(s._1), reactionsNode))
+            })
+          }
         }
       })
+
+      if (!oneValid){
+        return None
+      }
     }
-    // return this accumulated network
-    network
+
+
+    Option(network)
   }
 }
 
 class Cascade(target: Long) {
   val t = target
 
-  val nw = Cascade.get_cascade(t, 0)
+  val nw = Cascade.get_cascade(t, 0).get
 
   def network() = nw
 
