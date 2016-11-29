@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class Network implements Serializable {
   private static final long serialVersionUID = 4643733150478812924L;
@@ -91,6 +92,7 @@ public class Network implements Serializable {
         int reactionCount = (int) Node.getAttribute(n.id, "reaction_count");
 
         List<String> rawLabel = Arrays.asList(((String)Node.getAttribute(n.id, "label_string")).split("&&&&"));
+        rawLabel = rawLabel.stream().filter(x -> !x.equals("")).collect(Collectors.toList());
 
         Long labelId = n.getIdentifier() - Cascade.rxnIdShift();
         if (labelId < 0){
@@ -98,8 +100,7 @@ public class Network implements Serializable {
         }
         label = Cascade.quote(StringUtils.join(new HashSet<>(rawLabel), ", ") + " [#" + reactionCount + " " + String.valueOf(labelId) + "]");
 
-        List<String> rawTooltip = Arrays.asList(((String)Node.getAttribute(n.id, "tooltip_string")).split("&&&&"));
-        tooltip = Cascade.quote(rawTooltip.get(0));
+        tooltip = Cascade.quote((String)Node.getAttribute(n.id, "tooltip_string"));
 
         url = Cascade.quote((String)Node.getAttribute(n.id, "url_string"));
 

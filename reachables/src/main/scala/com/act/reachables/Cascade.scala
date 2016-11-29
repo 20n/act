@@ -80,10 +80,6 @@ object Cascade extends Falls {
     val labelSet: Set[String] = ids.map(id => rxn_node_label_string(id)).toSet
     labelSet.foreach(id => labelBuilder.append("&&&&").append(id))
 
-    val tooltipBuilder = new StringBuilder
-    val tooltipSet: Set[String] = ids.map(id => rxn_node_tooltip_string(id)).toSet
-    tooltipSet.foreach(id => tooltipBuilder.append("&&&&").append(id))
-
     if (nodeMerger.contains(unique)){
       val previouslyCreatedNode = nodeMerger(unique)
       val ident = previouslyCreatedNode.id
@@ -91,7 +87,6 @@ object Cascade extends Falls {
       Node.setAttribute(ident, "reaction_count", newCount)
       Node.setAttribute(ident, "reaction_ids", Node.getAttribute(ident, "reaction_ids") + s"_$ident")
       Node.setAttribute(ident, "label_string", Node.getAttribute(ident, "label_string") + labelBuilder.toString())
-      Node.setAttribute(ident, "tooltip_string", Node.getAttribute(ident, "tooltip_string") + tooltipBuilder.toString())
       return nodeMerger(unique)
     }
 
@@ -101,48 +96,48 @@ object Cascade extends Falls {
     Node.setAttribute(ident, "reaction_count", ids.length)
     Node.setAttribute(ident, "reaction_ids", s"$ident")
     Node.setAttribute(ident, "label_string", labelBuilder.toString())
-    Node.setAttribute(ident, "tooltip_string", tooltipBuilder.toString)
+    Node.setAttribute(ident, "tooltip_string", rxn_node_tooltip_string(ids.head))
     Node.setAttribute(ident, "url_string", rxn_node_url_string(ids.head))
     nodeMerger.put(unique, node)
     node
   }
 
-  def rxn_node(id: Long, unique: SubProductPair): Node = {
-    if (nodeMerger.contains(unique)){
-      val previouslyCreatedNode = nodeMerger(unique)
-      val ident = previouslyCreatedNode.id
-      val newCount: Int = Node.getAttribute(ident, "reaction_count").asInstanceOf[Int] + 1
-      Node.setAttribute(ident, "reaction_count", newCount)
-      Node.setAttribute(ident, "reaction_ids", Node.getAttribute(ident, "reaction_ids") + s"_$id")
-      Node.setAttribute(ident, "label_string", Node.getAttribute(ident, "label_string") + "&&&&" + rxn_node_label_string(id))
-//      Node.setAttribute(ident, "tooltip_string", Node.getAttribute(ident, "tooltip_string") + "&&&&" + rxn_node_tooltip_string(id))
-      return nodeMerger(unique)
-    }
-
-    if (id > GlobalParams.FAKE_RXN_ID) {
-      val num_omitted = id - GlobalParams.FAKE_RXN_ID
-      val node = Node.get(id, true)
-      Node.setAttribute(id, "isrxn", "true")
-      Node.setAttribute(id, "reaction_count", 1)
-      Node.setAttribute(id, "reaction_ids", s"$id")
-      Node.setAttribute(id, "label_string", num_omitted + " more")
-      Node.setAttribute(id, "tooltip_string", num_omitted + " more")
-      Node.setAttribute(id, "url_string", "")
-      nodeMerger.put(unique, node)
-      node
-    } else {
-      val ident = rxn_node_ident(id)
-      val node = Node.get(ident, true)
-      Node.setAttribute(ident, "isrxn", "true")
-      Node.setAttribute(id, "reaction_count", 1)
-      Node.setAttribute(ident, "reaction_ids", s"$id")
-      Node.setAttribute(ident, "label_string", rxn_node_label_string(id))
-      Node.setAttribute(ident, "tooltip_string", rxn_node_tooltip_string(id))
-      Node.setAttribute(ident, "url_string", rxn_node_url_string(id))
-      nodeMerger.put(unique, node)
-      node
-    }
-  }
+//  def rxn_node(id: Long, unique: SubProductPair): Node = {
+//    if (nodeMerger.contains(unique)){
+//      val previouslyCreatedNode = nodeMerger(unique)
+//      val ident = previouslyCreatedNode.id
+//      val newCount: Int = Node.getAttribute(ident, "reaction_count").asInstanceOf[Int] + 1
+//      Node.setAttribute(ident, "reaction_count", newCount)
+//      Node.setAttribute(ident, "reaction_ids", Node.getAttribute(ident, "reaction_ids") + s"_$id")
+//      Node.setAttribute(ident, "label_string", Node.getAttribute(ident, "label_string") + "&&&&" + rxn_node_label_string(id))
+////      Node.setAttribute(ident, "tooltip_string", Node.getAttribute(ident, "tooltip_string") + "&&&&" + rxn_node_tooltip_string(id))
+//      return nodeMerger(unique)
+//    }
+//
+//    if (id > GlobalParams.FAKE_RXN_ID) {
+//      val num_omitted = id - GlobalParams.FAKE_RXN_ID
+//      val node = Node.get(id, true)
+//      Node.setAttribute(id, "isrxn", "true")
+//      Node.setAttribute(id, "reaction_count", 1)
+//      Node.setAttribute(id, "reaction_ids", s"$id")
+//      Node.setAttribute(id, "label_string", num_omitted + " more")
+//      Node.setAttribute(id, "tooltip_string", num_omitted + " more")
+//      Node.setAttribute(id, "url_string", "")
+//      nodeMerger.put(unique, node)
+//      node
+//    } else {
+//      val ident = rxn_node_ident(id)
+//      val node = Node.get(ident, true)
+//      Node.setAttribute(ident, "isrxn", "true")
+//      Node.setAttribute(id, "reaction_count", 1)
+//      Node.setAttribute(ident, "reaction_ids", s"$id")
+//      Node.setAttribute(ident, "label_string", rxn_node_label_string(id))
+//      Node.setAttribute(ident, "tooltip_string", rxn_node_tooltip_string(id))
+//      Node.setAttribute(ident, "url_string", rxn_node_url_string(id))
+//      nodeMerger.put(unique, node)
+//      node
+//    }
+//  }
   def mol_node(id: Long) = {
     val ident = mol_node_ident(id)
     val node = Node.get(ident, true)
