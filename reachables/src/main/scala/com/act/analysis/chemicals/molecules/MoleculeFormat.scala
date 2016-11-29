@@ -27,6 +27,7 @@ object MoleculeFormat {
   private val strictNoStereoInchiFormat = Format("strictNoStereoInchi")
   private val smilesFormat = Format("smiles")
   private val smartsFormat = Format("smarts")
+  private val inchiKeyFormat = Format("inchikey")
   private val noStereoSmartsFormat = Format("noStereoSmarts")
   private val noStereoAromatizedSmartsFormat = Format("noStereoAromatizedSmarts")
 
@@ -37,6 +38,7 @@ object MoleculeFormat {
   object strictNoStereoInchi extends MoleculeFormatType(strictNoStereoInchiFormat, List(Cleaning.removeStereo))
   object smiles extends MoleculeFormatType(smilesFormat, List())
   object smarts extends MoleculeFormatType(smartsFormat, List())
+  object inchiKey extends MoleculeFormatType(inchiKeyFormat, List())
   object noStereoSmarts extends MoleculeFormatType(noStereoSmartsFormat, List(Cleaning.removeStereo))
   object noStereoAromatizedSmarts extends MoleculeFormatType(noStereoAromatizedSmartsFormat, List(Cleaning.removeStereo))
 
@@ -64,6 +66,7 @@ object MoleculeFormat {
       s"${inchiFormat.name}:$InoAuxInformation,$IforceNoStereo,$IdoNotDisplayWarnings,$IonlyExplicitHydrogen",
     smilesFormat -> smilesFormat.name,
     smartsFormat -> smartsFormat.name,
+    inchiKeyFormat -> inchiKeyFormat.name,
     noStereoSmartsFormat -> s"${smartsFormat.name}:$SnoStereo",
     noStereoAromatizedSmartsFormat -> s"${smartsFormat.name}:$Saromatic$SnoStereo"
   )
@@ -77,6 +80,7 @@ object MoleculeFormat {
     strictNoStereoInchiFormat -> inchiFormat.name,
     smilesFormat -> smilesFormat.name,
     smartsFormat -> smartsFormat.name,
+    inchiKeyFormat -> inchiKeyFormat.name,
     noStereoSmartsFormat -> smartsFormat.name,
     noStereoAromatizedSmartsFormat -> smartsFormat.name
   )

@@ -108,4 +108,13 @@ object MoleculeImporter {
   def importMolecule(mol: String, format: java.util.List[MoleculeFormat.MoleculeFormatType]): Molecule = {
     importMolecule(mol, format.asScala.toList)
   }
+
+  @throws[FakeInchiException]
+  def assertNotFakeInchi(inchi: String) {
+    if (inchi != null && (inchi.contains("FAKE") || inchi.contains("R"))) {
+      throw new FakeInchiException(inchi)
+    }
+  }
+
+  class FakeInchiException(val inchi: String) extends Exception(s"Found FAKE inchi: $inchi")
 }

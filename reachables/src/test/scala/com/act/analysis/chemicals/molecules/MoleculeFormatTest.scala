@@ -31,8 +31,10 @@ class MoleculeFormatTest extends FlatSpec with Matchers with BeforeAndAfterEach 
   "MoleculeFormat" should "should have valid inchi options for importing molecules." in {
     val testInchiTrimethylBorane = "InChI=1S/C3H9B/c1-4(2)3/h1-3H3"
 
-    // check all options with "inchi" in their name
-    val inchiFormats = MoleculeFormat.listPossibleFormats().filter(_.toString.contains("inchi"))
+    // check all options with "inchi" in their name, but exclude "inchikey" format
+    val inchiFormats = MoleculeFormat.listPossibleFormats().
+      filter(_.toString.contains("inchi")).
+      filterNot(_.toString.contains("inchikey"))
 
     // Prevent test from passing if someone refactors the names
     inchiFormats.nonEmpty should be(true)
@@ -78,6 +80,20 @@ class MoleculeFormatTest extends FlatSpec with Matchers with BeforeAndAfterEach 
     // Prevent test from passing if someone refactors the names
     smartsFormats.nonEmpty should be(true)
     smartsFormats.foreach(format => {
+      noException should be thrownBy MoleculeExporter.exportMolecule(testMolecule, MoleculeFormat.getName(format.toString))
+    })
+  }
+
+  "MoleculeFormat" should "should have valid inchikey options for exporting molecules." in {
+    val testInchiHexane = "InChI=1S/C6H14/c1-3-5-6-4-2/h3-6H2,1-2H3"
+    val testMolecule = MoleculeImporter.importMolecule(testInchiHexane)
+
+    // check all options with "inchikey" in their name
+    val inchiKeyFormats = MoleculeFormat.listPossibleFormats().filter(_.toString.contains("inchikey"))
+
+    // Prevent test from passing if someone refactors the names
+    inchiKeyFormats.nonEmpty should be(true)
+    inchiKeyFormats.foreach(format => {
       noException should be thrownBy MoleculeExporter.exportMolecule(testMolecule, MoleculeFormat.getName(format.toString))
     })
   }
