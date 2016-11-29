@@ -77,10 +77,12 @@ object Cascade extends Falls {
 
   def rxn_node(ids: List[Long], unique: SubProductPair): Node = {
     val labelBuilder = new StringBuilder
-    ids.foreach(id => labelBuilder.append("&&&&").append(rxn_node_label_string(id)))
+    val labelSet: Set[String] = ids.map(id => rxn_node_label_string(id)).toSet
+    labelSet.foreach(id => labelBuilder.append("&&&&").append(id))
 
     val tooltipBuilder = new StringBuilder
-    ids.foreach(id => tooltipBuilder.append("&&&&").append(rxn_node_tooltip_string(id)))
+    val tooltipSet: Set[String] = ids.map(id => rxn_node_tooltip_string(id)).toSet
+    tooltipSet.foreach(id => tooltipBuilder.append("&&&&").append(id))
 
     if (nodeMerger.contains(unique)){
       val previouslyCreatedNode = nodeMerger(unique)
@@ -109,6 +111,8 @@ object Cascade extends Falls {
     if (nodeMerger.contains(unique)){
       val previouslyCreatedNode = nodeMerger(unique)
       val ident = previouslyCreatedNode.id
+      val newCount: Int = Node.getAttribute(ident, "reaction_count").asInstanceOf[Int] + 1
+      Node.setAttribute(ident, "reaction_count", newCount)
       Node.setAttribute(ident, "reaction_ids", Node.getAttribute(ident, "reaction_ids") + s"_$id")
       Node.setAttribute(ident, "label_string", Node.getAttribute(ident, "label_string") + "&&&&" + rxn_node_label_string(id))
 //      Node.setAttribute(ident, "tooltip_string", Node.getAttribute(ident, "tooltip_string") + "&&&&" + rxn_node_tooltip_string(id))
@@ -119,6 +123,7 @@ object Cascade extends Falls {
       val num_omitted = id - GlobalParams.FAKE_RXN_ID
       val node = Node.get(id, true)
       Node.setAttribute(id, "isrxn", "true")
+      Node.setAttribute(id, "reaction_count", 1)
       Node.setAttribute(id, "reaction_ids", s"$id")
       Node.setAttribute(id, "label_string", num_omitted + " more")
       Node.setAttribute(id, "tooltip_string", num_omitted + " more")
@@ -148,14 +153,14 @@ object Cascade extends Falls {
     node
   }
 
-  def fixed_sz_svg_img(id: Long) = {
+  def fixed_sz_svg_img(id: Long): String = {
+    return ""
     // From: http://www.graphviz.org/content/images-nodes-label-below
     // Put DOT label like so:
     // <<TABLE border="0" cellborder="0"> <TR><TD width="60" height="50" fixedsize="true">
     // <IMG SRC="20n.png" scale="true"/></TD><td><font point-size="10">protein2ppw</font></td></TR></TABLE>>
 
     // Generate md5 hash for inchi
-    println(id)
     val md5 = DigestUtils.md5Hex(ActData.instance().chemId2Inchis.get(id))
     // Format the rendering filename
     val renderingFilename = String.format("molecule-%s.png", md5)
