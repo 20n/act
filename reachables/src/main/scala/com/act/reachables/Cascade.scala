@@ -1,5 +1,7 @@
 package com.act.reachables
 
+import org.apache.commons.codec.digest.DigestUtils
+
 import scala.collection.JavaConversions._
 
 object Cascade extends Falls {
@@ -87,21 +89,27 @@ object Cascade extends Falls {
     Node.setAttribute(ident, "url_string", quote(mol_node_url_string(inchi)))
     node
   }
+
   def fixed_sz_svg_img(id: Long) = {
     // From: http://www.graphviz.org/content/images-nodes-label-below
     // Put DOT label like so:
     // <<TABLE border="0" cellborder="0"> <TR><TD width="60" height="50" fixedsize="true">
     // <IMG SRC="20n.png" scale="true"/></TD><td><font point-size="10">protein2ppw</font></td></TR></TABLE>>
-    val imgfile = "img" + id + ".svg"
 
-    // return the constructed string
+    // Generate md5 hash for inchi
+    val md5 = DigestUtils.md5Hex(ActData.instance().chemId2Inchis.get(id))
+    // Format the rendering filename
+    val renderingFilename = String.format("molecule-%s.png", md5)
+
+    // Construct the string
     "<<TABLE border=\"0\" cellborder=\"0\"> " +
       "<TR><TD width=\"120\" height=\"100\" fixedsize=\"true\"><IMG SRC=\"" +
-      imgfile +
+      renderingFilename +
       "\" scale=\"true\"/></TD><td><font point-size=\"12\">" +
       ActData.instance.chemId2ReadableName.get(id) +
       "</font></td></TR></TABLE>>"
   }
+
   def mol_node_url_string(inchi: String) = {
     if (inchi == null) {
       "no inchi"
@@ -172,4 +180,5 @@ class Cascade(target: Long) {
   def network() = nw
 
   def dot(): String = nw.toDOT
+
 }
