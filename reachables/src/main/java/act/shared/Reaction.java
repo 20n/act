@@ -20,6 +20,8 @@ public class Reaction implements Serializable {
   private static final long serialVersionUID = 42L;
   Reaction() { /* default constructor for serialization */ }
 
+  public static final String SEQ_KEY = "sequences";
+
   public enum RxnDataSource { BRENDA, KEGG, METACYC, MERGED }; // Note: MERGED should be last.
   public enum RefDataSource { PMID, BRENDA, KEGG, METACYC };
   public enum RxnDetailType { CONCRETE, ABSTRACT };
@@ -300,6 +302,32 @@ public class Reaction implements Serializable {
   }
   public void setProteinData(Set<JSONObject> proteinData) { this.proteinData = proteinData; }
 
+  public List<Integer> getRos() {
+    List<Integer> ros = new ArrayList<>();
+    if (getMechanisticValidatorResult() != null) {
+      ros.addAll(getMechanisticValidatorResult().keySet());
+    }
+    return ros;
+  }
+
+  public List<Long> getSeqs() {
+    List<Long> result = new ArrayList<>();
+
+    for (JSONObject protein : this.proteinData) {
+      if (protein.has(SEQ_KEY)) {
+        JSONArray seqs = protein.getJSONArray(SEQ_KEY);
+        if (seqs != null) {
+          for (int i = 0; i < seqs.length(); i++) {
+            if (seqs.get(i) != null) {
+              result.add(seqs.getLong(i));
+            }
+          }
+        }
+      }
+    }
+    return result;
+  }
+
   public boolean hasProteinSeq() {
     boolean hasSeq = false;
     for (JSONObject protein : this.proteinData) {
@@ -337,10 +365,10 @@ public class Reaction implements Serializable {
     // }
     // *****************************************************
 
-    if (!prt.has("sequences"))
+    if (!prt.has(SEQ_KEY))
       return false;
 
-    JSONArray seqs = prt.getJSONArray("sequences");
+    JSONArray seqs = prt.getJSONArray(SEQ_KEY);
     for (int i = 0; i < seqs.length(); i++) {
       Long s = seqs.getLong(i);
       if (s != null)
@@ -369,10 +397,10 @@ public class Reaction implements Serializable {
     // }
     // *****************************************************
 
-    if (!prt.has("sequences"))
+    if (!prt.has(SEQ_KEY))
       return false;
 
-    JSONArray seqs = prt.getJSONArray("sequences");
+    JSONArray seqs = prt.getJSONArray(SEQ_KEY);
 
     return seqs != null && seqs.length() > 0;
   }
