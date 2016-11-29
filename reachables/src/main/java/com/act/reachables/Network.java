@@ -89,7 +89,7 @@ public class Network implements Serializable {
 
         List<String> rawLabel = Arrays.asList(((String)Node.getAttribute(n.id, "label_string")).split("&&&&"));
 
-        label = Cascade.quote(StringUtils.join(new HashSet<>(rawLabel), ", ") + " Count " + rawLabel.size());
+        label = Cascade.quote(StringUtils.join(new HashSet<>(rawLabel), ", ") + " [#" + rawLabel.size() + " " + String.valueOf(n.getIdentifier() - Cascade.rxnIdShift()) + "]");
 
         List<String> rawTooltip = Arrays.asList(((String)Node.getAttribute(n.id, "tooltip_string")).split("&&&&"));
         tooltip = Cascade.quote(rawTooltip.get(0));
