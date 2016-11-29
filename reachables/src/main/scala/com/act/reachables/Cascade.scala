@@ -181,7 +181,7 @@ object Cascade extends Falls {
           val cascade_s = if (cachedSubstrate.isDefined) {
             cachedSubstrate.get
           } else {
-            get_cascade(s, depth + 1)
+            get_cascade(s, depth + 1, cache)
           }
           network.mergeInto(cascade_s)
 
