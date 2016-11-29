@@ -134,6 +134,7 @@ object Cascade extends Falls {
       val ident = rxn_node_ident(id)
       val node = Node.get(ident, true)
       Node.setAttribute(ident, "isrxn", "true")
+      Node.setAttribute(id, "reaction_count", 1)
       Node.setAttribute(ident, "reaction_ids", s"$id")
       Node.setAttribute(ident, "label_string", rxn_node_label_string(id))
       Node.setAttribute(ident, "tooltip_string", rxn_node_tooltip_string(id))
