@@ -99,12 +99,11 @@ object Waterfall extends Falls {
       val unimplemented_msg = "UNIMPLEMENTED: get_rxn_metadata"
       val cloningData = unimplemented_msg // rxn.getCloningData
       val exprData = Set[String](unimplemented_msg) // cloningData.map(d => d.reference + ":" + d.organism + ":" + d.notes)
-      val orgs_ids = {
-        ReachRxnDescs.rxnOrganismNames(r) match {
-          case None => Array()
-          case Some(orgs) => orgs.toArray
+      val orgs_ids: Set[String] = if (ReachRxnDescs.rxnOrganismNames(r).isDefined){
+          ReachRxnDescs.rxnOrganismNames(r).get
+        } else {
+          Set()
         }
-      }
 
       // the organism data is a mess: while there are organismIDs/organismData fields
       // that hold structured information; they sometimes do not have all the organisms
@@ -115,15 +114,17 @@ object Waterfall extends Falls {
         val ee = str.indexOf(e, ss)
         str.slice(ss + 1, ee)
       }
-      def extract_orgs(desc: String) = between('{', '}', desc).split(", ")
+      def extract_orgs(desc: String): Set[String] = between('{', '}', desc).split(", ").toSet
       val org_str_raw = ReachRxnDescs.rxnEasyDesc(r)
-      val orgs_str = org_str_raw match {
-        case None => Array[String]()
-        case Some(o) => extract_orgs(o)
+      val orgs_str: Set[String] = if (org_str_raw.isDefined) {
+        extract_orgs(org_str_raw.get)
+      } else {
+        Set()
       }
-      val orgs = if (orgs_ids.size > orgs_str.size) orgs_ids.toSet else orgs_str.toSet
 
-      (Set(dataSrc), orgs, exprData.toSet)
+      val orgs: Set[String] = if (orgs_ids.size > orgs_str.size) orgs_ids else orgs_str
+
+      (Set(dataSrc), orgs, exprData)
     }
 
     // 1. ---------
@@ -157,7 +158,6 @@ object Waterfall extends Falls {
       val b = B._2
       val a_before_b = (
         (best_src(a) > best_src(b)) // either the rxn is mentioned in a better datasrc
-          || (a.orgs.size > b.orgs.size) // or the number of witness organisms is greater
           || (a.expr.size > b.expr.size) // or the number of expression entries is greater
         )
 
