@@ -3,6 +3,7 @@ package com.act.reachables;
 
 import act.server.MongoDB;
 import act.shared.Chemical;
+import act.shared.Reaction;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -87,9 +88,15 @@ public class Network implements Serializable {
       if (Boolean.valueOf((String)Node.getAttribute(n.id, "isrxn"))) {
         id = String.valueOf(n.getIdentifier());
 
+        int reactionCount = (int) Node.getAttribute(n.id, "reaction_count");
+
         List<String> rawLabel = Arrays.asList(((String)Node.getAttribute(n.id, "label_string")).split("&&&&"));
 
-        label = Cascade.quote(StringUtils.join(new HashSet<>(rawLabel), ", ") + " [#" + rawLabel.size() + " " + String.valueOf(n.getIdentifier() - Cascade.rxnIdShift()) + "]");
+        Long labelId = n.getIdentifier() - Cascade.rxnIdShift();
+        if (labelId < 0){
+          labelId = Reaction.reverseNegativeId(labelId);
+        }
+        label = Cascade.quote(StringUtils.join(new HashSet<>(rawLabel), ", ") + " [#" + reactionCount + " " + String.valueOf(labelId) + "]");
 
         List<String> rawTooltip = Arrays.asList(((String)Node.getAttribute(n.id, "tooltip_string")).split("&&&&"));
         tooltip = Cascade.quote(rawTooltip.get(0));

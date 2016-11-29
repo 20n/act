@@ -85,7 +85,8 @@ object Cascade extends Falls {
     if (nodeMerger.contains(unique)){
       val previouslyCreatedNode = nodeMerger(unique)
       val ident = previouslyCreatedNode.id
-
+      val newCount: Int = Node.getAttribute(ident, "reaction_count").asInstanceOf[Int] + ids.length
+      Node.setAttribute(ident, "reaction_count", newCount)
       Node.setAttribute(ident, "reaction_ids", Node.getAttribute(ident, "reaction_ids") + s"_$ident")
       Node.setAttribute(ident, "label_string", Node.getAttribute(ident, "label_string") + labelBuilder.toString())
       Node.setAttribute(ident, "tooltip_string", Node.getAttribute(ident, "tooltip_string") + tooltipBuilder.toString())
@@ -95,6 +96,7 @@ object Cascade extends Falls {
     val ident = rxn_node_ident(ids.head)
     val node = Node.get(ident, true)
     Node.setAttribute(ident, "isrxn", "true")
+    Node.setAttribute(ident, "reaction_count", ids.length)
     Node.setAttribute(ident, "reaction_ids", s"$ident")
     Node.setAttribute(ident, "label_string", labelBuilder.toString())
     Node.setAttribute(ident, "tooltip_string", tooltipBuilder.toString)
@@ -153,6 +155,7 @@ object Cascade extends Falls {
     // <IMG SRC="20n.png" scale="true"/></TD><td><font point-size="10">protein2ppw</font></td></TR></TABLE>>
 
     // Generate md5 hash for inchi
+    println(id)
     val md5 = DigestUtils.md5Hex(ActData.instance().chemId2Inchis.get(id))
     // Format the rendering filename
     val renderingFilename = String.format("molecule-%s.png", md5)
