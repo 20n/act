@@ -153,6 +153,8 @@ object Cascade extends Falls {
 
   def get_cascade(m: Long, depth: Int, cache: mutable.HashMap[Long, Network] = mutable.HashMap[Long, Network]()): Network = {
     val network = new Network("cascade_" + m)
+    cache.put(m, network)
+
     network.addNode(mol_node(m), m)
 
     if (is_universal(m)) {
@@ -190,8 +192,6 @@ object Cascade extends Falls {
         }
       }
     }
-
-    cache.put(m, network)
     // return this accumulated network
     network
   }
