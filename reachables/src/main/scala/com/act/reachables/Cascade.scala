@@ -2,6 +2,8 @@ package com.act.reachables
 
 import java.lang.Long
 
+import org.apache.commons.codec.digest.DigestUtils
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
@@ -50,6 +52,9 @@ object Cascade extends Falls {
   }
 
   val rxnIdShift = 4000000000l
+
+  val pattern = """:\[([\s\d\,]+)\]""".r
+
   // dot does not like - in identifiers. Replace those with underscores
   def rxn_node_ident(id: Long) = rxnIdShift + id
   def mol_node_ident(id: Long) = id
@@ -57,7 +62,9 @@ object Cascade extends Falls {
   def rxn_node_tooltip_string(id: Long) = {
     ReachRxnDescs.rxnEasyDesc(id) match {
       case None => "ID:" + id + " not in DB"
-      case Some(desc) => desc
+      // GraphViz chokes on "[" and "]". Replace these with "{" and "}"
+      case Some(desc) => pattern.replaceAllIn(desc, m => s":{${m.group(1)}}")
+
     }
   }
   def rxn_node_label_string(id: Long) = {
@@ -152,15 +159,17 @@ object Cascade extends Falls {
     // Put DOT label like so:
     // <<TABLE border="0" cellborder="0"> <TR><TD width="60" height="50" fixedsize="true">
     // <IMG SRC="20n.png" scale="true"/></TD><td><font point-size="10">protein2ppw</font></td></TR></TABLE>>
-    val imgfile = "img" + id + ".svg"
 
-    // return the constructed string
-    "<<TABLE border=\"0\" cellborder=\"0\"> " +
-      "<TR><TD width=\"120\" height=\"100\" fixedsize=\"true\"><IMG SRC=\"" +
-      imgfile +
-      "\" scale=\"true\"/></TD><td><font point-size=\"12\">" +
-      ActData.instance.chemId2ReadableName.get(id) +
-      "</font></td></TR></TABLE>>"
+    val inchi = ActData.instance().chemId2Inchis.get(id)
+    println(inchi)
+    // Generate md5 hash for inchi
+    val md5 = DigestUtils.md5Hex(if (inchi == null) id.toString else inchi)
+    // Format the rendering filename
+    val renderingFilename = String.format("molecule-%s.png", md5)
+    // Construct the string
+    val name = s""""<td><font point-size=\"12\">${ActData.instance.chemId2ReadableName.get(id)}</font></td>"""
+    val img = s""""val img = s<TD width=\"120\" height=\"100\" fixedsize=\"true\"><IMG SRC=\"$renderingFilename\" scale=\"true\"/></TD>"""
+    s""""<<TABLE border=\"0\" cellborder=\"0\"><TR>$img$name</TR></TABLE>>"""
   }
 
   def mol_node_url_string(inchi: String) = {
