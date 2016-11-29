@@ -69,7 +69,7 @@ object Cascade extends Falls {
   def rxn_node_url_string(id: Long) = {
     ReachRxnDescs.rxnECNumber(id) match {
       case None => "ID:" + id + " not in DB"
-      case Some(ecnum) => "javascript:window.open('http://brenda-enzymes.org/enzyme.php?ecno=" + ecnum + "'); "
+      case Some(ecnum) => "http://brenda-enzymes.org/enzyme.php?ecno=" + ecnum
     }
   }
 
