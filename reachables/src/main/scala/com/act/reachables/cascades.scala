@@ -82,7 +82,8 @@ object cascades {
                         get_set(ActData.instance.chemicalsWithUserField_treeArtificial)
 
     // List(nodesIDs) = nids as a List
-    val reachables = reachableSet.toList
+    val reachables = reachableSet.toList.filter(x => !ActData.instance().cofactors.contains(x))
+    println(s"Reachables count is ${reachables.length}")
 
     // do we use Classes of rxns or all unbinned rxns? Based on flag.
     val producers = if (GlobalParams.USE_RXN_CLASSES) ActData.instance.rxnClassesThatProduceChem else ActData.instance.rxnsThatProduceChem 
