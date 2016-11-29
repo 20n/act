@@ -35,7 +35,7 @@ public class WordCloudGenerator {
    * It requires an R script, that takes an InChI as argument and writes a word cloud to a file
    */
 
-  private static final String RSCRIPT_EXE_PATH = "/usr/local/bin/Rscript"; // TODO: find this using `env` instead.
+  private static final String RSCRIPT_EXE_PATH = "/usr/bin/Rscript"; // TODO: find this using `env` instead.
   private static final String RSCRIPT_LOCATION = "src/main/r/RWordCloudGenerator.R";
   private static final Logger LOGGER = LogManager.getFormatterLogger(WordCloudGenerator.class);
   private static final String PNG_EXTENSION = ".png";
