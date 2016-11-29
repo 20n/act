@@ -83,11 +83,6 @@ object cascades {
 
     // List(nodesIDs) = nids as a List
     val reachables = reachableSet.toList
-    // TODO Switch back to full set
-    // Just vanillin for now
-    //val reachables = List(878L)
-    // VANILLIN IS 878!
-
 
     // do we use Classes of rxns or all unbinned rxns? Based on flag.
     val producers = if (GlobalParams.USE_RXN_CLASSES) ActData.instance.rxnClassesThatProduceChem else ActData.instance.rxnsThatProduceChem 
@@ -121,10 +116,6 @@ object cascades {
 
     println("Done: Written node updowns.")
 
-    // Flaten the lists of sets of reaction ids that produce or consume into one big list of reaction ids that
-    // participate in this cascade.
-    val rxnIdsInAndOutOfReachables = rxnsThatConsume.reduce(_ ++ _) ++ rxnsThatProduce.reduce(_ ++ _)
-
     // construct cascades for each reachable and then convert it to json
     Waterfall.init(reachables, upRxns)
     Cascade.init(reachables, upRxns)
@@ -133,8 +124,8 @@ object cascades {
 
     var cnt = 0
 
-    val reaches = List(878L)
-    for (reachid <- reaches) {
+    val reach = List(878L)
+    for (reachid <- reach) {
       print("Reachable #" + cnt + "\r")
 
       // write to disk; JS front end uses json

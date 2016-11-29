@@ -26,13 +26,13 @@ trait Falls {
 
   def has_substrates(r: ReachRxn) = ! r.substrates.isEmpty
 
-  def higher_in_tree(mm: Long, r: ReachRxn) = {
+  def higher_in_tree(mm: Long, r: ReachRxn, extraDepth: Int = 0) = {
     def tree_depth_of(a: Long): Int = ActData.instance.ActTree.tree_depth.get(a)
     val ss = cascades.get_set(r.substrates)
     val prod_tree_depth = tree_depth_of(mm)
     val substrate_tree_depths = ss.map(tree_depth_of)
-    val max_substrate_tree_depth = substrate_tree_depths.reduce(math.max)
-    max_substrate_tree_depth < prod_tree_depth
+    val max_substrate_tree_depth = substrate_tree_depths.max
+    max_substrate_tree_depth < (prod_tree_depth + extraDepth)
   }
 
 }
