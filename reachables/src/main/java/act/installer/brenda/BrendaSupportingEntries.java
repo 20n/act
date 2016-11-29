@@ -14,7 +14,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -126,7 +125,7 @@ public class BrendaSupportingEntries {
   }
 
   public static class Sequence {
-    public static final String QUERY = StringUtils.join(new String[]{
+    public static final String QUERY_PRECISE = StringUtils.join(new String[]{
         "select",
         "  s.ID,",
         "  s.First_Accession_Code,",
@@ -144,6 +143,22 @@ public class BrendaSupportingEntries {
         "  and p2s.first_no = 1" // Necessary to ensure lookup in sequence DB.
     }, " ");
 
+    public static final String QUERY_VAGUE = StringUtils.join(new String[]{
+        "select",
+        "  s.ID,",
+        "  s.First_Accession_Code,",
+        "  s.Entry_Name,",
+        "  s.Source,",
+        "  s.Sequence",
+        "from Sequence s",
+        "join Substrates_Products sp on sp.EC_Number = s.EC_Number and sp.Organism_Substrates = s.Organism",
+        "where sp.EC_Number = ?",
+        "  and sp.Substrates = ?",
+        "  and sp.Products = ?",
+        "  and sp.Literature_Substrates = ?",
+        "  and sp.Organism_Substrates = ?",
+    }, " ");
+
     /**
      * Prepare a query for the sequence based on a reaction, with all required arguments in the query bound to values.
      * This method lives here to keep the binding next to the statement, which makes sense given the complexity of the
@@ -155,7 +170,7 @@ public class BrendaSupportingEntries {
      * @throws SQLException
      */
     public static PreparedStatement prepareStatement(Connection conn, BrendaRxnEntry rxnEntry) throws SQLException {
-      PreparedStatement stmt = conn.prepareStatement(QUERY);
+      PreparedStatement stmt = conn.prepareStatement(QUERY_VAGUE);
       stmt.setString(1, rxnEntry.ecNumber);
       stmt.setString(2, rxnEntry.substrates);
       stmt.setString(3, rxnEntry.products);
