@@ -151,12 +151,9 @@ object Cascade extends Falls {
     max_cascade_depth = depth
   }
 
-  def get_cascade(m: Long, depth: Int): Network = {
-    if (cache_nw contains m) return cache_nw(m)
-
+  def get_cascade(m: Long, depth: Int, cache: mutable.HashMap[Long, Network] = mutable.HashMap[Long, Network]()): Network = {
     val network = new Network("cascade_" + m)
     network.addNode(mol_node(m), m)
-
 
     if (is_universal(m)) {
       // do nothing, base case
@@ -178,9 +175,14 @@ object Cascade extends Falls {
         // add edges of form "r" node -> m into the network
         network.addEdge(create_edge(rxn_node(rxn.rxnid, subProductPair), mol_node(m)))
 
-        rxn.substrates.foreach{ s =>
+        rxn.substrates.foreach { s =>
           // get_cascade on each of "s" and merge that network into nw
-          val cascade_s = get_cascade(s, depth + 1)
+          val cachedSubstrate = cache.get(s)
+          val cascade_s = if (cachedSubstrate.isDefined) {
+            cachedSubstrate.get
+          } else {
+            get_cascade(s, depth + 1)
+          }
           network.mergeInto(cascade_s)
 
           // add edges of form "s" -> respective "r" nodes
@@ -189,7 +191,7 @@ object Cascade extends Falls {
       }
     }
 
-    cache_nw.put(m, network)
+    cache.put(m, network)
     // return this accumulated network
     network
   }
