@@ -108,7 +108,7 @@ public class Searcher implements AutoCloseable {
   }
 
   public List<Pair<String, String>> searchInClaims(List<String> synonyms) throws IOException {
-    final Stream<BooleanQuery> queries = makeQueries(synonyms, CLAIMS_FIELD);
+    final List<BooleanQuery> queries = makeQueries(synonyms, CLAIMS_FIELD).collect(Collectors.toList());
     // Reuse the queries for all indices.
     try {
       return indexReadersAndSearchers.stream().
@@ -121,10 +121,10 @@ public class Searcher implements AutoCloseable {
   }
 
   private Stream<Pair<String, String>> runSearch(
-      IndexReader reader, IndexSearcher searcher, Stream<BooleanQuery> queries) throws UncheckedIOException {
+      IndexReader reader, IndexSearcher searcher, List<BooleanQuery> queries) throws UncheckedIOException {
 
     // With hints from http://stackoverflow.com/questions/22382453/java-8-streams-flatmap-method-example
-    return queries.map(q -> executeQuery(reader, searcher, q)).flatMap(Collection::stream);
+    return queries.stream().map(q -> executeQuery(reader, searcher, q)).flatMap(Collection::stream);
   }
 
   private List<Pair<String, String>> executeQuery(IndexReader reader, IndexSearcher searcher, BooleanQuery query)
