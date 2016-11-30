@@ -2,6 +2,7 @@ package com.twentyn.patentSearch;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.document.Document;
@@ -108,7 +109,7 @@ public class Searcher implements AutoCloseable {
     }
   }
 
-  public List<Pair<String, String>> searchInClaims(List<String> synonyms) throws IOException {
+  public List<Triple<Float, String, String>> searchInClaims(List<String> synonyms) throws IOException {
     if (synonyms.size() == 0) {
       LOGGER.info("Not running search for no synonyms!");
       return Collections.emptyList();
@@ -129,14 +130,14 @@ public class Searcher implements AutoCloseable {
     }
   }
 
-  private Stream<Pair<String, String>> runSearch(
+  private Stream<Triple<Float, String, String>> runSearch(
       IndexReader reader, IndexSearcher searcher, List<BooleanQuery> queries) throws UncheckedIOException {
 
     // With hints from http://stackoverflow.com/questions/22382453/java-8-streams-flatmap-method-example
     return queries.stream().map(q -> executeQuery(reader, searcher, q)).flatMap(Collection::stream);
   }
 
-  private List<Pair<String, String>> executeQuery(IndexReader reader, IndexSearcher searcher, BooleanQuery query)
+  private List<Triple<Float, String, String>> executeQuery(IndexReader reader, IndexSearcher searcher, BooleanQuery query)
       throws UncheckedIOException {
     TopDocs topDocs;
     try {
@@ -156,13 +157,14 @@ public class Searcher implements AutoCloseable {
         filter(scoreDoc -> scoreDoc != null).
         map(scoreDoc -> {
           try {
-            return reader.document(scoreDoc.doc);
+            Pair<String, String> features = this.extractDocFeatures(reader.document(scoreDoc.doc));
+            return Triple.of(scoreDoc.score, features.getLeft(), features.getRight());
           } catch (IOException e) {
             // Yikes, this is v. bad.
             LOGGER.error("Caught IO exception when trying to read doc id %d: %s", scoreDoc.doc, e.getMessage());
             throw new UncheckedIOException(e);
           }
-        }).map(this::extractDocFeatures).collect(Collectors.toList());
+        }).collect(Collectors.toList());
   }
 
   // Just extract the id and title for now.  The id contains the patent number, and the title is enough for display.
