@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
@@ -22,5 +23,25 @@ public class SynonymData {
                   @JsonProperty("mesh") Map<MeshTermType, Set<String>> meshHeadings) {
     this.pubchemSynonyms = pubchemSynonyms;
     this.meshHeadings = meshHeadings;
+  }
+
+  public Map<PubchemSynonymType, Set<String>> getPubchemSynonyms() {
+    return Collections.unmodifiableMap(this.pubchemSynonyms); // TODO: is unmodifiable worth the overhead?
+  }
+
+  public Set<String> getPubchemSynonymsByType(PubchemSynonymType type) {
+    return this.pubchemSynonyms.containsKey(type) ?
+        Collections.unmodifiableSet(this.pubchemSynonyms.get(type)) :
+        Collections.emptySet();
+  }
+
+  public Map<MeshTermType, Set<String>> getMeshHeadings() {
+    return Collections.unmodifiableMap(this.meshHeadings);
+  }
+
+  public Set<String> getMeshHeadingsByType(MeshTermType type) {
+    return this.meshHeadings.containsKey(type) ?
+        Collections.unmodifiableSet(this.meshHeadings.get(type)) :
+        Collections.emptySet();
   }
 }
