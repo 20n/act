@@ -1,6 +1,7 @@
 package com.act.reachables
 
 import java.io.{File, FileOutputStream, FileWriter, PrintWriter}
+import java.util.concurrent.atomic.AtomicInteger
 
 import act.server.MongoDB
 import act.shared.helpers.MongoDBToJSON
@@ -108,12 +109,12 @@ object cascades {
     val parents = reachables.map( getp )
 
     val reach_neighbors = (reachables zip parents) zip (upRxns zip downRxns)
-//    for (tuple <- reach_neighbors) {
-//      val reachid = tuple._1._1
-//      val json = updowns_json(tuple)
-//      val jsonstr = json.toString(2)
-//      write_to(new File(dir, s"c$reachid.json").getAbsolutePath, jsonstr)
-//    }
+    for (tuple <- reach_neighbors) {
+      val reachid = tuple._1._1
+      val json = updowns_json(tuple)
+      val jsonstr = json.toString(2)
+      write_to(new File(dir, s"c$reachid.json").getAbsolutePath, jsonstr)
+    }
 
     println("Done: Written node updowns.")
 
@@ -123,37 +124,12 @@ object cascades {
     Cascade.set_max_cascade_depth(depth)
 
 
-    var cnt = 0
+    val cnt = new AtomicInteger()
 
-    val reach = List(878L, 349L)
-    for (reachid <- reach) {
-      print("Reachable #" + cnt + "\r")
+//    val reach = List(878L)
+    val reach = reachables
+    reach.par.foreach(doStuff(_, cnt, new File(dir)))
 
-      // write to disk; JS front end uses json
-      val waterfall = new Waterfall(reachid)
-      val json    = waterfall.json()
-      val jsonstr = json.toString(2)
-      write_to(new File(dir, s"p$reachid.json").getAbsolutePath, jsonstr)
-
-      // reachid == -1 is a proxy node and not real chemicals
-      if (reachid >= 0) {
-        // install into db.waterfall so that front end query-er can use
-        val mongo_json = MongoDBToJSON.conv(json)
-
-        if (GlobalParams._writeWaterfallsToDB)
-          db.submitToActWaterfallDB(reachid, mongo_json)
-      }
-
-      // write to disk; cascade as dot file
-      val cascade = new Cascade(reachid)
-      val dot     = cascade.dot()
-      write_to(new File(dir, s"cscd$reachid.dot").getAbsolutePath, dot)
-      val writer = new FileWriter(new File(dir, s"paths$reachid.txt"))
-      writer.write(cascade.allStringPaths.mkString("\n"))
-      writer.close()
-
-      cnt = cnt + 1
-    }
     println
 
     println("Done: Written node cascades/waterfalls.")
@@ -210,6 +186,24 @@ object cascades {
     println("If the page cannot locate the reachables tree, you may have to ")
     println("ln -s ./" + p + "{-data, .graph.json, .trees.json} <act.git loc>/api/www/html/nw/")
     hr
+  }
+
+  def doStuff(reachid: Long, cnt: AtomicInteger, dir: File): Unit = {
+    // write to disk; JS front end uses json
+    val waterfall = new Waterfall(reachid)
+    val json    = waterfall.json()
+    val jsonstr = json.toString(2)
+    write_to(new File(dir, s"p$reachid.json").getAbsolutePath, jsonstr)
+
+    // write to disk; cascade as dot file
+    val cascade = new Cascade(reachid)
+    val dot     = cascade.dot()
+    write_to(new File(dir, s"cscd$reachid.dot").getAbsolutePath, dot)
+    val writer = new FileWriter(new File(dir, s"paths$reachid.txt"))
+    writer.write(cascade.allStringPaths.mkString("\n"))
+    writer.close()
+
+    println(s"Completed reachable ${cnt.incrementAndGet()}")
   }
 
   def rxn_json(r: Reaction) = {
