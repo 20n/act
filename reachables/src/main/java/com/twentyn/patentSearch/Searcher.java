@@ -50,7 +50,7 @@ public class Searcher implements AutoCloseable {
   ));
   private static final String CLAIMS_FIELD = "claims";
   private static final int MAX_RESULTS_PER_QUERY = 100;
-  private static final float SCORE_THRESHOLD = 0.01f;
+  private static final float DEFAULT_SCORE_THRESHOLD = 0.1f;
 
   private List<Pair<IndexReader, IndexSearcher>> indexReadersAndSearchers = new ArrayList<>();
 
@@ -153,7 +153,7 @@ public class Searcher implements AutoCloseable {
     }
 
     return Arrays.stream(scoreDocs). // No need to use `limit` here since we already had Lucene cap the result set size.
-        map(scoreDoc -> scoreDoc.score >= SCORE_THRESHOLD ? scoreDoc : null).
+        map(scoreDoc -> scoreDoc.score >= DEFAULT_SCORE_THRESHOLD ? scoreDoc : null).
         filter(scoreDoc -> scoreDoc != null).
         map(scoreDoc -> {
           try {
