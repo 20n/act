@@ -177,6 +177,9 @@ public class Reachable {
   }
 
   public void addPatentSummaries(List<PatentSummary> patentSummaries) {
+    if (this.patentSummaries == null) {
+      this.patentSummaries = new ArrayList<>();
+    }
     this.patentSummaries.addAll(patentSummaries);
   }
 
