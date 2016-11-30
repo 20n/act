@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Searcher implements AutoCloseable {
-  public static final Logger LOGGER = LogManager.getLogger(Searcher.class);
+  public static final Logger LOGGER = LogManager.getFormatterLogger(Searcher.class);
 
   private static final List<String> KEYWORDS = Collections.unmodifiableList(Arrays.asList(
       "yeast",
@@ -58,6 +58,7 @@ public class Searcher implements AutoCloseable {
 
   private void init(List<File> indexDirectories) throws IOException {
     for (File indexDirectory : indexDirectories) {
+      LOGGER.info("Opening index dir at %s", indexDirectory.getAbsolutePath());
       Directory indexDir = FSDirectory.open(indexDirectory.toPath());
       IndexReader indexReader = DirectoryReader.open(indexDir);
       IndexSearcher searcher = new IndexSearcher(indexReader);
@@ -74,6 +75,16 @@ public class Searcher implements AutoCloseable {
   }
 
   public static class Factory {
+    private static final Factory INSTANCE = new Factory();
+
+    private Factory() {
+
+    }
+
+    public static Factory getInstance() {
+      return INSTANCE;
+    }
+
     public Searcher build(File indexTopDir) throws IOException {
       if (!indexTopDir.isDirectory()) {
         String msg = String.format("Top level directory at %s is not a directory", indexTopDir.getAbsolutePath());
