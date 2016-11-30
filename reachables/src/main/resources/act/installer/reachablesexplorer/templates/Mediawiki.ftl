@@ -10,7 +10,10 @@
 
 '''Inchi''': ${inchi}
 
+<#if smiles??>
 '''Smiles''': ${smiles}
+</#if>
+
 
 '''Precursor Molecules''':<br />
 {| class='wikitable'

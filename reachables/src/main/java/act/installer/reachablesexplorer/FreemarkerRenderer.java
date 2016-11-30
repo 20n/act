@@ -9,8 +9,13 @@ import org.apache.logging.log4j.Logger;
 import org.mongojack.DBCursor;
 import org.mongojack.JacksonDBCollection;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +40,7 @@ public class FreemarkerRenderer {
         new Loader("localhost", 27017, "wiki_reachables", "reachablesv6_test_thomas", "sequencesv6_test_thomas", "/tmp");
 
     FreemarkerRenderer renderer = FreemarkerRendererFactory.build(loader);
-    renderer.renderSomeTemplates();
+    renderer.writePageToDir(new File("/Volumes/shared-data/Thomas/WikiPagesForUpload"));
   }
 
   private FreemarkerRenderer(Loader loader) {
@@ -56,18 +61,23 @@ public class FreemarkerRenderer {
     template = cfg.getTemplate(templateName);
   }
 
-  public void renderSomeTemplates() throws IOException, TemplateException{
+  public void writePageToDir(File directory) throws IOException, TemplateException{
     DBCursor<Reachable> reachableDBCursor = loader.getJacksonReachablesCollection().find();
 
     int i = 0;
     while(reachableDBCursor.hasNext()) {
       Reachable r = reachableDBCursor.next();
-      template.process(buildReachableModel(r, loader.getJacksonSequenceCollection()),
-          new OutputStreamWriter(System.out));
-      System.out.println();
+      String inchiKey = r.getInchiKey();
+      LOGGER.info(inchiKey);
+      File f = new File(directory, inchiKey);
+      Writer w = new PrintWriter(f);
+      template.process(buildReachableModel(r, loader.getJacksonSequenceCollection()), w);
+      w.close();
+      assert f.exists();
       i++;
-      if (i > 10) {
-        break;
+
+      if (i % 100 == 0) {
+        LOGGER.info(i);
       }
     }
   }
