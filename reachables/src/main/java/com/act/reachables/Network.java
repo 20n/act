@@ -66,8 +66,10 @@ public class Network implements Serializable {
         Node currentNode = this.nodeMapping.get(n);
         Integer newCount = (int) Node.getAttribute(currentNode.id, "reaction_count") + (Node.getAttribute(nid, "reaction_count") == null ? 0 : (int) Node.getAttribute(nid, "reaction_count"));
         Node.setAttribute(currentNode.id, "reaction_count", newCount);
-        Node.setAttribute(currentNode.id, "reaction_ids", Node.getAttribute(currentNode.id, "reaction_ids") + (Node.getAttribute(nid, "reaction_ids") == null ? "" : (String) Node.getAttribute(nid, "reaction_ids")));
-        Node.setAttribute(currentNode.id, "label_string", Node.getAttribute(currentNode.id, "label_string") + (Node.getAttribute(nid, "label_string") == null ? "" : (String) Node.getAttribute(nid, "label_string")));
+
+        // We comment these out as sometimes they will cause heap space errors.
+        //Node.setAttribute(currentNode.id, "reaction_ids", Node.getAttribute(currentNode.id, "reaction_ids") + (Node.getAttribute(nid, "reaction_ids") == null ? "" : (String) Node.getAttribute(nid, "reaction_ids")));
+        //Node.setAttribute(currentNode.id, "label_string", Node.getAttribute(currentNode.id, "label_string") + (Node.getAttribute(nid, "label_string") == null ? "" : (String) Node.getAttribute(nid, "label_string")));
       }
      } else {
       this.nodeMapping.put(n, n);
