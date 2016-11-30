@@ -64,12 +64,17 @@ public class Network implements Serializable {
     if (this.nodeMapping.containsKey(n)){
       if (Boolean.valueOf((String)Node.getAttribute(n.id, "isrxn"))) {
         Node currentNode = this.nodeMapping.get(n);
-        Integer newCount = (int) Node.getAttribute(currentNode.id, "reaction_count") + (Node.getAttribute(nid, "reaction_count") == null ? 0 : (int) Node.getAttribute(nid, "reaction_count"));
-        Node.setAttribute(currentNode.id, "reaction_count", newCount);
+//        Integer newCount = (int) Node.getAttribute(currentNode.id, "reaction_count") + (Node.getAttribute(nid, "reaction_count") == null ? 0 : (int) Node.getAttribute(nid, "reaction_count"));
+//        Node.setAttribute(currentNode.id, "reaction_count", newCount);
 
-        // We comment these out as sometimes they will cause heap space errors.
-        //Node.setAttribute(currentNode.id, "reaction_ids", Node.getAttribute(currentNode.id, "reaction_ids") + (Node.getAttribute(nid, "reaction_ids") == null ? "" : (String) Node.getAttribute(nid, "reaction_ids")));
-        //Node.setAttribute(currentNode.id, "label_string", Node.getAttribute(currentNode.id, "label_string") + (Node.getAttribute(nid, "label_string") == null ? "" : (String) Node.getAttribute(nid, "label_string")));
+        // We comment these out as sometimes they will cause heap space errors.  To fix, convert to sets.
+        if (Node.getAttribute(nid, "reaction_ids") != null) {
+          HashSet s = ((HashSet) Node.getAttribute(currentNode.id, "reaction_ids"));
+          s.addAll((HashSet) Node.getAttribute(nid, "reaction_ids"));
+          Node.setAttribute(currentNode.id, "reaction_ids", s);
+          Node.setAttribute(currentNode.id, "reaction_count", s.size());
+        }
+
       }
      } else {
       this.nodeMapping.put(n, n);

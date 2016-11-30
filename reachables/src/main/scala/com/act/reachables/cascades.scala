@@ -125,8 +125,8 @@ object cascades {
 
     var cnt = 0
 
-    // val reach = List(878L)
-    for (reachid <- reachables) {
+    val reach = List(878L)
+    for (reachid <- reach) {
       print("Reachable #" + cnt + "\r")
 
       // write to disk; JS front end uses json
