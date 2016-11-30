@@ -51,12 +51,18 @@ public class Searcher implements AutoCloseable {
   ));
   private static final String CLAIMS_FIELD = "claims";
   private static final int MAX_RESULTS_PER_QUERY = 100;
+  // Note: this score is likely dependent on the set of keywords above.  Adjust this if KEYWORDS change.
   private static final float DEFAULT_SCORE_THRESHOLD = 0.1f;
 
   private List<Pair<IndexReader, IndexSearcher>> indexReadersAndSearchers = new ArrayList<>();
+  private float scoreThreshold = DEFAULT_SCORE_THRESHOLD;
 
   private Searcher() {
 
+  }
+
+  private Searcher(float scoreThreshold) {
+    this.scoreThreshold = scoreThreshold;
   }
 
   private void init(List<File> indexDirectories) throws IOException {
@@ -88,7 +94,19 @@ public class Searcher implements AutoCloseable {
       return INSTANCE;
     }
 
+    public Searcher build(File indexTopDir, float scoreThreshold) throws IOException {
+      Searcher s = new Searcher(scoreThreshold);
+      runInit(indexTopDir, s);
+      return s;
+    }
+
     public Searcher build(File indexTopDir) throws IOException {
+      Searcher s = new Searcher();
+      runInit(indexTopDir, s);
+      return s;
+    }
+
+    private void runInit(File indexTopDir, Searcher s) throws IOException {
       if (!indexTopDir.isDirectory()) {
         String msg = String.format("Top level directory at %s is not a directory", indexTopDir.getAbsolutePath());
         LOGGER.error(msg);
@@ -104,72 +122,86 @@ public class Searcher implements AutoCloseable {
         throw new IOException(msg);
       }
 
-      Searcher s = new Searcher();
       s.init(individualIndexes);
-      return s;
     }
   }
 
-  public List<Triple<Float, String, String>> searchInClaims(List<String> synonyms) throws IOException {
+  /**
+   * Search for patents that contain any of the specified chemical synonyms, scored based on synonym and biosynthesis
+   * keyword occurrence.  Results are filtered by score.
+   * @param synonyms A list of chemical synonyms to use in the search.
+   * @return A list of search results whose relevance scores are above the searcher's score threshold.
+   * @throws IOException
+   */
+  public List<SearchResult> searchInClaims(List<String> synonyms) throws IOException {
     if (synonyms.size() == 0) {
       LOGGER.info("Not running search for no synonyms!");
       return Collections.emptyList();
     }
 
+    // Make queries for all synonyms.
     final List<BooleanQuery> queries = makeQueries(synonyms, CLAIMS_FIELD).collect(Collectors.toList());
 
-    LOGGER.info("Constructed %d queries for %s", queries.size(), StringUtils.join(synonyms, ", "));
-    // Reuse the queries for all indices.
+    // Reuse the compiled queries for all indices.
     try {
-      LOGGER.info("Running search");
       List <Triple<Float, String, String>> results = indexReadersAndSearchers.stream().
-          map(p -> runSearch(p.getLeft(), p.getRight(), queries)).
-          flatMap(Function.identity()).
-          collect(Collectors.toList());
+          map(p -> runSearch(p, queries)). // Search to get per-query streams...
+          flatMap(Function.identity()).    // combine all the streams into one...
+          collect(Collectors.toList());    // and collect the merged results in a list.
 
-      // Uniq-ify!
+      /* Uniq-ify!  It is completely reasonable for a patent to appear for multiple queries.
+       * TODO: we haven't seen results appear multiple times with different scores.  We should probably unique-ify
+       * on id and take the result with the best score just to be safe. */
       results = new ArrayList<>(new HashSet<>(results));
       Collections.sort(results);
 
-      return results;
+      return results.stream().
+          map(t -> new SearchResult(t.getMiddle(), t.getRight(), t.getLeft())).
+          collect(Collectors.toList());
     } catch (UncheckedIOException e) {
-      throw e.getCause(); // ...and promote back to a regular exception.
+      throw e.getCause(); // Promote back to a regular exception for handling by the caller.
     }
   }
 
+  // Run a set of queries over a single reader + searcher.
   private Stream<Triple<Float, String, String>> runSearch(
-      IndexReader reader, IndexSearcher searcher, List<BooleanQuery> queries) throws UncheckedIOException {
+      Pair<IndexReader, IndexSearcher> readerSearcher, List<BooleanQuery> queries) throws UncheckedIOException {
 
     // With hints from http://stackoverflow.com/questions/22382453/java-8-streams-flatmap-method-example
-    return queries.stream().map(q -> executeQuery(reader, searcher, q)).flatMap(Collection::stream);
+    return queries.stream().map(q -> executeQuery(readerSearcher, q)).flatMap(Collection::stream);
   }
 
-  private List<Triple<Float, String, String>> executeQuery(IndexReader reader, IndexSearcher searcher, BooleanQuery query)
-      throws UncheckedIOException {
+  // Run a single query on a single reader + searcher.
+  private List<Triple<Float, String, String>> executeQuery(
+      Pair<IndexReader, IndexSearcher> readerSearcher, BooleanQuery query) throws UncheckedIOException {
     TopDocs topDocs;
     try {
-      topDocs = searcher.search(query, MAX_RESULTS_PER_QUERY);
+      topDocs = readerSearcher.getRight().search(query, MAX_RESULTS_PER_QUERY);
     } catch (IOException e) {
       LOGGER.error("Caught IO exception when trying to run search for %s: %s", query, e.getMessage());
+      /* Wrap `e` in an unchecked exception to allow it to escape our call stack.  The top level function with catch
+       * and rethrow it as a normal IOException. */
       throw new UncheckedIOException(e);
     }
+
     ScoreDoc[] scoreDocs = topDocs.scoreDocs;
     if (scoreDocs.length == 0) {
       LOGGER.debug("Search returned no results.");
       return Collections.emptyList();
     }
+    // ScoreDoc just contains a score and an id.  We need to retrieve the documents' content using that id.
 
     return Arrays.stream(scoreDocs). // No need to use `limit` here since we already had Lucene cap the result set size.
-        map(scoreDoc -> scoreDoc.score >= DEFAULT_SCORE_THRESHOLD ? scoreDoc : null).
-        filter(scoreDoc -> scoreDoc != null).
-        map(scoreDoc -> {
+        filter(scoreDoc -> scoreDoc.score >= scoreThreshold). // Filter by score.
+        map(scoreDoc -> { // Convert from scoreDocs to document features.
           try {
-            Pair<String, String> features = this.extractDocFeatures(reader.document(scoreDoc.doc));
+            Pair<String, String> features = this.extractDocFeatures(readerSearcher.getLeft().document(scoreDoc.doc));
+            // Put the score first so the natural sort order is based on score.
             return Triple.of(scoreDoc.score, features.getLeft(), features.getRight());
           } catch (IOException e) {
             // Yikes, this is v. bad.
             LOGGER.error("Caught IO exception when trying to read doc id %d: %s", scoreDoc.doc, e.getMessage());
-            throw new UncheckedIOException(e);
+            throw new UncheckedIOException(e); // Same as above.
           }
         }).collect(Collectors.toList());
   }
@@ -186,17 +218,42 @@ public class Searcher implements AutoCloseable {
   }
 
   private BooleanQuery makeQuery(String synonym, String field) {
+    BooleanQuery bq = new BooleanQuery();
+
+    // Set the synonym as a required phrase query.  Phrase queries handle multi-word synonyms, but require construction.
     String queryString = synonym.trim().toLowerCase();
     String[] parts = queryString.split("\\s+");
     PhraseQuery query = new PhraseQuery();
-    for (String p : parts) {
-      query.add(new Term(field, p));
-    }
-
-    BooleanQuery bq = new BooleanQuery();
+    Arrays.stream(parts).forEach(p -> query.add(new Term(field, p)));
     bq.add(query, BooleanClause.Occur.MUST);
+
+    // Append all keywords as optional clauses.  The more of these we find, the higher the score will be.
     KEYWORDS.forEach(term -> bq.add(new TermQuery(new Term(field, term)), BooleanClause.Occur.SHOULD));
 
     return bq;
+  }
+
+  public static class SearchResult {
+    String id;
+    String title;
+    Float relevanceSecore;
+
+    public SearchResult(String id, String title, Float relevanceSecore) {
+      this.id = id;
+      this.title = title;
+      this.relevanceSecore = relevanceSecore;
+    }
+
+    public String getId() {
+      return id;
+    }
+
+    public String getTitle() {
+      return title;
+    }
+
+    public Float getRelevanceSecore() {
+      return relevanceSecore;
+    }
   }
 }
