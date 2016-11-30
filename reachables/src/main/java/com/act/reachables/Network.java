@@ -136,7 +136,7 @@ public class Network implements Serializable {
           labelId = Reaction.reverseNegativeId(labelId);
         }
 
-        String organisms = (String)Node.getAttribute(n.id, "organisms");
+        ArrayList<String> organisms = (ArrayList<String>) Node.getAttribute(n.id, "organisms");
 
         label = Cascade.quote(StringUtils.join(new HashSet<>(rawLabel), ", ") + " [#" + reactionCount + " " + String.valueOf(labelId) + "]");
 
