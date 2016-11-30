@@ -237,7 +237,7 @@ object Cascade extends Falls {
         }
       })
 
-      if (!oneValid){
+      if (!oneValid && depth > 0){
         return None
       }
     }
