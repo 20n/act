@@ -1,13 +1,12 @@
 package com.act.reachables;
 
+import act.shared.helpers.P;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.Set;
-
-import act.shared.Chemical;
-import act.shared.helpers.P;
 
 public class OutdatedWavefrontExpansion extends SteppedTask {
   Set<Long> R;
@@ -164,7 +163,7 @@ public class OutdatedWavefrontExpansion extends SteppedTask {
       if (addToExisting)
         addNodes.addAll(this.R_by_layers.get(layer));
       else
-        logProgress("ERR: Layer nodes already installed and addToExisting not requested. How did new nodes appear at the same later!?");
+        logProgress("ERR: Layer nodeMapping already installed and addToExisting not requested. How did new nodeMapping appear at the same later!?");
     }
     for (Long c : nodes) {
       Node n = ActData.instance().chemsInAct.get(c);
@@ -178,7 +177,7 @@ public class OutdatedWavefrontExpansion extends SteppedTask {
   public void finalize(TaskMonitor tm) {
     int N = R.size();
     int i = 0;
-    tm.setStatus("Reachable: " +  N + " nodes. Setting isReachable, and selecting nodes");
+    tm.setStatus("Reachable: " +  N + " nodeMapping. Setting isReachable, and selecting nodeMapping");
     Set<Node> reach1 = new HashSet<Node>();
     for (Long r : R) {
       tm.setPercentCompleted((int)(100 * ((double)(i++)/N)));

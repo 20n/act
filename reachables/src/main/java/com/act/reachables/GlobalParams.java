@@ -69,7 +69,7 @@ public class GlobalParams {
   // when expanding, use CROs or EROs
   static int _ROExpandUsing = 0; // "ERO";
 
-  // when creating EC vs RO intersection network, what types of ROs do the green nodes correspond to?
+  // when creating EC vs RO intersection network, what types of ROs do the green nodeMapping correspond to?
   static int _ECvsWhatROType = 1; // "CRO";
 
   // the threshold on the number of parent reactions coming in
@@ -80,7 +80,7 @@ public class GlobalParams {
   // conditional reachability properties.. we do not export; only the first two really need to be exported to the front end (if at all)
   static int _topKClusters = 40; // 4000 is a good number; these are clusters of conditional reachability
   static int _limitedPreconditionsConsidered = 0; // set to 0 if you want full precondition calculation, or num>0 for num preconditions
-  static double _clusterUniquenessThreshold = 2.0; // still owns twice as many nodes as were stolen
+  static double _clusterUniquenessThreshold = 2.0; // still owns twice as many nodeMapping as were stolen
   static boolean _showReachablesNode = false; // show the highly connect node for the reachables cluster
 
   static String[] _hostOrganisms = {

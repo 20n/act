@@ -140,7 +140,7 @@ public class LoadAct extends SteppedTask {
       inputChemicals = Arrays.asList(inputChemicalsArray);
     }
 
-    // Load all the nodes.
+    // Load all the nodeMapping.
     inputChemicals.stream().distinct().forEach(s -> {
       Node sub = Node.get(s, true);
       ActData.instance().chemsInAct.put(s, sub);

@@ -7,7 +7,7 @@ trait Falls {
   // map to reachables -> rxns that have as product the reachable
   var upR = Map[Long, Set[ReachRxn]]()
 
-  // terminal nodes (cofactors never show up in ReachRxn):
+  // terminal nodeMapping (cofactors never show up in ReachRxn):
   // natives
   // markedReachables (list in MongoDB.java)
   var natives = List[Long]()

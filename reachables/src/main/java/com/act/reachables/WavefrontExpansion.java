@@ -28,7 +28,7 @@ public class WavefrontExpansion {
   HashMap<Long, Set<Long>> R_owned_children; // final set of children owned by parent (key)
   HashMap<Long, Set<Long>> R_parent_candidates; // list of candidates in layer i-1 that could be parents for layer i chem
   HashMap<Long, List<Long>> rxn_needs; // list of precondition chemicals for each chem
-  Set<Long> roots; // under "CreateUnreachableTrees" we also compute conditionally reachable trees rooted at important assumed nodes
+  Set<Long> roots; // under "CreateUnreachableTrees" we also compute conditionally reachable trees rooted at important assumed nodeMapping
   int currentLayer;
   // when computing reachables, we log the sequences
   // that create new reachables
@@ -315,10 +315,10 @@ public class WavefrontExpansion {
     for (int idx = 0; idx < assumptionOutcomes.size(); idx++) {
       EnvCondEffect newTreeData = assumptionOutcomes.get(idx).fst();
       if (newTreeData.sizeNewReach <= GlobalParams._actTreeMinimumSizeOfConditionalTree)
-        continue; // assumed nodes that do not enable even a single other are irrelevant
+        continue; // assumed nodeMapping that do not enable even a single other are irrelevant
 
       // for now we only handle the case of single node precondition.
-      // Ideally, for tuples, we will create a circle of the nodes that
+      // Ideally, for tuples, we will create a circle of the nodeMapping that
       // make the preconditon, and then have the tree hang off it
       for (Long r : newTreeData.e.speculatedChems())
         if (!allReach.contains(r)) {
@@ -674,17 +674,17 @@ public class WavefrontExpansion {
       if (!at_least_one_parent && layer == 2) {
         // there might be no parents to claim a child in layer 2 because it might have parents that are cofactors or natives
         // which means that it would have been in layer 1, except for the restriction that layer 1 is only ecoli enzymes
-        // so we will attach it to the proxy node for the natives and cofactors which will show up at the same level as layer 1 nodes
+        // so we will attach it to the proxy node for the natives and cofactors which will show up at the same level as layer 1 nodeMapping
         if (!possible_children.containsKey(this.rootProxyInLayer1))
           possible_children.put(this.rootProxyInLayer1, new HashSet<Long>());
         possible_children.get(this.rootProxyInLayer1).add(child);
       }
     }
 
-    // look at "layer - 1" and greedy assign parents there as many "layer" nodes as possible
+    // look at "layer - 1" and greedy assign parents there as many "layer" nodeMapping as possible
     Set<Long> still_orphan = new HashSet<>();
     for (Long id : reachInNewLayer) {
-      // the nodes in "doNotChangeNeighborhoodOf" do not need to find parents; already assigned elsewhere
+      // the nodeMapping in "doNotChangeNeighborhoodOf" do not need to find parents; already assigned elsewhere
 
       // metacyc gives us some molecules with db.chemicals.findOne({InChI:/FAKE/}). These are either
       // big molecules (proteins, rna, dna and), or big molecule attached SM, or small molecule abstractions
@@ -711,7 +711,7 @@ public class WavefrontExpansion {
           // this is the other case where we have a "different world assumption", i.e., there are assumed
           // tree roots and their corresponding descendents. Now here a problem arises when greedily assigning
           // parent *across worlds* (i.e., across different assumptions). Here a larger tree might have stolen
-          // some of the parents on the route from nodes to the treeRoot. In that case, this orphan has
+          // some of the parents on the route from nodeMapping to the treeRoot. In that case, this orphan has
           // nowhere to go: a) It cannot be part of this "world" because the parents on the route to the treeRoot
           // are missing in this world, and b) it cannot be part of the world where its parent was adopted, because
           // the reachability of this node depends on there being reachables other than its parent, which are
