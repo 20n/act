@@ -86,6 +86,9 @@ object Cascade extends Falls {
     val labelSet: Set[String] = ids.map(id => rxn_node_label_string(id)).toSet
     labelSet.foreach(id => labelBuilder.append("&&&&").append(id))
 
+    // Get sorted list of oganisms
+    val organisms = ids.flatMap(id => ReachRxnDescs.rxnOrganismNames(id).get).toList.sorted(Ordering[String].reverse)
+
     if (nodeMerger.contains(unique)){
       val previouslyCreatedNode = nodeMerger(unique)
       val ident = previouslyCreatedNode.id
@@ -104,6 +107,7 @@ object Cascade extends Falls {
     Node.setAttribute(ident, "label_string", labelBuilder.toString())
     Node.setAttribute(ident, "tooltip_string", rxn_node_tooltip_string(ids.head))
     Node.setAttribute(ident, "url_string", rxn_node_url_string(ids.head))
+    Node.setAttribute(ident, "organisms", organisms.mkString(","))
     nodeMerger.put(unique, node)
     node
   }

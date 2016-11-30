@@ -135,12 +135,14 @@ public class Network implements Serializable {
         if (labelId < 0){
           labelId = Reaction.reverseNegativeId(labelId);
         }
+
+        String organisms = (String)Node.getAttribute(n.id, "organisms");
+
         label = Cascade.quote(StringUtils.join(new HashSet<>(rawLabel), ", ") + " [#" + reactionCount + " " + String.valueOf(labelId) + "]");
 
         tooltip = Cascade.quote((String)Node.getAttribute(n.id, "tooltip_string"));
 
         url = Cascade.quote((String)Node.getAttribute(n.id, "url_string"));
-
       } else {
         id = String.valueOf(n.getIdentifier());
         label = (String)Node.getAttribute(n.id, "label_string");
