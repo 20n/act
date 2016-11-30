@@ -42,7 +42,7 @@ object Cascade extends Falls {
   // This is conservative to avoid cycles (we could be optimistic and jump
   // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
 
-  def pre_rxns(m: Long, higherInTree: Boolean = true, grabMostLikely: Boolean = true): Map[SubProductPair, List[ReachRxn]] = {
+  def pre_rxns(m: Long, higherInTree: Boolean = true): Map[SubProductPair, List[ReachRxn]] = {
 //    if (cache_bestpre_rxn contains m) cache_bestpre_rxn(m) else {
 
     // incoming unreachable rxns ignored
@@ -220,8 +220,18 @@ object Cascade extends Falls {
     val md5 = DigestUtils.md5Hex(if (inchi == null) "" else inchi)
     // Format the rendering filename
     val renderingFilename = String.format("molecule-%s.png", md5)
+
+    val readableName = ActData.instance.chemId2ReadableName.get(id)
+    val myName = if (readableName.startsWith("InChI")){
+      readableName.split("/")(1)
+    } else {
+      readableName
+    }
+
     // Construct the string
-    val name = s"""<td><font point-size=\"12\">${ActData.instance.chemId2ReadableName.get(id)}</font></td>"""
+    val name = s"""<td><font point-size=\"12\">${
+      myName
+    }</font></td>"""
     val img = s"""<TD width=\"120\" height=\"100\" fixedsize=\"true\"><IMG SRC=\"$renderingFilename\" scale=\"true\"/></TD>"""
     s"""<<TABLE border=\"0\" cellborder=\"0\"><TR>$img$name</TR></TABLE>>"""
   }
@@ -243,14 +253,9 @@ object Cascade extends Falls {
     max_cascade_depth = depth
   }
 
-  def get_cascade(m: Long, depth: Int, source: Option[Long] = None, seen: Set[Long] = Set()): Option[Network] = {
+  def get_cascade(m: Long, depth: Int = 0, source: Option[Long] = None, seen: Set[Long] = Set()): Option[Network] = {
     if (source.isDefined && source.get == m) return None
     val network = new Network("cascade_" + m)
-
-    // Cycle
-    if (seen.contains(m)) {
-      return None
-    }
 
     network.addNode(mol_node(m), m)
 
@@ -259,10 +264,13 @@ object Cascade extends Falls {
     } else {
       // We don't filter by higher in tree on the first iteration, so that all possible
       // reactions producing this product are shown on the graph.
-      val groupedSubProduct = pre_rxns(m, higherInTree = depth != 0, grabMostLikely = depth < 3).toList
+      val groupedSubProduct = pre_rxns(m, higherInTree = depth != 0).toList
       
       var oneValid = false
-      groupedSubProduct.foreach({ case (subProduct, reactions) =>
+      groupedSubProduct
+        .filter(x => x._1.substrates.forall(x => !seen.contains(x)))
+        .foreach({ case (subProduct, reactions) =>
+
         // Let's not show cofactor only reactions for now
         if (!subProduct.substrates.forall(cofactors.contains)) {
           val reactionsNode = rxn_node(reactions.map(r => Long.valueOf(r.rxnid)), subProduct)
@@ -318,7 +326,8 @@ object Cascade extends Falls {
     }).flatten)
   }
 
-  def getPath(network: Network, edge: Edge): Option[List[Path]] = {
+//  @tailrec
+  def getPath(network: Network, edge: Edge, seenNodes: Set[Node] = Set()): Option[List[Path]] = {
     // Base case
     val reactionNode = edge.src
 
@@ -326,15 +335,19 @@ object Cascade extends Falls {
     if (network.getEdgesGoingInto(reactionNode).size() > 1) return None
 
     val substrateNode = network.getEdgesGoingInto(reactionNode).head.src
+    if (seenNodes.contains(substrateNode)) {
+      return None
+    }
 
-    // Is universal
+//
+//    // Is universal
     if (is_universal(substrateNode.id)) return Option(List(new Path(List(substrateNode))))
-
+//
     val edgesGoingInto: List[Edge] = network.getEdgesGoingInto(substrateNode).toList
 
     // Get back a bunch of maybe paths
     val resultingPaths: List[Path] = edgesGoingInto.flatMap(x => {
-      val grabPath = getPath(network, x)
+      val grabPath = getPath(network, x, seenNodes + substrateNode)
       if (grabPath.isDefined) {
         Option(grabPath.get.map(p => new Path(List(substrateNode, reactionNode) ::: p.getPath)))
       } else {
@@ -415,9 +428,8 @@ object Cascade extends Falls {
 
 class Cascade(target: Long) {
   val t = target
-  val nw = Cascade.get_cascade(t, 0).get
+  val nw = Cascade.get_cascade(t).get
 
-  System.exit(nw.nodes.size())
   val viablePaths: Option[List[Cascade.Path]] = Cascade.getAllPaths(nw, t)
 
   val allPaths: List[Cascade.Path] = if (viablePaths.isDefined) {
