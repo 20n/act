@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mongodb.BasicDBObject;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -49,7 +48,8 @@ public class Reachable {
                    String structureFilename,
                    String wordCloudFilename,
                    String pathwayVisualization,
-                   Map<Chemical.REFS, BasicDBObject> xref) {
+                   Map<Chemical.REFS, BasicDBObject> xref,
+                   List<PatentSummary> patentSummaries) {
     this.id = id;
     this.pageName = pageName;
     this.inchi = inchi;
@@ -63,11 +63,12 @@ public class Reachable {
     this.wordCloudFilename = wordCloudFilename;
     this.pathwayVisualization = pathwayVisualization;
     this.xref = xref;
+    this.patentSummaries = patentSummaries;
   }
 
   public Reachable(Long id, String pageName, String inchi, String smiles, String inchiKey, List<String> names,
                    SynonymData synonymData, String structureFilename, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref) {
-    this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null, structureFilename, wordCloudFilename, null, xref);
+    this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null, structureFilename, wordCloudFilename, null, xref, null);
   }
 
   public String getPageName() {
