@@ -37,7 +37,7 @@ public class FreemarkerRenderer {
 
   public static void main(String[] args) throws Exception {
     Loader loader =
-        new Loader("localhost", 27017, "wiki_reachables", "reachablesv6_test_thomas", "sequencesv6_test_thomas", "/tmp");
+        new Loader("localhost", 27017, "wiki_reachables", "reachablesv7", "sequencesv7", "/tmp");
 
     FreemarkerRenderer renderer = FreemarkerRendererFactory.build(loader);
     renderer.writePageToDir(new File("/Volumes/shared-data/Thomas/WikiPagesForUpload"));
@@ -68,17 +68,22 @@ public class FreemarkerRenderer {
     while(reachableDBCursor.hasNext()) {
       Reachable r = reachableDBCursor.next();
       String inchiKey = r.getInchiKey();
-      LOGGER.info(inchiKey);
-      File f = new File(directory, inchiKey);
-      Writer w = new PrintWriter(f);
-      template.process(buildReachableModel(r, loader.getJacksonSequenceCollection()), w);
-      w.close();
-      assert f.exists();
-      i++;
+      if (inchiKey != null) {
+        LOGGER.info(inchiKey);
+        File f = new File(directory, inchiKey);
+        Writer w = new PrintWriter(f);
+        template.process(buildReachableModel(r, loader.getJacksonSequenceCollection()), w);
+        w.close();
+        assert f.exists();
+        i++;
 
-      if (i % 100 == 0) {
-        LOGGER.info(i);
+        if (i % 100 == 0) {
+          LOGGER.info(i);
+        }
+      } else {
+        LOGGER.error("page does not have an inchiKey");
       }
+
     }
   }
 
@@ -113,7 +118,12 @@ public class FreemarkerRenderer {
           }}).
           collect(Collectors.toList());
 
-      List<Map<String, String>> sequences = precursor.getSequences().stream().
+      // TODO: the following line is limiting the number of sequences we carry to the front end to only 2 sequences
+      // Remove when not relevant anymore
+      List<String> rawSequences = precursor.getSequences();
+      List<String> limitedRawSeq = (rawSequences.size() > 2) ? rawSequences.subList(0, 2) : rawSequences;
+
+      List<Map<String, String>> sequences = limitedRawSeq.stream().
           map(sequenceCollection::findOneById).
           map(seq -> new HashMap<String, String>() {{
             put("organism", seq.getOrganismName());
