@@ -125,7 +125,7 @@ object cascades {
 
     var cnt = 0
 
-    val reach = List(878L)
+    // val reach = List(878L)
     for (reachid <- reachables) {
       print("Reachable #" + cnt + "\r")
 
