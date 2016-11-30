@@ -1,6 +1,7 @@
 package com.act.reachables
 
 import java.lang.Long
+import java.util
 
 import org.apache.commons.codec.digest.DigestUtils
 
@@ -86,8 +87,8 @@ object Cascade extends Falls {
     val labelSet: Set[String] = ids.map(id => rxn_node_label_string(id)).toSet
     labelSet.foreach(id => labelBuilder.append("&&&&").append(id))
 
-    // Get sorted list of oganisms
-    val organisms = ids.flatMap(id => ReachRxnDescs.rxnOrganismNames(id).get).toList.sorted(Ordering[String].reverse)
+    // Get sorted list of organisms
+    val organisms = ids.flatMap(id => ReachRxnDescs.rxnOrganismNames(id).get).sorted(Ordering[String].reverse)
 
     if (nodeMerger.contains(unique)){
       val previouslyCreatedNode = nodeMerger(unique)
@@ -96,6 +97,9 @@ object Cascade extends Falls {
       Node.setAttribute(ident, "reaction_count", newCount)
       Node.setAttribute(ident, "reaction_ids", Node.getAttribute(ident, "reaction_ids") + s"_$ident")
       Node.setAttribute(ident, "label_string", Node.getAttribute(ident, "label_string") + labelBuilder.toString())
+
+      val addedOrganisms = Node.getAttribute(ident, "organisms").asInstanceOf[List[String]] ::: organisms
+      Node.setAttribute(ident, "organisms",  new util.ArrayList(addedOrganisms.sorted(Ordering[String].reverse).asJava))
       return nodeMerger(unique)
     }
 
@@ -107,7 +111,7 @@ object Cascade extends Falls {
     Node.setAttribute(ident, "label_string", labelBuilder.toString())
     Node.setAttribute(ident, "tooltip_string", rxn_node_tooltip_string(ids.head))
     Node.setAttribute(ident, "url_string", rxn_node_url_string(ids.head))
-    Node.setAttribute(ident, "organisms", organisms.mkString(","))
+    Node.setAttribute(ident, "organisms", new util.ArrayList(organisms.asJava))
     nodeMerger.put(unique, node)
     node
   }
