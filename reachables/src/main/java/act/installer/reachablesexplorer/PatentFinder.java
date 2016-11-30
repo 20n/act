@@ -77,10 +77,21 @@ public class PatentFinder {
 
       List<Triple<Float, String, String>> results = searcher.searchInClaims(allNames);
 
-      LOGGER.info("Results (%d) for %s:", results.size(), reachable.getPageName());
-      for (Triple<Float, String, String> triple : results) {
-        LOGGER.info("(%.3f) %s: %s", triple.getLeft(), triple.getMiddle(), triple.getRight());
+      if (results.size() > 0) {
+        LOGGER.info("Results (%d) for %s:", results.size(), reachable.getPageName());
+        List<PatentSummary> summaries = new ArrayList<>(results.size());
+        for (Triple<Float, String, String> triple : results) {
+          LOGGER.info("(%.3f) %s: %s", triple.getLeft(), triple.getMiddle(), triple.getRight());
+          summaries.add(new PatentSummary(triple.getMiddle(), triple.getRight(), triple.getLeft()));
+        }
+
+        reachable.addPatentSummaries(summaries);
+        loader.upsert(reachable);
+
+      } else {
+        LOGGER.info("No results for %s", reachable.getPageName());
       }
+
     }
   }
 }
