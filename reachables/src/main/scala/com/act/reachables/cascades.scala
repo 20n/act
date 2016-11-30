@@ -108,12 +108,12 @@ object cascades {
     val parents = reachables.map( getp )
 
     val reach_neighbors = (reachables zip parents) zip (upRxns zip downRxns)
-    for (tuple <- reach_neighbors) {
-      val reachid = tuple._1._1
-      val json = updowns_json(tuple)
-      val jsonstr = json.toString(2)
-      write_to(new File(dir, s"c$reachid.json").getAbsolutePath, jsonstr)
-    }
+//    for (tuple <- reach_neighbors) {
+//      val reachid = tuple._1._1
+//      val json = updowns_json(tuple)
+//      val jsonstr = json.toString(2)
+//      write_to(new File(dir, s"c$reachid.json").getAbsolutePath, jsonstr)
+//    }
 
     println("Done: Written node updowns.")
 

@@ -42,7 +42,7 @@ object Cascade extends Falls {
   // This is conservative to avoid cycles (we could be optimistic and jump
   // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
 
-  def pre_rxns(m: Long, higherInTree: Boolean = true): Set[ReachRxn] = {
+  def pre_rxns(m: Long, higherInTree: Boolean = true): Map[SubProductPair, List[ReachRxn]] = {
 //    if (cache_bestpre_rxn contains m) cache_bestpre_rxn(m) else {
 
     // incoming unreachable rxns ignored
@@ -58,11 +58,29 @@ object Cascade extends Falls {
       upNonTrivial
     }
 
-    // add to cache
-//    cache_bestpre_rxn = cache_bestpre_rxn + (m -> up)
+    // limit the # of up reactions to output to MAX_CASCADE_UPFANOUT
+    // compute all substrates "s" of all rxnsups (upto 10 of them)
+    val groupedSubProduct: Map[SubProductPair, List[ReachRxn]] = upNonTrivial.toList
+      .map(rxn => (SubProductPair(rxn.substrates.toList.sorted, List(m)), rxn)).
+      groupBy(_._1).
+      mapValues(_.map(_._2))
 
-    // onwards, and upwards!
-    up
+    val sortedByEvidence = groupedSubProduct.entrySet().toList.sortBy(-_.getValue.length)
+
+    val mostEvidenceFor = sortedByEvidence.head
+
+    val passing: List[ReachRxn] = if (higherInTree) {
+      sortedByEvidence.tail.flatMap(_.getValue).filter(higher_in_tree(m, _))
+    } else {
+      sortedByEvidence.tail.flatMap(_.getValue)
+    }
+
+    val passingGrouped: Map[SubProductPair, List[ReachRxn]] = passing
+      .map(rxn => (SubProductPair(rxn.substrates.toList.sorted, List(m)), rxn)).
+      groupBy(_._1).
+      mapValues(_.map(_._2))
+
+    passingGrouped + (mostEvidenceFor.getKey -> mostEvidenceFor.getValue)
   }
 
   val rxnIdShift = 4000000000l
@@ -227,15 +245,8 @@ object Cascade extends Falls {
     } else {
       // We don't filter by higher in tree on the first iteration, so that all possible
       // reactions producing this product are shown on the graph.
-      val rxnsup: List[ReachRxn] = pre_rxns(m, higherInTree = depth != 0).toList
-
-      // limit the # of up reactions to output to MAX_CASCADE_UPFANOUT
-      // compute all substrates "s" of all rxnsups (upto 10 of them)
-      val groupedSubProduct: Map[SubProductPair, List[ReachRxn]] = rxnsup
-        .map(rxn => (SubProductPair(rxn.substrates.toList.sorted, List(m)), rxn)).
-        groupBy(_._1).
-        mapValues(_.map(_._2))
-
+      val groupedSubProduct = pre_rxns(m, higherInTree = depth != 0).toList
+      
       var oneValid = false
       groupedSubProduct.foreach({ case (subProduct, reactions) =>
         // Let's not show cofactor only reactions for now
