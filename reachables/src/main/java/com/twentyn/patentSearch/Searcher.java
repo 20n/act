@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -121,10 +122,16 @@ public class Searcher implements AutoCloseable {
     // Reuse the queries for all indices.
     try {
       LOGGER.info("Running search");
-      return indexReadersAndSearchers.stream().
+      List <Triple<Float, String, String>> results = indexReadersAndSearchers.stream().
           map(p -> runSearch(p.getLeft(), p.getRight(), queries)).
           flatMap(Function.identity()).
           collect(Collectors.toList());
+
+      // Uniq-ify!
+      results = new ArrayList<>(new HashSet<>(results));
+      Collections.sort(results);
+
+      return results;
     } catch (UncheckedIOException e) {
       throw e.getCause(); // ...and promote back to a regular exception.
     }
