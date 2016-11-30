@@ -386,7 +386,8 @@ public class Loader {
     return jacksonReachablesCollection.findOne(query);
   }
 
-  public void upsert(Reachable reachable) {
+  // Package private so helpers (like the PatentFinder) can use it.
+  void upsert(Reachable reachable) {
     // TODO Can we make this more efficient in any way?
     Reachable reachableOld = queryByInchi(reachable.getInchi());
 
