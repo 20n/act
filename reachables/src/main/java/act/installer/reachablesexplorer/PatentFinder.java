@@ -5,6 +5,7 @@ import com.mongodb.BasicDBObject;
 import com.twentyn.patentSearch.Searcher;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.mongojack.DBCursor;
@@ -74,11 +75,11 @@ public class PatentFinder {
 
       LOGGER.info("Running query with terms: %s", StringUtils.join(allNames, ", "));
 
-      List<Pair<String, String>> results = searcher.searchInClaims(allNames);
+      List<Triple<Float, String, String>> results = searcher.searchInClaims(allNames);
 
       LOGGER.info("Results (%d) for %s:", results.size(), reachable.getPageName());
-      for (Pair<String, String> pair : results) {
-        LOGGER.info("%s: %s", pair.getLeft(), pair.getRight());
+      for (Triple<Float, String, String> triple : results) {
+        LOGGER.info("(%.3f) %s: %s", triple.getLeft(), triple.getMiddle(), triple.getRight());
       }
     }
   }
