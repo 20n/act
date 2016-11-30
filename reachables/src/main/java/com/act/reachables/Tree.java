@@ -44,7 +44,7 @@ public class Tree<T> {
       if(this.parents.containsKey(root))
         new RuntimeException(String.format("Root %d has a parent %d\n", root, this.parents.get(root)));
 
-    // for all nodes N that have children, its
+    // for all nodeMapping N that have children, its
     // children's parent pointer should be to N
     for (T parent : this.children.keySet()) {
       for (T child : this.children.get(parent))

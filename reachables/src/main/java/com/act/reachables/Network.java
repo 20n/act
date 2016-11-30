@@ -23,18 +23,24 @@ public class Network implements Serializable {
   private static final long serialVersionUID = 4643733150478812924L;
   String name;
   HashSet<Node> nodes;
+  HashMap<Node, Node> nodeMapping;
   HashSet<Edge> edges;
-  HashMap<Node, Long> nids; // it goes from Node -> Id coz sometimes same ids might be prefixed with r_ or c_ to distinguish categories of nodes
+  HashMap<Node, Long> nids; // it goes from Node -> Id coz sometimes same ids might be prefixed with r_ or c_ to distinguish categories of nodeMapping
   HashMap<Long, Edge> toParentEdge; // indexed by nodeid
   HashMap<Long, Long> parents; // indexed by nodeid
   HashMap<Long, Integer> tree_depth;
+  HashMap<Node, Set<Edge>> edgesGoingToNode;
+  HashMap<Long, Set<Edge>> edgesGoingToId;
 
   Network(String name) {
     this.name = name;
-    this.nodes = new HashSet<Node>();
+    this.nodes =  new HashSet<Node>();
+    this.nodeMapping = new HashMap<Node, Node>();
     this.edges = new HashSet<Edge>();
     this.nids = new HashMap<Node, Long>();
     this.tree_depth = new HashMap<Long, Integer>();
+    this.edgesGoingToNode = new HashMap<>();
+    this.edgesGoingToId = new HashMap<>();
 
     this.selectedNodes = new HashSet<Node>();
     this.parents = new HashMap<>();
@@ -46,31 +52,62 @@ public class Network implements Serializable {
   }
 
   public JSONArray disjointGraphs(MongoDB db) throws JSONException {
-    return JSONDisjointGraphs.get(db, this.nodes, this.edges);
+    return JSONDisjointGraphs.get(db, new HashSet(this.nodeMapping.values()), this.edges);
   }
 
   public JSONObject disjointTrees(MongoDB db) throws JSONException {
-    return JSONDisjointTrees.get(db, this.nodes, this.edges,
+    return JSONDisjointTrees.get(db, new HashSet(this.nodeMapping.values()), this.edges,
                                     this.parents, this.toParentEdge);
   }
 
   void addNode(Node n, Long nid) {
-    this.nodes.add(n);
-    this.nids.put(n, nid);
+    if (this.nodeMapping.containsKey(n)){
+      if (Boolean.valueOf((String)Node.getAttribute(n.id, "isrxn"))) {
+        Node currentNode = this.nodeMapping.get(n);
+        Integer newCount = (int) Node.getAttribute(currentNode.id, "reaction_count") + (Node.getAttribute(nid, "reaction_count") == null ? 0 : (int) Node.getAttribute(nid, "reaction_count"));
+        Node.setAttribute(currentNode.id, "reaction_count", newCount);
+        Node.setAttribute(currentNode.id, "reaction_ids", Node.getAttribute(currentNode.id, "reaction_ids") + (Node.getAttribute(nid, "reaction_ids") == null ? "" : (String) Node.getAttribute(nid, "reaction_ids")));
+        Node.setAttribute(currentNode.id, "label_string", Node.getAttribute(currentNode.id, "label_string") + (Node.getAttribute(nid, "label_string") == null ? "" : (String) Node.getAttribute(nid, "label_string")));
+      }
+     } else {
+      this.nodeMapping.put(n, n);
+      this.nids.put(n, nid);
+    }
   }
 
   void addEdge(Edge e) {
     this.edges.add(e);
+    if (this.edgesGoingToNode.containsKey(e.getDst())) {
+      this.edgesGoingToNode.get(e.getDst()).add(e);
+      this.edgesGoingToId.get(e.getDst().id).add(e);
+    } else {
+      Set<Edge> newEdgeList = new HashSet<>();
+      newEdgeList.add(e);
+      this.edgesGoingToNode.put(e.getDst(), newEdgeList);
+
+      Set<Edge> newsEdgeList = new HashSet<>();
+      newsEdgeList.add(e);
+      this.edgesGoingToId.put(e.getDst().id, newsEdgeList);
+    }
+  }
+
+  public Set<Edge> getEdgesGoingInto(Node n){
+    return this.edgesGoingToNode.get(n);
+  }
+
+  public Set<Edge> getEdgesGoingInto(Long id){
+    return this.edgesGoingToId.get(id);
   }
 
   void mergeInto(Network that) {
     // this is only written to work for graphs, not
     // specifically trees, expect undefined behaviour
     // if you are keeping track of trees
+    that.nodeMapping.values().stream().forEach(n -> addNode(n, n.id));
+    that.edges.stream().forEach(this::addEdge);
 
-    this.nodes.addAll(that.nodes);
-    this.edges.addAll(that.edges);
     this.nids.putAll(that.nids);
+
   }
 
   public String toDOT() {
@@ -78,8 +115,8 @@ public class Network implements Serializable {
 
     lines.add("digraph " + this.name + " {");
 
-    for (Node n : this.nodes) {
-      // create a line for nodes like so:
+    for (Node n : this.nodeMapping.values()) {
+      // create a line for nodeMapping like so:
       // nident [label="displayname"];
       String id;
       String label;
@@ -121,7 +158,7 @@ public class Network implements Serializable {
     }
 
     for (Edge e : this.edges) {
-      // create a line for nodes like so:
+      // create a line for nodeMapping like so:
       // id -> id;
       Long src_id = e.getSrc().getIdentifier();
       Long dst_id = e.getDst().getIdentifier();
@@ -136,7 +173,7 @@ public class Network implements Serializable {
   }
 
   void addNodeTreeSpecific(Node n, Long nid, Integer atDepth, Long parentid) {
-    this.nodes.add(n);
+    this.nodeMapping.put(n, n);
     this.nids.put(n, nid);
     this.parents.put(n.id, parentid);
     this.tree_depth.put(nid, atDepth);
@@ -190,7 +227,7 @@ class JSONDisjointTrees {
       nObj.put("name", nid);
 
       if (toParentEdges.get(nid) != null) {
-        JSONObject eObj = JSONHelper.edgeObj(toParentEdges.get(nid), null /* no ordering reqd for referencing nodes */);
+        JSONObject eObj = JSONHelper.edgeObj(toParentEdges.get(nid), null /* no ordering reqd for referencing nodeMapping */);
         nObj.put("edge_up", eObj);
       } else {
       }
@@ -222,7 +259,7 @@ class JSONDisjointTrees {
     JSONObject json;
     if (unAssignedToParent.size() == 0) {
       json = null;
-      throw new RuntimeException("All nodes have parents! Where is the root? Abort.");
+      throw new RuntimeException("All nodeMapping have parents! Where is the root? Abort.");
     } else if (unAssignedToParent.size() == 1) {
       json = unAssignedToParent.toArray(new JSONObject[0])[0]; // return the only element in the set
     } else {
@@ -278,8 +315,8 @@ class JSONHelper {
   public static JSONObject edgeObj(Edge e, HashMap<Node, Integer> order) throws JSONException {
     JSONObject eo = new JSONObject();
     if (order != null) {
-      // 1. when printing a graph (and not a tree), the source and target nodes are identified
-      // by the array index they appear in the nodes JSONArray. Those indices are contained in the order-map.
+      // 1. when printing a graph (and not a tree), the source and target nodeMapping are identified
+      // by the array index they appear in the nodeMapping JSONArray. Those indices are contained in the order-map.
       // 2. such an ordering is not required when we are working with trees, so these fields not output there.
       eo.put("source", order.get(e.src)); // required, and have to lookup its order in the node spec
       eo.put("target", order.get(e.dst)); // required, and have to lookup its order in the node spec
@@ -304,14 +341,14 @@ class JSONDisjointGraphs {
   public static JSONArray get(MongoDB db, Set<Node> nodes, Set<Edge> edges) throws JSONException {
     // init the json object with structure:
     // {
-    //   "nodes":[
+    //   "nodeMapping":[
     //     { "name":"Myriel", "group":1 }, ...
     //   ],
     //   "links":[
     //     { "source":1, "target":0, "value":1 }, ...
     //   ]
     // }
-    // nodes.group specifies the node color
+    // nodeMapping.group specifies the node color
     // links.value specifies the edge weight
     JSONArray json = new JSONArray();
 
@@ -337,7 +374,7 @@ class JSONDisjointGraphs {
     for (Long root : treenodes.keySet()) {
       JSONObject tree = new JSONObject();
       HashMap<Node, Integer> nodeOrder = new HashMap<Node, Integer>();
-      tree.put("nodes", nodeListObj(db, treenodes.get(root), nodeOrder /*inits this ordering*/));
+      tree.put("nodeMapping", nodeListObj(db, treenodes.get(root), nodeOrder /*inits this ordering*/));
       tree.put("links", edgeListObj(treeedges.get(root), nodeOrder /* uses the ordering */));
 
       json.put(tree);

@@ -1,5 +1,13 @@
 package com.act.reachables;
 
+import act.server.MongoDB;
+import act.shared.Chemical;
+import act.shared.Chemical.REFS;
+import act.shared.ConsistentInChI;
+import act.shared.helpers.MongoDBToJSON;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -7,14 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import org.json.JSONObject;
-import org.json.JSONArray;
-
-import act.server.MongoDB;
-import act.shared.Chemical;
-import act.shared.Chemical.REFS;
-import act.shared.helpers.MongoDBToJSON;
-import act.shared.ConsistentInChI;
 
 public class ComputeReachablesTree {
 
@@ -304,7 +304,7 @@ public class ComputeReachablesTree {
 
   private void addTreeUnder(Long parentid, Long n, Integer atlayer, HashMap<Long, Node> nodes, Long root) {
     addTreeUnderCallCount++;
-    logProgress("com.act.reachables.ComputeReachablesTree: Num nodes added to tree (TODO: speedup): %d\r", addTreeUnderCallCount);
+    logProgress("com.act.reachables.ComputeReachablesTree: Num nodeMapping added to tree (TODO: speedup): %d\r", addTreeUnderCallCount);
 
     // more than one child, it makes sense to add this node as a branch off point.
     Node node = Node.get(n, true);

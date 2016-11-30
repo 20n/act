@@ -34,8 +34,8 @@ public class ActData implements Serializable {
   HashMap<String, List<Long>> chemicalsWithUserField;  // if a user asks us to output an artificial
                                                        // subset of chemicals that have certain fields,
                                                        // e.g., xref.CHEBI, xref.DEA etc.
-  Set<Long> chemicalsWithUserField_treeOrganic;    // in the final tree; these nodes were reachable organically
-  Set<Long> chemicalsWithUserField_treeArtificial; // in the final tree; these nodes were added artificially as
+  Set<Long> chemicalsWithUserField_treeOrganic;    // in the final tree; these nodeMapping were reachable organically
+  Set<Long> chemicalsWithUserField_treeArtificial; // in the final tree; these nodeMapping were added artificially as
                                                    // they were not organically reachable
 
   HashMap<Long, Boolean> chemIdIsAbstraction;      // the chemicals that have R in inchis and therefore abstractions

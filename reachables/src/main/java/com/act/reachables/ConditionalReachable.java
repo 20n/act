@@ -1,17 +1,16 @@
 package com.act.reachables;
 
+import act.shared.Chemical;
+import act.shared.helpers.P;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.Map.Entry;
-
-import act.shared.Chemical;
-import act.shared.helpers.P;
-import act.shared.FattyAcidEnablers;
+import java.util.Set;
 
 public class ConditionalReachable extends OutdatedWavefrontExpansion {
 
@@ -32,7 +31,7 @@ public class ConditionalReachable extends OutdatedWavefrontExpansion {
   public ConditionalReachable(int partial) {
     super(); // will get me R, and substrate preconditions of rxns (rxn_needs)
     this.conditionalReachPhase = false; // first do normal reachability, then conditional
-    this.extraReached = new HashMap<EnvCond, Integer>(); // the number of nodes reached if this node is enabled
+    this.extraReached = new HashMap<EnvCond, Integer>(); // the number of nodeMapping reached if this node is enabled
     this.reachableUnder = new HashMap<Long, List<EnvCond>>();
     this.guesses = null;
     this.size_guesses = -1;
@@ -176,7 +175,7 @@ public class ConditionalReachable extends OutdatedWavefrontExpansion {
       }
     }
 
-    // save the number of nodes, and nodes themselves, that are enabled by ec
+    // save the number of nodeMapping, and nodeMapping themselves, that are enabled by ec
     this.extraReached.put(ec, N);
     if (debug) logProgress("\t-> " + N);
   }
@@ -187,7 +186,7 @@ public class ConditionalReachable extends OutdatedWavefrontExpansion {
     int i = 0;
     EnvCond high = null;
     int highest = Integer.MIN_VALUE;
-    tm.setStatus("Conditional Reachability evaluated for " +  N + " nodes. Setting isConditionalReachable.");
+    tm.setStatus("Conditional Reachability evaluated for " +  N + " nodeMapping. Setting isConditionalReachable.");
 
     List<P<EnvCond, Integer>> sc = new ArrayList<P<EnvCond, Integer>>();
     HashMap<Long, Integer> chemEnvironmentalImp = new HashMap<Long, Integer>();
@@ -254,7 +253,7 @@ public class ConditionalReachable extends OutdatedWavefrontExpansion {
       } else {
         // potentially null, but never is because each node is at
         // least reachable from the one reaction coming into it.
-        // unless there are nodes that are only consumed
+        // unless there are nodeMapping that are only consumed
         int max = 0;
         List<EnvCond> underConditions = envCondForReachability(cid);
         if (underConditions != null) {
@@ -339,7 +338,7 @@ public class ConditionalReachable extends OutdatedWavefrontExpansion {
     else
       // potentially null, but never is because each node is at
       // least reachable from the one reaction coming into it.
-      // unless there are nodes that are only consumed
+      // unless there are nodeMapping that are only consumed
       return envCondForReachability(id);
   }
 
