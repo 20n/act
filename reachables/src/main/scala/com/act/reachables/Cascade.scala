@@ -98,7 +98,7 @@ object Cascade extends Falls {
       Node.setAttribute(ident, "reaction_ids", Node.getAttribute(ident, "reaction_ids") + s"_$ident")
       Node.setAttribute(ident, "label_string", Node.getAttribute(ident, "label_string") + labelBuilder.toString())
 
-      val addedOrganisms = Node.getAttribute(ident, "organisms").asInstanceOf[List[String]] ::: organisms
+      val addedOrganisms = Node.getAttribute(ident, "organisms").asInstanceOf[util.ArrayList[String]].toList ::: organisms
       Node.setAttribute(ident, "organisms",  new util.ArrayList(addedOrganisms.sorted(Ordering[String].reverse).asJava))
       return nodeMerger(unique)
     }
@@ -170,7 +170,6 @@ object Cascade extends Falls {
     // <IMG SRC="20n.png" scale="true"/></TD><td><font point-size="10">protein2ppw</font></td></TR></TABLE>>
 
     val inchi = ActData.instance().chemId2Inchis.get(id)
-    println(inchi)
     // Generate md5 hash for inchi
     val md5 = DigestUtils.md5Hex(if (inchi == null) "" else inchi)
     // Format the rendering filename
@@ -250,17 +249,27 @@ object Cascade extends Falls {
     Option(network)
   }
 
-  def getAllPaths(network: Network, target: Long): List[Path] = {
-    val sourceEdges: List[Edge] = network.getEdgesGoingInto(target).asScala.toList
+  def getAllPaths(network: Network, target: Long): Option[List[Path]] = {
+    val sourceEdgesSet: util.Set[Edge] = network.getEdgesGoingInto(target)
 
-    sourceEdges.flatMap(e => {
+    // If the target is a native then the only path is the node itself.
+    if(sourceEdgesSet == null) {
+      if (network.nodes.isEmpty) {
+        return None
+      }
+      return Option(List(Path(List(network.nodes.toList.head))))
+    }
+
+    val sourceEdges = sourceEdgesSet.asScala.toList
+
+    Option(sourceEdges.flatMap(e => {
       val path = getPath(network, e)
-      if (path.isDefined){
+      if (path.isDefined) {
         Option(path.get.map(p => Path(List(e.dst, e.src) ::: p.path)))
       } else {
         None
       }
-    }).flatten
+    }).flatten)
   }
 
   def getPath(network: Network, edge: Edge): Option[List[Path]] = {
@@ -317,15 +326,22 @@ object Cascade extends Falls {
 
 class Cascade(target: Long) {
   val t = target
-  println(t)
   val nw = Cascade.get_cascade(t, 0).get
-  val allPaths: List[Cascade.Path] = Cascade.getAllPaths(nw, t).sortBy(p => (-p.getDegree(), -p.getReactionSum()))
-  val allStringPaths: List[String] = allPaths.map(currentPath => {
-    val allChemicalStrings: List[String] = currentPath.path.flatMap(node => {
+
+  val viablePaths: Option[List[Cascade.Path]] = Cascade.getAllPaths(nw, t)
+
+  val allPaths: List[Cascade.Path] = if (viablePaths.isDefined) {
+    viablePaths.get.sortBy(p => (-p.getDegree(), -p.getReactionSum()))
+  } else {
+    List()
+  }
+
+  val allStringPaths: List[String] = allPaths.map(currentPath => {val allChemicalStrings: List[String] = currentPath.path.flatMap(node => {
       Option(ActData.instance.chemId2ReadableName.get(node.id))
     })
     allChemicalStrings.mkString(", ")
   })
+
 
   def network() = nw
 
