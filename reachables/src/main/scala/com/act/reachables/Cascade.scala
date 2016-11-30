@@ -5,6 +5,7 @@ import java.lang.Long
 import org.apache.commons.codec.digest.DigestUtils
 
 import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 
@@ -225,7 +226,7 @@ object Cascade extends Falls {
 
               network.mergeInto(s._2.get)
 
-              // add edges of form "s" -> respective "r" nodes
+              // add edges of form "s" -> respective "r" nodeMapping
               network.addEdge(create_edge(mol_node(s._1), reactionsNode))
             })
           }
@@ -240,15 +241,88 @@ object Cascade extends Falls {
 
     Option(network)
   }
+
+  def getAllPaths(network: Network, target: Long): List[Path] = {
+    val sourceEdges: List[Edge] = network.getEdgesGoingInto(target).asScala.toList
+
+    sourceEdges.flatMap(e => {
+      val path = getPath(network, e)
+      if (path.isDefined){
+        Option(path.get.map(p => Path(List(e.dst, e.src) ::: p.path)))
+      } else {
+        None
+      }
+    }).flatten
+  }
+
+  def getPath(network: Network, edge: Edge): Option[List[Path]] = {
+    // Base case
+    val reactionNode = edge.src
+
+    // If reaction node has more than one edge we say that this isn't a viable path
+    if (network.getEdgesGoingInto(reactionNode).size() > 1) return None
+
+    val substrateNode = network.getEdgesGoingInto(reactionNode).head.src
+
+    // Is universal
+    if (is_universal(substrateNode.id)) return Option(List(Path(List(substrateNode))))
+
+    val edgesGoingInto: List[Edge] = network.getEdgesGoingInto(substrateNode).toList
+
+    // Get back a bunch of maybe paths
+    val resultingPaths: List[Path] = edgesGoingInto.flatMap(x => {
+      val grabPath = getPath(network, x)
+      if (grabPath.isDefined) {
+        Option(grabPath.get.map(p => Path(List(substrateNode, reactionNode) ::: p.path)))
+      } else {
+        None
+      }
+    }).flatten
+
+    if (resultingPaths.isEmpty){
+      None
+    } else {
+      Option(resultingPaths)
+    }
+  }
+
+  case class Path(path: List[Node]) {
+
+    def getDegree(): Int ={
+      getReactionCount(path.get(1))
+    }
+
+    def getReactionSum(): Int ={
+      path.map(getReactionCount).sum
+    }
+
+    private def getReactionCount(node: Node): Int = {
+      // Only reactions contribute
+      if (Node.getAttribute(node.id, "isrxn").asInstanceOf[String].toBoolean) {
+        node.getAttribute("reaction_count").asInstanceOf[Int]
+      } else {
+        0
+      }
+    }
+  }
 }
 
 class Cascade(target: Long) {
   val t = target
   println(t)
   val nw = Cascade.get_cascade(t, 0).get
+  val allPaths: List[Cascade.Path] = Cascade.getAllPaths(nw, t).sortBy(p => (-p.getDegree(), -p.getReactionSum()))
+  val allStringPaths: List[String] = allPaths.map(currentPath => {
+    val allChemicalStrings: List[String] = currentPath.path.flatMap(node => {
+      Option(ActData.instance.chemId2ReadableName.get(node.id))
+    })
+    allChemicalStrings.mkString(", ")
+  })
 
   def network() = nw
 
   def dot(): String = nw.toDOT
+
+  def getPaths: List[String] = allStringPaths
 
 }

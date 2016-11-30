@@ -1,6 +1,6 @@
 package com.act.reachables
 
-import java.io.{File, FileOutputStream, PrintWriter}
+import java.io.{File, FileOutputStream, FileWriter, PrintWriter}
 
 import act.server.MongoDB
 import act.shared.helpers.MongoDBToJSON
@@ -93,17 +93,17 @@ object cascades {
     //    Not just the ones that are in the tree, but all potential children
     //    These potential children are reachable, modulo those whose rxn requires
     //      unreachable other substrate
-    val rxnsThatConsume = reachables.map( n => get_set(consumers.get(n)) ) 
+    val rxnsThatConsume = reachables.map( n => get_set(consumers.get(n)) )
     val downRxns = rxnsThatConsume.map( ridset => ridset.map( r => new ReachRxn(r, reachableSet)) )
 
     // List(Set(rxnids)) : all incoming connections to this node
     //    Not just the ones that are in the tree, but all potential parents that
     //    were rejected as parents (but as still reachable), and those that are
-    //    are plain not reachable. 
-    val rxnsThatProduce  = reachables.map( n => get_set(producers.get(n)) ) 
+    //    are plain not reachable.
+    val rxnsThatProduce  = reachables.map( n => get_set(producers.get(n)) )
     val upRxns = rxnsThatProduce.map( ridset => ridset.map( r => new ReachRxn(r, reachableSet)) )
-
-    // List(parents) : parents of corresponding reachables
+//
+//    // List(parents) : parents of corresponding reachables
     def getp(n: Long): Long = { val p = ActData.instance.ActTree.get_parent(n); if (p == null) -1 else p; }
     val parents = reachables.map( getp )
 
@@ -148,6 +148,9 @@ object cascades {
       val cascade = new Cascade(reachid)
       val dot     = cascade.dot()
       write_to(new File(dir, s"cscd$reachid.dot").getAbsolutePath, dot)
+      val writer = new FileWriter(new File(dir, s"paths$reachid.txt"))
+      writer.write(cascade.allStringPaths.mkString("\n"))
+      writer.close()
 
       cnt = cnt + 1
     }
