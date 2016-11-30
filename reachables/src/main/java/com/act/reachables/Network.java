@@ -137,11 +137,8 @@ public class Network implements Serializable {
         }
 
         String organisms = (String)Node.getAttribute(n.id, "organisms");
-        List<String> organismsList = organisms.equals("") ? new ArrayList<>() : Arrays.asList(organisms.split(","));
-        List<String> topOrganisms = organismsList.size() > 10 ? organismsList.subList(0, 10) : organismsList;
 
-        label = Cascade.quote(StringUtils.join(new HashSet<>(rawLabel), ", ") + " [#" + reactionCount + " " +
-            String.valueOf(labelId) + "]" + " " + "Organism Count: " + organismsList.size() + " Top Organisms: " + topOrganisms.toString());
+        label = Cascade.quote(StringUtils.join(new HashSet<>(rawLabel), ", ") + " [#" + reactionCount + " " + String.valueOf(labelId) + "]");
 
         tooltip = Cascade.quote((String)Node.getAttribute(n.id, "tooltip_string"));
 
