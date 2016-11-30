@@ -85,7 +85,7 @@ public class PatentFinder {
           summaries.add(new PatentSummary(triple.getMiddle(), triple.getRight(), triple.getLeft()));
         }
 
-        reachable.addPatentSummaries(summaries);
+        reachable.setPatentSummaries(summaries);
         loader.upsert(reachable);
 
       } else {

@@ -63,7 +63,6 @@ public class Reachable {
     this.wordCloudFilename = wordCloudFilename;
     this.pathwayVisualization = pathwayVisualization;
     this.xref = xref;
-    this.patentSummaries = new ArrayList<>();
   }
 
   public Reachable(Long id, String pageName, String inchi, String smiles, String inchiKey, List<String> names,
