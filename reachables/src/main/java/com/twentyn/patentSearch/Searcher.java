@@ -1,5 +1,6 @@
 package com.twentyn.patentSearch;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -48,7 +49,7 @@ public class Searcher implements AutoCloseable {
   ));
   private static final String CLAIMS_FIELD = "claims";
   private static final int MAX_RESULTS_PER_QUERY = 100;
-  private static final float SCORE_THRESHOLD = 0.1f;
+  private static final float SCORE_THRESHOLD = 0.01f;
 
   private List<Pair<IndexReader, IndexSearcher>> indexReadersAndSearchers = new ArrayList<>();
 
@@ -108,9 +109,17 @@ public class Searcher implements AutoCloseable {
   }
 
   public List<Pair<String, String>> searchInClaims(List<String> synonyms) throws IOException {
+    if (synonyms.size() == 0) {
+      LOGGER.info("Not running search for no synonyms!");
+      return Collections.emptyList();
+    }
+
     final List<BooleanQuery> queries = makeQueries(synonyms, CLAIMS_FIELD).collect(Collectors.toList());
+
+    LOGGER.info("Constructed %d queries for %s", queries.size(), StringUtils.join(synonyms, ", "));
     // Reuse the queries for all indices.
     try {
+      LOGGER.info("Running search");
       return indexReadersAndSearchers.stream().
           map(p -> runSearch(p.getLeft(), p.getRight(), queries)).
           flatMap(Function.identity()).
@@ -163,7 +172,7 @@ public class Searcher implements AutoCloseable {
 
   private Stream<BooleanQuery> makeQueries(List<String> synonyms, String field) {
     return synonyms.stream().
-        filter(syn -> syn != null && syn.isEmpty()).
+        filter(syn -> syn != null && !syn.isEmpty()).
         map(syn -> makeQuery(syn, field));
   }
 
