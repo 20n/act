@@ -1,6 +1,7 @@
 package act.installer.reachablesexplorer;
 
 import act.installer.pubchem.PubchemSynonymType;
+import com.mongodb.BasicDBObject;
 import com.twentyn.patentSearch.Searcher;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -42,7 +43,7 @@ public class PatentFinder {
   private void run(Searcher searcher) throws IOException {
     Loader loader = new Loader("localhost", 27017, "wiki_reachables", "reachablesv6_test_thomas", "sequencesv6_test_thomas", "/tmp");
 
-    DBCursor<Reachable> reachableDBCursor = loader.getJacksonReachablesCollection().find();
+    DBCursor<Reachable> reachableDBCursor = loader.getJacksonReachablesCollection().find(new BasicDBObject("names", "glycerol"));
 
     while (reachableDBCursor.hasNext()) {
       Reachable reachable = reachableDBCursor.next();
@@ -75,7 +76,7 @@ public class PatentFinder {
 
       List<Pair<String, String>> results = searcher.searchInClaims(allNames);
 
-      LOGGER.info("Results for %s:", reachable.getPageName());
+      LOGGER.info("Results (%d) for %s:", results.size(), reachable.getPageName());
       for (Pair<String, String> pair : results) {
         LOGGER.info("%s: %s", pair.getLeft(), pair.getRight());
       }
