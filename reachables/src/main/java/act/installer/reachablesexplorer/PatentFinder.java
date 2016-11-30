@@ -48,12 +48,14 @@ public class PatentFinder {
       Reachable reachable = reachableDBCursor.next();
 
       SynonymData synonyms = reachable.getSynonyms();
-      Map<PubchemSynonymType, Set<String>> pubchemSynonyms = synonyms.getPubchemSynonyms();
       Set<String> preferredSynonyms = null;
-      for (PubchemSynonymType type : SYNONYM_TYPE_PREFERENCE) {
-        if (pubchemSynonyms.containsKey(type)) {
-          preferredSynonyms = pubchemSynonyms.get(type);
-          break;
+      if (synonyms != null) {
+        Map<PubchemSynonymType, Set<String>> pubchemSynonyms = synonyms.getPubchemSynonyms();
+        for (PubchemSynonymType type : SYNONYM_TYPE_PREFERENCE) {
+          if (pubchemSynonyms.containsKey(type)) {
+            preferredSynonyms = pubchemSynonyms.get(type);
+            break;
+          }
         }
       }
 
