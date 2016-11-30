@@ -103,13 +103,13 @@ public class PatentFinder {
     CLIUtil cliUtil = new CLIUtil(Loader.class, HELP_MESSAGE, OPTION_BUILDERS);
     CommandLine cl = cliUtil.parseCommandLine(args);
 
+    String host = cl.getOptionValue(OPTION_DB_HOST, DEFAULT_HOST);
+    Integer port = Integer.parseInt(cl.getOptionValue(OPTION_DB_PORT, DEFAULT_PORT.toString()));
+    String dbName = cl.getOptionValue(OPTION_TARGET_DB, DEFAULT_TARGET_DATABASE);
+    String collection = cl.getOptionValue(OPTION_TARGET_REACHABLES_COLLECTION, DEFAULT_TARGET_COLLECTION);
+    LOGGER.info("Connecting to %s:%d/%s, using collection %s", host, port, dbName, collection);
 
-    Loader loader = new Loader(cl.getOptionValue(OPTION_DB_HOST, DEFAULT_HOST),
-        Integer.parseInt(cl.getOptionValue(OPTION_DB_PORT, DEFAULT_PORT.toString())),
-        cl.getOptionValue(OPTION_TARGET_DB, DEFAULT_TARGET_DATABASE),
-        cl.getOptionValue(OPTION_TARGET_REACHABLES_COLLECTION, DEFAULT_TARGET_COLLECTION),
-        UNUSED_SEQUENCES_COLLECTION,
-        UNUSED_ASSETS_DIR);
+    Loader loader = new Loader(host, port, dbName, collection, UNUSED_SEQUENCES_COLLECTION, UNUSED_ASSETS_DIR);
 
     File indexesTopDir = new File(cl.getOptionValue(OPTION_PATENT_INDEX_DIR, DEFAULT_PATENT_INDEX_LOCATION));
     if (!indexesTopDir.exists() || !indexesTopDir.isDirectory()) {
