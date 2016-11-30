@@ -1,4 +1,4 @@
-import AssemblyKeys._
+import sbtassembly.Plugin.AssemblyKeys._
 
 assemblySettings
 
@@ -109,6 +109,7 @@ libraryDependencies ++= {
       "org.apache.jena" % "jena-querybuilder" % "3.1.0",
       "io.spray" %%  "spray-json" % "1.3.2",
       "org.scalaz" %% "scalaz-core" % "7.2.7",
+      "org.mongojack" % "mongojack" % "2.0.0-RC1",
   /*
    * the maven repo jar seem to be outdated, or incompatible.
    * we posted to the indigo group bugs. The current resolution
