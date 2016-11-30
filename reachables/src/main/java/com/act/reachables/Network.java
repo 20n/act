@@ -152,6 +152,9 @@ public class Network implements Serializable {
         url = Cascade.quote((String)Node.getAttribute(n.id, "url_string"));
       } else {
         id = String.valueOf(n.getIdentifier());
+
+
+
         label = (String)Node.getAttribute(n.id, "label_string");
         tooltip = (String)Node.getAttribute(n.id, "tooltip_string");
         url = (String)Node.getAttribute(n.id, "url_string");
