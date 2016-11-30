@@ -42,7 +42,7 @@ object Cascade extends Falls {
   // This is conservative to avoid cycles (we could be optimistic and jump
   // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
 
-  def pre_rxns(m: Long, higherInTree: Boolean = true): Map[SubProductPair, List[ReachRxn]] = {
+  def pre_rxns(m: Long, higherInTree: Boolean = true, grabMostLikely: Boolean = true): Map[SubProductPair, List[ReachRxn]] = {
 //    if (cache_bestpre_rxn contains m) cache_bestpre_rxn(m) else {
 
     // incoming unreachable rxns ignored
@@ -50,13 +50,6 @@ object Cascade extends Falls {
 
     // we dont want to use reactions that dont have any substrates (most likely bad data)
     val upNonTrivial = upReach.filter(has_substrates)
-
-    // to avoid circular paths, we require the precuror rxn to go towards natives
-    val up = if (higherInTree) {
-      upNonTrivial.filter(higher_in_tree(m, _))
-    } else {
-      upNonTrivial
-    }
 
     // limit the # of up reactions to output to MAX_CASCADE_UPFANOUT
     // compute all substrates "s" of all rxnsups (upto 10 of them)
@@ -67,20 +60,36 @@ object Cascade extends Falls {
 
     val sortedByEvidence = groupedSubProduct.entrySet().toList.sortBy(-_.getValue.length)
 
-    val mostEvidenceFor = sortedByEvidence.head
+    if (sortedByEvidence.length >= 2 && sortedByEvidence.head.getValue.length > sortedByEvidence(1).getValue.length){
 
-    val passing: List[ReachRxn] = if (higherInTree) {
-      sortedByEvidence.tail.flatMap(_.getValue).filter(higher_in_tree(m, _))
+      val mostEvidenceFor = sortedByEvidence.head
+
+      val passing: List[ReachRxn] = if (higherInTree) {
+        sortedByEvidence.tail.flatMap(_.getValue).filter(higher_in_tree(m, _))
+      } else {
+        sortedByEvidence.tail.flatMap(_.getValue)
+      }
+
+      val passingGrouped: Map[SubProductPair, List[ReachRxn]] = passing
+        .map(rxn => (SubProductPair(rxn.substrates.toList.sorted, List(m)), rxn)).
+        groupBy(_._1).
+        mapValues(_.map(_._2))
+
+      passingGrouped + (mostEvidenceFor.getKey -> mostEvidenceFor.getValue)
     } else {
-      sortedByEvidence.tail.flatMap(_.getValue)
+      val passing: List[ReachRxn] = if (higherInTree) {
+        sortedByEvidence.flatMap(_.getValue).filter(higher_in_tree(m, _))
+      } else {
+        sortedByEvidence.flatMap(_.getValue)
+      }
+
+      val passingGrouped: Map[SubProductPair, List[ReachRxn]] = passing
+        .map(rxn => (SubProductPair(rxn.substrates.toList.sorted, List(m)), rxn)).
+        groupBy(_._1).
+        mapValues(_.map(_._2))
+
+      passingGrouped
     }
-
-    val passingGrouped: Map[SubProductPair, List[ReachRxn]] = passing
-      .map(rxn => (SubProductPair(rxn.substrates.toList.sorted, List(m)), rxn)).
-      groupBy(_._1).
-      mapValues(_.map(_._2))
-
-    passingGrouped + (mostEvidenceFor.getKey -> mostEvidenceFor.getValue)
   }
 
   val rxnIdShift = 4000000000l
@@ -234,9 +243,14 @@ object Cascade extends Falls {
     max_cascade_depth = depth
   }
 
-  def get_cascade(m: Long, depth: Int, source: Option[Long] = None): Option[Network] = {
+  def get_cascade(m: Long, depth: Int, source: Option[Long] = None, seen: Set[Long] = Set()): Option[Network] = {
     if (source.isDefined && source.get == m) return None
     val network = new Network("cascade_" + m)
+
+    // Cycle
+    if (seen.contains(m)) {
+      return None
+    }
 
     network.addNode(mol_node(m), m)
 
@@ -245,7 +259,7 @@ object Cascade extends Falls {
     } else {
       // We don't filter by higher in tree on the first iteration, so that all possible
       // reactions producing this product are shown on the graph.
-      val groupedSubProduct = pre_rxns(m, higherInTree = depth != 0).toList
+      val groupedSubProduct = pre_rxns(m, higherInTree = depth != 0, grabMostLikely = depth < 3).toList
       
       var oneValid = false
       groupedSubProduct.foreach({ case (subProduct, reactions) =>
@@ -253,7 +267,7 @@ object Cascade extends Falls {
         if (!subProduct.substrates.forall(cofactors.contains)) {
           val reactionsNode = rxn_node(reactions.map(r => Long.valueOf(r.rxnid)), subProduct)
 
-          val subProductNetworks = subProduct.substrates.map(s => (s, get_cascade(s, depth + 1, Option(if (depth == 0) m else source.get))))
+          val subProductNetworks = subProduct.substrates.map(s => (s, get_cascade(s, depth + 1, Option(if (depth == 0) m else source.get), seen + m)))
           if (subProductNetworks.forall(_._2.isDefined)) {
             oneValid = true
             subProductNetworks.foreach(s => {
@@ -403,6 +417,7 @@ class Cascade(target: Long) {
   val t = target
   val nw = Cascade.get_cascade(t, 0).get
 
+  System.exit(nw.nodes.size())
   val viablePaths: Option[List[Cascade.Path]] = Cascade.getAllPaths(nw, t)
 
   val allPaths: List[Cascade.Path] = if (viablePaths.isDefined) {
