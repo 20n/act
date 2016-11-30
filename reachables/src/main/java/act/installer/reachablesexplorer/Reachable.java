@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mongodb.BasicDBObject;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,7 @@ public class Reachable {
   private PrecursorData precursorData;
   private Map<Chemical.REFS, BasicDBObject> xref;
   private SynonymData synonyms;
+  private List<PatentSummary> patentSummaries;
 
   public Reachable() {}
 
@@ -61,6 +63,7 @@ public class Reachable {
     this.wordCloudFilename = wordCloudFilename;
     this.pathwayVisualization = pathwayVisualization;
     this.xref = xref;
+    this.patentSummaries = new ArrayList<>();
   }
 
   public Reachable(Long id, String pageName, String inchi, String smiles, String inchiKey, List<String> names,
@@ -165,4 +168,17 @@ public class Reachable {
   public void setSynonyms(SynonymData synonyms) {
     this.synonyms = synonyms;
   }
+
+  public List<PatentSummary> getPatentSummaries() {
+    return this.patentSummaries;
+  }
+
+  public void setPatentSummaries(List<PatentSummary> patentSummaries) {
+    this.patentSummaries = patentSummaries;
+  }
+
+  public void addPatentSummaries(List<PatentSummary> patentSummaries) {
+    this.patentSummaries.addAll(patentSummaries);
+  }
+
 }

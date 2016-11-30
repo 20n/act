@@ -386,7 +386,7 @@ public class Loader {
     return jacksonReachablesCollection.findOne(query);
   }
 
-  private void upsert(Reachable reachable) {
+  public void upsert(Reachable reachable) {
     // TODO Can we make this more efficient in any way?
     Reachable reachableOld = queryByInchi(reachable.getInchi());
 
