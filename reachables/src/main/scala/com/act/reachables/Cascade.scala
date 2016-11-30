@@ -87,7 +87,7 @@ object Cascade extends Falls {
     labelSet.foreach(id => labelBuilder.append("&&&&").append(id))
 
     // Get sorted list of oganisms
-    val organisms = ids.map(id => ReachRxnDescs.rxnOrganismNames(id).get).reduce(_|_).toList.sorted(Ordering[String].reverse)
+    val organisms = ids.flatMap(id => ReachRxnDescs.rxnOrganismNames(id).get).toList.sorted(Ordering[String].reverse)
 
     if (nodeMerger.contains(unique)){
       val previouslyCreatedNode = nodeMerger(unique)
