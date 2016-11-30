@@ -6,7 +6,7 @@ import java.util
 import com.fasterxml.jackson.annotation.{JsonCreator, JsonIgnore, JsonProperty}
 import com.mongodb.{DB, MongoClient, ServerAddress}
 import org.apache.commons.codec.digest.DigestUtils
-import org.mongojack.{JacksonDBCollection, ObjectId}
+import org.mongojack.JacksonDBCollection
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
@@ -268,25 +268,25 @@ object Cascade extends Falls {
     Option(network)
   }
 
-  def getAllPaths(network: Network, target: Long): Option[List[ReactionPath]] = {
+  def getAllPaths(network: Network, target: Long): Option[List[Path]] = {
     val sourceEdgesSet: util.Set[Edge] = network.getEdgesGoingInto(target)
 
     // If the target is a native then the only path is the node itself.
+    var counter: Int = -1
     if(sourceEdgesSet == null) {
       if (network.nodes.isEmpty) {
         return None
       }
-      return Option(List(new ReactionPath(new util.ArrayList(List(network.nodes.toList.head)), s"${target}w0")))
+      return Option(List(new Path(List(network.nodes.toList.head))))
     }
 
     val sourceEdges = sourceEdgesSet.asScala.toList
 
-    var counter: Int = -1
     Option(sourceEdges.flatMap(e => {
       val path = getPath(network, e)
       if (path.isDefined) {
         counter = counter + 1
-        Option(path.get.map(p => new ReactionPath(new util.ArrayList(List(e.dst, e.src) ::: p.getPath), s"${target}w$counter")))
+        Option(path.get.map(p => new Path(List(e.dst, e.src) ::: p.getPath)))
       } else {
         None
       }
@@ -327,10 +327,17 @@ object Cascade extends Falls {
   @JsonCreator
   class ReactionPath(@JsonProperty("path") path: util.ArrayList[Node], @JsonProperty("_id") id: String) {
 
-    @ObjectId
     @JsonProperty("_id")
     def getId(): String = {
       id
+    }
+
+    def getTarget(): Long = {
+      id.split("w")(0).toLong
+    }
+
+    def getRank(): Long = {
+      id.split("w")(1).toLong
     }
 
     def getPath: util.ArrayList[Node] ={
@@ -385,15 +392,19 @@ class Cascade(target: Long) {
   val t = target
   val nw = Cascade.get_cascade(t, 0).get
 
-  val viablePaths: Option[List[Cascade.ReactionPath]] = Cascade.getAllPaths(nw, t)
+  val viablePaths: Option[List[Cascade.Path]] = Cascade.getAllPaths(nw, t)
 
-  val allPaths: List[Cascade.ReactionPath] = if (viablePaths.isDefined) {
+  val allPaths: List[Cascade.Path] = if (viablePaths.isDefined) {
     viablePaths.get.sortBy(p => (-p.getDegree(), -p.getReactionSum()))
   } else {
     List()
   }
 
-  allPaths.foreach(Cascade.pathwayCollection.insert)
+  var c = -1
+  allPaths.foreach(p => {
+    c += 1
+    Cascade.pathwayCollection.insert(new Cascade.ReactionPath(new util.ArrayList(p.getPath), s"${target}w$c"))
+  })
 
   val allStringPaths: List[String] = allPaths.map(currentPath => {val allChemicalStrings: List[String] = currentPath.getPath.toList.flatMap(node => {
       Option(ActData.instance.chemId2ReadableName.get(node.id))
