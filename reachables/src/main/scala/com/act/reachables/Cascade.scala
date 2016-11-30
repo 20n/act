@@ -222,7 +222,10 @@ object Cascade extends Falls {
     val renderingFilename = String.format("molecule-%s.png", md5)
 
     val readableName = ActData.instance.chemId2ReadableName.get(id)
-    val myName = if (readableName.startsWith("InChI")){
+
+    val myName = if (readableName == null){
+      "null"
+    } else if (readableName.startsWith("InChI")){
       readableName.split("/")(1)
     } else {
       readableName
