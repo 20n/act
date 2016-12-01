@@ -14,6 +14,24 @@
 '''Smiles''': ${smiles}
 </#if>
 
+<#if cascade??>
+[[File:${cascade}.png]]
+</#if>
+
+{| class='wikitable'
+! Id
+! Title
+<#if patents??>
+'''Patents''':<br />
+<#list patents as patent>
+|-
+| [${patent.link}|${patent.id}]
+| ''${patent.title}''
+</#list>
+|}
+<#else>
+'''Patents''': none
+</#if>
 
 '''Precursor Molecules''':<br />
 {| class='wikitable'
@@ -34,22 +52,3 @@
   </#list>
 </#list>
 |}
-
-<#if cascade??>
-[[File:${cascade}.png]]
-</#if>
-
-{| class='wikitable'
-! Id
-! Title
-<#if patents??>
-'''Patents''':<br />
-<#list patents as patent>
-|-
-| [${patent.link}|${patent.id}]
-| ''${patent.title}''
-</#list>
-|}
-<#else>
-'''Patents''': none
-</#if>
