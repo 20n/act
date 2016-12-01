@@ -3,7 +3,8 @@ package com.act.reachables
 import java.lang.Long
 import java.util
 
-import com.fasterxml.jackson.annotation.{JsonCreator, JsonIgnore, JsonProperty}
+import com.act.reachables.Cascade.NodeInformation
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.mongodb.{DB, MongoClient, ServerAddress}
 import org.apache.commons.codec.digest.DigestUtils
 import org.mongojack.JacksonDBCollection
@@ -365,45 +366,6 @@ object Cascade extends Falls {
     }
   }
 
-  @JsonCreator
-  class ReactionPath(@JsonProperty("path") path: util.ArrayList[Node], @JsonProperty("_id") id: String) {
-
-    @JsonProperty("_id")
-    def getId(): String = {
-      id
-    }
-
-    def getTarget(): Long = {
-      id.split("w")(0).toLong
-    }
-
-    def getRank(): Long = {
-      id.split("w")(1).toLong
-    }
-
-    def getPath: util.ArrayList[Node] ={
-      path
-    }
-
-    def getDegree(): Int = {
-      getReactionCount(path.get(1))
-    }
-
-    def getReactionSum(): Int ={
-      path.map(getReactionCount).sum
-    }
-
-    @JsonIgnore
-    private def getReactionCount(node: Node): Int = {
-      // Only reactions contribute
-      if (Node.getAttribute(node.id, "isrxn").asInstanceOf[String].toBoolean) {
-        node.getAttribute("reaction_count").asInstanceOf[Int]
-      } else {
-        0
-      }
-    }
-  }
-
   class Path(path: List[Node]) {
     def getPath: List[Node] ={
       path
@@ -427,6 +389,32 @@ object Cascade extends Falls {
       }
     }
   }
+
+  class NodeInformation(isReaction: Boolean, organisms: util.ArrayList[String], reactionIds: util.HashSet[Long], reactionCount: Int, id: Long, label: String) {
+    def getIsReaction(): Boolean ={
+      isReaction
+    }
+
+    def getOrganisms(): util.ArrayList[String] = {
+      organisms
+    }
+
+    def getReactionIds(): util.HashSet[Long] = {
+      reactionIds
+    }
+
+    def getReactionCount(): Int = {
+      reactionCount
+    }
+
+    def getLabel(): String = {
+      label
+    }
+
+    def getId(): Long = {
+      id
+    }
+  }
 }
 
 class Cascade(target: Long) {
@@ -444,10 +432,29 @@ class Cascade(target: Long) {
   var c = -1
   allPaths.foreach(p => {
     c += 1
-    Cascade.pathwayCollection.insert(new Cascade.ReactionPath(new util.ArrayList(p.getPath), s"${target}w$c"))
+    Cascade.pathwayCollection.insert(new ReactionPath(s"${target}w$c", p.getPath.map(node => {
+      new NodeInformation(
+        getOrDefault[String](node, "isrxn").toBoolean,
+        getOrDefault[util.ArrayList[String]](node, "organisms"),
+        getOrDefault[util.HashSet[Long]](node, "reaction_ids"),
+        getOrDefault[Int](node, "reaction_count", 0),
+        node.getIdentifier,
+        getOrDefault[String](node, "label_string")
+      )
+
+    }).asJava))
   })
 
-  val allStringPaths: List[String] = allPaths.map(currentPath => {val allChemicalStrings: List[String] = currentPath.getPath.toList.flatMap(node => {
+  def getOrDefault[A](node: Node, key: String, default: A = null): A = {
+    val any = node.getAttribute(key)
+    if (any == null) {
+      default
+    } else {
+      any.asInstanceOf[A]
+    }
+  }
+
+  val allStringPaths: List[String] = allPaths.map(currentPath => {val allChemicalStrings: List[String] = currentPath.getPath.flatMap(node => {
       Option(ActData.instance.chemId2ReadableName.get(node.id))
     })
     allChemicalStrings.mkString(", ")
