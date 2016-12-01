@@ -12,7 +12,6 @@ import org.json.JSONObject;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -158,8 +157,8 @@ public class Network implements Serializable {
 
         int reactionCount = (int) Node.getAttribute(n.id, "reaction_count");
 
-        List<String> rawLabel = Arrays.asList(((String)Node.getAttribute(n.id, "label_string")).split("&&&&"));
-        rawLabel = rawLabel.stream().filter(x -> !x.equals("")).collect(Collectors.toList());
+        Set<String> rawLabel = (HashSet) Node.getAttribute(n.id, "label_string");
+        List<String> awLabel = rawLabel.stream().filter(x -> !x.equals("")).collect(Collectors.toList());
 
         Long labelId = n.getIdentifier() - Cascade.rxnIdShift();
         if (labelId < 0){
@@ -169,12 +168,12 @@ public class Network implements Serializable {
         HashSet<String> organisms = (HashSet<String>) Node.getAttribute(n.id, "organisms");
 
         String fullLabel;
-        if (rawLabel.isEmpty()) {
+        if (awLabel.isEmpty()) {
           fullLabel = "Not Available";
         } else {
-          fullLabel = rawLabel.get(0);
+          fullLabel = awLabel.get(0);
           if (rawLabel.size() > 1){
-            fullLabel += " and " + String.valueOf(rawLabel.size() - 1) + " more";
+            fullLabel += " and " + String.valueOf(awLabel.size() - 1) + " more";
           }
         }
 
