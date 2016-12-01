@@ -268,6 +268,7 @@ object Cascade extends Falls {
 
   def get_cascade(m: Long, depth: Int = 0, source: Option[Long] = None, seen: Set[Long] = Set()): Option[Network] = {
     if (source.isDefined && source.get == m) return None
+
     val network = new Network("cascade_" + m)
 
     network.addNode(mol_node(m), m)
@@ -309,7 +310,6 @@ object Cascade extends Falls {
         return None
       }
     }
-
 
     Option(network)
   }
@@ -467,42 +467,52 @@ class Cascade(target: Long) {
     rp
   })
 
-  val sortedPaths = myPaths.sortBy(p => -p.getMostCommonOrganismCount.max)
-  sortedPaths.head.setMostNative(true)
+
+  val sortedPaths = myPaths.sortBy(p => {
+    try {
+      -p.getMostCommonOrganismCount.max
+    } catch {
+      case e: Exception => 0
+    }
+  })
+
+  if (sortedPaths.nonEmpty) {
+    sortedPaths.head.setMostNative(true)
 
 
-  val mostNativePath = sortedPaths.head.getPath.toList.reverse
-  for (i <- mostNativePath.indices) {
-    if (i >= mostNativePath.length - 1){
-      // Skip last node, has no edge
-    } else {
-      val sourceNode: Node = network().getNodeById(mostNativePath(i).getId())
-      val destNode: Node = network().getNodeById(mostNativePath(i + 1).getId())
+    val mostNativePath = sortedPaths.head.getPath.toList.reverse
+    for (i <- mostNativePath.indices) {
+      if (i >= mostNativePath.length - 1) {
+        // Skip last node, has no edge
+      } else {
+        val sourceNode: Node = network().getNodeById(mostNativePath(i).getId())
+        val destNode: Node = network().getNodeById(mostNativePath(i + 1).getId())
 
-      val edgesGoingInto = network().edgesGoingToNode(destNode)
-      val currentEdge: Edge = edgesGoingInto.find(e => e.src.equals(sourceNode)).get
+        val edgesGoingInto = network().edgesGoingToNode(destNode)
+        val currentEdge: Edge = edgesGoingInto.find(e => e.src.equals(sourceNode)).get
 
-      if (getOrDefault[String](sourceNode, "isrxn").toBoolean) {
-        val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](sourceNode, "organisms", new util.HashSet[String]())
-        if (orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
-          Edge.setAttribute(currentEdge, "color", "green")
+        if (getOrDefault[String](sourceNode, "isrxn").toBoolean) {
+          val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](sourceNode, "organisms", new util.HashSet[String]())
+          if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
+            Edge.setAttribute(currentEdge, "color", "green")
+          }
         }
-      }
 
-      if (getOrDefault[String](destNode, "isrxn").toBoolean) {
-        val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](destNode, "organisms", new util.HashSet[String]())
-        if (orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
-          Edge.setAttribute(currentEdge, "color", "green")
+        if (getOrDefault[String](destNode, "isrxn").toBoolean) {
+          val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](destNode, "organisms", new util.HashSet[String]())
+          if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
+            Edge.setAttribute(currentEdge, "color", "green")
+          }
         }
       }
     }
+
+    sortedPaths.head.getPath.toList.foreach(ni => {
+      ni.getId()
+    })
+
+    sortedPaths.foreach(Cascade.pathwayCollection.insert)
   }
-
-  sortedPaths.head.getPath.toList.foreach(ni => {
-    ni.getId()
-  })
-
-  sortedPaths.foreach(Cascade.pathwayCollection.insert)
 
   def getMostFrequentOrganism(p: ReactionPath): List[(String, Double)] = {
     val v: Set[Set[String]] = p.getPath.map(_.getOrganisms().toSet).toSet
@@ -520,6 +530,9 @@ class Cascade(target: Long) {
       c *= 2
     })
 
+    if (allKeys.keySet.toList.isEmpty){
+      return List()
+    }
     val maxEntry =  allKeys.entrySet().toList.sortBy(p => -p.getValue)
 
     maxEntry.map(x => (x.getKey, x.getValue))
