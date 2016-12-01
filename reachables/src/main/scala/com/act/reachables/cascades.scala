@@ -1,7 +1,6 @@
 package com.act.reachables
 
 import java.io.{File, FileOutputStream, FileWriter, PrintWriter}
-import java.util.concurrent.atomic.AtomicInteger
 
 import act.server.MongoDB
 import act.shared.helpers.MongoDBToJSON
@@ -124,11 +123,11 @@ object cascades {
     Cascade.set_max_cascade_depth(depth)
 
 
-    val cnt = new AtomicInteger()
-
 //    val reach = List(878L)
     val reach = reachables
-    reach.par.foreach(doStuff(_, cnt, new File(dir)))
+    reach.par.foreach({
+      doStuff(_, dir)
+    })
 
     println
 
@@ -188,7 +187,9 @@ object cascades {
     hr
   }
 
-  def doStuff(reachid: Long, cnt: AtomicInteger, dir: File): Unit = {
+  def doStuff(reachid: Long, dir: String): Unit = {
+    println(s"Started reachable $reachid}")
+
     // write to disk; JS front end uses json
     val waterfall = new Waterfall(reachid)
     val json    = waterfall.json()
@@ -203,7 +204,7 @@ object cascades {
     writer.write(cascade.allStringPaths.mkString("\n"))
     writer.close()
 
-    println(s"Completed reachable ${cnt.incrementAndGet()}")
+    println(s"Completed reachable $reachid}")
   }
 
   def rxn_json(r: Reaction) = {
