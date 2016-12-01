@@ -126,8 +126,8 @@ object cascades {
     val counter = new AtomicInteger()
 //    878L, 349L,
 //    val reach = List(878L)
-//    val reach = reachables
-    val reach = List(1902L)
+    val reach = reachables
+//    val reach = List(1902L)
     reach.foreach({
       println(s"Reaction number ${counter.getAndIncrement()}")
       doStuff(_, dir)
