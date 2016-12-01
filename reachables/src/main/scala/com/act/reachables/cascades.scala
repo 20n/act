@@ -127,7 +127,7 @@ object cascades {
 //    878L, 349L,
 //    val reach = List(878L)
     val reach = reachables
-//    val reach = List(1902L)
+//    val reach = List(878L, 468L)
     reach.foreach({
       println(s"Reaction number ${counter.getAndIncrement()}")
       doStuff(_, dir)
