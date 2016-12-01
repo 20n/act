@@ -6,6 +6,7 @@ import java.util
 
 import com.act.reachables.Cascade.NodeInformation
 import com.fasterxml.jackson.annotation.{JsonProperty, JsonCreator, JsonIgnore}
+import com.fasterxml.jackson.annotation.{JsonCreator, JsonIgnore, JsonProperty}
 import com.mongodb.{DB, MongoClient, ServerAddress}
 import org.apache.commons.codec.digest.DigestUtils
 import org.mongojack.JacksonDBCollection
@@ -375,11 +376,12 @@ object Cascade extends Falls {
 
   @JsonCreator
   class NodeInformation(@JsonProperty("isReaction") var isReaction: Boolean,
-                         @JsonProperty("organisms") var organisms: util.ArrayList[String],
+                         @JsonProperty("organisms") var organisms: util.HashSet[String],
                          @JsonProperty("reactionIds") var reactionIds: util.HashSet[Long],
                          @JsonProperty("reactionCount") var reactionCount: Int,
                          @JsonProperty("id") var id: Long,
-                         @JsonProperty("label") var label: String) {
+                         @JsonProperty("label") var label: String,
+                         @JsonProperty("mostNative") var isMostNative: Boolean) {
 
     def NodeInformation() {}
 
@@ -391,11 +393,11 @@ object Cascade extends Falls {
       this.isReaction = isReaction
     }
 
-    def getOrganisms(): util.ArrayList[String] = {
+    def getOrganisms(): util.HashSet[String] = {
       organisms
     }
 
-    def setOrganism(organism: util.ArrayList[String]) = {
+    def setOrganism(organism: util.HashSet[String]) = {
       this.organisms = organisms
     }
 
@@ -429,6 +431,14 @@ object Cascade extends Falls {
 
     def setId(id: Long) = {
       this.id = id
+    }
+
+    def setMostNative(mostNative: Boolean) = {
+      this.isMostNative = mostNative
+    }
+
+    def getMostNative(): Boolean = {
+      return this.isMostNative
     }
   }
 }
@@ -471,11 +481,16 @@ class Cascade(target: Long) {
         new util.HashSet[Long](getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => (x.toLong - Cascade.rxnIdShift): java.lang.Long)),
         getOrDefault[Int](node, "reaction_count", 0),
         node.getIdentifier,
+<<<<<<< 2191cdd10bfd98760108aa18dae69723b7801b1f
         if (isRxn) {
           getOrDefault[util.HashSet[String]](node, "label_string", new util.HashSet[String]()).mkString(",")
         } else {
           getOrDefault[String](node, "label_string")
         }
+=======
+        getOrDefault[String](node, "label_string"),
+        false
+>>>>>>> implemented dna design
       )
     }).asJava)
 
