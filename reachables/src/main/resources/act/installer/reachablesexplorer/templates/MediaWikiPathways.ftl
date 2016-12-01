@@ -2,17 +2,37 @@
 
 <#list pathwayitems as pathwayitem>
   <#if pathwayitem.isreaction>
-    '''Reaction''':
-    {| class='wikitable'
-     |-
-     ! EC number
-     | ${pathwayitem.ecnum}
-     ! Organisms
+'''Reaction''':
+{| class='wikitable'
+ |-
+ ! EC numbers
+   <#list pathwayitem.ecnums as ecnum>
+ |-
+ | ${ecnum}
+   </#list>
+ |}
+{|
+
+{| class='wikitable'
+ |-
+ ! Organisms
      <#list pathwayitem.organisms as org>
-     | $org
+ |-
+ | ${org}
      </#list>
+ |}
   <#else>
-    '''Chemical''':
-    [[pathwayitem.inchiKey|pathwayitem.name]]
+'''Chemical''':
+    <#if pathwayitem.link??>
+[[${pathwayitem.link}|${pathwayitem.name}]]
+    <#else>
+${pathwayitem.name}
+    </#if>
+    <#if pathwayitem.structureRendering??>
+[[File:${pathwayitem.structureRendering}|400px]]
+    </#if>
+
   </#if>
+
+
 </#list>

@@ -204,7 +204,7 @@ public class Loader {
    */
   public Loader(String host, Integer port, String targetDB,
                 String targetCollection, String targetSequenceCollection, String renderingCache) {
-    db = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_CHEMICALS_DATABASE);
+    db = new MongoDB(host, port, DEFAULT_CHEMICALS_DATABASE);
     pubchemSynonymsDriver = new PubchemMeshSynonyms();
     moleculeRenderer = new MoleculeRenderer(new File(renderingCache));
     wordCloudGenerator = new WordCloudGenerator(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_CHEMICALS_DATABASE, renderingCache);
