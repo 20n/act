@@ -200,7 +200,7 @@ public class Network implements Serializable {
 
       String edge_line;
       if (e.getAttribute("color") != null) {
-        edge_line = src_id + " -> " + dst_id + "[color=" + e.getAttribute("color") + "]" + ";";
+        edge_line = src_id + " -> " + dst_id + " [color=" + e.getAttribute("color") + "]" + ";";
       } else {
         edge_line = src_id + " -> " + dst_id + ";";
       }
