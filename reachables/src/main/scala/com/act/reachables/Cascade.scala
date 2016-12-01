@@ -33,7 +33,7 @@ object Cascade extends Falls {
   var max_cascade_depth = GlobalParams.MAX_CASCADE_DEPTH
 
   // the best precursor reaction
-  var cache_bestpre_rxn = Map[Long, Set[ReachRxn]]()
+  var cache_bestpre_rxn = mutable.HashMap[Long, Map[SubProductPair, List[ReachRxn]]]()
 
   // the cache of the cascade if it has been
   // previously computed
@@ -44,7 +44,9 @@ object Cascade extends Falls {
   // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
 
   def pre_rxns(m: Long, higherInTree: Boolean = true): Map[SubProductPair, List[ReachRxn]] = {
-//    if (cache_bestpre_rxn contains m) cache_bestpre_rxn(m) else {
+    if (cache_bestpre_rxn.contains(m) && higherInTree) {
+      return cache_bestpre_rxn(m)
+    }
 
     // incoming unreachable rxns ignored
     val upReach = upR(m).filter(_.isreachable)
@@ -89,6 +91,8 @@ object Cascade extends Falls {
         .map(rxn => (SubProductPair(rxn.substrates.toList.sorted, List(m)), rxn)).
         groupBy(_._1).
         mapValues(_.map(_._2))
+
+      cache_bestpre_rxn.put(m, passingGrouped)
 
       passingGrouped
     }
@@ -476,7 +480,19 @@ class Cascade(target: Long) {
       val edgesGoingInto = network().edgesGoingToNode(destNode)
       val currentEdge: Edge = edgesGoingInto.find(e => e.src.equals(sourceNode)).get
 
-      Edge.setAttribute(currentEdge, "color", "green")
+      if (getOrDefault[String](sourceNode, "isrxn").toBoolean) {
+        val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](sourceNode, "organisms", new util.HashSet[String]())
+        if (orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
+          Edge.setAttribute(currentEdge, "color", "green")
+        }
+      }
+
+      if (getOrDefault[String](destNode, "isrxn").toBoolean) {
+        val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](destNode, "organisms", new util.HashSet[String]())
+        if (orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
+          Edge.setAttribute(currentEdge, "color", "green")
+        }
+      }
     }
   }
 
