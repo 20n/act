@@ -145,7 +145,7 @@ public class Network implements Serializable {
 
     lines.add("digraph " + this.name + " {");
 
-    for (Node n : this.nodeMapping.values()) {
+    for (Node n : new ArrayList<Node>(this.nodeMapping.values())) {
       // create a line for nodeMapping like so:
       // nident [label="displayname"];
       String id;
@@ -170,7 +170,7 @@ public class Network implements Serializable {
 
         String fullLabel;
         if (rawLabel.isEmpty()) {
-          fullLabel = "";
+          fullLabel = "Not Available";
         } else {
           fullLabel = rawLabel.get(0);
           if (rawLabel.size() > 1){
@@ -179,8 +179,8 @@ public class Network implements Serializable {
         }
 
 
-        label = Cascade.quote(fullLabel + " [#" + reactionCount + " " + String.valueOf(labelId) + "]");
-
+//        label = Cascade.quote(fullLabel + " [#" + reactionCount + " " + String.valueOf(labelId) + "]");
+        label = Cascade.quote(fullLabel);
         tooltip = Cascade.quote((String)Node.getAttribute(n.id, "tooltip_string"));
 
         url = Cascade.quote((String)Node.getAttribute(n.id, "url_string"));
@@ -203,7 +203,8 @@ public class Network implements Serializable {
       lines.add(node_line);
     }
 
-    for (Edge e : this.edges) {
+
+    for (Edge e : new ArrayList<Edge>(this.edges)) {
       // create a line for nodeMapping like so:
       // id -> id;
       Long src_id = e.getSrc().getIdentifier();
