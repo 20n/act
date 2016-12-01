@@ -5,6 +5,7 @@ import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -25,6 +26,8 @@ public class Network implements Serializable {
   HashSet<Node> nodes;
   HashMap<Node, Node> nodeMapping;
   HashSet<Edge> edges;
+  HashMap<Long, Node> idToNode;
+  HashMap<Pair<Node, Node>, Edge> edgeHash;
   HashMap<Node, Long> nids; // it goes from Node -> Id coz sometimes same ids might be prefixed with r_ or c_ to distinguish categories of nodeMapping
   HashMap<Long, Edge> toParentEdge; // indexed by nodeid
   HashMap<Long, Long> parents; // indexed by nodeid
@@ -41,6 +44,8 @@ public class Network implements Serializable {
     this.tree_depth = new HashMap<Long, Integer>();
     this.edgesGoingToNode = new HashMap<>();
     this.edgesGoingToId = new HashMap<>();
+    this.edgeHash = new HashMap<>();
+    this.idToNode = new HashMap<>();
 
     this.selectedNodes = new HashSet<Node>();
     this.parents = new HashMap<>();
@@ -85,16 +90,23 @@ public class Network implements Serializable {
 
       }
      } else {
+      this.idToNode.put(nid, n);
       this.nodeMapping.put(n, n);
       this.nids.put(n, nid);
     }
   }
 
+  public Node getNodeById(Long id){
+    return this.idToNode.get(id);
+  }
+
   void addEdge(Edge e) {
     this.edges.add(e);
+
     if (this.edgesGoingToNode.containsKey(e.getDst())) {
       this.edgesGoingToNode.get(e.getDst()).add(e);
       this.edgesGoingToId.get(e.getDst().id).add(e);
+
     } else {
       Set<Edge> newEdgeList = new HashSet<>();
       newEdgeList.add(e);
@@ -106,6 +118,9 @@ public class Network implements Serializable {
     }
   }
 
+  public Edge getEdge(Node src, Node dst) {
+    return this.edgeHash.get(Pair.of(src, dst));
+  }
   public Set<Edge> getEdgesGoingInto(Node n){
     return this.edgesGoingToNode.get(n);
   }
@@ -183,7 +198,13 @@ public class Network implements Serializable {
       Long src_id = e.getSrc().getIdentifier();
       Long dst_id = e.getDst().getIdentifier();
 
-      String edge_line = src_id + " -> " + dst_id + ";";
+      String edge_line;
+      if (e.getAttribute("color") != null) {
+        edge_line = src_id + " -> " + dst_id + "[color=" + e.getAttribute("color") + "]" + ";";
+      } else {
+        edge_line = src_id + " -> " + dst_id + ";";
+      }
+
       lines.add(edge_line);
     }
 

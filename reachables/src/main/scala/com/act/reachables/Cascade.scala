@@ -51,6 +51,7 @@ object Cascade extends Falls {
 
     // we dont want to use reactions that dont have any substrates (most likely bad data)
     val upNonTrivial = upReach.filter(has_substrates)
+      //.map(x => )
 
     // limit the # of up reactions to output to MAX_CASCADE_UPFANOUT
     // compute all substrates "s" of all rxnsups (upto 10 of them)
@@ -127,6 +128,8 @@ object Cascade extends Falls {
     val labelSet: Set[String] = ids.map(id => rxn_node_label_string(id)).toSet
     labelSet.foreach(id => labelBuilder.append("&&&&").append(id))
 
+    val convertedIds = ids.map(x => rxn_node_ident(x): java.lang.Long)
+
     // Get sorted list of organisms
     val organisms = ids.flatMap(id => ReachRxnDescs.rxnOrganismNames(id).get).sorted(Ordering[String].reverse)
 
@@ -136,7 +139,7 @@ object Cascade extends Falls {
 
       Node.getAttribute(ident, "reaction_ids").asInstanceOf[util.HashSet[Long]].add(ident)
       val s: util.HashSet[Long] = (Node.getAttribute(ident, "reaction_ids").asInstanceOf[util.HashSet[Long]])
-      s.addAll(ids)
+      s.addAll(convertedIds)
 
       Node.setAttribute(ident, "reaction_ids", s)
        Node.setAttribute(ident, "reaction_count", s.size())
@@ -152,7 +155,7 @@ object Cascade extends Falls {
     val node = Node.get(ident, true)
     Node.setAttribute(ident, "isrxn", "true")
     val ridSet = new util.HashSet[Long]()
-    ridSet.addAll(ids)
+    ridSet.addAll(convertedIds.asJava)
     Node.setAttribute(ident, "reaction_ids", ridSet)
     Node.setAttribute(ident, "reaction_count", ridSet.size())
     Node.setAttribute(ident, "label_string", labelBuilder.toString())
@@ -283,7 +286,7 @@ object Cascade extends Falls {
           if (subProductNetworks.forall(_._2.isDefined)) {
             oneValid = true
             subProductNetworks.foreach(s => {
-              network.addNode(reactionsNode, reactions.head.rxnid)
+              network.addNode(reactionsNode, rxn_node_ident(reactions.head.rxnid))
 
               subProduct.products.foreach(p => network.addEdge(create_edge(reactionsNode, mol_node(p))))
 
@@ -443,12 +446,11 @@ class Cascade(target: Long) {
       new NodeInformation(
         getOrDefault[String](node, "isrxn").toBoolean,
         getOrDefault[util.HashSet[String]](node, "organisms", new util.HashSet[String]()),
-        getOrDefault[util.HashSet[Long]](node, "reaction_ids"),
+        new util.HashSet[Long](getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => (x.toLong - Cascade.rxnIdShift): java.lang.Long)),
         getOrDefault[Int](node, "reaction_count", 0),
         node.getIdentifier,
         getOrDefault[String](node, "label_string")
       )
-
     }).asJava)
 
     val organismStuff = getMostFrequentOrganism(rp)
@@ -462,9 +464,27 @@ class Cascade(target: Long) {
   val sortedPaths = myPaths.sortBy(p => -p.getMostCommonOrganismCount.max)
   sortedPaths.head.setMostNative(true)
 
-  sortedPaths.foreach(Cascade.pathwayCollection.insert)
 
-  //Cascade.pathwayCollection.insert(
+  val mostNativePath = sortedPaths.head.getPath.toList.reverse
+  for (i <- mostNativePath.indices) {
+    if (i >= mostNativePath.length - 1){
+      // Skip last node, has no edge
+    } else {
+      val sourceNode: Node = network().getNodeById(mostNativePath(i).getId())
+      val destNode: Node = network().getNodeById(mostNativePath(i + 1).getId())
+
+      val edgesGoingInto = network().edgesGoingToNode(destNode)
+      val currentEdge: Edge = edgesGoingInto.find(e => e.src.equals(sourceNode)).get
+
+      Edge.setAttribute(currentEdge, "color", "green")
+    }
+  }
+
+  sortedPaths.head.getPath.toList.foreach(ni => {
+    ni.getId()
+  })
+
+  sortedPaths.foreach(Cascade.pathwayCollection.insert)
 
   def getMostFrequentOrganism(p: ReactionPath): List[(String, Double)] = {
     val v: Set[Set[String]] = p.getPath.map(_.getOrganisms().toSet).toSet
