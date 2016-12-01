@@ -489,7 +489,8 @@ class Cascade(target: Long) {
           getOrDefault[util.HashSet[String]](node, "label_string", new util.HashSet[String]()).mkString(",")
         } else {
           getOrDefault[String](node, "label_string")
-        }
+        },
+        false
       )
     }).asJava)
 
