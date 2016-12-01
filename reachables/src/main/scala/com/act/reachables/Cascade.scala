@@ -92,7 +92,9 @@ object Cascade extends Falls {
         groupBy(_._1).
         mapValues(_.map(_._2))
 
-      cache_bestpre_rxn.put(m, passingGrouped)
+      if (higherInTree) {
+        cache_bestpre_rxn.put(m, passingGrouped)
+      }
 
       passingGrouped
     }
