@@ -27,7 +27,11 @@ object Cascade extends Falls {
 
   case class SubProductPair(substrates: List[Long], products: List[Long])
 
-  val nodeMerger: mutable.HashMap[SubProductPair, Node] = new mutable.HashMap()
+  var nodeMerger: mutable.HashMap[SubProductPair, Node] = new mutable.HashMap()
+
+  def clearCascades() {
+    nodeMerger = new mutable.HashMap()
+  }
 
   // depth upto which to generate cascade data
   var max_cascade_depth = GlobalParams.MAX_CASCADE_DEPTH
@@ -44,10 +48,6 @@ object Cascade extends Falls {
   // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
 
   def pre_rxns(m: Long, higherInTree: Boolean = true): Map[SubProductPair, List[ReachRxn]] = {
-    if (cache_bestpre_rxn.contains(m) && higherInTree) {
-      return cache_bestpre_rxn(m)
-    }
-
     // incoming unreachable rxns ignored
     val upReach = upR(m).filter(_.isreachable)
 
@@ -91,10 +91,6 @@ object Cascade extends Falls {
         .map(rxn => (SubProductPair(rxn.substrates.toList.sorted, List(m)), rxn)).
         groupBy(_._1).
         mapValues(_.map(_._2))
-
-      if (higherInTree) {
-        cache_bestpre_rxn.put(m, passingGrouped)
-      }
 
       passingGrouped
     }

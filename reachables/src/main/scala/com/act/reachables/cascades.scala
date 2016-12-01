@@ -192,11 +192,6 @@ object cascades {
   }
 
   def doStuff(reachid: Long, dir: String): Unit = {
-    if (Cascade.pathwayCollection.findOneById(s"${reachid}_0") != null) {
-      println(s"Skipping ${reachid} as it already exists in DB.")
-      return
-    }
-
     println(s"Started reachable $reachid")
 
     // write to disk; JS front end uses json
@@ -213,6 +208,7 @@ object cascades {
     writer.write(cascade.allStringPaths.mkString("\n"))
     writer.close()
 
+    // Attributes are cached here so we clear it after each run.
     println(s"Completed reachable $reachid")
   }
 

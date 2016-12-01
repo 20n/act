@@ -218,6 +218,8 @@ public class Network implements Serializable {
       }
 
       lines.add(edge_line);
+
+      Edge.setAttribute(e, "color", null);
     }
 
     lines.add("}");
