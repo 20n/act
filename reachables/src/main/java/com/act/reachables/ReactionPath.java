@@ -3,6 +3,7 @@ package com.act.reachables;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -66,6 +67,34 @@ public class ReactionPath {
     private Long rank;
     private Integer degree;
     private Integer reactionSum;
+    private Boolean isMostNative = false;
+
+    public ArrayList<String> getMostCommonOrganism() {
+        return mostCommonOrganism;
+    }
+
+    public void setMostCommonOrganism(ArrayList<String> mostCommonOrganism) {
+        this.mostCommonOrganism = mostCommonOrganism;
+    }
+
+    public ArrayList<Double> getMostCommonOrganismCount() {
+        return mostCommonOrganismCount;
+    }
+
+    public void setMostCommonOrganismCount(ArrayList<Double> mostCommonOrganismCount) {
+        this.mostCommonOrganismCount = mostCommonOrganismCount;
+    }
+
+    public Boolean getMostNative() {
+        return isMostNative;
+    }
+
+    public void setMostNative(Boolean mostNative) {
+        isMostNative = mostNative;
+    }
+
+    private ArrayList<String> mostCommonOrganism;
+    private ArrayList<Double> mostCommonOrganismCount;
 
     //@JsonCreator
     public ReactionPath() {}
@@ -81,13 +110,16 @@ public class ReactionPath {
     }
 
     //@JsonCreator
-    public ReactionPath(List<Cascade.NodeInformation> path, String id, Long target, Long rank, Integer degree, Integer reactionSum) {
+    public ReactionPath(List<Cascade.NodeInformation> path, String id, Long target, Long rank, Integer degree, Integer reactionSum, Boolean isMostNative, ArrayList<Double> mostCommonOrganismCount, ArrayList<String> mostCommonOrganism) {
         this.path = path;
         this.id = id;
         this.target = target;
         this.rank = rank;
         this.degree = degree;
         this.reactionSum = reactionSum;
+        this.isMostNative = isMostNative;
+        this.mostCommonOrganism = mostCommonOrganism;
+        this.mostCommonOrganismCount = mostCommonOrganismCount;
     }
 
     @JsonIgnore

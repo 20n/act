@@ -143,8 +143,8 @@ object Cascade extends Falls {
 
       Node.setAttribute(ident, "label_string", Node.getAttribute(ident, "label_string") + labelBuilder.toString())
 
-      val addedOrganisms = Node.getAttribute(ident, "organisms").asInstanceOf[util.ArrayList[String]].toList ::: organisms
-      Node.setAttribute(ident, "organisms",  new util.ArrayList(addedOrganisms.sorted(Ordering[String].reverse).asJava))
+      val addedOrganisms: Set[String] = Node.getAttribute(ident, "organisms").asInstanceOf[util.HashSet[String]].toSet ++ organisms
+      Node.setAttribute(ident, "organisms",  new util.HashSet(addedOrganisms.asJava))
       return nodeMerger(unique)
     }
 
@@ -158,7 +158,7 @@ object Cascade extends Falls {
     Node.setAttribute(ident, "label_string", labelBuilder.toString())
     Node.setAttribute(ident, "tooltip_string", rxn_node_tooltip_string(ids.head))
     Node.setAttribute(ident, "url_string", rxn_node_url_string(ids.head))
-    Node.setAttribute(ident, "organisms", new util.ArrayList(organisms.asJava))
+    Node.setAttribute(ident, "organisms", new util.HashSet(organisms.asJava))
     nodeMerger.put(unique, node)
     node
   }
@@ -323,7 +323,7 @@ object Cascade extends Falls {
       val path = getPath(network, e)
       if (path.isDefined) {
         counter = counter + 1
-        Option(path.get.map(p => new Path(List(e.dst, e.src) ::: p.getPath)))
+        Option(path.get.map(p => new Path(List(e.dst) ::: p.getPath)))
       } else {
         None
       }
@@ -345,7 +345,7 @@ object Cascade extends Falls {
 
 //
 //    // Is universal
-    if (is_universal(substrateNode.id)) return Option(List(new Path(List(substrateNode))))
+    if (is_universal(substrateNode.id)) return Option(List(new Path(List(reactionNode, substrateNode))))
 //
     val edgesGoingInto: List[Edge] = network.getEdgesGoingInto(substrateNode).toList
 
@@ -353,7 +353,7 @@ object Cascade extends Falls {
     val resultingPaths: List[Path] = edgesGoingInto.flatMap(x => {
       val grabPath = getPath(network, x, seenNodes + substrateNode)
       if (grabPath.isDefined) {
-        Option(grabPath.get.map(p => new Path(List(substrateNode, reactionNode) ::: p.getPath)))
+        Option(grabPath.get.map(p => new Path(List(reactionNode, substrateNode) ::: p.getPath)))
       } else {
         None
       }
@@ -390,12 +390,14 @@ object Cascade extends Falls {
     }
   }
 
-  class NodeInformation(isReaction: Boolean, organisms: util.ArrayList[String], reactionIds: util.HashSet[Long], reactionCount: Int, id: Long, label: String) {
+  class NodeInformation(isReaction: Boolean, organisms: util.HashSet[String], reactionIds: util.HashSet[Long], reactionCount: Int, id: Long, label: String) {
+    var isMostNative = false
+
     def getIsReaction(): Boolean ={
       isReaction
     }
 
-    def getOrganisms(): util.ArrayList[String] = {
+    def getOrganisms(): util.HashSet[String] = {
       organisms
     }
 
@@ -414,6 +416,10 @@ object Cascade extends Falls {
     def getId(): Long = {
       id
     }
+
+    def setIfMostNative(isMostNative: Boolean) {
+      this.isMostNative = isMostNative
+    }
   }
 }
 
@@ -430,20 +436,56 @@ class Cascade(target: Long) {
   }
 
   var c = -1
-  allPaths.foreach(p => {
+  val myPaths: List[ReactionPath] = allPaths.map(p => {
     c += 1
-    Cascade.pathwayCollection.insert(new ReactionPath(s"${target}w$c", p.getPath.map(node => {
+
+    val rp = new ReactionPath(s"${target}w$c", p.getPath.map(node => {
       new NodeInformation(
         getOrDefault[String](node, "isrxn").toBoolean,
-        getOrDefault[util.ArrayList[String]](node, "organisms"),
+        getOrDefault[util.HashSet[String]](node, "organisms", new util.HashSet[String]()),
         getOrDefault[util.HashSet[Long]](node, "reaction_ids"),
         getOrDefault[Int](node, "reaction_count", 0),
         node.getIdentifier,
         getOrDefault[String](node, "label_string")
       )
 
-    }).asJava))
+    }).asJava)
+
+    val organismStuff = getMostFrequentOrganism(rp)
+
+    rp.setMostCommonOrganism(new util.ArrayList(organismStuff.map(_._1).asJava))
+    rp.setMostCommonOrganismCount(new util.ArrayList(organismStuff.map(c => c._2: java.lang.Double)))
+
+    rp
   })
+
+  val sortedPaths = myPaths.sortBy(p => -p.getMostCommonOrganismCount.max)
+  sortedPaths.head.setMostNative(true)
+
+  sortedPaths.foreach(Cascade.pathwayCollection.insert)
+
+  //Cascade.pathwayCollection.insert(
+
+  def getMostFrequentOrganism(p: ReactionPath): List[(String, Double)] = {
+    val v: Set[Set[String]] = p.getPath.map(_.getOrganisms().toSet).toSet
+
+    val allKeys: mutable.HashMap[String, Double] = mutable.HashMap()
+
+    // Fill w/ 0s
+    for (k <- v.flatten){
+      allKeys.put(k, 0)
+    }
+
+    var c: Double = 1.0
+    v.foreach(e => {
+      e.foreach(k => allKeys.put(k, allKeys(k) + 1/c))
+      c *= 2
+    })
+
+    val maxEntry =  allKeys.entrySet().toList.sortBy(p => -p.getValue)
+
+    maxEntry.map(x => (x.getKey, x.getValue))
+  }
 
   def getOrDefault[A](node: Node, key: String, default: A = null): A = {
     val any = node.getAttribute(key)
