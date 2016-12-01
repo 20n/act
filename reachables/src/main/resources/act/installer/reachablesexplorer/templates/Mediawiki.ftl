@@ -18,11 +18,12 @@
 [[File:${cascade}.png]]
 </#if>
 
+
+<#if patents??>
+'''Patents''':<br />
 {| class='wikitable'
 ! Id
 ! Title
-<#if patents??>
-'''Patents''':<br />
 <#list patents as patent>
 |-
 | [${patent.link}|${patent.id}]
