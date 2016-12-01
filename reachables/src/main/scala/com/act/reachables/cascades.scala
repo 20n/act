@@ -124,9 +124,10 @@ object cascades {
     Cascade.set_max_cascade_depth(depth)
 
     val counter = new AtomicInteger()
-
-//    val reach = List(878L, 349L)
-    val reach = reachables
+//    878L, 349L,
+//    val reach = List(878L)
+//    val reach = reachables
+    val reach = List(1902L)
     reach.foreach({
       println(s"Reaction number ${counter.getAndIncrement()}")
       doStuff(_, dir)
@@ -191,6 +192,11 @@ object cascades {
   }
 
   def doStuff(reachid: Long, dir: String): Unit = {
+    if (Cascade.pathwayCollection.findOneById(s"${reachid}_0") != null) {
+      println(s"Skipping ${reachid} as it already exists in DB.")
+      return
+    }
+
     println(s"Started reachable $reachid")
 
     // write to disk; JS front end uses json

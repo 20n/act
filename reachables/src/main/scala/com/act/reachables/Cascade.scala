@@ -23,7 +23,7 @@ object Cascade extends Falls {
   val db: DB = mongoClient.getDB("wiki_reachables")
   val collectionName: String = "pathways"
 
-  private val pathwayCollection: JacksonDBCollection[ReactionPath, String] = JacksonDBCollection.wrap(db.getCollection(collectionName), classOf[ReactionPath], classOf[String])
+  val pathwayCollection: JacksonDBCollection[ReactionPath, String] = JacksonDBCollection.wrap(db.getCollection(collectionName), classOf[ReactionPath], classOf[String])
 
   case class SubProductPair(substrates: List[Long], products: List[Long])
 
@@ -448,6 +448,20 @@ class Cascade(target: Long) {
   val myPaths: List[ReactionPath] = allPaths.map(p => {
     c += 1
 
+    if (c == 0) {
+      val reversePath = p.getPath.reverse
+      for (i <- reversePath.indices) {
+        if (i >= reversePath.length - 1) {
+          // Skip last node, has no edge
+        } else {
+          val edgesGoingInto = network().edgesGoingToNode(reversePath.get(i + 1))
+          val currentEdge: Edge = edgesGoingInto.find(e => e.src.equals(reversePath.get(i))).get
+
+          Edge.setAttribute(currentEdge, "color", "\"#cc3300\", penwidth=5")
+        }
+      }
+    }
+
     val rp = new ReactionPath(s"${target}w$c", p.getPath.map(node => {
       new NodeInformation(
         getOrDefault[String](node, "isrxn").toBoolean,
@@ -494,14 +508,14 @@ class Cascade(target: Long) {
         if (getOrDefault[String](sourceNode, "isrxn").toBoolean) {
           val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](sourceNode, "organisms", new util.HashSet[String]())
           if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
-            Edge.setAttribute(currentEdge, "color", "green")
+            Edge.setAttribute(currentEdge, "color", "\"#009933\", penwidth=5")
           }
         }
 
         if (getOrDefault[String](destNode, "isrxn").toBoolean) {
           val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](destNode, "organisms", new util.HashSet[String]())
           if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
-            Edge.setAttribute(currentEdge, "color", "green")
+            Edge.setAttribute(currentEdge, "color", "\"#009933\", penwidth=5")
           }
         }
       }
