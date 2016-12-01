@@ -168,7 +168,18 @@ public class Network implements Serializable {
 
         HashSet<String> organisms = (HashSet<String>) Node.getAttribute(n.id, "organisms");
 
-        label = Cascade.quote(StringUtils.join(new HashSet<>(rawLabel), ", ") + " [#" + reactionCount + " " + String.valueOf(labelId) + "]");
+        String fullLabel;
+        if (rawLabel.isEmpty()) {
+          fullLabel = "";
+        } else {
+          fullLabel = rawLabel.get(0);
+          if (rawLabel.size() > 1){
+            fullLabel += " and " + String.valueOf(rawLabel.size() - 1) + " more";
+          }
+        }
+
+
+        label = Cascade.quote(fullLabel + " [#" + reactionCount + " " + String.valueOf(labelId) + "]");
 
         tooltip = Cascade.quote((String)Node.getAttribute(n.id, "tooltip_string"));
 
