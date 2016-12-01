@@ -10,12 +10,11 @@ import org.mongojack.DBCursor;
 import org.mongojack.JacksonDBCollection;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -109,7 +108,18 @@ public class FreemarkerRenderer {
       model.put("wordcloudRendering", r.getWordCloudFilename());
     }
 
-    List<Map<String, Object>> precursors = r.getPrecursorData().getPrecursors().stream().map(precursor -> {
+    List<Precursor> orderedPrecursors = new ArrayList<>(r.getPrecursorData().getPrecursors());
+    Collections.sort(orderedPrecursors, (a, b) -> {
+      if (a.getSequences() != null && b.getSequences() == null) {
+        return -1;
+      }
+      if (a.getSequences() == null && b.getSequences() != null) {
+        return 1;
+      }
+      return Integer.valueOf(b.getSequences().size()).compareTo(a.getSequences().size());
+    });
+
+    List<Map<String, Object>> precursors = orderedPrecursors.stream().map(precursor -> {
       // Pull out the molecule and sequence fields into a hash that Freemarker can consume.
       List<Map<String, String>> molecules = precursor.getMolecules().stream().
           map(mol -> new HashMap<String, String>() {{
@@ -138,6 +148,20 @@ public class FreemarkerRenderer {
     }).collect(Collectors.toList());
 
     model.put("precursors", precursors);
+
+    List<PatentSummary> patentSummaries = r.getPatentSummaries();
+    if (patentSummaries != null && !patentSummaries.isEmpty()) {
+      List<Map<String, String>> patentModel = patentSummaries.stream().
+          map(p -> {
+            return new HashMap<String, String>() {{
+              put("title", p.getTitle());
+              put("link", p.generateUSPTOURL());
+              put("id", p.getId().replaceFirst("-.*$", "")); // Strip date + XML suffix, just leave grant number.
+            }};
+          }).
+          collect(Collectors.toList());
+      model.put("patents", patentModel);
+    }
 
     return model;
   }
