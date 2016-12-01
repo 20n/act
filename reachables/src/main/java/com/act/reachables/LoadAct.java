@@ -328,7 +328,7 @@ public class LoadAct extends SteppedTask {
     // Ignore reactions with "protein" in their description. This is only necessary because there are some problems in
     // data parsing where we don't always put the proteins into the data, so sometimes fake data looks real.
     BasicDBObject noFakeReactions = new BasicDBObject("easy_desc", new BasicDBObject("$regex", "^((?!protein).)*$"));
-    DBIterator iterator = this.db.getIteratorOverReactions(noFakeReactions, true, null);
+    DBIterator iterator = this.db.getIteratorOverReactions(noFakeReactions, null);
     Reaction r;
     Map<Reaction.RxnDataSource, Integer> counts = new HashMap<>();
     for (Reaction.RxnDataSource src : Reaction.RxnDataSource.values())
