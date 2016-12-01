@@ -376,38 +376,6 @@ object Cascade extends Falls {
       }
     }
   }
-
-  class NodeInformation(isReaction: Boolean, organisms: util.HashSet[String], reactionIds: util.HashSet[Long], reactionCount: Int, id: Long, label: String) {
-    var isMostNative = false
-
-    def getIsReaction(): Boolean ={
-      isReaction
-    }
-
-    def getOrganisms(): util.HashSet[String] = {
-      organisms
-    }
-
-    def getReactionIds(): util.HashSet[Long] = {
-      reactionIds
-    }
-
-    def getReactionCount(): Int = {
-      reactionCount
-    }
-
-    def getLabel(): String = {
-      label
-    }
-
-    def getId(): Long = {
-      id
-    }
-
-    def setIfMostNative(isMostNative: Boolean) {
-      this.isMostNative = isMostNative
-    }
-  }
 }
 
 class Cascade(target: Long) {
