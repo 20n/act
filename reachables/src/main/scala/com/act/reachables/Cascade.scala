@@ -48,6 +48,10 @@ object Cascade extends Falls {
   // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
 
   def pre_rxns(m: Long, higherInTree: Boolean = true): Map[SubProductPair, List[ReachRxn]] = {
+    if (higherInTree && cache_bestpre_rxn.contains(m)) {
+      return cache_bestpre_rxn(m)
+    }
+
     // incoming unreachable rxns ignored
     val upReach = upR(m).filter(_.isreachable)
 
@@ -92,6 +96,10 @@ object Cascade extends Falls {
         groupBy(_._1).
         mapValues(_.map(_._2))
 
+      if (higherInTree) {
+        cache_bestpre_rxn.put(m, passingGrouped)
+      }
+
       passingGrouped
     }
   }
@@ -126,9 +134,7 @@ object Cascade extends Falls {
   }
 
   def rxn_node(ids: List[Long], unique: SubProductPair): Node = {
-    val labelBuilder = new StringBuilder
-    val labelSet: Set[String] = ids.map(id => rxn_node_label_string(id)).toSet
-    labelSet.foreach(id => labelBuilder.append("&&&&").append(id))
+    val labelSet = new util.HashSet[String](ids.map(id => rxn_node_label_string(id)).toSet)
 
     val convertedIds = ids.map(x => rxn_node_ident(x): java.lang.Long)
 
@@ -146,7 +152,9 @@ object Cascade extends Falls {
       Node.setAttribute(ident, "reaction_ids", s)
        Node.setAttribute(ident, "reaction_count", s.size())
 
-      Node.setAttribute(ident, "label_string", Node.getAttribute(ident, "label_string") + labelBuilder.toString())
+      val current =  Node.getAttribute(ident, "label_string").asInstanceOf[util.HashSet[String]]
+      current.addAll(labelSet)
+      Node.setAttribute(ident, "label_string", current)
 
       val addedOrganisms: Set[String] = Node.getAttribute(ident, "organisms").asInstanceOf[util.HashSet[String]].toSet ++ organisms
       Node.setAttribute(ident, "organisms",  new util.HashSet(addedOrganisms.asJava))
@@ -160,7 +168,7 @@ object Cascade extends Falls {
     ridSet.addAll(convertedIds.asJava)
     Node.setAttribute(ident, "reaction_ids", ridSet)
     Node.setAttribute(ident, "reaction_count", ridSet.size())
-    Node.setAttribute(ident, "label_string", labelBuilder.toString())
+    Node.setAttribute(ident, "label_string", labelSet)
     Node.setAttribute(ident, "tooltip_string", rxn_node_tooltip_string(ids.head))
     Node.setAttribute(ident, "url_string", rxn_node_url_string(ids.head))
     Node.setAttribute(ident, "organisms", new util.HashSet(organisms.asJava))
@@ -459,13 +467,18 @@ class Cascade(target: Long) {
     }
 
     val rp = new ReactionPath(s"${target}w$c", p.getPath.map(node => {
+      val isRxn = getOrDefault[String](node, "isrxn").toBoolean
       new NodeInformation(
-        getOrDefault[String](node, "isrxn").toBoolean,
+        isRxn,
         getOrDefault[util.HashSet[String]](node, "organisms", new util.HashSet[String]()),
         new util.HashSet[Long](getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => (x.toLong - Cascade.rxnIdShift): java.lang.Long)),
         getOrDefault[Int](node, "reaction_count", 0),
         node.getIdentifier,
-        getOrDefault[String](node, "label_string")
+        if (isRxn) {
+          getOrDefault[util.HashSet[String]](node, "label_string", new util.HashSet[String]()).mkString(",")
+        } else {
+          getOrDefault[String](node, "label_string")
+        }
       )
     }).asJava)
 
