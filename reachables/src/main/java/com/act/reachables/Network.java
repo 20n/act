@@ -71,8 +71,16 @@ public class Network implements Serializable {
         if (Node.getAttribute(nid, "reaction_ids") != null) {
           HashSet s = ((HashSet) Node.getAttribute(currentNode.id, "reaction_ids"));
           s.addAll((HashSet) Node.getAttribute(nid, "reaction_ids"));
+
           Node.setAttribute(currentNode.id, "reaction_ids", s);
           Node.setAttribute(currentNode.id, "reaction_count", s.size());
+        }
+
+        if (Node.getAttribute(nid, "organisms") != null) {
+          HashSet orgs = ((HashSet) Node.getAttribute(currentNode.id, "organisms"));
+          orgs.addAll((HashSet) Node.getAttribute(nid, "organisms"));
+
+          Node.setAttribute(currentNode.id, "organisms", orgs);
         }
 
       }
@@ -143,7 +151,7 @@ public class Network implements Serializable {
           labelId = Reaction.reverseNegativeId(labelId);
         }
 
-        ArrayList<String> organisms = (ArrayList<String>) Node.getAttribute(n.id, "organisms");
+        HashSet<String> organisms = (HashSet<String>) Node.getAttribute(n.id, "organisms");
 
         label = Cascade.quote(StringUtils.join(new HashSet<>(rawLabel), ", ") + " [#" + reactionCount + " " + String.valueOf(labelId) + "]");
 
