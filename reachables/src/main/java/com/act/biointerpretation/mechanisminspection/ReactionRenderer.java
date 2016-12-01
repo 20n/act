@@ -124,11 +124,14 @@ public class ReactionRenderer {
   }
 
   public void drawReaction(MongoDB db, Long reactionId, String dirPath, boolean includeCofactors) throws IOException {
+    drawReaction(db, reactionId, new File(dirPath), includeCofactors);
+  }
 
+  public void drawReaction(MongoDB db, Long reactionId, File directory, boolean includeCofactors) throws IOException {
     RxnMolecule renderedReactionMolecule = getRxnMolecule(db, reactionId, includeCofactors);
 
-    String fileName = StringUtils.join(new String[] {reactionId.toString(), ".", format});
-    drawRxnMolecule(renderedReactionMolecule, new File(dirPath, fileName));
+    String fileName = StringUtils.join(reactionId.toString(), ".", format);
+    drawRxnMolecule(renderedReactionMolecule, new File(directory, fileName));
   }
 
   public String getSmartsForReaction(MongoDB db, Long reactionId, boolean includeCofactors) throws IOException {
@@ -160,6 +163,10 @@ public class ReactionRenderer {
 
   private List<Long> getSubstrates(MongoDB db, Long reactionId, boolean includeCofactors) {
     Reaction r = db.getReactionFromUUID(reactionId);
+    if (r == null) {
+      LOGGER.error("Reaction %d is null!", reactionId);
+      throw new IllegalArgumentException("Invalid reaction id.");
+    }
 
     List<Long> substrates = new ArrayList<>();
 

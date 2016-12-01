@@ -2454,7 +2454,14 @@ public class MongoDB {
     return convertDBObjectToSeq(o);
   }
 
-  public Seq getSeqFromSequence(String seq) {
+  public List<Seq> getAllSeqsFromSequence(String seq) {
+    List<Seq> results = new ArrayList<>();
+    DBCursor c = this.dbSeq.find(new BasicDBObject("seq", seq), new BasicDBObject());
+    c.forEach(o -> results.add(convertDBObjectToSeq(o)));
+    return results;
+  }
+
+  public Seq getOneSeqFromSequence(String seq) {
     DBObject o = this.dbSeq.findOne(new BasicDBObject("seq", seq), new BasicDBObject());
     if (o == null)
       return null;

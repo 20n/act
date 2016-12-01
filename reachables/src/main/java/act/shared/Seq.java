@@ -58,22 +58,22 @@ public class Seq implements Serializable {
         this.brendaIDs = parseJSONArray(xrefObject.getJSONArray("brenda_id"));
       }
     }
-    if (this.metadata.has("accession")) {
-      // accounts for new structure of accessions in seq collection
-      JSONObject accessions = metadata.getJSONObject("accession");
-
-      if (accessions.has("uniprot")) {
-        this.uniprotAccs = parseJSONArray(accessions.getJSONArray("uniprot"));
-      }
-
-      if (accessions.has("genbank_protein")) {
-        this.genbankProtAccs = parseJSONArray(accessions.getJSONArray("genbank_protein"));
-      }
-
-      if (accessions.has("genbank_nucleotide")) {
-        this.genbankNucAccs = parseJSONArray(accessions.getJSONArray("genbank_nucleotide"));
-      }
-    }
+//    if (this.metadata.has("accession")) {
+//      // accounts for new structure of accessions in seq collection
+//      JSONObject accessions = metadata.getJSONObject("accession");
+//
+//      if (accessions.has("uniprot")) {
+//        this.uniprotAccs = parseJSONArray(accessions.getJSONArray("uniprot"));
+//      }
+//
+//      if (accessions.has("genbank_protein")) {
+//        this.genbankProtAccs = parseJSONArray(accessions.getJSONArray("genbank_protein"));
+//      }
+//
+//      if (accessions.has("genbank_nucleotide")) {
+//        this.genbankNucAccs = parseJSONArray(accessions.getJSONArray("genbank_nucleotide"));
+//      }
+//    }
     if (this.metadata.has("product_names"))
       this.productNames = parseJSONArray((JSONArray) this.metadata.get("product_names"));
     if (this.metadata.has("synonyms"))
