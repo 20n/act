@@ -1,6 +1,7 @@
 package com.act.reachables
 
 import java.io.{File, FileOutputStream, FileWriter, PrintWriter}
+import java.util.concurrent.atomic.AtomicInteger
 
 import act.server.MongoDB
 import act.shared.helpers.MongoDBToJSON
@@ -122,10 +123,12 @@ object cascades {
     Cascade.init(reachables, upRxns)
     Cascade.set_max_cascade_depth(depth)
 
+    val counter = new AtomicInteger()
 
-    val reach = List(878L, 349L)
-//    val reach = reachables
+//    val reach = List(878L, 349L)
+    val reach = reachables
     reach.foreach({
+      println(s"Reaction number ${counter.getAndIncrement()}")
       doStuff(_, dir)
     })
 
