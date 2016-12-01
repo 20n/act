@@ -123,7 +123,7 @@ object cascades {
     Cascade.set_max_cascade_depth(depth)
 
 
-    val reach = List(878L, 349L)
+    val reach = List(878L)
 //    val reach = reachables
     reach.par.foreach({
       doStuff(_, dir)
