@@ -10,9 +10,22 @@ public class Node implements Serializable {
   private static final long serialVersionUID = -6907101658540501637L;
 
   Long id;
-  protected Node(Long id) {
+  HashMap<String, Serializable> attr;
+
+  public Long getId() {
+    return id;
+  }
+
+  public void setId(Long id) {
     this.id = id;
   }
+
+  protected Node(Long id) {
+    this.id = id;
+    this.attr = ActData.instance().nodeAttributes.get(this.id);
+  }
+
+  private Node() {}
 
   public static Node get(Long id, Boolean create) {
     if (ActData.instance().nodeCache.containsKey(id))
@@ -35,7 +48,11 @@ public class Node implements Serializable {
   }
 
   public HashMap<String, Serializable> getAttr() {
-    return ActData.instance().nodeAttributes.get(this.id);
+    return this.attr;
+  }
+
+  public void setAttr(HashMap<String, Serializable> res) {
+    this.attr = res;
   }
 
   public Object getAttribute(String key) {
