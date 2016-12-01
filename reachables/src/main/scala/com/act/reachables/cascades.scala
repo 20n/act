@@ -123,8 +123,8 @@ object cascades {
     Cascade.set_max_cascade_depth(depth)
 
 
-//    val reach = List(878L)
-    val reach = reachables
+    val reach = List(878L)
+//    val reach = reachables
     reach.par.foreach({
       doStuff(_, dir)
     })
@@ -188,7 +188,7 @@ object cascades {
   }
 
   def doStuff(reachid: Long, dir: String): Unit = {
-    println(s"Started reachable $reachid}")
+    println(s"Started reachable $reachid")
 
     // write to disk; JS front end uses json
     val waterfall = new Waterfall(reachid)
@@ -204,7 +204,7 @@ object cascades {
     writer.write(cascade.allStringPaths.mkString("\n"))
     writer.close()
 
-    println(s"Completed reachable $reachid}")
+    println(s"Completed reachable $reachid")
   }
 
   def rxn_json(r: Reaction) = {
