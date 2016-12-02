@@ -1,4 +1,4 @@
-= #{pageTitle} =
+= ${pageTitle} =
 
 '''Chemical Intermediates''':
 {| class='wikitable'
