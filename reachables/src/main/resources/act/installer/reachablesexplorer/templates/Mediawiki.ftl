@@ -15,40 +15,33 @@
 </#if>
 
 
-'''Precursor Molecules''':<br />
-{| class='wikitable'
-! Substrates
-! Organism
-! Sequence
-<#list precursors as precursor>
-  <#list precursor.sequences as sequence>
-|-
-| <#list precursor.molecules as molecule> <#if molecule.inchiKey??> [[${molecule.inchiKey}|${molecule.name}]] <#else> ${molecule.name} </#if> </#list>
-| ${sequence.organism}
-| ${sequence.sequence}
-  <#else>
-|-
-| <#list precursor.molecules as molecule> <#if molecule.inchiKey??> [[${molecule.inchiKey}|${molecule.name}]] <#else> ${molecule.name} </#if> </#list>
-|
-|
-  </#list>
-</#list>
-|}
-
 <#if cascade??>
 [[File:${cascade}.png]]
 </#if>
 
+<#if pathways??>
+''' Pathways
+{| class='wikitable'
+!
+! Pathway
+  <#list pathways as pathway>
+|-
+| ${pathway?counter}
+| [[${pathway.link}|${pathway.name}]]
+  </#list>
+|}
+</#if>
+
+<#if patents??>
+'''Patents''':<br />
 {| class='wikitable'
 ! Id
 ! Title
-<#if patents??>
-'''Patents''':<br />
-<#list patents as patent>
+  <#list patents as patent>
 |-
 | [${patent.link}|${patent.id}]
 | ''${patent.title}''
-</#list>
+  </#list>
 |}
 <#else>
 '''Patents''': none

@@ -10,6 +10,7 @@ import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import freemarker.template.TemplateExceptionHandler;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -59,7 +60,9 @@ public class FreemarkerRenderer {
 
     FreemarkerRenderer renderer = FreemarkerRendererFactory.build(loader);
     //renderer.writePageToDir(new File("/Volumes/shared-data/Thomas/WikiPagesForUpload"));
-    renderer.generateSomePaths(new File("/Users/mdaly/work/act/reachables/template_test"),
+    renderer.writePageToDir(
+        new File("/Users/mdaly/work/act/reachables/template_test"),
+        new File("/Users/mdaly/work/act/reachables/template_test"),
         new File("/Users/mdaly/work/act/reachables/sequence_test"));
   }
 
@@ -90,18 +93,21 @@ public class FreemarkerRenderer {
     sequenceCollection = JacksonDBCollection.wrap(db.getCollection("dna_designs_2"), DNADesign.class, String.class);
   }
 
-  public void writePageToDir(File directory) throws IOException, TemplateException{
-    DBCursor<Reachable> reachableDBCursor = loader.getJacksonReachablesCollection().find();
+  public void writePageToDir(File reachableDestination,
+                             File pathDestination,
+                             File sequenceDestination) throws IOException, TemplateException{
+    DBCursor<Reachable> reachableDBCursor = loader.getJacksonReachablesCollection().find(new BasicDBObject("names", "vanillin"));
 
     int i = 0;
     while(reachableDBCursor.hasNext()) {
       Reachable r = reachableDBCursor.next();
       String inchiKey = r.getInchiKey();
       if (inchiKey != null) {
+        List<Pair<String, String>> pathwayDocsAndNames = generatePathDocuments(r, pathDestination, sequenceDestination);
         LOGGER.info(inchiKey);
-        File f = new File(directory, inchiKey);
+        File f = new File(reachableDestination, inchiKey);
         Writer w = new PrintWriter(f);
-        reachableTemplate.process(buildReachableModel(r, loader.getJacksonSequenceCollection()), w);
+        reachableTemplate.process(buildReachableModel(r, loader.getJacksonSequenceCollection(), pathwayDocsAndNames), w);
         w.close();
         assert f.exists();
         i++;
@@ -116,7 +122,10 @@ public class FreemarkerRenderer {
     }
   }
 
-  private Object buildReachableModel(Reachable r, JacksonDBCollection<SequenceData, String> sequenceCollection) {
+  private Object buildReachableModel(Reachable r,
+                                     JacksonDBCollection<SequenceData, String> sequenceCollection,
+                                     List<Pair<String, String>> pathwayDocsAndNames
+                                     ) {
     /* Freemarker's template language is based on a notion of "hashes," which are effectively just an untyped hierarchy
      * of maps and arrays culminating in scalar values (think of it like a JSON doc done up in plain Java types).
      * There are new facilities to run some Java accessors from within freemarker templates, but the language is
@@ -179,6 +188,17 @@ public class FreemarkerRenderer {
 
     model.put("precursors", precursors);
 
+    List<Object> pathways = new ArrayList<>();
+    for (Pair<String, String> pair : pathwayDocsAndNames) {
+      pathways.add(new HashMap<String, String>() {{
+        put("link", pair.getLeft());
+        put("name", pair.getRight());
+      }});
+    }
+    if (pathways.size() > 0) {
+      model.put("pathways", pathways);
+    }
+
     List<PatentSummary> patentSummaries = r.getPatentSummaries();
     if (patentSummaries != null && !patentSummaries.isEmpty()) {
       List<Map<String, String>> patentModel = patentSummaries.stream().
@@ -209,12 +229,14 @@ public class FreemarkerRenderer {
     return builder.toString();
   }
 
-  public void generateSomePaths(File pathDestination, File sequenceDestination) throws IOException, TemplateException {
-    DBCursor<ReactionPath> cursor = Cascade.get_pathway_collection().find();
+  public List<Pair<String, String>> generatePathDocuments(
+      Reachable target, File pathDestination, File sequenceDestination) throws IOException, TemplateException {
+    DBCursor<ReactionPath> cursor = Cascade.get_pathway_collection().find(new BasicDBObject("target", target.getId()));
 
+    List<Pair<String, String>> pathPagesAndNames = new ArrayList<>();
     while (cursor.hasNext()) {
       ReactionPath path = cursor.next();
-      Reachable target = loader.getJacksonReachablesCollection().findOne(new BasicDBObject("_id", path.getTarget()));
+
       if (target == null) {
         // This should not happen, methinks.
         String msg = String.format("Unable to located chemical %d in reachables db", path.getTarget());
@@ -230,14 +252,17 @@ public class FreemarkerRenderer {
 
       String pathwayDocName = String.format("Pathway_%s_%d", sourceDocName, path.getRank());
 
-      List<Pair<String, String>> designs = path.getDnaDesignRef() != null ?
+      List<Pair<String, String>> designDocsAndSummaries = path.getDnaDesignRef() != null ?
           renderSequences(sequenceDestination, pathwayDocName, path.getDnaDesignRef()) : Collections.emptyList();
 
-      Object model = buildPathModel(path, target, designs);
+      Pair<Object, String> model = buildPathModel(path, target, designDocsAndSummaries);
       if (model != null) {
-        pathwayTemplate.process(model, new FileWriter(new File(pathDestination, pathwayDocName)));
+        pathwayTemplate.process(model.getLeft(), new FileWriter(new File(pathDestination, pathwayDocName)));
       }
+
+      pathPagesAndNames.add(Pair.of(pathwayDocName, model.getRight()));
     }
+    return pathPagesAndNames;
   }
 
   private List<Pair<String, String>> renderSequences(File sequenceDestination, String docPrefix, String seqRef) throws IOException {
@@ -247,7 +272,7 @@ public class FreemarkerRenderer {
       return Collections.emptyList();
     }
 
-    List<Pair<String, String>> results = new ArrayList<>();
+    List<Pair<String, String>> sequenceFilesAndSummaries = new ArrayList<>();
 
     List<String> designs = new ArrayList<>(designDoc.getDnaDesigns());
     Collections.sort(designs);
@@ -271,10 +296,10 @@ public class FreemarkerRenderer {
         writer.write("\n");
       }
 
-      results.add(Pair.of(constructFilename, shortVersion));
+      sequenceFilesAndSummaries.add(Pair.of(constructFilename, shortVersion));
     }
 
-    return results;
+    return sequenceFilesAndSummaries;
   }
 
   private String makeSourceDocName(Reachable r) throws IOException {
@@ -286,12 +311,12 @@ public class FreemarkerRenderer {
     return inchiKey;
   }
 
-  private Object buildPathModel(ReactionPath p, Reachable target, List<Pair<String, String>> designs) throws IOException {
+  private Pair<Object, String> buildPathModel(ReactionPath p, Reachable target, List<Pair<String, String>> designs) throws IOException {
 
     Map<String, Object> model = new HashMap<>();
 
-    model.put("pageTitle", String.format("%s, path %d", target.getNames().get(0), p.getRank()));
     LinkedList<Object> pathwayItems = new LinkedList<>();
+    List<String> chemicalNames = new ArrayList<>();
     model.put("pathwayitems", pathwayItems);
 
     // Pathway nodes start at the target and work back, so reverse them to make page order go from start to finish.
@@ -317,6 +342,7 @@ public class FreemarkerRenderer {
           nodeModel.put("link", r.getInchiKey());
           // TODO: we really need a way of picking a good name for each molecule.
           nodeModel.put("name", r.getPageName());
+          chemicalNames.add(r.getPageName());
           if (r.getStructureFilename() != null) {
             nodeModel.put("structureRendering", r.getStructureFilename());
           } else {
@@ -325,6 +351,9 @@ public class FreemarkerRenderer {
         }
       }
     }
+
+    String pageTitle = StringUtils.join(chemicalNames, " <- ");
+    model.put("pageTitle", pageTitle);
 
     List<Map<String, String>> dna = new ArrayList<>();
     int i = 1;
@@ -341,7 +370,7 @@ public class FreemarkerRenderer {
       model.put("dna", dna);
     }
 
-    return model;
+    return Pair.of(model, pageTitle);
   }
 
   public static class FreemarkerRendererFactory {
