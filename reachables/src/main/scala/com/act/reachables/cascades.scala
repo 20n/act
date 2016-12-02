@@ -126,7 +126,7 @@ object cascades {
     val counter = new AtomicInteger()
 //    878L, 349L,
 //    val reach = List(878L)
-    val reach = reachables
+    val reach: List[Long] = List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 174960L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
 ////    val reach = List(878L, 468L)
 //    val reach = List(
 //      878,
