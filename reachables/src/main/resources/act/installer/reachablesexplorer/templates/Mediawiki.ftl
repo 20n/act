@@ -39,7 +39,7 @@
 ! Title
   <#list patents as patent>
 |-
-| [${patent.link}|${patent.id}]
+| [${patent.link} ${patent.id}]
 | ''${patent.title}''
   </#list>
 |}
