@@ -96,11 +96,21 @@ public class FreemarkerRenderer {
   public void writePageToDir(File reachableDestination,
                              File pathDestination,
                              File sequenceDestination) throws IOException, TemplateException{
-    DBCursor<Reachable> reachableDBCursor = loader.getJacksonReachablesCollection().find(new BasicDBObject("names", "vanillin"));
+    //DBCursor<Reachable> reachableDBCursor = loader.getJacksonReachablesCollection().find(new BasicDBObject("names", "vanillin"));
+
+    DBCursor<ReactionPath> reachableDBCursor = Cascade.get_pathway_collection().find();
 
     int i = 0;
     while(reachableDBCursor.hasNext()) {
-      Reachable r = reachableDBCursor.next();
+      // Hacked cursor munging to only consider targets of pathways.
+      ReactionPath thisPath = reachableDBCursor.next();
+      if (thisPath.getTarget().equals(878L)) {
+        LOGGER.info("Skipping vanillin");
+        continue;
+      }
+      Reachable r = loader.getJacksonReachablesCollection().findOne(new BasicDBObject("_id", thisPath.getTarget()));
+
+
       String inchiKey = r.getInchiKey();
       if (inchiKey != null) {
         List<Pair<String, String>> pathwayDocsAndNames = generatePathDocuments(r, pathDestination, sequenceDestination);
