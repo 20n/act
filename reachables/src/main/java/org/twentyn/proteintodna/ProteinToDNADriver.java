@@ -147,6 +147,8 @@ public class ProteinToDNADriver {
 
         System.out.println(combinations.size());
 
+        Integer proteinCount = 0;
+
         Set<List<String>> orgInfo = new HashSet<>();
 
         for (List<String> proteins : combinations) {
@@ -154,6 +156,7 @@ public class ProteinToDNADriver {
             Construct dna = p2d.computeDNA(proteins, Host.Ecoli);
             dnaDesigns.add(dna.toSeq());
             System.out.println(dna.toSeq());
+            proteinCount = proteins.size();
 
             for (String protein : proteins) {
               orgInfo.add(proteinSeqToOrgInfo.get(protein));
@@ -163,7 +166,7 @@ public class ProteinToDNADriver {
           }
         }
 
-        DNADesign dnaDesignSeq = new DNADesign(dnaDesigns, orgInfo);
+        DNADesign dnaDesignSeq = new DNADesign(dnaDesigns, orgInfo, proteinCount);
         WriteResult<DNADesign, String> result = coll.insert(dnaDesignSeq);
         String id = result.getSavedId();
         reactionPath.setDnaDesignRef(id);
