@@ -177,42 +177,6 @@ object Cascade extends Falls {
     node
   }
 
-//  def rxn_node(id: Long, unique: SubProductPair): Node = {
-//    if (nodeMerger.contains(unique)){
-//      val previouslyCreatedNode = nodeMerger(unique)
-//      val ident = previouslyCreatedNode.id
-//      val newCount: Int = Node.getAttribute(ident, "reaction_count").asInstanceOf[Int] + 1
-//      Node.setAttribute(ident, "reaction_count", newCount)
-//      Node.setAttribute(ident, "reaction_ids", Node.getAttribute(ident, "reaction_ids") + s"_$id")
-//      Node.setAttribute(ident, "label_string", Node.getAttribute(ident, "label_string") + "&&&&" + rxn_node_label_string(id))
-////      Node.setAttribute(ident, "tooltip_string", Node.getAttribute(ident, "tooltip_string") + "&&&&" + rxn_node_tooltip_string(id))
-//      return nodeMerger(unique)
-//    }
-//
-//    if (id > GlobalParams.FAKE_RXN_ID) {
-//      val num_omitted = id - GlobalParams.FAKE_RXN_ID
-//      val node = Node.get(id, true)
-//      Node.setAttribute(id, "isrxn", "true")
-//      Node.setAttribute(id, "reaction_count", 1)
-//      Node.setAttribute(id, "reaction_ids", s"$id")
-//      Node.setAttribute(id, "label_string", num_omitted + " more")
-//      Node.setAttribute(id, "tooltip_string", num_omitted + " more")
-//      Node.setAttribute(id, "url_string", "")
-//      nodeMerger.put(unique, node)
-//      node
-//    } else {
-//      val ident = rxn_node_ident(id)
-//      val node = Node.get(ident, true)
-//      Node.setAttribute(ident, "isrxn", "true")
-//      Node.setAttribute(id, "reaction_count", 1)
-//      Node.setAttribute(ident, "reaction_ids", s"$id")
-//      Node.setAttribute(ident, "label_string", rxn_node_label_string(id))
-//      Node.setAttribute(ident, "tooltip_string", rxn_node_tooltip_string(id))
-//      Node.setAttribute(ident, "url_string", rxn_node_url_string(id))
-//      nodeMerger.put(unique, node)
-//      node
-//    }
-//  }
   def mol_node(id: Long) = {
     val ident = mol_node_ident(id)
     val node = Node.get(ident, true)
@@ -284,14 +248,14 @@ object Cascade extends Falls {
     } else {
       // We don't filter by higher in tree on the first iteration, so that all possible
       // reactions producing this product are shown on the graph.
-      val groupedSubProduct = pre_rxns(m, higherInTree = depth != 0).toList
+      val groupedSubProduct: List[(SubProductPair, List[ReachRxn])] = pre_rxns(m, higherInTree = depth != 0).toList
       
       var oneValid = false
       groupedSubProduct
         .filter(x => x._1.substrates.forall(x => !seen.contains(x)))
         .foreach({ case (subProduct, reactions) =>
 
-        // Let's not show cofactor only reactions for now
+          // True for only cofactors and emptyl ist.
         if (!subProduct.substrates.forall(cofactors.contains)) {
           val reactionsNode = rxn_node(reactions.map(r => Long.valueOf(r.rxnid)), subProduct)
 
@@ -310,7 +274,7 @@ object Cascade extends Falls {
             })
           }
         } else {
-          // Let this node be activated as it is activated by a cofefficient only rxn
+          // Let this node be activated as it is activated by a coefficient only rxn
           oneValid = true
         }
       })
@@ -348,8 +312,8 @@ object Cascade extends Falls {
     }).flatten)
   }
 
-//  @tailrec
-  def getPath(network: Network, edge: Edge, seenNodes: Set[Node] = Set()): Option[List[Path]] = {
+
+  private def getPath(network: Network, edge: Edge, seenNodes: Set[Node] = Set()): Option[List[Path]] = {
     // Base case
     val reactionNode = edge.src
 
@@ -365,10 +329,8 @@ object Cascade extends Falls {
       return Option(List())
     }
 
-//
-//    // Is universal
     if (is_universal(substrateNode.id)) return Option(List(new Path(List(reactionNode, substrateNode))))
-//
+
     if (network.getEdgesGoingInto(substrateNode) == null) {
       return Option(List())
     }
