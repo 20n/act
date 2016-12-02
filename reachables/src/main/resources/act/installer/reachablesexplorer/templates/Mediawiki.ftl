@@ -2,7 +2,6 @@
 <#if structureRendering??>
 [[File:${structureRendering}|400px]]
 </#if>
-
 <#if wordcloudRendering??>
 '''Word Cloud''':<br />
 [[File:${wordcloudRendering}|800px]]
@@ -16,7 +15,7 @@
 
 
 <#if cascade??>
-[[File:${cascade}.png]]
+[[File:${cascade}.png|800px]]
 </#if>
 
 <#if pathways??>

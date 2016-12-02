@@ -289,7 +289,7 @@ public class FreemarkerRenderer {
             designSize / 2 + SEQUENCE_SAMPLE_SIZE / 2);
       }
 
-      String constructFilename = String.format("Design_%s_seq%d", docPrefix, i + 1);
+      String constructFilename = String.format("Design_%s_seq%d.txt", docPrefix, i + 1);
 
       try (FileWriter writer = new FileWriter(new File(sequenceDestination, constructFilename))) {
         writer.write(design);
