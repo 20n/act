@@ -66,11 +66,11 @@ public class ProteinToDNADriver {
     MongoDB mongoDB = new MongoDB("localhost", 27017, "validator_profiling_2");
     MongoClient client = new MongoClient(new ServerAddress("localhost", 27017));
     DB db = client.getDB("wiki_reachables");
-    String collectionName = "pathways";
+    String collectionName = "vanillin_pathways";
 
     JacksonDBCollection collection = JacksonDBCollection.wrap(db.getCollection(collectionName), ReactionPath.class, String.class);
-    JacksonDBCollection<DNADesign, String> coll = JacksonDBCollection.wrap(db.getCollection("dna_designs_4"), DNADesign.class, String.class);
-    JacksonDBCollection col2 = JacksonDBCollection.wrap(db.getCollection("pathways_vijay_4"), ReactionPath.class, String.class);
+    JacksonDBCollection<DNADesign, String> coll = JacksonDBCollection.wrap(db.getCollection("dna_designs_3"), DNADesign.class, String.class);
+    JacksonDBCollection col2 = JacksonDBCollection.wrap(db.getCollection("pathways_vijay_3"), ReactionPath.class, String.class);
 
     Map<String, List<String>> proteinSeqToOrgInfo = new HashMap<>();
 
@@ -147,30 +147,28 @@ public class ProteinToDNADriver {
 
       if (!noSeq) {
         Set<List<String>> combinations = getCombinations(proteinPaths);
-        Set<String> dnaDesigns = new HashSet<>();
+        Set<DNAOrgECNum> dnaDesigns = new HashSet<>();
 
         System.out.println(combinations.size());
-
-        Integer proteinCount = 0;
-
-        Set<List<String>> orgInfo = new HashSet<>();
 
         for (List<String> proteins : combinations) {
           try {
             Construct dna = p2d.computeDNA(proteins, Host.Ecoli);
-            dnaDesigns.add(dna.toSeq());
-            System.out.println(dna.toSeq());
-            proteinCount = proteins.size();
 
+            Set<List<String>> orgInfo = new HashSet<>();
             for (String protein : proteins) {
               orgInfo.add(proteinSeqToOrgInfo.get(protein));
             }
+
+            DNAOrgECNum instance = new DNAOrgECNum(dna.toSeq(), orgInfo, proteins.size());
+            dnaDesigns.add(instance);
+            System.out.println(dna.toSeq());
           } catch (Exception ex) {
             ex.printStackTrace();
           }
         }
 
-        DNADesign dnaDesignSeq = new DNADesign(dnaDesigns, orgInfo, proteinCount);
+        DNADesign dnaDesignSeq = new DNADesign(dnaDesigns);
         WriteResult<DNADesign, String> result = coll.insert(dnaDesignSeq);
         String id = result.getSavedId();
         reactionPath.setDnaDesignRef(id);
