@@ -200,7 +200,9 @@ public class FreemarkerRenderer {
       Pair<String, Object> pair = buildPathModel(path);
       if (pair != null) {
         pathwayTemplate.process(pair.getRight(),
-            new FileWriter(new File("/Users/mdaly/work/act/reachables/template_test/", pair.getLeft())));
+            // new FileWriter(new File("/Users/mdaly/work/act/reachables/template_test/", pair.getLeft())));
+            // /Volumes/shared-data-1/Thomas/WikiPathwayPagesForUpload
+            new FileWriter(new File("/Volumes/shared-data-1/Thomas/WikiPathwayPagesForUpload/", pair.getLeft())));
       }
     }
   }
