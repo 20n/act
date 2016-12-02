@@ -125,8 +125,8 @@ object cascades {
 
     val counter = new AtomicInteger()
 
-//    val reach: List[Long] = List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 174960L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
-    val reach = List(5530)
+    val reach: List[Long] = List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 174960L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
+//    val reach = List(5530)
     reach.foreach({
       println(s"Reaction number ${counter.getAndIncrement()}")
       doStuff(_, dir)
@@ -191,9 +191,6 @@ object cascades {
   }
 
   def doStuff(reachid: Long, dir: String): Unit = {
-    if (Cascade.pathwayCollection.findOneById(s"${reachid}w0") != null) {
-      return
-    }
 
     println(s"Started reachable $reachid")
 
