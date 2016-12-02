@@ -61,9 +61,9 @@ public class FreemarkerRenderer {
     FreemarkerRenderer renderer = FreemarkerRendererFactory.build(loader);
     //renderer.writePageToDir(new File("/Volumes/shared-data/Thomas/WikiPagesForUpload"));
     renderer.writePageToDir(
-        new File("/Users/mdaly/work/act/reachables/template_test"),
-        new File("/Users/mdaly/work/act/reachables/template_test"),
-        new File("/Users/mdaly/work/act/reachables/sequence_test"));
+        new File("/Users/mdaly/work/act/reachables/vanillin_pages/template_test"),
+        new File("/Users/mdaly/work/act/reachables/vanillin_pages/template_test"),
+        new File("/Users/mdaly/work/act/reachables/vanillin_pages/sequence_test"));
   }
 
   private FreemarkerRenderer(Loader loader) {
