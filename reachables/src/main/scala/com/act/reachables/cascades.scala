@@ -126,8 +126,25 @@ object cascades {
     val counter = new AtomicInteger()
 //    878L, 349L,
 //    val reach = List(878L)
-    val reach = reachables
+//    val reach = reachables
 //    val reach = List(878L, 468L)
+    val reach = List(
+      878,
+    1443,
+    174960,
+    1293,
+    448,
+    341,
+    1496,
+    1490,
+    1536,
+    750,
+    4026,
+    475,
+    716,
+    552,
+  878
+    )
     reach.foreach({
       println(s"Reaction number ${counter.getAndIncrement()}")
       doStuff(_, dir)
@@ -208,6 +225,8 @@ object cascades {
     writer.write(cascade.allStringPaths.mkString("\n"))
     writer.close()
 
+    Cascade.clearCascades()
+    Node.clearAttributeData()
     // Attributes are cached here so we clear it after each run.
     println(s"Completed reachable $reachid")
   }
