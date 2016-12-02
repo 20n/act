@@ -109,12 +109,12 @@ object cascades {
     val parents = reachables.map( getp )
 
     val reach_neighbors = (reachables zip parents) zip (upRxns zip downRxns)
-    for (tuple <- reach_neighbors) {
-      val reachid = tuple._1._1
-      val json = updowns_json(tuple)
-      val jsonstr = json.toString(2)
-      write_to(new File(dir, s"c$reachid.json").getAbsolutePath, jsonstr)
-    }
+//    for (tuple <- reach_neighbors) {
+//      val reachid = tuple._1._1
+//      val json = updowns_json(tuple)
+//      val jsonstr = json.toString(2)
+//      write_to(new File(dir, s"c$reachid.json").getAbsolutePath, jsonstr)
+//    }
 
     println("Done: Written node updowns.")
 
@@ -124,27 +124,9 @@ object cascades {
     Cascade.set_max_cascade_depth(depth)
 
     val counter = new AtomicInteger()
-//    878L, 349L,
-//    val reach = List(878L)
-    val reach: List[Long] = List(878L, 878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 174960L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
-////    val reach = List(878L, 468L)
-//    val reach = List(
-//      878,
-//    1443,
-//    174960,
-//    1293,
-//    448,
-//    341,
-//    1496,
-//    1490,
-//    1536,
-//    750,
-//    4026,
-//    475,
-//    716,
-//    552,
-//  878
-//    )
+
+//    val reach: List[Long] = List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 174960L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
+    val reach = List(5530)
     reach.foreach({
       println(s"Reaction number ${counter.getAndIncrement()}")
       doStuff(_, dir)
@@ -159,7 +141,7 @@ object cascades {
     for (rxnid <- rxnids) {
       val json = rxn_json(get_reaction_by_UUID(db, rxnid))
       val jsonstr = json.toString(2)
-      write_to(new File(dir, s"r$rxnid.json").getAbsolutePath, jsonstr)
+//      write_to(new File(dir, s"r$rxnid.json").getAbsolutePath, jsonstr)
     }
 
     println("Done: Written reactions.")
@@ -179,7 +161,7 @@ object cascades {
     for ( mid <- molecules ) {
       val mjson = mol_json(db.getChemicalFromChemicalUUID(mid))
       val jsonstr = mjson.toString(2)
-      write_to(new File(dir, s"m$mid.json").getAbsolutePath, jsonstr)
+//      write_to(new File(dir, s"m$mid.json").getAbsolutePath, jsonstr)
     }
 
     println("Done: Written molecules.")
@@ -215,7 +197,7 @@ object cascades {
     val waterfall = new Waterfall(reachid)
     val json    = waterfall.json()
     val jsonstr = json.toString(2)
-    write_to(new File(dir, s"p$reachid.json").getAbsolutePath, jsonstr)
+//    write_to(new File(dir, s"p$reachid.json").getAbsolutePath, jsonstr)
 
     // write to disk; cascade as dot file
     val cascade = new Cascade(reachid)
