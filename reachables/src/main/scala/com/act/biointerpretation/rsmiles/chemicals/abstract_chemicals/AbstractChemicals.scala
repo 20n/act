@@ -25,10 +25,10 @@ object AbstractChemicals {
     /*
       Mongo DB Query
 
-      Query: All elements that contain "R" in their SMILES and "FAKE" in their InChI
+      Query: All elements that contain "R" in their SMILES
+      TODO: try incorporating elements containing R in their inchi, which don't have a smiles, by replacing R with Cl.
      */
     var query = Mongo.createDbObject(ChemicalKeywords.SMILES, Mongo.defineMongoRegex("R"))
-    query = Mongo.appendKeyToDbObject(query, ChemicalKeywords.INCHI, Mongo.defineMongoRegex("FAKE"))
     val filter = Mongo.createDbObject(ChemicalKeywords.SMILES, 1)
     val result: ParSeq[DBObject] = Mongo.mongoQueryChemicals(mongoDb)(query, filter, notimeout = true).toStream.par
 
@@ -37,8 +37,7 @@ object AbstractChemicals {
        Flatmap as Parse Db object returns None if an error occurs (Just filter out the junk)
     */
     val parseDbObjectInFormat: (DBObject) => Option[(Long, ChemicalInformation)] = parseDbObject(mongoDb, moleculeFormat) _
-    val goodChemicalIds: ParMap[Long, ChemicalInformation] = result.flatMap(
-      dbResponse => parseDbObjectInFormat(dbResponse)).toMap
+    val goodChemicalIds: ParMap[Long, ChemicalInformation] = result.flatMap(parseDbObjectInFormat(_)).toMap
 
     logger.info(s"Finished finding abstract chemicals. Found ${goodChemicalIds.size}")
 
