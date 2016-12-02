@@ -202,7 +202,7 @@ object cascades {
     // write to disk; cascade as dot file
     val cascade = new Cascade(reachid)
     val dot     = cascade.dot()
-    write_to(new File(dir, s"cscd$reachid.dot").getAbsolutePath, dot)
+    write_to(new File("/mnt/shared-data/Thomas/GraphVizForUpload", s"cscd$reachid.dot").getAbsolutePath, dot)
     val writer = new FileWriter(new File(dir, s"paths$reachid.txt"))
     writer.write(cascade.allStringPaths.mkString("\n"))
     writer.close()
