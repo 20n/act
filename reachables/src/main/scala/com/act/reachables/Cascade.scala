@@ -545,7 +545,11 @@ class Cascade(target: Long) {
     })
 
 
-    sortedPaths.foreach(Cascade.pathwayCollection.insert)
+    try {
+      sortedPaths.foreach(Cascade.pathwayCollection.insert)
+    } catch {
+      case e: Exception => None
+    }
   }
 
   def getMostFrequentOrganism(p: ReactionPath): List[(String, Double)] = {
