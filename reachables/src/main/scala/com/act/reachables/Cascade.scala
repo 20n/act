@@ -62,7 +62,7 @@ object Cascade extends Falls {
     // limit the # of up reactions to output to MAX_CASCADE_UPFANOUT
     // compute all substrates "s" of all rxnsups (upto 10 of them)
     val groupedSubProduct: Map[SubProductPair, List[ReachRxn]] = upNonTrivial.toList
-      .map(rxn => (SubProductPair(rxn.substrates.toList.sorted, List(m)), rxn)).
+      .map(rxn => (SubProductPair(rxn.substrates.toList.filter(x => !cofactors.contains(x)).sorted, List(m)), rxn)).
       groupBy(_._1).
       mapValues(_.map(_._2))
 
@@ -307,6 +307,9 @@ object Cascade extends Falls {
               network.addEdge(create_edge(mol_node(s._1), reactionsNode))
             })
           }
+        } else {
+          // Let this node be activated as it is activated by a substrate only rxn
+          oneValid = true
         }
       })
 
@@ -356,10 +359,17 @@ object Cascade extends Falls {
       return None
     }
 
+    if (cofactors.contains(substrateNode.id)) {
+      return Option(List())
+    }
+
 //
 //    // Is universal
     if (is_universal(substrateNode.id)) return Option(List(new Path(List(reactionNode, substrateNode))))
 //
+    if (network.getEdgesGoingInto(substrateNode) == null) {
+      return Option(List())
+    }
     val edgesGoingInto: List[Edge] = network.getEdgesGoingInto(substrateNode).toList
 
     // Get back a bunch of maybe paths
@@ -534,7 +544,8 @@ class Cascade(target: Long) {
       ni.getId()
     })
 
-    sortedPaths.foreach(Cascade.pathwayCollection.insert)
+
+    //sortedPaths.foreach(Cascade.pathwayCollection.insert)
   }
 
   def getMostFrequentOrganism(p: ReactionPath): List[(String, Double)] = {
