@@ -1,4 +1,4 @@
-= <#list pathwayitems?reverse as pathwayitem><#if pathwayitem.isreaction><#else>${pathwayitem.name}<#sep>${"  <-  "}</#if></#list> =
+= #{pageTitle} =
 
 '''Chemical Intermediates''':
 {| class='wikitable'
@@ -33,3 +33,20 @@
   </#if>
 </#list>
 |}
+
+
+<#if dna??>
+{| class='wikitable'
+ |-
+ !
+ ! DNA design
+     <#list dna as design>
+ |-
+ | ${design.num}
+ | [[File:${design.file}|...${design.sample}...]]
+     </#list>
+ |}
+
+<#else>
+'''No DNA constructs available at this time.'''
+</#if>
