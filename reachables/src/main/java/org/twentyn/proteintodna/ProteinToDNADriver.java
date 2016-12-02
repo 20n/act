@@ -113,6 +113,10 @@ public class ProteinToDNADriver {
                       twoArray.add(sequenceInfo.getEc());
 
                       proteinSeqToOrgInfo.put(dnaSeq, twoArray);
+
+                      if (proteinSeqs.size() > 2) {
+                        break;
+                      }
                     }
                   }
                 }
