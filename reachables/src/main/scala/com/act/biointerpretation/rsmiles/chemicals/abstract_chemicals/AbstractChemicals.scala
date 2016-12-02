@@ -25,10 +25,10 @@ object AbstractChemicals {
     /*
       Mongo DB Query
 
-      Query: All elements that contain "R" in their SMILES
+      Query: All elements that contain "[R]" or "[R#]", for some number #, in their SMILES
       TODO: try incorporating elements containing R in their inchi, which don't have a smiles, by replacing R with Cl.
      */
-    var query = Mongo.createDbObject(ChemicalKeywords.SMILES, Mongo.defineMongoRegex("R"))
+    var query = Mongo.createDbObject(ChemicalKeywords.SMILES, Mongo.defineMongoRegex("\\[R[0-9]*\\}"))
     val filter = Mongo.createDbObject(ChemicalKeywords.SMILES, 1)
     val result: ParSeq[DBObject] = Mongo.mongoQueryChemicals(mongoDb)(query, filter, notimeout = true).toStream.par
 
@@ -62,7 +62,7 @@ object AbstractChemicals {
 
     // Replace R groups for C currently.
     // There can be multiple R groups, where they are listed as characters.  We want to grab any of the numbers assigned there.
-    val replacedSmarts = smiles.replaceAll("R[0-9]*", "C")
+    val replacedSmarts = smiles.replaceAll("\\{R[0-9]*\\]", "\\[C\\]")
 
     /*
       Try to import the SMILES field as a Smarts representation of the molecule.

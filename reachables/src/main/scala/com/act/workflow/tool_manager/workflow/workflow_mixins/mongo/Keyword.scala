@@ -20,6 +20,7 @@ object MongoKeywords {
   object WHERE extends Keyword("$where")
 
   object OPTIONS extends Keyword("$options")
+  object LENGTH extends Keyword("length")
 
   // Aggregation
   object MATCH extends Keyword("$match")
