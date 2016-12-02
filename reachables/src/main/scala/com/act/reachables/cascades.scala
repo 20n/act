@@ -191,6 +191,10 @@ object cascades {
   }
 
   def doStuff(reachid: Long, dir: String): Unit = {
+    if (Cascade.pathwayCollection.findOneById(s"${reachid}w0") != null) {
+      return
+    }
+
     println(s"Started reachable $reachid")
 
     // write to disk; JS front end uses json
