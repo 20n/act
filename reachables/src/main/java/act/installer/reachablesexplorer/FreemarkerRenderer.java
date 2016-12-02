@@ -3,6 +3,9 @@ package act.installer.reachablesexplorer;
 import com.act.reachables.Cascade;
 import com.act.reachables.ReactionPath;
 import com.mongodb.BasicDBObject;
+import com.mongodb.DB;
+import com.mongodb.MongoClient;
+import com.mongodb.ServerAddress;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
@@ -12,6 +15,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.mongojack.DBCursor;
 import org.mongojack.JacksonDBCollection;
+import org.twentyn.proteintodna.DNADesign;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -35,6 +39,9 @@ public class FreemarkerRenderer {
 
   private static final int MAX_SEQUENCE_LENGTH = 50;
 
+  private static final int SEQUENCE_SAMPLE_START = 3000;
+  private static final int SEQUENCE_SAMPLE_SIZE = 80;
+
   private String reachableTemplateName;
   private String pathwayTemplateName;
   private Loader loader;
@@ -44,19 +51,23 @@ public class FreemarkerRenderer {
   private Template reachableTemplate;
   private Template pathwayTemplate;
 
+  private JacksonDBCollection<DNADesign, String> sequenceCollection;
+
   public static void main(String[] args) throws Exception {
     Loader loader =
         new Loader("localhost", 27017, "wiki_reachables", "reachablesv7", "sequencesv7", "/tmp");
 
     FreemarkerRenderer renderer = FreemarkerRendererFactory.build(loader);
     //renderer.writePageToDir(new File("/Volumes/shared-data/Thomas/WikiPagesForUpload"));
-    renderer.generateSomePaths();
+    renderer.generateSomePaths(new File("/Users/mdaly/work/act/reachables/template_test"),
+        new File("/Users/mdaly/work/act/reachables/sequence_test"));
   }
 
   private FreemarkerRenderer(Loader loader) {
     this.reachableTemplateName = DEFAULT_REACHABLE_TEMPLATE_FILE;
     this.pathwayTemplateName = DEFAULT_PATHWAY_TEMPLATE_FILE;
     this.loader = loader;
+
   }
 
   private void init() throws IOException {
@@ -71,6 +82,12 @@ public class FreemarkerRenderer {
 
     reachableTemplate = cfg.getTemplate(reachableTemplateName);
     pathwayTemplate = cfg.getTemplate(pathwayTemplateName);
+
+    // TODO: move this elsewhere.
+    MongoClient client = new MongoClient(new ServerAddress("localhost", 27017));
+    DB db = client.getDB("wiki_reachables");
+
+    sequenceCollection = JacksonDBCollection.wrap(db.getCollection("dna_designs_2"), DNADesign.class, String.class);
   }
 
   public void writePageToDir(File directory) throws IOException, TemplateException{
@@ -192,39 +209,86 @@ public class FreemarkerRenderer {
     return builder.toString();
   }
 
-  public void generateSomePaths() throws IOException, TemplateException {
+  public void generateSomePaths(File pathDestination, File sequenceDestination) throws IOException, TemplateException {
     DBCursor<ReactionPath> cursor = Cascade.get_pathway_collection().find();
 
     while (cursor.hasNext()) {
       ReactionPath path = cursor.next();
-      Pair<String, Object> pair = buildPathModel(path);
-      if (pair != null) {
-        pathwayTemplate.process(pair.getRight(),
-            // new FileWriter(new File("/Users/mdaly/work/act/reachables/template_test/", pair.getLeft())));
-            // /Volumes/shared-data-1/Thomas/WikiPathwayPagesForUpload
-            new FileWriter(new File("/Volumes/shared-data-1/Thomas/WikiPathwayPagesForUpload/", pair.getLeft())));
+      Reachable target = loader.getJacksonReachablesCollection().findOne(new BasicDBObject("_id", path.getTarget()));
+      if (target == null) {
+        // This should not happen, methinks.
+        String msg = String.format("Unable to located chemical %d in reachables db", path.getTarget());
+        LOGGER.error(msg);
+        throw new RuntimeException(msg);
+      }
+
+      String sourceDocName = makeSourceDocName(target);
+      if (sourceDocName == null) {
+        LOGGER.error("Target %d does not have inchiKey", path.getTarget());
+        continue;
+      }
+
+      String pathwayDocName = String.format("Pathway_%s_%d", sourceDocName, path.getRank());
+
+      List<Pair<String, String>> designs = path.getDnaDesignRef() != null ?
+          renderSequences(sequenceDestination, pathwayDocName, path.getDnaDesignRef()) : Collections.emptyList();
+
+      Object model = buildPathModel(path, target, designs);
+      if (model != null) {
+        pathwayTemplate.process(model, new FileWriter(new File(pathDestination, pathwayDocName)));
       }
     }
   }
 
-  private Pair<String, Object> buildPathModel(ReactionPath p) throws IOException {
-    Map<String, Object> model = new HashMap<>();
-
-    Reachable target = loader.getJacksonReachablesCollection().findOne(new BasicDBObject("_id", p.getTarget()));
-    if (target == null) {
-      // This should not happen, methinks.
-      String msg = String.format("Unable to located chemical %d in reachables db", p.getTarget());
-      LOGGER.error(msg);
-      throw new RuntimeException(msg);
+  private List<Pair<String, String>> renderSequences(File sequenceDestination, String docPrefix, String seqRef) throws IOException {
+    DNADesign designDoc = sequenceCollection.findOneById(seqRef);
+    if (designDoc == null) {
+      LOGGER.error("Could not find dna seq for id %s", seqRef);
+      return Collections.emptyList();
     }
 
-    String inchiKey = target.getInchiKey();
+    List<Pair<String, String>> results = new ArrayList<>();
+
+    List<String> designs = new ArrayList<>(designDoc.getDnaDesigns());
+    Collections.sort(designs);
+
+    for (int i = 0; i < designs.size(); i++) {
+      String design = designs.get(i);
+      int designSize = design.length();
+      String shortVersion;
+      if (designSize > SEQUENCE_SAMPLE_START + SEQUENCE_SAMPLE_SIZE) {
+        shortVersion = design.substring(SEQUENCE_SAMPLE_START, SEQUENCE_SAMPLE_START + SEQUENCE_SAMPLE_SIZE);
+      } else {
+        shortVersion = design.substring(
+            designSize / 2 - SEQUENCE_SAMPLE_SIZE / 2,
+            designSize / 2 + SEQUENCE_SAMPLE_SIZE / 2);
+      }
+
+      String constructFilename = String.format("Design_%s_seq%d", docPrefix, i + 1);
+
+      try (FileWriter writer = new FileWriter(new File(sequenceDestination, constructFilename))) {
+        writer.write(design);
+        writer.write("\n");
+      }
+
+      results.add(Pair.of(constructFilename, shortVersion));
+    }
+
+    return results;
+  }
+
+  private String makeSourceDocName(Reachable r) throws IOException {
+    String inchiKey = r.getInchiKey();
     if (inchiKey == null) {
-      LOGGER.error("Target %d does not have inchiKey", p.getTarget());
+      LOGGER.error("Reachable %s does not have inchiKey", r.getInchi());
       return null;
     }
+    return inchiKey;
+  }
 
-    String pageFile = String.format("Pathway_%s_%d", inchiKey, p.getRank());
+  private Object buildPathModel(ReactionPath p, Reachable target, List<Pair<String, String>> designs) throws IOException {
+
+    Map<String, Object> model = new HashMap<>();
 
     model.put("pageTitle", String.format("%s, path %d", target.getNames().get(0), p.getRank()));
     LinkedList<Object> pathwayItems = new LinkedList<>();
@@ -261,7 +325,23 @@ public class FreemarkerRenderer {
         }
       }
     }
-    return Pair.of(pageFile, model);
+
+    List<Map<String, String>> dna = new ArrayList<>();
+    int i = 1;
+    for (Pair<String, String> design : designs) {
+      final int num = i; // Sigh, must be final to use in this initialization block.
+      dna.add(new HashMap<String, String>() {{
+        put("file", design.getLeft());
+        put("sample", design.getRight());
+        put("num", Integer.valueOf(num).toString());
+      }});
+      i++;
+    }
+    if (dna.size() > 0) {
+      model.put("dna", dna);
+    }
+
+    return model;
   }
 
   public static class FreemarkerRendererFactory {
