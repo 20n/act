@@ -32,6 +32,14 @@ public class DNADesign {
     this.organismAndAccessionNumber = organismAndAccessionNumber;
   }
 
+  public Integer getNumProteins() {
+    return numProteins;
+  }
+
+  public void setNumProteins(Integer numProteins) {
+    this.numProteins = numProteins;
+  }
+
   @JsonProperty("_id")
   private String id;
 
@@ -41,8 +49,12 @@ public class DNADesign {
   @JsonProperty("organism_info")
   private Set<List<String>> organismAndAccessionNumber;
 
-  public DNADesign(Set<String> dnaDesigns, Set<List<String>> organismAndAccessionNumber) {
+  @JsonProperty("num_proteins")
+  private Integer numProteins;
+
+  public DNADesign(Set<String> dnaDesigns, Set<List<String>> organismAndAccessionNumber, Integer numProteins) {
     this.dnaDesigns = dnaDesigns;
     this.organismAndAccessionNumber = organismAndAccessionNumber;
+    this.numProteins = numProteins;
   }
 }
