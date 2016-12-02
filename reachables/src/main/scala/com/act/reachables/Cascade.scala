@@ -1,5 +1,6 @@
 package com.act.reachables
 
+import java.io.File
 import java.lang.Long
 import java.util
 
@@ -233,7 +234,8 @@ object Cascade extends Falls {
     // Generate md5 hash for inchi
     val md5 = DigestUtils.md5Hex(if (inchi == null) "" else inchi)
     // Format the rendering filename
-    val renderingFilename = String.format("molecule-%s.png", md5)
+    val renderingFilename = new File("/mnt/data-level1/data/reachables-explorer-rendering-cache/", String.format("molecule-%s.png", md5)).getAbsolutePath
+//    val renderingFilename = String.format("molecule-%s.png", md5)
 
     val readableName = ActData.instance.chemId2ReadableName.get(id)
 
@@ -308,7 +310,7 @@ object Cascade extends Falls {
             })
           }
         } else {
-          // Let this node be activated as it is activated by a substrate only rxn
+          // Let this node be activated as it is activated by a cofefficient only rxn
           oneValid = true
         }
       })
