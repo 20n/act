@@ -66,11 +66,11 @@ public class ProteinToDNADriver {
     MongoDB mongoDB = new MongoDB("localhost", 27017, "validator_profiling_2");
     MongoClient client = new MongoClient(new ServerAddress("localhost", 27017));
     DB db = client.getDB("wiki_reachables");
-    String collectionName = "vanillin_pathways";
+    String collectionName = "pathways";
 
     JacksonDBCollection collection = JacksonDBCollection.wrap(db.getCollection(collectionName), ReactionPath.class, String.class);
-    JacksonDBCollection<DNADesign, String> coll = JacksonDBCollection.wrap(db.getCollection("dna_designs_3"), DNADesign.class, String.class);
-    JacksonDBCollection col2 = JacksonDBCollection.wrap(db.getCollection("vanillin_pathways_3"), ReactionPath.class, String.class);
+    JacksonDBCollection<DNADesign, String> coll = JacksonDBCollection.wrap(db.getCollection("dna_designs_4"), DNADesign.class, String.class);
+    JacksonDBCollection col2 = JacksonDBCollection.wrap(db.getCollection("pathways_vijay_4"), ReactionPath.class, String.class);
 
     Map<String, List<String>> proteinSeqToOrgInfo = new HashMap<>();
 
