@@ -71,6 +71,10 @@ public class Reachable {
     this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null, structureFilename, wordCloudFilename, null, xref, null);
   }
 
+  public Long getId() {
+    return id;
+  }
+
   public String getPageName() {
     return pageName;
   }
