@@ -43,7 +43,7 @@
      <#list dna as design>
  |-
  | ${design.num}
- | [[File:${design.file}|...${design.sample}...]]
+ | [[:File:${design.file}|...${design.sample}...]]
      </#list>
  |}
 
