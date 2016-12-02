@@ -27,9 +27,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class FreemarkerRenderer {
@@ -100,6 +102,8 @@ public class FreemarkerRenderer {
 
     DBCursor<ReactionPath> reachableDBCursor = Cascade.get_pathway_collection().find();
 
+    Set<Long> seenIds = new HashSet<>();
+
     int i = 0;
     while(reachableDBCursor.hasNext()) {
       // Hacked cursor munging to only consider targets of pathways.
@@ -110,6 +114,11 @@ public class FreemarkerRenderer {
       }
       Reachable r = loader.getJacksonReachablesCollection().findOne(new BasicDBObject("_id", thisPath.getTarget()));
 
+      if (seenIds.contains(thisPath.getTarget())) {
+        LOGGER.info("Skipping duplicate id %d", thisPath.getTarget());
+        continue;
+      }
+      seenIds.add(thisPath.getTarget());
 
       String inchiKey = r.getInchiKey();
       if (inchiKey != null) {
@@ -249,7 +258,7 @@ public class FreemarkerRenderer {
 
       if (target == null) {
         // This should not happen, methinks.
-        String msg = String.format("Unable to located chemical %d in reachables db", path.getTarget());
+        String msg = String.format("Unable to locate chemical %d in reachables db", path.getTarget());
         LOGGER.error(msg);
         throw new RuntimeException(msg);
       }
@@ -346,7 +355,7 @@ public class FreemarkerRenderer {
       } else {
         Reachable r = loader.getJacksonReachablesCollection().findOne(new BasicDBObject("_id", i.getId()));
         if (r == null) {
-          LOGGER.error("Unable to located chemical %d in reachables db", p.getTarget());
+          LOGGER.error("Unable to locate pathway chemical %d in reachables db", i.getId());
           nodeModel.put("name", "(unknown)");
         } else {
           nodeModel.put("link", r.getInchiKey());
