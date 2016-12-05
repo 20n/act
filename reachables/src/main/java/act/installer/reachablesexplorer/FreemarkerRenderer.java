@@ -17,6 +17,7 @@ import org.apache.logging.log4j.Logger;
 import org.mongojack.DBCursor;
 import org.mongojack.JacksonDBCollection;
 import org.twentyn.proteintodna.DNADesign;
+import org.twentyn.proteintodna.DNAOrgECNum;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -25,6 +26,7 @@ import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -293,11 +295,18 @@ public class FreemarkerRenderer {
 
     List<Pair<String, String>> sequenceFilesAndSummaries = new ArrayList<>();
 
-    List<String> designs = new ArrayList<>(designDoc.getDnaDesigns());
-    Collections.sort(designs);
+    List<DNAOrgECNum> designs = new ArrayList<>(designDoc.getDnaDesigns());
+    Collections.sort(designs, (a, b) -> {
+      int result = a.getNumProteins().compareTo(b.getNumProteins());
+      if (result != 0) {
+        return result;
+      }
+      // Comparing org and ec number is expensive, so ignore it for now.
+      return a.getDna().compareTo(b.getDna());
+    });
 
     for (int i = 0; i < designs.size(); i++) {
-      String design = designs.get(i);
+      String design = designs.get(i).getDna();
       int designSize = design.length();
       String shortVersion;
       if (designSize > SEQUENCE_SAMPLE_START + SEQUENCE_SAMPLE_SIZE) {
