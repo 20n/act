@@ -125,7 +125,7 @@ public class BrendaSupportingEntries {
   }
 
   public static class Sequence {
-    public static final String QUERY_PRECISE = StringUtils.join(new String[]{
+    public static final String QUERY_EXACT = StringUtils.join(new String[]{
         "select",
         "  s.ID,",
         "  s.First_Accession_Code,",
@@ -169,8 +169,9 @@ public class BrendaSupportingEntries {
      * @return A prepared statement that will fetch results of query.
      * @throws SQLException
      */
-    public static PreparedStatement prepareStatement(Connection conn, BrendaRxnEntry rxnEntry) throws SQLException {
-      PreparedStatement stmt = conn.prepareStatement(QUERY_VAGUE);
+    public static PreparedStatement prepareStatementVague(
+        Connection conn, BrendaRxnEntry rxnEntry, boolean requireExactMatch) throws SQLException {
+      PreparedStatement stmt = conn.prepareStatement(requireExactMatch ? QUERY_EXACT : QUERY_VAGUE);
       stmt.setString(1, rxnEntry.ecNumber);
       stmt.setString(2, rxnEntry.substrates);
       stmt.setString(3, rxnEntry.products);
@@ -179,9 +180,9 @@ public class BrendaSupportingEntries {
       return stmt;
     }
 
-    public static Sequence sequenceFromResultSet(ResultSet resultSet) throws SQLException {
+    public static Sequence sequenceFromResultSet(ResultSet resultSet, boolean fromExactMatch) throws SQLException {
       return new Sequence(resultSet.getInt(1), resultSet.getString(2), resultSet.getString(3),
-          resultSet.getString(4), resultSet.getString(5));
+          resultSet.getString(4), resultSet.getString(5), fromExactMatch);
     }
 
     protected Integer brendaId;
@@ -189,13 +190,16 @@ public class BrendaSupportingEntries {
     protected String entryName;
     protected String source;
     protected String sequence;
+    protected Boolean fromExactMatch;
 
-    public Sequence(Integer brendaId, String firstAccessionCode, String entryName, String source, String sequence) {
+    public Sequence(Integer brendaId, String firstAccessionCode, String entryName,
+                    String source, String sequence, Boolean fromExactMatch) {
       this.brendaId = brendaId;
       this.firstAccessionCode = firstAccessionCode;
       this.entryName = entryName;
       this.source = source;
       this.sequence = sequence;
+      this.fromExactMatch = fromExactMatch;
     }
 
     public Integer getBrendaId() {
@@ -216,6 +220,10 @@ public class BrendaSupportingEntries {
 
     public String getSequence() {
       return sequence;
+    }
+
+    public Boolean getFromExactMatch() {
+      return fromExactMatch;
     }
   }
 

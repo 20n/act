@@ -308,16 +308,38 @@ public class SQLConnection {
    * @throws SQLException
    */
   public List<BrendaSupportingEntries.Sequence> getSequencesForReaction(BrendaRxnEntry rxnEntry) throws SQLException{
+    List<BrendaSupportingEntries.Sequence> results = new ArrayList<>();
+
+    boolean requireExactMatch = true;
     try (
-        PreparedStatement stmt = BrendaSupportingEntries.Sequence.prepareStatement(brendaConn, rxnEntry);
+        PreparedStatement stmt =
+            BrendaSupportingEntries.Sequence.prepareStatementVague(brendaConn, rxnEntry, requireExactMatch);
         ResultSet resultSet = stmt.executeQuery();
     ) {
-      List<BrendaSupportingEntries.Sequence> results = new ArrayList<>();
       while (resultSet.next()) {
-        results.add(BrendaSupportingEntries.Sequence.sequenceFromResultSet(resultSet));
+        results.add(BrendaSupportingEntries.Sequence.sequenceFromResultSet(resultSet, requireExactMatch));
       }
-      return results;
     }
+
+    /* Fall back to vague match if there are no sequences that are precisely attributable to this reaction.
+     *
+     * If we find a perfect association, there is little utility in considering BRENDA sequences for the same EC number
+     * and organism (in which we'll have much less confidence), so we just terminate if we get a precise match.
+     */
+    if (results.size() == 0) {
+      requireExactMatch = false;
+      try (
+          PreparedStatement stmt =
+              BrendaSupportingEntries.Sequence.prepareStatementVague(brendaConn, rxnEntry, requireExactMatch);
+          ResultSet resultSet = stmt.executeQuery();
+      ) {
+        while (resultSet.next()) {
+          results.add(BrendaSupportingEntries.Sequence.sequenceFromResultSet(resultSet, requireExactMatch));
+        }
+      }
+    }
+
+    return results;
   }
 
 

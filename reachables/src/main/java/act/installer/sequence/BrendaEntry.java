@@ -31,12 +31,13 @@ public class BrendaEntry extends SequenceEntry {
         rxnId,
         rxn,
         brendaSequence.getBrendaId(),
-        brendaSequence.getFirstAccessionCode()
+        brendaSequence.getFirstAccessionCode(),
+        brendaSequence.getFromExactMatch()
     );
   }
 
   public BrendaEntry(String sequence, Long orgId, String standardName, Set<String> comments,
-                     long rxnid, Reaction rxn, Integer brendaId, String firstAccessionCode) {
+                     long rxnid, Reaction rxn, Integer brendaId, String firstAccessionCode, Boolean fromExactMatch) {
     this.sequence = sequence;
     this.org_id = orgId;
     this.refs = new ArrayList<>();
@@ -59,6 +60,7 @@ public class BrendaEntry extends SequenceEntry {
     this.data.put("accession",
         new JSONObject().put(Seq.AccType.uniprot.toString(),
             new JSONArray(Collections.singletonList(firstAccessionCode))));
+    this.data.put("from_exact_match", fromExactMatch);
 
     // extract_metadata processes this.data, so do that only after updating
     // this.data with the proxy fields from above.
