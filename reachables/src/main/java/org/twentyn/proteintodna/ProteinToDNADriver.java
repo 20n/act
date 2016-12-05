@@ -8,7 +8,6 @@ import com.act.reachables.ReactionPath;
 import com.mongodb.DB;
 import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
@@ -113,10 +112,6 @@ public class ProteinToDNADriver {
                       twoArray.add(sequenceInfo.getEc());
 
                       proteinSeqToOrgInfo.put(dnaSeq, twoArray);
-
-                      if (proteinSeqs.size() > 2) {
-                        break;
-                      }
                     }
                   }
                 }
@@ -163,6 +158,11 @@ public class ProteinToDNADriver {
             DNAOrgECNum instance = new DNAOrgECNum(dna.toSeq(), orgInfo, proteins.size());
             dnaDesigns.add(instance);
             System.out.println(dna.toSeq());
+
+            if (dnaDesigns.size() > 2) {
+              //break;
+            }
+
           } catch (Exception ex) {
             ex.printStackTrace();
           }
