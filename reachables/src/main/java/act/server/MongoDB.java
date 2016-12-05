@@ -2021,6 +2021,19 @@ public class MongoDB {
     return new DBIterator(cursor); // DBIterator is just a wrapper classs
   }
 
+  public DBIterator getIteratorOverReactions(BasicDBObject matchCriterion, boolean notimeout, BasicDBObject keys) {
+
+    if (keys == null) {
+      keys = new BasicDBObject();
+      // keys.put(projection, 1); // 1 means include, rest are excluded
+    }
+
+    DBCursor cursor = this.dbReactions.find(matchCriterion, keys);
+    if (notimeout)
+      cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
+    return new DBIterator(cursor); // DBIterator is just a wrapper classs
+  }
+
   public Reaction getNextReaction(DBIterator iterator) {
 
     if (!iterator.hasNext()) {
