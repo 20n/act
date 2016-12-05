@@ -114,8 +114,12 @@ public class CofactorRemover extends BiointerpretationProcessor {
     if (knownCofactorWriteDBIds.size() != knownCofactorReadDBIds.size()) {
       String msg = String.format("Old and new cofactor id sets to not match in size: %d vs. %d",
           knownCofactorReadDBIds.size(), knownCofactorWriteDBIds.size());
-      LOGGER.error(msg);
-      throw new RuntimeException(msg);
+      if (knownCofactorWriteDBIds.size() > knownCofactorReadDBIds.size()) {
+        LOGGER.error(msg);
+        throw new RuntimeException(msg);
+      } else {
+        LOGGER.warn("%s (might be the result of blacklisted InChI correction)", msg);
+      }
     }
     LOGGER.info("New cofactor id map constructed, ready to process reactions.");
     /* TODO: we want to prevent any further access to the old map of ids to avoid accidental use instead of
