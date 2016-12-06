@@ -57,7 +57,6 @@ public class ReactionPath {
         this.reactionSum = reactionSum;
     }
 
-    //@JsonProperty("path")
     private List<Cascade.NodeInformation> path;
 
     @JsonProperty("_id")
@@ -96,11 +95,9 @@ public class ReactionPath {
     private ArrayList<String> mostCommonOrganism;
     private ArrayList<Double> mostCommonOrganismCount;
 
-    //@JsonCreator
     public ReactionPath() {}
 
-    //@JsonCreator
-    public ReactionPath(/*@JsonProperty("_id")*/ String id, /*@JsonProperty("path")*/ List<Cascade.NodeInformation> path) {
+    public ReactionPath(String id, List<Cascade.NodeInformation> path) {
         this.id = id;
         this.path = path;
         this.target = Long.parseLong(this.id.split("w")[0]);
@@ -109,7 +106,6 @@ public class ReactionPath {
         this.reactionSum = this.path.stream().map(x -> getReactionCount(x)).collect(Collectors.summingInt(Integer::intValue));
     }
 
-    //@JsonCreator
     public ReactionPath(List<Cascade.NodeInformation> path, String id, Long target, Long rank, Integer degree, Integer reactionSum, Boolean isMostNative, ArrayList<Double> mostCommonOrganismCount, ArrayList<String> mostCommonOrganism) {
         this.path = path;
         this.id = id;

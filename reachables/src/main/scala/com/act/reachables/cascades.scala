@@ -109,12 +109,12 @@ object cascades {
     val parents = reachables.map( getp )
 
     val reach_neighbors = (reachables zip parents) zip (upRxns zip downRxns)
-//    for (tuple <- reach_neighbors) {
-//      val reachid = tuple._1._1
-//      val json = updowns_json(tuple)
-//      val jsonstr = json.toString(2)
-//      write_to(new File(dir, s"c$reachid.json").getAbsolutePath, jsonstr)
-//    }
+    for (tuple <- reach_neighbors) {
+      val reachid = tuple._1._1
+      val json = updowns_json(tuple)
+      val jsonstr = json.toString(2)
+      write_to(new File(dir, s"c$reachid.json").getAbsolutePath, jsonstr)
+    }
 
     println("Done: Written node updowns.")
 
@@ -125,23 +125,26 @@ object cascades {
 
     val counter = new AtomicInteger()
 
+    //TODO Allow CLI options here
+    // THese reachables are ordered such that common biosynthesizable molecules are done first.
     val reach: List[Long] = List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 174960L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
-//    val reach = List(5530)
+
+    // constructInformationForReachable modifies global scope variables, so can't run in parallel.
     reach.foreach({
       println(s"Reaction number ${counter.getAndIncrement()}")
-      doStuff(_, dir)
+      constructInformationForReachable(_, dir)
     })
 
     println
 
     println("Done: Written node cascades/waterfalls.")
 
-    def merge_lset(a:Set[Long], b:Set[Long]) = a ++ b 
+    def merge_lset(a:Set[Long], b:Set[Long]) = a ++ b
     val rxnids = rxnsThatProduce.reduce(merge_lset) ++ rxnsThatConsume.reduce(merge_lset)
     for (rxnid <- rxnids) {
       val json = rxn_json(get_reaction_by_UUID(db, rxnid))
       val jsonstr = json.toString(2)
-//      write_to(new File(dir, s"r$rxnid.json").getAbsolutePath, jsonstr)
+      write_to(new File(dir, s"r$rxnid.json").getAbsolutePath, jsonstr)
     }
 
     println("Done: Written reactions.")
@@ -150,24 +153,24 @@ object cascades {
     def foldset(s: Set[ReachRxn]) = {
       var acc = Set[Long]()
       for (cas <- s)
-        for (c <- cas.getReferencedChems()) 
+        for (c <- cas.getReferencedChems())
           acc += c
       acc
     }
-    def foldlistset(acc: Set[Long], s: Set[ReachRxn]) = acc ++ foldset(s) 
+    def foldlistset(acc: Set[Long], s: Set[ReachRxn]) = acc ++ foldset(s)
     val upmols = upRxns.foldLeft(Set[Long]())( foldlistset )
     val downmols = downRxns.foldLeft(Set[Long]())( foldlistset )
     val molecules = (reachables ++ parents).toSet ++ upmols ++ downmols
     for ( mid <- molecules ) {
       val mjson = mol_json(db.getChemicalFromChemicalUUID(mid))
       val jsonstr = mjson.toString(2)
-//      write_to(new File(dir, s"m$mid.json").getAbsolutePath, jsonstr)
+      write_to(new File(dir, s"m$mid.json").getAbsolutePath, jsonstr)
     }
 
     println("Done: Written molecules.")
 
-    // now write a big tab-sep file with the "id smiles inchi synonyms" 
-    // of all chemicals referenced so that later we can run a process 
+    // now write a big tab-sep file with the "id smiles inchi synonyms"
+    // of all chemicals referenced so that later we can run a process
     // to render each one of those chemicals.
     val chemfile = to_append_file(chemlist)
     for (mid <- molecules) {
@@ -190,7 +193,7 @@ object cascades {
     hr
   }
 
-  def doStuff(reachid: Long, dir: String): Unit = {
+  def constructInformationForReachable(reachid: Long, dir: String): Unit = {
 
     println(s"Started reachable $reachid")
 
@@ -198,7 +201,7 @@ object cascades {
     val waterfall = new Waterfall(reachid)
     val json    = waterfall.json()
     val jsonstr = json.toString(2)
-//    write_to(new File(dir, s"p$reachid.json").getAbsolutePath, jsonstr)
+    write_to(new File(dir, s"p$reachid.json").getAbsolutePath, jsonstr)
 
     // write to disk; cascade as dot file
     val cascade = new Cascade(reachid)

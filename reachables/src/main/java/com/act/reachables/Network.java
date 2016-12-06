@@ -66,27 +66,24 @@ public class Network implements Serializable {
 
   void addNode(Node n, Long nid) {
     if (this.nodeMapping.containsKey(n)){
-      if (Boolean.valueOf((String)Node.getAttribute(n.id, "isrxn"))) {
-        Node currentNode = this.nodeMapping.get(n);
-//        Integer newCount = (int) Node.getAttribute(currentNode.id, "reaction_count") + (Node.getAttribute(nid, "reaction_count") == null ? 0 : (int) Node.getAttribute(nid, "reaction_count"));
-//        Node.setAttribute(currentNode.id, "reaction_count", newCount);
+      if (!Boolean.valueOf((String)Node.getAttribute(n.id, "isrxn"))) {
+        return;
+      }
 
-        // We comment these out as sometimes they will cause heap space errors.  To fix, convert to sets.
-        if (Node.getAttribute(nid, "reaction_ids") != null) {
-          HashSet s = ((HashSet) Node.getAttribute(currentNode.id, "reaction_ids"));
-          s.addAll((HashSet) Node.getAttribute(nid, "reaction_ids"));
+      Node currentNode = this.nodeMapping.get(n);
+      if (Node.getAttribute(nid, "reaction_ids") != null) {
+        HashSet s = ((HashSet) Node.getAttribute(currentNode.id, "reaction_ids"));
+        s.addAll((HashSet) Node.getAttribute(nid, "reaction_ids"));
 
-          Node.setAttribute(currentNode.id, "reaction_ids", s);
-          Node.setAttribute(currentNode.id, "reaction_count", s.size());
-        }
+        Node.setAttribute(currentNode.id, "reaction_ids", s);
+        Node.setAttribute(currentNode.id, "reaction_count", s.size());
+      }
 
-        if (Node.getAttribute(nid, "organisms") != null) {
-          HashSet orgs = ((HashSet) Node.getAttribute(currentNode.id, "organisms"));
-          orgs.addAll((HashSet) Node.getAttribute(nid, "organisms"));
+      if (Node.getAttribute(nid, "organisms") != null) {
+        HashSet orgs = ((HashSet) Node.getAttribute(currentNode.id, "organisms"));
+        orgs.addAll((HashSet) Node.getAttribute(nid, "organisms"));
 
-          Node.setAttribute(currentNode.id, "organisms", orgs);
-        }
-
+        Node.setAttribute(currentNode.id, "organisms", orgs);
       }
      } else {
       this.idToNode.put(nid, n);
@@ -110,10 +107,7 @@ public class Network implements Serializable {
       Set<Edge> newEdgeList = new HashSet<>();
       newEdgeList.add(e);
       this.edgesGoingToNode.put(e.getDst(), newEdgeList);
-
-      Set<Edge> newsEdgeList = new HashSet<>();
-      newsEdgeList.add(e);
-      this.edgesGoingToId.put(e.getDst().id, newsEdgeList);
+      this.edgesGoingToId.put(e.getDst().id, newEdgeList);
     }
   }
 
@@ -145,8 +139,6 @@ public class Network implements Serializable {
     lines.add("digraph " + this.name + " {");
 
     for (Node n : new ArrayList<Node>(this.nodeMapping.values())) {
-      // create a line for nodeMapping like so:
-      // nident [label="displayname"];
       String id;
       String label;
       String tooltip;
@@ -158,7 +150,7 @@ public class Network implements Serializable {
         int reactionCount = (int) Node.getAttribute(n.id, "reaction_count");
 
         Set<String> rawLabel = (HashSet) Node.getAttribute(n.id, "label_string");
-        List<String> awLabel = rawLabel.stream().filter(x -> !x.equals("")).collect(Collectors.toList());
+        List<String> filteredRawLabel = rawLabel.stream().filter(x -> !x.equals("")).collect(Collectors.toList());
 
         Long labelId = n.getIdentifier() - Cascade.rxnIdShift();
         if (labelId < 0){
@@ -168,25 +160,21 @@ public class Network implements Serializable {
         HashSet<String> organisms = (HashSet<String>) Node.getAttribute(n.id, "organisms");
 
         String fullLabel;
-        if (awLabel.isEmpty()) {
+        if (filteredRawLabel.isEmpty()) {
           fullLabel = "Not Available";
         } else {
-          fullLabel = awLabel.get(0);
+          fullLabel = filteredRawLabel.get(0);
           if (rawLabel.size() > 1){
-            fullLabel += " and " + String.valueOf(awLabel.size() - 1) + " more";
+            fullLabel += " and " + String.valueOf(filteredRawLabel.size() - 1) + " more";
           }
         }
 
-
-//        label = Cascade.quote(fullLabel + " [#" + reactionCount + " " + String.valueOf(labelId) + "]");
         label = Cascade.quote(fullLabel);
         tooltip = Cascade.quote((String)Node.getAttribute(n.id, "tooltip_string"));
 
         url = Cascade.quote((String)Node.getAttribute(n.id, "url_string"));
       } else {
         id = String.valueOf(n.getIdentifier());
-
-
 
         label = (String)Node.getAttribute(n.id, "label_string");
         tooltip = (String)Node.getAttribute(n.id, "tooltip_string");

@@ -105,6 +105,7 @@ object Cascade extends Falls {
     }
   }
 
+  // Shift rxn ids outside of the range of molecule ids so that there is no collision between molecule and reaction ids
   val rxnIdShift = 4000000000l
 
   val pattern = """:\[([\s\d\,]*)\]""".r
@@ -151,7 +152,7 @@ object Cascade extends Falls {
       s.addAll(convertedIds)
 
       Node.setAttribute(ident, "reaction_ids", s)
-       Node.setAttribute(ident, "reaction_count", s.size())
+      Node.setAttribute(ident, "reaction_count", s.size())
 
       val current =  Node.getAttribute(ident, "label_string").asInstanceOf[util.HashSet[String]]
       current.addAll(labelSet)
@@ -199,7 +200,6 @@ object Cascade extends Falls {
     val md5 = DigestUtils.md5Hex(if (inchi == null) "" else inchi)
     // Format the rendering filename
     val renderingFilename = new File("/mnt/data-level1/data/reachables-explorer-rendering-cache/", String.format("molecule-%s.png", md5)).getAbsolutePath
-//    val renderingFilename = String.format("molecule-%s.png", md5)
 
     val readableName = ActData.instance.chemId2ReadableName.get(id)
 

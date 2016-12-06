@@ -103,19 +103,7 @@ public class WavefrontExpansion {
     ActData.instance().natives.forEach(this::addToReachablesAndCofactorNatives);
     ActData.instance().cofactors.forEach(this::addToReachablesAndCofactorNatives);
 
-//    for (List<Long> c : ActData.instance().noSubstrateRxnsToProducts.values()) {
-//      c.stream().forEach(this::addToReachablesAndCofactorNatives);
-//    }
-
     System.out.format("Size of cofactors_and_natives: %d\n", this.cofactors_and_natives.size());
-
-//    logProgress("Adding products of reactions without substrates.\n");
-//    for (Map.Entry<Long, List<Long>> entry : ActData.instance().noSubstrateRxnsToProducts.entrySet()) {
-//      for (Long c : entry.getValue()) {
-//        addToReachablesAndCofactorNatives(c);
-//      }
-//    }
-//    logProgress("Reachables size after adding products of substrate-free reactions: %d\n", this.R.size());
 
     logProgress("Starting computeTree");
     logProgress("Cofactors and natives = " + this.cofactors_and_natives);
@@ -475,7 +463,6 @@ public class WavefrontExpansion {
         // so we have to allow cofactors in the parent candidates
         // but at the same time, some are really bad parents,
         // e.g., water and ATP, so at the end we blacklist them as owning parents
-//        parent_candidates.addAll(ActData.instance().rxnSubstratesCofactors.get(r));
 
         if (!this.R_parent_candidates.containsKey(p))
           this.R_parent_candidates.put(p, new HashSet<>());
@@ -649,7 +636,6 @@ public class WavefrontExpansion {
       boolean at_least_one_parent = false;
 
       Set<Long> candidates = this.R_parent_candidates.get(child);
-      //removeBlackListedCofactorsAsParents(candidates, child);
       Long most_similar = pickMostSimilar(child, candidates);
 
       if (most_similar != null && possible_children.containsKey(most_similar)) {
@@ -723,7 +709,6 @@ public class WavefrontExpansion {
           for (Long n : still_orphan) {
             // first, if there are multiple elements in the root assumptions, then pick the most similar
             Set<Long> candidates = deepCopy(treeRoot.speculatedChems());
-//            removeBlackListedCofactorsAsParents(candidates, n);
             Long most_similar = pickMostSimilar(n, candidates);
             if (most_similar == null) {
               // we do not have structure information (either for n, or for any of the candidates)

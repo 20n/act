@@ -341,9 +341,6 @@ public class LoadAct extends SteppedTask {
       Reaction.RxnDataSource src = r.getDataSource();
       Set<Reaction> reactionsWithAccurateDirections = r.correctForReactionDirection();
       counts.put(src, counts.get(src) + reactionsWithAccurateDirections.size());
-      if (r.getUUID() % 1000 == 0) {
-        logProgress("Pulled: %s\r", counts.toString());
-      }
 
       // Correct for right-to-left and reversible actions, adding all appropriate directions to the graph.
       for (Reaction directedRxn : reactionsWithAccurateDirections) {
