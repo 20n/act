@@ -290,6 +290,128 @@ public class BrendaSupportingEntries {
     return false;
   }
 
+  public static class PosttranslationalModification implements FromBrendaDB<PosttranslationalModification> {
+    public static final String QUERY = "select Posttranslational_Modification, Commentary, Literature from Posttranslational_Modification where EC_Number = ? and Literature like ? and Organism = ?";
+    public static final String ALL_QUERY = "select Posttranslational_Modification, Commentary, Literature, EC_Number, Organism from Posttranslational_Modification";
+    public static final String COLUMN_FAMILY_NAME = "Cloned";
+    protected static final PosttranslationalModification INSTANCE = new PosttranslationalModification();
+
+    protected String commentary;
+    protected String posttranslationalModification;
+
+    private PosttranslationalModification() {}
+
+    public PosttranslationalModification(String posttranslationalModification, String commentary) {
+      this.commentary = commentary;
+      this.posttranslationalModification = posttranslationalModification;
+    }
+
+    public String getCommentary() {
+      return commentary;
+    }
+
+    public String getPosttranslationalModification() { return posttranslationalModification; }
+
+    @Override
+    public String getQuery() {
+      return QUERY;
+    }
+
+    @Override
+    public PosttranslationalModification fromResultSet(ResultSet resultSet) throws SQLException {
+      return new PosttranslationalModification(resultSet.getString(1), resultSet.getString(2));
+    }
+
+    @Override
+    public int getLiteratureField() {
+      return 3;
+    }
+
+    @Override
+    public String getAllQuery() {
+      return ALL_QUERY;
+    }
+
+    @Override
+    public int getLiteratureFieldForAllQuery() {
+      return 3;
+    }
+
+    @Override
+    public int getECNumberFieldForAllQuery() {
+      return 4;
+    }
+
+    @Override
+    public int getOrganismFieldForAllQuery() {
+      return 5;
+    }
+
+    @Override
+    public String getColumnFamilyName() {
+      return COLUMN_FAMILY_NAME;
+    }
+  }
+
+  public static class Cloned implements FromBrendaDB<Cloned> {
+    public static final String QUERY = "select Commentary, Literature from Cloned where EC_Number = ? and Literature like ? and Organism = ?";
+    public static final String ALL_QUERY = "select Commentary, Literature, EC_Number, Organism from Cloned";
+    public static final String COLUMN_FAMILY_NAME = "Cloned";
+    protected static final Cloned INSTANCE = new Cloned();
+
+    protected String commentary;
+
+    private Cloned() {}
+
+    public Cloned(String commentary) {
+      this.commentary = commentary;
+    }
+
+    public String getCommentary() {
+      return commentary;
+    }
+
+    @Override
+    public String getQuery() {
+      return QUERY;
+    }
+
+    @Override
+    public Cloned fromResultSet(ResultSet resultSet) throws SQLException {
+      return new Cloned(resultSet.getString(1));
+    }
+
+    @Override
+    public int getLiteratureField() {
+      return 2;
+    }
+
+    @Override
+    public String getAllQuery() {
+      return ALL_QUERY;
+    }
+
+    @Override
+    public int getLiteratureFieldForAllQuery() {
+      return 2;
+    }
+
+    @Override
+    public int getECNumberFieldForAllQuery() {
+      return 3;
+    }
+
+    @Override
+    public int getOrganismFieldForAllQuery() {
+      return 4;
+    }
+
+    @Override
+    public String getColumnFamilyName() {
+      return COLUMN_FAMILY_NAME;
+    }
+  }
+
   // Classes representing data linked to the Substrates_Products and Natural_Substrates_Products tables.
   public static class KMValue implements FromBrendaDB<KMValue> {
     public static final String QUERY = "select KM_Value, Commentary, Literature from KM_Value " +
@@ -1190,6 +1312,8 @@ public class BrendaSupportingEntries {
     // Note: update this list whenever new FromBrendaDB classes are created.
     List<FromBrendaDB> instances = new ArrayList<>();
     instances.add(KMValue.INSTANCE);
+    instances.add(Cloned.INSTANCE);
+    instances.add(PosttranslationalModification.INSTANCE);
     instances.add(SpecificActivity.INSTANCE);
     instances.add(OrganismCommentary.INSTANCE);
     instances.add(GeneralInformation.INSTANCE);

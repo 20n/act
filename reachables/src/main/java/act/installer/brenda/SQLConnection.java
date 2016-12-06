@@ -61,6 +61,15 @@ public class SQLConnection {
           "where lm1.Ligand = ?",
   }, " ");
 
+  public static final String QUERY_CLONED_DATA = StringUtils.join(new String[] {
+      "select",
+      "  EC_Number,",
+      "  Commentary,",
+      "  Literature,",
+      "  Organism,",
+      "from Cloned",
+      "where EC_Number = ?",
+  }, " ");
 
   private Connection brendaConn;
   private Connection brendaLigandConn;
@@ -115,6 +124,7 @@ public class SQLConnection {
     String query = isNatural ? QUERY_NATURAL_SUBSTRATES_PRODUCTS : QUERY_SUBSTRATES_PRODUCTS;
     final PreparedStatement stmt = brendaConn.prepareStatement(query);
     final ResultSet results = stmt.executeQuery();
+
     return new Iterator<BrendaRxnEntry>() {
       @Override
       public boolean hasNext() {
@@ -125,11 +135,35 @@ public class SQLConnection {
       public BrendaRxnEntry next() {
         try {
           results.next();
+
+          final PreparedStatement clonedInfoStmt = brendaConn.prepareStatement(QUERY_CLONED_DATA);
+          clonedInfoStmt.setString(1, results.getString(1));
+          final ResultSet clonedInfoResults = clonedInfoStmt.executeQuery();
+
+          while (hasNextHelper(clonedInfoResults, clonedInfoStmt)) {
+            clonedInfoResults.next();
+
+
+
+
+
+          }
+
+
+
+
+
+
           Integer literatureSubstrates = results.getInt(4);
 
           if (results.wasNull()) {
             literatureSubstrates = null;
           }
+
+
+
+
+
           BrendaRxnEntry sp = new BrendaRxnEntry(
               results.getString(1),
               results.getString(2),
@@ -356,6 +390,16 @@ public class SQLConnection {
   // TODO: these could probably be consolidated via a single polymorphic method.
   public List<BrendaSupportingEntries.KMValue> getKMValue(BrendaRxnEntry reaction) throws SQLException {
     return getRSValues(BrendaSupportingEntries.KMValue.INSTANCE, BrendaSupportingEntries.KMValue.QUERY,
+        reaction.getEC(), reaction.getLiteratureRef(), reaction.getOrganism());
+  }
+
+  public List<BrendaSupportingEntries.Cloned> getClonedValue(BrendaRxnEntry reaction) throws SQLException {
+    return getRSValues(BrendaSupportingEntries.Cloned.INSTANCE, BrendaSupportingEntries.Cloned.QUERY,
+        reaction.getEC(), reaction.getLiteratureRef(), reaction.getOrganism());
+  }
+
+  public List<BrendaSupportingEntries.PosttranslationalModification> getPosttranslationalModification(BrendaRxnEntry reaction) throws SQLException {
+    return getRSValues(BrendaSupportingEntries.PosttranslationalModification.INSTANCE, BrendaSupportingEntries.PosttranslationalModification.QUERY,
         reaction.getEC(), reaction.getLiteratureRef(), reaction.getOrganism());
   }
 

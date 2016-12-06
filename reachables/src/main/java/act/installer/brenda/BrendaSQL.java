@@ -522,6 +522,18 @@ public class BrendaSQL {
     }
 
     {
+      List<BrendaSupportingEntries.Cloned> vals = getRocksDBEntry(rocksDB,
+          columnFamilyHandleMap.get(BrendaSupportingEntries.Cloned.COLUMN_FAMILY_NAME), supportingEntryKey);
+      addClonedValues(protein, vals);
+    }
+
+    {
+      List<BrendaSupportingEntries.PosttranslationalModification> vals = getRocksDBEntry(rocksDB,
+          columnFamilyHandleMap.get(BrendaSupportingEntries.PosttranslationalModification.COLUMN_FAMILY_NAME), supportingEntryKey);
+      addPosttranslationalModificationValues(protein, vals);
+    }
+
+    {
       List<BrendaSupportingEntries.KCatKMValue> vals = getRocksDBEntry(rocksDB,
           columnFamilyHandleMap.get(BrendaSupportingEntries.KCatKMValue.COLUMN_FAMILY_NAME), supportingEntryKey);
       addKCatKMValues(protein, vals);
@@ -633,6 +645,8 @@ public class BrendaSQL {
       protein.put("sequences", seqs);
     }
 
+    addClonedValues(protein, sqldb.getClonedValue(sqlrxn));
+    addPosttranslationalModificationValues(protein, sqldb.getPosttranslationalModification(sqlrxn));
     addKMValues(protein, sqldb.getKMValue(sqlrxn));
     addKCatKMValues(protein, sqldb.getKCatKMValues(sqlrxn));
     addSpecificActivity(protein, sqldb.getSpecificActivity(sqlrxn));
@@ -646,6 +660,30 @@ public class BrendaSQL {
     addOrganismCommentary(protein, sqldb.getOrganismCommentary(sqlrxn));
 
     return protein;
+  }
+
+  public void addPosttranslationalModificationValues(JSONObject protein, List<BrendaSupportingEntries.PosttranslationalModification> values) {
+    // ADD PosttranslationalModificationValues information
+    JSONArray entries = new JSONArray();
+    for (BrendaSupportingEntries.PosttranslationalModification PosttranslationalModification : values) {
+      JSONObject e = new JSONObject();
+      e.put("Posttranslational_Modification", PosttranslationalModification.getPosttranslationalModification());
+      e.put("comment", PosttranslationalModification.getCommentary());
+      entries.put(e);
+    }
+    protein.put("Posttranslational_Modification", entries);
+  }
+
+
+  public void addClonedValues(JSONObject protein, List<BrendaSupportingEntries.Cloned> values) {
+    // ADD Cloned information
+    JSONArray entries = new JSONArray();
+    for (BrendaSupportingEntries.Cloned cloned : values) {
+      JSONObject e = new JSONObject();
+      e.put("comment", cloned.getCommentary());
+      entries.put(e);
+    }
+    protein.put("cloned", entries);
   }
 
   public void addKMValues(JSONObject protein, List<BrendaSupportingEntries.KMValue> values) {
