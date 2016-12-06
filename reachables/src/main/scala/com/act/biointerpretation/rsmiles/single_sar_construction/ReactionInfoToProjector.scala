@@ -20,17 +20,17 @@ class ReactionInfoToProjector() {
   /**
     * Tests all ROs to see if any RO in the corpus matches this reaction. If one is found, builds a reactor to
     * map the transformation.
+    *
     * @param info The ReactionInformation of the reaction to build a projector from.
     * @return The reactor corresponding to the full mapped transformation, if any succeeds. None otherwise.
     */
   def searchForReactor(info: ReactionInformation): Option[Reactor] = {
     val substrate: Molecule = MoleculeImporter.importMolecule(info.substrates(0).chemicalAsString, MoleculeFormat.smarts)
-    val expectedProduct: Molecule = MoleculeImporter.importMolecule(info.substrates(0).chemicalAsString, MoleculeFormat.smarts)
+    val expectedProduct: Molecule = MoleculeImporter.importMolecule(info.products(0).chemicalAsString, MoleculeFormat.smarts)
 
     for (ro: Ero <- roCorpus.getRos.asScala) {
-      println(s"Trying RO ${ro.getId}.")
       val substrateCopy: Molecule = substrate.clone(); // chemaxon-defined deep copy method for molecules
-      val maybeReactor : Option[Reactor] = getReactor(substrateCopy, expectedProduct, ro)
+      val maybeReactor: Option[Reactor] = getReactor(substrateCopy, expectedProduct, ro)
       if (maybeReactor.isDefined) {
         return maybeReactor
       }
@@ -40,34 +40,34 @@ class ReactionInfoToProjector() {
 
   /**
     * Tries to react the given substrate with the given RO to produce the given product.
+    *
     * @return A reactor for the full mapped reaction, if successful. None otherwise.
     */
-  private def getReactor(substrateToReact : Molecule, expectedProduct : Molecule, ro : Ero): Option[Reactor] = {
+  private def getReactor(substrateToReact: Molecule, expectedProduct: Molecule, ro: Ero): Option[Reactor] = {
     val reactor = ro.getReactor
     reactor.setReactants(Array(substrateToReact))
 
     var matchesRo: Boolean = true
-    val producedProduct: Option[Molecule] = {
-      try {
-        Some(reactionProjector.reactUntilProducesProduct(reactor, expectedProduct))
-      } catch {
-        case e: ReactionException =>
-          None
-      }
+
+    var producedProduct: Option[Molecule] = None
+    try {
+      producedProduct = Some(reactionProjector.reactUntilProducesProduct(reactor, expectedProduct))
+    } catch {
+      case e: ReactionException => {}
     }
 
     if (producedProduct.isDefined) {
-      Some(buildReactor(substrateToReact, producedProduct.get))
-    } else {
-      None
+      return Some(buildReactor(substrateToReact, producedProduct.get))
     }
+    return None
   }
 
   /**
     * Given that a Reactor was used to transform the reacted substrate into the produced product, this method
     * returns a Reactor corresponding to that entire atom-mapped transformation.
+    *
     * @param reactedSubstrate The substrate reacted.
-    * @param producedProduct The product produced.
+    * @param producedProduct  The product produced.
     * @return The full Reactor.
     */
   private def buildReactor(reactedSubstrate: Molecule, producedProduct: Molecule): Reactor = {
