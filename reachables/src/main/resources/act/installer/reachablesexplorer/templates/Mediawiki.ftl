@@ -45,3 +45,47 @@
 <#else>
 '''Patents''': none
 </#if>
+
+
+<tabs>
+
+<#if wikipediaUrl??>
+<tab name="Wikipedia">
+{{#iDisplay:${wikipediaUrl}|500%}}
+</tab>
+</#if>
+
+<#if bingUsageTerms??>
+<tab name="Bing hits">
+<#list bingUsageTerms as usageTerm>
+* ${usageTerm.usageTerm}
+<#list usageTerm.urls as url>
+** [${url} ${url}]
+</#list>
+</#list>
+</tab>
+</#if>
+
+<#if meshHeadings??>
+<tab name="Mesh headings">
+<#list meshHeadings as synonymsAndType>
+* ${synonymsAndType.synonymType}
+<#list synonymsAndType.synonyms as syno>
+** ${syno}
+</#list>
+</#list>
+</tab>
+</#if>
+
+<#if pubchemSynonyms??>
+<tab name="PubChem synonyms">
+<#list pubchemSynonyms as synonymsAndType>
+* ${synonymsAndType.synonymType}
+<#list synonymsAndType.synonyms as syno>
+** ${syno}
+</#list>
+</#list>
+</tab>
+</#if>
+
+</tabs>

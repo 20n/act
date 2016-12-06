@@ -1,5 +1,6 @@
 package act.installer.reachablesexplorer;
 
+import act.shared.Chemical;
 import com.act.reachables.Cascade;
 import com.act.reachables.ReactionPath;
 import com.mongodb.BasicDBObject;
@@ -26,7 +27,6 @@ import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -65,9 +65,9 @@ public class FreemarkerRenderer {
     FreemarkerRenderer renderer = FreemarkerRendererFactory.build(loader);
     //renderer.writePageToDir(new File("/Volumes/shared-data/Thomas/WikiPagesForUpload"));
     renderer.writePageToDir(
-        new File("/Users/mdaly/work/act/reachables/vanillin_pages/template_test"),
-        new File("/Users/mdaly/work/act/reachables/vanillin_pages/template_test"),
-        new File("/Users/mdaly/work/act/reachables/vanillin_pages/sequence_test"));
+        new File("/Volumes/shared-data-1/Thomas/WikiPagesForTestUpload"),
+        new File("/Volumes/shared-data-1/Thomas/WikiPagesForTestUpload"),
+        new File("/Volumes/shared-data-1/Thomas/WikiPagesForTestUpload"));
   }
 
   private FreemarkerRenderer(Loader loader) {
@@ -139,7 +139,6 @@ public class FreemarkerRenderer {
       } else {
         LOGGER.error("page does not have an inchiKey");
       }
-
     }
   }
 
@@ -232,6 +231,57 @@ public class FreemarkerRenderer {
           }).
           collect(Collectors.toList());
       model.put("patents", patentModel);
+    }
+
+    Map<Chemical.REFS, BasicDBObject> xrefs = r.getXref();
+
+    // Each XREF being populated in a Reachable as DBObjects, serialization and deserialization causes funky problems
+    // to appear. In particular, casting to BasicDBObjects fails because Jackson deserialized it as a LinkedHashMap
+    // See http://stackoverflow.com/questions/28821715/java-lang-classcastexception-java-util-linkedhashmap-cannot-be-cast-to-com-test
+    if (xrefs.containsKey(Chemical.REFS.BING)) {
+      BasicDBObject bingXref = xrefs.get(Chemical.REFS.BING);
+      Map<String, Object> bingMetadata = (Map) bingXref.get("metadata");
+      List<Map> bingUsageTerms = (List) bingMetadata.get("usage_terms");
+      if (bingUsageTerms.size() > 0) {
+        List<Map<String, Object>> bingUsageTermsModel = bingUsageTerms.stream()
+            .map(usageTerm -> new HashMap<String, Object>() {{
+              put("usageTerm", usageTerm.get("usage_term"));
+              put("urls", usageTerm.get("urls"));
+            }})
+            .collect(Collectors.toList());
+        Collections.sort(
+            bingUsageTermsModel,
+            (o1, o2) -> ((ArrayList) o2.get("urls")).size() - ((ArrayList) o1.get("urls")).size());
+        model.put("bingUsageTerms", bingUsageTermsModel);
+      }
+    }
+
+    if (xrefs.containsKey(Chemical.REFS.WIKIPEDIA)) {
+      BasicDBObject wikipediaXref = xrefs.get(Chemical.REFS.WIKIPEDIA);
+      String wikipediaUrl = wikipediaXref.getString("dbid");
+      model.put("wikipediaUrl", wikipediaUrl);
+    }
+
+    if (r.getSynonyms() != null) {
+      if (r.getSynonyms().getPubchemSynonyms() != null) {
+        List<Map<String, Object>> pubchemSynonymModel = r.getSynonyms().getPubchemSynonyms().entrySet().stream()
+            .map(entry -> new HashMap<String, Object>() {{
+              put("synonymType", entry.getKey().toString());
+              put("synonyms", entry.getValue().stream().collect(Collectors.toList()));
+            }})
+            .collect(Collectors.toList());
+        model.put("pubchemSynonyms", pubchemSynonymModel);
+      }
+      if (r.getSynonyms().getMeshHeadings() != null) {
+        List<Map<String, Object>> meshHeadingModel = r.getSynonyms().getMeshHeadings().entrySet().stream()
+            .map(entry -> new HashMap<String, Object>() {{
+              put("synonymType", entry.getKey().toString());
+              put("synonyms", entry.getValue().stream().collect(Collectors.toList()));
+            }})
+            .collect(Collectors.toList());
+
+        model.put("meshHeadings", meshHeadingModel);
+      }
     }
 
     return model;
