@@ -4,7 +4,7 @@ import java.io.File
 
 import com.act.analysis.chemicals.molecules.MoleculeFormat
 import com.act.biointerpretation.rsmiles.chemicals.abstract_chemicals.AbstractChemicalsToReactions
-import com.act.biointerpretation.rsmiles.sar_construction.{ConstructSarsFromPredictionCorpus, ReactionRoAssignment}
+import com.act.biointerpretation.rsmiles.cluster_sar_construction.{ConstructSarsFromPredictionCorpus, ReactionRoAssignment}
 import com.act.workflow.tool_manager.jobs.Job
 import com.act.workflow.tool_manager.tool_wrappers.{ScalaJobWrapper, SparkWrapper}
 import com.act.workflow.tool_manager.workflow.Workflow

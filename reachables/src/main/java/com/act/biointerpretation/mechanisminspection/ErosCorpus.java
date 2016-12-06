@@ -18,6 +18,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class ErosCorpus implements Iterable<Ero> {
@@ -79,13 +80,21 @@ public class ErosCorpus implements Iterable<Ero> {
   }
 
   /**
+   * Filter by arbitrary predicate.
+   * @filter the predicate to match.
+   */
+  public void filterCorpus(Predicate<Ero> filter) {
+    ros.removeIf(ro -> !filter.test(ro));
+  }
+
+  /**
    * Filter corpus to contain only RO ids in the supplied list.
    *
    * @param roIdList The list of relevant ids.
    */
   public void filterCorpusById(List<Integer> roIdList) {
     Set<Integer> roSet = new HashSet<>(roIdList);
-    ros.removeIf(ro -> !roSet.contains(ro.getId()));
+    filterCorpus(ro -> roSet.contains(ro.getId()));
   }
 
   /**
@@ -134,7 +143,16 @@ public class ErosCorpus implements Iterable<Ero> {
    * @param count The required number of substrates.
    */
   public void filterCorpusBySubstrateCount(Integer count) {
-    ros.removeIf(ro -> !ro.getSubstrate_count().equals(count));
+    filterCorpus(ro -> ro.getSubstrate_count().equals(count));
+  }
+
+  /**
+   * Filter corpus to only contain ROs with the given number of products.
+   *
+   * @param count The required number of products.
+   */
+  public void filterCorpusByProductCount(Integer count) {
+    filterCorpus(ro -> ro.getProduct_count().equals(count));
   }
 
   /**

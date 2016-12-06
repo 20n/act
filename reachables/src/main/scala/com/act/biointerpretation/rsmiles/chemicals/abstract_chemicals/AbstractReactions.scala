@@ -42,16 +42,16 @@ object AbstractReactions {
     abstractChemicals.seq.keySet.foreach(cId => chemicalList.add(cId.asInstanceOf[AnyRef]))
 
     // Matches a reaction if either the Products or Substrates array contains an abstract element.
-    val abstractChemicals = new BasicDBList
+    val abstractChemicalQuery = new BasicDBList
     // TODO the Mongo "In" statements below could be expensive.  Possible optimization route.
-    abstractChemicals.add(
+    abstractChemicalQuery.add(
       // Matches products that are in the abstract chemical list
       new BasicDBObject(
         s"${ReactionKeywords.ENZ_SUMMARY}.${ReactionKeywords.PRODUCTS}.${ReactionKeywords.PUBCHEM}",
         Mongo.defineMongoIn(chemicalList)))
 
     // Matches substrates that are in the abstract chemical list
-    abstractChemicals.add(
+    abstractChemicalQuery.add(
       new BasicDBObject(
         s"${ReactionKeywords.ENZ_SUMMARY}.${ReactionKeywords.SUBSTRATES}.${ReactionKeywords.PUBCHEM}",
         Mongo.defineMongoIn(chemicalList)))
@@ -71,7 +71,7 @@ object AbstractReactions {
     /*
       We want to match if they are one substrate, one product, and both are abstract.
      */
-    val query = Mongo.defineMongoAnd(abstractChemicals)
+    val query = Mongo.defineMongoAnd(abstractChemicalQuery)
 
     // Filter so we get both the substrates and products
     val filter = new BasicDBObject(s"${ReactionKeywords.ENZ_SUMMARY}.${ReactionKeywords.PRODUCTS}", 1)

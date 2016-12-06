@@ -1,4 +1,4 @@
-package com.act.biointerpretation.rsmiles.sar_construction
+package com.act.biointerpretation.rsmiles.cluster_sar_construction
 
 import java.io.{BufferedWriter, File, FileWriter}
 

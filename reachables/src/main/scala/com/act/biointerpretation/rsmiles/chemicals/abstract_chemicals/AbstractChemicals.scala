@@ -15,6 +15,10 @@ import scala.collection.parallel.immutable.{ParMap, ParSeq}
 object AbstractChemicals {
   val logger = LogManager.getLogger(getClass)
 
+
+  private val ABSTRACT_CHEMICAL_REGEX = "\\[R[0-9]*\\}"
+  private val CARBON_REPLACEMENT = "\\[C\\]";
+
   // Chemaxon technically uses smarts when we say Smiles, so we just make it explicit here.
   // We do the cleaning so that we can get rid of a lot of the junk that would make down-stream processing hard.
   val cleanSmartsFormat = new MoleculeFormat.MoleculeFormatType(MoleculeFormat.smarts,
@@ -28,7 +32,7 @@ object AbstractChemicals {
       Query: All elements that contain "[R]" or "[R#]", for some number #, in their SMILES
       TODO: try incorporating elements containing R in their inchi, which don't have a smiles, by replacing R with Cl.
      */
-    var query = Mongo.createDbObject(ChemicalKeywords.SMILES, Mongo.defineMongoRegex("\\[R[0-9]*\\}"))
+    var query = Mongo.createDbObject(ChemicalKeywords.SMILES, Mongo.defineMongoRegex(ABSTRACT_CHEMICAL_REGEX))
     val filter = Mongo.createDbObject(ChemicalKeywords.SMILES, 1)
     val result: ParSeq[DBObject] = Mongo.mongoQueryChemicals(mongoDb)(query, filter, notimeout = true).toStream.par
 
@@ -62,7 +66,7 @@ object AbstractChemicals {
 
     // Replace R groups for C currently.
     // There can be multiple R groups, where they are listed as characters.  We want to grab any of the numbers assigned there.
-    val replacedSmarts = smiles.replaceAll("\\{R[0-9]*\\]", "\\[C\\]")
+    val replacedSmarts = smiles.replaceAll(ABSTRACT_CHEMICAL_REGEX, CARBON_REPLACEMENT)
 
     /*
       Try to import the SMILES field as a Smarts representation of the molecule.
