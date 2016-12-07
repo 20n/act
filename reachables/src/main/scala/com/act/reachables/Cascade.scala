@@ -309,18 +309,19 @@ object Cascade extends Falls {
       }
     }
 
+    val RUN_LONGER_BUT_USE_LESS_MEM = false
+
     if (depth > 0) {
       // cache the network so we don't recompute it
       cache_nw = cache_nw + (m -> net)
+
       // relieve cache pressure, as otherwise we will start thrashing
       // For now, using the count of the cache, something at 2000 seems like the right place to clear
       // TODO: compute `net` and `cache_nw` actual memory size to make decision
-      if (cache_nw.size > 2500) {
+      if (RUN_LONGER_BUT_USE_LESS_MEM && cache_nw.size > 5000) {
         println(s"Cache is taking up too much memory. Clearing caches.")
         cache_nw = mutable.Map[Long, Option[Network]]()
         cache_bestpre_rxn = mutable.HashMap[Long, Map[SubProductPair, List[ReachRxn]]]()
-        // nodeMerger = new mutable.HashMap()
-        // Node.clearAttributeData()
         java.lang.System.gc()
       }
     }
