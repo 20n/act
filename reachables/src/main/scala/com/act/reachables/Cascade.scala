@@ -47,7 +47,7 @@ object Cascade extends Falls {
 
   // the cache of the cascade if it has been
   // previously computed
-  var cache_nw = mutable.HashMap[Long, Network]()
+  var cache_nw = mutable.Map[Long, Option[Network]]()
 
   // We only pick rxns that lead monotonically backwards in the tree.
   // This is conservative to avoid cycles (we could be optimistic and jump
@@ -241,54 +241,91 @@ object Cascade extends Falls {
     max_cascade_depth = depth
   }
 
-  def get_cascade(m: Long, depth: Int = 0, source: Option[Long] = None, seen: Set[Long] = Set()): Option[Network] = {
+  def addValid(m: Long, depth: Int, source: Option[Long], seen: Set[Long], network: Network, candidate: (SubProductPair, List[ReachRxn])) = {
+    val oneValid = candidate match {
+      case (subProduct, reactions) =>
+
+        // True for only cofactors and empty ist.
+      if (!subProduct.substrates.forall(cofactors.contains)) {
+        val reactionsNode = rxn_node(reactions.map(r => Long.valueOf(r.rxnid)), subProduct)
+
+        def recurse(s: Long) = {
+          val src = if (depth == 0) Option(m) else source
+          val cache = seen + m
+          (s, get_cascade(s, depth+1, src, cache))
+        }
+        val subProductNetworks = subProduct.substrates.map(recurse)
+        if (subProductNetworks.forall(_._2.isDefined)) {
+          subProductNetworks.foreach(s => {
+            network.addNode(reactionsNode, rxn_node_ident(reactions.head.rxnid))
+
+            subProduct.products.foreach(p => network.addEdge(create_edge(reactionsNode, mol_node(p))))
+
+            network.mergeInto(s._2.get)
+
+            // add edges of form "s" -> respective "r" nodeMapping
+            network.addEdge(create_edge(mol_node(s._1), reactionsNode))
+          })
+          true // found valid
+        } else {
+          false // did not find a single valid
+        }
+      } else {
+        // Let this node be activated as it is activated by a coefficient only rxn
+        true // found valid
+      }
+    }
+
+    oneValid
+  }
+
+  def get_cascade(m: Long, depth: Int = 0, source: Option[Long] = None, seen: Set[Long] = Set()): Option[Network] = 
+  if (depth > 0 && cache_nw.contains(m)) cache_nw(m) else 
+  {
+    // first check if we are "re-getting" the cascade for the main target,
+    // and if so return empty. this allows us to break cycles around the target
     if (source.isDefined && source.get == m) return None
 
     val network = new Network("cascade_" + m)
 
     network.addNode(mol_node(m), m)
 
-    if (is_universal(m)) {
+    val net = if (is_universal(m)) {
       // do nothing, base case
+      Some(network)
     } else {
       // We don't filter by higher in tree on the first iteration, so that all possible
       // reactions producing this product are shown on the graph.
       val groupedSubProduct: List[(SubProductPair, List[ReachRxn])] = pre_rxns(m, higherInTree = depth != 0).toList
-      var oneValid = false
-      groupedSubProduct
-        .filter(x => x._1.substrates.forall(x => !seen.contains(x)))
-        .foreach({ case (subProduct, reactions) =>
 
-          // True for only cofactors and empty list.
-        if (!subProduct.substrates.forall(cofactors.contains)) {
-          val reactionsNode = rxn_node(reactions.map(r => Long.valueOf(r.rxnid)), subProduct)
-
-          val subProductNetworks = subProduct.substrates.map(s => (s, get_cascade(s, depth + 1, Option(if (depth == 0) m else source.get), seen + m)))
-          if (subProductNetworks.forall(_._2.isDefined)) {
-            oneValid = true
-            subProductNetworks.foreach(s => {
-              network.addNode(reactionsNode, rxn_node_ident(reactions.head.rxnid))
-
-              subProduct.products.foreach(p => network.addEdge(create_edge(reactionsNode, mol_node(p))))
-
-              network.mergeInto(s._2.get)
-
-              // add edges of form "s" -> respective "r" nodeMapping
-              network.addEdge(create_edge(mol_node(s._1), reactionsNode))
-            })
-          }
-        } else {
-          // Let this node be activated as it is activated by a cofactory only rxn
-          oneValid = true
-        }
-      })
+      val filteredSeen = groupedSubProduct.filter(x => x._1.substrates.forall(x => !seen.contains(x)))
+      val validNodes = filteredSeen.map(x => addValid(m, depth, source, seen, network, x))
+      val oneValid = validNodes.foldLeft(false)(_ || _) // find if there was a single node that was valid (take OR of all valid's)
 
       if (!oneValid && depth > 0){
-        return None
+        None
+      } else {
+        Option(network)
       }
     }
 
-    Option(network)
+    if (depth > 0) {
+      // cache the network so we don't recompute it
+      cache_nw = cache_nw + (m -> net)
+      // relieve cache pressure, as otherwise we will start thrashing
+      // For now, using the count of the cache, something at 2000 seems like the right place to clear
+      // TODO: compute `net` and `cache_nw` actual memory size to make decision
+      if (cache_nw.size > 500) {
+        println(s"Cache is taking up too much memory. Clearing caches.")
+        cache_nw = mutable.Map[Long, Option[Network]]()
+        cache_bestpre_rxn = mutable.HashMap[Long, Map[SubProductPair, List[ReachRxn]]]()
+        nodeMerger = new mutable.HashMap()
+        Node.clearAttributeData()
+        java.lang.System.gc()
+      }
+    }
+
+    net
   }
 
   def getAllPaths(network: Network, target: Long): Option[List[Path]] = {
@@ -369,12 +406,14 @@ object Cascade extends Falls {
     }
 
     def getReactionSum(): Int ={
+      // println(s"path = $path")
       path.map(getReactionCount).sum
     }
 
     @JsonIgnore
     private def getReactionCount(node: Node): Int = {
       // Only reactions contribute
+      // if (Node.getAttribute(node.id, "isrxn") == null)
       if (Node.getAttribute(node.id, "isrxn").asInstanceOf[String].toBoolean) {
         node.getAttribute("reaction_count").asInstanceOf[Int]
       } else {
@@ -470,6 +509,17 @@ object Cascade extends Falls {
       this.isMostNative
     }
   }
+
+
+  def time[T](msg: String)(blk: => T): T = {
+    val start = System.nanoTime()
+    val rslt = blk
+    val end = System.nanoTime()
+    val tm = (end - start)/1000000
+    println(s"## PROFILING: $tm ms for block $msg.")
+    rslt
+  }
+
 }
 
 class Cascade(target: Long) {

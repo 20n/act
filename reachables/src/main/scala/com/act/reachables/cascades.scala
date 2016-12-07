@@ -127,12 +127,16 @@ object cascades {
 
     //TODO Allow CLI options here
     // THese reachables are ordered such that common biosynthesizable molecules are done first.
-    val reach: List[Long] = List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
-
-    // constructInformationForReachable modifies global scope variables, so can't run in parallel.
-    reach.foreach({
-      println(s"Reaction number ${counter.getAndIncrement()}")
-      constructInformationForReachable(_, dir)
+    val longRunningFirst: List[Long] = List(174L, 182957L, 153L)
+    val allReachables: List[Long] = List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 174960L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
+    val reach: List[Long] = longRunningFirst ++ allReachables
+    reach.foreach(reachid => {
+      val msg = s"allRoutes: reachable $reachid count ${counter.getAndIncrement()} cached cascades: ${Cascade.cache_nw.size} cached pre_rxns: ${Cascade.cache_bestpre_rxn.size} nodeMerger: ${Cascade.nodeMerger.size}"
+      Cascade.time(msg) {
+        println(s" Now starting $reachid...")
+        // constructInformationForReachable modifies global scope variables, so can't run in parallel.
+        constructInformationForReachable(reachid, dir)
+      }
     })
 
     println
@@ -208,8 +212,8 @@ object cascades {
     writer.write(cascade.allStringPaths.mkString("\n"))
     writer.close()
 
-    Cascade.clearCascades()
-    Node.clearAttributeData()
+    // Cascade.clearCascades()
+    // Node.clearAttributeData()
     // Attributes are cached here so we clear it after each run.
   }
 
