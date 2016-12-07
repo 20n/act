@@ -291,9 +291,24 @@ public class BrendaSupportingEntries {
   }
 
   public static class PosttranslationalModification implements FromBrendaDB<PosttranslationalModification> {
-    public static final String QUERY = "select Posttranslational_Modification, Commentary, Literature from Posttranslational_Modification where EC_Number = ? and Literature like ? and Organism = ?";
-    public static final String ALL_QUERY = "select Posttranslational_Modification, Commentary, Literature, EC_Number, Organism from Posttranslational_Modification";
-    public static final String COLUMN_FAMILY_NAME = "Cloned";
+    public static final String QUERY = StringUtils.join(new String[]{
+        "SELECT",
+        "  Posttranslational_Modification,",
+        "  Commentary,",
+        "  Literature",
+        "FROM Posttranslational_Modification",
+        "WHERE EC_Number = ? and Literature like ? and Organism = ?"},
+        " ");
+      public static final String ALL_QUERY = StringUtils.join(new String[]{
+          "SELECT",
+          "  Posttranslational_Modification,",
+          "  Commentary,",
+          "  Literature,",
+          "  EC_Number,",
+          "  Organism",
+          "FROM Posttranslational_Modification"},
+          " ");
+    public static final String COLUMN_FAMILY_NAME = "PosttranslationalModification";
     protected static final PosttranslationalModification INSTANCE = new PosttranslationalModification();
 
     protected String commentary;
