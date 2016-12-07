@@ -61,16 +61,6 @@ public class SQLConnection {
           "where lm1.Ligand = ?",
   }, " ");
 
-  public static final String QUERY_CLONED_DATA = StringUtils.join(new String[] {
-      "select",
-      "  EC_Number,",
-      "  Commentary,",
-      "  Literature,",
-      "  Organism,",
-      "from Cloned",
-      "where EC_Number = ?",
-  }, " ");
-
   private Connection brendaConn;
   private Connection brendaLigandConn;
 
@@ -135,35 +125,11 @@ public class SQLConnection {
       public BrendaRxnEntry next() {
         try {
           results.next();
-
-          final PreparedStatement clonedInfoStmt = brendaConn.prepareStatement(QUERY_CLONED_DATA);
-          clonedInfoStmt.setString(1, results.getString(1));
-          final ResultSet clonedInfoResults = clonedInfoStmt.executeQuery();
-
-          while (hasNextHelper(clonedInfoResults, clonedInfoStmt)) {
-            clonedInfoResults.next();
-
-
-
-
-
-          }
-
-
-
-
-
-
           Integer literatureSubstrates = results.getInt(4);
 
           if (results.wasNull()) {
             literatureSubstrates = null;
           }
-
-
-
-
-
           BrendaRxnEntry sp = new BrendaRxnEntry(
               results.getString(1),
               results.getString(2),
