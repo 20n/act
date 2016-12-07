@@ -17,7 +17,7 @@ object AbstractChemicals {
 
 
   private val ABSTRACT_CHEMICAL_REGEX = "\\[R[0-9]*\\}"
-  private val CARBON_REPLACEMENT = "\\[C\\]";
+  private val CARBON_REPLACEMENT = "\\[C\\]"
 
   // Chemaxon technically uses smarts when we say Smiles, so we just make it explicit here.
   // We do the cleaning so that we can get rid of a lot of the junk that would make down-stream processing hard.
@@ -66,7 +66,7 @@ object AbstractChemicals {
 
     // Replace R groups for C currently.
     // There can be multiple R groups, where they are listed as characters.  We want to grab any of the numbers assigned there.
-    val replacedSmarts = smiles.replaceAll(ABSTRACT_CHEMICAL_REGEX, CARBON_REPLACEMENT)
+    val replacedSmarts = replaceRWithC(smiles)
 
     /*
       Try to import the SMILES field as a Smarts representation of the molecule.
@@ -87,4 +87,7 @@ object AbstractChemicals {
 
   object Mongo extends MongoWorkflowUtilities {}
 
+  def replaceRWithC(chemical : String): String = {
+    chemical.replaceAll(ABSTRACT_CHEMICAL_REGEX, CARBON_REPLACEMENT)
+  }
 }
