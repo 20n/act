@@ -667,11 +667,11 @@ public class BrendaSQL {
     JSONArray entries = new JSONArray();
     for (BrendaSupportingEntries.PosttranslationalModification PosttranslationalModification : values) {
       JSONObject e = new JSONObject();
-      e.put("Posttranslational_Modification", PosttranslationalModification.getPosttranslationalModification());
+      e.put("post_translational_modification", PosttranslationalModification.getPosttranslationalModification());
       e.put("comment", PosttranslationalModification.getCommentary());
       entries.put(e);
     }
-    protein.put("Posttranslational_Modification", entries);
+    protein.put("post_translational_modification", entries);
   }
 
 
