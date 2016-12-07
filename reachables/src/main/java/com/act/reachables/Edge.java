@@ -41,6 +41,12 @@ public class Edge implements Serializable {
     return Edge.getAttribute(this, key);
   }
 
+  public static void clearAttributeOnAllEdges(String key) {
+    for (HashMap<String, Serializable> attr: ActData.instance().edgeAttributes.values()) {
+      attr.remove(key);
+    }
+  }
+
   public static void setAttribute(Edge e, String key, Serializable val) {
     if (!ActData.instance().edgeAttributes.containsKey(e))
       ActData.instance().edgeAttributes.put(e, new HashMap<>());

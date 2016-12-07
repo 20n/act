@@ -212,9 +212,9 @@ object cascades {
     writer.write(cascade.allStringPaths.mkString("\n"))
     writer.close()
 
-    // Cascade.clearCascades()
-    // Node.clearAttributeData()
-    // Attributes are cached here so we clear it after each run.
+    // color attributes are cascade specific. so we clear them after each
+    // cascade run. otherwise because we cache nodes, colors bleed across cascades
+    Edge.clearAttributeOnAllEdges("color")
   }
 
   def rxn_json(r: Reaction) = {
