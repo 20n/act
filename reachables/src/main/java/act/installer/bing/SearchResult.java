@@ -9,14 +9,14 @@ import com.mongodb.BasicDBObject;
  */
 
 public class SearchResult {
-  private String id;
+
+  // The ID field was removed with v5.0 of the API
+  // Since we didn't use it much, we removed it from SearchResults as well.
+  // See upgrade guide: https://msdn.microsoft.com/en-US/library/mt707570.aspx
+
   private String title;
   private String description;
   private String url;
-
-  public void setId(String id) {
-    this.id = id;
-  }
 
   public void setTitle(String title) {
     this.title = title;
@@ -28,10 +28,6 @@ public class SearchResult {
 
   public void setUrl(String url) {
     this.url = url;
-  }
-
-  public String getId() {
-    return id;
   }
 
   public String getTitle() {
@@ -47,22 +43,19 @@ public class SearchResult {
   }
 
   public void populateFromJsonNode(JsonNode result) {
-    setDescription(result.path("Description").textValue());
-    setId(result.path("ID").asText());
-    setTitle(result.path("Title").textValue());
-    setUrl(result.path("Url").textValue());
+    setDescription(result.path("snippet").textValue());
+    setTitle(result.path("name").textValue());
+    setUrl(result.path("displayUrl").textValue());
   }
 
   public void populateFromBasicDBObject(BasicDBObject result) {
     setDescription((String) result.get("description"));
-    setId((String) result.get("id"));
     setTitle((String) result.get("title"));
     setUrl((String) result.get("url"));
   }
 
   public BasicDBObject getBasicDBObject() {
     BasicDBObject topSearchResultDBObject = new BasicDBObject();
-    topSearchResultDBObject.put("id", getId());
     topSearchResultDBObject.put("title", getTitle());
     topSearchResultDBObject.put("description", getDescription());
     topSearchResultDBObject.put("url", getUrl());
