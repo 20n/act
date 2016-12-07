@@ -43,8 +43,7 @@ public class BingSearchResults {
   private static final Logger LOGGER = LogManager.getFormatterLogger(BingSearchResults.class);
 
   // Full path to the account key for the Bing Search API (on the NAS)
-  // TODO: update this to pass the account key as a configuration parameter
-  private static final String ACCOUNT_KEY_FILEPATH = "/mnt/data-level1-1/data/bing/bing_search_api_account_key.txt";
+  private static final String ACCOUNT_KEY_FILEPATH = "/mnt/data-level1/data/bing/bing_search_api_account_key.txt";
   // Maximum number of results possible per API call. This is the maximum value for URL parameter "top"
   private static final Integer MAX_RESULTS_PER_CALL = 100;
   // How many search results should be retrieved when getting topSearchResults
@@ -59,7 +58,6 @@ public class BingSearchResults {
 
   private BingCacheMongoDB bingCacheMongoDB;
   private BasicHttpClientConnectionManager basicConnManager;
-  private HttpClientContext context;
   private String accountKey;
 
   public BingSearchResults() {
@@ -69,7 +67,6 @@ public class BingSearchResults {
   public BingSearchResults(String accountKeyFilepath) {
     bingCacheMongoDB = new BingCacheMongoDB(BING_CACHE_HOST, BING_CACHE_MONGO_PORT, BING_CACHE_MONGO_DATABASE);
     basicConnManager = new BasicHttpClientConnectionManager();
-    context = HttpClientContext.create();
     try {
       accountKey = getAccountKey(accountKeyFilepath);
     } catch (IOException e) {
@@ -202,6 +199,8 @@ public class BingSearchResults {
 
     JsonNode results;
     HttpGet httpget = new HttpGet(uri);
+    // Yay for un-encrypted account key!
+    // TODO: actually is there a way to encrypt it?
     httpget.setHeader("Ocp-Apim-Subscription-Key", accountKey);
 
     CloseableHttpClient httpclient = HttpClients.custom().setConnectionManager(basicConnManager).build();
