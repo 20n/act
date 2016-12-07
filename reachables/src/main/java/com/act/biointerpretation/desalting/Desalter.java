@@ -108,7 +108,7 @@ public class Desalter {
    * @return A set of desalted compounds within the input chemical
    * @throws Exception
    */
-  public Map<String, Integer> desaltMolecule(String inchi)
+  public Map<String, Integer> desaltInchi(String inchi)
       throws InfiniteLoopDetectedException, IOException, ReactionException {
     // Resolve the smiles to only those that are 2-carbon units.
     // Do not store the output of MolImporter, as the object will be destroyed during fragmentation.
@@ -117,12 +117,40 @@ public class Desalter {
     // Clean each compound
     final List<Molecule> desaltedAndDeionized = new ArrayList<>(resolved.size());
     for (Molecule organicOrBiggestInorganicMass : resolved) {
-      Molecule desaltedChemicalFragment = applyROsToMolecule(organicOrBiggestInorganicMass, inchi);
+      // Make hydrogens explicit
+      Molecule desaltedChemicalFragment = applyROsToMolecule(organicOrBiggestInorganicMass, inchi, true);
       desaltedAndDeionized.add(desaltedChemicalFragment);
     }
 
     // Don't combine fragments in order to match Indigo behavior, but preserve the count of each desalted fragment.
     return mols2InchiCounts(desaltedAndDeionized);
+  }
+
+  /**
+   * Splits molecule into fragments, desalts each fragments, returns results in a list.
+   * This is intended to be used for the abstract reaction -> SAR pipeline. Here, it is essential that we don't muck
+   * with the implicitness/explicitness of the hydrogens. That is the only difference in the logic between this and
+   * desalteInchi().
+   * @param molecule
+   * @return
+   * @throws IOException
+   */
+  public List<Molecule> desaltMoleculeForAbstractReaction(Molecule molecule)
+      throws IOException, InfiniteLoopDetectedException, ReactionException {
+    // Resolve the smiles to only those that are 2-carbon units.
+    // Do not store the output of MolImporter, as the object will be destroyed during fragmentation.
+    List<Molecule> resolved = resolveMixtureOfAtomicComponents(molecule);
+
+    // Clean each compound
+    final List<Molecule> desaltedAndDeionized = new ArrayList<>(resolved.size());
+    for (Molecule organicOrBiggestInorganicMass : resolved) {
+      // do not make hydrogens explicit
+      Molecule desaltedChemicalFragment = applyROsToMolecule(organicOrBiggestInorganicMass, "NO_NAMES_YET", false);
+      desaltedAndDeionized.add(desaltedChemicalFragment);
+    }
+
+    // Don't combine fragments in order to match Indigo behavior, but preserve the count of each desalted fragment.
+    return desaltedAndDeionized;
   }
 
   // See https://docs.chemaxon.com/display/FF/InChi+and+InChiKey+export+options for MolExporter options.
@@ -158,13 +186,12 @@ public class Desalter {
   /**
    * This function desalts an input inchi chemical by running it through a list of curated desalting ROs in a loop
    * and transforms the inchi till it reaches a stable state.
-   *
    * @param baseMolecule The molecule on which to project desalting ROs.
    * @param inchi The inchi for the base molecule, used for logging.
    * @return The desalted inchi chemical
    * @throws Exception
    */
-  protected Molecule applyROsToMolecule(Molecule baseMolecule, String inchi)
+  protected Molecule applyROsToMolecule(Molecule baseMolecule, String inchi, boolean makeHydrogensExplicit)
       throws IOException, InfiniteLoopDetectedException, ReactionException {
     projector.clearInchiCache(); // Clear cache on each new base molecule.
     Molecule transformedMolecule = baseMolecule;
@@ -172,7 +199,9 @@ public class Desalter {
     /* Add explicit hydrogens before projecting to ensure that the hydrogens in the ROs have something to match against.
      * Note that this didn't seem to actually have much (if any) effect on the InChIs used to validate the desalter
      * (the Reactor seems to work out implicit hydrogens itself), but it shouldn't cause any harm either. */
-    Hydrogenize.convertImplicitHToExplicit(baseMolecule);
+    if (makeHydrogensExplicit) {
+      Hydrogenize.convertImplicitHToExplicit(baseMolecule);
+    }
 
     // Then try all the ROs
     Set<Molecule> bagOfTransformedMolecules = new LinkedHashSet<>();

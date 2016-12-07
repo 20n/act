@@ -149,7 +149,7 @@ public class ChemicalDesalter {
 
         Map<String, Integer> results = null;
         try {
-          results = desalter.desaltMolecule(salty);
+          results = desalter.desaltInchi(salty);
         } catch (Exception err) {
           LOGGER.error(String.format("Exception caught while desalting inchi: %s with error message: %s\n", salty,
               err.getMessage()));
