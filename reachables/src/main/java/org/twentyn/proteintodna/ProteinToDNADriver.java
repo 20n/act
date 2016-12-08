@@ -113,7 +113,7 @@ public class ProteinToDNADriver {
 
     int index = 0;
 
-    for(T i: listOfSetOfProteinSequences.get(0)) {
+    for(T i: listOfSetOfProteinSequences.get(index)) {
       List<T> newList = new ArrayList<>();
       newList.add(i);
       combinations.add(newList);
@@ -230,21 +230,25 @@ public class ProteinToDNADriver {
             }
           }
 
-          Collections.sort(proteinSeqs);
-
           if (proteinSeqs.size() == 0) {
             LOGGER.error("The reaction does not have any viable protein sequences");
             noProteinSequenceAvailable = true;
             break;
           }
 
-          Set<String> combination = new HashSet<>();
+          // Now we select two representative protein seqs from the reaction. In order to do this deterministically,
+          // we sort and pick the first and middle index protein seqs.
+
+          Collections.sort(proteinSeqs);
 
           // get first seq
+          Set<String> combination = new HashSet<>();
           combination.add(proteinSeqs.get(0));
 
+          // get middle index of the protein seq array
           if (proteinSeqs.size() > 1) {
-            combination.add(proteinSeqs.get(proteinSeqs.size()/2));
+            int middleSeq = proteinSeqs.size() / 2;
+            combination.add(proteinSeqs.get(middleSeq));
           }
 
           proteinPaths.add(combination);
