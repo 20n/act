@@ -1950,18 +1950,6 @@ public class MongoDB {
     return new DBIterator(cursor);
   }
 
-  public DBIterator getIteratorOverChemicals(BasicDBObject matchCriterion, boolean notimeout, BasicDBObject keys) {
-    if (keys == null) {
-      keys = new BasicDBObject();
-    }
-    DBCursor cursor = this.dbChemicals.find(matchCriterion, keys);
-    if (notimeout) {
-      cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
-    }
-
-    return new DBIterator(cursor); // DBIterator is just a wrapper class
-  }
-
   public DBIterator getIteratorOverChemicals(BasicDBObject matchCriterion, BasicDBObject keys) {
     if (keys == null) {
       keys = new BasicDBObject();
@@ -2013,24 +2001,10 @@ public class MongoDB {
 
     if (keys == null) {
       keys = new BasicDBObject();
-      // keys.put(projection, 1); // 1 means include, rest are excluded
     }
 
     DBCursor cursor = this.dbReactions.find(matchCriterion, keys);
     cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
-    return new DBIterator(cursor); // DBIterator is just a wrapper classs
-  }
-
-  public DBIterator getIteratorOverReactions(BasicDBObject matchCriterion, boolean notimeout, BasicDBObject keys) {
-
-    if (keys == null) {
-      keys = new BasicDBObject();
-      // keys.put(projection, 1); // 1 means include, rest are excluded
-    }
-
-    DBCursor cursor = this.dbReactions.find(matchCriterion, keys);
-    if (notimeout)
-      cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
     return new DBIterator(cursor); // DBIterator is just a wrapper classs
   }
 

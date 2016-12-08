@@ -58,7 +58,6 @@ object Cascade extends Falls {
 
     // we dont want to use reactions that dont have any substrates (most likely bad data)
     val upNonTrivial = upReach.filter(has_substrates)
-      //.map(x => )
 
     // limit the # of up reactions to output to MAX_CASCADE_UPFANOUT
     // compute all substrates "s" of all rxnsups (upto 10 of them)
@@ -108,7 +107,7 @@ object Cascade extends Falls {
   // Shift rxn ids outside of the range of molecule ids so that there is no collision between molecule and reaction ids
   val rxnIdShift = 4000000000l
 
-  val pattern = """:\[([\s\d\,]*)\]""".r
+  val toolTipReplacePattern = """:\[([\s\d\,]*)\]""".r
 
   // dot does not like - in identifiers. Replace those with underscores
   def rxn_node_ident(id: Long) = rxnIdShift + id
@@ -118,7 +117,7 @@ object Cascade extends Falls {
     ReachRxnDescs.rxnEasyDesc(id) match {
       case None => "ID:" + id + " not in DB"
       // GraphViz chokes on "[" and "]". Replace these with "{" and "}"
-      case Some(desc) => pattern.replaceAllIn(desc, m => s":{${m.group(1)}}")
+      case Some(desc) => toolTipReplacePattern.replaceAllIn(desc, m => s":{${m.group(1)}}")
 
     }
   }
@@ -255,7 +254,7 @@ object Cascade extends Falls {
         .filter(x => x._1.substrates.forall(x => !seen.contains(x)))
         .foreach({ case (subProduct, reactions) =>
 
-          // True for only cofactors and emptyl ist.
+          // True for only cofactors and empty list.
         if (!subProduct.substrates.forall(cofactors.contains)) {
           val reactionsNode = rxn_node(reactions.map(r => Long.valueOf(r.rxnid)), subProduct)
 
@@ -274,7 +273,7 @@ object Cascade extends Falls {
             })
           }
         } else {
-          // Let this node be activated as it is activated by a coefficient only rxn
+          // Let this node be activated as it is activated by a cofactory only rxn
           oneValid = true
         }
       })
@@ -292,7 +291,7 @@ object Cascade extends Falls {
 
     // If the target is a native then the only path is the node itself.
     var counter: Int = -1
-    if(sourceEdgesSet == null) {
+    if (sourceEdgesSet == null) {
       if (network.nodes.isEmpty) {
         return None
       }
@@ -359,6 +358,8 @@ object Cascade extends Falls {
     }
 
     def getDegree(): Int = {
+      // This references the first reaction in the path (First element is the product/reachable).
+      // Therefore, by counting the reactions associated with this node we get the in-degree of the reachable
       getReactionCount(path.get(1))
     }
 
@@ -423,7 +424,11 @@ class Cascade(target: Long) {
   }
 
   var c = -1
-  val myPaths: List[ReactionPath] = allPaths.map(p => {
+
+  // Do any formatting necessary that will be used later on.
+  // Things such as coloring interesting paths, setting up strings,
+  // and converting reactionIds to the db form are done here.
+  val constructedAllPaths: List[ReactionPath] = allPaths.map(p => {
     c += 1
 
     if (c == 0) {
@@ -465,7 +470,7 @@ class Cascade(target: Long) {
   })
 
 
-  val sortedPaths = myPaths.sortBy(p => {
+  val sortedPaths = constructedAllPaths.sortBy(p => {
     try {
       -p.getMostCommonOrganismCount.max
     } catch {
@@ -476,6 +481,7 @@ class Cascade(target: Long) {
   if (sortedPaths.nonEmpty) {
     sortedPaths.head.setMostNative(true)
 
+    val limeGreen = "#009933"
 
     val mostNativePath = sortedPaths.head.getPath.toList.reverse
     for (i <- mostNativePath.indices) {
@@ -491,14 +497,14 @@ class Cascade(target: Long) {
         if (getOrDefault[String](sourceNode, "isrxn").toBoolean) {
           val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](sourceNode, "organisms", new util.HashSet[String]())
           if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
-            Edge.setAttribute(currentEdge, "color", "\"#009933\", penwidth=5")
+            Edge.setAttribute(currentEdge, "color", s"\"$limeGreen\", penwidth=5")
           }
         }
 
         if (getOrDefault[String](destNode, "isrxn").toBoolean) {
           val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](destNode, "organisms", new util.HashSet[String]())
           if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
-            Edge.setAttribute(currentEdge, "color", "\"#009933\", penwidth=5")
+            Edge.setAttribute(currentEdge, "color", s"\"$limeGreen\", penwidth=5")
           }
         }
       }
@@ -526,6 +532,17 @@ class Cascade(target: Long) {
       allKeys.put(k, 0)
     }
 
+    // This is the scoring function for organisms, such that we can bias the results towards enzymes that are
+    // likely to be more unique to a given organism as they are closer to the reachable.
+    //
+    // Each step can add a score of 1/(2^n), where n represents the step it is.
+    // The exponential decay is what causes the bias towards enzymes close to the reachable.
+    //
+    // For example, let's say we have a 3 component path such that the reaction to the reachable and the
+    // last reaction are a part of the same organism
+    //
+    // The math is: 1*(1/2^0) + 0*(1/2^1) + 1*(1/2^2) for a total score of 1 + 0 + 1/4 = 1.25
+    //
     var c: Double = 1.0
     v.foreach(e => {
       e.foreach(k => allKeys.put(k, allKeys(k) + 1/c))

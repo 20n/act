@@ -91,20 +91,20 @@ object cascades {
     val consumers = if (GlobalParams.USE_RXN_CLASSES) ActData.instance.rxnClassesThatConsumeChem else ActData.instance.rxnsThatConsumeChem 
 
     // List(Set(rxnids)) : all outgoing connections to this node
-    //    Not just the ones that are in the tree, but all potential children
-    //    These potential children are reachable, modulo those whose rxn requires
-    //      unreachable other substrate
+    // Not just the ones that are in the tree, but all potential children
+    // These potential children are reachable, modulo those whose rxn requires
+    // unreachable other substrate
     val rxnsThatConsume = reachables.map( n => get_set(consumers.get(n)) )
     val downRxns = rxnsThatConsume.map( ridset => ridset.map( r => new ReachRxn(r, reachableSet)) )
 
     // List(Set(rxnids)) : all incoming connections to this node
-    //    Not just the ones that are in the tree, but all potential parents that
-    //    were rejected as parents (but as still reachable), and those that are
-    //    are plain not reachable.
+    // Not just the ones that are in the tree, but all potential parents that
+    // were rejected as parents (but as still reachable), and those that are
+    // are plain not reachable.
     val rxnsThatProduce  = reachables.map( n => get_set(producers.get(n)) )
     val upRxns = rxnsThatProduce.map( ridset => ridset.map( r => new ReachRxn(r, reachableSet)) )
-//
-//    // List(parents) : parents of corresponding reachables
+
+    // List(parents) : parents of corresponding reachables
     def getp(n: Long): Long = { val p = ActData.instance.ActTree.get_parent(n); if (p == null) -1 else p; }
     val parents = reachables.map( getp )
 

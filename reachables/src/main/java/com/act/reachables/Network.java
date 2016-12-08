@@ -65,7 +65,7 @@ public class Network implements Serializable {
   }
 
   void addNode(Node n, Long nid) {
-    if (this.nodeMapping.containsKey(n)){
+    if (this.nodeMapping.containsKey(n)) {
       if (!Boolean.valueOf((String)Node.getAttribute(n.id, "isrxn"))) {
         return;
       }
@@ -114,11 +114,12 @@ public class Network implements Serializable {
   public Edge getEdge(Node src, Node dst) {
     return this.edgeHash.get(Pair.of(src, dst));
   }
-  public Set<Edge> getEdgesGoingInto(Node n){
+
+  public Set<Edge> getEdgesGoingInto(Node n) {
     return this.edgesGoingToNode.get(n);
   }
 
-  public Set<Edge> getEdgesGoingInto(Long id){
+  public Set<Edge> getEdgesGoingInto(Long id) {
     return this.edgesGoingToId.get(id);
   }
 
@@ -126,7 +127,7 @@ public class Network implements Serializable {
     // this is only written to work for graphs, not
     // specifically trees, expect undefined behaviour
     // if you are keeping track of trees
-    that.nodeMapping.values().stream().forEach(n -> addNode(n, n.id));
+    that.nodeMapping.values().forEach(n -> addNode(n, n.id));
     that.edges.stream().forEach(this::addEdge);
 
     this.nids.putAll(that.nids);
