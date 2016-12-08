@@ -33,17 +33,19 @@ public class HairpinCounter {
 
     public double score(String seq) throws Exception {
         seq = seq.toUpperCase();
+        char[] seqRevC = SequenceUtils.reverseComplement(seq).toCharArray();
+        char[] s = seq.toCharArray();
+        int len = seq.length();
         double out = 0.0;
         //For each spacer length between 4 and 9
         for(int spaces = 4; spaces <= 9; spaces++) {
             //scan through the sequence and test each potential hairpin
-            for(int i=0; i<seq.length()-spaces-12; i++) {
+            for(int i=0; i<len-spaces-12; i++) {
                 String hairpin = seq.substring(i, i+spaces+12);
-                int hbonds = countHbonds(hairpin);
-//                if(hbonds > 0) {
-//                    System.out.println();
-//                }
-//                System.out.println(hbonds);
+                int hbonds = countHbonds(s, i, i+spaces+12, seqRevC, len);
+                // int hbondsInefficient = countHbonds(hairpin);
+                // if (hbondsInefficient != hbonds)
+                //   throw new Exception("not equal: " + hbonds + " <> " + hbondsInefficient);
                 out+= Math.pow(2, hbonds);
             }
             
@@ -85,4 +87,42 @@ public class HairpinCounter {
         
         return hbonds;
     }
+
+    private int countHbonds(char[] seq, int startInc, int endExcl, char[] revC, int len) {
+        // String prefix = hairpin.substring(0,6);                // seq [startInc, startInc + 6]
+        // String suffix = hairpin.substring(hairpin.length()-6); // seq [endExcl - 6, endExcl]
+        // String prerev = SequenceUtils.reverseComplement(prefix); // prerev[i] == revC[len-1 - (startInc+5-i)]
+
+        int suffixStart = endExcl - 6;
+
+        //See how many out of the six being examined match
+        int matchlength = 0;
+        for(int i=0; i<6; i++) {
+            char achar = revC[len - 1 - startInc - 5 + i];
+            if (seq[suffixStart + i] == achar) {
+                matchlength = i;
+            } else {
+                break;
+            }
+        }
+
+        if(matchlength <3) {
+            return 0;
+        }
+
+        int hbonds = 0;
+        //For the ones that match, score them for A, T, C, G
+        for(int i=0; i<matchlength; i++) {
+            char achar = revC[len - 1 - startInc - 5 + i];
+            if(achar == 'C' || achar == 'G') {
+                hbonds+=3;
+            }
+            if(achar == 'A' || achar == 'T') {
+                hbonds+=2;
+            }
+        }
+
+        return hbonds;
+    }
+
 }
