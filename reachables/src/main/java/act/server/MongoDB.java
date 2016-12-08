@@ -1688,7 +1688,7 @@ public class MongoDB {
 
     BasicDBObject conditions = new BasicDBObject(MongoKeywords.OR$.MODULE$.toString(), conditionList);
 
-    return getIteratorOverChemicals(conditions, true, new BasicDBObject(ChemicalKeywords.ID$.MODULE$.toString(), true));
+    return getIteratorOverChemicals(conditions, new BasicDBObject(ChemicalKeywords.ID$.MODULE$.toString(), true));
   }
 
   private DBCursor constructCursorForAllChemicals() {

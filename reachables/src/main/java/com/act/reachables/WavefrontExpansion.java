@@ -117,7 +117,7 @@ public class WavefrontExpansion {
     Set<Long> doNotAssignParentsTo = new HashSet<Long>();
     Set<Long> possibleBigMols = ActData.instance().metaCycBigMolsOrRgrp; // those with InChI:/FAKE/ are either big molecules (no parents), or R group containing chemicals. Either, do not complain if we cannot find parents for them.
 
-    if (GlobalParams._actTreeCreateHostCentricMap) {
+    if (GlobalParams.actTreeCreateHostCentricMap) {
       // add all host organism reachables
       int host_layer = 0;
       while (anyEnabledReactions(GlobalParams.gethostOrganismID())) {
@@ -137,7 +137,7 @@ public class WavefrontExpansion {
       pickParentsForNewReachables(this.currentLayer++, -1 /* outside host */, doNotAssignParentsTo, possibleBigMols, null /*no assumptions*/);
     }
 
-    if (GlobalParams._actTreeCreateUnreachableTrees) {
+    if (GlobalParams.actTreeCreateUnreachableTrees) {
       List<EnvCond>[] workLists = worklistOfAssumedReachables();
       Set<Long> allReach = new HashSet<Long>();
       allReach.addAll(addUnreachableTrees(workLists[0], this.R)); // handle all singular assumed_reachables
@@ -302,7 +302,7 @@ public class WavefrontExpansion {
     Collections.sort(assumptionOutcomes, new DescendingComparor<EnvCondEffect>());
     for (int idx = 0; idx < assumptionOutcomes.size(); idx++) {
       EnvCondEffect newTreeData = assumptionOutcomes.get(idx).fst();
-      if (newTreeData.sizeNewReach <= GlobalParams._actTreeMinimumSizeOfConditionalTree)
+      if (newTreeData.sizeNewReach <= GlobalParams.actTreeMinimumSizeOfConditionalTree)
         continue; // assumed nodeMapping that do not enable even a single other are irrelevant
 
       // for now we only handle the case of single node precondition.

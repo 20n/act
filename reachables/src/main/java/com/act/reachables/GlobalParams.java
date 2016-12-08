@@ -47,13 +47,13 @@ public class GlobalParams {
   private static int _inertial_wave_periphery_nudge = 800;
   private static boolean _do_clustered_unreachables = true;
   private static boolean _do_render_chemicals = false;
-  private static int _actTreeSignificantFanout = 10; // 15 will give 28, 10 will give 58 important ancestors
-  private static int _actTreePickNameOfLengthAbout = 20; // 15 characters
-  private static int _actTreeMinimumSizeOfConditionalTree = 1; // the "assumed" chemical, has to enable at least 10 new reachables
-  private static boolean _actTreeCreateHostCentricMap = false;
-  private static boolean _actTreeDumpClades = false;
-  private static boolean _actTreeCreateUnreachableTrees = false;
-  private static int _actTreeCompressNodesWithChildrenLessThan = 0;
+  public static int actTreeSignificantFanout = 10; // 15 will give 28, 10 will give 58 important ancestors
+  public static int actTreePickNameOfLengthAbout = 20; // 15 characters
+  public static int actTreeMinimumSizeOfConditionalTree = 1; // the "assumed" chemical, has to enable at least 10 new reachables
+  public static boolean actTreeCreateHostCentricMap = false;
+  public static boolean actTreeDumpClades = false;
+  public static boolean actTreeCreateUnreachableTrees = false;
+  public static int actTreeCompressNodesWithChildrenLessThan = 0;
 
   public static boolean _actTreeIgnoreReactionsWithNoSubstrates = true;
   public static boolean _actTreeOnlyIncludeRxnsWithSequences = true;
@@ -114,13 +114,13 @@ public class GlobalParams {
   static String helperFnsDir = "/Applications/Cytoscape_v2.8.3/ActHelpers/";
 
   protected void initialize_properties() {
-    paramsInt.add(new Tunable("_actTreeSignificantFanout", "Tree Layout: How many children for it to be an important?", new Integer(_actTreeSignificantFanout)));
-    paramsInt.add(new Tunable("_actTreeMinimumSizeOfConditionalTree", "Tree Layout: For unreachables, ignore trees with enabled reachables less than this:", new Integer(_actTreeMinimumSizeOfConditionalTree)));
-    paramsInt.add(new Tunable("_actTreePickNameOfLengthAbout", "Tree Layout: Node names: How many characters long?", new Integer(_actTreePickNameOfLengthAbout)));
-    paramsInt.add(new Tunable("_actTreeCompressNodesWithChildrenLessThan", "Tree Layout: Compress skinny paths less than: ", new Integer(_actTreeCompressNodesWithChildrenLessThan)));
-    paramsBool.add(new Tunable("_actTreeCreateHostCentricMap", "Tree Layout: Host Chassis Centric?", new Boolean(_actTreeCreateHostCentricMap)));
-    paramsBool.add(new Tunable("_actTreeCreateUnreachableTrees", "Tree Layout: Create unreachable trees?", new Boolean(_actTreeCreateUnreachableTrees)));
-    paramsBool.add(new Tunable("_actTreeDumpClades", "Tree Layout: Dump clades to /Applications/Cytoscape/output.log?", new Boolean(_actTreeDumpClades)));
+    paramsInt.add(new Tunable("actTreeSignificantFanout", "Tree Layout: How many children for it to be an important?", new Integer(actTreeSignificantFanout)));
+    paramsInt.add(new Tunable("actTreeMinimumSizeOfConditionalTree", "Tree Layout: For unreachables, ignore trees with enabled reachables less than this:", new Integer(actTreeMinimumSizeOfConditionalTree)));
+    paramsInt.add(new Tunable("actTreePickNameOfLengthAbout", "Tree Layout: Node names: How many characters long?", new Integer(actTreePickNameOfLengthAbout)));
+    paramsInt.add(new Tunable("actTreeCompressNodesWithChildrenLessThan", "Tree Layout: Compress skinny paths less than: ", new Integer(actTreeCompressNodesWithChildrenLessThan)));
+    paramsBool.add(new Tunable("actTreeCreateHostCentricMap", "Tree Layout: Host Chassis Centric?", new Boolean(actTreeCreateHostCentricMap)));
+    paramsBool.add(new Tunable("actTreeCreateUnreachableTrees", "Tree Layout: Create unreachable trees?", new Boolean(actTreeCreateUnreachableTrees)));
+    paramsBool.add(new Tunable("actTreeDumpClades", "Tree Layout: Dump clades to /Applications/Cytoscape/output.log?", new Boolean(actTreeDumpClades)));
 
     paramsBool.add(new Tunable("_do_render_chemicals", "In HTML Dump, Render Chemicals", new Boolean(_do_render_chemicals)));
     paramsBool.add(new Tunable("_do_clustered_unreachables", "Cluster Unreachables", new Boolean(_do_clustered_unreachables)));
@@ -151,27 +151,27 @@ public class GlobalParams {
     Tunable<String[]> tl;
     Tunable<Boolean> tb;
 
-    ti = paramsInt.get("_actTreeSignificantFanout");
+    ti = paramsInt.get("actTreeSignificantFanout");
     if ((ti != null) && (ti.valueChanged() || force))
-      _actTreeSignificantFanout = ti.getValue().intValue();
-    ti = paramsInt.get("_actTreeMinimumSizeOfConditionalTree");
+      actTreeSignificantFanout = ti.getValue().intValue();
+    ti = paramsInt.get("actTreeMinimumSizeOfConditionalTree");
     if ((ti != null) && (ti.valueChanged() || force))
-      _actTreeMinimumSizeOfConditionalTree = ti.getValue().intValue();
-    ti = paramsInt.get("_actTreeCompressNodesWithChildrenLessThan");
+      actTreeMinimumSizeOfConditionalTree = ti.getValue().intValue();
+    ti = paramsInt.get("actTreeCompressNodesWithChildrenLessThan");
     if ((ti != null) && (ti.valueChanged() || force))
-      _actTreeCompressNodesWithChildrenLessThan = ti.getValue().intValue();
-    ti = paramsInt.get("_actTreePickNameOfLengthAbout");
+      actTreeCompressNodesWithChildrenLessThan = ti.getValue().intValue();
+    ti = paramsInt.get("actTreePickNameOfLengthAbout");
     if ((ti != null) && (ti.valueChanged() || force))
-      _actTreePickNameOfLengthAbout = ti.getValue().intValue();
-    tb = paramsBool.get("_actTreeCreateHostCentricMap");
+      actTreePickNameOfLengthAbout = ti.getValue().intValue();
+    tb = paramsBool.get("actTreeCreateHostCentricMap");
     if ((tb != null) && (tb.valueChanged() || force))
-      _actTreeCreateHostCentricMap = tb.getValue().booleanValue();
-    tb = paramsBool.get("_actTreeCreateUnreachableTrees");
+      actTreeCreateHostCentricMap = tb.getValue().booleanValue();
+    tb = paramsBool.get("actTreeCreateUnreachableTrees");
     if ((tb != null) && (tb.valueChanged() || force))
-      _actTreeCreateUnreachableTrees = tb.getValue().booleanValue();
-    tb = paramsBool.get("_actTreeDumpClades");
+      actTreeCreateUnreachableTrees = tb.getValue().booleanValue();
+    tb = paramsBool.get("actTreeDumpClades");
     if ((tb != null) && (tb.valueChanged() || force))
-      _actTreeDumpClades = tb.getValue().booleanValue();
+      actTreeDumpClades = tb.getValue().booleanValue();
     tb = paramsBool.get("_do_render_chemicals");
     if ((tb != null) && (tb.valueChanged() || force))
       _do_render_chemicals = tb.getValue().booleanValue();

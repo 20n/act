@@ -497,14 +497,14 @@ class Cascade(target: Long) {
         if (getOrDefault[String](sourceNode, "isrxn").toBoolean) {
           val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](sourceNode, "organisms", new util.HashSet[String]())
           if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
-            Edge.setAttribute(currentEdge, "color", s"\"$limeGreen\", penwidth=5")
+            Edge.setAttribute(currentEdge, "color", f""""$limeGreen", penwidth=5""")
           }
         }
 
         if (getOrDefault[String](destNode, "isrxn").toBoolean) {
           val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](destNode, "organisms", new util.HashSet[String]())
           if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
-            Edge.setAttribute(currentEdge, "color", s"\"$limeGreen\", penwidth=5")
+            Edge.setAttribute(currentEdge, "color", f""""$limeGreen", penwidth=5""")
           }
         }
       }
