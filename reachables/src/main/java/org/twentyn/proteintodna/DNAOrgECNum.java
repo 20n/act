@@ -2,7 +2,6 @@ package org.twentyn.proteintodna;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.util.List;
 import java.util.Set;
 
 public class DNAOrgECNum {
@@ -15,11 +14,11 @@ public class DNAOrgECNum {
     this.dna = dna;
   }
 
-  public Set<List<String>> getOrgAndEcNum() {
+  public Set<Set<OrgAndEcnum>> getOrgAndEcNum() {
     return orgAndEcNum;
   }
 
-  public void setOrgAndEcNum(Set<List<String>> orgAndEcNum) {
+  public void setOrgAndEcNum(Set<Set<OrgAndEcnum>> orgAndEcNum) {
     this.orgAndEcNum = orgAndEcNum;
   }
 
@@ -35,12 +34,12 @@ public class DNAOrgECNum {
   String dna;
 
   @JsonProperty("org_ec")
-  Set<List<String>> orgAndEcNum;
+  Set<Set<OrgAndEcnum>> orgAndEcNum;
 
   @JsonProperty("num_proteins")
   private Integer numProteins;
 
-  public DNAOrgECNum(String dna, Set<List<String>> orgAndEcNum, Integer proteins) {
+  public DNAOrgECNum(String dna, Set<Set<OrgAndEcnum>> orgAndEcNum, Integer proteins) {
     this.dna = dna;
     this.orgAndEcNum = orgAndEcNum;
     this.numProteins = proteins;
