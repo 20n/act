@@ -1,7 +1,7 @@
 package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo
 
 import act.server.MongoDB
-import act.shared.{Chemical, Reaction}
+import act.shared.Chemical
 import com.mongodb.DBObject
 import com.mongodb.casbah.Imports.{BasicDBList, BasicDBObject}
 import org.apache.logging.log4j.LogManager
@@ -13,7 +13,7 @@ trait MongoWorkflowUtilities {
   private val logger = LogManager.getLogger(getClass.getName)
 
 
-
+  private val mongoConnections: mutable.HashMap[(String, String, Int), MongoDB] = new mutable.HashMap[(String, String, Int), MongoDB]()
   /*
     Related to instantiating Mongo
    */
@@ -28,10 +28,17 @@ trait MongoWorkflowUtilities {
     * @return Created Mongo database connection.
     */
   def connectToMongoDatabase(db: String = "marvin", host: String = "localhost", port: Int = 27017): MongoDB = {
-    logger.info("Setting up Mongo database connection")
+    val key = (db, host, port)
+    val cachedConnection = mongoConnections.get(key)
 
+    if (cachedConnection.isDefined){
+      return mongoConnections(key)
+    }
     // Instantiate Mongo host.
-    new MongoDB(host, port, db)
+    logger.info("Setting up new Mongo database connection")
+    val connection = new MongoDB(host, port, db)
+    mongoConnections.put(key, connection)
+    connection
   }
 
   def createDbObject(values: Map[Keyword, Any]): BasicDBObject = {

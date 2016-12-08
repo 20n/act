@@ -16,6 +16,8 @@ object MongoKeywords {
   object AND extends Keyword("$and")
   object IN extends Keyword("$in")
   object REGEX extends Keyword("$regex")
+  object NOT_EQUAL extends Keyword("$ne")
+  object WHERE extends Keyword("$where")
 
   // Aggregation
   object MATCH extends Keyword("$match")
