@@ -5,7 +5,8 @@ import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Chemical.REFS;
 import act.shared.Reaction;
-import com.mongodb.DBCursor;
+import com.mongodb.BasicDBObject;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -20,71 +21,30 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class LoadAct extends SteppedTask {
-  private int step = 100;
+  // Constants
+  private static String _fileloc = "com.act.reachables.LoadAct";
+
+  private static final boolean SET_METADATA_ON_NW_NODES = false;
+
+  private static final String DEFAULT_DB_HOST = "localhost";
+  private static final int DEFAULT_PORT = 27017;
+  private static final String DEFAULT_DATABASE = "validator_profiling_2";
+
+  // Fields
+  private MongoDB db;
+  private Set<String> optional_universal_inchis;
+  private Set<String> optional_cofactor_inchis;
   private int loaded, total;
-  boolean SET_METADATA_ON_NW_NODES = false;
   private List<String> fieldSetForChemicals;
-  Set<String> optional_universal_inchis;
-  Set<String> optional_cofactor_inchis;
 
-  public static Network getReachablesTree(Set<String> natives, Set<String> cofactors, boolean restrictToSeq, String[] extra_chem_fields) {
-    GlobalParams._actTreeOnlyIncludeRxnsWithSequences = restrictToSeq;
-
-    // init loader
-    LoadAct act = new LoadAct(natives, cofactors);
-
-    // set fields to include in the tree even if they are not reachables
-    if (extra_chem_fields != null)
-      for (String f : extra_chem_fields)
-        act.setFieldForExtraChemicals(f);
-
-    // load data from db; and compute reachables tree
-    act.run();
-
-    return ActData.instance().ActTree;
-  }
-
-  public static Network getReachablesTree(Set<String> natives, Set<String> cofactors, boolean restrictToSeq) {
-    GlobalParams._actTreeOnlyIncludeRxnsWithSequences = restrictToSeq;
-
-    // init loader
-    LoadAct act = new LoadAct(natives, cofactors);
-
-    // load data from db; and compute reachables tree
-    act.run();
-
-    return ActData.instance().ActTree;
-  }
-
-  public static Network getReachablesTree(Set<String> natives, Set<String> cofactors) {
-    GlobalParams._actTreeOnlyIncludeRxnsWithSequences = true;
-
-    // init loader
-    LoadAct act = new LoadAct(natives, cofactors);
-
-    // load data from db; and compute reachables tree
-    act.run();
-
-    return ActData.instance().ActTree;
-  }
-
-  public static String toInChI(Long id) {
-    return ActData.instance().chemId2Inchis.get(id);
-  }
-
-  public MongoDB db;
   private LoadAct(Set<String> optional_universal_inchis, Set<String> optional_cofactor_inchis) {
     this.optional_universal_inchis = optional_universal_inchis;
     this.optional_cofactor_inchis = optional_cofactor_inchis;
-    this.fieldSetForChemicals = new ArrayList<String>();
-    this.db = new MongoDB("localhost", 27017, "actv01");
-
-    if (this.db == null) {
-      logProgress( "No connection to Act MongoDB." );
-      return;
-    }
+    this.fieldSetForChemicals = new ArrayList<>();
+    this.db = new MongoDB(DEFAULT_DB_HOST, DEFAULT_PORT, DEFAULT_DATABASE);
 
     ActData.instance().Act = new Network("Act");
     ActData.instance().ActTree = new Network("Act Tree");
@@ -108,6 +68,161 @@ public class LoadAct extends SteppedTask {
     loaded = -1;
   }
 
+  public static Network getReachablesTree(Set<String> natives, Set<String> cofactors, boolean restrictToSeq, String[] extra_chem_fields) {
+    GlobalParams._actTreeOnlyIncludeRxnsWithSequences = restrictToSeq;
+
+    // init loader
+    LoadAct act = new LoadAct(natives, cofactors);
+
+    // set fields to include in the tree even if they are not reachables
+    if (extra_chem_fields != null)
+      for (String f : extra_chem_fields)
+        act.setFieldForExtraChemicals(f);
+
+    // load data from db; and compute reachables tree
+    act.run();
+
+    return ActData.instance().ActTree;
+  }
+
+  public static Network getReachablesTree(Set<String> natives, Set<String> cofactors, boolean restrictToSeq) {
+    return getReachablesTree(natives, cofactors, restrictToSeq, null);
+  }
+
+  public static Network getReachablesTree(Set<String> natives, Set<String> cofactors) {
+    return getReachablesTree(natives, cofactors, true);
+  }
+
+  public static String toInChI(Long id) {
+    return ActData.instance().chemId2Inchis.get(id);
+  }
+
+  private static void addToNw(Reaction rxn) {
+    /**
+     * This class takes in a reaction and adds it to ActData.
+     *
+     * Special handling is afforded to abstract reactions and reactions w/ only cofactors as substrates.
+     */
+    Long rxnid = (long) rxn.getUUID();
+
+    // Filter out abstract substrates.  These reactions are invalid
+    Long[] inputChemicalsArray = ArrayUtils.addAll(rxn.getSubstrates(), rxn.getSubstrateCofactors());
+
+    // Some reactions have coenzymes, so don't forget about those.
+    inputChemicalsArray = ArrayUtils.addAll(inputChemicalsArray, rxn.getCoenzymes());
+
+    if (Arrays.stream(inputChemicalsArray).anyMatch(x -> ActData.instance().metaCycBigMolsOrRgrp.contains(x))){
+      logProgress(String.format("Skipping reaction %d as it contains an abstract substrate.", rxnid));
+      return;
+    }
+
+    // Remove cofactors from the needed substrates.
+    List<Long> inputChemicals = Arrays.asList(inputChemicalsArray).stream()
+            .filter(c -> !ActData.instance().cofactors.contains(c))
+            .collect(Collectors.toList());
+    Long[] outputChemicalsArray = ArrayUtils.addAll(rxn.getProducts(), rxn.getProductCofactors());
+
+    // Output chemicals, only real ones. Also remove all of the cofactors as we don't care if those are produced.
+    List<Long> outputChemicals = Arrays.asList(outputChemicalsArray).stream()
+            .filter(p -> !ActData.instance().metaCycBigMolsOrRgrp.contains(p) && !ActData.instance().cofactors.contains(p))
+            .collect(Collectors.toList());
+
+    // Don't bother if we don't get any new chemicals from this.
+    if (outputChemicals.isEmpty()){
+      logProgress(String.format("Skipping reaction %d as it has no non-abstract products.", rxnid));
+      return;
+    }
+
+    if (inputChemicals.isEmpty()) {
+      logProgress(String.format("Undoing filtering on reaction %d substrates as it has only cofactor substrates.", rxnid));
+      // These will be substrate only
+      inputChemicals = Arrays.asList(inputChemicalsArray);
+    }
+
+    // Load all the nodeMapping.
+    inputChemicals.stream().distinct().forEach(s -> {
+      Node sub = Node.get(s, true);
+      ActData.instance().chemsInAct.put(s, sub);
+      ActData.instance().Act.addNode(sub, s);
+
+      outputChemicals.stream().distinct().forEach(p -> {
+        Node prd = Node.get(p, true);
+        ActData.instance().Act.addNode(prd, p);
+        ActData.instance().chemsInAct.put(p, prd);
+        Edge r = Edge.get(sub, prd, true);
+        ActData.instance().Act.addEdge(r);
+      });
+    });
+
+    Set<Long> inputSet = new HashSet<>(inputChemicals);
+    Set<Long> outputSet = new HashSet<>(outputChemicals);
+
+
+    /* --------------- Update ActData ------------------ */
+    ActData.instance().rxnSubstrates.put(rxnid, inputSet);
+    ActData.instance().rxnProducts.put(rxnid, outputSet);
+
+    inputSet.stream().forEach(ActData.instance().chemsReferencedInRxns::add);
+    outputSet.stream().forEach(ActData.instance().chemsReferencedInRxns::add);
+
+    inputSet.stream().forEach(s -> {
+      Set<Long> pSet = ActData.instance().rxnsThatConsumeChem.getOrDefault(s, new HashSet<>());
+      pSet.add(rxnid);
+      ActData.instance().rxnsThatConsumeChem.put(s, pSet);
+    });
+
+    outputSet.stream().forEach(p -> {
+      Set<Long> pSet = ActData.instance().rxnsThatProduceChem.getOrDefault(p, new HashSet<>());
+      pSet.add(rxnid);
+      ActData.instance().rxnsThatProduceChem.put(p, pSet);
+    });
+
+    // add to internal copy of network
+    ActData.instance().rxnHasSeq.put(rxnid, rxn.hasProteinSeq());
+
+
+    /* -------- Reaction Classes ------- */
+    Pair<Set<Long>, Set<Long>> rxnClass = Pair.of(inputSet, outputSet);
+    if (!ActData.instance().rxnClasses.contains(rxnClass)) {
+      // the first reaction that shows up in this class, get to
+      // represent the entire class. So we install it in the
+      // datasets mirroring the non-class structures...
+
+      ActData.instance().rxnClassesSubstrates.put(rxnid, inputSet);
+      ActData.instance().rxnClassesProducts.put(rxnid, outputSet);
+      ActData.instance().rxnClasses.add(rxnClass);
+    }
+  }
+
+  public static void annotateRxnEdges(Reaction rxn, HashSet<Edge> rxn_edges) {
+    for (Edge e : rxn_edges) {
+      Edge.setAttribute(e, "isRxn", true);
+      Edge.setAttribute(e, "datasource", rxn.getDataSource());
+      Edge.setAttribute(e, "srcRxnID", rxn.getUUID());
+      Edge.setAttribute(e, "srcRxn", rxn.getReactionName());
+      if (rxn.getECNum() != null)
+        Edge.setAttribute(e, "srcRxnEC", rxn.getECNum());
+    }
+  }
+
+  public static boolean isCofactor(long m) {
+    return ActData.instance().cofactors.contains(m);
+  }
+
+  private static void logProgress(String format, Object... args) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.format(_fileloc + ": " + format, args);
+  }
+
+  private static void logProgress(String msg) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.println(_fileloc + ": " + msg);
+  }
+
   private List<Long> getAllIDsSorted() {
     List<Long> allids = this.db.getAllReactionUUIDs();
     Collections.sort(allids);
@@ -115,7 +230,7 @@ public class LoadAct extends SteppedTask {
   }
 
   private Set<Long> getNatives() {
-    Set<Long> natives_ids = new HashSet<Long>();
+    Set<Long> natives_ids = new HashSet<>();
 
     if (this.optional_universal_inchis == null) {
 
@@ -138,21 +253,25 @@ public class LoadAct extends SteppedTask {
 
         natives_ids.add(c.getUuid());
       }
-
     }
+
+    logProgress(String.format("%d natives loaded into Act",natives_ids.size()));
 
     return natives_ids;
   }
 
   private Set<Long> getCofactors() {
-    Set<Long> cofactor_ids = new HashSet<Long>();
+    Set<Long> cofactor_ids = new HashSet<>();
 
     if (this.optional_cofactor_inchis == null) {
 
       // pull whatever is in the DB
       List<Chemical> cs = this.db.getCofactorChemicals();
+      // TODO Add filter for chemicals w/o inchis
       for (Chemical c : cs)
-        cofactor_ids.add(c.getUuid());
+        if (c.getInChI() != null) {
+          cofactor_ids.add(c.getUuid());
+        }
 
     } else {
 
@@ -178,7 +297,7 @@ public class LoadAct extends SteppedTask {
   }
 
   private HashMap<String, List<Long>> getChemicalWithUserSpecFields() {
-    HashMap<String, List<Long>> specials = new HashMap<String, List<Long>>();
+    HashMap<String, List<Long>> specials = new HashMap<>();
 
     for (String f : this.fieldSetForChemicals) {
       List<Chemical> cs = this.db.getChemicalsThatHaveField(f);
@@ -188,10 +307,10 @@ public class LoadAct extends SteppedTask {
   }
 
   private Set<Long> getMetaCycBigMolsOrRgrp() {
-    HashSet<Long> ids = new HashSet();
-    DBCursor chemCursor = this.db.getIdCursorForFakeChemicals();
+    HashSet<Long> ids = new HashSet<>();
+    DBIterator chemCursor = this.db.getIdCursorForFakeChemicals();
     while (chemCursor.hasNext()) {
-      ids.add((Long)chemCursor.next().get("_id"));
+      ids.add((Long) chemCursor.next().get("_id"));
     }
     chemCursor.close();
     return ids;
@@ -205,7 +324,10 @@ public class LoadAct extends SteppedTask {
   }
 
   private void addReactionsToNetwork() {
-    DBIterator iterator = this.db.getIteratorOverReactions();
+    // Ignore reactions with "protein" in their description. This is only necessary because there are some problems in
+    // data parsing where we don't always put the proteins into the data, so sometimes fake data looks real.
+    BasicDBObject noFakeReactions = new BasicDBObject("easy_desc", new BasicDBObject("$regex", "^((?!protein).)*$"));
+    DBIterator iterator = this.db.getIteratorOverReactions(noFakeReactions, null);
     Reaction r;
     Map<Reaction.RxnDataSource, Integer> counts = new HashMap<>();
     for (Reaction.RxnDataSource src : Reaction.RxnDataSource.values())
@@ -219,7 +341,6 @@ public class LoadAct extends SteppedTask {
       Reaction.RxnDataSource src = r.getDataSource();
       Set<Reaction> reactionsWithAccurateDirections = r.correctForReactionDirection();
       counts.put(src, counts.get(src) + reactionsWithAccurateDirections.size());
-      logProgress("Pulled: %s\r", counts.toString());
 
       // Correct for right-to-left and reversible actions, adding all appropriate directions to the graph.
       for (Reaction directedRxn : reactionsWithAccurateDirections) {
@@ -232,136 +353,9 @@ public class LoadAct extends SteppedTask {
     logProgress("Rxn aggregate into %d classes.\n", ActData.instance().rxnClasses.size());
   }
 
-  public static void addToNw(Reaction rxn) {
-    // add to act network
-    long rxnid = rxn.getUUID();
-    Set<Long> substrates = new HashSet<Long>(Arrays.asList(rxn.getSubstrates()));
-    Set<Long> products = new HashSet<Long>(Arrays.asList(rxn.getProducts()));
-
-    HashSet<Edge> rxn_edges = new HashSet<Edge>();
-    boolean anySmallMoleculeEdges = false;
-    for (long s : substrates) {
-      if (!ActData.instance().metaCycBigMolsOrRgrp.contains(s)) {
-        ActData.instance().chemsReferencedInRxns.add(s);
-      }
-    }
-    for (long p : products) {
-      if (!ActData.instance().metaCycBigMolsOrRgrp.contains(p)) {
-        ActData.instance().chemsReferencedInRxns.add(p);
-      }
-    }
-    for (long s : substrates) {
-      if (isCofactor(s) || ActData.instance().metaCycBigMolsOrRgrp.contains(s))
-        continue;
-      Node sub = Node.get(s, true);
-      ActData.instance().chemsInAct.put(s, sub);
-      ActData.instance().Act.addNode(sub, s);
-      for (long p : products) {
-        if (isCofactor(p) || ActData.instance().metaCycBigMolsOrRgrp.contains(p))
-          continue;
-
-        // TODO: rxnECNumber rxnEasyDesc and rxnDataSource are only used
-        // for information in cascades output. Do not load them during
-        // reachables computation....
-        // TODO: There is no reason to load all 5M of them either. cascades
-        // only needs the ones that are referenced in the reachables computation
-        // anySmallMoleculeEdges = true;
-
-        Node prd = Node.get(p, true);
-        ActData.instance().Act.addNode(prd, p);
-        ActData.instance().chemsInAct.put(p, prd);
-
-        Edge r = Edge.get(sub, prd, true);
-        ActData.instance().Act.addEdge(r);
-        rxn_edges.add(r);
-      }
-    }
-    boolean ANNOTATE_RXN_EDGES = false;
-    if (ANNOTATE_RXN_EDGES)
-      annotateRxnEdges(rxn, rxn_edges);
-
-    // add to internal copy of network
-    ActData.instance().rxnHasSeq.put(rxnid, rxn.hasProteinSeq());
-
-    // add to rxnSubstrates, and rxnSubstratesCofactors
-    HashSet<Long> incomingCofactors = new HashSet<Long>();
-    HashSet<Long> incoming = new HashSet<Long>();
-    for (Long s : substrates) {
-      if (isCofactor(s))
-        incomingCofactors.add(s);
-      else if (!ActData.instance().metaCycBigMolsOrRgrp.contains(s))
-        incoming.add(s);
-    }
-    ActData.instance().rxnSubstrates.put(rxnid, incoming);
-    ActData.instance().rxnSubstratesCofactors.put(rxnid, incomingCofactors);
-
-    // add to rxnProducts, and rxnProductsCofactors
-    HashSet<Long> outgoingCofactors = new HashSet<Long>();
-    HashSet<Long> outgoing = new HashSet<Long>();
-    for (Long p : products) {
-      if (isCofactor(p))
-        outgoingCofactors.add(p);
-      else if (!ActData.instance().metaCycBigMolsOrRgrp.contains(p))
-        outgoing.add(p);
-    }
-    ActData.instance().rxnProducts.put(rxnid, outgoing);
-    ActData.instance().rxnProductsCofactors.put(rxnid, outgoingCofactors);
-
-    for (Long s : incoming) {
-      if (!ActData.instance().rxnsThatConsumeChem.containsKey(s))
-        ActData.instance().rxnsThatConsumeChem.put(s, new HashSet<Long>());
-      ActData.instance().rxnsThatConsumeChem.get(s).add(rxnid);
-    }
-    for (Long p : outgoing) {
-      if (!ActData.instance().rxnsThatProduceChem.containsKey(p))
-        ActData.instance().rxnsThatProduceChem.put(p, new HashSet<Long>());
-      ActData.instance().rxnsThatProduceChem.get(p).add(rxnid);
-    }
-
-    // now see if this is a new "class" of rxn,
-    // we only use classes to expand reactions
-    Pair<Set<Long>, Set<Long>> rxnClass = Pair.of(incoming, outgoing);
-    if (!ActData.instance().rxnClasses.contains(rxnClass)) {
-      // the first reaction that shows up in this class, get to
-      // represent the entire class. So we install it in the
-      // datasets mirroring the non-class structures...
-
-      ActData.instance().rxnClassesSubstrates.put(rxnid, incoming);
-      ActData.instance().rxnClassesProducts.put(rxnid, outgoing);
-      ActData.instance().rxnClasses.add(rxnClass);
-
-      for (Long s : incoming) {
-        if (!ActData.instance().rxnClassesThatConsumeChem.containsKey(s))
-          ActData.instance().rxnClassesThatConsumeChem.put(s, new HashSet<Long>());
-        ActData.instance().rxnClassesThatConsumeChem.get(s).add(rxnid);
-      }
-      for (Long p : outgoing) {
-        if (!ActData.instance().rxnClassesThatProduceChem.containsKey(p))
-          ActData.instance().rxnClassesThatProduceChem.put(p, new HashSet<Long>());
-        ActData.instance().rxnClassesThatProduceChem.get(p).add(rxnid);
-      }
-    }
-
-  }
-
-  public static void annotateRxnEdges(Reaction rxn, HashSet<Edge> rxn_edges) {
-    for (Edge e : rxn_edges) {
-      Edge.setAttribute(e, "isRxn", true);
-      Edge.setAttribute(e, "datasource", rxn.getDataSource());
-      Edge.setAttribute(e, "srcRxnID", rxn.getUUID());
-      Edge.setAttribute(e, "srcRxn", rxn.getReactionName());
-      if (rxn.getECNum() != null)
-        Edge.setAttribute(e, "srcRxnEC", rxn.getECNum());
-    }
-  }
-
-  public static boolean isCofactor(long m) {
-    return ActData.instance().cofactors.contains(m);
-  }
-
   @Override
   public double percentDone() {
-    return 100.0 * ((double)this.loaded / this.total);
+    return 100.0 * ((double) this.loaded / this.total);
   }
 
   @Override
@@ -370,22 +364,6 @@ public class LoadAct extends SteppedTask {
     addReactionsToNetwork();
     this.loaded = this.total;
   }
-
-  private static String _fileloc = "com.act.reachables.LoadAct";
-  private static void logProgress(String format, Object... args) {
-    if (!GlobalParams.LOG_PROGRESS)
-      return;
-
-    System.err.format(_fileloc + ": " + format, args);
-  }
-
-  private static void logProgress(String msg) {
-    if (!GlobalParams.LOG_PROGRESS)
-      return;
-
-    System.err.println(_fileloc + ": " + msg);
-  }
-
 
   @Override
   public void init() {
@@ -396,26 +374,28 @@ public class LoadAct extends SteppedTask {
     ActData.instance().cofactors = getCofactors();
     ActData.instance().natives = getNatives();
     ActData.instance().chemicalsWithUserField = getChemicalWithUserSpecFields();
-    ActData.instance().chemicalsWithUserField_treeOrganic = new HashSet<Long>();
-    ActData.instance().chemicalsWithUserField_treeArtificial = new HashSet<Long>();
+    ActData.instance().chemicalsWithUserField_treeOrganic = new HashSet<>();
+    ActData.instance().chemicalsWithUserField_treeArtificial = new HashSet<>();
     ActData.instance().metaCycBigMolsOrRgrp = getMetaCycBigMolsOrRgrp();
-    ActData.instance().chemsReferencedInRxns = new HashSet<Long>();
-    ActData.instance().chemsInAct = new HashMap<Long, Node>();
-    ActData.instance().rxnsInAct = new HashMap<Pair<Long, Long>, Edge>();
-    ActData.instance().rxnSubstrates = new HashMap<Long, Set<Long>>();
-    ActData.instance().rxnsThatConsumeChem = new HashMap<Long, Set<Long>>();
-    ActData.instance().rxnsThatProduceChem = new HashMap<Long, Set<Long>>();
-    ActData.instance().rxnProducts = new HashMap<Long, Set<Long>>();
-    ActData.instance().rxnOrganisms = new HashMap<Long, Set<Long>>();
-    ActData.instance().rxnSubstratesCofactors = new HashMap<Long, Set<Long>>();
-    ActData.instance().rxnProductsCofactors = new HashMap<Long, Set<Long>>();
-    ActData.instance().rxnHasSeq = new HashMap<Long, Boolean>();
+    ActData.instance().chemsReferencedInRxns = new HashSet<>();
+    ActData.instance().chemsInAct = new HashMap<>();
+    ActData.instance().rxnsInAct = new HashMap<>();
+    ActData.instance().rxnSubstrates = new HashMap<>();
+    ActData.instance().rxnsThatConsumeChem = new HashMap<>();
+    ActData.instance().rxnsThatProduceChem = new HashMap<>();
+    ActData.instance().rxnProducts = new HashMap<>();
+    ActData.instance().rxnOrganisms = new HashMap<>();
+    ActData.instance().rxnSubstratesCofactors = new HashMap<>();
+    ActData.instance().rxnProductsCofactors = new HashMap<>();
+    ActData.instance().rxnHasSeq = new HashMap<>();
 
-    ActData.instance().rxnClassesSubstrates = new HashMap<Long, Set<Long>>();
-    ActData.instance().rxnClassesProducts = new HashMap<Long, Set<Long>>();
-    ActData.instance().rxnClasses = new HashSet<Pair<Set<Long>, Set<Long>>>();
-    ActData.instance().rxnClassesThatConsumeChem = new HashMap<Long, Set<Long>>();
-    ActData.instance().rxnClassesThatProduceChem = new HashMap<Long, Set<Long>>();
+    ActData.instance().rxnClassesSubstrates = new HashMap<>();
+    ActData.instance().rxnClassesProducts = new HashMap<>();
+    ActData.instance().rxnClasses = new HashSet<>();
+    ActData.instance().rxnClassesThatConsumeChem = new HashMap<>();
+    ActData.instance().rxnClassesThatProduceChem = new HashMap<>();
+
+    ActData.instance().noSubstrateRxnsToProducts = new HashMap<>();
     logProgress("Initialization complete.");
   }
 

@@ -1,5 +1,8 @@
 package com.act.reachables;
 
+import act.server.MongoDB;
+import act.shared.helpers.P;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -7,42 +10,39 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.regex.Matcher;
-
-import act.server.MongoDB;
-import act.shared.helpers.P;
+import java.util.regex.Pattern;
 
 public class WavefrontExpansion {
 
+  private static String _fileloc = "com.act.reachables.WavefrontExpansion";
   // these are computed once and are finalized thereafter
   Set<Long> cofactors_and_natives;
   Long root = -1L;
   Long rootProxyInLayer1 = -2L;
-
   // everything below changes as part of the reachables expansion
   Set<Long> R; // list of reachable chems
   HashMap<Integer, Set<Long>> R_by_layers;
   HashMap<Integer, Set<Long>> R_by_layers_in_host;
-
   HashMap<Long, Long> R_parent; // chosen parent at layer i-1 for a chem at layer i
   HashMap<Long, Set<Long>> R_owned_children; // final set of children owned by parent (key)
   HashMap<Long, Set<Long>> R_parent_candidates; // list of candidates in layer i-1 that could be parents for layer i chem
   HashMap<Long, List<Long>> rxn_needs; // list of precondition chemicals for each chem
-  Set<Long> roots; // under "CreateUnreachableTrees" we also compute conditionally reachable trees rooted at important assumed nodes
+  Set<Long> roots; // under "CreateUnreachableTrees" we also compute conditionally reachable trees rooted at important assumed nodeMapping
   int currentLayer;
-
   // when computing reachables, we log the sequences
   // that create new reachables
   Set<Long> seqThatCreatedNewReachable;
   // and the sequences that have enabled substrates,
   // irrespective of whether they create new or not
   Set<Long> seqWithReachableSubstrates;
-
   // when doing assumed_reachable world, the parents of a node deep in the tree get stolen,
   // and then we have to attach the node directly to the root of the tree. We log those in
   // this hashmap to make sure that we can annotate those edges in the front-end
   Set<Long> isAncestorAndNotDirectParent;
+  Set<Long> R_assumed_reachable;
+  Set<Long> R_saved;
+  HashMap<Long, List<Long>> rxn_needs_saved;
 
   WavefrontExpansion () {
     this.R = new HashSet<Long>();
@@ -62,14 +62,48 @@ public class WavefrontExpansion {
     roots.add(this.root);
   }
 
-  public Tree<Long> expandAndPickParents() {
-    for (Long c : ActData.instance().cofactors) {
-      addToReachablesAndCofactorNatives(c);
+  private static void logProgress(String format, Object... args) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.format(_fileloc + ": " + format, args);
+  }
+
+  private static void logProgress(String msg) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.println(_fileloc + ": " + msg);
+  }
+
+  public static Integer countCarbons(String inchi) {
+    String[] spl = inchi.split("/");
+    // For lone atoms like carbon, the inchi is InChI=1S/C, which is valid. So any other inchi with less than 2
+    // components is invalid.
+    if (spl.length < 2)
+      return null;
+
+    String formula = spl[1];
+
+    // The below regex pattern will match all atoms and their counts. ASSUMPTION: The first letter of the atom is
+    // a capital letter followed by lower case letters.
+    Pattern patternToMatchAllAtomsAndTheirCounts = Pattern.compile("([A-Z][a-z]*)([0-9]*)");
+    Matcher matcher = patternToMatchAllAtomsAndTheirCounts.matcher(formula);
+    while (matcher.find()) {
+      // We are guaranteed to have two groups based on the pattern, but the numeric category could be an empty string.
+      if (matcher.group(1).equals("C")) {
+        return matcher.group(2).equals("") ? 1 : Integer.parseInt(matcher.group(2));
+      }
     }
 
-    for (Long c : ActData.instance().natives) {
-      addToReachablesAndCofactorNatives(c);
-    }
+    return 0;
+  }
+
+  public Tree<Long> expandAndPickParents() {
+    ActData.instance().natives.forEach(this::addToReachablesAndCofactorNatives);
+    ActData.instance().cofactors.forEach(this::addToReachablesAndCofactorNatives);
+
+    System.out.format("Size of cofactors_and_natives: %d\n", this.cofactors_and_natives.size());
 
     logProgress("Starting computeTree");
     logProgress("Cofactors and natives = " + this.cofactors_and_natives);
@@ -83,11 +117,11 @@ public class WavefrontExpansion {
     Set<Long> doNotAssignParentsTo = new HashSet<Long>();
     Set<Long> possibleBigMols = ActData.instance().metaCycBigMolsOrRgrp; // those with InChI:/FAKE/ are either big molecules (no parents), or R group containing chemicals. Either, do not complain if we cannot find parents for them.
 
-    if (GlobalParams._actTreeCreateHostCentricMap) {
+    if (GlobalParams.actTreeCreateHostCentricMap) {
       // add all host organism reachables
       int host_layer = 0;
       while (anyEnabledReactions(GlobalParams.gethostOrganismID())) {
-        logProgress("Current layeri (inside host expansion): " + this.currentLayer);
+        logProgress("Current layer (inside host expansion): " + this.currentLayer);
         boolean newAdded = pushWaveFront(GlobalParams.gethostOrganismID(), host_layer);
         if (newAdded) { // temporary....
           pickParentsForNewReachables(this.currentLayer, host_layer++, doNotAssignParentsTo, possibleBigMols, null /*no assumptions*/);
@@ -103,7 +137,7 @@ public class WavefrontExpansion {
       pickParentsForNewReachables(this.currentLayer++, -1 /* outside host */, doNotAssignParentsTo, possibleBigMols, null /*no assumptions*/);
     }
 
-    if (GlobalParams._actTreeCreateUnreachableTrees) {
+    if (GlobalParams.actTreeCreateUnreachableTrees) {
       List<EnvCond>[] workLists = worklistOfAssumedReachables();
       Set<Long> allReach = new HashSet<Long>();
       allReach.addAll(addUnreachableTrees(workLists[0], this.R)); // handle all singular assumed_reachables
@@ -123,21 +157,6 @@ public class WavefrontExpansion {
     logProgress("Still unreachable size: %s\n", still_unreach.size());
 
     return new Tree<Long>(getRoots(), this.R_parent, this.R_owned_children, constructAttributes());
-  }
-
-  private static String _fileloc = "com.act.reachables.WavefrontExpansion";
-  private static void logProgress(String format, Object... args) {
-    if (!GlobalParams.LOG_PROGRESS)
-      return;
-
-    System.err.format(_fileloc + ": " + format, args);
-  }
-
-  private static void logProgress(String msg) {
-    if (!GlobalParams.LOG_PROGRESS)
-      return;
-
-    System.err.println(_fileloc + ": " + msg);
   }
 
   private void addNodesThatHaveUserSpecifiedFields() {
@@ -215,14 +234,6 @@ public class WavefrontExpansion {
     return a;
   }
 
-  public class DescendingComparor<T> implements Comparator<P<T,Integer>> {
-    @Override
-    public int compare(P<T,Integer> o1, P<T,Integer> o2) {
-      return o2.snd().compareTo(o1.snd()); // o2.compare(o1): invert comparison to sort in descending
-    }
-
-  }
-
   private Set<Long> addUnreachableTrees(List<EnvCond> worklist, Set<Long> alreadyReached) {
     logProgress("Will process %d assumptions\n", worklist.size());
     /*
@@ -291,11 +302,11 @@ public class WavefrontExpansion {
     Collections.sort(assumptionOutcomes, new DescendingComparor<EnvCondEffect>());
     for (int idx = 0; idx < assumptionOutcomes.size(); idx++) {
       EnvCondEffect newTreeData = assumptionOutcomes.get(idx).fst();
-      if (newTreeData.sizeNewReach <= GlobalParams._actTreeMinimumSizeOfConditionalTree)
-        continue; // assumed nodes that do not enable even a single other are irrelevant
+      if (newTreeData.sizeNewReach <= GlobalParams.actTreeMinimumSizeOfConditionalTree)
+        continue; // assumed nodeMapping that do not enable even a single other are irrelevant
 
       // for now we only handle the case of single node precondition.
-      // Ideally, for tuples, we will create a circle of the nodes that
+      // Ideally, for tuples, we will create a circle of the nodeMapping that
       // make the preconditon, and then have the tree hang off it
       for (Long r : newTreeData.e.speculatedChems())
         if (!allReach.contains(r)) {
@@ -317,24 +328,6 @@ public class WavefrontExpansion {
 
     return allReach;
   }
-
-  class EnvCondEffect {
-    EnvCond e;
-    int sizeNewReach;
-    int startingLayer, endingLayer;
-    Set<Long> newReach;
-    EnvCondEffect(EnvCond e, int sz, Set<Long> newReach, int startL, int endL) {
-      this.e = e;
-      this.sizeNewReach = sz;
-      this.newReach = newReach;
-      this.startingLayer = startL;
-      this.endingLayer = endL;
-    }
-  }
-
-  Set<Long> R_assumed_reachable;
-  Set<Long> R_saved;
-  HashMap<Long, List<Long>> rxn_needs_saved;
 
   private void saveState() {
     this.R_saved = deepCopy(this.R);
@@ -414,18 +407,11 @@ public class WavefrontExpansion {
     // use the following as the universe of reactions to enumerate over
     HashMap<Long, Set<Long>> substrates_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.instance().rxnClassesSubstrates : ActData.instance().rxnSubstrates;
 
-    HashMap<Long, List<Long>> needs = new HashMap<Long, List<Long>>();
-    int ignored_nosub = 0, ignored_noseq = 0, total = 0;
+    HashMap<Long, List<Long>> needs = new HashMap<>();
+    int ignored_noseq = 0, total = 0;
     logProgress("Processing all rxns for rxn_needs: %d\n", substrates_dataset.size());
     for (Long r : substrates_dataset.keySet()) {
       Set<Long> substrates = substrates_dataset.get(r);
-
-      // do not add reactions whose substrate list is empty (happens when we parse metacyc)
-      if (GlobalParams._actTreeIgnoreReactionsWithNoSubstrates)
-        if (substrates.size() == 0) {
-          ignored_nosub++;
-          continue;
-        }
 
       // do not add reactions that don't have a sequence; unless the flag to be liberal is set
       if (GlobalParams._actTreeOnlyIncludeRxnsWithSequences) {
@@ -436,10 +422,8 @@ public class WavefrontExpansion {
       }
 
       total++;
-      needs.put(r, new ArrayList<Long>(substrates));
+      needs.put(r, new ArrayList<>(substrates));
     }
-    if (GlobalParams._actTreeIgnoreReactionsWithNoSubstrates)
-      logProgress("Ignored %d reactions that had zero substrates. Total were %d\n", ignored_nosub, total);
     if (GlobalParams._actTreeOnlyIncludeRxnsWithSequences)
       logProgress("Ignored %d reactions that had no sequence. Total were %d\n", ignored_noseq, total);
     return needs;
@@ -479,10 +463,9 @@ public class WavefrontExpansion {
         // so we have to allow cofactors in the parent candidates
         // but at the same time, some are really bad parents,
         // e.g., water and ATP, so at the end we blacklist them as owning parents
-        parent_candidates.addAll(ActData.instance().rxnSubstratesCofactors.get(r));
 
         if (!this.R_parent_candidates.containsKey(p))
-          this.R_parent_candidates.put(p, new HashSet<Long>());
+          this.R_parent_candidates.put(p, new HashSet<>());
         this.R_parent_candidates.get(p).addAll(parent_candidates);
 
       }
@@ -519,29 +502,6 @@ public class WavefrontExpansion {
       }
     }
     return closestID;
-  }
-
-  public static Integer countCarbons(String inchi) {
-    String[] spl = inchi.split("/");
-    // For lone atoms like carbon, the inchi is InChI=1S/C, which is valid. So any other inchi with less than 2
-    // components is invalid.
-    if (spl.length < 2)
-      return null;
-
-    String formula = spl[1];
-
-    // The below regex pattern will match all atoms and their counts. ASSUMPTION: The first letter of the atom is
-    // a capital letter followed by lower case letters.
-    Pattern patternToMatchAllAtomsAndTheirCounts = Pattern.compile("([A-Z][a-z]*)([0-9]*)");
-    Matcher matcher = patternToMatchAllAtomsAndTheirCounts.matcher(formula);
-    while (matcher.find()) {
-      // We are guaranteed to have two groups based on the pattern, but the numeric category could be an empty string.
-      if (matcher.group(1).equals("C")) {
-        return matcher.group(2).equals("") ? 1 : Integer.parseInt(matcher.group(2));
-      }
-    }
-
-    return 0;
   }
 
   /* checks "rxn_needs" for the enabled reactions
@@ -594,13 +554,14 @@ public class WavefrontExpansion {
 
   protected Set<Long> extractEnabledRxns(Long orgID) {
     Set<Long> enabled = new HashSet<Long>();
-    for (Long r : this.rxn_needs.keySet())
+    for (Long r : this.rxn_needs.keySet()) {
       if (this.rxn_needs.get(r).isEmpty()) {
         // if no orgID specified: add all rxns from any organism,
         // if orgID is specified: only if the reaction happens in the org
         if (orgID == null || ActData.instance().rxnOrganisms.get(r).contains(orgID))
           enabled.add(r);
       }
+    }
     for (Long r : enabled)
       this.rxn_needs.remove(r);
     return enabled;
@@ -675,7 +636,6 @@ public class WavefrontExpansion {
       boolean at_least_one_parent = false;
 
       Set<Long> candidates = this.R_parent_candidates.get(child);
-      removeBlackListedCofactorsAsParents(candidates, child);
       Long most_similar = pickMostSimilar(child, candidates);
 
       if (most_similar != null && possible_children.containsKey(most_similar)) {
@@ -700,17 +660,17 @@ public class WavefrontExpansion {
       if (!at_least_one_parent && layer == 2) {
         // there might be no parents to claim a child in layer 2 because it might have parents that are cofactors or natives
         // which means that it would have been in layer 1, except for the restriction that layer 1 is only ecoli enzymes
-        // so we will attach it to the proxy node for the natives and cofactors which will show up at the same level as layer 1 nodes
+        // so we will attach it to the proxy node for the natives and cofactors which will show up at the same level as layer 1 nodeMapping
         if (!possible_children.containsKey(this.rootProxyInLayer1))
           possible_children.put(this.rootProxyInLayer1, new HashSet<Long>());
         possible_children.get(this.rootProxyInLayer1).add(child);
       }
     }
 
-    // look at "layer - 1" and greedy assign parents there as many "layer" nodes as possible
+    // look at "layer - 1" and greedy assign parents there as many "layer" nodeMapping as possible
     Set<Long> still_orphan = new HashSet<>();
     for (Long id : reachInNewLayer) {
-      // the nodes in "doNotChangeNeighborhoodOf" do not need to find parents; already assigned elsewhere
+      // the nodeMapping in "doNotChangeNeighborhoodOf" do not need to find parents; already assigned elsewhere
 
       // metacyc gives us some molecules with db.chemicals.findOne({InChI:/FAKE/}). These are either
       // big molecules (proteins, rna, dna and), or big molecule attached SM, or small molecule abstractions
@@ -737,7 +697,7 @@ public class WavefrontExpansion {
           // this is the other case where we have a "different world assumption", i.e., there are assumed
           // tree roots and their corresponding descendents. Now here a problem arises when greedily assigning
           // parent *across worlds* (i.e., across different assumptions). Here a larger tree might have stolen
-          // some of the parents on the route from nodes to the treeRoot. In that case, this orphan has
+          // some of the parents on the route from nodeMapping to the treeRoot. In that case, this orphan has
           // nowhere to go: a) It cannot be part of this "world" because the parents on the route to the treeRoot
           // are missing in this world, and b) it cannot be part of the world where its parent was adopted, because
           // the reachability of this node depends on there being reachables other than its parent, which are
@@ -749,7 +709,6 @@ public class WavefrontExpansion {
           for (Long n : still_orphan) {
             // first, if there are multiple elements in the root assumptions, then pick the most similar
             Set<Long> candidates = deepCopy(treeRoot.speculatedChems());
-            removeBlackListedCofactorsAsParents(candidates, n);
             Long most_similar = pickMostSimilar(n, candidates);
             if (most_similar == null) {
               // we do not have structure information (either for n, or for any of the candidates)
@@ -825,7 +784,6 @@ public class WavefrontExpansion {
     }
   }
 
-
   private Long pick_with_largest_candidate_children(HashMap<Long, Set<Long>> map, Set<Long> blackList) {
     int max = -1; Long maxId = -1L;
     for (Long k : map.keySet()) {
@@ -874,6 +832,29 @@ public class WavefrontExpansion {
       if (this.R_by_layers.containsKey(1))
         aggregatedLayer1Nodes.addAll(this.R_by_layers.get(1));
       this.R_by_layers.put(1, aggregatedLayer1Nodes);
+    }
+  }
+
+  public class DescendingComparor<T> implements Comparator<P<T, Integer>> {
+    @Override
+    public int compare(P<T, Integer> o1, P<T, Integer> o2) {
+      return o2.snd().compareTo(o1.snd()); // o2.compare(o1): invert comparison to sort in descending
+    }
+
+  }
+
+  class EnvCondEffect {
+    EnvCond e;
+    int sizeNewReach;
+    int startingLayer, endingLayer;
+    Set<Long> newReach;
+
+    EnvCondEffect(EnvCond e, int sz, Set<Long> newReach, int startL, int endL) {
+      this.e = e;
+      this.sizeNewReach = sz;
+      this.newReach = newReach;
+      this.startingLayer = startL;
+      this.endingLayer = endL;
     }
   }
 

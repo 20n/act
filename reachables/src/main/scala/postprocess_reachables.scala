@@ -28,6 +28,11 @@ object postprocess_reachables {
     }
     val write_other_formats = params.get("extractReachables") != None
 
+    val outputDirectory = params.get("output-dir") match {
+      case Some(x) => x
+      case None => ""
+    }
+
     val regression_suite_files: Set[String] =
       params.get("regressionSuiteDir") match {
         case Some(dir) => {
@@ -42,7 +47,7 @@ object postprocess_reachables {
     val write_graph_too = params.get("writeGraphToo") != None
 
     println("Deserializing reachables graph")
-    ActData.instance.deserialize(prefix + ".actdata")
+    ActData.instance.deserialize(new File(outputDirectory, prefix + ".actdata").getAbsolutePath)
 
     val tree = ActData.instance().getActTree
 
@@ -60,34 +65,34 @@ object postprocess_reachables {
 
 
     if (write_other_formats) {
-      write_reachable_tree(prefix, write_graph_too, reachables)
+      write_reachable_tree(prefix, write_graph_too, reachables, outputDirectory)
     }
 
     if (regression_suite_files.nonEmpty) {
-      run_regression_suite(prefix, regression_suite_files, r_inchis)
+      run_regression_suite(prefix, regression_suite_files, r_inchis, outputDirectory)
     }
   }
 
   def id2InChIName(id: Long) = id ->
     (ActData.instance().mapChemId2Inchis(id), ActData.instance().mapChemId2ReadableName(id))
 
-  def run_regression_suite(prefix: String, regression_suite_files : Set[String], r_inchis: Set[String]): Unit = {
-    val rdir = prefix + ".regressions/" // regression output directory
+  def run_regression_suite(prefix: String, regression_suite_files : Set[String], r_inchis: Set[String], outputDirectory: String): Unit = {
+    val rdir = new File(outputDirectory, prefix + ".regressions/").getAbsolutePath // regression output directory
 
     // create output directory for regression test reports, if not already exists
     mk_regression_test_reporting_dir(rdir)
     // run regression suites if provided
-    regression_suite_files.foreach(test => reachables.run_regression(r_inchis, test, rdir))
+    regression_suite_files.foreach(test => reachables.runRegression(r_inchis, test, rdir))
   }
 
-  def write_reachable_tree(prefix: String, write_graph_too: Boolean, reachables: Map[Long, (String, String)]) {
-    val g = prefix + ".graph.json" // output file for json of graph
-    val t = prefix + ".trees.json" // output file for json of tree
-    val r = prefix + ".reachables.txt" // output file for list of all reachables
-    val e = prefix + ".expansion.txt" // output file for tree structure of reachables expansion
+  def write_reachable_tree(prefix: String, write_graph_too: Boolean, reachables: Map[Long, (String, String)], outputDirectory: String) {
+    val g = new File(outputDirectory, prefix + ".graph.json").getAbsolutePath // output file for json of graph
+    val t = new File(outputDirectory, prefix + ".trees.json").getAbsolutePath  // output file for json of tree
+    val r = new File(outputDirectory, prefix + ".reachables.txt").getAbsolutePath  // output file for list of all reachables
+    val e = new File(outputDirectory, prefix + ".expansion.txt").getAbsolutePath  // output file for tree structure of reachables expansion
 
     // Connect to the DB so that extended attributes for chemicals can be fetched as we serialize.
-    val db = new MongoDB("localhost", 27017, "actv01")
+    val db = new MongoDB("localhost", 27017, "validator_profiling_2")
 
     println("Writing disjoint graphs to " + g + " and forest to " + t)
 
@@ -104,7 +109,7 @@ object postprocess_reachables {
     val disjointtrees = tree.disjointTrees(db) // a JSONObject
     val treejson = disjointtrees.toString(2) // serialized using indent = 2
     write_to(t, treejson)
-    println("Done: Writing disjoint trees");
+    println("Done: Writing disjoint trees")
 
     if (write_graph_too) {
       println("scala/reachables.scala: You asked to write graph, in addition to default tree.")
@@ -112,7 +117,7 @@ object postprocess_reachables {
       val disjointgraphs = tree.disjointGraphs(db) // a JSONArray
       val graphjson = disjointgraphs.toString(2) // serialized using indent = 2
       write_to(g, graphjson)
-      println("scala/reachables.scala: Done writing disjoint graphs");
+      println("scala/reachables.scala: Done writing disjoint graphs")
     }
 
     println("Done: Written reachables to trees (and graphs, if requested).")

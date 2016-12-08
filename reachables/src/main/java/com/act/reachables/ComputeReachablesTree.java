@@ -1,5 +1,13 @@
 package com.act.reachables;
 
+import act.server.MongoDB;
+import act.shared.Chemical;
+import act.shared.Chemical.REFS;
+import act.shared.ConsistentInChI;
+import act.shared.helpers.MongoDBToJSON;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -7,14 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import org.json.JSONObject;
-import org.json.JSONArray;
-
-import act.server.MongoDB;
-import act.shared.Chemical;
-import act.shared.Chemical.REFS;
-import act.shared.helpers.MongoDBToJSON;
-import act.shared.ConsistentInChI;
 
 public class ComputeReachablesTree {
 
@@ -120,7 +120,7 @@ public class ComputeReachablesTree {
           worklist.add(child);
 
       // now process this elem
-      if (this.tree.getChildren(elem) != null && this.tree.getChildren(elem).size() > GlobalParams._actTreeSignificantFanout) {
+      if (this.tree.getChildren(elem) != null && this.tree.getChildren(elem).size() > GlobalParams.actTreeSignificantFanout) {
         this.importantAncestor.put(elem, elem); // this node itself is significant so it overrides anything above
         ancestory.put(elem, new HashSet<Long>());
         ancestory.get(elem).add(elem);
@@ -161,7 +161,7 @@ public class ComputeReachablesTree {
       }
     }
 
-    if (GlobalParams._actTreeDumpClades) {
+    if (GlobalParams.actTreeDumpClades) {
       // diagnostic dump:
       logProgress("-------------------------------------------------------------");
       logProgress("Main branchoff point\tID\tNames");
@@ -304,7 +304,7 @@ public class ComputeReachablesTree {
 
   private void addTreeUnder(Long parentid, Long n, Integer atlayer, HashMap<Long, Node> nodes, Long root) {
     addTreeUnderCallCount++;
-    logProgress("com.act.reachables.ComputeReachablesTree: Num nodes added to tree (TODO: speedup): %d\r", addTreeUnderCallCount);
+    logProgress("com.act.reachables.ComputeReachablesTree: Num nodeMapping added to tree (TODO: speedup): %d\r", addTreeUnderCallCount);
 
     // more than one child, it makes sense to add this node as a branch off point.
     Node node = Node.get(n, true);
@@ -332,7 +332,7 @@ public class ComputeReachablesTree {
     Set<Long> children = this.tree.getChildren(n);
 
     int num_children_added = 0;
-    if (children != null && children.size() <= GlobalParams._actTreeCompressNodesWithChildrenLessThan) {
+    if (children != null && children.size() <= GlobalParams.actTreeCompressNodesWithChildrenLessThan) {
       // only one child, so this node is just a connector node,
       // skip it and connect child directly to parent
       for (Long ch : children)
@@ -406,7 +406,7 @@ public class ComputeReachablesTree {
 
     String[] names = getReadableName(c.getInChI(), c.getBrendaNames(), c.getSynonyms());
     result.put("ReadableName", names[0]);
-    result.put("NameOfLen" + GlobalParams._actTreePickNameOfLengthAbout, names[1]);
+    result.put("NameOfLen" + GlobalParams.actTreePickNameOfLengthAbout, names[1]);
     // InChI is already stored as part of the network for debugging purposes.
     if (c.getSmiles() != null) {
       result.put("SMILES", c.getSmiles());
@@ -578,7 +578,7 @@ public class ComputeReachablesTree {
       if (inchi == null) {
         return new String[] { "[no name]", "no name" };
       } else {
-        String truncatedName = inchi.substring(0, GlobalParams._actTreePickNameOfLengthAbout) + "...";
+        String truncatedName = inchi.substring(0, GlobalParams.actTreePickNameOfLengthAbout) + "...";
         return new String[] { truncatedName, truncatedName };
       }
     int lenAway = Integer.MAX_VALUE;
@@ -588,7 +588,7 @@ public class ComputeReachablesTree {
       if (goodNameCharacteristics(b)) {
         if (goodNames.size() < 3) {
           goodNames.add(b);
-          int delta = Math.abs(b.length() - GlobalParams._actTreePickNameOfLengthAbout);
+          int delta = Math.abs(b.length() - GlobalParams.actTreePickNameOfLengthAbout);
           if (lenAway > delta) { lenAway = delta; closestLenName = b; }
         }
       }
@@ -596,7 +596,7 @@ public class ComputeReachablesTree {
       if (goodNameCharacteristics(s)) {
         if (goodNames.size() < 3) {
           goodNames.add(s);
-          int delta = Math.abs(s.length() - GlobalParams._actTreePickNameOfLengthAbout);
+          int delta = Math.abs(s.length() - GlobalParams.actTreePickNameOfLengthAbout);
           if (lenAway > delta) { lenAway = delta; closestLenName = s; }
         }
       }

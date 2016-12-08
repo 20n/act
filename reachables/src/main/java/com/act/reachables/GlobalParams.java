@@ -1,61 +1,62 @@
 package com.act.reachables;
 
 import act.shared.Reaction.RxnDataSource;
-import java.util.List;
+
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 public class GlobalParams {
 
   // LOG_PROGRESS says the computation should
   // output verbose messages while process dataset
-  static boolean LOG_PROGRESS = true;
+  public static boolean LOG_PROGRESS = true;
 
   // MAX_CASCADE_DEPTH parametrizes how far many steps
   // back in the acyclic graph do we dump to the output
   // DOT of the cascade. This is measured in # chems
   // of path backwards from the specific reachable
-  static int MAX_CASCADE_DEPTH = 2;
+  public static int MAX_CASCADE_DEPTH = 5;
   // MAX_CASCADE_UPFANOUT parametrizes how many reactions
   // upwards from each node are allowed. If more than
   // those exist then a fake rxn node with a msg is shown
-  static int MAX_CASCADE_UPFANOUT = 10;
+  public static int MAX_CASCADE_UPFANOUT = 10;
   // and when the # rxns > MAX_CASCADE_UPFANOUT we dump
   // out a fake reaction, that is annotated as such
   // the ID for this fake reaction in the
   // (FAKE_RXN_ID + #omitted)
-  static long FAKE_RXN_ID = 999999999L;
+  public static long FAKE_RXN_ID = 999999999L;
   // do we write the waterfalls to the DB?
-  static boolean _writeWaterfallsToDB = false;
+  public static boolean _writeWaterfallsToDB = false;
 
   /*
    * TUNABLE PARAMETERS
    */
-  static boolean USE_RXN_CLASSES = true;
-  static int _max_layers = 18; // cap at 18 layer
-  static int _num_waves = 2;
-  static int _startX = 40;
-  static int _bufferX = 500;
-  static int _bufferY = 50;
-  static int _startY = 40;
-  static int _width = 500;
-  static int _height = 8000;
-  static int _catch_all_height = 2000;
-  static int _catch_all_span = 10; // 10 times _width + _bufferX
-  static boolean _do_inertial_waves = false; // the waves avg both fwd and bwd's so that the layout looks more organic
-  static int _inertial_wave_periphery_nudge = 800;
-  static boolean _do_clustered_unreachables = true;
-  static boolean _do_render_chemicals = false;
-  static int _actTreeSignificantFanout = 10; // 15 will give 28, 10 will give 58 important ancestors
-  static int _actTreePickNameOfLengthAbout = 20; // 15 characters
-  static int _actTreeMinimumSizeOfConditionalTree = 1; // the "assumed" chemical, has to enable at least 10 new reachables
-  static boolean _actTreeCreateHostCentricMap = false;
-  static boolean _actTreeDumpClades = false;
-  static boolean _actTreeCreateUnreachableTrees = false;
-  static int _actTreeCompressNodesWithChildrenLessThan = 0;
+  public static boolean USE_RXN_CLASSES = false;
+  private static int _max_layers = 18; // cap at 18 layer
+  private static int _num_waves = 2;
+  private static int _startX = 40;
+  private static int _bufferX = 500;
+  private static int _bufferY = 50;
+  private static int _startY = 40;
+  private static int _width = 500;
+  private static int _height = 8000;
+  private static int _catch_all_height = 2000;
+  private static int _catch_all_span = 10; // 10 times _width + _bufferX
+  private static boolean _do_inertial_waves = false; // the waves avg both fwd and bwd's so that the layout looks more organic
+  private static int _inertial_wave_periphery_nudge = 800;
+  private static boolean _do_clustered_unreachables = true;
+  private static boolean _do_render_chemicals = false;
+  public static int actTreeSignificantFanout = 10; // 15 will give 28, 10 will give 58 important ancestors
+  public static int actTreePickNameOfLengthAbout = 20; // 15 characters
+  public static int actTreeMinimumSizeOfConditionalTree = 1; // the "assumed" chemical, has to enable at least 10 new reachables
+  public static boolean actTreeCreateHostCentricMap = false;
+  public static boolean actTreeDumpClades = false;
+  public static boolean actTreeCreateUnreachableTrees = false;
+  public static int actTreeCompressNodesWithChildrenLessThan = 0;
 
-  static boolean _actTreeIgnoreReactionsWithNoSubstrates = true;
-  static boolean _actTreeOnlyIncludeRxnsWithSequences = true;
+  public static boolean _actTreeIgnoreReactionsWithNoSubstrates = true;
+  public static boolean _actTreeOnlyIncludeRxnsWithSequences = true;
 
   private static RxnDataSource[] _includedRxnSources = { RxnDataSource.METACYC, RxnDataSource.BRENDA };
   static List<RxnDataSource> _ReachablesIncludeRxnSources = Arrays.asList(_includedRxnSources);
@@ -68,7 +69,7 @@ public class GlobalParams {
   // when expanding, use CROs or EROs
   static int _ROExpandUsing = 0; // "ERO";
 
-  // when creating EC vs RO intersection network, what types of ROs do the green nodes correspond to?
+  // when creating EC vs RO intersection network, what types of ROs do the green nodeMapping correspond to?
   static int _ECvsWhatROType = 1; // "CRO";
 
   // the threshold on the number of parent reactions coming in
@@ -79,7 +80,7 @@ public class GlobalParams {
   // conditional reachability properties.. we do not export; only the first two really need to be exported to the front end (if at all)
   static int _topKClusters = 40; // 4000 is a good number; these are clusters of conditional reachability
   static int _limitedPreconditionsConsidered = 0; // set to 0 if you want full precondition calculation, or num>0 for num preconditions
-  static double _clusterUniquenessThreshold = 2.0; // still owns twice as many nodes as were stolen
+  static double _clusterUniquenessThreshold = 2.0; // still owns twice as many nodeMapping as were stolen
   static boolean _showReachablesNode = false; // show the highly connect node for the reachables cluster
 
   static String[] _hostOrganisms = {
@@ -113,13 +114,13 @@ public class GlobalParams {
   static String helperFnsDir = "/Applications/Cytoscape_v2.8.3/ActHelpers/";
 
   protected void initialize_properties() {
-    paramsInt.add(new Tunable("_actTreeSignificantFanout", "Tree Layout: How many children for it to be an important?", new Integer(_actTreeSignificantFanout)));
-    paramsInt.add(new Tunable("_actTreeMinimumSizeOfConditionalTree", "Tree Layout: For unreachables, ignore trees with enabled reachables less than this:", new Integer(_actTreeMinimumSizeOfConditionalTree)));
-    paramsInt.add(new Tunable("_actTreePickNameOfLengthAbout", "Tree Layout: Node names: How many characters long?", new Integer(_actTreePickNameOfLengthAbout)));
-    paramsInt.add(new Tunable("_actTreeCompressNodesWithChildrenLessThan", "Tree Layout: Compress skinny paths less than: ", new Integer(_actTreeCompressNodesWithChildrenLessThan)));
-    paramsBool.add(new Tunable("_actTreeCreateHostCentricMap", "Tree Layout: Host Chassis Centric?", new Boolean(_actTreeCreateHostCentricMap)));
-    paramsBool.add(new Tunable("_actTreeCreateUnreachableTrees", "Tree Layout: Create unreachable trees?", new Boolean(_actTreeCreateUnreachableTrees)));
-    paramsBool.add(new Tunable("_actTreeDumpClades", "Tree Layout: Dump clades to /Applications/Cytoscape/output.log?", new Boolean(_actTreeDumpClades)));
+    paramsInt.add(new Tunable("actTreeSignificantFanout", "Tree Layout: How many children for it to be an important?", new Integer(actTreeSignificantFanout)));
+    paramsInt.add(new Tunable("actTreeMinimumSizeOfConditionalTree", "Tree Layout: For unreachables, ignore trees with enabled reachables less than this:", new Integer(actTreeMinimumSizeOfConditionalTree)));
+    paramsInt.add(new Tunable("actTreePickNameOfLengthAbout", "Tree Layout: Node names: How many characters long?", new Integer(actTreePickNameOfLengthAbout)));
+    paramsInt.add(new Tunable("actTreeCompressNodesWithChildrenLessThan", "Tree Layout: Compress skinny paths less than: ", new Integer(actTreeCompressNodesWithChildrenLessThan)));
+    paramsBool.add(new Tunable("actTreeCreateHostCentricMap", "Tree Layout: Host Chassis Centric?", new Boolean(actTreeCreateHostCentricMap)));
+    paramsBool.add(new Tunable("actTreeCreateUnreachableTrees", "Tree Layout: Create unreachable trees?", new Boolean(actTreeCreateUnreachableTrees)));
+    paramsBool.add(new Tunable("actTreeDumpClades", "Tree Layout: Dump clades to /Applications/Cytoscape/output.log?", new Boolean(actTreeDumpClades)));
 
     paramsBool.add(new Tunable("_do_render_chemicals", "In HTML Dump, Render Chemicals", new Boolean(_do_render_chemicals)));
     paramsBool.add(new Tunable("_do_clustered_unreachables", "Cluster Unreachables", new Boolean(_do_clustered_unreachables)));
@@ -150,27 +151,27 @@ public class GlobalParams {
     Tunable<String[]> tl;
     Tunable<Boolean> tb;
 
-    ti = paramsInt.get("_actTreeSignificantFanout");
+    ti = paramsInt.get("actTreeSignificantFanout");
     if ((ti != null) && (ti.valueChanged() || force))
-      _actTreeSignificantFanout = ti.getValue().intValue();
-    ti = paramsInt.get("_actTreeMinimumSizeOfConditionalTree");
+      actTreeSignificantFanout = ti.getValue().intValue();
+    ti = paramsInt.get("actTreeMinimumSizeOfConditionalTree");
     if ((ti != null) && (ti.valueChanged() || force))
-      _actTreeMinimumSizeOfConditionalTree = ti.getValue().intValue();
-    ti = paramsInt.get("_actTreeCompressNodesWithChildrenLessThan");
+      actTreeMinimumSizeOfConditionalTree = ti.getValue().intValue();
+    ti = paramsInt.get("actTreeCompressNodesWithChildrenLessThan");
     if ((ti != null) && (ti.valueChanged() || force))
-      _actTreeCompressNodesWithChildrenLessThan = ti.getValue().intValue();
-    ti = paramsInt.get("_actTreePickNameOfLengthAbout");
+      actTreeCompressNodesWithChildrenLessThan = ti.getValue().intValue();
+    ti = paramsInt.get("actTreePickNameOfLengthAbout");
     if ((ti != null) && (ti.valueChanged() || force))
-      _actTreePickNameOfLengthAbout = ti.getValue().intValue();
-    tb = paramsBool.get("_actTreeCreateHostCentricMap");
+      actTreePickNameOfLengthAbout = ti.getValue().intValue();
+    tb = paramsBool.get("actTreeCreateHostCentricMap");
     if ((tb != null) && (tb.valueChanged() || force))
-      _actTreeCreateHostCentricMap = tb.getValue().booleanValue();
-    tb = paramsBool.get("_actTreeCreateUnreachableTrees");
+      actTreeCreateHostCentricMap = tb.getValue().booleanValue();
+    tb = paramsBool.get("actTreeCreateUnreachableTrees");
     if ((tb != null) && (tb.valueChanged() || force))
-      _actTreeCreateUnreachableTrees = tb.getValue().booleanValue();
-    tb = paramsBool.get("_actTreeDumpClades");
+      actTreeCreateUnreachableTrees = tb.getValue().booleanValue();
+    tb = paramsBool.get("actTreeDumpClades");
     if ((tb != null) && (tb.valueChanged() || force))
-      _actTreeDumpClades = tb.getValue().booleanValue();
+      actTreeDumpClades = tb.getValue().booleanValue();
     tb = paramsBool.get("_do_render_chemicals");
     if ((tb != null) && (tb.valueChanged() || force))
       _do_render_chemicals = tb.getValue().booleanValue();

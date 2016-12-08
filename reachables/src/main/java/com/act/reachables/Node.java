@@ -1,10 +1,10 @@
 
 package com.act.reachables;
 
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.ArrayList;
-import java.io.Serializable;
 
 public class Node implements Serializable {
   private static final long serialVersionUID = -6907101658540501637L;
@@ -55,6 +55,10 @@ public class Node implements Serializable {
       return kval.get(key);
     else
       return null;
+  }
+
+  public static void clearAttributeData(){
+    ActData.instance().nodeAttributes = new HashMap<Long, HashMap<String, Serializable>>();
   }
 
   @Override

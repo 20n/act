@@ -1,25 +1,22 @@
 package com.act.reachables;
 
+import org.apache.commons.lang3.tuple.Pair;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
-
-import act.shared.Chemical;
-import act.shared.Reaction;
-import org.apache.commons.lang3.tuple.Pair;
-
-import java.io.Serializable;
-import java.io.IOException;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.ObjectInputStream;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.ObjectOutputStream;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
 
 public class ActData implements Serializable {
   private static final long serialVersionUID = -1016179639411233872L;
@@ -37,8 +34,8 @@ public class ActData implements Serializable {
   HashMap<String, List<Long>> chemicalsWithUserField;  // if a user asks us to output an artificial
                                                        // subset of chemicals that have certain fields,
                                                        // e.g., xref.CHEBI, xref.DEA etc.
-  Set<Long> chemicalsWithUserField_treeOrganic;    // in the final tree; these nodes were reachable organically
-  Set<Long> chemicalsWithUserField_treeArtificial; // in the final tree; these nodes were added artificially as
+  Set<Long> chemicalsWithUserField_treeOrganic;    // in the final tree; these nodeMapping were reachable organically
+  Set<Long> chemicalsWithUserField_treeArtificial; // in the final tree; these nodeMapping were added artificially as
                                                    // they were not organically reachable
 
   HashMap<Long, Boolean> chemIdIsAbstraction;      // the chemicals that have R in inchis and therefore abstractions
@@ -82,9 +79,11 @@ public class ActData implements Serializable {
   HashMap<Long, Set<Long>> rxnClassesThatConsumeChem;    // non-cofactor chemicals -> rxns that have them as substrates
   HashMap<Long, Set<Long>> rxnClassesThatProduceChem;    // non-cofactor chemicals -> rxns that have them as products
 
+  HashMap<Long, List<Long>> noSubstrateRxnsToProducts; // product rxns that only depend on cofactors
+
   /* Hack to work around the fact that static fields don't get serialized.  Edge and Node both now call
    * ActData.instance() a lot, which is gross but hopefully functional. */
-  HashMap<Long, List<Node>> nodeCache = new HashMap<Long, List<Node>>();
+  HashMap<Long, List<Node>> nodeCache = new HashMap<>();
   HashMap<Long, HashMap<String, Serializable>> nodeAttributes = new HashMap<>();
 
   HashMap<Edge, Edge> edgeCache = new HashMap<>();

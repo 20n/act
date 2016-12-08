@@ -1673,10 +1673,22 @@ public class MongoDB {
     return chems;
   }
 
-  public DBCursor getIdCursorForFakeChemicals() {
+  public DBIterator getIdCursorForFakeChemicals() {
     DBObject fakeRegex = new BasicDBObject();
-    fakeRegex.put("$regex", "^InChI=/FAKE");
-    return constructCursorForMatchingChemicals("InChI", fakeRegex, new BasicDBObject("_id", true));
+    DBObject abstractInchi = new BasicDBObject();
+    fakeRegex.put(ChemicalKeywords.INCHI$.MODULE$.toString(),
+            new BasicDBObject(MongoKeywords.REGEX$.MODULE$.toString(), "^InChI=/FAKE"));
+
+    abstractInchi.put(ChemicalKeywords.INCHI$.MODULE$.toString(),
+            new BasicDBObject(MongoKeywords.REGEX$.MODULE$.toString(), "^InChI=.*R.*"));
+
+    BasicDBList conditionList = new BasicDBList();
+    conditionList.add(fakeRegex);
+    conditionList.add(abstractInchi);
+
+    BasicDBObject conditions = new BasicDBObject(MongoKeywords.OR$.MODULE$.toString(), conditionList);
+
+    return getIteratorOverChemicals(conditions, new BasicDBObject(ChemicalKeywords.ID$.MODULE$.toString(), true));
   }
 
   private DBCursor constructCursorForAllChemicals() {
@@ -1989,7 +2001,6 @@ public class MongoDB {
 
     if (keys == null) {
       keys = new BasicDBObject();
-      // keys.put(projection, 1); // 1 means include, rest are excluded
     }
 
     DBCursor cursor = this.dbReactions.find(matchCriterion, keys);
