@@ -270,6 +270,7 @@ public class ProteinToDNADriver {
 
             DNAOrgECNum instance = new DNAOrgECNum(dna.toSeq(), seqMetadata, proteinsInPathway.size());
             dnaDesigns.add(instance);
+            break;
           } catch (Exception ex) {
             ex.printStackTrace();
           }
