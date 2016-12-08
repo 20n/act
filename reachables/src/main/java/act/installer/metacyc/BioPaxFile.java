@@ -302,7 +302,29 @@ public class BioPaxFile {
     Set<Resource> stoi = mapToPtrs( e.getParticipantStoichiometry() );
 
     ConversionDirectionType dir = e.getConversionDirection();
-    Boolean spont = e.getSpontaneous();
+
+    Boolean spont;
+    /* Behold and dispair!  A lamentable hack required thanks to the Biopax parser's weird handling of <bp:spontaneous>
+     * tags!  For additional, see the discussion that culminates in the approach below:
+     * https://github.com/20n/act/issues/541#issuecomment-265618708 */
+    if (e.getSpontaneous() == null) {
+      // If there is no spontaneous tag, then assume the reaction in not spontaneous;
+      spont = false;
+    } else if (e.getSpontaneous().equals(Boolean.FALSE)) {
+      /* If there is a spontaneous tag, the Biopax parser *always* sets spontaneous to false!  However, it is always
+       * non-null when a spontaneous tag exists, and I have to assume that the presence of a tag indicates some manner
+       * of spontaneity in a reaction.  Alas, the directionality information that appears as the tag text seems to be
+       * lost by the parser.  No matter--we press onward! */
+      spont = Boolean.TRUE;
+    } else {
+      /* Here is the truly weird case: the parser decides to set spontaneous to true.  I've confirmed in actv01 that
+       * this has not happened on the most recent installer run, and so will assume here that this case should not be
+       * possible under the current parser version and data model.  As such, we make it a *hard assumption* by crashing
+       * the installer if ever we discover that we have in fact found one of these impossible `true` spontaneous values.
+       */
+      throw new RuntimeException(String.format("Found a 'true' spontaneous reaction, which should be impossible: %s",
+          e.toString())); // This will print the reaction identifier for eaiser debugging.
+    }
 
     // ec, deltaG are only set for BiochemicalReaction, for others they are empty
     Set<String> ec = new HashSet<String>();

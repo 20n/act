@@ -325,6 +325,10 @@ public class OrganismCompositionMongoWriter {
     // add it to the in-memory object
     rxn.addProteinData(proteinInfo);
 
+    for (Long orgId : seqAndOrgIds.getRight()) {
+      rxn.addReference(Reaction.RefDataSource.METACYC, String.format("OrganismId:%d", orgId));
+    }
+
     // rewrite the rxn to update the protein data
     // ** Reason for double write: It is the wierdness of us
     // wanting to install a back pointer from the db.seq
@@ -508,6 +512,9 @@ public class OrganismCompositionMongoWriter {
 
     rxn.addReference(Reaction.RefDataSource.METACYC, this.originDB + " " + this.originDBSubID);
     rxn.addReference(Reaction.RefDataSource.METACYC, metacycURL);
+    if (isSpontaneous != null && isSpontaneous) {
+      rxn.addReference(Reaction.RefDataSource.METACYC, "isSpontaneous");
+    }
 
     return rxn;
   }
