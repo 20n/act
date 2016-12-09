@@ -377,12 +377,12 @@ object Cascade extends Falls {
 
   @JsonCreator
   class NodeInformation(@JsonProperty("isReaction") var isReaction: Boolean,
-                         @JsonProperty("organisms") var organisms: util.HashSet[String],
-                         @JsonProperty("reactionIds") var reactionIds: util.HashSet[Long],
-                         @JsonProperty("reactionCount") var reactionCount: Int,
-                         @JsonProperty("id") var id: Long,
-                         @JsonProperty("label") var label: String,
-                         @JsonProperty("mostNative") var isMostNative: Boolean) {
+                        @JsonProperty("organisms") var organisms: util.HashSet[String],
+                        @JsonProperty("reactionIds") var reactionIds: util.HashSet[Long],
+                        @JsonProperty("reactionCount") var reactionCount: Int,
+                        @JsonProperty("id") var id: Long,
+                        @JsonProperty("label") var label: String,
+                        @JsonProperty("mostNative") var isMostNative: Boolean) {
 
     def NodeInformation() {}
 
