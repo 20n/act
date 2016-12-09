@@ -102,8 +102,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     val organismProteomes = proteomeLocation.listFiles().toList
     val orgsToProteomes: Map[String, List[File]] = classifyOrganismByProteome(organismProteomes)
 
-//    val oddCriteria = "this.seq.length < 80 || this.seq[0] != 'M'"
-    val oddCriteria = "this.seq.length < 80"
+    val oddCriteria = "this.seq.length < 80 || this.seq[0] != 'M'"
     logger.info(s"Defining sequences that match odd criteria of $oddCriteria")
     val matchingSequences: List[DbSeq] = getIdsForEachDocumentInConditional(database)(oddCriteria).toList
 
