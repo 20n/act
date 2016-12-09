@@ -95,6 +95,7 @@ public class ProteinToDNADriver {
   /**
    * This function get all protein combinations of a pathway from candidate protein sequences from each reaction on
    * the pathway.
+   *
    * @param listOfSetOfProteinSequences A list of sets of candidate protein sequences in the pathway
    * @return A set of all possible combinations of proteins from all the reactions in the pathway.
    */
@@ -105,7 +106,7 @@ public class ProteinToDNADriver {
     int index = 0;
 
     // Build the combination set by extracting all the candidate proteins from the first reaction on the pathway
-    for(String proteinSeq: listOfSetOfProteinSequences.get(index)) {
+    for (String proteinSeq : listOfSetOfProteinSequences.get(index)) {
       List<String> newList = new ArrayList<>();
       newList.add(proteinSeq);
       combinations.add(newList);
@@ -114,11 +115,11 @@ public class ProteinToDNADriver {
     index++;
 
     // Iterate on all other protein sequences
-    while(index < listOfSetOfProteinSequences.size()) {
+    while (index < listOfSetOfProteinSequences.size()) {
       Set<String> nextList = listOfSetOfProteinSequences.get(index);
       newCombinations = new HashSet<>();
-      for(List<String> firstProteinSeq: combinations) {
-        for(String secondProteinSeq: nextList) {
+      for (List<String> firstProteinSeq : combinations) {
+        for (String secondProteinSeq : nextList) {
           List<String> newList = new ArrayList<>();
           newList.addAll(firstProteinSeq);
           newList.add(secondProteinSeq);
@@ -234,8 +235,10 @@ public class ProteinToDNADriver {
         proteinPaths.add(combination);
       }
 
-      // We only compute the dna design if we can find atleast one sequence for each reaction in the pathway.
-      if (!atleastOneSeqMissingInPathway) {
+      if (atleastOneSeqMissingInPathway) {
+        LOGGER.info(String.format("There is atleast one reaction with no sequence in reaction path id: %s", reactionPath.getId()));
+      } else {
+        // We only compute the dna design if we can find atleast one sequence for each reaction in the pathway.
         Set<List<String>> pathwayProteinCombinations = getPathwayProteinCombinations(proteinPaths);
         Set<DNAOrgECNum> dnaDesigns = new HashSet<>();
 
@@ -251,7 +254,7 @@ public class ProteinToDNADriver {
             DNAOrgECNum instance = new DNAOrgECNum(dna.toSeq(), seqMetadata, proteinsInPathway.size());
             dnaDesigns.add(instance);
           } catch (Exception ex) {
-            ex.printStackTrace();
+            LOGGER.error(String.format("The error thrown while trying to call computeDNA is: %s", ex.getMessage()));
           }
         }
 
