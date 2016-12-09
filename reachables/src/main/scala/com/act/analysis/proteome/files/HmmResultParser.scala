@@ -32,7 +32,7 @@ object HmmResultParser {
     val result = lines.span(!_.contains(START_PARSING_INDICATOR))
 
     // Group 1 has everything prior to the stop parsing indicator
-    val result_proteins = result._2.span(!_.contains(STOP_PARSING_INDICATOR))
+    val result_proteins = result._2.span(l => !l.contains(STOP_PARSING_INDICATOR) && !l.trim.isEmpty)
 
     // This means that the stop parsing indicator was never hit,
     // which means that there are no results.

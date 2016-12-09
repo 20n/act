@@ -2,22 +2,24 @@ package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.sequence_db
 
 import java.io.{BufferedWriter, File, FileWriter}
 
+import act.shared.{Seq => DbSeq}
 import com.act.workflow.tool_manager.workflow.workflow_mixins.base.WriteProteinSequenceToFasta
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywords, MongoWorkflowUtilities, SequenceKeywords}
-import com.mongodb.{BasicDBObject, DBObject}
-import org.apache.logging.log4j.LogManager
+import com.mongodb.DBObject
 import org.biojava.nbio.core.sequence.ProteinSequence
 
+import scala.collection.JavaConverters._
+
 trait ConditionalToSequence extends WriteProteinSequenceToFasta with QueryBySequenceId with MongoWorkflowUtilities {
-  def getIdsForEachDocumentInConditional(database: String)(conditional: String): List[DBObject] = {
+  def getIdsForEachDocumentInConditional(database: String)(conditional: String): Stream[DbSeq] = {
     val mongoConnection = connectToMongoDatabase(database)
 
     val seqQuery = createDbObject(SequenceKeywords.SEQ, createDbObject(MongoKeywords.NOT_EQUAL, null))
     seqQuery.put(MongoKeywords.WHERE.toString, conditional)
 
-    val matchingSequences = mongoQuerySequences(mongoConnection)(seqQuery, new BasicDBObject())
+    val matchingSequences: Iterator[DbSeq] = mongoConnection.getSeqIterator(seqQuery).asScala
 
-    matchingSequences.toList
+    matchingSequences.toStream
   }
 
   def writeFastaFileForEachDocument(database: String, outputFile: File)(sequenceId: Long)(): Unit ={
@@ -28,8 +30,6 @@ trait ConditionalToSequence extends WriteProteinSequenceToFasta with QueryBySequ
   }
 
   def sequenceObjectToFasta(outputFile: File, document: DBObject): Unit = {
-    val methodLogger = LogManager.getLogger("SequenceToObjectFasta")
-    methodLogger.info(s"Writing file ${outputFile.getAbsolutePath}")
     /*
       Map sequences and name to proteinSequences
     */

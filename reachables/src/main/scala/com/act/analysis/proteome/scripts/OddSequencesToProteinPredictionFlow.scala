@@ -1,13 +1,19 @@
 package com.act.analysis.proteome.scripts
 
 import java.io.{BufferedWriter, File, FileNotFoundException, FileWriter}
+import java.util.concurrent.atomic.AtomicInteger
 
+import act.shared.{Seq => DbSeq}
+import com.act.analysis.proteome.files.HmmResultParser
 import com.act.workflow.tool_manager.tool_wrappers.HmmerWrapper
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.SequenceKeywords
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.sequence_db.ConditionalToSequence
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
+import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
+import org.json.{JSONArray, JSONObject}
 
+import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.sys.process._
 
@@ -99,11 +105,11 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
 //    val oddCriteria = "this.seq.length < 80 || this.seq[0] != 'M'"
     val oddCriteria = "this.seq.length < 80"
     logger.info(s"Defining sequences that match odd criteria of $oddCriteria")
-    val matchingSequences = getIdsForEachDocumentInConditional(database)(oddCriteria)
+    val matchingSequences: List[DbSeq] = getIdsForEachDocumentInConditional(database)(oddCriteria).toList
 
     val idToOrganism: Map[Long, String] = matchingSequences.map(doc => {
-      val id = doc.get(SequenceKeywords.ID.toString).asInstanceOf[Int].toLong
-      val org = doc.get(SequenceKeywords.ORGANISM_NAME.toString).asInstanceOf[String]
+      val id = doc.getUUID.toLong
+      val org = doc.getOrgName
       (id, org)
     }).toMap
 
@@ -121,21 +127,31 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     if (!tempSeqDbDir.exists()) tempSeqDbDir.mkdirs()
 
 
-    def defineSequenceBlast(sequenceId: Long): Unit = {
-      // Setup all the constant paths here
-      val prefix = sequenceId.toString
+    val found = new AtomicInteger()
+    val processed = new AtomicInteger()
+    def defineSequenceBlast(sequence: DbSeq): Unit = {
+      // TODO This function currently uses flat files to communicate to CLI, instead of directly transferring them in
+      // via stdio and it also parses a flat file instead of doing parsing on the output stream from stdout which
+      // could be possible.  This is likely the slowest part and easiest optimization if needed moving forward.
+
+      val prefix = sequence.getUUID.toString
+      val resultFilePath =  new File(resultHmmDirectory, s"$prefix.output.search.result")
+
+//      if (resultFilePath.exists()) return
+
+      if (processed.incrementAndGet() % 100 == 0){
+        logger.info(s"Found reference proteome for ${found.get()} out of ${processed.get()} sequences")
+      }
 
       val outputFastaPath =   new File(fastaDirectory, s"$prefix.output.fasta")
-      val resultFilePath =  new File(resultHmmDirectory, s"$prefix.output.search.result")
-      val resultSequenceFilePath = new File(resultHmmDirectory, s"$prefix.sequences.fasta")
       val tempSeqFile = new File(tempSeqDbDir, prefix)
 
-      writeFastaFileForEachDocument(database, outputFastaPath)(sequenceId)
+      writeFastaFileForEachDocument(database, outputFastaPath)(sequence.getUUID.toLong)
       // Create the FASTA file out of a sequence
 
       // Select the correct file to search based on the organism
       // TODO Handle when we don't have a matching proteome
-      val organism = idToOrganism(sequenceId)
+      val organism = idToOrganism(sequence.getUUID.toLong)
       val firstOrgWord = organism.split(" ")(0)
       val proteomesToQueryAgainst: Option[List[File]] = if (orgsToProteomes.contains(organism)){
         orgsToProteomes.get(organism)
@@ -149,16 +165,86 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
 
       val tempProteomeFile = new File(s"$tempSeqFile.tmp_seq_db")
       val writer = new BufferedWriter(new FileWriter(tempProteomeFile))
-        proteomesToQueryAgainst.get.foreach(f => {scala.io.Source.fromFile(f).getLines.foreach(l => writer.write(s"$l\n"))
+        proteomesToQueryAgainst.get.foreach(f => {scala.io.Source.fromFile(f).getLines.foreach(l => {
+          val currentLine = if (l.startsWith(">")) {
+            // Keep a reference to the FASTA file that this sequence is in by referencing it in the fasta header
+            s">${f.getName} | ${l.replace(">", "")}\n"
+          } else {
+            s"$l\n"
+          }
+          writer.write(currentLine)
+        })
       })
       writer.close()
 
 
-      List(HmmerWrapper.HmmCommands.Phmmer.getCommand, "-o", resultFilePath.getAbsolutePath, "--noali", outputFastaPath.getAbsolutePath,
-        tempProteomeFile.getAbsolutePath).run()
+      List(HmmerWrapper.HmmCommands.Phmmer.getCommand, "-o", resultFilePath.getAbsolutePath, outputFastaPath.getAbsolutePath,
+        tempProteomeFile.getAbsolutePath).run().exitValue()
+      // We grab the exit code to ensure that the future has completed before deleting the file.
+      FileUtils.deleteQuietly(outputFastaPath)
+      FileUtils.deleteQuietly(tempProteomeFile)
+
+      // Process the file and update the database
+      val connection = connectToMongoDatabase(database)
+
+      val parsedFile = HmmResultParser.parseFile(resultFilePath)
+      val inferredSequences: List[SequenceConnection] = parsedFile.map(p =>
+        SequenceConnection(
+          new File(proteomeLocation,
+            p(HmmResultParser.HmmResultLine.SEQUENCE_NAME)),
+            // Pipe needs to be a character otherwise it will be processed as regex.
+            p(HmmResultParser.HmmResultLine.DESCRIPTION).split('|').tail.mkString("|").trim,
+            p(HmmResultParser.HmmResultLine.SCORE_DOMAIN).toDouble,
+            p(HmmResultParser.HmmResultLine.SCORE_FULL_SEQUENCE).toDouble
+        ))
+
+      // Use the inferred connection information to lookup the original sequence in the original file
+      val resultingSequences: List[SequenceEntry] = inferredSequences.map(x => {
+        val lines = scala.io.Source.fromFile(x.originFile).getLines()
+        val result = lines.span(!_.contains(x.sequenceName))
+
+        // Group 1 has everything prior to the stop parsing indicator
+        val header = result._2.next
+        val resultProtein = result._2.span(l => !l.startsWith(">"))
+        val sequence = resultProtein._1.mkString("")
+        SequenceEntry(header, sequence, x.scoreDomain, x.scoreFullSequence, x.originFile)
+      })
+
+      val metadata = sequence.getMetadata
+      val inferArray = new JSONArray()
+      val jsons = resultingSequences.asJavaCollection.map(x => x.asJson)
+      jsons.foreach(inferArray.put)
+
+      metadata.put("inferred_sequences", inferArray)
+      sequence.setMetadata(metadata)
+
+      connection.updateMetadata(sequence)
+      println(sequence.getUUID)
+
+      FileUtils.deleteQuietly(resultFilePath)
+      found.incrementAndGet()
     }
 
-    oddIds.foreach(defineSequenceBlast)
+    matchingSequences.foreach(defineSequenceBlast)
+
+    FileUtils.deleteDirectory(tempSeqDbDir)
+    FileUtils.deleteDirectory(fastaDirectory)
+//    FileUtils.deleteDirectory(resultHmmDirectory)
+  }
+
+  case class SequenceConnection(originFile: File, sequenceName: String, scoreDomain: Double, scoreFullSequence: Double)
+  case class SequenceEntry(fastaHeader: String, sequence: String, scoreDomain: Double, scoreFullSequence: Double, sourceFile: File) {
+    def asJson: JSONObject = {
+      val thisAsJson = new JSONObject()
+      thisAsJson.put("fasta_header", fastaHeader)
+      thisAsJson.put("sequence", sequence)
+      thisAsJson.put("sequence_length", sequence.length)
+      thisAsJson.put("hmmer_domain_score", scoreDomain)
+      thisAsJson.put("hmmer_full_sequence_score", scoreFullSequence)
+      thisAsJson.put("source_file_name", sourceFile.getName)
+
+      thisAsJson
+    }
   }
 
   private def classifyOrganismByProteome(files: List[File]): Map[String, List[File]] = {
