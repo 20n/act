@@ -29,6 +29,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
   private val OPTION_DATABASE = "d"
   private val found = new AtomicInteger()
   private val processed = new AtomicInteger()
+  private val foundWithSequenceInferred = new AtomicInteger()
   private val counterDisplayRate = 100
   private var idToOrganism: Map[Long, String] = Map()
   private var orgsToProteomes: Map[String, List[File]] = Map()
@@ -108,13 +109,11 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     val resultHmmDirectory = setupDirectory(workingDir, "resultFiles")
     val tempSeqDbDir = setupDirectory(workingDir, "tempSeqDb")
 
-
     /* - - - - Discover relevant sequence entries, put their organisms into a lookup table - - - - */
     val organismProteomes = proteomeLocation.listFiles().toList
     orgsToProteomes = classifyOrganismByProteome(organismProteomes)
 
-    //    val oddCriteria = "this.seq.length < 80 || this.seq[0] != 'M'"
-    val oddCriteria = "this._id == 4797390"
+    val oddCriteria = "this.seq.length < 80 || this.seq[0] != 'M'"
     logger.info(s"Defining sequences that match odd criteria of $oddCriteria")
     val matchingSequences: Stream[DbSeq] = getIdsForEachDocumentInConditional(database)(oddCriteria)
 
@@ -129,8 +128,8 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     logger.info(s"Found ${oddIds.length} ids that match criteria.")
 
     /* - - - - Counters used to track our progress as we go - - - - */
-    val sequenceBlast = defineSequenceBlast(fastaDirectory, resultHmmDirectory, tempSeqDbDir)(proteomeLocation)(database)
-    matchingSequences.foreach(sequenceBlast)
+    val sequenceSearch: (DbSeq) => Unit = defineSequenceSearch(fastaDirectory, resultHmmDirectory, tempSeqDbDir)(proteomeLocation)(database)
+    matchingSequences.foreach(sequenceSearch)
 
     // Cleanup our file structure
     FileUtils.deleteDirectory(tempSeqDbDir)
@@ -181,10 +180,10 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     firstLevelMap.map({case(key, value) => (key, value.toList)}).toMap
   }
 
-  def defineSequenceBlast(resultHmmDirectory: File, fastaDirectory: File, tempSeqDbDir: File)
-                         (proteomeLocation: File)
-                         (database: String)
-                         (sequence: DbSeq): Unit = {
+  def defineSequenceSearch(resultHmmDirectory: File, fastaDirectory: File, tempSeqDbDir: File)
+                          (proteomeLocation: File)
+                          (database: String)
+                          (sequence: DbSeq): Unit = {
     // TODO This function currently uses flat files to communicate to CLI, instead of directly transferring them in
     // via stdio and it also parses a flat file instead of doing parsing on the output stream from stdout which
     // could be possible.  This is likely the slowest part and easiest optimization if needed moving forward.
@@ -196,7 +195,8 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     val tempProteomeFile = new File(tempSeqDbDir, s"$prefix.tmp_seq_db")
 
     if (processed.incrementAndGet() % counterDisplayRate == 0) {
-      logger.info(s"Found reference proteome for ${found.get()} out of ${processed.get()} sequences")
+      logger.info(s"Found reference proteome for ${found.get()} " +
+        s"(${foundWithSequenceInferred.get()} with inferred sequences) out of ${processed.get()} sequences")
     }
 
     // Create the FASTA file out of the database sequence
@@ -226,6 +226,10 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     val inferArray = new JSONArray()
     val jsons = resultingSequences.asJavaCollection.map(x => x.asJson)
     jsons.foreach(inferArray.put)
+
+    if (resultingSequences.nonEmpty) {
+      foundWithSequenceInferred.incrementAndGet()
+    }
 
     metadata.put("inferred_sequences", inferArray)
     sequence.setMetadata(metadata)
@@ -264,7 +268,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
         // Fasta headers start with '>', indicating a new sequence is being shown.
         val currentLine = if (l.startsWith(">")) {
           // Keep a reference to the FASTA file that this sequence is in by referencing it in the fasta header
-          s">${f.getName} | ${l.replace(">", "")}\n"
+          s">${f.getName} | ${l.replaceFirst(">", "")}\n"
         } else {
           s"$l\n"
         }
