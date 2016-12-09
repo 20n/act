@@ -129,7 +129,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
 
     /* - - - - Counters used to track our progress as we go - - - - */
     val sequenceSearch: (DbSeq) => Unit = defineSequenceSearch(fastaDirectory, resultHmmDirectory, tempSeqDbDir)(proteomeLocation)(database)
-    matchingSequences.foreach(sequenceSearch)
+    matchingSequences.par.foreach(sequenceSearch)
 
     // Cleanup our file structure
     FileUtils.deleteDirectory(tempSeqDbDir)
