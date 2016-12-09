@@ -11,7 +11,6 @@ import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
@@ -27,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ProteinToDNADriver {
 
@@ -92,52 +92,40 @@ public class ProteinToDNADriver {
     );
   }};
 
+  public static final String HELP_MESSAGE =
+      "This class is the driver to extract protein sequences from pathways and construct DNA designs from these proteins.";
+
+  private static final CLIUtil CLI_UTIL = new CLIUtil(ProteinToDNADriver.class, HELP_MESSAGE, OPTION_BUILDERS);
+
   /**
    * This function get all protein combinations of a pathway from candidate protein sequences from each reaction on
    * the pathway.
-   *
    * @param listOfSetOfProteinSequences A list of sets of candidate protein sequences in the pathway
    * @return A set of all possible combinations of proteins from all the reactions in the pathway.
    */
-  public static Set<List<String>> getPathwayProteinCombinations(List<Set<String>> listOfSetOfProteinSequences) {
-    Set<List<String>> combinations = new HashSet<>();
-    Set<List<String>> newCombinations;
-
-    int index = 0;
-
-    // Build the combination set by extracting all the candidate proteins from the first reaction on the pathway
-    for (String proteinSeq : listOfSetOfProteinSequences.get(index)) {
-      List<String> newList = new ArrayList<>();
-      newList.add(proteinSeq);
-      combinations.add(newList);
-    }
-
-    index++;
-
-    // Iterate on all other protein sequences
-    while (index < listOfSetOfProteinSequences.size()) {
-      Set<String> nextList = listOfSetOfProteinSequences.get(index);
-      newCombinations = new HashSet<>();
-      for (List<String> firstProteinSeq : combinations) {
-        for (String secondProteinSeq : nextList) {
-          List<String> newList = new ArrayList<>();
-          newList.addAll(firstProteinSeq);
-          newList.add(secondProteinSeq);
-          newCombinations.add(newList);
-        }
-      }
-      combinations = newCombinations;
-      index++;
-    }
-
-    return combinations;
+  public static Set<List<String>> makePermutations(List<Set<String>> listOfSetOfProteinSequences) {
+    Set<List<String>> accum = new HashSet<>();
+    makePermutationsHelper(accum, listOfSetOfProteinSequences, new ArrayList<>());
+    return accum;
   }
 
-  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class is the driver to extract protein sequences from pathways and construct DNA designs from these proteins.",
-  }, "");
+  private static void makePermutationsHelper(Set<List<String>> accum, List<Set<String>> input, List<String> prefix) {
+    // Base case: no more sequences to add.  Accumulate and return.
+    if (input.isEmpty()) {
+      accum.add(prefix);
+      return;
+    }
 
-  private static final CLIUtil CLI_UTIL = new CLIUtil(ProteinToDNADriver.class, HELP_MESSAGE, OPTION_BUILDERS);
+    // Recursive case: iterate through next level of input sequences, appending each to a prefix and recurring.
+    Set<String> head = input.get(0);
+    // Avoid index out of bounds exception.
+    List<Set<String>> rest = input.size() > 1 ? input.subList(1, input.size()) : Collections.emptyList();
+    for (String next : head) {
+      List<String> newPrefix = new ArrayList<>(prefix);
+      newPrefix.add(next);
+      makePermutationsHelper(accum, rest, newPrefix);
+    }
+  }
 
   public static void main(String[] args) throws Exception {
     CommandLine cl = CLI_UTIL.parseCommandLine(args);
@@ -171,11 +159,8 @@ public class ProteinToDNADriver {
       Boolean atleastOneSeqMissingInPathway = false;
       List<Set<String>> proteinPaths = new ArrayList<>();
 
-      for (Cascade.NodeInformation nodeInformation : reactionPath.getPath()) {
-
-        if (!nodeInformation.getIsReaction()) {
-          continue;
-        }
+      for (Cascade.NodeInformation nodeInformation :
+          reactionPath.getPath().stream().filter(nodeInfo -> nodeInfo.getIsReaction()).collect(Collectors.toList())) {
 
         Set<String> proteinSeqs = new HashSet<>();
 
@@ -238,8 +223,8 @@ public class ProteinToDNADriver {
       if (atleastOneSeqMissingInPathway) {
         LOGGER.info(String.format("There is atleast one reaction with no sequence in reaction path id: %s", reactionPath.getId()));
       } else {
-        // We only compute the dna design if we can find atleast one sequence for each reaction in the pathway.
-        Set<List<String>> pathwayProteinCombinations = getPathwayProteinCombinations(proteinPaths);
+        // We only compute the dna design if we can find at least one sequence for each reaction in the pathway.
+        Set<List<String>> pathwayProteinCombinations = makePermutations(proteinPaths);
         Set<DNAOrgECNum> dnaDesigns = new HashSet<>();
 
         for (List<String> proteinsInPathway : pathwayProteinCombinations) {
@@ -254,7 +239,7 @@ public class ProteinToDNADriver {
             DNAOrgECNum instance = new DNAOrgECNum(dna.toSeq(), seqMetadata, proteinsInPathway.size());
             dnaDesigns.add(instance);
           } catch (Exception ex) {
-            LOGGER.error(String.format("The error thrown while trying to call computeDNA is: %s", ex.getMessage()));
+            LOGGER.error("The error thrown while trying to call computeDNA", ex.getMessage());
           }
         }
 

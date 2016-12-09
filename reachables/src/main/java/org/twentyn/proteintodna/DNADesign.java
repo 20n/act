@@ -18,6 +18,7 @@ public class DNADesign {
     return dnaDesigns;
   }
 
+  // ToDo: Convert the argument parameter to a Collection if the deserialization is not de-duping entries correctly
   public void setDnaDesigns(Set<DNAOrgECNum> dnaDesigns) {
     this.dnaDesigns = dnaDesigns;
   }

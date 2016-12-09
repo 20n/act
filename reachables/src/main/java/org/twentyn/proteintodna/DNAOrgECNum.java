@@ -33,6 +33,13 @@ public class DNAOrgECNum {
   @JsonProperty("dna")
   String dna;
 
+  /**
+   * setOfOrganismAndEcNums is a set of sets since the following reason:
+   * A dna seq is derived from a set of reactions protein sequences. A given reaction protein sequence can
+   * have multiple (organism, ecnum) pairs associated to that protein sequence. Therefore, we need different sets to represent
+   * the different (organism, ecnum) pairs of the reaction in the pathway. This is why setOfOrganismAndEcNums is a set
+   * of sets.
+   */
   @JsonProperty("org_ec")
   Set<Set<OrgAndEcnum>> setOfOrganismAndEcNums;
 

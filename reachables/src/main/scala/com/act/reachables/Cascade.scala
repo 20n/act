@@ -381,7 +381,7 @@ object Cascade extends Falls {
                         @JsonProperty("reactionCount") var reactionCount: Int,
                         @JsonProperty("id") var id: Long,
                         @JsonProperty("label") var label: String,
-                        @JsonProperty("mostNative") var isMostNative: Boolean) {
+                        @JsonProperty("mostNative") var isMostNative: Boolean = false) {
 
     def NodeInformation() {}
 
@@ -438,7 +438,7 @@ object Cascade extends Falls {
     }
 
     def getMostNative(): Boolean = {
-      return this.isMostNative
+      this.isMostNative
     }
   }
 }
@@ -489,8 +489,7 @@ class Cascade(target: Long) {
           getOrDefault[util.HashSet[String]](node, "label_string", new util.HashSet[String]()).mkString(",")
         } else {
           getOrDefault[String](node, "label_string")
-        },
-        false
+        }
       )
     }).asJava)
 
