@@ -1,17 +1,15 @@
 package com.act.biointerpretation.rsmiles.single_sar_construction
 
 import chemaxon.calculations.hydrogenize.Hydrogenize
+import chemaxon.formats.MolFormatException
 import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.desalting.Desalter
-import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, ReactionInformation}
+import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, ChemicalToSubstrateProduct, ReactionInformation}
 import com.act.biointerpretation.rsmiles.chemicals.abstract_chemicals.AbstractChemicals
 
 object FullPipelineSandbox {
-
-  private val ABSTRACT_CHEMICAL_REGEX = "\\[[^\\[]*R(\\]|[^euh][^\\]]*\\])"
-  private val CARBON_REPLACEMENT = "\\[C\\]"
 
   def main(args: Array[String]): Unit = {
     // substrate chemical from DB
@@ -21,44 +19,16 @@ object FullPipelineSandbox {
     val abstractProduct = "C([R])C(N)CC([O-])=O"
     val fakeProductId = 12222 // This isn't actually from the DB
 
-    printSubstrateProduct("Original", abstractSubstrate, abstractProduct)
+    val chemicalProcessor : SingleSarChemicals = new SingleSarChemicals(null)
 
-    val substrateMolecule: Molecule = MoleculeImporter.importMolecule(abstractSubstrate, MoleculeFormat.smarts)
-    val productMolecule: Molecule = MoleculeImporter.importMolecule(abstractProduct, MoleculeFormat.smarts)
+    val substrate : ChemicalToSubstrateProduct =  chemicalProcessor.calculateConcreteSubstrateAndProduct(substrateId, abstractSubstrate).get
+    val product : ChemicalToSubstrateProduct =  chemicalProcessor.calculateConcreteSubstrateAndProduct(fakeProductId, abstractProduct).get
 
-    Hydrogenize.convertImplicitHToExplicit(substrateMolecule)
-    val hydrogenizedSubstrate = MoleculeExporter.exportAsSmarts(substrateMolecule)
+    print(s"Processed substrate: ${substrate.asSubstrate}")
+    print(s"Processed product: ${product.asProduct}")
 
-    printSubstrateProduct("Hydrogenized.", hydrogenizedSubstrate, abstractProduct)
-
-    val replacedSubstrate = replaceRWithC(hydrogenizedSubstrate)
-    val replacedProduct = replaceRWithC(abstractProduct)
-
-    printSubstrateProduct("Replaced", replacedSubstrate, replacedProduct)
-
-    val replacedSubstrateMolecule = MoleculeImporter.importMolecule(replacedSubstrate, MoleculeFormat.smarts)
-    val replacedProductMolecule = MoleculeImporter.importMolecule(replacedProduct, MoleculeFormat.smarts)
-
-    val desalter: Desalter = new Desalter(new ReactionProjector())
-    desalter.initReactors()
-
-    val desaltedSubstrateList = desalter.desaltMoleculeForAbstractReaction(replacedSubstrateMolecule)
-    val desaltedProductList = desalter.desaltMoleculeForAbstractReaction(replacedProductMolecule)
-
-    if (desaltedSubstrateList.size() != 1 || desaltedProductList.size() != 1) {
-      // TODO: handle multiple fragments
-      println("Found multiple fragments. Don't handle this case yet. Exiting!")
-      return
-    }
-
-    // For now we only deal with situations with exactly one product and substrate fragment
-    val desaltedSubstrate = MoleculeExporter.exportAsSmarts(desaltedSubstrateList.get(0))
-    val desaltedProduct = MoleculeExporter.exportAsSmarts(desaltedProductList.get(0))
-
-    printSubstrateProduct("Desalted", desaltedSubstrate, desaltedProduct)
-
-    var chemicalSubstrate: ChemicalInformation = new ChemicalInformation(substrateId, desaltedSubstrate)
-    var chemicalProduct: ChemicalInformation = new ChemicalInformation(fakeProductId, desaltedProduct)
+    var chemicalSubstrate: ChemicalInformation = new ChemicalInformation(substrateId, substrate.asSubstrate)
+    var chemicalProduct: ChemicalInformation = new ChemicalInformation(fakeProductId, product.asProduct)
 
     val fakeReactionId = 1 // This isn't a DB reaction
     val reactionInfo = new ReactionInformation(fakeReactionId, List(chemicalSubstrate), List(chemicalProduct))
@@ -75,11 +45,14 @@ object FullPipelineSandbox {
         MoleculeExporter.exportAsSmarts(reactor.getReactionProduct(0)))
 
       val substrates = Array(
+        // various forms of the original substrate: should all be +
         "[#6:2][C:5][#6:8](=[O:9])[C:10][#6:13](-[#8:14])=[O:15]",
         "[#6:2][C:5][#6:8](=[O:9])[C:10][#6:13]([OH])=[O:15]",
         "CCC(=O)CC(O)=O",
         "CCC(=O)CC([OH])=O",
-        "CCCCC(=O)CC([O-])=O",
+        // Extension of substrate by adding a few C's where the R was: should be +
+        "CCCCC(=O)CC([OH])=O",
+        // Extension of substrate by adding an OH to the middle of the substrate: should be -
         "CCC(=O)C([OH])C([OH])=O"
       )
 
@@ -100,12 +73,6 @@ object FullPipelineSandbox {
     // TODO : test this pipeline
 
   }
-
-
-  def replaceRWithC(chemical: String): String = {
-    chemical.replaceAll(ABSTRACT_CHEMICAL_REGEX, CARBON_REPLACEMENT)
-  }
-
 
   def printSubstrateProduct(tagline: String, substrate: String, product: String): Unit = {
     println(tagline)

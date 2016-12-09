@@ -5,7 +5,7 @@ import chemaxon.formats.MolFormatException
 import chemaxon.marvin.io.MolExportException
 import com.act.analysis.chemicals.molecules.MoleculeFormat.Cleaning
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
-import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.ChemicalInformation
+import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, ChemicalToSubstrateProduct}
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities}
 import com.mongodb.DBObject
 import org.apache.log4j.LogManager
@@ -16,7 +16,7 @@ object AbstractChemicals {
   val logger = LogManager.getLogger(getClass)
 
 
-  private val ABSTRACT_CHEMICAL_REGEX = "\\[R[0-9]*\\}"
+  private val ABSTRACT_CHEMICAL_REGEX = "\\[R[0-9]*\\]"
   private val CARBON_REPLACEMENT = "\\[C\\]"
 
   // Chemaxon technically uses smarts when we say Smiles, so we just make it explicit here.

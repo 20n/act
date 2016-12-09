@@ -10,6 +10,13 @@ object JsonInformationTypes {
     def getString: String = chemicalAsString
   }
 
+  case class ChemicalToSubstrateProduct(chemicalId : Int, asSubstrate : String, asProduct : String) extends Serializable {
+    def getChemicalId : Int = chemicalId
+    def getAsSubstrate : String = asSubstrate
+    def getAsProduct : String = asProduct
+
+  }
+
   case class ReactionInformation(reactionId: Int, substrates: List[ChemicalInformation], products: List[ChemicalInformation]) {
     def getReactionId: Int = reactionId
     def getSubstrates: List[ChemicalInformation] = substrates
