@@ -20,14 +20,15 @@ import org.apache.logging.log4j.LogManager
 object HmmResultParser {
   private val logger = LogManager.getLogger(getClass.getName)
   private val START_PARSING_INDICATOR = "------- ------ -----"
-  private val STOP_PARSING_INDICATOR = "------ inclusion threshold ------"
+  private val STOP_PARSING_INDICATOR = "inclusion threshold"
 
   def parseFile(openFile: File): List[Map[String, String]] = {
     /*
       Note: If we are using an iterator here, we can't use .length to determine anything.
      */
+    val hmmResultFile = scala.io.Source.fromFile(openFile)
 
-    val lines = scala.io.Source.fromFile(openFile).getLines()
+    val lines = hmmResultFile.getLines()
     // Group 2 has everything after the start parsing indicator
     val result = lines.span(!_.contains(START_PARSING_INDICATOR))
 
@@ -39,6 +40,7 @@ object HmmResultParser {
     if (result_proteins._2.isEmpty) {
       logger.error(s"The reader read the whole file, " +
         s"indicating that ${openFile.getAbsolutePath} likely does not have any sequences.")
+      hmmResultFile.close()
       return List[Map[String, String]]()
     }
 
@@ -49,8 +51,11 @@ object HmmResultParser {
       result_proteins._1.next
     } else {
       logger.error(s"No lines found in result location.  Please check output file ${openFile.getAbsolutePath}")
+      hmmResultFile.close()
       return List[Map[String, String]]()
     }
+
+    hmmResultFile.close()
     // All the good lines, sent to parser, then returned as a map of FieldNames: Values
     result_proteins._1.toList.map(HmmResultLine.parse)
   }
