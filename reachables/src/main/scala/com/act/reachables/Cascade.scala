@@ -5,7 +5,6 @@ import java.lang.Long
 import java.util
 
 import com.act.reachables.Cascade.NodeInformation
-import com.fasterxml.jackson.annotation.{JsonProperty, JsonCreator, JsonIgnore}
 import com.fasterxml.jackson.annotation.{JsonCreator, JsonIgnore, JsonProperty}
 import com.mongodb.{DB, MongoClient, ServerAddress}
 import org.apache.commons.codec.digest.DigestUtils
@@ -486,16 +485,12 @@ class Cascade(target: Long) {
         new util.HashSet[Long](getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => (x.toLong - Cascade.rxnIdShift): java.lang.Long)),
         getOrDefault[Int](node, "reaction_count", 0),
         node.getIdentifier,
-<<<<<<< 2191cdd10bfd98760108aa18dae69723b7801b1f
         if (isRxn) {
           getOrDefault[util.HashSet[String]](node, "label_string", new util.HashSet[String]()).mkString(",")
         } else {
           getOrDefault[String](node, "label_string")
-        }
-=======
-        getOrDefault[String](node, "label_string"),
+        },
         false
->>>>>>> implemented dna design
       )
     }).asJava)
 
