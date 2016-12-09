@@ -1,14 +1,8 @@
 package com.twentyn.search.substructure;
 
 import chemaxon.formats.MolFormatException;
-import chemaxon.formats.MolImporter;
 import chemaxon.license.LicenseManager;
-import chemaxon.sss.SearchConstants;
 import chemaxon.sss.search.MolSearch;
-import chemaxon.sss.search.MolSearchOptions;
-import chemaxon.sss.search.SearchException;
-import chemaxon.struc.Molecule;
-import chemaxon.util.MolHandler;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
@@ -46,7 +40,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 public class Service {
   static final Service INSTANCE = new Service();
@@ -56,47 +49,6 @@ public class Service {
   public static final CSVFormat TSV_FORMAT = CSVFormat.newFormat('\t').
       withRecordSeparator('\n').withQuote('"').withIgnoreEmptyLines(true).withHeader();
 
-  // TODO: are these options sufficient?  Are there others we might want to use?
-  /* Chemaxon exposes a very non-uniform means of configuring substructure search.  Hence the mess of lambdas below.
-   * Consumer solves the Function<T, void> problem. */
-  private static final Map<String, Consumer<MolSearchOptions>> SEARCH_OPTION_ENABLERS =
-      Collections.unmodifiableMap(new HashMap<String, Consumer<MolSearchOptions>>() {{
-        put("CHARGE_MATCHING_EXACT", (so -> so.setChargeMatching(SearchConstants.CHARGE_MATCHING_EXACT)));
-        put("CHARGE_MATCHING_IGNORE", (so -> so.setChargeMatching(SearchConstants.CHARGE_MATCHING_IGNORE)));
-        put("IMPLICIT_H_MATCHING_ENABLED", (so -> so.setImplicitHMatching(SearchConstants.IMPLICIT_H_MATCHING_ENABLED)));
-        put("IMPLICIT_H_MATCHING_DISABLED", (so -> so.setImplicitHMatching(SearchConstants.IMPLICIT_H_MATCHING_DISABLED)));
-        put("IMPLICIT_H_MATCHING_IGNORE", (so -> so.setImplicitHMatching(SearchConstants.IMPLICIT_H_MATCHING_IGNORE)));
-        put("STEREO_EXACT", (so -> so.setStereoSearchType(SearchConstants.STEREO_EXACT)));
-        put("STEREO_IGNORE", (so -> so.setStereoSearchType(SearchConstants.STEREO_IGNORE)));
-        put("STEREO_MODEL_COMPREHENSIVE", (so -> so.setStereoModel(SearchConstants.STEREO_MODEL_COMPREHENSIVE)));
-        put("STEREO_MODEL_GLOBAL", (so -> so.setStereoModel(SearchConstants.STEREO_MODEL_GLOBAL)));
-        put("STEREO_MODEL_LOCAL", (so -> so.setStereoModel(SearchConstants.STEREO_MODEL_LOCAL)));
-        put("TAUTOMER_SEARCH_ON", (so -> so.setTautomerSearch(SearchConstants.TAUTOMER_SEARCH_ON)));
-        put("TAUTOMER_SEARCH_OFF", (so -> so.setTautomerSearch(SearchConstants.TAUTOMER_SEARCH_OFF)));
-        put("TAUTOMER_SEARCH_ON_IGNORE_TAUTOMERSTEREO",
-            (so -> so.setTautomerSearch(SearchConstants.TAUTOMER_SEARCH_ON_IGNORE_TAUTOMERSTEREO)));
-        put("VAGUE_BOND_OFF", (so -> so.setVagueBondLevel(SearchConstants.VAGUE_BOND_OFF)));
-        put("VAGUE_BOND_LEVEL_HALF", (so -> so.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL_HALF)));
-        put("VAGUE_BOND_LEVEL1", (so -> so.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL1)));
-        put("VAGUE_BOND_LEVEL2", (so -> so.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL2)));
-        put("VAGUE_BOND_LEVEL3", (so -> so.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL3)));
-        put("VAGUE_BOND_LEVEL4", (so -> so.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL4)));
-      }});
-  private static final List<String> VALID_SEARCH_OPTION_SORTED;
-
-  static {
-    List<String> keys = new ArrayList<>(SEARCH_OPTION_ENABLERS.keySet());
-    Collections.sort(keys);
-    VALID_SEARCH_OPTION_SORTED = Collections.unmodifiableList(keys);
-  }
-
-  private static final MolSearchOptions DEFAULT_SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
-  static {
-    DEFAULT_SEARCH_OPTIONS.setImplicitHMatching(SearchConstants.IMPLICIT_H_MATCHING_DEFAULT);
-    DEFAULT_SEARCH_OPTIONS.setVagueBondLevel(SearchConstants.VAGUE_BOND_DEFAULT);
-    DEFAULT_SEARCH_OPTIONS.setTautomerSearch(SearchConstants.TAUTOMER_SEARCH_DEFAULT);
-    DEFAULT_SEARCH_OPTIONS.setStereoSearchType(SearchConstants.STEREO_IGNORE); // TODO: is this preferable?
-  }
 
   public static final String OPTION_INPUT_FILE = "f";
   public static final String OPTION_LICENSE_FILE = "l";
@@ -142,6 +94,8 @@ public class Service {
   @EnableAutoConfiguration
   public static class Controller {
 
+    SubstructureSearch substructureSearch = new SubstructureSearch();
+
     @RequestMapping("/hello")
     @ResponseBody
     public String handler() {
@@ -154,11 +108,11 @@ public class Service {
         @RequestParam(name = "q", required = true) String queryString,
         @RequestParam(name = "options", required = false) List<String> searchOptions) {
       try {
-        MolSearch search = INSTANCE.constructSearch(queryString, searchOptions);
+        MolSearch search = substructureSearch.constructSearch(queryString, searchOptions);
 
         List<TargetMolecule> matches = new ArrayList<>();
         for (TargetMolecule target : TARGETS) {
-          if (INSTANCE.matchSubstructure(target.getMolecule(), search)) {
+          if (substructureSearch.matchSubstructure(target.getMolecule(), search)) {
             matches.add(target);
           }
         }
@@ -179,51 +133,19 @@ public class Service {
     }
   }
 
-  private static class TargetMolecule {
-    Molecule molecule;
-    String inchi;
-    String displayName;
-    String inchiKey;
-    String imageName;
+  private static void setupFreemarker() throws TemplateException, IOException {
+    FREEMARKER_CFG = new Configuration(Configuration.VERSION_2_3_25);
 
-    public TargetMolecule(Molecule molecule, String inchi, String displayName, String inchiKey, String imageName) {
-      this.molecule = molecule;
-      this.inchi = inchi;
-      this.displayName = displayName;
-      this.inchiKey = inchiKey;
-      this.imageName = imageName;
-    }
+    FREEMARKER_CFG.setClassLoaderForTemplateLoading(
+        Service.class.getClassLoader(), "/com/twentyn/search/substructure/templates");
+    FREEMARKER_CFG.setDefaultEncoding("UTF-8");
 
-    public Molecule getMolecule() {
-      return molecule;
-    }
+    FREEMARKER_CFG.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
+    FREEMARKER_CFG.setLogTemplateExceptions(true);
 
-    public String getInchi() {
-      return inchi;
-    }
-
-    public String getDisplayName() {
-      return displayName;
-    }
-
-    public String getInchiKey() {
-      return inchiKey;
-    }
-
-    public String getImageName() {
-      return imageName;
-    }
-
-    public static TargetMolecule fromCSVRecord(CSVRecord record) throws MolFormatException {
-      String inchi = record.get("inchi");
-      String displayName = record.get("display_name");
-      String inchiKey = record.get("inchi_key");
-      String imageName = record.get("image_name");
-
-      Molecule mol = MolImporter.importMol(inchi);
-
-      return new TargetMolecule(mol, inchi, displayName, inchiKey, imageName);
-    }
+    // TODO: use dependency injection or something instead of this.
+    INSTANCE.successTemplate = FREEMARKER_CFG.getTemplate("SearchResults.ftl");
+    INSTANCE.failureTemplate = FREEMARKER_CFG.getTemplate("NoResultsFound.ftl");
   }
 
   public static void main(String[] args) throws Exception {
@@ -251,19 +173,6 @@ public class Service {
       LicenseManager.setLicenseFile(cl.getOptionValue(OPTION_LICENSE_FILE));
     }
 
-    FREEMARKER_CFG = new Configuration(Configuration.VERSION_2_3_25);
-
-    FREEMARKER_CFG.setClassLoaderForTemplateLoading(
-        Service.class.getClassLoader(), "/com/twentyn/search/substructure/templates");
-    FREEMARKER_CFG.setDefaultEncoding("UTF-8");
-
-    FREEMARKER_CFG.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
-    FREEMARKER_CFG.setLogTemplateExceptions(true);
-
-    // TODO: use dependency injection or something instead of this.
-    INSTANCE.successTemplate = FREEMARKER_CFG.getTemplate("SearchResults.ftl");
-    INSTANCE.failureTemplate = FREEMARKER_CFG.getTemplate("NoResultsFound.ftl");
-
 
     try (CSVParser parser = new CSVParser(new FileReader(new File(cl.getOptionValue(OPTION_INPUT_FILE))), TSV_FORMAT)) {
       Iterator<CSVRecord> iter = parser.iterator();
@@ -275,46 +184,6 @@ public class Service {
     LOGGER.info("Read %d targets from input TSV", TARGETS.size());
 
     SpringApplication.run(Controller.class);
-  }
-
-  private MolSearch constructSearch(String smiles, List<String> extraOpts) throws MolFormatException {
-    // Process any custom options.
-    MolSearchOptions searchOptions;
-    if (extraOpts == null || extraOpts.size() == 0) {
-      searchOptions = DEFAULT_SEARCH_OPTIONS;
-    } else {
-      searchOptions = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
-      // Apply all the specified extra search options using the key -> function mapping above.
-      for (String opt : extraOpts) {
-        if (!SEARCH_OPTION_ENABLERS.containsKey(opt)) {
-          throw new IllegalArgumentException(String.format("Unrecognized search option: %s", opt));
-        }
-        SEARCH_OPTION_ENABLERS.get(opt).accept(searchOptions);
-      }
-
-    }
-
-    // Import the query and set it + the specified or default search options.
-    MolSearch ms = new MolSearch();
-    ms.setSearchOptions(searchOptions);
-    Molecule query = new MolHandler(smiles, true).getMolecule();
-    ms.setQuery(query);
-    return ms;
-  }
-
-  private boolean matchSubstructure(Molecule target, MolSearch search) throws SearchException {
-    search.setTarget(target);
-    /* hits are arrays of atom ids in the target that matched the query.  If multiple sites in the target matched,
-     * then there should be multiple arrays of atom ids (but we don't care since we're just looking for any match). */
-    int[][] hits = search.findAll();
-    if (hits != null) {
-      for (int i = 0; i < hits.length; i++) {
-        if (hits[i].length > 0) {
-          return true;
-        }
-      }
-    }
-    return false;
   }
 
   private String renderResultsPage(List<TargetMolecule> results) throws TemplateException, IOException {
