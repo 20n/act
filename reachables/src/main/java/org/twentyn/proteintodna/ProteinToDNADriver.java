@@ -36,8 +36,8 @@ public class ProteinToDNADriver {
   private static final String DEFAULT_OUTPUT_DB_NAME = "wiki_reachables";
   private static final String DEFAULT_INPUT_DB_NAME = "validator_profiling_2";
   public static final String DEFAULT_INPUT_PATHWAY_COLLECTION_NAME = "vanillin_pathways";
-  public static final String DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME = "pathways_vijay_4";
-  public static final String DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME = "dna_designs_4";
+  public static final String DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME = "pathways_vijay";
+  public static final String DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME = "dna_designs";
 
   private static final String OPTION_DB_HOST = "H";
   private static final String OPTION_DB_PORT = "p";
