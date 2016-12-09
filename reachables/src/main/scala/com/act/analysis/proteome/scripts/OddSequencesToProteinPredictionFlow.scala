@@ -237,7 +237,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     mongoDatabaseConnection.updateMetadata(sequence)
 
     FileUtils.deleteQuietly(resultFilePath)
-    logger.info(s"Finished inferring additional sequences for sequence ${sequence.getUUID}")
+    logger.debug(s"Finished inferring additional sequences for sequence ${sequence.getUUID}")
     found.incrementAndGet()
   }
 
