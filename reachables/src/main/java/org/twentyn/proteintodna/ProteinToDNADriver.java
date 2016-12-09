@@ -98,7 +98,7 @@ public class ProteinToDNADriver {
   private static final CLIUtil CLI_UTIL = new CLIUtil(ProteinToDNADriver.class, HELP_MESSAGE, OPTION_BUILDERS);
 
   /**
-   * This function get all protein combinations of a pathway from candidate protein sequences from each reaction on
+   * This function gets all protein combinations of a pathway from candidate protein sequences from each reaction on
    * the pathway.
    * @param listOfSetOfProteinSequences A list of sets of candidate protein sequences in the pathway
    * @return A set of all possible combinations of proteins from all the reactions in the pathway.
