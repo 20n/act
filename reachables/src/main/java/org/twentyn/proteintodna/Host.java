@@ -14,9 +14,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
+ *
  * @author jca20n
  */
 public enum Host {
-  Ecoli,
-  Scerevisiae
+    Ecoli,
+    Scerevisiae
 }
