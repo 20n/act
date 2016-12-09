@@ -1,9 +1,9 @@
 package com.act.workflow.tool_manager.workflow.workflow_mixins.mongo
 
 sealed case class Keyword(keyword: String) {
-  def value: String = keyword
-
   override def toString: String = value
+
+  def value: String = keyword
 }
 
 object MongoKeywords {
@@ -18,6 +18,8 @@ object MongoKeywords {
   object REGEX extends Keyword("$regex")
   object NOT_EQUAL extends Keyword("$ne")
   object WHERE extends Keyword("$where")
+
+  object OPTIONS extends Keyword("$options")
 
   // Aggregation
   object MATCH extends Keyword("$match")

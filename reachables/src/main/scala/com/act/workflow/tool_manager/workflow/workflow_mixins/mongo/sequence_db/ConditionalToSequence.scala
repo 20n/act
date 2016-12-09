@@ -44,7 +44,8 @@ trait ConditionalToSequence extends WriteProteinSequenceToFasta with QueryBySequ
     // Make sure it has a sequence
     if (seq != null) {
       // Map sequence to BioJava protein sequence so that we can use the FASTA file generator they provide.
-      val newSeq = new ProteinSequence(seq.toString)
+      // FASTA format defines X as an unknown amino acid, while some sequences in our DB use * to designate that.
+      val newSeq = new ProteinSequence(seq.toString.replace("*", "X"))
 
       // Enzymes may not have a name
       val nameLocation = s"${SequenceKeywords.METADATA.toString}.${SequenceKeywords.NAME.toString}"

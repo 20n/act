@@ -7,6 +7,7 @@ import act.shared.{Seq => DbSeq}
 import com.act.analysis.proteome.files.HmmResultParser
 import com.act.workflow.tool_manager.tool_wrappers.HmmerWrapper
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.sequence_db.ConditionalToSequence
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywords, SequenceKeywords}
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
@@ -15,6 +16,9 @@ import org.json.{JSONArray, JSONObject}
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 import scala.sys.process._
 
 object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
@@ -113,23 +117,28 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     val organismProteomes = proteomeLocation.listFiles().toList
     orgsToProteomes = classifyOrganismByProteome(organismProteomes)
 
+    // Get relevant sequences
+    val mongoConnection = connectToMongoDatabase(database)
+
+    val seqQuery = createDbObject(SequenceKeywords.SEQ, createDbObject(MongoKeywords.NOT_EQUAL, null))
     val oddCriteria = "this.seq.length < 80 || this.seq[0] != 'M'"
-    logger.info(s"Defining sequences that match odd criteria of $oddCriteria")
-    val matchingSequences: Stream[DbSeq] = getIdsForEachDocumentInConditional(database)(oddCriteria)
+    seqQuery.put(MongoKeywords.WHERE.toString, oddCriteria)
 
-    // Just the DB Sequence ID => String name of that organism
-    idToOrganism = matchingSequences.map(doc => {
-      val id = doc.getUUID.toLong
-      val org = doc.getOrgName
-      (id, org)
-    }).toMap
+    // These wild card sequences have a much lower hit rate to be inferred.
+    val wildcardSequencesRegex = createDbObject(MongoKeywords.REGEX, ".*\\*.*")
+    wildcardSequencesRegex.put(MongoKeywords.OPTIONS.toString, "i")
+    seqQuery.put(SequenceKeywords.SEQ.toString, wildcardSequencesRegex)
 
-    val oddIds = idToOrganism.keys.toList
-    logger.info(s"Found ${oddIds.length} ids that match criteria.")
+    val matchingSequences: Iterator[DbSeq] = mongoConnection.getSeqIterator(seqQuery).asScala
 
     /* - - - - Counters used to track our progress as we go - - - - */
-    val sequenceSearch: (DbSeq) => Unit = defineSequenceSearch(fastaDirectory, resultHmmDirectory, tempSeqDbDir)(proteomeLocation)(database)
-    matchingSequences.par.foreach(sequenceSearch)
+    logger.info("Starting assignment of inferred sequences to odd database entries.")
+    val sequenceSearch: (DbSeq) => Unit = defineSequenceSearch(resultHmmDirectory, fastaDirectory, tempSeqDbDir)(proteomeLocation)(database)
+
+    // .par evaluates the iterator which takes a while (It is a mongoDB cursor movement).
+    // We can get everything going right away AND in parallel by just making it into a future.
+    val futureList = Future.traverse(matchingSequences)(x => Future(sequenceSearch(x)))
+    Await.ready(futureList, Duration.Inf)
 
     // Cleanup our file structure
     FileUtils.deleteDirectory(tempSeqDbDir)
@@ -242,7 +251,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
   }
 
   private def getMatchingProteomes(sequence: DbSeq): Option[List[File]] = {
-    val organism = idToOrganism(sequence.getUUID.toLong)
+    val organism = sequence.getOrgName
     val firstOrgWord = organism.split(" ")(0)
 
     if (orgsToProteomes.contains(organism)) {
