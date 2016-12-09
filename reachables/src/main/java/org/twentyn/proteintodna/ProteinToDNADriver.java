@@ -182,7 +182,7 @@ public class ProteinToDNADriver {
           continue;
         }
 
-        List<String> proteinSeqs = new ArrayList<>();
+        Set<String> proteinSeqs = new HashSet<>();
 
         for (Long id : nodeInformation.getReactionIds()) {
           // Get the reaction
@@ -222,19 +222,19 @@ public class ProteinToDNADriver {
 
         // Now we select two representative protein seqs from the reaction. In order to do this deterministically,
         // we sort and pick the first and middle index protein seqs.
-
-        Collections.sort(proteinSeqs);
+        List<String> proteinSeqArray = new ArrayList<>(proteinSeqs);
+        Collections.sort(proteinSeqArray);
 
         int firstIndex = 0;
         int middleIndex = proteinSeqs.size() / 2;
 
         // get first seq
         Set<String> combination = new HashSet<>();
-        combination.add(proteinSeqs.get(firstIndex));
+        combination.add(proteinSeqArray.get(firstIndex));
 
         // get middle index of the protein seq array
         if (proteinSeqs.size() > 1) {
-          combination.add(proteinSeqs.get(middleIndex));
+          combination.add(proteinSeqArray.get(middleIndex));
         }
 
         proteinPaths.add(combination);
@@ -256,7 +256,6 @@ public class ProteinToDNADriver {
 
             DNAOrgECNum instance = new DNAOrgECNum(dna.toSeq(), seqMetadata, proteinsInPathway.size());
             dnaDesigns.add(instance);
-            break;
           } catch (Exception ex) {
             ex.printStackTrace();
           }
