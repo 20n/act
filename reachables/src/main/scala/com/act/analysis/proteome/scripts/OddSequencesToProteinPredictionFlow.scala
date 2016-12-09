@@ -8,6 +8,7 @@ import com.act.analysis.proteome.files.HmmResultParser
 import com.act.workflow.tool_manager.tool_wrappers.HmmerWrapper
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.sequence_db.ConditionalToSequence
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywords, SequenceKeywords}
+import com.mongodb.{BasicDBList, BasicDBObject}
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
@@ -120,14 +121,22 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     // Get relevant sequences
     val mongoConnection = connectToMongoDatabase(database)
 
-    val seqQuery = createDbObject(SequenceKeywords.SEQ, createDbObject(MongoKeywords.NOT_EQUAL, null))
     val oddCriteria = "this.seq.length < 80 || this.seq[0] != 'M'"
-    seqQuery.put(MongoKeywords.WHERE.toString, oddCriteria)
+    val whereQuery = createDbObject(MongoKeywords.WHERE, oddCriteria)
+    whereQuery.put(SequenceKeywords.SEQ.toString, createDbObject(MongoKeywords.NOT_EQUAL, null))
 
     // These wild card sequences have a much lower hit rate to be inferred.
+    val wildcardQuery = new BasicDBObject()
     val wildcardSequencesRegex = createDbObject(MongoKeywords.REGEX, ".*\\*.*")
     wildcardSequencesRegex.put(MongoKeywords.OPTIONS.toString, "i")
-    seqQuery.put(SequenceKeywords.SEQ.toString, wildcardSequencesRegex)
+    wildcardQuery.put(SequenceKeywords.SEQ.toString, wildcardSequencesRegex)
+
+    val conditionals = new BasicDBList
+    conditionals.add(wildcardQuery)
+    conditionals.add(whereQuery)
+
+    val seqQuery = new BasicDBObject(MongoKeywords.OR.toString, conditionals)
+    seqQuery.put(SequenceKeywords.SEQ.toString, createDbObject(MongoKeywords.NOT_EQUAL, null))
 
     val matchingSequences: Iterator[DbSeq] = mongoConnection.getSeqIterator(seqQuery).asScala
 
