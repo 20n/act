@@ -56,6 +56,14 @@ public class ReactionPath {
     public void setReactionSum(Integer reactionSum) {
         this.reactionSum = reactionSum;
     }
+    
+    public void setDnaDesignRef(String id) {
+        this.dnaDesignRef = id;
+    }
+
+    public String getDnaDesignRef() {
+        return this.dnaDesignRef;
+    }
 
     private List<Cascade.NodeInformation> path;
 
@@ -67,6 +75,7 @@ public class ReactionPath {
     private Integer degree;
     private Integer reactionSum;
     private Boolean isMostNative = false;
+    private String dnaDesignRef;
 
     public ArrayList<String> getMostCommonOrganism() {
         return mostCommonOrganism;

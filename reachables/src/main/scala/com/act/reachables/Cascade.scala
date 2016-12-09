@@ -5,7 +5,7 @@ import java.lang.Long
 import java.util
 
 import com.act.reachables.Cascade.NodeInformation
-import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.annotation.{JsonCreator, JsonIgnore, JsonProperty}
 import com.mongodb.{DB, MongoClient, ServerAddress}
 import org.apache.commons.codec.digest.DigestUtils
 import org.mongojack.JacksonDBCollection
@@ -13,9 +13,6 @@ import org.mongojack.JacksonDBCollection
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-
-
-
 
 // Default host. If running on a laptop, please set a SSH bridge to access speakeasy
 
@@ -248,7 +245,6 @@ object Cascade extends Falls {
       // We don't filter by higher in tree on the first iteration, so that all possible
       // reactions producing this product are shown on the graph.
       val groupedSubProduct: List[(SubProductPair, List[ReachRxn])] = pre_rxns(m, higherInTree = depth != 0).toList
-      
       var oneValid = false
       groupedSubProduct
         .filter(x => x._1.substrates.forall(x => !seen.contains(x)))
@@ -378,35 +374,71 @@ object Cascade extends Falls {
     }
   }
 
-  class NodeInformation(isReaction: Boolean, organisms: util.HashSet[String], reactionIds: util.HashSet[Long], reactionCount: Int, id: Long, label: String) {
-    var isMostNative = false
+  @JsonCreator
+  class NodeInformation(@JsonProperty("isReaction") var isReaction: Boolean,
+                        @JsonProperty("organisms") var organisms: util.HashSet[String],
+                        @JsonProperty("reactionIds") var reactionIds: util.HashSet[Long],
+                        @JsonProperty("reactionCount") var reactionCount: Int,
+                        @JsonProperty("id") var id: Long,
+                        @JsonProperty("label") var label: String,
+                        @JsonProperty("mostNative") var isMostNative: Boolean = false) {
+
+    def NodeInformation() {}
 
     def getIsReaction(): Boolean ={
       isReaction
+    }
+
+    def setIsReaction(isReaction: Boolean) = {
+      this.isReaction = isReaction
     }
 
     def getOrganisms(): util.HashSet[String] = {
       organisms
     }
 
+    def setOrganism(organism: util.HashSet[String]) = {
+      this.organisms = organisms
+    }
+
     def getReactionIds(): util.HashSet[Long] = {
       reactionIds
+    }
+
+    def setReactionIds(ids: util.HashSet[Long]) = {
+      this.reactionIds = ids
     }
 
     def getReactionCount(): Int = {
       reactionCount
     }
 
+    def setReactionCount(reactionCount: Int) = {
+      this.reactionCount = reactionCount
+    }
+
     def getLabel(): String = {
       label
+    }
+
+    def setLabel(label: String) = {
+      this.label = label
     }
 
     def getId(): Long = {
       id
     }
 
-    def setIfMostNative(isMostNative: Boolean) {
-      this.isMostNative = isMostNative
+    def setId(id: Long) = {
+      this.id = id
+    }
+
+    def setMostNative(mostNative: Boolean) = {
+      this.isMostNative = mostNative
+    }
+
+    def getMostNative(): Boolean = {
+      this.isMostNative
     }
   }
 }
@@ -567,8 +599,8 @@ class Cascade(target: Long) {
   }
 
   val allStringPaths: List[String] = allPaths.map(currentPath => {val allChemicalStrings: List[String] = currentPath.getPath.flatMap(node => {
-      Option(ActData.instance.chemId2ReadableName.get(node.id))
-    })
+    Option(ActData.instance.chemId2ReadableName.get(node.id))
+  })
     allChemicalStrings.mkString(", ")
   })
 
