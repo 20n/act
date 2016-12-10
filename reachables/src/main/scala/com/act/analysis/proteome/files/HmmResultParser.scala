@@ -22,7 +22,7 @@ object HmmResultParser {
   private val START_PARSING_INDICATOR = "------- ------ -----"
   private val STOP_PARSING_INDICATOR = "inclusion threshold"
 
-  def parseFile(openFile: File): List[Map[String, String]] = {
+  def parseFile(openFile: File): Iterator[Map[String, String]] = {
     /*
       Note: If we are using an iterator here, we can't use .length to determine anything.
      */
@@ -41,7 +41,7 @@ object HmmResultParser {
       logger.error(s"The reader read the whole file, " +
         s"indicating that ${openFile.getAbsolutePath} likely does not have any sequences.")
       hmmResultFile.close()
-      return List[Map[String, String]]()
+      return Iterator[Map[String, String]]()
     }
 
     /*
@@ -52,12 +52,12 @@ object HmmResultParser {
     } else {
       logger.error(s"No lines found in result location.  Please check output file ${openFile.getAbsolutePath}")
       hmmResultFile.close()
-      return List[Map[String, String]]()
+      return Iterator[Map[String, String]]()
     }
 
     hmmResultFile.close()
     // All the good lines, sent to parser, then returned as a map of FieldNames: Values
-    result_proteins._1.toList.map(HmmResultLine.parse)
+    result_proteins._1.map(HmmResultLine.parse)
   }
 
   /*

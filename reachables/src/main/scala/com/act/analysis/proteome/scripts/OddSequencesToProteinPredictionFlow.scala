@@ -17,6 +17,9 @@ import org.json.{JSONArray, JSONObject}
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 import scala.sys.process._
 
 object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
@@ -33,6 +36,8 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
   private val processed = new AtomicInteger()
   private val foundWithSequenceInferred = new AtomicInteger()
   private val counterDisplayRate = 100
+  private val takeTopNumberOfResults = 5
+  private val defaultSignificanceThreshold = 0.001
   private var idToOrganism: Map[Long, String] = Map()
   private var orgsToProteomes: Map[String, List[File]] = Map()
 
@@ -141,12 +146,10 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     logger.info("Starting assignment of inferred sequences to odd database entries.")
     val sequenceSearch: (DbSeq) => Unit = defineSequenceSearch(resultHmmDirectory, fastaDirectory, tempSeqDbDir)(proteomeLocation)(database)
 
-    // GC
-    matchingSequences.foreach(sequenceSearch)
     // .par evaluates the iterator which takes a while (It is a mongoDB cursor movement).
     // We can get everything going right away AND in parallel by just making it into a future.
-    //    val futureList = Future.traverse(matchingSequences)(x => Future(sequenceSearch(x)))
-    //    Await.ready(futureList, Duration.Inf)
+    val futureList = Future.traverse(matchingSequences)(x => Future(sequenceSearch(x)))
+    Await.ready(futureList, Duration.Inf)
 
     // Cleanup our file structure
     FileUtils.deleteDirectory(tempSeqDbDir)
@@ -216,17 +219,18 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
         s"(${foundWithSequenceInferred.get()} with inferred sequences) out of ${processed.get()} sequences")
     }
 
-    // Create the FASTA file out of the database sequence
-    writeFastaFileForEachDocument(database, outputFastaPath)(sequence.getUUID.toLong)
-
     // Figure out which reference proteomes should be used for this sequence
     val proteomesToQueryAgainst = getMatchingProteomes(sequence)
     if (proteomesToQueryAgainst.isEmpty) return
+
+    // Create the FASTA file out of the database sequence
+    writeFastaFileForEachDocument(database, outputFastaPath)(sequence.getUUID.toLong)
+
     createUberProteome(tempProteomeFile, proteomesToQueryAgainst.get)
 
     /* - - - - Use Phmmer to find matching/close sequences - - - - */
     // We grab the exit code to ensure that the process has completed before deleting the file.
-    List(HmmerWrapper.HmmCommands.Phmmer.getCommand, "-o", resultFilePath.getAbsolutePath, outputFastaPath.getAbsolutePath,
+    List(HmmerWrapper.HmmCommands.Phmmer.getCommand, "-o", resultFilePath.getAbsolutePath, "--incdomE", s"$defaultSignificanceThreshold", "--domE", s"$defaultSignificanceThreshold", outputFastaPath.getAbsolutePath,
       tempProteomeFile.getAbsolutePath).run().exitValue()
 
     // These files are no longer needed, so we delete them.
@@ -245,6 +249,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     jsons.foreach(inferArray.put)
 
     if (resultingSequences.nonEmpty) {
+      logger.info(s"Finished inferring additional sequences for sequence ${sequence.getUUID}")
       foundWithSequenceInferred.incrementAndGet()
     }
 
@@ -254,7 +259,6 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     mongoDatabaseConnection.updateMetadata(sequence)
 
     FileUtils.deleteQuietly(resultFilePath)
-    logger.debug(s"Finished inferring additional sequences for sequence ${sequence.getUUID}")
     found.incrementAndGet()
   }
 
@@ -295,9 +299,9 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     writer.close()
   }
 
-  private def getRelevantSequencesFromPhmmerResult(resultFilePath: File, proteomeLocation: File): List[SequenceConnection] = {
+  private def getRelevantSequencesFromPhmmerResult(resultFilePath: File, proteomeLocation: File, maxResults: Int = takeTopNumberOfResults): List[SequenceConnection] = {
     val parsedFile = HmmResultParser.parseFile(resultFilePath)
-    parsedFile.map(p =>
+    parsedFile.take(maxResults).map(p =>
       SequenceConnection(
         new File(proteomeLocation, p(HmmResultParser.HmmResultLine.SEQUENCE_NAME)),
         // Pipe needs to be a character otherwise it will be processed as regex.
@@ -307,7 +311,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
         p(HmmResultParser.HmmResultLine.DESCRIPTION).split('|').tail.mkString("|").trim,
         p(HmmResultParser.HmmResultLine.SCORE_DOMAIN).toDouble,
         p(HmmResultParser.HmmResultLine.SCORE_FULL_SEQUENCE).toDouble
-      ))
+      )).toList
   }
 
   private def parseResultSequences(sourceSequenceLinks: List[SequenceConnection]): List[SequenceEntry] = {
