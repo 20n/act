@@ -160,8 +160,8 @@ public class PatentFinder {
         LOGGER.info("Results (%d) for %s:", results.size(), reachable.getPageName());
         List<PatentSummary> summaries = new ArrayList<>(results.size());
         for (Searcher.SearchResult result : results) {
-          LOGGER.info("(%.3f) %s: %s", result.getRelevanceSecore(), result.getId(), result.getTitle());
-          summaries.add(new PatentSummary(result.getId(), result.getTitle(), result.getRelevanceSecore()));
+          LOGGER.info("(%.3f) %s: %s", result.getRelevanceScore(), result.getId(), result.getTitle());
+          summaries.add(new PatentSummary(result.getId(), result.getTitle(), result.getRelevanceScore()));
         }
 
         reachable.setPatentSummaries(summaries);

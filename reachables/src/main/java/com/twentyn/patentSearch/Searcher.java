@@ -1,6 +1,5 @@
 package com.twentyn.patentSearch;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
@@ -26,7 +25,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
@@ -244,12 +242,16 @@ public class Searcher implements AutoCloseable {
   public static class SearchResult {
     String id;
     String title;
-    Float relevanceSecore;
+    Float relevanceScore;
 
-    public SearchResult(String id, String title, Float relevanceSecore) {
+    public SearchResult(String id, String title, Float relevanceScore) {
       this.id = id;
       this.title = title;
-      this.relevanceSecore = relevanceSecore;
+      /* Relevance scores are defined by Apache Lucene, and are dependent on the structure of the query.
+       * See the scoring docs at
+       * https://lucene.apache.org/core/5_2_1/core/org/apache/lucene/search/package-summary.html#package_description
+       * for details. */
+      this.relevanceScore = relevanceScore;
     }
 
     public String getId() {
@@ -260,8 +262,8 @@ public class Searcher implements AutoCloseable {
       return title;
     }
 
-    public Float getRelevanceSecore() {
-      return relevanceSecore;
+    public Float getRelevanceScore() {
+      return relevanceScore;
     }
   }
 }
