@@ -44,8 +44,8 @@ public class BingSearchResults {
 
   // Full path to the account key for the Bing Search API (on the NAS)
   private static final String ACCOUNT_KEY_FILEPATH = "/mnt/data-level1/data/bing/bing_search_api_account_key.txt";
-  // Maximum number of results possible per API call. This is the maximum value for URL parameter "top"
-  private static final Integer MAX_RESULTS_PER_CALL = 100;
+  // Maximum number of results possible per API call. This is the maximum value for URL parameter "count"
+  private static final Integer MAX_RESULTS_PER_CALL = 50;
   // How many search results should be retrieved when getting topSearchResults
   private static final Integer TOP_N = 50;
   
@@ -53,6 +53,10 @@ public class BingSearchResults {
   private static final String BING_CACHE_HOST = "bing-cache";
   private static final int BING_CACHE_MONGO_PORT = 27777;
   private static final String BING_CACHE_MONGO_DATABASE = "bingsearch";
+
+
+  private static final String BING_API_HOST = "api.cognitive.microsoft.com";
+  private static final String BING_API_PATH = "/bing/v5.0/search";
 
   private static ObjectMapper mapper = new ObjectMapper();
 
@@ -81,7 +85,7 @@ public class BingSearchResults {
    * @throws IOException
    */
   private static String getAccountKey(String accountKeyFilename) throws IOException {
-    FileInputStream fs= new FileInputStream(accountKeyFilename);
+    FileInputStream fs = new FileInputStream(accountKeyFilename);
     BufferedReader br = new BufferedReader(new InputStreamReader(fs));
     String account_key = br.readLine();
     if (account_key.length() != 32) {
@@ -99,6 +103,7 @@ public class BingSearchResults {
   private Long fetchTotalCountSearchResults(String formattedName) throws IOException {
     LOGGER.debug("Updating totalCountSearchResults for name: %s.", formattedName);
     final String queryTerm = URLEncoder.encode(formattedName, StandardCharsets.UTF_8.name());
+    // Set count to 1 and offset to 0 since we need only one search result to extract the estimated count.
     final int count = 1;
     final int offset = 0;
     JsonNode results = fetchBingSearchAPIResponse(queryTerm, count, offset);
@@ -140,11 +145,14 @@ public class BingSearchResults {
   /** This function issues a Bing Search API call and parses the response to extract a set of SearchResults.
    * @param query (String) the term to query for.
    * @param count (int) URL parameter indicating how many results to return. Max value is 100.
-   * @param offset (int) URL parameter indicating the offset for results. Has to comply with count + offset <= 1000.
-   * @return returns a set of SearchResults containing [top] search results with offset [skip]
+   * @param offset (int) URL parameter indicating the offset for results.
+   * @return returns a set of SearchResults containing [count] search results with offset [offset]
    * @throws IOException
    */
   private Set<SearchResult> fetchSearchResults(String query, int count, int offset) throws IOException {
+    if (count > MAX_RESULTS_PER_CALL) {
+      LOGGER.warn("Number of results requested (%d) was too high. Will get only %d", count, MAX_RESULTS_PER_CALL);
+    }
     Set<SearchResult> searchResults = new HashSet<>();
     JsonNode results = fetchBingSearchAPIResponse(query, count, offset);
     final JsonNode webResults = results.path("value");
@@ -167,29 +175,29 @@ public class BingSearchResults {
   private JsonNode fetchBingSearchAPIResponse(String queryTerm, Integer count, Integer offset) throws IOException {
 
     if (count <= 0) {
-      LOGGER.error("Bing Search API was called with \"top\" URL parameter = 0. Please request at least one result.");
+      LOGGER.error("Bing Search API was called with \"count\" URL parameter = 0. Please request at least one result.");
       return null;
     }
 
     URI uri = null;
     try {
       // Bing URL pattern. Note that we use composite queries to allow retrieval of the total results count.
-      // Transaction cost is [top] bings, where [top] is the value of the URL parameter "top".
-      // In other words, we can make 5M calls with [top]=1 per month.
+      // Transaction cost is [count] bings, where [count] is the value of the URL parameter "count".
+      // In other words, we can make 5M calls with [count]=1 per month.
 
 
       // Example: https://api.cognitive.microsoft.com/bing/v5.0/search?q=porsche&responseFilter=webpages
       uri = new URIBuilder()
           .setScheme("https")
-          .setHost("api.cognitive.microsoft.com")
-          .setPath("/bing/v5.0/search")
+          .setHost(BING_API_HOST)
+          .setPath(BING_API_PATH)
           // Wrap the query term (%s) with double quotes (%%22) for exact search
           .setParameter("q", String.format("%s", queryTerm))
           // Restrict response to Web Pages only
           .setParameter("responseFilter", "webpages")
-          // "top" parameter. Integer between 1 and 100.
+          // "count" parameter.
           .setParameter("count", count.toString())
-          // "skip" parameter. Integer, satisfying the constraint: [top] + [skip] <= 1000.
+          // "offset" parameter.
           .setParameter("offset", offset.toString())
           .build();
 
@@ -208,6 +216,8 @@ public class BingSearchResults {
     try (CloseableHttpResponse response = httpclient.execute(httpget)) {
       Integer statusCode = response.getStatusLine().getStatusCode();
 
+      // TODO: The Web Search API returns useful error messages, we could use them to have better insights on failures.
+      // See: https://dev.cognitive.microsoft.com/docs/services/56b43eeccf5ff8098cef3807/operations/56b4447dcf5ff8098cef380d
       if (!statusCode.equals(HttpStatus.SC_OK)) {
         LOGGER.error("Bing Search API call returned an unexpected status code (%d) for URI: %s", statusCode, uri);
         return null;
@@ -398,13 +408,13 @@ public class BingSearchResults {
   }
 
   public static void main(String[] args) {
-    String apiKeyFilepath = "/Volumes/shared-data-1/Thomas/test-bing/microsoft-cognitive-service-api-key";
+    String apiKeyFilepath = "/mnt/shared-data-1/Thomas/test-bing/microsoft-cognitive-service-api-key";
     BingSearchResults bingSearchResults = new BingSearchResults(apiKeyFilepath);
     try {
       Set<SearchResult> res = bingSearchResults.getAndCacheTopSearchResults("new query");
       Long count = bingSearchResults.getAndCacheTotalCountSearchResults("new query");
     } catch (IOException e) {
-      e.printStackTrace();
+      throw new RuntimeException("Exception occurred when computing example query, %s", e);
     }
   }
 }
