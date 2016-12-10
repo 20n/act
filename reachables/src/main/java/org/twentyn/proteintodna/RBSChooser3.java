@@ -125,13 +125,10 @@ public class RBSChooser3 {
         }
     }
 
-    private static int min(int a, int b) {
-      return Math.min(a, b);
-    }
-
+    // Compute edit distance using Smith-Waterman.
     private static int dpEditDistance(String s1, String s2) {
-      int s1len = s1.length(); // m
-      int s2len = s2.length(); // n
+      int s1len = s1.length();
+      int s2len = s2.length();
 
       int[][] dist = new int[s1len + 1][s2len + 1];
 
@@ -140,7 +137,7 @@ public class RBSChooser3 {
           if (a == 0) dist[a][b] = b;
           else if (b == 0) dist[a][b] = a;
           else if (s1.charAt(a - 1) == s2.charAt(b - 1)) dist[a][b] = dist[a-1][b-1];
-          else dist[a][b] = 1 + min(min(dist[a][b-1], dist[a-1][b]), dist[a-1][b-1]);
+          else dist[a][b] = 1 + Math.min(Math.min(dist[a][b-1], dist[a-1][b]), dist[a-1][b-1]);
         }
       }
 
