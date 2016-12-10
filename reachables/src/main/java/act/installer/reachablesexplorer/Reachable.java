@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mongodb.BasicDBObject;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -32,6 +32,7 @@ public class Reachable {
   private PrecursorData precursorData;
   private Map<Chemical.REFS, BasicDBObject> xref;
   private SynonymData synonyms;
+  private List<PatentSummary> patentSummaries;
 
   public Reachable() {}
 
@@ -47,7 +48,8 @@ public class Reachable {
                    String structureFilename,
                    String wordCloudFilename,
                    String pathwayVisualization,
-                   Map<Chemical.REFS, BasicDBObject> xref) {
+                   Map<Chemical.REFS, BasicDBObject> xref,
+                   List<PatentSummary> patentSummaries) {
     this.id = id;
     this.pageName = pageName;
     this.inchi = inchi;
@@ -61,11 +63,16 @@ public class Reachable {
     this.wordCloudFilename = wordCloudFilename;
     this.pathwayVisualization = pathwayVisualization;
     this.xref = xref;
+    this.patentSummaries = patentSummaries;
   }
 
   public Reachable(Long id, String pageName, String inchi, String smiles, String inchiKey, List<String> names,
                    SynonymData synonymData, String structureFilename, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref) {
-    this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null, structureFilename, wordCloudFilename, null, xref);
+    this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null, structureFilename, wordCloudFilename, null, xref, null);
+  }
+
+  public Long getId() {
+    return id;
   }
 
   public String getPageName() {
@@ -165,4 +172,20 @@ public class Reachable {
   public void setSynonyms(SynonymData synonyms) {
     this.synonyms = synonyms;
   }
+
+  public List<PatentSummary> getPatentSummaries() {
+    return this.patentSummaries;
+  }
+
+  public void setPatentSummaries(List<PatentSummary> patentSummaries) {
+    this.patentSummaries = patentSummaries;
+  }
+
+  public void addPatentSummaries(List<PatentSummary> patentSummaries) {
+    if (this.patentSummaries == null) {
+      this.patentSummaries = new ArrayList<>();
+    }
+    this.patentSummaries.addAll(patentSummaries);
+  }
+
 }

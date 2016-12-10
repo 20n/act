@@ -140,6 +140,10 @@ public class WordCloudGenerator {
     }
   }
 
+  public WordCloudGenerator(String host, Integer port, String database, String assetLocation) {
+    this(host, port, database, assetLocation, RSCRIPT_EXE_PATH);
+  }
+
   public WordCloudGenerator(String host, Integer port, String database) {
     this(host, port, database, DEFAULT_ASSETS_LOCATION, RSCRIPT_EXE_PATH);
   }

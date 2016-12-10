@@ -5,7 +5,7 @@ import java.lang.Long
 import java.util
 
 import com.act.reachables.Cascade.NodeInformation
-import com.fasterxml.jackson.annotation.{JsonCreator, JsonIgnore, JsonProperty}
+import com.fasterxml.jackson.annotation._
 import com.mongodb.{DB, MongoClient, ServerAddress}
 import org.apache.commons.codec.digest.DigestUtils
 import org.mongojack.JacksonDBCollection
@@ -22,6 +22,10 @@ object Cascade extends Falls {
   val collectionName: String = "pathways"
 
   val pathwayCollection: JacksonDBCollection[ReactionPath, String] = JacksonDBCollection.wrap(db.getCollection(collectionName), classOf[ReactionPath], classOf[String])
+
+  def get_pathway_collection: JacksonDBCollection[ReactionPath, String] = {
+    pathwayCollection
+  }
 
   case class SubProductPair(substrates: List[Long], products: List[Long])
 
@@ -374,6 +378,7 @@ object Cascade extends Falls {
     }
   }
 
+  @JsonIgnoreProperties(ignoreUnknown = true)
   @JsonCreator
   class NodeInformation(@JsonProperty("isReaction") var isReaction: Boolean,
                         @JsonProperty("organisms") var organisms: util.HashSet[String],

@@ -12,9 +12,13 @@ class InchiDescriptor implements Serializable {
 
     private String inchiKey;
 
-    InchiDescriptor() {}
+    private InchiDescriptor() {
 
-    InchiDescriptor(String name, String inchi, String inchiKey){
+    }
+
+    public InchiDescriptor(String name,
+                           String inchi,
+                           String inchiKey){
         this.name = name;
         this.inchi = inchi;
         this.inchiKey = inchiKey;

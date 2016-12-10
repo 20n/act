@@ -204,10 +204,10 @@ public class Loader {
    */
   public Loader(String host, Integer port, String targetDB,
                 String targetCollection, String targetSequenceCollection, String renderingCache) {
-    db = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_CHEMICALS_DATABASE);
+    db = new MongoDB(host, port, DEFAULT_CHEMICALS_DATABASE);
     pubchemSynonymsDriver = new PubchemMeshSynonyms();
     moleculeRenderer = new MoleculeRenderer(new File(renderingCache));
-    wordCloudGenerator = new WordCloudGenerator(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_CHEMICALS_DATABASE);
+    wordCloudGenerator = new WordCloudGenerator(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_CHEMICALS_DATABASE, renderingCache);
 
     MongoClient mongoClient;
     try {
@@ -226,6 +226,14 @@ public class Loader {
     jacksonReachablesCollection.ensureIndex(new BasicDBObject(Reachable.inchiFieldName, "hashed"));
     jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.sequenceFieldName, "hashed"));
     jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.organismFieldName, 1));
+  }
+
+  public JacksonDBCollection<Reachable, String> getJacksonReachablesCollection() {
+    return jacksonReachablesCollection;
+  }
+
+  public JacksonDBCollection<SequenceData, String> getJacksonSequenceCollection() {
+    return jacksonSequenceCollection;
   }
 
   /**
@@ -377,7 +385,8 @@ public class Loader {
     return jacksonReachablesCollection.findOne(query);
   }
 
-  private void upsert(Reachable reachable) {
+  // Package private so helpers (like the PatentFinder) can use it.
+  void upsert(Reachable reachable) {
     // TODO Can we make this more efficient in any way?
     Reachable reachableOld = queryByInchi(reachable.getInchi());
 

@@ -1,6 +1,7 @@
 package org.twentyn.proteintodna;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.mongojack.ObjectId;
 
 import java.util.Set;
 
@@ -23,6 +24,7 @@ public class DNADesign {
     this.dnaDesigns = dnaDesigns;
   }
 
+  @ObjectId
   @JsonProperty("_id")
   private String id;
 
@@ -31,5 +33,9 @@ public class DNADesign {
 
   public DNADesign(Set<DNAOrgECNum> dnaDesigns) {
     this.dnaDesigns = dnaDesigns;
+  }
+
+  private DNADesign() {
+
   }
 }
