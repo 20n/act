@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 public class ProteinToDNADriver {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(ProteinToDNADriver.class);
+
   private static final String DEFAULT_DB_HOST = "localhost";
   private static final String DEFAULT_DB_PORT = "27017";
   private static final String DEFAULT_OUTPUT_DB_NAME = "wiki_reachables";
@@ -187,6 +188,7 @@ public class ProteinToDNADriver {
                       proteinSeqToOrgInfo.put(dnaSeq, new HashSet<>());
                     }
                     proteinSeqToOrgInfo.get(dnaSeq).add(orgAndEcnum);
+
                   }
                 }
               }

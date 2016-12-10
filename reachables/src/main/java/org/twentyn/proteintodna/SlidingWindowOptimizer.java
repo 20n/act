@@ -93,7 +93,16 @@ public class SlidingWindowOptimizer {
             codonIndices[mrna.codons.length + i] = 0;
             codonValues[mrna.codons.length + i] = "TAA";
         }
-        
+
+        // TODO: Saurabh says: More optimizations: The loop below takes about 100ms on average
+        //       for each peptide sequence. We have heavily optimized the `for(Integer[] option : encodingOptions)`
+        //       loop. But there are still other opportunities to shave away time. 
+        //       One thought: Memoize the computation for unique `aas6`s. There are 20^6 = 64M possibilities,
+        //                    and this inner loop runs 10,896 times when a 16 paths (5 orf's each) and because
+        //                    we run combinations, each protein is optimized multiple times! So an additional
+        //                    memoization should be done at the higher level to optimize each orf only once
+        //                    and again and again in pathways.
+
         //Scan through peptide 3 amino acids at a time
         for(int i=0; i<protein.length()-6; i=i+3) {
             //Pull out the next 6 amino acids as array
@@ -162,36 +171,29 @@ public class SlidingWindowOptimizer {
                     sequence += codon;
                 }
                 
-//                System.out.print(sequence);
-                
                 //Apply sequenceChecker to the sequence, abort if it is forbidden
-                if(checker.check(sequence) == false) {
-//                    System.out.println(" : forbidden");
-                    continue;
-                }
-                
-                //See if it is better with hairpins than the previous, if so update
-                double score = haircounter.score(sequence);
-//                System.out.println(" : " + score);
-                if(score < bestscore) {
-                    bestscore = score;
-                    bestOption = option;
+                boolean checked = checker.check(sequence);
+
+                if(checked) {
+                  //See if it is better with hairpins than the previous, if so update
+                  double score = haircounter.score(sequence);
+
+                  if(score < bestscore) {
+                      bestscore = score;
+                      bestOption = option;
+                  }
                 }
             }
-            
+
             //Update the CDS with the bestOption
             for(int x=0; x<6; x++) {
                 codonIndices[i+x] = bestOption[x];
                 char aa = protein.charAt(i+x);
                 codonValues[i+x] = indexer.aminoAcidToBestCodons.get(aa).get(bestOption[x]);
             }
-                    
-//            System.out.println();
             
         }
-        
-//        System.out.println("Done with choosing codons");
-        
+
         //Update the mRNA with the optimized codons
         for(int i=0; i<mrna.codons.length; i++) {
             mrna.codons[i] = codonIndices[i];

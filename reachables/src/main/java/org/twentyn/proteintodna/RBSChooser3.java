@@ -76,7 +76,13 @@ public class RBSChooser3 {
             if(ignores.contains(opt)) {
                 continue;
             }
-            int score = naiveEditDistance(pep, opt.first6aas);
+            int score = dpEditDistance(pep, opt.first6aas);
+            // This test has been completed and no Exceptions get thrown
+            // so we are certain that the native optimized dynamic programming
+            // yield identical results. We can remove this outdated code before mainlining.
+            // int scoreNaive = naiveEditDistance(pep, opt.first6aas);
+            // if (score != scoreNaive)
+            //   throw new Exception("optimized and naive computation differ! test failure!");
 
             if(score < best) {
                 best = score;
@@ -87,6 +93,10 @@ public class RBSChooser3 {
         return bestRBS;
     }
     
+    // this recursive (as opposed to dynamic programming) version takes O(3^18) = 387,420,489 steps
+    // while the DP version would take O(18 * 18) = 324 steps
+    // So 1.2M times improvement in going to non recursive version
+    // This is dead code now. Delete before mainlining.
     private static int naiveEditDistance(String s1, String s2) {
         int matchDist;   // Edit distance if first char. match or do a replace
         int insertDist;  // Edit distance if insert first char of s1 in front of s2.
@@ -113,6 +123,25 @@ public class RBSChooser3 {
             }
             return Math.min(matchDist, Math.min(insertDist, Math.min(deleteDist, swapDist)));
         }
+    }
+
+    // Compute edit distance using Smith-Waterman.
+    private static int dpEditDistance(String s1, String s2) {
+      int s1len = s1.length();
+      int s2len = s2.length();
+
+      int[][] dist = new int[s1len + 1][s2len + 1];
+
+      for (int a = 0; a <= s1len; a++) {
+        for (int b = 0; b <= s2len; b++) {
+          if (a == 0) dist[a][b] = b;
+          else if (b == 0) dist[a][b] = a;
+          else if (s1.charAt(a - 1) == s2.charAt(b - 1)) dist[a][b] = dist[a-1][b-1];
+          else dist[a][b] = 1 + Math.min(Math.min(dist[a][b-1], dist[a-1][b]), dist[a-1][b-1]);
+        }
+      }
+
+      return dist[s1len][s2len];
     }
 }
 

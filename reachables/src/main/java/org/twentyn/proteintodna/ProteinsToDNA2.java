@@ -33,7 +33,10 @@ public class ProteinsToDNA2 {
     }
     
     public Construct computeDNA(List<String> proteins, Host organism) throws Exception {
-        SlidingWindowOptimizer swo = SlidingWindowOptimizer.initiate();
+        // This local `SlidingWindowOptimizer` defeats the purpose of the one-time init of 
+        // of the optimizer. Currently just commented out until confirmation from jca.
+        // @jcaucb please confirm that this overriding of the `swo` with a local is not needed.
+        // SlidingWindowOptimizer swo = SlidingWindowOptimizer.initiate();
         
         //Construct an mRNA for each peptide
         List<Mrna> mRNAs = new ArrayList<>();
