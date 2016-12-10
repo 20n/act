@@ -3,7 +3,7 @@ package act.installer.reachablesexplorer;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class PatentSummary {
-  private static final String URL_FORMAT = "http://patft1.uspto.gov/netacgi/nph-Parser?patentnumber=%s";
+  private static final String BASE_URL_FORMAT = "http://patft1.uspto.gov/netacgi/nph-Parser?patentnumber=%s";
 
   @JsonProperty(value = "id", required = true)
   private String id;
@@ -51,6 +51,6 @@ public class PatentSummary {
 
     // Strip country designator prefix and leading zeroes, then ditch the publication file suffix.
     String shortId = id.replaceFirst("^[A-Z]*0*", "").replaceFirst("-.*$", "");
-    return String.format(URL_FORMAT, shortId);
+    return String.format(BASE_URL_FORMAT, shortId);
   }
 }

@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -79,7 +80,11 @@ public class Searcher implements AutoCloseable {
   @Override
   public void close() throws IOException {
     for (IndexReader reader : indexReadersAndSearchers.stream().map(Pair::getLeft).collect(Collectors.toList())) {
-      reader.close();
+      try {
+        reader.close();
+      } catch (IOException e) {
+        LOGGER.error("Unable to close index reader, but continuing to try closing others: %s", e.getMessage());
+      }
     }
   }
 
@@ -144,15 +149,15 @@ public class Searcher implements AutoCloseable {
 
     // Reuse the compiled queries for all indices.
     try {
-      List <Triple<Float, String, String>> results = indexReadersAndSearchers.stream().
+      Set<Triple<Float, String, String>> uniqueResults = indexReadersAndSearchers.stream().
           map(p -> runSearch(p, queries)). // Search to get per-query streams...
           flatMap(Function.identity()).    // combine all the streams into one...
-          collect(Collectors.toList());    // and collect the merged results in a list.
+          collect(Collectors.toSet());    // and collect the merged results in a list.
 
       /* Uniq-ify!  It is completely reasonable for a patent to appear for multiple queries.
        * TODO: we haven't seen results appear multiple times with different scores.  We should probably unique-ify
        * on id and take the result with the best score just to be safe. */
-      results = new ArrayList<>(new HashSet<>(results));
+      List<Triple<Float, String, String>> results = new ArrayList<>(uniqueResults);
       Collections.sort(results);
 
       return results.stream().
@@ -191,9 +196,12 @@ public class Searcher implements AutoCloseable {
     }
     // ScoreDoc just contains a score and an id.  We need to retrieve the documents' content using that id.
 
-    return Arrays.stream(scoreDocs). // No need to use `limit` here since we already had Lucene cap the result set size.
-        filter(scoreDoc -> scoreDoc.score >= scoreThreshold). // Filter by score.
-        map(scoreDoc -> { // Convert from scoreDocs to document features.
+    /* Crux of the next bit:
+     * Filter by score and convert from scoreDocs to document features.
+     * No need to use `limit` here since we already had Lucene cap the result set size. */
+    return Arrays.stream(scoreDocs).
+        filter(scoreDoc -> scoreDoc.score >= scoreThreshold).
+        map(scoreDoc -> { //
           try {
             Pair<String, String> features = this.extractDocFeatures(readerSearcher.getLeft().document(scoreDoc.doc));
             // Put the score first so the natural sort order is based on score.

@@ -2,13 +2,10 @@ package act.installer.reachablesexplorer;
 
 import act.installer.pubchem.PubchemSynonymType;
 import com.act.utils.CLIUtil;
-import com.mongodb.BasicDBObject;
 import com.twentyn.patentSearch.Searcher;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.mongojack.DBCursor;
@@ -47,10 +44,8 @@ public class PatentFinder {
 
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class compiles reachables and cascades data into a DB of documents that can be used to render a collection",
-      "of pages (one per reachable molecule) that is navigable by humans.  The data model employed by this class can",
-      "be read by downstream modules to seamlessly fetch and deserialize these documents for rendering into some",
-      "presentable form."
+      "This class searches for patents related to molecules in a reachables DB, and updates the reachable documents ",
+      "with references to those patents.  Patents are filtered by a manually selected relevance threshold."
   }, " ");
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
@@ -94,7 +89,7 @@ public class PatentFinder {
   private static final List<PubchemSynonymType> SYNONYM_TYPE_PREFERENCE = Collections.unmodifiableList(Arrays.asList(
       PubchemSynonymType.TRIVIAL_NAME,
       PubchemSynonymType.INTL_NONPROPRIETARY_NAME,
-      PubchemSynonymType.DEPOSITORY_NAME, // Beware: this list can be huge.
+      PubchemSynonymType.DEPOSITORY_NAME, // Beware: this list can be huge.  TODO: be clever and shorten it?
       PubchemSynonymType.DRUG_TRADE_NAME,
       PubchemSynonymType.IUPAC_NAME
   ));
@@ -134,6 +129,9 @@ public class PatentFinder {
       Set<String> preferredSynonyms = null;
       if (synonyms != null) {
         Map<PubchemSynonymType, Set<String>> pubchemSynonyms = synonyms.getPubchemSynonyms();
+        /* Search for different kinds of synonyms in order of preference (where preference tries to strike a balance
+         * between verbosity and specificity).  Stop when we've found a type of synonym that is available for this
+         * molecule, and use that in the patent search. */
         for (PubchemSynonymType type : SYNONYM_TYPE_PREFERENCE) {
           if (pubchemSynonyms.containsKey(type)) {
             preferredSynonyms = pubchemSynonyms.get(type);

@@ -1,6 +1,5 @@
 package act.installer.reachablesexplorer;
 
-import chemaxon.marvin.io.formats.inchi.Inchi;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.Serializable;
