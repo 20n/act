@@ -49,7 +49,6 @@ public class Service {
   public static final CSVFormat TSV_FORMAT = CSVFormat.newFormat('\t').
       withRecordSeparator('\n').withQuote('"').withIgnoreEmptyLines(true).withHeader();
 
-
   public static final String OPTION_INPUT_FILE = "f";
   public static final String OPTION_LICENSE_FILE = "l";
 
@@ -119,9 +118,9 @@ public class Service {
 
         if (matches.size() == 0) {
           // This could be a 404, but it's not technically "not found": we ran the search, but nothing matched.
-          return new ResponseEntity<String>(INSTANCE.renderNoResultsPage(), HttpStatus.OK);
+          return new ResponseEntity<>(INSTANCE.renderNoResultsPage(), HttpStatus.OK);
         } else {
-          return new ResponseEntity<String>(INSTANCE.renderResultsPage(matches), HttpStatus.OK);
+          return new ResponseEntity<>(INSTANCE.renderResultsPage(matches), HttpStatus.OK);
         }
       } catch (MolFormatException e) {
         LOGGER.warn("Caught MolFormatException: %s", e.getMessage());
@@ -146,6 +145,14 @@ public class Service {
     // TODO: use dependency injection or something instead of this.
     INSTANCE.successTemplate = FREEMARKER_CFG.getTemplate("SearchResults.ftl");
     INSTANCE.failureTemplate = FREEMARKER_CFG.getTemplate("NoResultsFound.ftl");
+  }
+
+  private static void loadTargets(File inputFile) throws IOException {
+    try (CSVParser parser = new CSVParser(new FileReader(inputFile), TSV_FORMAT)) {
+      for (CSVRecord record : parser) {
+        TARGETS.add(TargetMolecule.fromCSVRecord(record));
+      }
+    }
   }
 
   public static void main(String[] args) throws Exception {
@@ -173,16 +180,14 @@ public class Service {
       LicenseManager.setLicenseFile(cl.getOptionValue(OPTION_LICENSE_FILE));
     }
 
+    LOGGER.info("Loading freemarker templates");
+    setupFreemarker();
 
-    try (CSVParser parser = new CSVParser(new FileReader(new File(cl.getOptionValue(OPTION_INPUT_FILE))), TSV_FORMAT)) {
-      Iterator<CSVRecord> iter = parser.iterator();
-      while (iter.hasNext()) {
-        CSVRecord record = iter.next();
-        TARGETS.add(TargetMolecule.fromCSVRecord(record));
-      }
-    }
+    LOGGER.info("Loading targets");
+    loadTargets(new File(cl.getOptionValue(OPTION_INPUT_FILE)));
     LOGGER.info("Read %d targets from input TSV", TARGETS.size());
 
+    LOGGER.info("Starting service");
     SpringApplication.run(Controller.class);
   }
 

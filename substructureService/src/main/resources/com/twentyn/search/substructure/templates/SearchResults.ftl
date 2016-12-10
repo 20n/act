@@ -1,3 +1,11 @@
+=== Results ===
+
+{| class='wikitable'
+ ! Image
+ ! Name
 <#list results as r>
-  ${r.pageName}
+ |-
+ | <#if r.imageName??>[[File:${r.imageName}|400px]]<#else>No image available</#if>
+ | [[${r.inchiKey}|${r.pageName}]]
 </#list>
+ |}
