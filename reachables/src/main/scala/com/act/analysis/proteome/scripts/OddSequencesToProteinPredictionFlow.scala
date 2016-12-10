@@ -17,9 +17,6 @@ import org.json.{JSONArray, JSONObject}
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
 import scala.sys.process._
 
 object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
@@ -144,10 +141,12 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     logger.info("Starting assignment of inferred sequences to odd database entries.")
     val sequenceSearch: (DbSeq) => Unit = defineSequenceSearch(resultHmmDirectory, fastaDirectory, tempSeqDbDir)(proteomeLocation)(database)
 
+    // GC
+    matchingSequences.foreach(sequenceSearch)
     // .par evaluates the iterator which takes a while (It is a mongoDB cursor movement).
     // We can get everything going right away AND in parallel by just making it into a future.
-    val futureList = Future.traverse(matchingSequences)(x => Future(sequenceSearch(x)))
-    Await.ready(futureList, Duration.Inf)
+    //    val futureList = Future.traverse(matchingSequences)(x => Future(sequenceSearch(x)))
+    //    Await.ready(futureList, Duration.Inf)
 
     // Cleanup our file structure
     FileUtils.deleteDirectory(tempSeqDbDir)
