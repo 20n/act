@@ -23,3 +23,15 @@ bioreactor/lib
 # Ignore IntelliJ files.
 *.iml
 .idea
+
+*.jar
+
+reachables/old_lib/native/linux/libz3.so
+
+reachables/old_lib/native/linux/libz3java.so
+
+reachables/old_lib/native/mac/libz3.dylib
+
+reachables/old_lib/native/mac/libz3java.dylib
+
+reachables/output/ProteinMetadata/Facotry_output.txt

@@ -15,7 +15,7 @@ import java.util.*;
  * mongod --dbpath /Users/jca20n/Downloads/2016-11-22-full-run-w-validation & disown %1
  * <p>
  * This one has the modification and cloning data also included
- * mongod --dbpath /Users/jca20n/Downloads/dump/actv01_vijay_proteins & disown %1
+ * mongod --dbpath /Users/jca20n/Downloads/2016-12-08-actv01_vijay_proteins_only & disown %1
  * Created by jca20n on 12/1/16.
  */
 public class ProteinMetadataFactory {
@@ -24,14 +24,22 @@ public class ProteinMetadataFactory {
 
 
     public ProteinMetadata create(JSONObject json) {
-//        Double kcatkm = handleKcatKm(json);
-//        Double specificActivity = handleSpecificActivity(json);
+//        System.out.println(json.toString());
+
+
+        Double kcatkm = handleKcatKm(json);
+        Double specificActivity = handleSpecificActivity(json);
+//        Boolean modifications = handleModifications(json);
         Boolean heteroSubunits = handlesubunits(json);
 //        Map<Host, Boolean> cloning = handleCloned(json);
 //        Localization localization = handleLocation(json);
 
         ProteinMetadata out = new ProteinMetadata();
         return out;
+    }
+
+    private Boolean handleModifications(JSONObject json) {
+        return null;
     }
 
 
@@ -239,6 +247,9 @@ public class ProteinMetadataFactory {
             String val = json.getString("val");
             String comment = json.getString("comment");
 
+            if(val.equals("?")) {
+                return null;
+            }
             if(val.contains("hetero")) {
                 return true;
             }
@@ -254,53 +265,107 @@ public class ProteinMetadataFactory {
             if(comment.contains("alpha") && comment.contains("beta")) {
                 return true;
             }
-            return null;
+            return false;
         } catch(Exception err) {
             return null;
         }
     }
 
+
+    /**
+     * This is a unit test for handleSubunits
+     * @throws Exception
+     */
+    private boolean testHandlesubunits() throws Exception {
+        File testfile = new File("/Users/jca20n/Dropbox (20n)/20n Team Folder/act_data/ProteinMetadata/2016_12_07-subunit_testset.txt");
+        String data = FileUtils.readFileToString(testfile);
+        data = data.replaceAll("\"\"", "\"");
+        String[] lines = data.split("\\r|\\r?\\n");
+        for(int i=1; i<lines.length; i++) {
+            String line = lines[i];
+            String[] tabs = line.split("\t");
+
+            //Pull out the json for each test and re-wrap it
+            String arrayStr = tabs[0];
+            if(arrayStr.startsWith("\"")) {
+                arrayStr = arrayStr.substring(1);
+            }
+            if(arrayStr.endsWith("\"")) {
+                arrayStr = arrayStr.substring(0, arrayStr.length() -1);
+            }
+
+            String jsonstr = "{\"subunits\":" + arrayStr + "}";
+            JSONObject json = new JSONObject(jsonstr);
+
+            //Run the test and compare result to expected
+            Boolean result = this.handlesubunits(json);
+            Boolean expected = null;
+            if(!tabs[1].equals("null")) {
+                expected = Boolean.parseBoolean(tabs[1]);
+            }
+
+            if(result != expected) {
+                System.err.println("Subunit testing error:\n" + json.toString()  + "  " + tabs[1]);
+                System.err.println("Expect: " + expected + " Found: " + result);
+                return false;
+            }
+
+
+        }
+
+        return true;
+    }
+
     public static void main(String[] args) throws Exception {
         //Connect to the database
-        NoSQLAPI api = new NoSQLAPI("validator_profiling_2", "validator_profiling_2");
+        NoSQLAPI api = new NoSQLAPI("actv01_vijay_proteins", "actv01_vijay_proteins");
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
 
         //Create a single instance of the factory method to use for all json
         ProteinMetadataFactory factory = new ProteinMetadataFactory();
 
-        //Create a list to aggregate the results of the database scan
-        List<ProteinMetadata> agg = new ArrayList<>();
-
-        //Scan the database and store ProteinMetadata objects
-        while (iterator.hasNext()) {
-            Reaction rxn = iterator.next();
-
-            Reaction.RxnDataSource source = rxn.getDataSource();
-            if (!source.equals(Reaction.RxnDataSource.BRENDA)) {
-                continue;
+        //Run some unit tests
+        try {
+            if(factory.testHandlesubunits() == true) {
+                System.out.println("Subunit test OK");
             }
-
-            Set<JSONObject> jsons = rxn.getProteinData();
-
-
-            for (JSONObject json : jsons) {
-                ProteinMetadata meta = factory.create(json);
-                agg.add(meta);
-            }
+        } catch (Exception err) {
+            System.err.println("Failed to test subunits");
         }
-
-        //Write out any aggregated messages to file
-        StringBuilder sb = new StringBuilder();
-        for(String aline : factory.dataList) {
-            aline = aline.replaceAll("\t", " ");
-            sb.append(aline).append("\t\n");
-        }
-
-        File outfile = new File("output/ProteinMetadata/Facotry_output.txt");
-        if(outfile.exists()) {
-            outfile.delete();
-        }
-        FileUtils.writeStringToFile(outfile, sb.toString());
-        System.out.println("done");
+//
+//        //Create a list to aggregate the results of the database scan
+//        List<ProteinMetadata> agg = new ArrayList<>();
+//
+//        //Scan the database and store ProteinMetadata objects
+//        while (iterator.hasNext()) {
+//            Reaction rxn = iterator.next();
+//
+//            Reaction.RxnDataSource source = rxn.getDataSource();
+//            if (!source.equals(Reaction.RxnDataSource.BRENDA)) {
+//                continue;
+//            }
+//
+//            Set<JSONObject> jsons = rxn.getProteinData();
+//
+//
+//            for (JSONObject json : jsons) {
+//                ProteinMetadata meta = factory.create(json);
+//                agg.add(meta);
+//            }
+//        }
+//
+//        //Write out any aggregated messages to file
+//        StringBuilder sb = new StringBuilder();
+//        for(String aline : factory.dataList) {
+//            aline = aline.replaceAll("\t", " ");
+//            sb.append(aline).append("\t\n");
+//        }
+//
+//        File outfile = new File("output/ProteinMetadata/Facotry_output.txt");
+//        if(outfile.exists()) {
+//            outfile.delete();
+//        }
+//        FileUtils.writeStringToFile(outfile, sb.toString());
+//        System.out.println("done");
     }
 }
