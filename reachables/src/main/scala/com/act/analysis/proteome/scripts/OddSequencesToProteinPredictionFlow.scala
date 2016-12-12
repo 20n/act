@@ -1,6 +1,6 @@
 package com.act.analysis.proteome.scripts
 
-import java.io.{BufferedWriter, File, FileNotFoundException, FileWriter}
+import java.io.{BufferedWriter, File, FileNotFoundException, FileWriter, InputStream, OutputStream}
 import java.util.concurrent.atomic.AtomicInteger
 
 import act.shared.{Seq => DbSeq}
@@ -10,7 +10,7 @@ import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.sequence_db.
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywords, SequenceKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject}
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
-import org.apache.commons.io.FileUtils
+import org.apache.commons.io.{FileUtils, IOUtils}
 import org.apache.logging.log4j.LogManager
 import org.json.{JSONArray, JSONObject}
 
@@ -35,11 +35,11 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
   private val found = new AtomicInteger()
   private val processed = new AtomicInteger()
   private val foundWithSequenceInferred = new AtomicInteger()
-  private val counterDisplayRate = 100
+  private val counterDisplayRate = 1
   private val takeTopNumberOfResults = 5
-  private val defaultSignificanceThreshold = 0.001
   private var idToOrganism: Map[Long, String] = Map()
   private var orgsToProteomes: Map[String, List[File]] = Map()
+
 
   def main(args: Array[String]): Unit = {
     defineWorkflow(parseCommandLineOptions(args))
@@ -113,8 +113,6 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     /* - - - - Setup Directory structure - - - - */
     // Note: These are all temporary given we are writing everything to a DB in the end.
     val fastaDirectory = setupDirectory(workingDir, "fastaFiles")
-    val resultHmmDirectory = setupDirectory(workingDir, "resultFiles")
-    val tempSeqDbDir = setupDirectory(workingDir, "tempSeqDb")
 
     /* - - - - Discover relevant sequence entries, put their organisms into a lookup table - - - - */
     val organismProteomes = proteomeLocation.listFiles().toList
@@ -128,13 +126,13 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     whereQuery.put(SequenceKeywords.SEQ.toString, createDbObject(MongoKeywords.NOT_EQUAL, null))
 
     // These wild card sequences have a much lower hit rate to be inferred.
-    val wildcardQuery = new BasicDBObject()
-    val wildcardSequencesRegex = createDbObject(MongoKeywords.REGEX, ".*\\*.*")
-    wildcardSequencesRegex.put(MongoKeywords.OPTIONS.toString, "i")
-    wildcardQuery.put(SequenceKeywords.SEQ.toString, wildcardSequencesRegex)
+//    val wildcardQuery = new BasicDBObject()
+//    val wildcardSequencesRegex = createDbObject(MongoKeywords.REGEX, ".*\\*.*")
+//    wildcardSequencesRegex.put(MongoKeywords.OPTIONS.toString, "i")
+//    wildcardQuery.put(SequenceKeywords.SEQ.toString, wildcardSequencesRegex)
 
     val conditionals = new BasicDBList
-    conditionals.add(wildcardQuery)
+//    conditionals.add(wildcardQuery)
     conditionals.add(whereQuery)
 
     val seqQuery = new BasicDBObject(MongoKeywords.OR.toString, conditionals)
@@ -144,17 +142,17 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
 
     /* - - - - Counters used to track our progress as we go - - - - */
     logger.info("Starting assignment of inferred sequences to odd database entries.")
-    val sequenceSearch: (DbSeq) => Unit = defineSequenceSearch(resultHmmDirectory, fastaDirectory, tempSeqDbDir)(proteomeLocation)(database)
+    val sequenceSearch: (DbSeq) => Unit = defineSequenceSearch(fastaDirectory)(proteomeLocation)(database)
 
     // .par evaluates the iterator which takes a while (It is a mongoDB cursor movement).
     // We can get everything going right away AND in parallel by just making it into a future.
+    val mongoDatabaseConnection = connectToMongoDatabase(database)
     val futureList = Future.traverse(matchingSequences)(x => Future(sequenceSearch(x)))
+
     Await.ready(futureList, Duration.Inf)
 
     // Cleanup our file structure
-    FileUtils.deleteDirectory(tempSeqDbDir)
     FileUtils.deleteDirectory(fastaDirectory)
-    FileUtils.deleteDirectory(resultHmmDirectory)
   }
 
   private def setupDirectory(parent: File, dirName: String): File = {
@@ -200,7 +198,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     firstLevelMap.map({case(key, value) => (key, value.toList)}).toMap
   }
 
-  def defineSequenceSearch(resultHmmDirectory: File, fastaDirectory: File, tempSeqDbDir: File)
+  def defineSequenceSearch(fastaDirectory: File)
                           (proteomeLocation: File)
                           (database: String)
                           (sequence: DbSeq): Unit = {
@@ -210,9 +208,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
 
     /* - - - - Setup temp files that will hold the data prior to database upload - - - - */
     val prefix = sequence.getUUID.toString
-    val resultFilePath = new File(resultHmmDirectory, s"$prefix.output.search.result")
     val outputFastaPath = new File(fastaDirectory, s"$prefix.output.fasta")
-    val tempProteomeFile = new File(tempSeqDbDir, s"$prefix.tmp_seq_db")
 
     if (processed.incrementAndGet() % counterDisplayRate == 0) {
       logger.info(s"Found reference proteome for ${found.get()} " +
@@ -222,23 +218,39 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     // Figure out which reference proteomes should be used for this sequence
     val proteomesToQueryAgainst = getMatchingProteomes(sequence)
     if (proteomesToQueryAgainst.isEmpty) return
+    found.incrementAndGet()
 
     // Create the FASTA file out of the database sequence
     writeFastaFileForEachDocument(database, outputFastaPath)(sequence.getUUID.toLong)
 
-    createUberProteome(tempProteomeFile, proteomesToQueryAgainst.get)
-
     /* - - - - Use Phmmer to find matching/close sequences - - - - */
     // We grab the exit code to ensure that the process has completed before deleting the file.
-    List(HmmerWrapper.HmmCommands.Phmmer.getCommand, "-o", resultFilePath.getAbsolutePath, "--incdomE", s"$defaultSignificanceThreshold", "--domE", s"$defaultSignificanceThreshold", outputFastaPath.getAbsolutePath,
-      tempProteomeFile.getAbsolutePath).run().exitValue()
+    var hmmResponse: Option[List[String]] = None
+    def writeFastaToStdin(out: OutputStream) {
+      val output = inMemoryUberProteome(proteomesToQueryAgainst.get)
+      output.foreach(x => out.write(x.getBytes))
+      out.close()
+    }
 
-    // These files are no longer needed, so we delete them.
+    def readHmmResultOutput(in: InputStream): Unit = {
+      hmmResponse = Some(IOUtils.toString(in, "UTF-8").split("\n").toList)
+      in.close()
+    }
+    def logErrors(err: InputStream) {
+      val error = IOUtils.toString(err, "UTF-8")
+      if (error.nonEmpty) {
+        logger.error(error)
+      }
+      err.close()
+    }
+    List(HmmerWrapper.HmmCommands.Phmmer.getCommand,
+      outputFastaPath.getAbsolutePath, "-").run(
+      new ProcessIO(writeFastaToStdin, readHmmResultOutput, logErrors)).exitValue()
+
     FileUtils.deleteQuietly(outputFastaPath)
-    FileUtils.deleteQuietly(tempProteomeFile)
 
     /* - - - - Take the HMM result and parse the source sequence file for the sequence - - - - */
-    val sourceSequenceLinks = getRelevantSequencesFromPhmmerResult(resultFilePath, proteomeLocation)
+    val sourceSequenceLinks = getRelevantSequencesFromPhmmerStdout(hmmResponse.get, proteomeLocation)
     val resultingSequences = parseResultSequences(sourceSequenceLinks)
 
     /* - - - - Do the update to the database - - - - */
@@ -248,18 +260,19 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     val jsons = resultingSequences.asJavaCollection.map(x => x.asJson)
     jsons.foreach(inferArray.put)
 
+
     if (resultingSequences.nonEmpty) {
-      logger.info(s"Finished inferring additional sequences for sequence ${sequence.getUUID}")
+      logger.debug(s"Finished inferring additional sequences for sequence ${sequence.getUUID}")
       foundWithSequenceInferred.incrementAndGet()
+    } else {
+      // No inferred seq no need to update.
+      return
     }
 
     metadata.put("inferred_sequences", inferArray)
     sequence.setMetadata(metadata)
 
     mongoDatabaseConnection.updateMetadata(sequence)
-
-    FileUtils.deleteQuietly(resultFilePath)
-    found.incrementAndGet()
   }
 
   private def getMatchingProteomes(sequence: DbSeq): Option[List[File]] = {
@@ -299,6 +312,37 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     writer.close()
   }
 
+  private def inMemoryUberProteome(files: List[File]): Iterator[String] ={
+    val lines = files.toIterator.flatMap(f => {
+        val fileMap = scala.io.Source.fromFile(f).getLines.map(l => {
+          val currentLine = if (l.startsWith(">")) {
+            // Keep a reference to the FASTA file that this sequence is in by referencing it in the fasta header
+            s">${f.getName} | ${l.replaceFirst(">", "")}\n"
+          } else {
+            s"$l\n"
+          }
+          currentLine
+        })
+        fileMap
+    })
+    lines
+  }
+
+  private def getRelevantSequencesFromPhmmerStdout(lines: List[String], proteomeLocation: File): List[SequenceConnection] = {
+    val parsedFile = HmmResultParser.parseFile(lines.toIterator).toList
+    parsedFile.map(p =>
+      SequenceConnection(
+        new File(proteomeLocation, p(HmmResultParser.HmmResultLine.SEQUENCE_NAME)),
+        // Pipe needs to be a character otherwise it will be processed as regex.
+        //
+        // This trimming is necessary as we stored the file location in the fasta header previously,
+        // but we don't want that anymore.
+        p(HmmResultParser.HmmResultLine.DESCRIPTION).split('|').tail.mkString("|").trim,
+        p(HmmResultParser.HmmResultLine.SCORE_DOMAIN).toDouble,
+        p(HmmResultParser.HmmResultLine.SCORE_FULL_SEQUENCE).toDouble
+      ))
+  }
+
   private def getRelevantSequencesFromPhmmerResult(resultFilePath: File, proteomeLocation: File, maxResults: Int = takeTopNumberOfResults): List[SequenceConnection] = {
     val parsedFile = HmmResultParser.parseFile(resultFilePath)
     parsedFile.take(maxResults).map(p =>
@@ -318,8 +362,10 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     // Use the inferred connection information to lookup the original sequence in the original file
     sourceSequenceLinks.map(link => {
       val originFile = scala.io.Source.fromFile(link.originFile)
+      val lines: Iterator[String] = originFile.getLines()
 
-      val lines = originFile.getLines()
+
+
       // We find the FASTA header that matches our current sequence
       val result = lines.span(!_.contains(link.sequenceName))
       // Group 1 has everything prior to the stop parsing indicator
@@ -330,6 +376,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
       val sequence = resultProtein._1.mkString("")
 
       originFile.close()
+
       SequenceEntry(header, sequence, link.scoreDomain, link.scoreFullSequence, link.originFile)
     })
   }

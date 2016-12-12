@@ -29,7 +29,7 @@ class HmmResultParserTest extends FlatSpec with Matchers {
     val results =
       HmmResultParser.parseFile(
         new File(getClass.getResource("/com/act/analysis.proteome.files/output_result_positive_HmmResultParser.txt").getFile)
-      )
+      ).toList
 
     results.head(HmmResultParser.HmmResultLine.SEQUENCE_NAME) should be("tr|A0A0A2K6V8|A0A0A2K6V8_PENEN")
     results.last(HmmResultParser.HmmResultLine.SEQUENCE_NAME) should be("tr|A0A0C1WNZ9|A0A0C1WNZ9_9CYAN")
