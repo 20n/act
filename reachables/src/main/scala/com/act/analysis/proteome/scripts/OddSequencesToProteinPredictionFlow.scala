@@ -146,7 +146,6 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
 
     // .par evaluates the iterator which takes a while (It is a mongoDB cursor movement).
     // We can get everything going right away AND in parallel by just making it into a future.
-    val mongoDatabaseConnection = connectToMongoDatabase(database)
     val futureList = Future.traverse(matchingSequences)(x => Future(sequenceSearch(x)))
 
     Await.ready(futureList, Duration.Inf)
