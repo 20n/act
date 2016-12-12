@@ -126,6 +126,8 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     whereQuery.put(SequenceKeywords.SEQ.toString, createDbObject(MongoKeywords.NOT_EQUAL, null))
 
     // These wild card sequences have a much lower hit rate to be inferred.
+    // Wildcard sequences are sequences which have "*" somewhere in the sequence, usually indicating ambiguity.
+    // We are trying to disambiguate sequences, so it is within this context that we attempt to do so through HMMER.
     val wildcardQuery = new BasicDBObject()
     val wildcardSequencesRegex = createDbObject(MongoKeywords.REGEX, ".*\\*.*")
     wildcardSequencesRegex.put(MongoKeywords.OPTIONS.toString, "i")
@@ -181,17 +183,21 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
 
     val firstLevelMap = new scala.collection.mutable.HashMap[String, ListBuffer[File]]()
 
-    fileMap.foreach({case(organism, file) =>
-      if (!firstLevelMap.contains(organism)) {
-        firstLevelMap.put(organism, ListBuffer[File]())
-      }
-      val firstWordOrg = organism.split(" ")(0)
-      if (!firstLevelMap.contains(firstWordOrg)) {
-        firstLevelMap.put(firstWordOrg, ListBuffer[File]())
+    fileMap.foreach({case(organismName, file) =>
+      // We first try to find the full organism name (2 words)
+      if (!firstLevelMap.contains(organismName)) {
+        firstLevelMap.put(organismName, ListBuffer[File]())
       }
 
-      firstLevelMap(organism).append(file)
-      firstLevelMap(firstWordOrg).append(file)
+      // If we can't find the full organism name, we try to salvage
+      // it by just using the genus as a reference.
+      val genusName = organismName.split(" ")(0)
+      if (!firstLevelMap.contains(genusName)) {
+        firstLevelMap.put(genusName, ListBuffer[File]())
+      }
+
+      firstLevelMap(organismName).append(file)
+      firstLevelMap(genusName).append(file)
     })
 
     firstLevelMap.map({case(key, value) => (key, value.toList)}).toMap
@@ -271,13 +277,16 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
   }
 
   private def getMatchingProteomes(sequence: DbSeq): Option[List[File]] = {
-    val organism = sequence.getOrgName
-    val firstOrgWord = organism.split(" ")(0)
+    val organismName = sequence.getOrgName
+    val genus = organismName.split(" ")(0)
 
-    if (orgsToProteomes.contains(organism)) {
-      orgsToProteomes.get(organism)
-    } else if (orgsToProteomes.contains(firstOrgWord)) {
-      orgsToProteomes.get(firstOrgWord)
+    // We first check if the exact organism is a match, if it is we return any relevant proteomes
+    if (orgsToProteomes.contains(organismName)) {
+      orgsToProteomes.get(organismName)
+      // Sometimes an exact reference won't be found, so we rely on the genus,
+      // a less specific degree of similarity, to find reference proteomes for organisms without a direct match
+    } else if (orgsToProteomes.contains(genus)) {
+      orgsToProteomes.get(genus)
     } else {
       // Select the correct file to search based on the organism
       // TODO Handle when we don't have a matching proteome
@@ -358,8 +367,6 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     sourceSequenceLinks.map(link => {
       val originFile = scala.io.Source.fromFile(link.originFile)
       val lines: Iterator[String] = originFile.getLines()
-
-
 
       // We find the FASTA header that matches our current sequence
       val result = lines.span(!_.contains(link.sequenceName))

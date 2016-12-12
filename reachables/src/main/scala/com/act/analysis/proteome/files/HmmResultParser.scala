@@ -32,6 +32,8 @@ object HmmResultParser {
     // This means that the stop parsing indicator was never hit,
     // which means that there are no results.
     if (result_proteins._2.isEmpty) {
+      logger.error("The reader read the whole iterator, indicating that the supplied " +
+        "iterator was empty or had no sequences")
       return Iterator[Map[String, String]]()
     }
 
@@ -41,6 +43,7 @@ object HmmResultParser {
     if (result_proteins._1.hasNext) {
       result_proteins._1.next
     } else {
+      logger.error(s"No lines found in result location.  Please check your iterator source.")
       return Iterator[Map[String, String]]()
     }
 
