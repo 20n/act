@@ -177,6 +177,8 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
 
       // Just get the first two strings.  There may be more, but usually the important bits are in the first two.
       val organism = tailOfLine.split(" ").take(2).mkString(" ")
+      
+      if (organism.contains("=")) throw new RuntimeException(s"Parsed organism name contains '=', please check input FASTA file ${f.getAbsolutePath}")
 
       (organism, f)
     })
