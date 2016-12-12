@@ -31,7 +31,7 @@ public class LoadAct extends SteppedTask {
 
   private static final String DEFAULT_DB_HOST = "localhost";
   private static final int DEFAULT_PORT = 27017;
-  private static final String DEFAULT_DATABASE = "validator_profiling_2";
+  private static final String DEFAULT_DATABASE = "jarvis_2016-12-09";
 
   // Fields
   private MongoDB db;

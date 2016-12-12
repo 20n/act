@@ -11,6 +11,8 @@ import scala.collection.JavaConverters._
 import scala.io.Source
 
 object reachables {
+  val defaultDb = "jarvis_2016-12-09"
+
   private val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   HELP_FORMATTER.setWidth(100)
   val LOGGER = LogManager.getLogger(getClass.getName)
@@ -131,7 +133,7 @@ object reachables {
                          nativesFile: String,
                          cofactorsFile: Option[String], outputFile: Option[String]) {
     // Connect to the DB so that extended attributes for chemicals can be fetched as we serialize.
-    val db = new MongoDB("localhost", 27017, "validator_profiling_2")
+    val db = new MongoDB("localhost", 27017, defaultDb)
 
     /* --------------- Parse Options ------------------ */
     val regressionOutputDirectory = s"$prefix.regressions/"

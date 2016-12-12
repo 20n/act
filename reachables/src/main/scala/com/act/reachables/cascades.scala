@@ -11,7 +11,7 @@ import org.json.{JSONArray, JSONObject}
 import scala.collection.JavaConversions._
 
 object cascades {
-  val DEFAULT_DB = ("localhost", 27017, "validator_profiling_2")
+  val DEFAULT_DB = ("localhost", 27017, "jarvis_2016-12-09")
 
   def main(args: Array[String]) {
     /* -------- Command Line Options, TODO Use normal CLI parsing tools --------- */
