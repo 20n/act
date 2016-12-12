@@ -1,6 +1,6 @@
 package com.act.analysis.proteome.scripts
 
-import java.io.{BufferedWriter, File, FileNotFoundException, FileWriter, InputStream, OutputStream}
+import java.io.{File, FileNotFoundException, InputStream, OutputStream}
 import java.util.concurrent.atomic.AtomicInteger
 
 import act.shared.{Seq => DbSeq}
@@ -75,7 +75,8 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
       CliOption.builder(OPTION_WORKING_DIRECTORY).
         hasArg.
         longOpt("working-directory").
-        desc("Run and create all files from a working directory you designate."),
+        desc("Run and create all files from a working directory you designate.").
+        required(true),
 
       CliOption.builder(OPTION_COMPARE_PROTEOME_LOCATION).
         longOpt("reference-proteomes-directory").
@@ -85,7 +86,8 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
 
       CliOption.builder(OPTION_DATABASE).
         longOpt("database").
-        hasArg.desc("The name of the MongoDB to use for this query.").
+        hasArg.
+        desc("The name of the MongoDB to use for this query.").
         required(true),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
@@ -173,11 +175,21 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
       val firstLine = scala.io.Source.fromFile(f).getLines().next()
 
       // Take everything after the "OS", that's the organism
+      if (!firstLine.contains("OS=")) {
+        throw new RuntimeException(
+          """Malformed FASTA file.
+          | Files are required to have a 'OS=' member in their header designating the organism.
+          | Reference Proteomes from Uniprot should have this characteristic by default.
+          |
+          | Example FASTA Header:
+          | sp|Q0EAB6|5HT1A_HORSE 5-hydroxytryptamine receptor 1A OS=Equus caballus GN=HTR1A PE=2 SV=1
+          """.stripMargin)
+      }
       val tailOfLine = firstLine.split("OS=")(1)
 
       // Just get the first two strings.  There may be more, but usually the important bits are in the first two.
       val organism = tailOfLine.split(" ").take(2).mkString(" ")
-      
+
       if (organism.contains("=")) throw new RuntimeException(s"Parsed organism name contains '=', please check input FASTA file ${f.getAbsolutePath}")
 
       (organism, f)
@@ -227,10 +239,9 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     writeFastaFileForEachDocument(database, outputFastaPath)(sequence.getUUID.toLong)
 
     /* - - - - Use Phmmer to find matching/close sequences - - - - */
-    // We grab the exit code to ensure that the process has completed before deleting the file.
     var hmmResponse: Option[List[String]] = None
     def writeFastaToStdin(out: OutputStream) {
-      val output = inMemoryUberProteome(proteomesToQueryAgainst.get)
+      val output = createUberProteome(proteomesToQueryAgainst.get)
       output.foreach(x => out.write(x.getBytes))
       out.close()
     }
@@ -246,9 +257,10 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
       }
       err.close()
     }
-    List(HmmerWrapper.HmmCommands.Phmmer.getCommand,
-      outputFastaPath.getAbsolutePath, "-").run(
-      new ProcessIO(writeFastaToStdin, readHmmResultOutput, logErrors)).exitValue()
+    // We grab the exit code to ensure that the process has completed before deleting the file.
+    List(HmmerWrapper.HmmCommands.Phmmer.getCommand, outputFastaPath.getAbsolutePath, "-").
+      run(new ProcessIO(writeFastaToStdin, readHmmResultOutput, logErrors)).
+      exitValue()
 
     FileUtils.deleteQuietly(outputFastaPath)
 
@@ -296,31 +308,14 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     }
   }
 
-  private def createUberProteome(uberProteomeFileLocation: File, files: List[File]): Unit = {
+  private def createUberProteome(files: List[File]): Iterator[String] ={
     /*
-      Sometimes, there might be matching organism proteomes
-      (Multiple strains or genus-level matching,
-      so we make one file containing all of them
+    Sometimes, there might be matching organism proteomes
+    (Multiple strains or genus-level matching), so we make one file containing all of them
     */
-    val writer = new BufferedWriter(new FileWriter(uberProteomeFileLocation))
-    files.foreach(f => {
-      scala.io.Source.fromFile(f).getLines.foreach(l => {
-        // Fasta headers start with '>', indicating a new sequence is being shown.
-        val currentLine = if (l.startsWith(">")) {
-          // Keep a reference to the FASTA file that this sequence is in by referencing it in the fasta header
-          s">${f.getName} | ${l.replaceFirst(">", "")}\n"
-        } else {
-          s"$l\n"
-        }
-        writer.write(currentLine)
-      })
-    })
-    writer.close()
-  }
-
-  private def inMemoryUberProteome(files: List[File]): Iterator[String] ={
     val lines = files.toIterator.flatMap(f => {
         val fileMap = scala.io.Source.fromFile(f).getLines.map(l => {
+          // Fasta headers start with '>', indicating a new sequence is being shown.
           val currentLine = if (l.startsWith(">")) {
             // Keep a reference to the FASTA file that this sequence is in by referencing it in the fasta header
             s">${f.getName} | ${l.replaceFirst(">", "")}\n"
@@ -347,21 +342,6 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
         p(HmmResultParser.HmmResultLine.SCORE_DOMAIN).toDouble,
         p(HmmResultParser.HmmResultLine.SCORE_FULL_SEQUENCE).toDouble
       ))
-  }
-
-  private def getRelevantSequencesFromPhmmerResult(resultFilePath: File, proteomeLocation: File, maxResults: Int = takeTopNumberOfResults): List[SequenceConnection] = {
-    val parsedFile = HmmResultParser.parseFile(resultFilePath)
-    parsedFile.take(maxResults).map(p =>
-      SequenceConnection(
-        new File(proteomeLocation, p(HmmResultParser.HmmResultLine.SEQUENCE_NAME)),
-        // Pipe needs to be a character otherwise it will be processed as regex.
-        //
-        // This trimming is necessary as we stored the file location in the fasta header previously,
-        // but we don't want that anymore.
-        p(HmmResultParser.HmmResultLine.DESCRIPTION).split('|').tail.mkString("|").trim,
-        p(HmmResultParser.HmmResultLine.SCORE_DOMAIN).toDouble,
-        p(HmmResultParser.HmmResultLine.SCORE_FULL_SEQUENCE).toDouble
-      )).toList
   }
 
   private def parseResultSequences(sourceSequenceLinks: List[SequenceConnection]): List[SequenceEntry] = {

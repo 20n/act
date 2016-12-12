@@ -22,7 +22,7 @@ trait ConditionalToSequence extends WriteProteinSequenceToFasta with QueryBySequ
     matchingSequences.toStream
   }
 
-  def writeFastaFileForEachDocument(database: String, outputFile: File)(sequenceId: Long)(): Unit ={
+  def writeFastaFileForEachDocument(database: String, outputFile: File)(sequenceId: Long): Unit = {
     val mongoConnection = connectToMongoDatabase(database)
     val matchingSequence = querySequencesBySequenceId(List(sequenceId), mongoConnection, List()).next()
 
