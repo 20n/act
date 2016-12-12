@@ -202,10 +202,6 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
                           (proteomeLocation: File)
                           (database: String)
                           (sequence: DbSeq): Unit = {
-    // TODO This function currently uses flat files to communicate to CLI, instead of directly transferring them in
-    // via stdio and it also parses a flat file instead of doing parsing on the output stream from stdout which
-    // could be possible.  This is likely the slowest part and easiest optimization if needed moving forward.
-
     /* - - - - Setup temp files that will hold the data prior to database upload - - - - */
     val prefix = sequence.getUUID.toString
     val outputFastaPath = new File(fastaDirectory, s"$prefix.output.fasta")
