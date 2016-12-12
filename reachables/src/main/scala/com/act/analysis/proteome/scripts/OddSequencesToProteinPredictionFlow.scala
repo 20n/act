@@ -126,13 +126,13 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     whereQuery.put(SequenceKeywords.SEQ.toString, createDbObject(MongoKeywords.NOT_EQUAL, null))
 
     // These wild card sequences have a much lower hit rate to be inferred.
-//    val wildcardQuery = new BasicDBObject()
-//    val wildcardSequencesRegex = createDbObject(MongoKeywords.REGEX, ".*\\*.*")
-//    wildcardSequencesRegex.put(MongoKeywords.OPTIONS.toString, "i")
-//    wildcardQuery.put(SequenceKeywords.SEQ.toString, wildcardSequencesRegex)
+    val wildcardQuery = new BasicDBObject()
+    val wildcardSequencesRegex = createDbObject(MongoKeywords.REGEX, ".*\\*.*")
+    wildcardSequencesRegex.put(MongoKeywords.OPTIONS.toString, "i")
+    wildcardQuery.put(SequenceKeywords.SEQ.toString, wildcardSequencesRegex)
 
     val conditionals = new BasicDBList
-//    conditionals.add(wildcardQuery)
+    conditionals.add(wildcardQuery)
     conditionals.add(whereQuery)
 
     val seqQuery = new BasicDBObject(MongoKeywords.OR.toString, conditionals)
