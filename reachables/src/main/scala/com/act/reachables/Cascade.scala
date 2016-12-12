@@ -452,6 +452,23 @@ class Cascade(target: Long) {
   val t = target
   val nw = Cascade.get_cascade(t).get
 
+  nw.nodeMapping.values().filter(getOrDefault[String](_, "isrxn").toBoolean).foreach(node => {
+    val reactionIds = new util.HashSet[Long](getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => (x.toLong - Cascade.rxnIdShift): java.lang.Long))
+    val isSpontaneous = reactionIds.exists(r => {
+      val isSpontaneous = ReachRxnDescs.rxnIsSpontaneous(r)
+      isSpontaneous.isDefined && isSpontaneous.get
+    })
+    Node.setAttribute(node.id, "isSpontaneous", isSpontaneous)
+
+
+
+    val hasSequence = reactionIds.exists(r => {
+      val hasSequence= ReachRxnDescs.rxnSequence(r)
+      hasSequence.isDefined && hasSequence.get.nonEmpty
+    })
+    Node.setAttribute(node.id, "hasSequence", hasSequence)
+  })
+
   val viablePaths: Option[List[Cascade.Path]] = Cascade.getAllPaths(nw, t)
 
   val allPaths: List[Cascade.Path] = if (viablePaths.isDefined) {
@@ -533,6 +550,7 @@ class Cascade(target: Long) {
 
         if (getOrDefault[String](sourceNode, "isrxn").toBoolean) {
           val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](sourceNode, "organisms", new util.HashSet[String]())
+
           if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
             Edge.setAttribute(currentEdge, "color", f""""$limeGreen", penwidth=5""")
           }
@@ -553,7 +571,7 @@ class Cascade(target: Long) {
 
 
     try {
-      sortedPaths.foreach(Cascade.pathwayCollection.insert)
+//      sortedPaths.foreach(Cascade.pathwayCollection.insert)
     } catch {
       case e: Exception => None
     }
