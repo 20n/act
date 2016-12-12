@@ -19,7 +19,7 @@ object initdb {
   // data supposed to be installed on non-local machines.
   var port = "27017"
   var host = "localhost"
-  var dbs = "actv01_vijay_proteins"
+  var dbs = "actv01"
 
   // the reference mongodb is running on this port?
   var default_refport = "27018" 
