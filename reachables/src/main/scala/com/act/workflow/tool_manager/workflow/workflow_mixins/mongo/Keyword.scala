@@ -10,6 +10,7 @@ object MongoKeywords {
   object ID extends Keyword("_id")
 
   // General Use
+  object WHERE extends Keyword("$where")
   object EXISTS extends Keyword("$exists")
   object NOT extends Keyword("$not")
   object OR extends Keyword("$or")

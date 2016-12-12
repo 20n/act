@@ -120,7 +120,7 @@ class SingleSarChemicals(mongoDb: MongoDB) {
       val desaltedSubstrate = MoleculeExporter.exportAsSmarts(desaltedSubstrateList.get(0))
       val desaltedProduct = MoleculeExporter.exportAsSmarts(desaltedProductList.get(0))
 
-      val result = new ChemicalToSubstrateProduct(chemicalId, desaltedSubstrate, desaltedProduct)
+      val result = new ChemicalToSubstrateProduct(chemicalId, chemicalSmiles, desaltedSubstrate, desaltedProduct)
       smilesCache.put(chemicalSmiles, Some(result))
       Some(result)
     } catch {

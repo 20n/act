@@ -8,6 +8,7 @@ import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.desalting.Desalter
 import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, ChemicalToSubstrateProduct, ReactionInformation}
 import com.act.biointerpretation.rsmiles.chemicals.abstract_chemicals.AbstractChemicals
+import com.act.biointerpretation.rsmiles.single_sar_construction.SingleSarReactionsPipeline.SubstrateProduct
 
 object FullPipelineSandbox {
 
@@ -27,11 +28,7 @@ object FullPipelineSandbox {
     print(s"Processed substrate: ${substrate.asSubstrate}")
     print(s"Processed product: ${product.asProduct}")
 
-    var chemicalSubstrate: ChemicalInformation = new ChemicalInformation(substrateId, substrate.asSubstrate)
-    var chemicalProduct: ChemicalInformation = new ChemicalInformation(fakeProductId, product.asProduct)
-
-    val fakeReactionId = 1 // This isn't a DB reaction
-    val reactionInfo = new ReactionInformation(fakeReactionId, List(chemicalSubstrate), List(chemicalProduct))
+    val reactionInfo = SubstrateProduct(abstractSubstrate, abstractProduct)
 
     val reactionToSar: ReactionInfoToProjector = new ReactionInfoToProjector()
 

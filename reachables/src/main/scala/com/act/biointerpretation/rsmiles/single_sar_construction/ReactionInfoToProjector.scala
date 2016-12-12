@@ -6,6 +6,8 @@ import com.act.analysis.chemicals.molecules.{MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.ReactionInformation
+import com.act.biointerpretation.rsmiles.single_sar_construction.SingleSarReactionsPipeline.SubstrateProduct
+
 import collection.JavaConverters._
 
 class ReactionInfoToProjector() {
@@ -21,16 +23,16 @@ class ReactionInfoToProjector() {
     * Tests all ROs to see if any RO in the corpus matches this reaction. If one is found, builds a reactor to
     * map the transformation.
     *
-    * @param info The ReactionInformation of the reaction to build a projector from.
+    * @param substrateProduct The SubstrateProduct information of the reaction to build a projector from.
     * @return The reactor corresponding to the full mapped transformation, if any succeeds. None otherwise.
     */
-  def searchForReactor(info: ReactionInformation): Option[Reactor] = {
-    val substrate: Molecule = MoleculeImporter.importMolecule(info.substrates(0).chemicalAsString, MoleculeFormat.smarts)
-    val expectedProduct: Molecule = MoleculeImporter.importMolecule(info.products(0).chemicalAsString, MoleculeFormat.smarts)
+  def searchForReactor(substrateProduct: SubstrateProduct): Option[Reactor] = {
+    val substrateMol: Molecule = MoleculeImporter.importMolecule(substrateProduct.substrate, MoleculeFormat.smarts)
+    val expectedProductMol: Molecule = MoleculeImporter.importMolecule(substrateProduct.product, MoleculeFormat.smarts)
 
     for (ro: Ero <- roCorpus.getRos.asScala) {
-      val substrateCopy: Molecule = substrate.clone(); // chemaxon-defined deep copy method for molecules
-      val maybeReactor: Option[Reactor] = getReactor(substrateCopy, expectedProduct, ro)
+      val substrateCopy: Molecule = substrateMol.clone(); // chemaxon-defined deep copy method for molecules
+      val maybeReactor: Option[Reactor] = getReactor(substrateCopy, expectedProductMol, ro)
       if (maybeReactor.isDefined) {
         return maybeReactor
       }
