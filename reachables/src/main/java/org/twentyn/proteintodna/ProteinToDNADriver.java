@@ -182,8 +182,10 @@ public class ProteinToDNADriver {
                   String dnaSeq = sequenceInfo.getSequence();
 
                   if (dnaSeq == null) {
+                    LOGGER.info(String.format("Sequence string for seq id %d, reaction id %d and reaction path %s is null",
+                        s, id, reactionPath.getId()));
                     continue;
-                }
+                  }
 
                   String dnaSeqRes;
 
@@ -202,6 +204,10 @@ public class ProteinToDNADriver {
                     // get the fixed inferred sequence since it has the highest hmmer score
                     JSONObject object = inferredSequences.getJSONObject(0);
 
+                    if (object.getString("fasta_header").contains("Fragment")) {
+                      continue;
+                    }
+
                     dnaSeqRes = object.getString("sequence");
                   }
 
@@ -218,7 +224,7 @@ public class ProteinToDNADriver {
         }
 
         if (proteinSeqs.size() == 0) {
-          LOGGER.error("The reaction does not have any viable protein sequences");
+          LOGGER.info("The reaction does not have any viable protein sequences");
           atleastOneSeqMissingInPathway = true;
           break;
         }
@@ -246,6 +252,8 @@ public class ProteinToDNADriver {
       if (atleastOneSeqMissingInPathway) {
         LOGGER.info(String.format("There is atleast one reaction with no sequence in reaction path id: %s", reactionPath.getId()));
       } else {
+        LOGGER.info(String.format("All reactions in reaction path have at least one viable seq: %s", reactionPath.getId()));
+
         // We only compute the dna design if we can find at least one sequence for each reaction in the pathway.
         Set<List<String>> pathwayProteinCombinations = makePermutations(proteinPaths);
         Set<DNAOrgECNum> dnaDesigns = new HashSet<>();
