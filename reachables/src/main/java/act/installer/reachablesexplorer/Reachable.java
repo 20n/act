@@ -2,10 +2,12 @@ package act.installer.reachablesexplorer;
 
 
 import act.shared.Chemical;
+import act.shared.helpers.MongoDBToJSON;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -71,8 +73,8 @@ public class Reachable {
   }
 
   public Reachable(Long id, String pageName, String inchi, String smiles, String inchiKey, List<String> names,
-                   SynonymData synonymData, String structureFilename, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref, JSONObject physiochemicalProperties) {
-    this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null, structureFilename, wordCloudFilename, null, xref, null, physiochemicalProperties);
+                   SynonymData synonymData, String structureFilename, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref, DBObject physiochemicalProperties) {
+    this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null, structureFilename, wordCloudFilename, null, xref, null, MongoDBToJSON.conv(physiochemicalProperties));
   }
 
   public Long getId() {
