@@ -36,7 +36,7 @@ public class Reachable {
   private Map<Chemical.REFS, BasicDBObject> xref;
   private SynonymData synonyms;
   private List<PatentSummary> patentSummaries;
-  private JSONObject metadata;
+  private PhysiochemicalProperties physiochemicalProperties;
 
   public Reachable() {}
 
@@ -54,7 +54,7 @@ public class Reachable {
                    String pathwayVisualization,
                    Map<Chemical.REFS, BasicDBObject> xref,
                    List<PatentSummary> patentSummaries,
-                   JSONObject metadata) {
+                   PhysiochemicalProperties physiochemicalProperties) {
     this.id = id;
     this.pageName = pageName;
     this.inchi = inchi;
@@ -69,12 +69,12 @@ public class Reachable {
     this.pathwayVisualization = pathwayVisualization;
     this.xref = xref;
     this.patentSummaries = patentSummaries;
-    this.metadata = metadata;
+    this.physiochemicalProperties = physiochemicalProperties;
   }
 
   public Reachable(Long id, String pageName, String inchi, String smiles, String inchiKey, List<String> names,
-                   SynonymData synonymData, String structureFilename, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref, DBObject physiochemicalProperties) {
-    this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null, structureFilename, wordCloudFilename, null, xref, null, MongoDBToJSON.conv(physiochemicalProperties));
+                   SynonymData synonymData, String structureFilename, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref, PhysiochemicalProperties physiochemicalProperties) {
+    this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null, structureFilename, wordCloudFilename, null, xref, null, physiochemicalProperties);
   }
 
   public Long getId() {
@@ -187,9 +187,11 @@ public class Reachable {
     this.patentSummaries = patentSummaries;
   }
 
-  public JSONObject getMetadata() { return metadata; }
+  public PhysiochemicalProperties getPhysiochemicalProperties() { return physiochemicalProperties; }
 
-  public void setMetadata(JSONObject object) { this.metadata = object; }
+  public void setPhysiochemicalProperties(PhysiochemicalProperties physiochemicalProperties) {
+    this.physiochemicalProperties = physiochemicalProperties;
+  }
 
   public void addPatentSummaries(List<PatentSummary> patentSummaries) {
     if (this.patentSummaries == null) {

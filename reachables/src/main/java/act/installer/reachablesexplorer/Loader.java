@@ -370,16 +370,13 @@ public class Loader {
       LOGGER.error("Threw exception when getting physiochemical properties: ", e.getMessage());
     }
 
-    JSONObject physiochemicalProperties = new JSONObject();
-
-    if (analysisFeatures != null) {
-      physiochemicalProperties.put("PKA_ACID_1", analysisFeatures.get(SurfactantAnalysis.FEATURES.PKA_ACID_1));
-      physiochemicalProperties.put("LOGP_TRUE", analysisFeatures.get(SurfactantAnalysis.FEATURES.LOGP_TRUE));
-      physiochemicalProperties.put("HLB_VAL", analysisFeatures.get(SurfactantAnalysis.FEATURES.HLB_VAL));
-    }
+    PhysiochemicalProperties physiochemicalProperties = new PhysiochemicalProperties(
+        analysisFeatures.get(SurfactantAnalysis.FEATURES.PKA_ACID_1),
+        analysisFeatures.get(SurfactantAnalysis.FEATURES.LOGP_TRUE),
+        analysisFeatures.get(SurfactantAnalysis.FEATURES.HLB_VAL));
 
     return new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
-        wordcloudFilename, xref, MongoDBToJSON.conv(physiochemicalProperties));
+        wordcloudFilename, xref, physiochemicalProperties);
   }
 
 
