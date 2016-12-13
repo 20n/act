@@ -13,6 +13,7 @@ import chemaxon.marvin.io.MolExportException;
 import chemaxon.struc.Molecule;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
+import com.act.analysis.surfactant.SurfactantAnalysis;
 import com.act.utils.CLIUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -77,8 +78,8 @@ public class Loader {
 
   // Target database and collection. We populate these with reachables
   private static final String DEFAULT_TARGET_DATABASE = "wiki_reachables";
-  private static final String DEFAULT_TARGET_COLLECTION = "reachablesv6_test_thomas";
-  private static final String DEFAULT_SEQUENCE_COLLECTION = "sequencesv6_test_thomas";
+  private static final String DEFAULT_TARGET_COLLECTION = "reachablesv6_test_vijay";
+  private static final String DEFAULT_SEQUENCE_COLLECTION = "sequencesv6_test_vijay";
 
   private static final int ORGANISM_CACHE_SIZE = 1000;
   private static final String ORGANISM_UNKNOWN = "(unknown)";
@@ -360,7 +361,24 @@ public class Loader {
 
     SynonymData synonymData = getSynonymData(inchi);
 
-    return new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename, wordcloudFilename, xref);
+    Map<SurfactantAnalysis.FEATURES, Double> analysisFeatures = null;
+
+    try {
+      analysisFeatures = SurfactantAnalysis.performAnalysis(inchi, false);
+    } catch (Exception e) {
+      LOGGER.error("Threw exception when getting physiochemical properties: ", e.getMessage());
+    }
+
+    JSONObject physiochemicalProperties = new JSONObject();
+
+    if (analysisFeatures != null) {
+      physiochemicalProperties.put("PKA_ACID_1", analysisFeatures.get(SurfactantAnalysis.FEATURES.PKA_ACID_1));
+      physiochemicalProperties.put("LOGP_TRUE", analysisFeatures.get(SurfactantAnalysis.FEATURES.LOGP_TRUE));
+      physiochemicalProperties.put("HLB_VAL", analysisFeatures.get(SurfactantAnalysis.FEATURES.HLB_VAL));
+    }
+
+    return new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
+        wordcloudFilename, xref, physiochemicalProperties);
   }
 
 

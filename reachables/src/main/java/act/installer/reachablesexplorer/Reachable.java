@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mongodb.BasicDBObject;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +34,7 @@ public class Reachable {
   private Map<Chemical.REFS, BasicDBObject> xref;
   private SynonymData synonyms;
   private List<PatentSummary> patentSummaries;
+  private JSONObject metadata;
 
   public Reachable() {}
 
@@ -49,7 +51,8 @@ public class Reachable {
                    String wordCloudFilename,
                    String pathwayVisualization,
                    Map<Chemical.REFS, BasicDBObject> xref,
-                   List<PatentSummary> patentSummaries) {
+                   List<PatentSummary> patentSummaries,
+                   JSONObject metadata) {
     this.id = id;
     this.pageName = pageName;
     this.inchi = inchi;
@@ -64,11 +67,12 @@ public class Reachable {
     this.pathwayVisualization = pathwayVisualization;
     this.xref = xref;
     this.patentSummaries = patentSummaries;
+    this.metadata = metadata;
   }
 
   public Reachable(Long id, String pageName, String inchi, String smiles, String inchiKey, List<String> names,
-                   SynonymData synonymData, String structureFilename, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref) {
-    this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null, structureFilename, wordCloudFilename, null, xref, null);
+                   SynonymData synonymData, String structureFilename, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref, JSONObject physiochemicalProperties) {
+    this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null, structureFilename, wordCloudFilename, null, xref, null, physiochemicalProperties);
   }
 
   public Long getId() {
@@ -180,6 +184,10 @@ public class Reachable {
   public void setPatentSummaries(List<PatentSummary> patentSummaries) {
     this.patentSummaries = patentSummaries;
   }
+
+  public JSONObject getMetadata() { return metadata; }
+
+  public void setMetadata(JSONObject object) { this.metadata = object; }
 
   public void addPatentSummaries(List<PatentSummary> patentSummaries) {
     if (this.patentSummaries == null) {

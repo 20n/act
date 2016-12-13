@@ -575,17 +575,17 @@ public class SurfactantAnalysis {
 
   /**
    * Compute features related to the logP-labeled molecular surface computed by MarvinSpace.
-   * @param jFrame A jFrame to use when running MarvinSpace (seems strange but is requred).
+   * //@param jFrame A jFrame to use when running MarvinSpace (seems strange but is requred).
    * @param hydrogensShareNeighborsLogP Set to true if hydrogen atoms should share their neighbor's logP value.
    * @return A map of features related to and depending on the computed molecular surface.
    * @throws Exception
    */
-  public Map<FEATURES, Double> computeSurfaceFeatures(JFrame jFrame, boolean hydrogensShareNeighborsLogP)
+  public Map<FEATURES, Double> computeSurfaceFeatures(/*JFrame jFrame,*/ boolean hydrogensShareNeighborsLogP)
       throws Exception {
     // TODO: use the proper marvin sketch scene to get better rendering control instead of MSpaceEasy.
-    MSpaceEasy mspace = new MSpaceEasy(1, 2, true);
-    mspace.addCanvas(jFrame.getContentPane());
-    mspace.setSize(1200, 600);
+//    MSpaceEasy mspace = new MSpaceEasy(1, 2, true);
+//    mspace.addCanvas(jFrame.getContentPane());
+//    mspace.setSize(1200, 600);
 
     ArrayList<Double> logPVals = new ArrayList<>();
     ArrayList<Double> hValues = new ArrayList<>();
@@ -617,33 +617,33 @@ public class SurfactantAnalysis {
     // TODO: re-strip hydrogens after rendering to avoid these weird issues in general.
     Map<Integer, Pair<List<Integer>, List<Integer>>> splitPlanes = splitAtomsByNormalPlanes();
 
-    MoleculeComponent mc1 = mspace.addMoleculeTo(mol, 0);
-    mspace.getEventHandler().createAtomLabels(mc1, ids);
+    //MoleculeComponent mc1 = mspace.addMoleculeTo(mol, 0);
+    //mspace.getEventHandler().createAtomLabels(mc1, ids);
 
     // Don't draw hydrogens; it makes the drawing too noisy.
-    mspace.setProperty("MacroMolecule.Hydrogens", "false");
-    MoleculeComponent mc2 = mspace.addMoleculeTo(mol, 1);
-    MolecularSurfaceComponent msc = mspace.computeSurface(mc2);
-    SurfaceComponent sc = msc.getSurface();
+    //mspace.setProperty("MacroMolecule.Hydrogens", "false");
+    //MoleculeComponent mc2 = mspace.addMoleculeTo(mol, 1);
+    //MolecularSurfaceComponent msc = mspace.computeSurface(mc2);
+    //SurfaceComponent sc = msc.getSurface();
 
     // Note: if we call mol.getAtomArray() here, it will contain all the implicit hydrogens.
     Map<Integer, Integer> surfaceComponentCounts = new HashMap<>();
     for (int i = 0; i < atoms.length; i++) {
       surfaceComponentCounts.put(i, 0);
     }
-    for (int i = 0; i < sc.getVertexCount(); i++) {
-      DPoint3 c = new DPoint3(sc.getVertexX(i), sc.getVertexY(i), sc.getVertexZ(i));
-      Double closestDist = null;
-      Integer closestAtom = null;
-      for (int j = 0; j < atoms.length; j++) {
-        double dist = c.distance(atoms[j].getLocation());
-        if (closestDist == null || closestDist > dist) {
-          closestDist = dist;
-          closestAtom = j;
-        }
-      }
-      surfaceComponentCounts.put(closestAtom, surfaceComponentCounts.get(closestAtom) + 1);
-    }
+//    for (int i = 0; i < sc.getVertexCount(); i++) {
+//      DPoint3 c = new DPoint3(sc.getVertexX(i), sc.getVertexY(i), sc.getVertexZ(i));
+//      Double closestDist = null;
+//      Integer closestAtom = null;
+//      for (int j = 0; j < atoms.length; j++) {
+//        double dist = c.distance(atoms[j].getLocation());
+//        if (closestDist == null || closestDist > dist) {
+//          closestDist = dist;
+//          closestAtom = j;
+//        }
+//      }
+//      surfaceComponentCounts.put(closestAtom, surfaceComponentCounts.get(closestAtom) + 1);
+//    }
 
     // Build a line of (proj(p, lv), logP) pairs.
     List<Pair<Double, Double>> weightedVals = new ArrayList<>();
@@ -692,15 +692,15 @@ public class SurfactantAnalysis {
     Pair<AtomSplit, Map<FEATURES, Double>> bestPsRes = findBestPlaneSplitFeatures(allSplitPlanes);
     features.putAll(bestPsRes.getRight());
 
-    msc.setPalette(SurfaceColoring.COLOR_MAPPER_BLUE_TO_RED);
-    msc.showVolume(true);
-    // These parameters were selected via experimentation.
-    msc.setSurfacePrecision("High");
-    msc.setSurfaceType("van der Waals");
-    msc.setDrawProperty("Surface.DrawType", "Dot");
-    msc.setDrawProperty("Surface.Quality", "High");
-    msc.setAtomPropertyList(logPVals);
-    msc.setDrawProperty("Surface.ColorType", "AtomProperty");
+//    msc.setPalette(SurfaceColoring.COLOR_MAPPER_BLUE_TO_RED);
+//    msc.showVolume(true);
+//    // These parameters were selected via experimentation.
+//    msc.setSurfacePrecision("High");
+//    msc.setSurfaceType("van der Waals");
+//    msc.setDrawProperty("Surface.DrawType", "Dot");
+//    msc.setDrawProperty("Surface.Quality", "High");
+//    msc.setAtomPropertyList(logPVals);
+//    msc.setDrawProperty("Surface.ColorType", "AtomProperty");
 
     // Don't display here--leave that to the owner of the JFrame.
     return features;
@@ -850,9 +850,9 @@ public class SurfactantAnalysis {
     /* Compute the logP surface of the molecule (seems to require a JFrame?), and collect those features.  We consider
      * the number of closest surface components to each atom so we can guess at how much interior atoms actually
      * contribute to the molecule's solubility. */
-    JFrame jFrame = new JFrame();
-    jFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-    Map<FEATURES, Double> surfaceFeatures = surfactantAnalysis.computeSurfaceFeatures(jFrame, true);
+    //JFrame jFrame = new JFrame();
+    //jFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+    Map<FEATURES, Double> surfaceFeatures = surfactantAnalysis.computeSurfaceFeatures(true);
     features.putAll(surfaceFeatures);
 
     features.put(FEATURES.LOGP_TRUE, surfactantAnalysis.plugin.getlogPTrue()); // Save absolute logP since we calculated it.
@@ -872,8 +872,8 @@ public class SurfactantAnalysis {
     }
 
     if (display) {
-      jFrame.pack();
-      jFrame.setVisible(true);
+//      jFrame.pack();
+//      jFrame.setVisible(true);
     }
 
     return features;
