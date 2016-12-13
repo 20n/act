@@ -5,6 +5,7 @@ import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, ReactionInformation}
+import com.act.biointerpretation.rsmiles.single_sar_construction.SingleSarReactionsPipeline.SubstrateProduct
 import com.act.biointerpretation.sars.SerializableReactor
 import org.scalatest.{FlatSpec, Matchers}
 
@@ -19,22 +20,19 @@ class ReactionInfoToProjectorTest extends FlatSpec with Matchers{
       // Build chemicals
       val substrateSmarts = "CCCCC=O"
       val productSmarts = "CCCCC-[OH]"
+      val substrateProduct = SubstrateProduct(substrateSmarts, productSmarts)
       println(s"Testing substrate: $substrateSmarts, product: $productSmarts")
 
-      val dummySubstrate = new ChemicalInformation(DUMMY_SUBSTRATE_ID, substrateSmarts)
-      val dummyProduct = new ChemicalInformation(DUMMY_PRODUCT_ID, productSmarts)
-
       // Search for reactor
-      val maybeReactor : Option[Reactor] =
-        infoToProjector.searchForReactor(new ReactionInformation(DUMMY_REACTION_ID, List(dummySubstrate), List(dummyProduct)))
+      val maybeReactor : Option[SerializableReactor] =
+        infoToProjector.searchForReactor(substrateProduct)
 
       // Ensure that a reactor is built for this aldehyde -> alcohol reaction
       maybeReactor.isDefined should be(true)
       println("Found the RO matching this reaction.")
-      println(s"Reactor: ${new SerializableReactor(maybeReactor.get, 0).getReactorSmarts}")
 
       // Make sure the reactor works as expected
-      val reactor : Reactor = maybeReactor.get
+      val reactor : Reactor = maybeReactor.get.getReactor
       val substrateMolecule : Molecule = MoleculeImporter.importMolecule(substrateSmarts, MoleculeFormat.smarts)
       val productMolecule : Molecule = MoleculeImporter.importMolecule(productSmarts, MoleculeFormat.smarts)
       reactor.setReactants(Array(substrateMolecule))
@@ -46,13 +44,11 @@ class ReactionInfoToProjectorTest extends FlatSpec with Matchers{
   "ReactionInfoToProjector" should "match no RO" in {
     val substrateSmarts = "CCCCCCC=O"
     val productSmarts = "CCCCC-[OH]"
+    val substrateProduct = SubstrateProduct(substrateSmarts, productSmarts)
     println(s"Testing substrate: $substrateSmarts, product: $productSmarts")
 
-    val dummySubstrate = new ChemicalInformation(DUMMY_SUBSTRATE_ID, substrateSmarts)
-    val dummyProduct = new ChemicalInformation(DUMMY_PRODUCT_ID, productSmarts)
-
-    val maybeReactor : Option[Reactor] =
-      infoToProjector.searchForReactor(new ReactionInformation(DUMMY_REACTION_ID, List(dummySubstrate), List(dummyProduct)))
+    val maybeReactor : Option[SerializableReactor] =
+      infoToProjector.searchForReactor(substrateProduct)
 
     maybeReactor.isDefined should be(false)
     println("Correctly found no RO for this reaction.")
@@ -62,22 +58,20 @@ class ReactionInfoToProjectorTest extends FlatSpec with Matchers{
     // Build chemicals
     val substrateSmarts = "C[CH2][CH2][CH2][CH]=O"
     val productSmarts = "CCCCC-[OH]"
+    val substrateProduct = SubstrateProduct(substrateSmarts, productSmarts)
     println(s"Testing substrate: $substrateSmarts, product: $productSmarts")
 
-    val dummySubstrate = new ChemicalInformation(DUMMY_SUBSTRATE_ID, substrateSmarts)
-    val dummyProduct = new ChemicalInformation(DUMMY_PRODUCT_ID, productSmarts)
 
     // Search for reactor
-    val maybeReactor : Option[Reactor] =
-    infoToProjector.searchForReactor(new ReactionInformation(DUMMY_REACTION_ID, List(dummySubstrate), List(dummyProduct)))
+    val maybeReactor : Option[SerializableReactor]  =
+    infoToProjector.searchForReactor(substrateProduct)
 
     // Ensure that a reactor is built for this aldehyde -> alcohol reaction
     maybeReactor.isDefined should be(true)
     println("Found the RO matching this reaction.")
-    println(s"Reactor: ${new SerializableReactor(maybeReactor.get, 0).getReactorSmarts}")
 
     // Make sure the reactor works as expected
-    val reactor : Reactor = maybeReactor.get
+    val reactor : Reactor = maybeReactor.get.getReactor
     val projector : ReactionProjector = new ReactionProjector()
 
     var substrateMolecule : Molecule = MoleculeImporter.importMolecule(substrateSmarts, MoleculeFormat.smarts)
