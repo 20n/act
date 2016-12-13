@@ -35,7 +35,8 @@ object FullPipelineSandbox {
     val sar = reactionToSar.searchForReactor(reactionInfo)
 
     if (sar.isDefined) {
-      val reactor = sar.get
+      val serReactor = sar.get
+      val reactor = serReactor.getReactor
 
       printSubstrateProduct("Found sar!",
         MoleculeExporter.exportAsSmarts(reactor.getReactionReactant(0)),

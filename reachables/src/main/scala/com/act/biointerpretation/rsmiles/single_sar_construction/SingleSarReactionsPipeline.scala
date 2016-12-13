@@ -5,8 +5,9 @@ import java.util
 
 import act.server.MongoDB
 import chemaxon.reaction.Reactor
-import com.act.analysis.chemicals.molecules.{MoleculeExporter}
-import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, AbstractChemicalInfo, ReactionInformation}
+import com.act.analysis.chemicals.molecules.MoleculeExporter
+import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{AbstractChemicalInfo, ChemicalInformation, ReactionInformation}
+import com.act.biointerpretation.sars.SerializableReactor
 import com.act.utils.TSVWriter
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywords, MongoWorkflowUtilities, ReactionKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
@@ -47,7 +48,7 @@ object SingleSarReactionsPipeline {
     }
 
     val subProdToSar = substrateProducts.map(subProd => subProd ->
-      reactionToSar.searchForReactor(getProcessedSubProd(subProd))).toMap[SubstrateProduct, Option[Reactor]]
+      reactionToSar.searchForReactor(getProcessedSubProd(subProd))).toMap[SubstrateProduct, Option[SerializableReactor]]
 
     logger.info("Got SARs. Grouping reaction IDs by SAR and printing output.")
 
@@ -58,10 +59,12 @@ object SingleSarReactionsPipeline {
     val reactionIdHeader = "RXN_IDS"
     val sarHeader = "SAR"
     val subProdHeader = "SUBSTRATE_PRODUCT"
+    val roHeader = "RO"
 
     headers.add(reactionIdHeader)
     headers.add(sarHeader)
     headers.add(subProdHeader)
+    headers.add(roHeader)
 
     val writer: TSVWriter[String, String] = new TSVWriter[String, String](headers)
     writer.open(new File("/mnt/shared-data/Gil/abstract_reactions/sars.tsv"))
@@ -70,7 +73,8 @@ object SingleSarReactionsPipeline {
       row.put(subProdHeader, subProd.substrate + ">>" + subProd.product)
       row.put(reactionIdHeader, subProdToIds(subProd).toString())
       if (subProdToSar(subProd).isDefined) {
-        row.put(sarHeader, MoleculeExporter.exportAsSmarts(subProdToSar(subProd).get.getReaction))
+        row.put(roHeader, subProdToSar(subProd).get.getRoId.toString)
+        row.put(sarHeader, MoleculeExporter.exportAsSmarts(subProdToSar(subProd).get.getReactor.getReaction))
       }
       writer.append(row)
     })

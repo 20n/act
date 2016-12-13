@@ -7,6 +7,7 @@ import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus}
 import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.ReactionInformation
 import com.act.biointerpretation.rsmiles.single_sar_construction.SingleSarReactionsPipeline.SubstrateProduct
+import com.act.biointerpretation.sars.SerializableReactor
 
 import collection.JavaConverters._
 
@@ -26,13 +27,13 @@ class ReactionInfoToProjector() {
     * @param substrateProduct The SubstrateProduct information of the reaction to build a projector from.
     * @return The reactor corresponding to the full mapped transformation, if any succeeds. None otherwise.
     */
-  def searchForReactor(substrateProduct: SubstrateProduct): Option[Reactor] = {
+  def searchForReactor(substrateProduct: SubstrateProduct): Option[SerializableReactor] = {
     val substrateMol: Molecule = MoleculeImporter.importMolecule(substrateProduct.substrate, MoleculeFormat.smarts)
     val expectedProductMol: Molecule = MoleculeImporter.importMolecule(substrateProduct.product, MoleculeFormat.smarts)
 
     for (ro: Ero <- roCorpus.getRos.asScala) {
       val substrateCopy: Molecule = substrateMol.clone(); // chemaxon-defined deep copy method for molecules
-      val maybeReactor: Option[Reactor] = getReactor(substrateCopy, expectedProductMol, ro)
+      val maybeReactor: Option[SerializableReactor] = getReactor(substrateCopy, expectedProductMol, ro)
       if (maybeReactor.isDefined) {
         return maybeReactor
       }
@@ -45,7 +46,7 @@ class ReactionInfoToProjector() {
     *
     * @return A reactor for the full mapped reaction, if successful. None otherwise.
     */
-  private def getReactor(substrateToReact: Molecule, expectedProduct: Molecule, ro: Ero): Option[Reactor] = {
+  private def getReactor(substrateToReact: Molecule, expectedProduct: Molecule, ro: Ero): Option[SerializableReactor] = {
     val reactor = ro.getReactor
     reactor.setReactants(Array(substrateToReact))
 
@@ -59,7 +60,7 @@ class ReactionInfoToProjector() {
     }
 
     if (producedProduct.isDefined) {
-      return Some(buildReactor(substrateToReact, producedProduct.get))
+      return Some(new SerializableReactor(buildReactor(substrateToReact, producedProduct.get), ro.getId))
     }
     return None
   }
