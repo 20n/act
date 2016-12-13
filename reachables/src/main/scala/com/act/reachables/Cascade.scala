@@ -19,7 +19,7 @@ import scala.collection.mutable
 object Cascade extends Falls {
   val mongoClient: MongoClient = new MongoClient(new ServerAddress("localhost", 27017))
   val db: DB = mongoClient.getDB("wiki_reachables")
-  val collectionName: String = "pathways"
+  val collectionName: String = "pathways_testing"
 
   val pathwayCollection: JacksonDBCollection[ReactionPath, String] = JacksonDBCollection.wrap(db.getCollection(collectionName), classOf[ReactionPath], classOf[String])
 
@@ -378,9 +378,12 @@ object Cascade extends Falls {
     }
   }
 
+  // TODO make this discrete blocks so that we seperate concerns better
   @JsonIgnoreProperties(ignoreUnknown = true)
   @JsonCreator
   class NodeInformation(@JsonProperty("isReaction") var isReaction: Boolean,
+                        @JsonProperty("isSpontaneous") var isSpontaneous: Boolean,
+                        @JsonProperty("sequences") var sequences: util.HashSet[Long],
                         @JsonProperty("organisms") var organisms: util.HashSet[String],
                         @JsonProperty("reactionIds") var reactionIds: util.HashSet[Long],
                         @JsonProperty("reactionCount") var reactionCount: Int,
@@ -389,6 +392,22 @@ object Cascade extends Falls {
                         @JsonProperty("mostNative") var isMostNative: Boolean = false) {
 
     def NodeInformation() {}
+
+    def getSequences(): util.HashSet[Long] = {
+      sequences
+    }
+
+    def setSequences(sequences: util.HashSet[Long]) = {
+      this.sequences = sequences
+    }
+
+    def getisSpontaneous(): Boolean = {
+      isSpontaneous
+    }
+
+    def setIsSpontaneous(isSpontaneous: Boolean) = {
+      this.isSpontaneous = isSpontaneous
+    }
 
     def getIsReaction(): Boolean ={
       isReaction
@@ -453,18 +472,20 @@ class Cascade(target: Long) {
   val nw = Cascade.get_cascade(t).get
 
   nw.nodeMapping.values().filter(getOrDefault[String](_, "isrxn").toBoolean).foreach(node => {
-    val reactionIds = new util.HashSet[Long](getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => (x.toLong - Cascade.rxnIdShift): java.lang.Long))
+    val reactionIds: Set[Long] = getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => x.toLong - Cascade.rxnIdShift: Long).toSet
     val isSpontaneous: Boolean = reactionIds.exists(r => {
       val thisSpontaneousResult = ReachRxnDescs.rxnIsSpontaneous(r)
       thisSpontaneousResult.isDefined && thisSpontaneousResult.get
     })
     Node.setAttribute(node.id, "isSpontaneous", isSpontaneous)
 
-    val hasSequence: Boolean = reactionIds.exists(r => {
+    val matchingSequences: Set[Long] = reactionIds.flatMap(r => {
       val thisSequenceResult = ReachRxnDescs.rxnSequence(r)
-      thisSequenceResult.isDefined && thisSequenceResult.get.toList.nonEmpty
-    })
-    Node.setAttribute(node.id, "hasSequence", hasSequence)
+      thisSequenceResult
+    }).flatten.map(_.asInstanceOf[Long])
+
+    Node.setAttribute(node.id, "hasSequence", matchingSequences.nonEmpty)
+    Node.setAttribute(node.id, "sequences", new util.HashSet(matchingSequences))
   })
 
   val viablePaths: Option[List[Cascade.Path]] = Cascade.getAllPaths(nw, t)
@@ -499,8 +520,12 @@ class Cascade(target: Long) {
 
     val rp = new ReactionPath(s"${target}w$c", p.getPath.map(node => {
       val isRxn = getOrDefault[String](node, "isrxn").toBoolean
+      val isSpontaneous = getOrDefault[Boolean](node, "isSpontaneous", false)
+      val sequences = getOrDefault[util.HashSet[Long]](node, "sequences", new util.HashSet[Long]())
       new NodeInformation(
         isRxn,
+        isSpontaneous,
+        sequences,
         getOrDefault[util.HashSet[String]](node, "organisms", new util.HashSet[String]()),
         new util.HashSet[Long](getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => (x.toLong - Cascade.rxnIdShift): java.lang.Long)),
         getOrDefault[Int](node, "reaction_count", 0),
@@ -569,9 +594,10 @@ class Cascade(target: Long) {
 
 
     try {
-//      sortedPaths.foreach(Cascade.pathwayCollection.insert)
+      sortedPaths.foreach(Cascade.pathwayCollection.insert)
     } catch {
-      case e: Exception => None
+
+      case e: Exception => throw new Exception(e)
     }
   }
 
