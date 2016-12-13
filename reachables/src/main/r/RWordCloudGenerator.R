@@ -9,7 +9,7 @@ host <- kArgs[3]
 port <- kArgs[4]
 
 options(mongodb = list("host" = paste(host, port, sep = ":")))
-databaseName <- "validator_profiling_2"
+databaseName <- "jarvis_2016-12-09"
 collectionName <- "chemicals"
 
 db <- mongo(collection = collectionName,

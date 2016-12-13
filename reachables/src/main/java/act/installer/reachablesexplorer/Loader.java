@@ -68,8 +68,8 @@ public class Loader {
 
   private static final String DEFAULT_REACHABLES_PATH = "/mnt/shared-data/Michael/WikipediaProject/MinimalReachables";
 
-  // All of the source data on reactions and chemicals comes from validator_profiling_2
-  private static final String DEFAULT_CHEMICALS_DATABASE = "validator_profiling_2";
+  // All of the source data on reactions and chemicals comes from jarvis_2016-12-09
+  private static final String DEFAULT_CHEMICALS_DATABASE = "jarvis_2016-12-09";
 
   // Default host. If running on a laptop, please set a SSH bridge to access speakeasy
   private static final String DEFAULT_HOST = "localhost";

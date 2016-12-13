@@ -53,7 +53,7 @@ public class WordCloudGenerator {
   // Default host. If running on a laptop, please set a SSH bridge to access speakeasy
   private static final String DEFAULT_HOST = "localhost";
   private static final String DEFAULT_PORT = "27017";
-  private static final String DEFAULT_CHEMICALS_DATABASE = "validator_profiling_2";
+  private static final String DEFAULT_CHEMICALS_DATABASE = "jarvis_2016-12-09";
 
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
