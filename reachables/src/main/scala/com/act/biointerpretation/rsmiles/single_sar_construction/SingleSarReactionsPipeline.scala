@@ -6,7 +6,7 @@ import java.util
 import act.server.MongoDB
 import chemaxon.reaction.Reactor
 import com.act.analysis.chemicals.molecules.{MoleculeExporter}
-import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, ChemicalToSubstrateProduct, ReactionInformation}
+import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, AbstractChemicalInfo, ReactionInformation}
 import com.act.utils.TSVWriter
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywords, MongoWorkflowUtilities, ReactionKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
@@ -29,16 +29,25 @@ object SingleSarReactionsPipeline {
     val db = Mongo.connectToMongoDatabase(mongoDb, host, port)
     val chemicalSearcher: SingleSarChemicals = new SingleSarChemicals(db)
 
-    val chemicalMap: Map[Int, ChemicalToSubstrateProduct] = chemicalSearcher.getAbstractChemicals()
+    val chemicalList: List[AbstractChemicalInfo] = chemicalSearcher.getAbstractChemicals()
 
-    val (substrateProducts, reactionInfos) = getAbstractReactions(db, chemicalMap)
+    val chemIdToSmiles : Map[Int, String] = chemicalList.map(info => info.chemicalId -> info.dbSmiles).toMap
+    logger.info(s"Size of chemical id keyset: ${chemIdToSmiles.keySet.size}")
+
+    val (substrateProducts, reactionInfos) = getAbstractReactions(db, chemIdToSmiles)
 
     logger.info("Got abstract reaction infos from DB. Trying to generate SARs.")
 
     val reactionToSar: ReactionInfoToProjector = new ReactionInfoToProjector()
 
-    // TODO: test this for validity and performance
-    val subProdToSar = substrateProducts.map(subProd => subProd -> reactionToSar.searchForReactor(subProd)).toMap[SubstrateProduct, Option[Reactor]]
+    val dbSmilesToSubstrate = chemicalList.map(info => info.dbSmiles -> info.asSubstrate).toMap[String, String]
+    val dbSmilesToProduct = chemicalList.map(info => info.dbSmiles -> info.asProduct).toMap[String, String]
+    def getProcessedSubProd(rawSubProd: SubstrateProduct): SubstrateProduct = {
+      SubstrateProduct(dbSmilesToSubstrate(rawSubProd.substrate), dbSmilesToProduct(rawSubProd.product))
+    }
+
+    val subProdToSar = substrateProducts.map(subProd => subProd ->
+      reactionToSar.searchForReactor(getProcessedSubProd(subProd))).toMap[SubstrateProduct, Option[Reactor]]
 
     logger.info("Got SARs. Grouping reaction IDs by SAR and printing output.")
 
@@ -69,7 +78,7 @@ object SingleSarReactionsPipeline {
   }
 
   case class SubstrateProduct(substrate: String, product: String) {
-    def getSubstrateId: String = substrate
+    def getSubstrate: String = substrate
 
     def getProduct: String = product
   }
@@ -83,11 +92,12 @@ object SingleSarReactionsPipeline {
     * Then converts them into ReactionInformations
     *
     * @param mongoDb           Database instance to use
-    * @param abstractChemicals A list of abstract chemicals previously constructed
+    * @param chemIdToSmiles A list of abstract chemicals previously constructed
     * @return A list containing reactions that
     *         have been constructed into the reaction information format.
+    *         Also a set of SubstrateToProduct objects containing the DB smiles for their substrates and products
     */
-  def getAbstractReactions(mongoDb: MongoDB, abstractChemicals: Map[Int, ChemicalToSubstrateProduct]):
+  def getAbstractReactions(mongoDb: MongoDB, chemIdToSmiles: Map[Int, String]):
   (mutable.Set[SubstrateProduct], List[ReactionInformation]) = {
 
     logger.info("Finding reactions that contain one substrate and one product by DB query.")
@@ -124,7 +134,7 @@ object SingleSarReactionsPipeline {
     logger.info("Iterating over reactions to product ReactionInfo objects, for those which have an abstract " +
       "substrate and product.")
 
-    val reactionInfos = abstractReactions.flatMap(obj => reactionConstructor(obj, abstractChemicals)).toList
+    val reactionInfos = abstractReactions.flatMap(obj => reactionConstructor(obj, chemIdToSmiles)).toList
 
     println(s"Size of reaction infos: ${reactionInfos.size}")
 
@@ -146,7 +156,7 @@ object SingleSarReactionsPipeline {
   }
 
 
-  def reactionConstructor(dbObj : DBObject, abstractChemicals: Map[Int, ChemicalToSubstrateProduct]) : Option[ReactionInformation] = {
+  def reactionConstructor(dbObj : DBObject, chemIdToSmiles: Map[Int, String]) : Option[ReactionInformation] = {
     val substrates = getDbSubstrates(dbObj)
     val products = getDbProducts(dbObj)
     if (substrates.size != 1 || products.size != 1) {
@@ -154,13 +164,13 @@ object SingleSarReactionsPipeline {
     } else {
       val substrate = substrates.head
       val product = products.head
-      if (!abstractChemicals.keySet.contains(substrate) || !abstractChemicals.keySet.contains(product)) {
+      if (!chemIdToSmiles.keySet.contains(substrate) || !chemIdToSmiles.keySet.contains(product)) {
         return None
       }
       val id = getDbId(dbObj)
       val reactionInfo = new ReactionInformation(id,
-        List(new ChemicalInformation(substrates.head, abstractChemicals(substrate).asSubstrate)),
-        List(new ChemicalInformation(products.head, abstractChemicals(product).asProduct)))
+        List(new ChemicalInformation(substrates.head, chemIdToSmiles(substrate))),
+        List(new ChemicalInformation(products.head, chemIdToSmiles(product))))
       return Some(reactionInfo)
     }
   }

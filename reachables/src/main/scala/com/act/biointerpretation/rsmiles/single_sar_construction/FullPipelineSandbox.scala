@@ -6,7 +6,7 @@ import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.desalting.Desalter
-import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, ChemicalToSubstrateProduct, ReactionInformation}
+import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, AbstractChemicalInfo, ReactionInformation}
 import com.act.biointerpretation.rsmiles.chemicals.abstract_chemicals.AbstractChemicals
 import com.act.biointerpretation.rsmiles.single_sar_construction.SingleSarReactionsPipeline.SubstrateProduct
 
@@ -22,8 +22,8 @@ object FullPipelineSandbox {
 
     val chemicalProcessor : SingleSarChemicals = new SingleSarChemicals(null)
 
-    val substrate : ChemicalToSubstrateProduct =  chemicalProcessor.calculateConcreteSubstrateAndProduct(substrateId, abstractSubstrate).get
-    val product : ChemicalToSubstrateProduct =  chemicalProcessor.calculateConcreteSubstrateAndProduct(fakeProductId, abstractProduct).get
+    val substrate : AbstractChemicalInfo =  chemicalProcessor.calculateConcreteSubstrateAndProduct(substrateId, abstractSubstrate).get
+    val product : AbstractChemicalInfo =  chemicalProcessor.calculateConcreteSubstrateAndProduct(fakeProductId, abstractProduct).get
 
     print(s"Processed substrate: ${substrate.asSubstrate}")
     print(s"Processed product: ${product.asProduct}")

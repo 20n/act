@@ -7,7 +7,7 @@ import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, M
 import com.act.analysis.chemicals.molecules.MoleculeFormat.Cleaning
 import com.act.biointerpretation.Utils.ReactionProjector
 import com.act.biointerpretation.desalting.Desalter
-import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, ChemicalToSubstrateProduct}
+import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, AbstractChemicalInfo}
 import com.act.biointerpretation.rsmiles.chemicals.abstract_chemicals.AbstractReactions._
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.ChemicalKeywords
 import com.mongodb.DBObject
@@ -34,10 +34,12 @@ class SingleSarChemicals(mongoDb: MongoDB) {
 
   // There are many, many repeated abstract smiles in the DB
   // This cache ensures we only process each one once
-  val smilesCache : mutable.Map[String, Option[ChemicalToSubstrateProduct]] =
-    new mutable.HashMap[String, Option[ChemicalToSubstrateProduct]]()
+  val smilesCache : mutable.Map[String, Option[AbstractChemicalInfo]] =
+    new mutable.HashMap[String, Option[AbstractChemicalInfo]]()
 
-  def getAbstractChemicals() : Map[Int, ChemicalToSubstrateProduct] = {
+  // Returns map from DB ID -> DB Smiles
+  // And from DB smiles -> asSubstrate, asProduct
+  def getAbstractChemicals() : List[AbstractChemicalInfo] = {
     logger.info("Finding abstract chemicals.")
     /*
       Mongo DB Query
@@ -55,28 +57,28 @@ class SingleSarChemicals(mongoDb: MongoDB) {
     */
 
     var counter = 0
-    val goodChemicalIds: Map[Int, ChemicalToSubstrateProduct] = result.flatMap(dbObj => {
+    val abtractChemicalList: List[AbstractChemicalInfo] = result.flatMap(dbObj => {
       counter = counter + 1
       if (counter % 1000 == 0) {
         println(s"Processed $counter chemicals.")
       }
-      getIdAndStrings(dbObj)
-    }).toMap
+      getAbstractChemicalInfo(dbObj)
+    }).toList
 
-    logger.info(s"Finished finding abstract chemicals. Found ${goodChemicalIds.size}")
+    logger.info(s"Finished finding abstract chemicals. Found ${abtractChemicalList.size}")
 
-    goodChemicalIds
+    abtractChemicalList
   }
 
-  def getIdAndStrings(dbChemical : DBObject) : Option[(Int, ChemicalToSubstrateProduct)] = {
+  def getAbstractChemicalInfo(dbChemical : DBObject) : Option[AbstractChemicalInfo] = {
 
     val chemicalId = dbChemical.get("_id").asInstanceOf[Long].toInt
     val smiles = dbChemical.get("SMILES").asInstanceOf[String]
 
-    val result : Option[ChemicalToSubstrateProduct] = calculateConcreteSubstrateAndProduct(chemicalId, smiles)
+    val result : Option[AbstractChemicalInfo] = calculateConcreteSubstrateAndProduct(chemicalId, smiles)
 
     if (result.isDefined) {
-      return Some((chemicalId, result.get))
+      return Some(result.get)
     }
     None
   }
@@ -90,10 +92,15 @@ class SingleSarChemicals(mongoDb: MongoDB) {
     * @return An object grouping the chemical Id to the modified smiles to be used if this chemical is a substrate
     *         or product of an abstract reaction.
     */
-  def calculateConcreteSubstrateAndProduct(chemicalId : Int, chemicalSmiles : String): Option[ChemicalToSubstrateProduct] = {
+  def calculateConcreteSubstrateAndProduct(chemicalId : Int, chemicalSmiles : String): Option[AbstractChemicalInfo] = {
     val cachedResult = smilesCache.get(chemicalSmiles)
     if (cachedResult.isDefined) {
-      return cachedResult.get
+      val cached = cachedResult.get
+      if (cached.isDefined) {
+        val info = cached.get
+        return Some(AbstractChemicalInfo(chemicalId, info.dbSmiles, info.asSubstrate, info.asProduct))
+      }
+      return None
     }
 
     try {
@@ -120,13 +127,13 @@ class SingleSarChemicals(mongoDb: MongoDB) {
       val desaltedSubstrate = MoleculeExporter.exportAsSmarts(desaltedSubstrateList.get(0))
       val desaltedProduct = MoleculeExporter.exportAsSmarts(desaltedProductList.get(0))
 
-      val result = new ChemicalToSubstrateProduct(chemicalId, chemicalSmiles, desaltedSubstrate, desaltedProduct)
+      val result = new AbstractChemicalInfo(chemicalId, chemicalSmiles, desaltedSubstrate, desaltedProduct)
       smilesCache.put(chemicalSmiles, Some(result))
-      Some(result)
+      return Some(result)
     } catch {
       case e : MolFormatException => {
         smilesCache.put(chemicalSmiles, None)
-        None
+        return None
       }
     }
   }
