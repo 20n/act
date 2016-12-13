@@ -2416,6 +2416,26 @@ public class MongoDB {
     };
   }
 
+  public Iterator<Seq> getSeqIterator(BasicDBObject query) {
+    final DBIterator iter = getDbIteratorOverSeq(query, new BasicDBObject());
+
+    return new Iterator<Seq>() {
+      @Override
+      public boolean hasNext() {
+        boolean hasNext = iter.hasNext();
+        if (!hasNext)
+          iter.close();
+        return hasNext;
+      }
+
+      @Override
+      public Seq next() {
+        DBObject o = iter.next();
+        return convertDBObjectToSeq(o);
+      }
+    };
+  }
+
   public BasicDBObject getRangeUUIDRestriction(Long lowUUID, Long highUUID) {
     BasicDBObject restrictTo = new BasicDBObject();
     // need to encode { "_id" : { $gte : lowUUID, $lte : highUUID } }

@@ -100,9 +100,9 @@ object HmmerWrapper extends ToolWrapper {
     * @param sequenceDatabase Sequences queried against
     * @param outputFile       Where to place the results
     */
-  def phmmer(sequenceFile: File, sequenceDatabase: String, outputFile: File): ShellJob  = {
+  def phmmer(sequenceFile: File, sequenceDatabase: File, outputFile: File, retryJob: Boolean = false): ShellJob  = {
     constructJob(HmmCommands.Phmmer.getCommand, Option(HmmCommands.Phmmer.getCommand),
-      List(sequenceFile.getAbsolutePath, sequenceDatabase, "-o", outputFile.getAbsolutePath))
+      List("-o", outputFile.getAbsolutePath, sequenceFile.getAbsolutePath, sequenceDatabase.getAbsolutePath), retryJob)
     }
 
   /*

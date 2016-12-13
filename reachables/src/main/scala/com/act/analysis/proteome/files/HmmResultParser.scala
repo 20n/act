@@ -20,26 +20,21 @@ import org.apache.logging.log4j.LogManager
 object HmmResultParser {
   private val logger = LogManager.getLogger(getClass.getName)
   private val START_PARSING_INDICATOR = "------- ------ -----"
-  private val STOP_PARSING_INDICATOR = "------ inclusion threshold ------"
+  private val STOP_PARSING_INDICATOR = "inclusion threshold"
 
-  def parseFile(openFile: File): List[Map[String, String]] = {
-    /*
-      Note: If we are using an iterator here, we can't use .length to determine anything.
-     */
-
-    val lines = scala.io.Source.fromFile(openFile).getLines()
+  def parseFile(lines: Iterator[String]): Iterator[Map[String, String]] = {
     // Group 2 has everything after the start parsing indicator
     val result = lines.span(!_.contains(START_PARSING_INDICATOR))
 
     // Group 1 has everything prior to the stop parsing indicator
-    val result_proteins = result._2.span(!_.contains(STOP_PARSING_INDICATOR))
+    val result_proteins = result._2.span(l => !l.contains(STOP_PARSING_INDICATOR) && !l.trim.isEmpty)
 
     // This means that the stop parsing indicator was never hit,
     // which means that there are no results.
     if (result_proteins._2.isEmpty) {
-      logger.error(s"The reader read the whole file, " +
-        s"indicating that ${openFile.getAbsolutePath} likely does not have any sequences.")
-      return List[Map[String, String]]()
+      logger.error("The reader read the whole iterator, indicating that the supplied " +
+        "iterator was empty or had no sequences")
+      return Iterator[Map[String, String]]()
     }
 
     /*
@@ -48,11 +43,22 @@ object HmmResultParser {
     if (result_proteins._1.hasNext) {
       result_proteins._1.next
     } else {
-      logger.error(s"No lines found in result location.  Please check output file ${openFile.getAbsolutePath}")
-      return List[Map[String, String]]()
+      logger.error(s"No lines found in result location.  Please check your iterator source.")
+      return Iterator[Map[String, String]]()
     }
+
     // All the good lines, sent to parser, then returned as a map of FieldNames: Values
-    result_proteins._1.toList.map(HmmResultLine.parse)
+    result_proteins._1.map(HmmResultLine.parse)
+  }
+
+  def parseFile(openFile: File): Iterator[Map[String, String]] = {
+    /*
+      Note: If we are using an iterator here, we can't use .length to determine anything.
+     */
+    val hmmResultFile = scala.io.Source.fromFile(openFile)
+    val result = parseFile(hmmResultFile.getLines())
+    hmmResultFile.close()
+    result
   }
 
   /*
