@@ -56,21 +56,24 @@ object SingleSarReactionsPipeline {
       .groupBy(_._1).mapValues(seq => seq.map(_._2))
 
     val headers: java.util.ArrayList[String] = new util.ArrayList[String]()
-    val reactionIdHeader = "RXN_IDS"
-    val sarHeader = "SAR"
-    val subProdHeader = "SUBSTRATE_PRODUCT"
+    val subProdHeader = "RAW_SUBSTRATE_PRODUCT"
+    val processedHeader = "PROCESSED_SUBSTRATE_PRODUCT"
     val roHeader = "RO"
+    val sarHeader = "SAR"
+    val reactionIdHeader = "RXN_IDS"
 
-    headers.add(reactionIdHeader)
-    headers.add(sarHeader)
     headers.add(subProdHeader)
+    headers.add(processedHeader)
     headers.add(roHeader)
+    headers.add(sarHeader)
+    headers.add(reactionIdHeader)
 
     val writer: TSVWriter[String, String] = new TSVWriter[String, String](headers)
     writer.open(new File("/mnt/shared-data/Gil/abstract_reactions/sars.tsv"))
     substrateProducts.foreach(subProd => {
       val row: util.Map[String, String] = new util.HashMap[String, String]()
       row.put(subProdHeader, subProd.substrate + ">>" + subProd.product)
+      row.put(processedHeader, dbSmilesToSubstrate(subProd.substrate) + ">>" + dbSmilesToProduct(subProd.product))
       row.put(reactionIdHeader, subProdToIds(subProd).toString())
       if (subProdToSar(subProd).isDefined) {
         row.put(roHeader, subProdToSar(subProd).get.getRoId.toString)
