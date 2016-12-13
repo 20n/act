@@ -106,6 +106,7 @@ public class Service {
     public ResponseEntity<String> search(
         @RequestParam(name = "q", required = true) String queryString,
         @RequestParam(name = "options", required = false) List<String> searchOptions) {
+      LOGGER.info("Got request: %s", queryString);
       try {
         MolSearch search = substructureSearch.constructSearch(queryString, searchOptions);
 
@@ -120,7 +121,7 @@ public class Service {
           // This could be a 404, but it's not technically "not found": we ran the search, but nothing matched.
           return new ResponseEntity<>(INSTANCE.renderNoResultsPage(), HttpStatus.OK);
         } else {
-          return new ResponseEntity<>(INSTANCE.renderResultsPage(matches), HttpStatus.OK);
+          return new ResponseEntity<>(INSTANCE.renderResultsPage(queryString, matches), HttpStatus.OK);
         }
       } catch (MolFormatException e) {
         LOGGER.warn("Caught MolFormatException: %s", e.getMessage());
@@ -143,7 +144,7 @@ public class Service {
     FREEMARKER_CFG.setLogTemplateExceptions(true);
 
     // TODO: use dependency injection or something instead of this.
-    INSTANCE.successTemplate = FREEMARKER_CFG.getTemplate("SearchResults.ftl");
+    INSTANCE.successTemplate = FREEMARKER_CFG.getTemplate("SearchResultsHTML.ftl");
     INSTANCE.failureTemplate = FREEMARKER_CFG.getTemplate("NoResultsFound.ftl");
   }
 
@@ -191,11 +192,11 @@ public class Service {
     SpringApplication.run(Controller.class);
   }
 
-  private String renderResultsPage(List<TargetMolecule> results) throws TemplateException, IOException {
-    return renderTemplateAsString(successTemplate, constructResultsModel(results));
+  private String renderResultsPage(String query, List<TargetMolecule> results) throws TemplateException, IOException {
+    return renderTemplateAsString(successTemplate, constructResultsModel(query, results));
   }
 
-  private Object constructResultsModel(List<TargetMolecule> results) {
+  private Object constructResultsModel(String query, List<TargetMolecule> results) {
     List<Map<String, String>> model = new ArrayList<>();
     for (TargetMolecule target : results) {
       model.add(new HashMap<String, String>() {{
@@ -205,7 +206,10 @@ public class Service {
       }});
     }
     return new HashMap<String, Object>() {{
+      put("query", query);
       put("results", model);
+      put("assetsUrl", "http://localhost:8989/assets/img");
+      put("baseUrl", "http://localhost:8989/mediawiki/");
     }};
   }
 
