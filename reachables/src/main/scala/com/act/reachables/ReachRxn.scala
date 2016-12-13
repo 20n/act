@@ -53,10 +53,7 @@ object ReachRxnDescs {
     }
   }
 
-
-
   // TODO: cache organism names instead of looking them up in the DB every time.  Use caffeine after a rebase.
-
   val rxnOrganismNames = Memo.mutableHashMapMemo[Long, Option[Set[String]]] { rid =>
     if (meta(rid).isDefined) {
       val referenceOrganisms: List[String] = meta(rid).get.getReferences.toList.
