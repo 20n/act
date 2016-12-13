@@ -131,8 +131,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     // Wildcard sequences are sequences which have "*" somewhere in the sequence, usually indicating ambiguity.
     // We are trying to disambiguate sequences, so it is within this context that we attempt to do so through HMMER.
     val wildcardQuery = new BasicDBObject()
-    val wildcardSequencesRegex = createDbObject(MongoKeywords.REGEX, ".*\\*.*")
-    wildcardSequencesRegex.put(MongoKeywords.OPTIONS.toString, "i")
+    val wildcardSequencesRegex = createDbObject(MongoKeywords.REGEX, "\\*")
     wildcardQuery.put(SequenceKeywords.SEQ.toString, wildcardSequencesRegex)
 
     val conditionals = new BasicDBList
