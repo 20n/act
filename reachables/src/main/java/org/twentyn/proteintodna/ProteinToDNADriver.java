@@ -37,8 +37,8 @@ public class ProteinToDNADriver {
   private static final String DEFAULT_OUTPUT_DB_NAME = "wiki_reachables";
   private static final String DEFAULT_INPUT_DB_NAME = "jarvis_2016-12-09";
   public static final String DEFAULT_INPUT_PATHWAY_COLLECTION_NAME = "vanillin_pathways";
-  public static final String DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME = "pathways_vijay";
-  public static final String DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME = "dna_designs";
+  public static final String DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME = "pathways_vijay_1";
+  public static final String DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME = "dna_designs_1";
 
   private static final String OPTION_DB_HOST = "H";
   private static final String OPTION_DB_PORT = "p";
@@ -181,15 +181,36 @@ public class ProteinToDNADriver {
                   Seq sequenceInfo = reactionDB.getSeqFromID(s);
                   String dnaSeq = sequenceInfo.getSequence();
 
-                  if (dnaSeq != null && dnaSeq.length() > 80 && dnaSeq.charAt(0) == 'M') {
-                    proteinSeqs.add(dnaSeq);
-                    OrgAndEcnum orgAndEcnum = new OrgAndEcnum(sequenceInfo.getOrgName(), sequenceInfo.getEc());
-                    if (!proteinSeqToOrgInfo.containsKey(dnaSeq)) {
-                      proteinSeqToOrgInfo.put(dnaSeq, new HashSet<>());
-                    }
-                    proteinSeqToOrgInfo.get(dnaSeq).add(orgAndEcnum);
+                  if (dnaSeq == null) {
+                    continue;
+                }
 
+                  String dnaSeqRes;
+
+                  if (dnaSeq.length() > 80 && dnaSeq.charAt(0) == 'M') {
+                    dnaSeqRes = dnaSeq;
+                  } else {
+                    // odd sequence
+                    JSONObject metadata = sequenceInfo.getMetadata();
+
+                    if (!metadata.has("inferred_sequences")) {
+                      continue;
+                    }
+
+                    JSONArray inferredSequences = metadata.getJSONArray("inferred_sequences");
+
+                    // get the fixed inferred sequence since it has the highest hmmer score
+                    JSONObject object = inferredSequences.getJSONObject(0);
+
+                    dnaSeqRes = object.getString("sequence");
                   }
+
+                  proteinSeqs.add(dnaSeqRes);
+                  OrgAndEcnum orgAndEcnum = new OrgAndEcnum(sequenceInfo.getOrgName(), sequenceInfo.getEc());
+                  if (!proteinSeqToOrgInfo.containsKey(dnaSeq)) {
+                    proteinSeqToOrgInfo.put(dnaSeq, new HashSet<>());
+                  }
+                  proteinSeqToOrgInfo.get(dnaSeq).add(orgAndEcnum);
                 }
               }
             }
