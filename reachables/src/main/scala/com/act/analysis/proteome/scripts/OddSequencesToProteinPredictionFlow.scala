@@ -214,7 +214,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
       firstLevelMap(genusName).append(file)
     })
 
-    firstLevelMap.map({case(key, value) => (key, value.toList)}).toMap
+    firstLevelMap.mapValues(_.toList).toMap
   }
 
   def defineSequenceSearch(fastaDirectory: File)
