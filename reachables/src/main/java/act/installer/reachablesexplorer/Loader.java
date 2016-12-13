@@ -7,6 +7,7 @@ import act.installer.pubchem.PubchemSynonymType;
 import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Seq;
+import act.shared.helpers.MongoDBToJSON;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.marvin.io.MolExportException;
@@ -378,7 +379,7 @@ public class Loader {
     }
 
     return new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
-        wordcloudFilename, xref, physiochemicalProperties);
+        wordcloudFilename, xref, MongoDBToJSON.conv(physiochemicalProperties));
   }
 
 
