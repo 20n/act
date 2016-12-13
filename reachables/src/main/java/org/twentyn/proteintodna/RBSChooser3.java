@@ -28,7 +28,7 @@ public class RBSChooser3 {
         
         //Gather up all the genes, index by gene name
         Map<String,String[]> geneToData = new HashMap<>();
-        String data = FileUtils.readFile2("/Volumes/shared-data/Vijay/CodonOptimization/coli_genes.txt");
+        String data = FileUtils.readFile2("/mnt/shared-data/Vijay/CodonOptimization/coli_genes.txt");
         String[] lines = data.split("\\r|\\r?\\n");
         for(String line : lines) {
             try {
@@ -42,7 +42,7 @@ public class RBSChooser3 {
         
         //Populate the RBS choices
         out.rbss = new ArrayList<>();
-        data = FileUtils.readFile2("/Volumes/shared-data/Vijay/CodonOptimization/rbs_options.txt");
+        data = FileUtils.readFile2("/mnt/shared-data/Vijay/CodonOptimization/rbs_options.txt");
         lines = data.split("\\r|\\r?\\n");
         for(int i=0; i<lines.length; i++) {
             String line = lines[i];
