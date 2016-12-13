@@ -454,17 +454,15 @@ class Cascade(target: Long) {
 
   nw.nodeMapping.values().filter(getOrDefault[String](_, "isrxn").toBoolean).foreach(node => {
     val reactionIds = new util.HashSet[Long](getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => (x.toLong - Cascade.rxnIdShift): java.lang.Long))
-    val isSpontaneous = reactionIds.exists(r => {
-      val isSpontaneous = ReachRxnDescs.rxnIsSpontaneous(r)
-      isSpontaneous.isDefined && isSpontaneous.get
+    val isSpontaneous: Boolean = reactionIds.exists(r => {
+      val thisSpontaneousResult = ReachRxnDescs.rxnIsSpontaneous(r)
+      thisSpontaneousResult.isDefined && thisSpontaneousResult.get
     })
     Node.setAttribute(node.id, "isSpontaneous", isSpontaneous)
 
-
-
-    val hasSequence = reactionIds.exists(r => {
-      val hasSequence= ReachRxnDescs.rxnSequence(r)
-      hasSequence.isDefined && hasSequence.get.nonEmpty
+    val hasSequence: Boolean = reactionIds.exists(r => {
+      val thisSequenceResult = ReachRxnDescs.rxnSequence(r)
+      thisSequenceResult.isDefined && thisSequenceResult.get.toList.nonEmpty
     })
     Node.setAttribute(node.id, "hasSequence", hasSequence)
   })

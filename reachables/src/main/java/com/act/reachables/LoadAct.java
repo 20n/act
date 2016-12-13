@@ -453,6 +453,16 @@ public class LoadAct extends SteppedTask {
         }
       }
       if (name == null) {
+        // Try to use wikipedia
+        Object meta = c.getRef(Chemical.REFS.WIKIPEDIA, new String[] { "metadata" });
+        if (meta != null) {
+          if (!(meta instanceof JSONObject)) {
+            throw new RuntimeException("Unable to parse Wikipedia metadata.");
+          }
+          name = (String) ((JSONObject) meta).get("article");
+        }
+      }
+      if (name == null) {
         // stuff the inchi into the name
         name = c.getInChI();
       }

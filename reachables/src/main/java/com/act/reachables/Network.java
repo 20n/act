@@ -166,7 +166,7 @@ public class Network implements Serializable {
           fullLabel = "Not Available";
         } else {
           fullLabel = filteredRawLabel.get(0);
-          if (rawLabel.size() > 1){
+          if (filteredRawLabel.size() > 1){
             fullLabel += " and " + String.valueOf(filteredRawLabel.size() - 1) + " more";
           }
         }
@@ -179,6 +179,9 @@ public class Network implements Serializable {
         } else if ((boolean) Node.getAttribute(n.id, "isSpontaneous")) {
           String purpleNavy = "#4E5180";
           color = Cascade.quote(purpleNavy);
+        } else {
+          String crimsonRed = "#DC143C";
+          color = Cascade.quote(crimsonRed);
         }
 
         url = Cascade.quote((String)Node.getAttribute(n.id, "url_string"));
