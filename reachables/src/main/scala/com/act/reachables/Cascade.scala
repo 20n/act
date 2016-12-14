@@ -505,13 +505,17 @@ class Cascade(target: Long) {
     abstractOrQuestionableSequencesQuery.put(SequenceKeywords.ID.toString, withinTheseReactions)
 
     val mongoConnection = OddSequencesToProteinPredictionFlow.connectToMongoDatabase(cascades.DEFAULT_DB._3)
+
     val oddSeqs: List[DbSeq] = mongoConnection.getSeqIterator(abstractOrQuestionableSequencesQuery).asScala.toList
 
-    // Filter with side effects, eep.
     // TODO Maybe we should only try to infer if there are no/few good sequences.
-    val anyInferredSeqs: List[DbSeq] = oddSeqs.filter(sequenceSearch)
+    // Evaluate how much this helps.  It makes sense as we don't really want to add more to places
+    // where there are a lot, but to add some where there are none or few.
+    if (matchingSequences.diff(oddSeqs.map(_.getUUID.toLong: Long).toSet).size < 5) {
+      // Filter with side effects, eep.
+      val anyInferredSeqs: List[DbSeq] = oddSeqs.filter(sequenceSearch)
 
-    /*
+      /*
       At this point we have three sets,
 
       A) The overall list of sequences
@@ -520,21 +524,17 @@ class Cascade(target: Long) {
 
       We want (A - B) + (C) to get all the "good" sequences
     */
-    val A: Set[Long] = matchingSequences
-    val B: Set[Long] = oddSeqs.map(_.getUUID.toLong: Long).toSet
-    val C: Set[Long] = anyInferredSeqs.map(_.getUUID.toLong: Long).toSet
+      val A: Set[Long] = matchingSequences
+      val B: Set[Long] = oddSeqs.map(_.getUUID.toLong: Long).toSet
+      val C: Set[Long] = anyInferredSeqs.map(_.getUUID.toLong: Long).toSet
 
-    val matchingSeqs = (A.diff(B)).union(C)
-    println(
-      s"""
-        | A = $A
-        | B = $B
-        | C = $C
-        | Matching = $matchingSeqs
-      """.stripMargin)
-
-    Node.setAttribute(node.id, "hasSequence", matchingSeqs.nonEmpty)
-    Node.setAttribute(node.id, "sequences", new util.HashSet(matchingSeqs))
+      val matchingSeqs = (A.diff(B)).union(C)
+      Node.setAttribute(node.id, "hasSequence", matchingSeqs.nonEmpty)
+      Node.setAttribute(node.id, "sequences", new util.HashSet(matchingSeqs))
+    } else {
+      Node.setAttribute(node.id, "hasSequence", matchingSequences.nonEmpty)
+      Node.setAttribute(node.id, "sequences", new util.HashSet(matchingSequences))
+    }
   })
 
   val viablePaths: Option[List[Cascade.Path]] = Cascade.getAllPaths(nw, t)
@@ -639,7 +639,8 @@ class Cascade(target: Long) {
 
     println(
       s"""
-        | Full Sequence Paths: ${sortedPaths.count(_.getPath.forall(p => !p.isReaction || (p.isReaction && p.sequences.nonEmpty)))}
+        | Reachable: $target
+        | Full Sequence Paths: ${sortedPaths.count(_.getPath.forall(p => !p.isReaction || (p.isReaction && (p.sequences.nonEmpty || p.isSpontaneous))))}
         | Total Paths: ${sortedPaths.length}
       """.stripMargin
     )

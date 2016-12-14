@@ -137,13 +137,16 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
   }
 
   def init(proteomeLocation: File) = {
+    logger.info("Creating a table of reference proteomes for future lookup.")
     if (!proteomeLocation.exists()) throw new FileNotFoundException(s"Proteome location of ${proteomeLocation.getAbsolutePath} does not exist.")
     /* - - - - Discover relevant sequence entries, put their organisms into a lookup table - - - - */
     val organismProteomes = proteomeLocation.listFiles().toList
     orgsToProteomes = classifyOrganismByProteome(organismProteomes)
+    logger.info("Finished creating reference proteome table.")
   }
 
   def oddQuery(): BasicDBObject = {
+    // Small or don't start w/ M
     val oddCriteria = "this.seq.length < 80 || this.seq[0] != 'M'"
     val whereQuery = createDbObject(MongoKeywords.WHERE, oddCriteria)
     whereQuery.put(SequenceKeywords.SEQ.toString, createDbObject(MongoKeywords.NOT_EQUAL, null))
@@ -246,7 +249,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     val outputFastaPath = new File(fastaDirectory, s"$prefix.output.fasta")
 
     if (processed.incrementAndGet() % counterDisplayRate == 0) {
-      logger.info(s"Found reference proteome for ${found.get()} " +
+      logger.debug(s"Found reference proteome for ${found.get()} " +
         s"(${foundWithSequenceInferred.get()} with inferred sequences) out of ${processed.get()} sequences")
     }
 
