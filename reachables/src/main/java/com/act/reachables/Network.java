@@ -166,7 +166,7 @@ public class Network implements Serializable {
           fullLabel = "Not Available";
         } else {
           fullLabel = filteredRawLabel.get(0);
-          if (filteredRawLabel.size() > 1){
+          if (filteredRawLabel.size() > 1) {
             fullLabel += " and " + String.valueOf(filteredRawLabel.size() - 1) + " more";
           }
         }

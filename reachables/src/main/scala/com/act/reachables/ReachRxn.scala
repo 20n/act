@@ -56,6 +56,9 @@ object ReachRxnDescs {
   // TODO: cache organism names instead of looking them up in the DB every time.  Use caffeine after a rebase.
   val rxnOrganismNames = Memo.mutableHashMapMemo[Long, Option[Set[String]]] { rid =>
     if (meta(rid).isDefined) {
+      // The entry looks like as follows:
+      // OrganismId:<Number>
+      // We take the second element always as that is the Id
       val referenceOrganisms: List[String] = meta(rid).get.getReferences.toList.
         flatMap(x => Option(x.snd())).
         filter(_.startsWith("OrganismId")).

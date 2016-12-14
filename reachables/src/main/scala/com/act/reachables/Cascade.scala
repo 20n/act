@@ -11,6 +11,7 @@ import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywor
 import com.fasterxml.jackson.annotation._
 import com.mongodb.{BasicDBList, BasicDBObject, DB, MongoClient, ServerAddress}
 import org.apache.commons.codec.digest.DigestUtils
+import org.apache.logging.log4j.LogManager
 import org.mongojack.JacksonDBCollection
 
 import scala.collection.JavaConversions._
@@ -115,6 +116,7 @@ object Cascade extends Falls {
 
   // dot does not like - in identifiers. Replace those with underscores
   def rxn_node_ident(id: Long) = rxnIdShift + id
+  def rxn_node_rxn_ident(id: Long) = id - rxnIdShift
   def mol_node_ident(id: Long) = id
 
   def rxn_node_tooltip_string(id: Long) = {
@@ -471,12 +473,14 @@ object Cascade extends Falls {
 }
 
 class Cascade(target: Long) {
+  private val logger = LogManager.getLogger(getClass.getName)
+
   val t = target
   val nw = Cascade.get_cascade(t).get
 
   private val workingDir = new java.io.File(".").getCanonicalFile
   nw.nodeMapping.values().filter(getOrDefault[String](_, "isrxn").toBoolean).foreach(node => {
-    val reactionIds: Set[Long] = getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => x.toLong - Cascade.rxnIdShift: Long).toSet
+    val reactionIds: Set[Long] = getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => Cascade.rxn_node_rxn_ident(x.toLong): Long).toSet
     val isSpontaneous: Boolean = reactionIds.exists(r => {
       val thisSpontaneousResult = ReachRxnDescs.rxnIsSpontaneous(r)
       thisSpontaneousResult.isDefined && thisSpontaneousResult.get
@@ -503,13 +507,11 @@ class Cascade(target: Long) {
     val mongoConnection = OddSequencesToProteinPredictionFlow.connectToMongoDatabase(cascades.DEFAULT_DB._3)
     val oddSeqs = mongoConnection.getSeqIterator(abstractOrQuestionableSequencesQuery).asScala
     var count = 0
-//    oddSeqs.foreach(sequenceSearch)
     oddSeqs.foreach(x => {
       count += 1
-      println(s"Seq is ${x.getUUID}")
       sequenceSearch(x)
     })
-    if (count > 0) println(count)
+    if (count > 0) logger.info(s"Odd sequence entries HMMer tried to improve: $count")
 
     Node.setAttribute(node.id, "hasSequence", matchingSequences.nonEmpty)
     Node.setAttribute(node.id, "sequences", new util.HashSet(matchingSequences))
@@ -554,7 +556,7 @@ class Cascade(target: Long) {
         isSpontaneous,
         sequences,
         getOrDefault[util.HashSet[String]](node, "organisms", new util.HashSet[String]()),
-        new util.HashSet[Long](getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => (x.toLong - Cascade.rxnIdShift): java.lang.Long)),
+        new util.HashSet[Long](getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => Cascade.rxn_node_rxn_ident(x.toLong): Long)),
         getOrDefault[Int](node, "reaction_count", 0),
         node.getIdentifier,
         if (isRxn) {
@@ -621,7 +623,7 @@ class Cascade(target: Long) {
 
 
     try {
-//      sortedPaths.foreach(Cascade.pathwayCollection.insert)
+      sortedPaths.foreach(Cascade.pathwayCollection.insert)
     } catch {
       case e: Exception => None
     }
