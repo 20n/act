@@ -22,26 +22,61 @@ public class ProteinMetadataFactory {
 
     private Set<String> dataList = new HashSet<>();
 
+    //Data used in algorithms
+    private Set<String> modificationTermsTrue;
+    private Set<String> modificationTermsFalse;
 
-    public ProteinMetadata create(JSONObject json) {
+    private ProteinMetadataFactory() {}
+
+    public static ProteinMetadataFactory initiate() throws Exception {
+        //Construct the Sets to hold modification data terms
+        Set<String>  modTrue = new HashSet<>();
+        Set<String>  modFalse = new HashSet<>();
+
+        File termfile = new File("/Users/jca20n/Dropbox (20n)/20n Team Folder/act_data/ProteinMetadata/2016_12_07-modification_terms.txt");
+        String data = FileUtils.readFileToString(termfile);
+        String[] lines = data.split("\\r|\\r?\\n");
+        for(int i=1; i<lines.length; i++) {
+            String line = lines[i];
+            String[] tabs = line.split("\t");
+            String term = tabs[0].toLowerCase();
+            boolean val = Boolean.parseBoolean(tabs[1]);
+
+            if(val==true) {
+                modTrue.add(term);
+            } else {
+                modFalse.add(term);
+            }
+        }
+
+        //Create the factory and put in data
+        ProteinMetadataFactory factory = new ProteinMetadataFactory();
+        factory.modificationTermsTrue = modTrue;
+        factory.modificationTermsFalse = modFalse;
+
+        return factory;
+    }
+
+    public ProteinMetadata create(JSONObject json) throws Exception {
 //        System.out.println(json.toString());
 
 
         Double kcatkm = handleKcatKm(json);
         Double specificActivity = handleSpecificActivity(json);
-//        Boolean modifications = handleModifications(json);
         Boolean heteroSubunits = handlesubunits(json);
+        Boolean modifications = handleModifications(json);
+
+
 //        Map<Host, Boolean> cloning = handleCloned(json);
 //        Localization localization = handleLocation(json);
 
         ProteinMetadata out = new ProteinMetadata();
+        out.kcatkm = kcatkm;
+        out.specificActivity = specificActivity;
+        out.heteroSubunits = heteroSubunits;
+        out.modifications = modifications;
         return out;
     }
-
-    private Boolean handleModifications(JSONObject json) {
-        return null;
-    }
-
 
     private Map<Host, Boolean> handleCloned(JSONObject json) {
 
@@ -61,7 +96,7 @@ public class ProteinMetadataFactory {
 
             //obj is the terminal json with val and comment fields
             JSONObject obj = jarray.getJSONObject(0);
-            dataList.add(obj.toString());
+//            dataList.add(obj.toString());
 
 //            Double val = obj.getDouble("val");
 //
@@ -309,11 +344,67 @@ public class ProteinMetadataFactory {
                 System.err.println("Expect: " + expected + " Found: " + result);
                 return false;
             }
-
-
         }
 
         return true;
+    }
+
+    private Boolean handleModifications(JSONObject json) {
+        //Try to pull the data
+        JSONArray jarray = null;
+        try {
+            jarray = json.getJSONArray("post_translational_modification");
+        } catch (Exception err) {
+            return null;
+        }
+
+        //If there is no data, nothing is known
+        if (jarray.length() == 0) {
+            return null;
+        }
+
+        //If many observations are given for the protein, return the consensus with a true value dominating
+        if (jarray.length() > 1) {
+            Boolean out = null;
+            for (int i = 0; i < jarray.length(); i++) {
+                try {
+                    JSONObject obj = jarray.getJSONObject(i);
+                    Boolean bval = assignModificationHelper(obj);
+                    if (bval == true) {
+                        return true;
+                    } else if(bval == false) {
+                        out = false;
+                    }
+                } catch (Exception err) {
+                }
+            }
+
+            return out;
+        }
+
+        //Otherwise return the one value
+        try {
+            JSONObject obj = jarray.getJSONObject(0);
+            Boolean bval = assignModificationHelper(obj);
+            return bval;
+        } catch (Exception err) {
+            return null;
+        }
+    }
+
+    private Boolean assignModificationHelper(JSONObject json) {
+        try {
+            String ptm = json.getString("post_translational_modification");
+            if (this.modificationTermsTrue.contains(ptm)) {
+                return true;
+            }
+            if (this.modificationTermsFalse.contains(ptm)) {
+                return false;
+            }
+            return null;
+        } catch(Exception err) {
+            return null;
+        }
     }
 
     public static void main(String[] args) throws Exception {
@@ -322,9 +413,9 @@ public class ProteinMetadataFactory {
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
 
         //Create a single instance of the factory method to use for all json
-        ProteinMetadataFactory factory = new ProteinMetadataFactory();
+        ProteinMetadataFactory factory = ProteinMetadataFactory.initiate();
 
-        //Run some unit tests
+        //Run some tests
         try {
             if(factory.testHandlesubunits() == true) {
                 System.out.println("Subunit test OK");
@@ -332,40 +423,65 @@ public class ProteinMetadataFactory {
         } catch (Exception err) {
             System.err.println("Failed to test subunits");
         }
-//
-//        //Create a list to aggregate the results of the database scan
-//        List<ProteinMetadata> agg = new ArrayList<>();
-//
-//        //Scan the database and store ProteinMetadata objects
-//        while (iterator.hasNext()) {
-//            Reaction rxn = iterator.next();
-//
-//            Reaction.RxnDataSource source = rxn.getDataSource();
-//            if (!source.equals(Reaction.RxnDataSource.BRENDA)) {
-//                continue;
-//            }
-//
-//            Set<JSONObject> jsons = rxn.getProteinData();
-//
-//
-//            for (JSONObject json : jsons) {
-//                ProteinMetadata meta = factory.create(json);
-//                agg.add(meta);
-//            }
-//        }
-//
-//        //Write out any aggregated messages to file
-//        StringBuilder sb = new StringBuilder();
-//        for(String aline : factory.dataList) {
-//            aline = aline.replaceAll("\t", " ");
-//            sb.append(aline).append("\t\n");
-//        }
-//
-//        File outfile = new File("output/ProteinMetadata/Facotry_output.txt");
-//        if(outfile.exists()) {
-//            outfile.delete();
-//        }
-//        FileUtils.writeStringToFile(outfile, sb.toString());
-//        System.out.println("done");
+
+        //Create a list to aggregate the results of the database scan
+        List<ProteinMetadata> agg = new ArrayList<>();
+
+        //Scan the database and store ProteinMetadata objects
+        while (iterator.hasNext()) {
+            Reaction rxn = iterator.next();
+
+            Reaction.RxnDataSource source = rxn.getDataSource();
+            if (!source.equals(Reaction.RxnDataSource.BRENDA)) {
+                continue;
+            }
+
+            Set<JSONObject> jsons = rxn.getProteinData();
+
+
+            for (JSONObject json : jsons) {
+                ProteinMetadata meta = factory.create(json);
+                agg.add(meta);
+            }
+        }
+
+        //Write out any messages to file
+        StringBuilder sb = new StringBuilder();
+        for(String aline : factory.dataList) {
+            aline = aline.replaceAll("\t", " ");
+            sb.append(aline).append("\t\n");
+        }
+
+        File outfile = new File("output/ProteinMetadata/Factory_output.txt");
+        if(outfile.exists()) {
+            outfile.delete();
+        }
+        FileUtils.writeStringToFile(outfile, sb.toString());
+
+        //Playground
+        int falsecount = 0;
+        int truecount = 0;
+        int nullcount = 0;
+
+        for(ProteinMetadata datum : agg) {
+            if(datum == null) {
+                System.err.println("null datum");
+                continue;
+            }
+            if(datum.modifications == null) {
+                nullcount++;
+            } else if(datum.modifications == false) {
+                falsecount++;
+            } else if(datum.modifications == true) {
+                truecount++;
+            }
+        }
+        System.out.println("Total # protein metadata: " + agg.size());
+        System.out.println("true count: " + truecount);
+        System.out.println("false count: " + falsecount);
+        System.out.println("null count: " + nullcount);
+
+
+        System.out.println("done");
     }
 }
