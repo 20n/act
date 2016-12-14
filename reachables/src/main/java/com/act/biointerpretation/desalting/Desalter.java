@@ -129,8 +129,8 @@ public class Desalter {
   /**
    * Splits molecule into fragments, desalts each fragments, returns results in a list.
    * This is intended to be used for the abstract reaction -> SAR pipeline. Here, it is essential that we don't muck
-   * with the implicitness/explicitness of the hydrogens. That is the only difference in the logic between this and
-   * desalteInchi().
+   * with the implicitness/explicitness of the hydrogens. That is why we work only at the molecule level, and that is
+   * the only difference in the logic between this and desalteInchi().
    * @param molecule
    * @return
    * @throws IOException

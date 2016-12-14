@@ -5,7 +5,7 @@ import chemaxon.formats.MolFormatException
 import chemaxon.marvin.io.MolExportException
 import com.act.analysis.chemicals.molecules.MoleculeFormat.Cleaning
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
-import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, AbstractChemicalInfo}
+import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.ChemicalInformation
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{ChemicalKeywords, MongoWorkflowUtilities}
 import com.mongodb.DBObject
 import org.apache.log4j.LogManager
@@ -14,10 +14,6 @@ import scala.collection.parallel.immutable.{ParMap, ParSeq}
 
 object AbstractChemicals {
   val logger = LogManager.getLogger(getClass)
-
-
-  private val ABSTRACT_CHEMICAL_REGEX = "\\[R[0-9]*\\]"
-  private val CARBON_REPLACEMENT = "\\[C\\]"
 
   // Chemaxon technically uses smarts when we say Smiles, so we just make it explicit here.
   // We do the cleaning so that we can get rid of a lot of the junk that would make down-stream processing hard.
@@ -29,10 +25,10 @@ object AbstractChemicals {
     /*
       Mongo DB Query
 
-      Query: All elements that contain "[R]" or "[R#]", for some number #, in their SMILES
-      TODO: try incorporating elements containing R in their inchi, which don't have a smiles, by replacing R with Cl.
+      Query: All elements that contain "R" in their SMILES and "FAKE" in their InChI
      */
-    var query = Mongo.createDbObject(ChemicalKeywords.SMILES, Mongo.defineMongoRegex(ABSTRACT_CHEMICAL_REGEX))
+    var query = Mongo.createDbObject(ChemicalKeywords.SMILES, Mongo.defineMongoRegex("R"))
+    query = Mongo.appendKeyToDbObject(query, ChemicalKeywords.INCHI, Mongo.defineMongoRegex("FAKE"))
     val filter = Mongo.createDbObject(ChemicalKeywords.SMILES, 1)
     val result: ParSeq[DBObject] = Mongo.mongoQueryChemicals(mongoDb)(query, filter, notimeout = true).toStream.par
 
@@ -41,7 +37,8 @@ object AbstractChemicals {
        Flatmap as Parse Db object returns None if an error occurs (Just filter out the junk)
     */
     val parseDbObjectInFormat: (DBObject) => Option[(Long, ChemicalInformation)] = parseDbObject(mongoDb, moleculeFormat) _
-    val goodChemicalIds: ParMap[Long, ChemicalInformation] = result.flatMap(parseDbObjectInFormat(_)).toMap
+    val goodChemicalIds: ParMap[Long, ChemicalInformation] = result.flatMap(
+      dbResponse => parseDbObjectInFormat(dbResponse)).toMap
 
     logger.info(s"Finished finding abstract chemicals. Found ${goodChemicalIds.size}")
 
@@ -66,7 +63,7 @@ object AbstractChemicals {
 
     // Replace R groups for C currently.
     // There can be multiple R groups, where they are listed as characters.  We want to grab any of the numbers assigned there.
-    val replacedSmarts = replaceRWithC(smiles)
+    val replacedSmarts = smiles.replaceAll("R[0-9]*", "C")
 
     /*
       Try to import the SMILES field as a Smarts representation of the molecule.
@@ -87,7 +84,4 @@ object AbstractChemicals {
 
   object Mongo extends MongoWorkflowUtilities {}
 
-  def replaceRWithC(chemical : String): String = {
-    chemical.replaceAll(ABSTRACT_CHEMICAL_REGEX, CARBON_REPLACEMENT)
-  }
 }

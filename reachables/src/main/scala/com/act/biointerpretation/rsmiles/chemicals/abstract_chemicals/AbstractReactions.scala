@@ -6,7 +6,7 @@ import act.server.MongoDB
 import com.act.analysis.chemicals.molecules.MoleculeFormat
 import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, ReactionInformation}
 import com.act.biointerpretation.rsmiles.processing.ReactionProcessing
-import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywords, MongoWorkflowUtilities, ReactionKeywords}
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoWorkflowUtilities, ReactionKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.log4j.LogManager
 
@@ -42,36 +42,25 @@ object AbstractReactions {
     abstractChemicals.seq.keySet.foreach(cId => chemicalList.add(cId.asInstanceOf[AnyRef]))
 
     // Matches a reaction if either the Products or Substrates array contains an abstract element.
-    val abstractChemicalQuery = new BasicDBList
+    val abstractSubstrateOrProduct = new BasicDBList
     // TODO the Mongo "In" statements below could be expensive.  Possible optimization route.
-    abstractChemicalQuery.add(
+    abstractSubstrateOrProduct.add(
       // Matches products that are in the abstract chemical list
       new BasicDBObject(
         s"${ReactionKeywords.ENZ_SUMMARY}.${ReactionKeywords.PRODUCTS}.${ReactionKeywords.PUBCHEM}",
         Mongo.defineMongoIn(chemicalList)))
 
     // Matches substrates that are in the abstract chemical list
-    abstractChemicalQuery.add(
+    abstractSubstrateOrProduct.add(
       new BasicDBObject(
         s"${ReactionKeywords.ENZ_SUMMARY}.${ReactionKeywords.SUBSTRATES}.${ReactionKeywords.PUBCHEM}",
         Mongo.defineMongoIn(chemicalList)))
 
-    /* Currently not filtering by # substrates or products
-    abstractAndOneToOne.add(
-      new BasicDBObject(
-        s"${ReactionKeywords.ENZ_SUMMARY}.${ReactionKeywords.PRODUCTS}.${MongoKeywords.LENGTH}",
-        1))
-
-    abstractAndOneToOne.add(
-      new BasicDBObject(
-        s"${ReactionKeywords.ENZ_SUMMARY}.${ReactionKeywords.SUBSTRATES}.${MongoKeywords.LENGTH}",
-        1))
-     */
-
     /*
-      We want to match if they are one substrate, one product, and both are abstract.
+      We want to match if they are either a substrate or a product to
+      get all reactions that could be defined as abstract.
      */
-    val query = Mongo.defineMongoAnd(abstractChemicalQuery)
+    val query = Mongo.defineMongoOr(abstractSubstrateOrProduct)
 
     // Filter so we get both the substrates and products
     val filter = new BasicDBObject(s"${ReactionKeywords.ENZ_SUMMARY}.${ReactionKeywords.PRODUCTS}", 1)
