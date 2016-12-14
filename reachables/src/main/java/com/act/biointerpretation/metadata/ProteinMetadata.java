@@ -10,7 +10,7 @@ public class ProteinMetadata implements Comparator {
     String peptide;
 
     //These are strict requirements that these be ok
-    Map<Host, Boolean> cloned;
+    Map<Host, Integer> cloned;
     Double kcatkm;
     Double specificActivity;
 
