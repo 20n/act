@@ -6,6 +6,7 @@ import act.shared.Reaction.RxnDataSource
 import org.json.{JSONArray, JSONObject}
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable.ListBuffer
 import scalaz.Memo
 
 object ReachRxnDescs {
@@ -42,15 +43,52 @@ object ReachRxnDescs {
     }
   }
 
-  // TODO: cache organism names instead of looking them up in the DB every time.  Use caffeine after a rebase.
+  val rxnIsSpontaneous = Memo.mutableHashMapMemo[Long, Option[Boolean]] { rid =>
+    if (meta(rid).isDefined) {
+      val referenceOrganisms: Boolean = meta(rid).get.getReferences.toList.
+        flatMap(x => Option(x.snd())).exists(_.equals("isSpontaneous"))
+      Option(referenceOrganisms)
+    } else {
+      None
+    }
+  }
 
+  // TODO: cache organism names instead of looking them up in the DB every time.  Use caffeine after a rebase.
   val rxnOrganismNames = Memo.mutableHashMapMemo[Long, Option[Set[String]]] { rid =>
     if (meta(rid).isDefined) {
-      val organisms: Set[String] = meta(rid).get.getProteinData.
+      // The entry looks like as follows:
+      // OrganismId:<Number>
+      // We take the second element always as that is the Id
+      val referenceOrganisms: List[String] = meta(rid).get.getReferences.toList.
+        flatMap(x => Option(x.snd())).
+        filter(_.startsWith("OrganismId")).
+        map(x => x.split(":")(1).toLong).
+        map(id => db.getOrganismNameFromId(id))
+
+      val organisms: List[String] = meta(rid).get.getProteinData.
         map(x => if (x.has("organism")) Option(x.getLong("organism")) else None).
         filter(_.isDefined).map(_.get).
-        map(id => db.getOrganismNameFromId(id)).toSet
-      Option(organisms)
+        map(id => db.getOrganismNameFromId(id)).toList
+      Option((organisms ::: referenceOrganisms).toSet)
+    } else {
+      None
+    }
+  }
+
+  val rxnSequence = Memo.mutableHashMapMemo[Long, Option[Set[Long]]] { rid =>
+    if (meta(rid).isDefined) {
+      val sequences: Set[JSONArray] = meta(rid).get.getProteinData.
+        map(x => if (x.has("sequences")) Option(x.getJSONArray("sequences")) else None).
+        filter(_.isDefined).map(_.get).toSet
+
+      val sequencesScala: ListBuffer[Long] = ListBuffer[Long]()
+      sequences.foreach(s => {
+        for (i <- Range(0, s.length)){
+          sequencesScala.append(s.getLong(i))
+        }
+      })
+
+      Option(sequencesScala.toSet)
     } else {
       None
     }

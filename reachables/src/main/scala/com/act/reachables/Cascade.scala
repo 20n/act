@@ -4,10 +4,14 @@ import java.io.File
 import java.lang.Long
 import java.util
 
+import act.shared.{Seq => DbSeq}
+import com.act.analysis.proteome.scripts.OddSequencesToProteinPredictionFlow
 import com.act.reachables.Cascade.NodeInformation
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywords, SequenceKeywords}
 import com.fasterxml.jackson.annotation._
-import com.mongodb.{DB, MongoClient, ServerAddress}
+import com.mongodb.{BasicDBList, BasicDBObject, DB, MongoClient, ServerAddress}
 import org.apache.commons.codec.digest.DigestUtils
+import org.apache.logging.log4j.LogManager
 import org.mongojack.JacksonDBCollection
 
 import scala.collection.JavaConversions._
@@ -112,6 +116,7 @@ object Cascade extends Falls {
 
   // dot does not like - in identifiers. Replace those with underscores
   def rxn_node_ident(id: Long) = rxnIdShift + id
+  def rxn_node_rxn_ident(id: Long) = id - rxnIdShift
   def mol_node_ident(id: Long) = id
 
   def rxn_node_tooltip_string(id: Long) = {
@@ -378,9 +383,12 @@ object Cascade extends Falls {
     }
   }
 
+  // TODO make this discrete blocks so that we seperate concerns better
   @JsonIgnoreProperties(ignoreUnknown = true)
   @JsonCreator
   class NodeInformation(@JsonProperty("isReaction") var isReaction: Boolean,
+                        @JsonProperty("isSpontaneous") var isSpontaneous: Boolean,
+                        @JsonProperty("sequences") var sequences: util.HashSet[Long],
                         @JsonProperty("organisms") var organisms: util.HashSet[String],
                         @JsonProperty("reactionIds") var reactionIds: util.HashSet[Long],
                         @JsonProperty("reactionCount") var reactionCount: Int,
@@ -389,6 +397,22 @@ object Cascade extends Falls {
                         @JsonProperty("mostNative") var isMostNative: Boolean = false) {
 
     def NodeInformation() {}
+
+    def getSequences(): util.HashSet[Long] = {
+      sequences
+    }
+
+    def setSequences(sequences: util.HashSet[Long]) = {
+      this.sequences = sequences
+    }
+
+    def getisSpontaneous(): Boolean = {
+      isSpontaneous
+    }
+
+    def setIsSpontaneous(isSpontaneous: Boolean) = {
+      this.isSpontaneous = isSpontaneous
+    }
 
     def getIsReaction(): Boolean ={
       isReaction
@@ -449,8 +473,49 @@ object Cascade extends Falls {
 }
 
 class Cascade(target: Long) {
+  private val logger = LogManager.getLogger(getClass.getName)
+
   val t = target
   val nw = Cascade.get_cascade(t).get
+
+  private val workingDir = new java.io.File(".").getCanonicalFile
+  nw.nodeMapping.values().filter(getOrDefault[String](_, "isrxn").toBoolean).foreach(node => {
+    val reactionIds: Set[Long] = getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => Cascade.rxn_node_rxn_ident(x.toLong): Long).toSet
+    val isSpontaneous: Boolean = reactionIds.exists(r => {
+      val thisSpontaneousResult = ReachRxnDescs.rxnIsSpontaneous(r)
+      thisSpontaneousResult.isDefined && thisSpontaneousResult.get
+    })
+    Node.setAttribute(node.id, "isSpontaneous", isSpontaneous)
+
+    val matchingSequences: Set[Long] = reactionIds.flatMap(r => {
+      val thisSequenceResult = ReachRxnDescs.rxnSequence(r)
+      thisSequenceResult
+    }).flatten.map(_.asInstanceOf[Long])
+
+    // Here we choose to add inferred sequences for all entries matching
+    val sequenceSearch: (DbSeq) => Unit =
+      OddSequencesToProteinPredictionFlow.defineSequenceSearch(workingDir)(None)(cascades.DEFAULT_DB._3)
+
+    val abstractOrQuestionableSequencesQuery = OddSequencesToProteinPredictionFlow.oddQuery()
+    val theseReactions = new BasicDBList
+    matchingSequences.foreach(theseReactions.add)
+
+    // Only do the odd query for sequences matching this reaction.
+    val withinTheseReactions = new BasicDBObject(MongoKeywords.IN.toString, theseReactions)
+    abstractOrQuestionableSequencesQuery.put(SequenceKeywords.ID.toString, withinTheseReactions)
+
+    val mongoConnection = OddSequencesToProteinPredictionFlow.connectToMongoDatabase(cascades.DEFAULT_DB._3)
+    val oddSeqs = mongoConnection.getSeqIterator(abstractOrQuestionableSequencesQuery).asScala
+    var count = 0
+    oddSeqs.foreach(x => {
+      count += 1
+      sequenceSearch(x)
+    })
+    if (count > 0) logger.info(s"Odd sequence entries HMMer tried to improve: $count")
+
+    Node.setAttribute(node.id, "hasSequence", matchingSequences.nonEmpty)
+    Node.setAttribute(node.id, "sequences", new util.HashSet(matchingSequences))
+  })
 
   val viablePaths: Option[List[Cascade.Path]] = Cascade.getAllPaths(nw, t)
 
@@ -484,10 +549,14 @@ class Cascade(target: Long) {
 
     val rp = new ReactionPath(s"${target}w$c", p.getPath.map(node => {
       val isRxn = getOrDefault[String](node, "isrxn").toBoolean
+      val isSpontaneous = getOrDefault[Boolean](node, "isSpontaneous", false)
+      val sequences = getOrDefault[util.HashSet[Long]](node, "sequences", new util.HashSet[Long]())
       new NodeInformation(
         isRxn,
+        isSpontaneous,
+        sequences,
         getOrDefault[util.HashSet[String]](node, "organisms", new util.HashSet[String]()),
-        new util.HashSet[Long](getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => (x.toLong - Cascade.rxnIdShift): java.lang.Long)),
+        new util.HashSet[Long](getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => Cascade.rxn_node_rxn_ident(x.toLong): Long)),
         getOrDefault[Int](node, "reaction_count", 0),
         node.getIdentifier,
         if (isRxn) {
@@ -533,6 +602,7 @@ class Cascade(target: Long) {
 
         if (getOrDefault[String](sourceNode, "isrxn").toBoolean) {
           val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](sourceNode, "organisms", new util.HashSet[String]())
+
           if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
             Edge.setAttribute(currentEdge, "color", f""""$limeGreen", penwidth=5""")
           }

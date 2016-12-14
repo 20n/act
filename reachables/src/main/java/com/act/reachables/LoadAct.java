@@ -31,7 +31,7 @@ public class LoadAct extends SteppedTask {
 
   private static final String DEFAULT_DB_HOST = "localhost";
   private static final int DEFAULT_PORT = 27017;
-  private static final String DEFAULT_DATABASE = "validator_profiling_2";
+  private static final String DEFAULT_DATABASE = "jarvis_2016-12-09";
 
   // Fields
   private MongoDB db;
@@ -450,6 +450,16 @@ public class LoadAct extends SteppedTask {
           // if failed to pull out a name from metacyc, report it
           if (name == null)
             System.out.println("ERROR: Looks like a metacyc entry chemical, but no metacyc name: " + id);
+        }
+      }
+      if (name == null) {
+        // Try to use wikipedia
+        Object meta = c.getRef(Chemical.REFS.WIKIPEDIA, new String[] { "metadata" });
+        if (meta != null) {
+          if (!(meta instanceof JSONObject)) {
+            throw new RuntimeException("Unable to parse Wikipedia metadata.");
+          }
+          name = (String) ((JSONObject) meta).get("article");
         }
       }
       if (name == null) {

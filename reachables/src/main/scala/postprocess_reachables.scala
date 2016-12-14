@@ -8,6 +8,7 @@ import scala.collection.JavaConversions._
 import scala.io.Source
 
 object postprocess_reachables {
+  val defaultDb = "jarvis_2016-12-09"
 
   def main(args: Array[String]) {
     if (args.length == 0) {
@@ -92,7 +93,7 @@ object postprocess_reachables {
     val e = new File(outputDirectory, prefix + ".expansion.txt").getAbsolutePath  // output file for tree structure of reachables expansion
 
     // Connect to the DB so that extended attributes for chemicals can be fetched as we serialize.
-    val db = new MongoDB("localhost", 27017, "validator_profiling_2")
+    val db = new MongoDB("localhost", 27017, defaultDb)
 
     println("Writing disjoint graphs to " + g + " and forest to " + t)
 

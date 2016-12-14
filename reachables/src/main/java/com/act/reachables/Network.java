@@ -144,6 +144,7 @@ public class Network implements Serializable {
       String label;
       String tooltip;
       String url;
+      String color = Cascade.quote("black");
 
       if (Boolean.valueOf((String)Node.getAttribute(n.id, "isrxn"))) {
         id = String.valueOf(n.getIdentifier());
@@ -165,13 +166,23 @@ public class Network implements Serializable {
           fullLabel = "Not Available";
         } else {
           fullLabel = filteredRawLabel.get(0);
-          if (rawLabel.size() > 1){
+          if (filteredRawLabel.size() > 1) {
             fullLabel += " and " + String.valueOf(filteredRawLabel.size() - 1) + " more";
           }
         }
 
         label = Cascade.quote(fullLabel);
         tooltip = Cascade.quote((String)Node.getAttribute(n.id, "tooltip_string"));
+        if ((boolean) Node.getAttribute(n.id, "hasSequence")) {
+          String forestGreen = "#228B22";
+          color = Cascade.quote(forestGreen);
+        } else if ((boolean) Node.getAttribute(n.id, "isSpontaneous")) {
+          String purpleNavy = "#4E5180";
+          color = Cascade.quote(purpleNavy);
+        } else {
+          String crimsonRed = "#DC143C";
+          color = Cascade.quote(crimsonRed);
+        }
 
         url = Cascade.quote((String)Node.getAttribute(n.id, "url_string"));
       } else {
@@ -182,11 +193,13 @@ public class Network implements Serializable {
         url = (String)Node.getAttribute(n.id, "url_string");
       }
 
+
       String node_line = id
         + " [shape=box,"
         + " label=" + label + ","
         + " tooltip=" + tooltip + ","
         + " URL=" + url + ","
+        + " color=" + color + ","
         + "];";
       lines.add(node_line);
     }
