@@ -637,7 +637,7 @@ class Cascade(target: Long) {
       }
     }
 
-    println(
+    logger.info(
       s"""
         | Reachable: $target
         | Full Sequence Paths: ${sortedPaths.count(_.getPath.forall(p => !p.isReaction || (p.isReaction && (p.sequences.nonEmpty || p.isSpontaneous))))}
