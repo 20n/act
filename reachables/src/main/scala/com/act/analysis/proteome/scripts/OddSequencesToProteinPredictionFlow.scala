@@ -23,7 +23,7 @@ import scala.concurrent.{Await, Future}
 import scala.sys.process._
 
 object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
-  private val defaultReferenceProteomes = new File("/mnt/data-level1/reference_proteomes")
+  private val defaultReferenceProteomes = new File("/Volumes/data-level1/reference_proteomes")
 
   val HELP_MESSAGE = "Uses a set of reference proteomes to assign full sequences to database entries that are 'odd' (incomplete)."
   val HELP_FORMATTER: HelpFormatter = new HelpFormatter
@@ -36,9 +36,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
   private val found = new AtomicInteger()
   private val processed = new AtomicInteger()
   private val foundWithSequenceInferred = new AtomicInteger()
-  private val counterDisplayRate = 1
-  private val takeTopNumberOfResults = 5
-  private var idToOrganism: Map[Long, String] = Map()
+  private val counterDisplayRate = 10
   private var orgsToProteomes: Map[String, List[File]] = Map()
   private var hasInit = false
 
@@ -126,7 +124,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
 
     /* - - - - Counters used to track our progress as we go - - - - */
     logger.info("Starting assignment of inferred sequences to odd database entries.")
-    val sequenceSearch: (DbSeq) => Unit = defineSequenceSearch(fastaDirectory)(Some(proteomeLocation))(database)
+    val sequenceSearch: (DbSeq) => Boolean = defineSequenceSearch(fastaDirectory)(Some(proteomeLocation))(database)
 
     // .par evaluates the iterator which takes a while (It is a mongoDB cursor movement).
     // We can get everything going right away AND in parallel by just making it into a future.
@@ -230,15 +228,18 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
   def defineSequenceSearch(fastaDirectory: File)
                           (currentProteomeLocation: Option[File])
                           (database: String)
-                          (sequence: DbSeq): Unit = {
+                          (sequence: DbSeq): Boolean = {
+    // TODO Check if the database already has an entry for this seq that is inferred.
+    // If it is empty, return false, else return true
     val proteomeLocation = if (currentProteomeLocation.isDefined) {
       currentProteomeLocation.get
     } else {
       defaultReferenceProteomes
     }
 
-    if (!hasInit){
+    if (!hasInit) {
       init(proteomeLocation)
+      hasInit = true
     }
     /* - - - - Setup temp files that will hold the data prior to database upload - - - - */
     val prefix = sequence.getUUID.toString
@@ -251,7 +252,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
 
     // Figure out which reference proteomes should be used for this sequence
     val proteomesToQueryAgainst = getMatchingProteomes(sequence)
-    if (proteomesToQueryAgainst.isEmpty) return
+    if (proteomesToQueryAgainst.isEmpty) return false
     found.incrementAndGet()
 
     // Create the FASTA file out of the database sequence
@@ -298,15 +299,14 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     if (resultingSequences.nonEmpty) {
       logger.debug(s"Finished inferring additional sequences for sequence ${sequence.getUUID}")
       foundWithSequenceInferred.incrementAndGet()
-    } else {
-      // No inferred seq no need to update.
-      return
     }
 
     metadata.put("inferred_sequences", inferArray)
     sequence.setMetadata(metadata)
 
     mongoDatabaseConnection.updateMetadata(sequence)
+
+    resultingSequences.nonEmpty
   }
 
   private def getMatchingProteomes(sequence: DbSeq): Option[List[File]] = {
@@ -381,7 +381,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
       originFile.close()
 
       SequenceEntry(header, sequence, link.scoreDomain, link.scoreFullSequence, link.originFile)
-    })
+    }).filter(!_.fastaHeader.contains("(Fragment)"))
   }
 
   // Link between HMM result and the sequences file that the sequence originates from.
