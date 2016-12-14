@@ -35,3 +35,5 @@ reachables/old_lib/native/mac/libz3.dylib
 reachables/old_lib/native/mac/libz3java.dylib
 
 reachables/output/ProteinMetadata/Facotry_output.txt
+
+reachables/output/ProteinMetadata/Factory_output.txt
