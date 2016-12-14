@@ -370,16 +370,20 @@ public class Loader {
       LOGGER.error("Threw exception when getting physiochemical properties: ", e.getMessage());
     }
 
-    Double pka = analysisFeatures.get(SurfactantAnalysis.FEATURES.PKA_ACID_1) == null ?
-        analysisFeatures.get(SurfactantAnalysis.FEATURES.PKA_ACID_1) : null;
+    PhysiochemicalProperties physiochemicalProperties = null;
 
-    Double log = analysisFeatures.get(SurfactantAnalysis.FEATURES.LOGP_TRUE) == null ?
-        analysisFeatures.get(SurfactantAnalysis.FEATURES.LOGP_TRUE) : null;
+    if (analysisFeatures != null) {
+      Double pka = analysisFeatures.get(SurfactantAnalysis.FEATURES.PKA_ACID_1) == null ?
+          analysisFeatures.get(SurfactantAnalysis.FEATURES.PKA_ACID_1) : null;
 
-    Double hlb = analysisFeatures.get(SurfactantAnalysis.FEATURES.HLB_VAL) == null ?
-        analysisFeatures.get(SurfactantAnalysis.FEATURES.HLB_VAL) : null;
+      Double log = analysisFeatures.get(SurfactantAnalysis.FEATURES.LOGP_TRUE) == null ?
+          analysisFeatures.get(SurfactantAnalysis.FEATURES.LOGP_TRUE) : null;
 
-    PhysiochemicalProperties physiochemicalProperties = new PhysiochemicalProperties(pka, log, hlb);
+      Double hlb = analysisFeatures.get(SurfactantAnalysis.FEATURES.HLB_VAL) == null ?
+          analysisFeatures.get(SurfactantAnalysis.FEATURES.HLB_VAL) : null;
+
+      physiochemicalProperties = new PhysiochemicalProperties(pka, log, hlb);
+    }
 
     return new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
         wordcloudFilename, xref, physiochemicalProperties);
