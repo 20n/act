@@ -27,6 +27,7 @@ import com.dreizak.miniball.model.ArrayPointSet;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.stat.regression.RegressionResults;
 import org.apache.commons.math3.stat.regression.SimpleRegression;
+import org.apache.logging.log4j.core.config.plugins.Plugin;
 
 import javax.swing.JFrame;
 import javax.swing.WindowConstants;
@@ -129,8 +130,7 @@ public class SurfactantAnalysis {
    * @throws PluginException
    * @throws IOException
    */
-  public void init(String inchi)
-      throws MolFormatException, PluginException, IOException {
+  public void init(String inchi) throws MolFormatException, PluginException, IOException {
     this.inchi = inchi;
     Molecule importMol = MolImporter.importMol(this.inchi);
     Cleaner.clean(importMol, 3); // This will assign 3D atom coordinates to the MolAtoms in this.mol.
@@ -580,8 +580,7 @@ public class SurfactantAnalysis {
    * @return A map of features related to and depending on the computed molecular surface.
    * @throws Exception
    */
-  public Map<FEATURES, Double> computeSurfaceFeatures(/*JFrame jFrame,*/ boolean hydrogensShareNeighborsLogP)
-      throws Exception {
+  public Map<FEATURES, Double> computeSurfaceFeatures(/*JFrame jFrame,*/ boolean hydrogensShareNeighborsLogP) {
     // TODO: use the proper marvin sketch scene to get better rendering control instead of MSpaceEasy.
 //    MSpaceEasy mspace = new MSpaceEasy(1, 2, true);
 //    mspace.addCanvas(jFrame.getContentPane());
@@ -659,17 +658,17 @@ public class SurfactantAnalysis {
     }
     Collections.sort(weightedVals);
 
-    Pair<Double, Double> slopeIntercept = performRegressionOverXYPairs(weightedVals);
-    double valAtFarthestPoint =
-        distancesAlongLongestVector.get(lvIndex2) * slopeIntercept.getLeft() + slopeIntercept.getRight();
-
+//    Pair<Double, Double> slopeIntercept = performRegressionOverXYPairs(weightedVals);
+//    double valAtFarthestPoint =
+//        distancesAlongLongestVector.get(lvIndex2) * slopeIntercept.getLeft() + slopeIntercept.getRight();
+//
     Map<FEATURES, Double> features = new HashMap<>();
-    features.put(FEATURES.REG_WEIGHTED_SLOPE, slopeIntercept.getLeft());
-    features.put(FEATURES.REG_WEIGHTED_INTERCEPT, slopeIntercept.getRight());
-    features.put(FEATURES.REG_VAL_AT_FARTHEST_POINT, valAtFarthestPoint);
-    /* Multiply the intercept with the value at the largest point to see if there's a sign change.  If so, we'll
-     * get a negative number and know the regression line crosses the axis. */
-    features.put(FEATURES.REG_CROSSES_X_AXIS, valAtFarthestPoint * slopeIntercept.getRight() < 0.000 ? 1.0 : 0.0);
+//    features.put(FEATURES.REG_WEIGHTED_SLOPE, slopeIntercept.getLeft());
+//    features.put(FEATURES.REG_WEIGHTED_INTERCEPT, slopeIntercept.getRight());
+//    features.put(FEATURES.REG_VAL_AT_FARTHEST_POINT, valAtFarthestPoint);
+//    /* Multiply the intercept with the value at the largest point to see if there's a sign change.  If so, we'll
+//     * get a negative number and know the regression line crosses the axis. */
+//    features.put(FEATURES.REG_CROSSES_X_AXIS, valAtFarthestPoint * slopeIntercept.getRight() < 0.000 ? 1.0 : 0.0);
 
     // Flatten the list of split planes and find the "best" one (i.e. the one that maximizes the weighted logP delta).
     List<AtomSplit> allSplitPlanes = new ArrayList<>();
@@ -689,8 +688,8 @@ public class SurfactantAnalysis {
       allSplitPlanes.add(l);
       allSplitPlanes.add(r);
     }
-    Pair<AtomSplit, Map<FEATURES, Double>> bestPsRes = findBestPlaneSplitFeatures(allSplitPlanes);
-    features.putAll(bestPsRes.getRight());
+//    Pair<AtomSplit, Map<FEATURES, Double>> bestPsRes = findBestPlaneSplitFeatures(allSplitPlanes);
+//    features.putAll(bestPsRes.getRight());
 
 //    msc.setPalette(SurfaceColoring.COLOR_MAPPER_BLUE_TO_RED);
 //    msc.showVolume(true);
@@ -712,9 +711,9 @@ public class SurfactantAnalysis {
    * @return A map of whole-molecule features.
    * @throws Exception
    */
-  public Map<FEATURES, Double> calculateAdditionalFilteringFeatures() throws Exception {
-    SolubilityCalculator sc = new SolubilityCalculator();
-    SolubilityResult[] solubility = sc.calculatePhDependentSolubility(mol, SOLUBILITY_PHS);
+  public Map<FEATURES, Double> calculateAdditionalFilteringFeatures() throws PluginException {
+//    SolubilityCalculator sc = new SolubilityCalculator();
+//    SolubilityResult[] solubility = sc.calculatePhDependentSolubility(mol, SOLUBILITY_PHS);
 
     HlbPlugin hlb = HlbPlugin.Builder.createNew();
     hlb.setMolecule(mol);
@@ -743,9 +742,9 @@ public class SurfactantAnalysis {
 
     // TODO: compute carbon chain length.
     return new HashMap<FEATURES, Double>() {{
-      put(FEATURES.SOL_MG_ML_25, solubility[0].getSolubility(SolubilityUnit.MGPERML));
-      put(FEATURES.SOL_MG_ML_30, solubility[1].getSolubility(SolubilityUnit.MGPERML));
-      put(FEATURES.SOL_MG_ML_35, solubility[2].getSolubility(SolubilityUnit.MGPERML));
+//      put(FEATURES.SOL_MG_ML_25, solubility[0].getSolubility(SolubilityUnit.MGPERML));
+//      put(FEATURES.SOL_MG_ML_30, solubility[1].getSolubility(SolubilityUnit.MGPERML));
+//      put(FEATURES.SOL_MG_ML_35, solubility[2].getSolubility(SolubilityUnit.MGPERML));
 
       put(FEATURES.PKA_ACID_1, pkaAcidVals[0]);
       put(FEATURES.PKA_ACID_1_IDX, Integer.valueOf(pkaAcidIndices[0]).doubleValue());
@@ -818,46 +817,46 @@ public class SurfactantAnalysis {
    * @return A map of all features for this molecule.
    * @throws Exception
    */
-  public static Map<FEATURES, Double> performAnalysis(String inchi, boolean display) throws Exception {
+  public static Map<FEATURES, Double> performAnalysis(String inchi, boolean display) throws PluginException, IOException {
     SurfactantAnalysis surfactantAnalysis = new SurfactantAnalysis();
     surfactantAnalysis.init(inchi);
 
     // Start with simple structural analyses.
-    Pair<Integer, Integer> farthestAtoms = surfactantAnalysis.findFarthestContributingAtomPair();
-    Double longestVectorLength = surfactantAnalysis.computeDistance(farthestAtoms.getLeft(), farthestAtoms.getRight());
+    //Pair<Integer, Integer> farthestAtoms = surfactantAnalysis.findFarthestContributingAtomPair();
+    //Double longestVectorLength = surfactantAnalysis.computeDistance(farthestAtoms.getLeft(), farthestAtoms.getRight());
 
-    // Then compute the atom distances to the longest vector (lv) and produce lv-normal planes at each atom.
-    Pair<Map<Integer, Double> , Map<Integer, Plane>> results =
-        surfactantAnalysis.computeAtomDistanceToLongestVectorAndNormalPlanes();
-    // Find the max distance so we can calculate the maxDist/|lv| ratio, or "skinny" factor.
-    double maxDistToLongestVector = 0.0;
-    Map<Integer, Double> distancesToLongestVector = results.getLeft();
-    for (Map.Entry<Integer, Double> e : distancesToLongestVector.entrySet()) {
-      maxDistToLongestVector = Math.max(maxDistToLongestVector, e.getValue());
-    }
+//    // Then compute the atom distances to the longest vector (lv) and produce lv-normal planes at each atom.
+//    Pair<Map<Integer, Double> , Map<Integer, Plane>> results =
+//        surfactantAnalysis.computeAtomDistanceToLongestVectorAndNormalPlanes();
+//    // Find the max distance so we can calculate the maxDist/|lv| ratio, or "skinny" factor.
+//    double maxDistToLongestVector = 0.0;
+//    Map<Integer, Double> distancesToLongestVector = results.getLeft();
+//    for (Map.Entry<Integer, Double> e : distancesToLongestVector.entrySet()) {
+//      maxDistToLongestVector = Math.max(maxDistToLongestVector, e.getValue());
+//    }
 
     // A map of the molecule features we'll eventually output.
     Map<FEATURES, Double> features = new HashMap<>();
 
     // Explore the lv endpoint and min/max logP atom neighborhoods, and merge those features into the complete map.
-    Map<FEATURES, Double> neighborhoodFeatures = surfactantAnalysis.exploreExtremeNeighborhoods();
-    features.putAll(neighborhoodFeatures);
+//    Map<FEATURES, Double> neighborhoodFeatures = surfactantAnalysis.exploreExtremeNeighborhoods();
+//    features.putAll(neighborhoodFeatures);
 
     /* Perform regression analysis on the projection of the molecules onto lv, where their y-axis is their logP value.
      * Higher |slope| may mean more extreme logP differences at the ends. */
-    Double slope = surfactantAnalysis.performRegressionOverLVProjectionOfLogP();
+    //Double slope = surfactantAnalysis.performRegressionOverLVProjectionOfLogP();
 
     /* Compute the logP surface of the molecule (seems to require a JFrame?), and collect those features.  We consider
      * the number of closest surface components to each atom so we can guess at how much interior atoms actually
      * contribute to the molecule's solubility. */
     //JFrame jFrame = new JFrame();
     //jFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-    Map<FEATURES, Double> surfaceFeatures = surfactantAnalysis.computeSurfaceFeatures(true);
-    features.putAll(surfaceFeatures);
+//    Map<FEATURES, Double> surfaceFeatures = surfactantAnalysis.computeSurfaceFeatures(true);
+//    features.putAll(surfaceFeatures);
 
     features.put(FEATURES.LOGP_TRUE, surfactantAnalysis.plugin.getlogPTrue()); // Save absolute logP since we calculated it.
-    features.put(FEATURES.GEO_LV_FD_RATIO, maxDistToLongestVector / longestVectorLength);
-    features.put(FEATURES.REG_ABS_SLOPE, slope);
+    //features.put(FEATURES.GEO_LV_FD_RATIO, maxDistToLongestVector / longestVectorLength);
+    //features.put(FEATURES.REG_ABS_SLOPE, slope);
 
     Map<FEATURES, Double> additionalFeatures = surfactantAnalysis.calculateAdditionalFilteringFeatures();
     features.putAll(additionalFeatures);

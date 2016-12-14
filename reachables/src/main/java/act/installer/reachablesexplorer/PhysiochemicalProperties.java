@@ -30,6 +30,8 @@ public class PhysiochemicalProperties {
   private Double LOGP_TRUE;
   private Double HLB_VAL;
 
+  public PhysiochemicalProperties() {}
+
   public PhysiochemicalProperties(Double pka, Double logp, Double hlb) {
     this.PKA_ACID_1 = pka;
     this.LOGP_TRUE = logp;

@@ -204,7 +204,7 @@ object Cascade extends Falls {
     // Generate md5 hash for inchi
     val md5 = DigestUtils.md5Hex(if (inchi == null) "" else inchi)
     // Format the rendering filename
-    val renderingFilename = new File("/mnt/data-level1/data/reachables-explorer-rendering-cache/", String.format("molecule-%s.png", md5)).getAbsolutePath
+    val renderingFilename = new File("/Volumes/data-level1/data/reachables-explorer-rendering-cache/", String.format("molecule-%s.png", md5)).getAbsolutePath
 
     val readableName = ActData.instance.chemId2ReadableName.get(id)
 
