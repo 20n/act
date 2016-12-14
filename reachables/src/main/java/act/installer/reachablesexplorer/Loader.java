@@ -253,7 +253,7 @@ public class Loader {
   }
 
   // TODO Move these getters to a different place/divide up concerns better?
-  private String getSmiles(Molecule mol) {
+  public static String getSmiles(Molecule mol) {
     try {
       return MoleculeExporter.exportAsSmiles(mol);
     } catch (MolExportException e) {
@@ -264,7 +264,7 @@ public class Loader {
   /**
    * Get inchi key from molecule
    */
-  private String getInchiKey(Molecule mol) {
+  public static String getInchiKey(Molecule mol) {
     try {
       String inchikey = MoleculeExporter.exportAsInchiKey(mol);
       return inchikey.replaceAll("InChIKey=", "");
@@ -276,7 +276,7 @@ public class Loader {
   /**
    * Heuristic to choose the best page name
    */
-  private String getPageName(Molecule mol, List<String> brendaNames, String inchi) {
+  public static String getPageName(Molecule mol, List<String> brendaNames, String inchi) {
     // If we have some brenda names, get the first one. This is equivalent to Chemical.getFirstName()
     if (!brendaNames.isEmpty()) {
       return brendaNames.get(0);
@@ -380,7 +380,7 @@ public class Loader {
     upsert(reachable);
   }
 
-  private Reachable queryByInchi(String inchi) {
+  protected Reachable queryByInchi(String inchi) {
     DBObject query = new BasicDBObject(Reachable.inchiFieldName, inchi);
     return jacksonReachablesCollection.findOne(query);
   }

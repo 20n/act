@@ -1,5 +1,7 @@
 package act.installer.reachablesexplorer;
 
+import act.installer.reachablesexplorer.l4reachables.L4Loader;
+import act.installer.reachablesexplorer.l4reachables.L4Reachable;
 import act.shared.Chemical;
 import com.act.reachables.Cascade;
 import com.act.reachables.ReactionPath;
@@ -50,6 +52,7 @@ public class FreemarkerRenderer {
   private String reachableTemplateName;
   private String pathwayTemplateName;
   private Loader loader;
+  private L4Loader l4loader;
 
   // Note: there should be one of these per process.  TODO: make this a singleton.
   private Configuration cfg;
@@ -61,20 +64,27 @@ public class FreemarkerRenderer {
   public static void main(String[] args) throws Exception {
     Loader loader =
         new Loader("localhost", 27017, "wiki_reachables", "reachablesv7", "sequencesv7", "/tmp");
+    L4Loader l4loader = new L4Loader();
 
-    FreemarkerRenderer renderer = FreemarkerRendererFactory.build(loader);
+    // FreemarkerRenderer renderer = FreemarkerRendererFactory.build(loader);
     //renderer.writePageToDir(new File("/Volumes/shared-data/Thomas/WikiPagesForUpload"));
-    renderer.writePageToDir(
-        new File("/Volumes/shared-data-1/Thomas/WikiPagesForTestUpload"),
-        new File("/Volumes/shared-data-1/Thomas/WikiPagesForTestUpload"),
-        new File("/Volumes/shared-data-1/Thomas/WikiPagesForTestUpload"));
+
+    FreemarkerRenderer renderer = FreemarkerRendererFactory.build(loader, l4loader);
+    renderer.writeL4PageToDir(new File("/Volumes/shared-data/Thomas/WikiL4PagesForTestUpload"));
   }
 
   private FreemarkerRenderer(Loader loader) {
     this.reachableTemplateName = DEFAULT_REACHABLE_TEMPLATE_FILE;
     this.pathwayTemplateName = DEFAULT_PATHWAY_TEMPLATE_FILE;
     this.loader = loader;
+    this.l4loader = new L4Loader();
+  }
 
+  private FreemarkerRenderer(Loader loader, L4Loader l4loader) {
+    this.reachableTemplateName = DEFAULT_REACHABLE_TEMPLATE_FILE;
+    this.pathwayTemplateName = DEFAULT_PATHWAY_TEMPLATE_FILE;
+    this.loader = loader;
+    this.l4loader = l4loader;
   }
 
   private void init() throws IOException {
@@ -96,6 +106,37 @@ public class FreemarkerRenderer {
 
     sequenceCollection = JacksonDBCollection.wrap(db.getCollection("dna_designs_2"), DNADesign.class, String.class);
   }
+
+
+  public void writeL4PageToDir(File l4ReachableDestination) throws IOException, TemplateException {
+
+    DBCursor<L4Reachable> reachableDBCursor = l4loader.getJacksonL4ReachablesCollection().find();
+
+    int i = 0;
+
+    while(reachableDBCursor.hasNext()) {
+      L4Reachable reachable = reachableDBCursor.next();
+      String inchiKey = reachable.getInchiKey();
+      if (inchiKey != null) {
+        LOGGER.info(inchiKey);
+        File f = new File(l4ReachableDestination, inchiKey);
+        Writer w = new PrintWriter(f);
+        reachableTemplate.process(buildL4ReachableModel(reachable), w);
+        w.close();
+        assert f.exists();
+        i++;
+
+        if (i % 100 == 0) {
+          LOGGER.info(i);
+        }
+      } else {
+        LOGGER.error("page does not have an inchiKey");
+      }
+    }
+  }
+
+
+
 
   public void writePageToDir(File reachableDestination,
                              File pathDestination,
@@ -141,6 +182,64 @@ public class FreemarkerRenderer {
       }
     }
   }
+
+
+  private Object buildL4ReachableModel(L4Reachable r) {
+    /* Freemarker's template language is based on a notion of "hashes," which are effectively just an untyped hierarchy
+     * of maps and arrays culminating in scalar values (think of it like a JSON doc done up in plain Java types).
+     * There are new facilities to run some Java accessors from within freemarker templates, but the language is
+     * sufficiently brittle on its own that complicating things seems like a recipe for much pain.
+     *
+     * This is just how Freemarker works.  Oh well.
+     */
+    Map<String, Object> model = new HashMap<>();
+
+    model.put("pageTitle", r.getPageName());
+    model.put("inchi", r.getInchi());
+    model.put("smiles", r.getSmiles());
+
+    model.put("structureRendering", r.getStructureFilename());
+
+    List<PatentSummary> patentSummaries = r.getPatentSummaries();
+    if (patentSummaries != null && !patentSummaries.isEmpty()) {
+      List<Map<String, String>> patentModel = patentSummaries.stream().
+          map(p -> {
+            return new HashMap<String, String>() {{
+              put("title", p.getTitle());
+              put("link", p.generateUSPTOURL());
+              put("id", p.getId().replaceFirst("-.*$", "")); // Strip date + XML suffix, just leave grant number.
+            }};
+          }).
+          collect(Collectors.toList());
+      model.put("patents", patentModel);
+    }
+
+    if (r.getSynonyms() != null) {
+      if (r.getSynonyms().getPubchemSynonyms() != null) {
+        List<Map<String, Object>> pubchemSynonymModel = r.getSynonyms().getPubchemSynonyms().entrySet().stream()
+            .map(entry -> new HashMap<String, Object>() {{
+              put("synonymType", entry.getKey().toString());
+              put("synonyms", entry.getValue().stream().collect(Collectors.toList()));
+            }})
+            .collect(Collectors.toList());
+        model.put("pubchemSynonyms", pubchemSynonymModel);
+      }
+      if (r.getSynonyms().getMeshHeadings() != null) {
+        List<Map<String, Object>> meshHeadingModel = r.getSynonyms().getMeshHeadings().entrySet().stream()
+            .map(entry -> new HashMap<String, Object>() {{
+              put("synonymType", entry.getKey().toString());
+              put("synonyms", entry.getValue().stream().collect(Collectors.toList()));
+            }})
+            .collect(Collectors.toList());
+
+        model.put("meshHeadings", meshHeadingModel);
+      }
+    }
+
+    return model;
+  }
+
+
 
   private Object buildReachableModel(Reachable r,
                                      JacksonDBCollection<SequenceData, String> sequenceCollection,
@@ -454,6 +553,12 @@ public class FreemarkerRenderer {
   public static class FreemarkerRendererFactory {
     public static FreemarkerRenderer build(Loader loader) throws IOException {
       FreemarkerRenderer renderer = new FreemarkerRenderer(loader);
+      renderer.init();
+      return renderer;
+    }
+
+    public static FreemarkerRenderer build(Loader loader, L4Loader l4Loader) throws IOException {
+      FreemarkerRenderer renderer = new FreemarkerRenderer(loader, l4Loader);
       renderer.init();
       return renderer;
     }

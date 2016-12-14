@@ -8,7 +8,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
-class PrecursorData implements Serializable {
+public class PrecursorData implements Serializable {
     @JsonProperty("precursors")
     private Set<Precursor> precursors;
 
