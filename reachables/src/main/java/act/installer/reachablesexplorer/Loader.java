@@ -11,6 +11,7 @@ import act.shared.helpers.MongoDBToJSON;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.marvin.io.MolExportException;
+import chemaxon.marvin.plugin.PluginException;
 import chemaxon.struc.Molecule;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
@@ -366,20 +367,22 @@ public class Loader {
 
     try {
       analysisFeatures = SurfactantAnalysis.performAnalysis(inchi, false);
-    } catch (Exception e) {
-      LOGGER.error("Threw exception when getting physiochemical properties: ", e.getMessage());
+    } catch (PluginException e) {
+      LOGGER.error(String.format("Threw IO exception when getting physiochemical properties: %s", e.getMessage()));
+    } catch (IOException ex) {
+      LOGGER.error(String.format("Threw plugin exception when getting physiochemical properties: %s", ex.getMessage()));
     }
 
     PhysiochemicalProperties physiochemicalProperties = null;
 
     if (analysisFeatures != null) {
-      Double pka = analysisFeatures.get(SurfactantAnalysis.FEATURES.PKA_ACID_1) == null ?
+      Double pka = analysisFeatures.get(SurfactantAnalysis.FEATURES.PKA_ACID_1) != null ?
           analysisFeatures.get(SurfactantAnalysis.FEATURES.PKA_ACID_1) : null;
 
-      Double log = analysisFeatures.get(SurfactantAnalysis.FEATURES.LOGP_TRUE) == null ?
+      Double log = analysisFeatures.get(SurfactantAnalysis.FEATURES.LOGP_TRUE) != null ?
           analysisFeatures.get(SurfactantAnalysis.FEATURES.LOGP_TRUE) : null;
 
-      Double hlb = analysisFeatures.get(SurfactantAnalysis.FEATURES.HLB_VAL) == null ?
+      Double hlb = analysisFeatures.get(SurfactantAnalysis.FEATURES.HLB_VAL) != null ?
           analysisFeatures.get(SurfactantAnalysis.FEATURES.HLB_VAL) : null;
 
       physiochemicalProperties = new PhysiochemicalProperties(pka, log, hlb);
