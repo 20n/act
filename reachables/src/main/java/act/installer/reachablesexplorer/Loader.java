@@ -80,8 +80,8 @@ public class Loader {
 
   // Target database and collection. We populate these with reachables
   private static final String DEFAULT_TARGET_DATABASE = "wiki_reachables";
-  private static final String DEFAULT_TARGET_COLLECTION = "reachablesv6_test_vijay";
-  private static final String DEFAULT_SEQUENCE_COLLECTION = "sequencesv6_test_vijay";
+  private static final String DEFAULT_TARGET_COLLECTION = "reachablesv7_test_vijay";
+  private static final String DEFAULT_SEQUENCE_COLLECTION = "sequencesv7_test_vijay";
 
   private static final int ORGANISM_CACHE_SIZE = 1000;
   private static final String ORGANISM_UNKNOWN = "(unknown)";
