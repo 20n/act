@@ -23,8 +23,7 @@ import scala.concurrent.{Await, Future}
 import scala.sys.process._
 
 object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
-//  private val defaultReferenceProteomes = new File("/mnt/data-level1/reference_proteomes")
-  private val defaultReferenceProteomes = new File("/Users/michaellampe/20nProjects/OddSequences/ReferenceProteomes/UnpackedReferences/HoldingFolder")
+  private val defaultReferenceProteomes = new File("/mnt/data-level1/reference_proteomes")
 
   val HELP_MESSAGE = "Uses a set of reference proteomes to assign full sequences to database entries that are 'odd' (incomplete)."
   val HELP_FORMATTER: HelpFormatter = new HelpFormatter
