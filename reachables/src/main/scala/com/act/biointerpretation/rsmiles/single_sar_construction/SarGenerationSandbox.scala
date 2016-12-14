@@ -1,16 +1,16 @@
 package com.act.biointerpretation.rsmiles.single_sar_construction
 
-import chemaxon.calculations.hydrogenize.Hydrogenize
-import chemaxon.formats.MolFormatException
 import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
-import com.act.biointerpretation.Utils.ReactionProjector
-import com.act.biointerpretation.desalting.Desalter
 import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, AbstractChemicalInfo, ReactionInformation}
 import com.act.biointerpretation.rsmiles.chemicals.abstract_chemicals.AbstractChemicals
 import com.act.biointerpretation.rsmiles.single_sar_construction.SingleSarReactionsPipeline.SubstrateProduct
 
-object FullPipelineSandbox {
+/**
+  * This class was used to test the behavior of the SAR generation. It no longer serves any good purpose, but I'll leave it
+  * in for completeness.
+  */
+object SarGenerationSandbox {
 
   def main(args: Array[String]): Unit = {
     // substrate chemical from DB
@@ -30,7 +30,7 @@ object FullPipelineSandbox {
 
     val reactionInfo = SubstrateProduct(abstractSubstrate, abstractProduct)
 
-    val reactionToSar: ReactionInfoToProjector = new ReactionInfoToProjector()
+    val reactionToSar: AbstractReactionSarSearcher = new AbstractReactionSarSearcher()
 
     val sar = reactionToSar.searchForReactor(reactionInfo)
 

@@ -17,7 +17,7 @@ import scala.collection.mutable
 import scala.collection.parallel.immutable.{ParMap, ParSeq}
 
 /**
-  * Created by gil on 12/8/16.
+  * Finds abstract chemicals in the DB and processes their R-smiles for later use in SAR generation
   */
 class SingleSarChemicals(mongoDb: MongoDB) {
   val logger = LogManager.getLogger(getClass)
@@ -27,7 +27,7 @@ class SingleSarChemicals(mongoDb: MongoDB) {
   private val CARBON_REPLACEMENT = "\\[C\\]"
 
   val cleanSmartsFormat = new MoleculeFormat.MoleculeFormatType(MoleculeFormat.smarts,
-    List(Cleaning.neutralize, Cleaning.clean2d, Cleaning.aromatize))
+    List(Cleaning.clean2d, Cleaning.aromatize))
 
   val desalter: Desalter = new Desalter(new ReactionProjector())
   desalter.initReactors()
@@ -37,13 +37,15 @@ class SingleSarChemicals(mongoDb: MongoDB) {
   val smilesCache : mutable.Map[String, Option[AbstractChemicalInfo]] =
     new mutable.HashMap[String, Option[AbstractChemicalInfo]]()
 
-  // Returns map from DB ID -> DB Smiles
-  // And from DB smiles -> asSubstrate, asProduct
+  /**
+    * Returns a list of the AbstractChemicalInfo corresponding to each abstract chemical
+    * Abstract chemicals are detected by containing the regex REGEX_TO_SEARCH, and being importable by chemaxon.
+    * The importability ensures that "smiles" with strings like "a nucleobase" in them are not processed further.
+    */
   def getAbstractChemicals() : List[AbstractChemicalInfo] = {
     logger.info("Finding abstract chemicals.")
     /*
       Mongo DB Query
-
       Query: All elements that contain "[R]" or "[R#]", for some number #, in their SMILES
       TODO: try incorporating elements containing R in their inchi, which don't have a smiles, by replacing R with Cl.
      */
@@ -53,9 +55,7 @@ class SingleSarChemicals(mongoDb: MongoDB) {
 
     /*
        Convert from DB Object => Smarts and return that.
-       Flatmap as Parse Db object returns None if an error occurs (Just filter out the junk)
     */
-
     var counter = 0
     val abtractChemicalList: List[AbstractChemicalInfo] = result.flatMap(dbObj => {
       counter = counter + 1
@@ -70,6 +70,10 @@ class SingleSarChemicals(mongoDb: MongoDB) {
     abtractChemicalList
   }
 
+  /**
+    * Gets abstract chemical info by pulling the appropriate fields from the db object and calling
+    * calculateConcreteSubstrateAndProduct
+    */
   def getAbstractChemicalInfo(dbChemical : DBObject) : Option[AbstractChemicalInfo] = {
 
     val chemicalId = dbChemical.get("_id").asInstanceOf[Long].toInt
@@ -87,12 +91,19 @@ class SingleSarChemicals(mongoDb: MongoDB) {
     * Calculates the concrete smiles that should be used for the given chemical in order to atom map an abstract
     * reaction. Since this is different for a substrate and a product, we calculate both versions here for later use
     * in either side of a reaction.
+    * The pipeline we use is as follows:
+    * SUBSTRATE pipeline: import smiles, make hydrogens explicit, export to string, replace R groups with C's, import to molecule, desalt the molecule, export to smarts
+    * PRODUCT pipeline: replace R groups with C's, import molecule, desalt the molecule, export to smarts
+    * The difference is that, for substrates, we need to make all H's explicit except those touching where the abstract group was
+    *   This ensures that the variation in concrete molecules that will match the generated substructure can only occur at the site of abstraction
+    * For products, this is not a concern, and explicit hydrogens can actually hinder our ability to match products of a projection to DB products. So, we leave hydrogens implicit.
     * @param chemicalId The ID of the chemical.
     * @param chemicalSmiles The smiles of the chemical from the DB.
     * @return An object grouping the chemical Id to the modified smiles to be used if this chemical is a substrate
     *         or product of an abstract reaction.
     */
   def calculateConcreteSubstrateAndProduct(chemicalId : Int, chemicalSmiles : String): Option[AbstractChemicalInfo] = {
+    // Use cache to avoid repeat calculations
     val cachedResult = smilesCache.get(chemicalSmiles)
     if (cachedResult.isDefined) {
       val cached = cachedResult.get
@@ -104,28 +115,35 @@ class SingleSarChemicals(mongoDb: MongoDB) {
     }
 
     try {
+      // Make substrate hydrogens explicit
       val substrateMolecule = MoleculeImporter.importMolecule(chemicalSmiles, cleanSmartsFormat) // first import uses cleaned smarts
       Hydrogenize.convertImplicitHToExplicit(substrateMolecule)
       val hydrogenizedSubstrate = MoleculeExporter.exportAsSmarts(substrateMolecule)
 
+      println(hydrogenizedSubstrate)
+
+      // Replace Rs with Cs
       val replacedSubstrate = replaceRWithC(hydrogenizedSubstrate)
       val replacedProduct = replaceRWithC(chemicalSmiles)
 
+      println(replacedSubstrate)
       val replacedSubstrateMolecule = MoleculeImporter.importMolecule(replacedSubstrate, MoleculeFormat.smarts)
       val replacedProductMolecule = MoleculeImporter.importMolecule(replacedProduct, cleanSmartsFormat) // first import uses cleaned smarts
 
+      // Desalt substrate and product
       val desaltedSubstrateList = desalter.desaltMoleculeForAbstractReaction(replacedSubstrateMolecule.clone()) // clone to avoid destroying molecule
       val desaltedProductList = desalter.desaltMoleculeForAbstractReaction(replacedProductMolecule.clone()) // clone to avoid destroying molecule
 
       if (desaltedSubstrateList.size() != 1 || desaltedProductList.size() != 1) {
-        // TODO: handle multiple fragments
-        println(s"Found multiple fragments in chemical $chemicalSmiles. Don't handle this case yet. Exiting!")
+        // I haven't seen this case so far
+        println(s"Found multiple fragments after desalting chemical $chemicalSmiles. Don't handle this case yet. Exiting!")
         return None
       }
 
-      // For now we only deal with situations with exactly one product and substrate fragment
       val desaltedSubstrate = MoleculeExporter.exportAsSmarts(desaltedSubstrateList.get(0))
       val desaltedProduct = MoleculeExporter.exportAsSmarts(desaltedProductList.get(0))
+
+      println(desaltedSubstrate)
 
       val result = new AbstractChemicalInfo(chemicalId, chemicalSmiles, desaltedSubstrate, desaltedProduct)
       smilesCache.put(chemicalSmiles, Some(result))

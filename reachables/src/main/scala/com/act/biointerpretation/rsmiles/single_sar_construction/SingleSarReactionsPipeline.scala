@@ -4,7 +4,6 @@ import java.io.File
 import java.util
 
 import act.server.MongoDB
-import chemaxon.reaction.Reactor
 import com.act.analysis.chemicals.molecules.MoleculeExporter
 import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{AbstractChemicalInfo, ChemicalInformation, ReactionInformation}
 import com.act.biointerpretation.sars.SerializableReactor
@@ -16,31 +15,41 @@ import org.apache.log4j.LogManager
 import scala.collection.mutable
 import scala.collection.parallel.immutable.{ParMap, ParSeq}
 
+/**
+  * Full pipeline for finding abstract reactions from a DB, finding ROs to match them, and generating SARs for each one
+  * when possible.
+  * Picks out only one substrate -> one product reactions
+  */
 object SingleSarReactionsPipeline {
   val logger = LogManager.getLogger(getClass)
 
+  // TODO: These should definitely be changed into command line args
   val mongoDb: String = "validator_profiling_2"
+  val outputFile = new File("/mnt/shared-data/Gil/abstract_reactions/sars.tsv")
+
   val host: String = "localhost"
   val port: Int = 27017
 
+  // Mongo expression to test for one substrate-one product
   val ONE_SUBSTRATE = "this.enz_summary.substrates.length==1"
   val ONE_PRODUCT = "this.enz_summary.products.length==1"
 
   def main(args: Array[String]): Unit = {
     val db = Mongo.connectToMongoDatabase(mongoDb, host, port)
-    val chemicalSearcher: SingleSarChemicals = new SingleSarChemicals(db)
 
+    val chemicalSearcher: SingleSarChemicals = new SingleSarChemicals(db)
     val chemicalList: List[AbstractChemicalInfo] = chemicalSearcher.getAbstractChemicals()
 
+    // Maps chemical Ids to their smiles as found in the DB
     val chemIdToSmiles : Map[Int, String] = chemicalList.map(info => info.chemicalId -> info.dbSmiles).toMap
-    logger.info(s"Size of chemical id keyset: ${chemIdToSmiles.keySet.size}")
 
-    val (substrateProducts, reactionInfos) = getAbstractReactions(db, chemIdToSmiles)
+    val (substrateProducts, reactionInfos) : (mutable.Set[SubstrateProduct], List[ReactionInformation]) = getAbstractReactions(db, chemIdToSmiles)
 
     logger.info("Got abstract reaction infos from DB. Trying to generate SARs.")
 
-    val reactionToSar: ReactionInfoToProjector = new ReactionInfoToProjector()
+    val sarSearcher: AbstractReactionSarSearcher = new AbstractReactionSarSearcher()
 
+    // Maps to go from raw DB smiles to the appropriately processed smiles, i.e. with R -> C, and explicit hydrogens
     val dbSmilesToSubstrate = chemicalList.map(info => info.dbSmiles -> info.asSubstrate).toMap[String, String]
     val dbSmilesToProduct = chemicalList.map(info => info.dbSmiles -> info.asProduct).toMap[String, String]
     def getProcessedSubProd(rawSubProd: SubstrateProduct): SubstrateProduct = {
@@ -48,13 +57,27 @@ object SingleSarReactionsPipeline {
     }
 
     val subProdToSar = substrateProducts.map(subProd => subProd ->
-      reactionToSar.searchForReactor(getProcessedSubProd(subProd))).toMap[SubstrateProduct, Option[SerializableReactor]]
+      sarSearcher.searchForReactor(getProcessedSubProd(subProd))).toMap[SubstrateProduct, Option[SerializableReactor]]
 
     logger.info("Got SARs. Grouping reaction IDs by SAR and printing output.")
 
-    val subProdToIds = reactionInfos.map(info => reactionInfoToSubstrateProduct(info) -> info.reactionId)
+    // Map (sub, prod) pair to associated raection Ids
+    // This collapses any two reactions which have the same R-smiles for both the product and substrate.
+    // This does not collapse reactions whose desalted forms are the same, if their original R-smiles are different
+    // It also does not collapse reactions whose substrates are equivalent in structure, but have different R-smiles representations in the DB
+    // TODO: improve this deduplication procedure
+    val subProdToIds : Map[SubstrateProduct, List[Int]] = reactionInfos.map(info => reactionInfoToSubstrateProduct(info) -> info.reactionId)
       .groupBy(_._1).mapValues(seq => seq.map(_._2))
 
+    /**
+      * Write output to file, one line per substrate->product pair, including columns for:
+      * - The raw substrate/product R-smiles
+      * - The processed smiles
+      * - The reaction Ids
+      * If an RO matched:
+      * - The RO
+      * - The generated SAR
+      */
     val headers: java.util.ArrayList[String] = new util.ArrayList[String]()
     val subProdHeader = "RAW_SUBSTRATE_PRODUCT"
     val processedHeader = "PROCESSED_SUBSTRATE_PRODUCT"
@@ -69,7 +92,7 @@ object SingleSarReactionsPipeline {
     headers.add(reactionIdHeader)
 
     val writer: TSVWriter[String, String] = new TSVWriter[String, String](headers)
-    writer.open(new File("/mnt/shared-data/Gil/abstract_reactions/sars.tsv"))
+    writer.open(outputFile)
     substrateProducts.foreach(subProd => {
       val row: util.Map[String, String] = new util.HashMap[String, String]()
       row.put(subProdHeader, subProd.substrate + ">>" + subProd.product)
@@ -84,6 +107,10 @@ object SingleSarReactionsPipeline {
     writer.close()
   }
 
+  /**
+    * This data structure exists so we can easily deduplicate all equivalent sub/product pairs
+    * Just stores two strings.
+    */
   case class SubstrateProduct(substrate: String, product: String) {
     def getSubstrate: String = substrate
 
@@ -95,11 +122,12 @@ object SingleSarReactionsPipeline {
   }
 
   /**
-    * Grabs all the abstract reactions for a given substrate count from a given DB.
-    * Then converts them into ReactionInformations
+    * Grabs all the abstract reactions with one substrate and one product from the DB.
+    * Returns a set of all distinct sub->product transformations found, and a list of the info associated with each
+    * abstract reaction entry in the DB.
     *
     * @param mongoDb           Database instance to use
-    * @param chemIdToSmiles A list of abstract chemicals previously constructed
+    * @param chemIdToSmiles A map from chemical ID to smiles, for only the abstract chemicals.
     * @return A list containing reactions that
     *         have been constructed into the reaction information format.
     *         Also a set of SubstrateToProduct objects containing the DB smiles for their substrates and products
@@ -110,21 +138,17 @@ object SingleSarReactionsPipeline {
     logger.info("Finding reactions that contain one substrate and one product by DB query.")
 
     /*
-      Query Reaction DB for reactions w/ these chemicals
+      We want to match if they are one substrate & one product. We'll do the abstraction check in code.
      */
-    // Matches a reaction if either the Products or Substrates array contains an abstract element.
-    val abstractChemicalQuery = new BasicDBList
-    abstractChemicalQuery.add(
+    val oneSubOneProdQuery = new BasicDBList
+    oneSubOneProdQuery.add(
       new BasicDBObject(s"${MongoKeywords.WHERE}", ONE_SUBSTRATE)
     )
 
-    abstractChemicalQuery.add(
+    oneSubOneProdQuery.add(
       new BasicDBObject(s"${MongoKeywords.WHERE}", ONE_PRODUCT)
     )
-    /*
-      We want to match if they are one substrate, one product, and both are abstract.
-     */
-    val query = Mongo.defineMongoAnd(abstractChemicalQuery)
+    val query = Mongo.defineMongoAnd(oneSubOneProdQuery)
 
     // Filter so we get both the substrates and products
     val filter = new BasicDBObject(s"${ReactionKeywords.ENZ_SUMMARY}.${ReactionKeywords.PRODUCTS}", 1)
@@ -135,18 +159,20 @@ object SingleSarReactionsPipeline {
     val abstractReactions =
     Mongo.mongoQueryReactions(mongoDb)(query, filter, notimeout = true)
 
-    //TODO: Work out the following to properly return a reactionInformation if and only if its one sub one prod and both
-    // abstract.
 
     logger.info("Iterating over reactions to product ReactionInfo objects, for those which have an abstract " +
       "substrate and product.")
 
-    val reactionInfos = abstractReactions.flatMap(obj => reactionConstructor(obj, chemIdToSmiles)).toList
+    // Flatmap turns the list of optionals into a list of the present ReactionInformation objects
+    val reactionInfos : List[ReactionInformation] = abstractReactions.flatMap(obj => reactionConstructor(obj, chemIdToSmiles)).toList
 
-    println(s"Size of reaction infos: ${reactionInfos.size}")
+    println(s"Number of reaction infos: ${reactionInfos.size}")
 
     val substrateProductSet: mutable.Set[SubstrateProduct] = new mutable.HashSet[SubstrateProduct]()
 
+    // Iterate over the reaction infos to get the set of distinct substrate->product maps
+    // This really shouldn't be a part of this method, it should be done in the caller
+    // TODO: move this out, return only the reactionInfos, write separate method to generate subProdSet
     var counter = 0
     for (reaction <- reactionInfos) {
       if (counter % 1000 == 0) {
@@ -162,7 +188,10 @@ object SingleSarReactionsPipeline {
     (substrateProductSet, reactionInfos)
   }
 
-
+  /**
+    * Takes a reaction object from the DB, and the chemIdToSmiles map generated by SingleSarChemicals.
+    * @return ReactionInformation if the substrate and product are both abstract, None if not
+    */
   def reactionConstructor(dbObj : DBObject, chemIdToSmiles: Map[Int, String]) : Option[ReactionInformation] = {
     val substrates = getDbSubstrates(dbObj)
     val products = getDbProducts(dbObj)
@@ -182,6 +211,9 @@ object SingleSarReactionsPipeline {
     }
   }
 
+  /**
+    * Helper methods for parsing DB object
+    */
   def getDbId(reaction: DBObject): Int = {
     reaction.get(s"${ReactionKeywords.ID}").asInstanceOf[Int]
   }

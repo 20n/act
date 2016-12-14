@@ -9,12 +9,15 @@ import com.act.biointerpretation.rsmiles.single_sar_construction.SingleSarReacti
 import com.act.biointerpretation.sars.SerializableReactor
 import org.scalatest.{FlatSpec, Matchers}
 
-class ReactionInfoToProjectorTest extends FlatSpec with Matchers{
+/**
+  * Tests for matching an RO to a substrate->product pair.
+  */
+class AbstractReactionSarSearcherTest extends FlatSpec with Matchers{
     val DUMMY_REACTION_ID = 1
     val DUMMY_SUBSTRATE_ID = 2
     val DUMMY_PRODUCT_ID = 3
 
-    val infoToProjector = new  ReactionInfoToProjector
+    val infoToProjector = new  AbstractReactionSarSearcher
 
     "ReactionInfoToProjector" should "match RO" in {
       // Build chemicals
