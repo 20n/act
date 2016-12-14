@@ -4,9 +4,12 @@ import java.io.File
 import java.lang.Long
 import java.util
 
+import act.shared.{Seq => DbSeq}
+import com.act.analysis.proteome.scripts.OddSequencesToProteinPredictionFlow
 import com.act.reachables.Cascade.NodeInformation
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywords, SequenceKeywords}
 import com.fasterxml.jackson.annotation._
-import com.mongodb.{DB, MongoClient, ServerAddress}
+import com.mongodb.{BasicDBList, BasicDBObject, DB, MongoClient, ServerAddress}
 import org.apache.commons.codec.digest.DigestUtils
 import org.mongojack.JacksonDBCollection
 
@@ -471,6 +474,7 @@ class Cascade(target: Long) {
   val t = target
   val nw = Cascade.get_cascade(t).get
 
+  private val workingDir = new java.io.File(".").getCanonicalFile
   nw.nodeMapping.values().filter(getOrDefault[String](_, "isrxn").toBoolean).foreach(node => {
     val reactionIds: Set[Long] = getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => x.toLong - Cascade.rxnIdShift: Long).toSet
     val isSpontaneous: Boolean = reactionIds.exists(r => {
@@ -483,6 +487,29 @@ class Cascade(target: Long) {
       val thisSequenceResult = ReachRxnDescs.rxnSequence(r)
       thisSequenceResult
     }).flatten.map(_.asInstanceOf[Long])
+
+    // Here we choose to add inferred sequences for all entries matching
+    val sequenceSearch: (DbSeq) => Unit =
+      OddSequencesToProteinPredictionFlow.defineSequenceSearch(workingDir)(None)(cascades.DEFAULT_DB._3)
+
+    val abstractOrQuestionableSequencesQuery = OddSequencesToProteinPredictionFlow.oddQuery()
+    val theseReactions = new BasicDBList
+    matchingSequences.foreach(theseReactions.add)
+
+    // Only do the odd query for sequences matching this reaction.
+    val withinTheseReactions = new BasicDBObject(MongoKeywords.IN.toString, theseReactions)
+    abstractOrQuestionableSequencesQuery.put(SequenceKeywords.ID.toString, withinTheseReactions)
+
+    val mongoConnection = OddSequencesToProteinPredictionFlow.connectToMongoDatabase(cascades.DEFAULT_DB._3)
+    val oddSeqs = mongoConnection.getSeqIterator(abstractOrQuestionableSequencesQuery).asScala
+    var count = 0
+//    oddSeqs.foreach(sequenceSearch)
+    oddSeqs.foreach(x => {
+      count += 1
+      println(s"Seq is ${x.getUUID}")
+      sequenceSearch(x)
+    })
+    if (count > 0) println(count)
 
     Node.setAttribute(node.id, "hasSequence", matchingSequences.nonEmpty)
     Node.setAttribute(node.id, "sequences", new util.HashSet(matchingSequences))
@@ -594,7 +621,7 @@ class Cascade(target: Long) {
 
 
     try {
-      sortedPaths.foreach(Cascade.pathwayCollection.insert)
+//      sortedPaths.foreach(Cascade.pathwayCollection.insert)
     } catch {
       case e: Exception => None
     }

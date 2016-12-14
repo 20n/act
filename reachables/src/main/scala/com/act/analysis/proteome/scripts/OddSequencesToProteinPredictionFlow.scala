@@ -23,6 +23,8 @@ import scala.concurrent.{Await, Future}
 import scala.sys.process._
 
 object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
+//  private val defaultReferenceProteomes = new File("/mnt/data-level1/reference_proteomes")
+  private val defaultReferenceProteomes = new File("/Users/michaellampe/20nProjects/OddSequences/ReferenceProteomes/UnpackedReferences/HoldingFolder")
 
   val HELP_MESSAGE = "Uses a set of reference proteomes to assign full sequences to database entries that are 'odd' (incomplete)."
   val HELP_FORMATTER: HelpFormatter = new HelpFormatter
@@ -39,6 +41,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
   private val takeTopNumberOfResults = 5
   private var idToOrganism: Map[Long, String] = Map()
   private var orgsToProteomes: Map[String, List[File]] = Map()
+  private var hasInit = false
 
 
   def main(args: Array[String]): Unit = {
@@ -109,20 +112,41 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     /* - - - - Parse CLI Options - - - - */
     val workingDir = new File(cl.getOptionValue(OPTION_WORKING_DIRECTORY, null))
     val proteomeLocation = new File(cl.getOptionValue(OPTION_COMPARE_PROTEOME_LOCATION))
-    if (!proteomeLocation.exists()) throw new FileNotFoundException(s"Proteome location of ${proteomeLocation.getAbsolutePath} does not exist.")
     val database = cl.getOptionValue(OPTION_DATABASE)
 
     /* - - - - Setup Directory structure - - - - */
     // Note: These are all temporary given we are writing everything to a DB in the end.
     val fastaDirectory = setupDirectory(workingDir, "fastaFiles")
 
-    /* - - - - Discover relevant sequence entries, put their organisms into a lookup table - - - - */
-    val organismProteomes = proteomeLocation.listFiles().toList
-    orgsToProteomes = classifyOrganismByProteome(organismProteomes)
-
     // Get relevant sequences
     val mongoConnection = connectToMongoDatabase(database)
 
+    val seqQuery = oddQuery()
+
+    val matchingSequences: Iterator[DbSeq] = mongoConnection.getSeqIterator(seqQuery).asScala
+
+    /* - - - - Counters used to track our progress as we go - - - - */
+    logger.info("Starting assignment of inferred sequences to odd database entries.")
+    val sequenceSearch: (DbSeq) => Unit = defineSequenceSearch(fastaDirectory)(Some(proteomeLocation))(database)
+
+    // .par evaluates the iterator which takes a while (It is a mongoDB cursor movement).
+    // We can get everything going right away AND in parallel by just making it into a future.
+    val futureList = Future.traverse(matchingSequences)(x => Future(sequenceSearch(x)))
+
+    Await.ready(futureList, Duration.Inf)
+
+    // Cleanup our file structure
+    FileUtils.deleteDirectory(fastaDirectory)
+  }
+
+  def init(proteomeLocation: File) = {
+    if (!proteomeLocation.exists()) throw new FileNotFoundException(s"Proteome location of ${proteomeLocation.getAbsolutePath} does not exist.")
+    /* - - - - Discover relevant sequence entries, put their organisms into a lookup table - - - - */
+    val organismProteomes = proteomeLocation.listFiles().toList
+    orgsToProteomes = classifyOrganismByProteome(organismProteomes)
+  }
+
+  def oddQuery(): BasicDBObject = {
     val oddCriteria = "this.seq.length < 80 || this.seq[0] != 'M'"
     val whereQuery = createDbObject(MongoKeywords.WHERE, oddCriteria)
     whereQuery.put(SequenceKeywords.SEQ.toString, createDbObject(MongoKeywords.NOT_EQUAL, null))
@@ -140,21 +164,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
 
     val seqQuery = new BasicDBObject(MongoKeywords.OR.toString, conditionals)
     seqQuery.put(SequenceKeywords.SEQ.toString, createDbObject(MongoKeywords.NOT_EQUAL, null))
-
-    val matchingSequences: Iterator[DbSeq] = mongoConnection.getSeqIterator(seqQuery).asScala
-
-    /* - - - - Counters used to track our progress as we go - - - - */
-    logger.info("Starting assignment of inferred sequences to odd database entries.")
-    val sequenceSearch: (DbSeq) => Unit = defineSequenceSearch(fastaDirectory)(proteomeLocation)(database)
-
-    // .par evaluates the iterator which takes a while (It is a mongoDB cursor movement).
-    // We can get everything going right away AND in parallel by just making it into a future.
-    val futureList = Future.traverse(matchingSequences)(x => Future(sequenceSearch(x)))
-
-    Await.ready(futureList, Duration.Inf)
-
-    // Cleanup our file structure
-    FileUtils.deleteDirectory(fastaDirectory)
+    seqQuery
   }
 
   private def setupDirectory(parent: File, dirName: String): File = {
@@ -171,7 +181,9 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
       >                                                         String of interest
      */
     val fileMap = files.map(f => {
-      val firstLine = scala.io.Source.fromFile(f).getLines().next()
+      val inputProteome = scala.io.Source.fromFile(f)
+      val firstLine = inputProteome.getLines().next()
+      inputProteome.close()
 
       // Take everything after the "OS", that's the organism
       if (!firstLine.contains("OS=")) {
@@ -217,9 +229,18 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
   }
 
   def defineSequenceSearch(fastaDirectory: File)
-                          (proteomeLocation: File)
+                          (currentProteomeLocation: Option[File])
                           (database: String)
                           (sequence: DbSeq): Unit = {
+    val proteomeLocation = if (currentProteomeLocation.isDefined) {
+      currentProteomeLocation.get
+    } else {
+      defaultReferenceProteomes
+    }
+
+    if (!hasInit){
+      init(proteomeLocation)
+    }
     /* - - - - Setup temp files that will hold the data prior to database upload - - - - */
     val prefix = sequence.getUUID.toString
     val outputFastaPath = new File(fastaDirectory, s"$prefix.output.fasta")
