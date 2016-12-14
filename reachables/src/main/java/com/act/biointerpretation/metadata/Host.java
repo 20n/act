@@ -24,6 +24,7 @@ public enum Host {
     //Prokaryotes
     Ecoli,
     Bsubtilis,
+    Cglutamicum,
 
     //Yeasts
     Scerevisiae,
@@ -32,9 +33,5 @@ public enum Host {
 
     //Animals
     Hsapiens,
-    Baculovirus,
-
-    //Plants
-    Tnicotiana,
-    Athaliana
+    Sfrugiperda, //Baculovirus
 }

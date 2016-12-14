@@ -26,6 +26,7 @@ public class ProteinMetadataFactory {
     //Data used in algorithms
     private Set<String> modificationTermsTrue;
     private Set<String> modificationTermsFalse;
+    private Map<String, Map<Host, Integer>> clonedtermToScore;
 
     private ProteinMetadataFactory() {}
 
@@ -50,21 +51,42 @@ public class ProteinMetadataFactory {
             }
         }
 
-        //Import cloned host terms
-        termfile = new File("/Users/jca20n/Dropbox (20n)/20n Team Folder/act_data/ProteinMetadata/2016_12_07-cloned_host_terms.txt");
+        //Import term to genus map for 'cloned'
+        Map<String,String> termToGenus = new HashMap<>();
+        termfile = new File("/Users/jca20n/Dropbox (20n)/20n Team Folder/act_data/ProteinMetadata/2016_12_07-cloned_term_to_genus.txt");
         data = FileUtils.readFileToString(termfile);
         lines = data.split("\\r|\\r?\\n");
         for(int i=1; i<lines.length; i++) {
             String line = lines[i];
             String[] tabs = line.split("\t");
-
-            //
+            if(tabs[1].isEmpty() || tabs[0].isEmpty()) {
+                continue;
+            }
+            termToGenus.put(tabs[0],tabs[1]);
         }
+
+        //Pre-Compute distance to hosts for all terms
+        Map<String, Genus> nameToGenus = Genus.parseGenuses();
+        Map<String, Map<Host, Integer>> termToScore = new HashMap<>();
+        for(String term : termToGenus.keySet()) {
+            String tgenus = termToGenus.get(term);
+            Genus ggenus = nameToGenus.get(tgenus);
+
+            Map<Host, Integer> hostToScore = new HashMap<>();
+            for(Host host : Host.values()) {
+                Genus hostgenus = nameToGenus.get(host.toString());
+                Integer score = Genus.similarity(ggenus, hostgenus);
+                hostToScore.put(host, score);
+            }
+            termToScore.put(term, hostToScore);
+        }
+
 
         //Create the factory and put in data
         ProteinMetadataFactory factory = new ProteinMetadataFactory();
         factory.modificationTermsTrue = modTrue;
         factory.modificationTermsFalse = modFalse;
+        factory.clonedtermToScore = termToScore;
 
         return factory;
     }
@@ -77,7 +99,7 @@ public class ProteinMetadataFactory {
         Double specificActivity = handleSpecificActivity(json);
         Boolean heteroSubunits = handlesubunits(json);
         Boolean modifications = handleModifications(json);
-        Map<Host, Boolean> cloning = handleCloned(json);
+        Map<Host, Integer> cloning = handleCloned(json);
 
 //        Localization localization = handleLocation(json);
 
@@ -86,6 +108,7 @@ public class ProteinMetadataFactory {
         out.specificActivity = specificActivity;
         out.heteroSubunits = heteroSubunits;
         out.modifications = modifications;
+        out.cloned = cloning;
         return out;
     }
 
@@ -383,11 +406,45 @@ public class ProteinMetadataFactory {
     }
 
 
-    private Map<Host, Boolean> handleCloned(JSONObject json) {
+    private Map<Host, Integer> handleCloned(JSONObject json) {
 
-        Map<Host, Boolean> out = new HashMap<>();
+        Map<Host, Integer> out = new HashMap<>();
+        try {
+            JSONArray jarray = json.getJSONArray("cloned");
 
-        printoutHosts(json);
+            for(int i=0; i<jarray.length(); i++) {
+                JSONObject obj = jarray.getJSONObject(i);
+                String comment = obj.getString("comment");
+
+                int index = comment.indexOf("in ");
+                if(index < 0) {
+                    continue;
+                }
+
+                String[] words = comment.toLowerCase().split("[\\s,;]+");
+                for(String word : words) {
+                    Map<Host,Integer> hosttoint = this.clonedtermToScore.get(word);
+                    if(hosttoint == null) {
+                        continue;
+                    }
+                    for(Host host : hosttoint.keySet()) {
+                        Integer currval = out.get(host);
+                        if(currval == null) {
+                            currval = -99999;
+                        }
+                        Integer newval = hosttoint.get(host);
+                        if(newval > currval) {
+                            out.put(host, newval);
+                        }
+                    }
+                }
+
+            }
+        } catch (Exception err) {
+        }
+
+        //This is a vestigial line for when I was pulling out host names
+//        printoutHosts(json);
 
         return out;
     }
@@ -494,7 +551,7 @@ public class ProteinMetadataFactory {
         }
         FileUtils.writeStringToFile(outfile, sb.toString());
 
-        //Playground
+        //Count up the results of modifications to get statistics
         int falsecount = 0;
         int truecount = 0;
         int nullcount = 0;
@@ -513,10 +570,49 @@ public class ProteinMetadataFactory {
             }
         }
         System.out.println("Total # protein metadata: " + agg.size());
-        System.out.println("true count: " + truecount);
-        System.out.println("false count: " + falsecount);
-        System.out.println("null count: " + nullcount);
+        System.out.println();
+        System.out.println("modification true count: " + truecount);
+        System.out.println("modification false count: " + falsecount);
+        System.out.println("modification null count: " + nullcount);
+        System.out.println();
 
+        //Get some statistics for cloned
+        nullcount = 0;
+        int emptycount = 0;
+        int colicount = 0;
+        int humancount = 0;
+        int bothcount = 0;
+        for(ProteinMetadata datum : agg) {
+            if(datum == null) {
+                System.err.println("null datum");
+                continue;
+            }
+            if(datum.cloned == null) {
+                nullcount++;
+                continue;
+            }
+            if(datum.cloned.isEmpty()) {
+                emptycount++;
+                continue;
+            }
+            Integer human = datum.cloned.get(Host.Hsapiens);
+            if(human > 0) {
+                humancount++;
+            }
+            Integer coli = datum.cloned.get(Host.Ecoli);
+            if(coli > 0) {
+                colicount++;
+            }
+            if(coli > 0 && human > 0) {
+                bothcount++;
+            }
+        }
+        System.out.println("cloned null count: " + nullcount);
+        System.out.println("cloned empty count: " + emptycount);
+        System.out.println("cloned coli count: " + colicount);
+        System.out.println("cloned human count: " + humancount);
+        System.out.println("cloned both count: " + bothcount);
+        System.out.println();
 
         System.out.println("done");
     }
