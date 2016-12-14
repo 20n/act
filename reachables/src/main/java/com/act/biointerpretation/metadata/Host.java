@@ -21,9 +21,20 @@ import java.util.Set;
  * @author jca20n
  */
 public enum Host {
+    //Prokaryotes
     Ecoli,
-    Scerevisiae,
     Bsubtilis,
+
+    //Yeasts
+    Scerevisiae,
     Ppasteuris,
-    Hsapiens
+    Aniger,
+
+    //Animals
+    Hsapiens,
+    Baculovirus,
+
+    //Plants
+    Tnicotiana,
+    Athaliana
 }

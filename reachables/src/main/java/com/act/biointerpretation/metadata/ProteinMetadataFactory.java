@@ -21,6 +21,7 @@ import java.util.*;
 public class ProteinMetadataFactory {
 
     private Set<String> dataList = new HashSet<>();
+    private Map<String, Integer> dataMap = new HashMap<>();
 
     //Data used in algorithms
     private Set<String> modificationTermsTrue;
@@ -49,6 +50,17 @@ public class ProteinMetadataFactory {
             }
         }
 
+        //Import cloned host terms
+        termfile = new File("/Users/jca20n/Dropbox (20n)/20n Team Folder/act_data/ProteinMetadata/2016_12_07-cloned_host_terms.txt");
+        data = FileUtils.readFileToString(termfile);
+        lines = data.split("\\r|\\r?\\n");
+        for(int i=1; i<lines.length; i++) {
+            String line = lines[i];
+            String[] tabs = line.split("\t");
+
+            //
+        }
+
         //Create the factory and put in data
         ProteinMetadataFactory factory = new ProteinMetadataFactory();
         factory.modificationTermsTrue = modTrue;
@@ -65,9 +77,8 @@ public class ProteinMetadataFactory {
         Double specificActivity = handleSpecificActivity(json);
         Boolean heteroSubunits = handlesubunits(json);
         Boolean modifications = handleModifications(json);
+        Map<Host, Boolean> cloning = handleCloned(json);
 
-
-//        Map<Host, Boolean> cloning = handleCloned(json);
 //        Localization localization = handleLocation(json);
 
         ProteinMetadata out = new ProteinMetadata();
@@ -77,42 +88,6 @@ public class ProteinMetadataFactory {
         out.modifications = modifications;
         return out;
     }
-
-    private Map<Host, Boolean> handleCloned(JSONObject json) {
-
-        Map<Host, Boolean> out = new HashMap<>();
-        try {
-//            JSONArray jarray = json.getJSONArray("specific_activity");
-            JSONArray jarray = json.getJSONArray("Cloned");
-
-            if (jarray.length() == 0) {
-                return out;
-            }
-            if (jarray.length() > 1) {
-                System.err.println("A location field has more than one object in it");
-//                System.exit(0);  //This should never happen
-                return out;
-            }
-
-            //obj is the terminal json with val and comment fields
-            JSONObject obj = jarray.getJSONObject(0);
-//            dataList.add(obj.toString());
-
-//            Double val = obj.getDouble("val");
-//
-//            if(out.containsKey(val)) {
-//                int newcount = out.get(val)+1;
-//                out.put(val, newcount);
-//            } else {
-//                out.put(val, 1);
-//            }
-
-        } catch (Exception err) {
-        }
-
-        return out;
-    }
-
 
     private Localization handleLocation(JSONObject json) {
         Localization out = Localization.undefined;
@@ -407,6 +382,56 @@ public class ProteinMetadataFactory {
         }
     }
 
+
+    private Map<Host, Boolean> handleCloned(JSONObject json) {
+
+        Map<Host, Boolean> out = new HashMap<>();
+
+        printoutHosts(json);
+
+        return out;
+    }
+
+    private void printoutHosts(JSONObject json) {
+        try {
+            JSONArray jarray = json.getJSONArray("cloned");
+
+            for(int i=0; i<jarray.length(); i++) {
+                JSONObject obj = jarray.getJSONObject(i);
+                String comment = obj.getString("comment");
+
+                int index = comment.indexOf("in ");
+                if(index < 0) {
+                    continue;
+                }
+
+                String[] words = comment.substring(index).toLowerCase().split("[\\s,;]+");
+
+                String datapoint = "";
+                int limit = 1;
+                int counter = 0;
+
+                for(String word : words) {
+                    if(counter>limit) {
+                        break;
+                    }
+                    counter++;
+
+                    datapoint += word + "\t";
+                }
+
+                Integer currval = dataMap.get(datapoint);
+                if(currval == null) {
+                    currval = 0;
+                }
+                currval++;
+                dataMap.put(datapoint, currval);
+
+            }
+        } catch (Exception err) {
+        }
+    }
+
     public static void main(String[] args) throws Exception {
         //Connect to the database
         NoSQLAPI api = new NoSQLAPI("actv01_vijay_proteins", "actv01_vijay_proteins");
@@ -448,11 +473,22 @@ public class ProteinMetadataFactory {
         //Write out any messages to file
         StringBuilder sb = new StringBuilder();
         for(String aline : factory.dataList) {
-            aline = aline.replaceAll("\t", " ");
-            sb.append(aline).append("\t\n");
+            sb.append(aline).append("\n");
         }
 
         File outfile = new File("output/ProteinMetadata/Factory_output.txt");
+        if(outfile.exists()) {
+            outfile.delete();
+        }
+        FileUtils.writeStringToFile(outfile, sb.toString());
+
+        sb = new StringBuilder();
+        for(String key : factory.dataMap.keySet()) {
+            int value = factory.dataMap.get(key);
+            sb.append(key + "\t" + value + "\n");
+        }
+
+        outfile = new File("output/ProteinMetadata/Factory_output_map.txt");
         if(outfile.exists()) {
             outfile.delete();
         }
