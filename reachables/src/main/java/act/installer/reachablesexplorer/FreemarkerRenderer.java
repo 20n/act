@@ -3,6 +3,7 @@ package act.installer.reachablesexplorer;
 import act.shared.Chemical;
 import com.act.reachables.Cascade;
 import com.act.reachables.ReactionPath;
+import com.github.jsonldjava.utils.Obj;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.MongoClient;
@@ -13,6 +14,7 @@ import freemarker.template.TemplateException;
 import freemarker.template.TemplateExceptionHandler;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.mongojack.DBCursor;
@@ -323,7 +325,7 @@ public class FreemarkerRenderer {
 
       String pathwayDocName = String.format("Pathway_%s_%d", sourceDocName, path.getRank());
 
-      List<Pair<String, String>> designDocsAndSummaries = path.getDnaDesignRef() != null ?
+      List<Triple<String, String, DNAOrgECNum>> designDocsAndSummaries = path.getDnaDesignRef() != null ?
           renderSequences(sequenceDestination, pathwayDocName, path.getDnaDesignRef()) : Collections.emptyList();
 
       Pair<Object, String> model = buildPathModel(path, target, designDocsAndSummaries);
@@ -336,14 +338,14 @@ public class FreemarkerRenderer {
     return pathPagesAndNames;
   }
 
-  private List<Pair<String, String>> renderSequences(File sequenceDestination, String docPrefix, String seqRef) throws IOException {
+  private List<Triple<String, String, DNAOrgECNum>> renderSequences(File sequenceDestination, String docPrefix, String seqRef) throws IOException {
     DNADesign designDoc = sequenceCollection.findOneById(seqRef);
     if (designDoc == null) {
       LOGGER.error("Could not find dna seq for id %s", seqRef);
       return Collections.emptyList();
     }
 
-    List<Pair<String, String>> sequenceFilesAndSummaries = new ArrayList<>();
+    List<Triple<String, String, DNAOrgECNum>> sequenceFilesAndSummaries = new ArrayList<>();
 
     List<DNAOrgECNum> designs = new ArrayList<>(designDoc.getDnaDesigns());
     Collections.sort(designs, (a, b) -> {
@@ -356,7 +358,7 @@ public class FreemarkerRenderer {
     });
 
     for (int i = 0; i < designs.size(); i++) {
-      String design = designs.get(i).getDna();
+      String design = designs.get(i).getDna().toUpperCase();
       int designSize = design.length();
       String shortVersion;
       if (designSize > SEQUENCE_SAMPLE_START + SEQUENCE_SAMPLE_SIZE) {
@@ -374,7 +376,7 @@ public class FreemarkerRenderer {
         writer.write("\n");
       }
 
-      sequenceFilesAndSummaries.add(Pair.of(constructFilename, shortVersion));
+      sequenceFilesAndSummaries.add(Triple.of(constructFilename, shortVersion, designs.get(i)));
     }
 
     return sequenceFilesAndSummaries;
@@ -389,7 +391,7 @@ public class FreemarkerRenderer {
     return inchiKey;
   }
 
-  private Pair<Object, String> buildPathModel(ReactionPath p, Reachable target, List<Pair<String, String>> designs) throws IOException {
+  private Pair<Object, String> buildPathModel(ReactionPath p, Reachable target, List<Triple<String, String, DNAOrgECNum>> designs) throws IOException {
 
     Map<String, Object> model = new HashMap<>();
 
@@ -433,15 +435,24 @@ public class FreemarkerRenderer {
     String pageTitle = StringUtils.join(chemicalNames, " <- ");
     model.put("pageTitle", pageTitle);
 
-    List<Map<String, String>> dna = new ArrayList<>();
+    List<Map<String, Object>> dna = new ArrayList<>();
     int i = 1;
-    for (Pair<String, String> design : designs) {
+    for (Triple<String, String, DNAOrgECNum> design : designs) {
       final int num = i; // Sigh, must be final to use in this initialization block.
-      dna.add(new HashMap<String, String>() {{
-        put("file", design.getLeft());
-        put("sample", design.getRight());
-        put("num", Integer.valueOf(num).toString());
-      }});
+      dna.add(new HashMap<String, Object>() {
+        {
+          put("file", design.getLeft());
+          put("sample", design.getMiddle());
+          put("num", Integer.valueOf(num).toString());
+          put("org_ec", design.getRight().
+              getSetOfOrganismAndEcNums().
+              stream().
+              map(setOrgEcNum -> setOrgEcNum.stream().
+                  map(orgAndEcnum -> new HashMap<String, String>() {{
+                    put("org", orgAndEcnum.getOrganism());
+                    put("ec_num", orgAndEcnum.getEcnum());
+                  }}).collect(Collectors.toList())).collect(Collectors.toList()));
+        }});
       i++;
     }
     if (dna.size() > 0) {
