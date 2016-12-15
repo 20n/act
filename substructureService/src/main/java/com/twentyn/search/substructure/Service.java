@@ -5,10 +5,6 @@ import chemaxon.license.LicenseManager;
 import chemaxon.sss.search.MolSearch;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import freemarker.template.Configuration;
-import freemarker.template.Template;
-import freemarker.template.TemplateException;
-import freemarker.template.TemplateExceptionHandler;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -35,13 +31,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.StringWriter;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class Service {
   static final Service INSTANCE = new Service();
@@ -86,30 +78,19 @@ public class Service {
 
   private static final List<TargetMolecule> TARGETS = new ArrayList<>();
 
-  private static Configuration FREEMARKER_CFG;
-
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
-  private Template successTemplate;
-  private Template failureTemplate;
 
   @RestController
   @EnableAutoConfiguration
   public static class Controller {
-
     SubstructureSearch substructureSearch = new SubstructureSearch();
-
-    @RequestMapping("/hello")
-    @ResponseBody
-    public String handler() {
-      return "Hello world!\n";
-    }
 
     @RequestMapping("/search")
     @ResponseBody
     public ResponseEntity<String> search(
         @RequestParam(name = "q", required = true) String queryString,
         @RequestParam(name = "options", required = false) List<String> searchOptions) {
+      // TODO: add additional validations on q.
       LOGGER.info("Got request: %s", queryString);
       try {
         MolSearch search = substructureSearch.constructSearch(queryString, searchOptions);
@@ -124,6 +105,7 @@ public class Service {
         List<SearchResult> results = new ArrayList<SearchResult>() {{
           for (TargetMolecule mol : matches) {
             add(new SearchResult(
+                // TODO: parameterize these URLs based on some CLI or configuration parameter.
                 String.format("http://localhost:8989/assets/img/%s", mol.getImageName()),
                 mol.getDisplayName(),
                 String.format("http://localhost:8989/mediawiki/%s", mol.getInchiKey())
@@ -135,7 +117,10 @@ public class Service {
             OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(results),
             new LinkedMultiValueMap<String, String>() {{
               put("Content-type", Collections.singletonList("application/json"));
-              put("Access-control-allow-origin", Collections.singletonList("*")); // TODO: remove before deployment.
+              /* IMPORTANT TODO: remove access-control-allow-origin before deployment!  This should not be necessary
+               * when all of the service components are served by a single web server.  This header represents an
+               * unnecessary security risk for production deployments, but is useful for testing. */
+              put("Access-control-allow-origin", Collections.singletonList("*"));
             }},
             HttpStatus.OK);
       } catch (MolFormatException e) {
@@ -146,21 +131,6 @@ public class Service {
         return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
-  }
-
-  private static void setupFreemarker() throws TemplateException, IOException {
-    FREEMARKER_CFG = new Configuration(Configuration.VERSION_2_3_25);
-
-    FREEMARKER_CFG.setClassLoaderForTemplateLoading(
-        Service.class.getClassLoader(), "/com/twentyn/search/substructure/templates");
-    FREEMARKER_CFG.setDefaultEncoding("UTF-8");
-
-    FREEMARKER_CFG.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
-    FREEMARKER_CFG.setLogTemplateExceptions(true);
-
-    // TODO: use dependency injection or something instead of this.
-    INSTANCE.successTemplate = FREEMARKER_CFG.getTemplate("SearchResultsHTML.ftl");
-    INSTANCE.failureTemplate = FREEMARKER_CFG.getTemplate("NoResultsFound.ftl");
   }
 
   private static void loadTargets(File inputFile) throws IOException {
@@ -196,47 +166,12 @@ public class Service {
       LicenseManager.setLicenseFile(cl.getOptionValue(OPTION_LICENSE_FILE));
     }
 
-    LOGGER.info("Loading freemarker templates");
-    setupFreemarker();
-
     LOGGER.info("Loading targets");
     loadTargets(new File(cl.getOptionValue(OPTION_INPUT_FILE)));
     LOGGER.info("Read %d targets from input TSV", TARGETS.size());
 
     LOGGER.info("Starting service");
     SpringApplication.run(Controller.class);
-  }
-
-  private String renderResultsPage(String query, List<TargetMolecule> results) throws TemplateException, IOException {
-    return renderTemplateAsString(successTemplate, constructResultsModel(query, results));
-  }
-
-  private Object constructResultsModel(String query, List<TargetMolecule> results) {
-    List<Map<String, String>> model = new ArrayList<>();
-    for (TargetMolecule target : results) {
-      model.add(new HashMap<String, String>() {{
-        put("pageName", target.getDisplayName());
-        put("inchiKey", target.getInchiKey());
-        put("imageName", target.imageName);
-      }});
-    }
-    return new HashMap<String, Object>() {{
-      put("query", query);
-      put("results", model);
-      put("assetsUrl", "http://localhost:8989/assets/img");
-      put("baseUrl", "http://localhost:8989/mediawiki/");
-    }};
-  }
-
-  private String renderNoResultsPage() throws TemplateException, IOException {
-    return renderTemplateAsString(failureTemplate, Collections.emptyMap());
-  }
-
-  private String renderTemplateAsString(Template template, Object model)  throws TemplateException, IOException {
-    Writer outputWriter = new StringWriter();
-    template.process(model, outputWriter);
-    outputWriter.flush();
-    return outputWriter.toString();
   }
 
   private static class SearchResult {

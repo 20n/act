@@ -41,7 +41,7 @@ libraryDependencies ++= {
       "org.apache.commons" % "commons-collections4" % "4.1",
       "org.apache.httpcomponents" % "httpclient" % "4.5.2",
       "org.springframework.boot" % "spring-boot-starter-web" % "1.4.2.RELEASE",
-      "org.freemarker" % "freemarker" % "2.3.25-incubating",
+      /* Test modules go last. */
       "com.novocode" % "junit-interface" % "0.11" % "test",
       "org.mockito" % "mockito-core" % "1.10.19" % "test",
       "org.powermock" % "powermock" % "1.6.4" % "test",
