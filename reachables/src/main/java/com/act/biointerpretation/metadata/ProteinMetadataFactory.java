@@ -7,7 +7,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 
 /**
@@ -27,6 +26,7 @@ public class ProteinMetadataFactory {
     private Set<String> modificationTermsTrue;
     private Set<String> modificationTermsFalse;
     private Map<String, Map<Host, Integer>> clonedtermToScore;
+    private Map<String, Map<Host, Localization>> termToHostLocalization;
 
     private ProteinMetadataFactory() {}
 
@@ -51,7 +51,7 @@ public class ProteinMetadataFactory {
             }
         }
 
-        //Import term to genus map for 'cloned'
+        //Construct term data for 'cloned'
         Map<String,String> termToGenus = new HashMap<>();
         termfile = new File("/Users/jca20n/Dropbox (20n)/20n Team Folder/act_data/ProteinMetadata/2016_12_07-cloned_term_to_genus.txt");
         data = FileUtils.readFileToString(termfile);
@@ -65,7 +65,7 @@ public class ProteinMetadataFactory {
             termToGenus.put(tabs[0],tabs[1]);
         }
 
-        //Pre-Compute distance to hosts for all terms
+        //Pre-Compute distance to hosts for all terms for "cloned"
         Map<String, Genus> nameToGenus = Genus.parseGenuses();
         Map<String, Map<Host, Integer>> termToScore = new HashMap<>();
         for(String term : termToGenus.keySet()) {
@@ -81,12 +81,59 @@ public class ProteinMetadataFactory {
             termToScore.put(term, hostToScore);
         }
 
+        //Construct the data to handle localization
+        Map<String, Map<Host, Localization>> locMap = new HashMap<>();
+        termfile = new File("/Users/jca20n/Dropbox (20n)/20n Team Folder/act_data/ProteinMetadata/2016_12_06-localization.txt");
+        data = FileUtils.readFileToString(termfile);
+        lines = data.split("\\r|\\r?\\n");
+        for(int i=1; i<lines.length; i++) {
+            //Create the host map for each term and initially assume all values are 'questionable'
+            Map<Host, Localization> hostToLoc = new HashMap<>();
+            for(Host host : Host.values()) {
+                hostToLoc.put(host, Localization.questionable);
+            }
+
+            //Parse the line and put in replacement values per host
+            String line = lines[i];
+            String[] tabs = line.split("\t");
+
+            String term = tabs[0];
+            for(int x=1; x<tabs.length; x++) {
+                try {
+                    String sloc = tabs[x];
+                    Localization loc = Localization.valueOf(sloc);
+                    //Ecoli	Bsubtilis	Cglutamicum	Scerevisiae	Ppasteuris	Aniger	Hsapiens	Sfrugiperda
+                    if(x==1) {
+                        hostToLoc.put(Host.Ecoli, loc);
+                    } else if(x==2) {
+                        hostToLoc.put(Host.Bsubtilis, loc);
+                    } else if(x==3) {
+                        hostToLoc.put(Host.Cglutamicum, loc);
+                    } else if(x==4) {
+                        hostToLoc.put(Host.Scerevisiae, loc);
+                    } else if(x==5) {
+                        hostToLoc.put(Host.Ppasteuris, loc);
+                    } else if(x==6) {
+                        hostToLoc.put(Host.Aniger, loc);
+                    } else if(x==7) {
+                        hostToLoc.put(Host.Hsapiens, loc);
+                    } else if(x==8) {
+                        hostToLoc.put(Host.Sfrugiperda, loc);
+                    }
+                } catch(Exception err) {
+                    err.printStackTrace();
+                }
+            }
+
+            locMap.put(term, hostToLoc);
+        }
 
         //Create the factory and put in data
         ProteinMetadataFactory factory = new ProteinMetadataFactory();
         factory.modificationTermsTrue = modTrue;
         factory.modificationTermsFalse = modFalse;
         factory.clonedtermToScore = termToScore;
+        factory.termToHostLocalization = locMap;
 
         return factory;
     }
@@ -94,14 +141,12 @@ public class ProteinMetadataFactory {
     public ProteinMetadata create(JSONObject json) throws Exception {
 //        System.out.println(json.toString());
 
-
         Double kcatkm = handleKcatKm(json);
         Double specificActivity = handleSpecificActivity(json);
         Boolean heteroSubunits = handlesubunits(json);
         Boolean modifications = handleModifications(json);
         Map<Host, Integer> cloning = handleCloned(json);
-
-//        Localization localization = handleLocation(json);
+        Map<Host, Localization> localization = handleLocalization(json);
 
         ProteinMetadata out = new ProteinMetadata();
         out.kcatkm = kcatkm;
@@ -109,31 +154,6 @@ public class ProteinMetadataFactory {
         out.heteroSubunits = heteroSubunits;
         out.modifications = modifications;
         out.cloned = cloning;
-        return out;
-    }
-
-    private Localization handleLocation(JSONObject json) {
-        Localization out = Localization.undefined;
-        try {
-            JSONArray jarray = json.getJSONArray("localization");
-
-            if (jarray.length() == 0) {
-                return out;
-            }
-            if (jarray.length() > 1) {
-                System.err.println("A location field has more than one object in it");
-//                System.exit(0);  //This should never happen
-//                return handleMultipleLocations(json);
-            }
-
-            //obj is the terminal json with val and comment fields
-            JSONObject obj = jarray.getJSONObject(0);
-            String val = obj.getString("val");
-
-
-        } catch (Exception err) {
-        }
-
         return out;
     }
 
@@ -405,21 +425,20 @@ public class ProteinMetadataFactory {
         }
     }
 
-
     private Map<Host, Integer> handleCloned(JSONObject json) {
-
+        //Populate output with null for all hosts (no prediction)
         Map<Host, Integer> out = new HashMap<>();
+        for(Host host : Host.values()) {
+            out.put(host, null);
+        }
+
+        //Read in any data from JSON and interpret prediction based on phylogenetic distance to host
         try {
             JSONArray jarray = json.getJSONArray("cloned");
 
             for(int i=0; i<jarray.length(); i++) {
                 JSONObject obj = jarray.getJSONObject(i);
                 String comment = obj.getString("comment");
-
-                int index = comment.indexOf("in ");
-                if(index < 0) {
-                    continue;
-                }
 
                 String[] words = comment.toLowerCase().split("[\\s,;]+");
                 for(String word : words) {
@@ -438,7 +457,6 @@ public class ProteinMetadataFactory {
                         }
                     }
                 }
-
             }
         } catch (Exception err) {
         }
@@ -487,6 +505,67 @@ public class ProteinMetadataFactory {
             }
         } catch (Exception err) {
         }
+    }
+
+    private Map<Host, Localization> handleLocalization(JSONObject json) {
+        //Construct the output with unknown for all Hosts
+        Map<Host, Localization> out = new HashMap<>();
+        for(Host host : Host.values()) {
+            out.put(host, Localization.unknown);
+        }
+
+        //Parse out localization information from json and populate the output map with predictions
+        JSONArray jarray = null;
+        try {
+            jarray = json.getJSONArray("localization");
+        } catch (Exception err) {
+            err.printStackTrace();
+        }
+
+        //If there is no metadata, all values should be "unknown"
+        if(jarray.length() == 0) {
+            return out;
+        }
+
+        //Scan through each observation
+        for (int i = 0; i < jarray.length(); i++) {
+            try {
+                JSONObject obj = jarray.getJSONObject(i);
+                String term = obj.getString("val");
+
+                Map<Host, Localization> hostToLoc = this.termToHostLocalization.get(term);
+                if(hostToLoc == null) {
+                    System.out.println("missing term: " + term);
+                    dataList.add(term);
+                    continue;
+                }
+
+                for (Host host : hostToLoc.keySet()) {
+                    Localization currval = out.get(host);     //Whatever is currently in the Map
+                    Localization newval = hostToLoc.get(host);  //The potential new value
+
+                    //If the current value is "unknown", replace that value the one with the term
+                    if (currval == Localization.unknown) {
+                        out.put(host, newval);
+                    }
+
+                    //If the current value is "questionable", stay with questionable
+                    else if (currval == Localization.questionable) {
+                        out.put(host, Localization.questionable);
+                    }
+
+                    //If currval and newval have non-identical, but aren't unknown/questionable, then
+                    //There must be 2 non-identical predictions, in which case this becomes questionable
+                    else if (currval != newval) {
+                        out.put(host, Localization.questionable);
+                    }
+                }
+            } catch (Exception err) {
+                err.printStackTrace();
+            }
+        }
+
+        return out;
     }
 
     public static void main(String[] args) throws Exception {
@@ -596,17 +675,18 @@ public class ProteinMetadataFactory {
                 continue;
             }
             Integer human = datum.cloned.get(Host.Hsapiens);
-            if(human > 0) {
+            if(human !=null && human > 0) {
                 humancount++;
             }
             Integer coli = datum.cloned.get(Host.Ecoli);
-            if(coli > 0) {
+            if(coli !=null && coli > 0) {
                 colicount++;
-            }
-            if(coli > 0 && human > 0) {
-                bothcount++;
+                if(human !=null && human > 0) {
+                    bothcount++;
+                }
             }
         }
+
         System.out.println("cloned null count: " + nullcount);
         System.out.println("cloned empty count: " + emptycount);
         System.out.println("cloned coli count: " + colicount);
