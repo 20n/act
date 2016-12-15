@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.Serializable;
 
-class InchiDescriptor implements Serializable {
+public class InchiDescriptor implements Serializable {
     private String name;
 
     @JsonProperty("InChI")
@@ -12,9 +12,16 @@ class InchiDescriptor implements Serializable {
 
     private String inchiKey;
 
-    private InchiDescriptor() {
+    public InchiDescriptor() {
 
     }
+
+    public InchiDescriptor(String inchi) {
+        this.inchi = inchi;
+        this.name = null;
+        this.inchiKey = null;
+    }
+
 
     public InchiDescriptor(String name,
                            String inchi,

@@ -4,8 +4,11 @@ package act.installer.reachablesexplorer.l4reachables;
 import act.installer.pubchem.MeshTermType;
 import act.installer.pubchem.PubchemMeshSynonyms;
 import act.installer.pubchem.PubchemSynonymType;
+import act.installer.reachablesexplorer.InchiDescriptor;
 import act.installer.reachablesexplorer.Loader;
 import act.installer.reachablesexplorer.MoleculeRenderer;
+import act.installer.reachablesexplorer.Precursor;
+import act.installer.reachablesexplorer.PrecursorData;
 import act.installer.reachablesexplorer.SynonymData;
 import chemaxon.formats.MolFormatException;
 import chemaxon.struc.Molecule;
@@ -26,6 +29,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -115,10 +119,10 @@ public class L4Loader {
   }
 
   private List<L4Reachable> getL4ReachablesFromProjection(L4Projection projection) {
-    return projection.getProducts().stream().map(this::constructReachable).collect(Collectors.toList());
+    return projection.getProducts().stream().map(this::constructOrFindReachable).collect(Collectors.toList());
   }
 
-  private L4Reachable constructReachable(String inchi) {
+  private L4Reachable constructOrFindReachable(String inchi) {
 
     L4Reachable preconstructedReachable = queryByInchi(inchi);
     if (preconstructedReachable != null) {
@@ -162,13 +166,68 @@ public class L4Loader {
   }
 
 
+  private void updateWithPrecursors(String inchi, Set<Precursor> pre) {
+    L4Reachable reachable = queryByInchi(inchi);
+
+    // If is null we create a new one
+    reachable = reachable == null ? constructOrFindReachable(inchi) : reachable;
+
+    if (reachable == null) {
+      LOGGER.warn("Still couldn't construct InChI after retry, aborting");
+      return;
+    }
+
+    reachable.getPrecursorData().addPrecursors(pre);
+
+    upsert(reachable);
+  }
+
+
+  private Map<String, PrecursorData> getPrecursorsFromProjections(List<L4Projection> projections) {
+    Map<String, PrecursorData> precursorDataMap = new HashMap<>();
+    for (L4Projection projection : projections) {
+      Precursor precursor = new Precursor(
+          projection.getSubstrates().stream().map(InchiDescriptor::new).collect(Collectors.toList()),
+          projection.getRos(),
+          Collections.emptyList()
+      );
+      for (String product : projection.getProducts()) {
+        PrecursorData precursorData;
+        if (!precursorDataMap.containsKey(product)) {
+          precursorData = new PrecursorData();
+          precursorDataMap.put(product, precursorData);
+        } else {
+          precursorData = precursorDataMap.get(product);
+        }
+        precursorData.addPrecursor(precursor);
+      }
+    }
+    return precursorDataMap;
+  }
+
+
+  void upsert(L4Reachable reachable) {
+    L4Reachable reachableOld = queryByInchi(reachable.getInchi());
+
+    if (reachableOld != null) {
+      LOGGER.info("Found previous reachable at InChI " + reachable.getInchi());
+      jacksonL4ReachablesCollection.update(reachableOld, reachable);
+    } else {
+      LOGGER.info("Did not find InChI " + reachable.getInchi() + " in database.  Creating a new reachable.");
+      jacksonL4ReachablesCollection.insert(reachable);
+    }
+  }
+
+
   public void load(File path) throws IOException {
 
     List<L4Projection> l4projections = getProjections(path);
     LOGGER.info("Found %d projections", l4projections.size());
-    List<List<L4Reachable>> l4reachables = l4projections.stream().map(this::getL4ReachablesFromProjection).collect(Collectors.toList());
+    List<L4Reachable> l4reachables = l4projections.stream().map(this::getL4ReachablesFromProjection).flatMap(List::stream).collect(Collectors.toList());
     LOGGER.info("Found %d reachables", l4reachables.size());
-    l4reachables.forEach(r -> r.forEach(jacksonL4ReachablesCollection::save));
+    l4reachables.forEach(jacksonL4ReachablesCollection::save);
+    Map<String, PrecursorData> precursorDataMap = getPrecursorsFromProjections(l4projections);
+    l4reachables.forEach(r -> updateWithPrecursors(r.getInchi(), precursorDataMap.get(r.getInchi()).getPrecursors()));
   }
 
 

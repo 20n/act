@@ -28,7 +28,7 @@ public class L4Reachable {
   public L4Reachable() {}
 
   public L4Reachable(Integer id, String pageName, String inchi, String smiles, String inchiKey, String structureFilename, SynonymData synonyms) {
-    this(id, pageName, inchi, smiles, inchiKey, structureFilename, null, synonyms, null);
+    this(id, pageName, inchi, smiles, inchiKey, structureFilename, new PrecursorData(), synonyms, null);
   }
 
   public List<PatentSummary> getPatentSummaries() {

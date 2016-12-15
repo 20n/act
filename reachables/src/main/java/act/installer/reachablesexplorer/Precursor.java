@@ -25,26 +25,32 @@ public class Precursor implements Serializable {
         this.sequences = sequences;
     }
 
+    @JsonIgnore
     public List<InchiDescriptor> getMolecules(){
         return precursorMolecules;
     }
 
+    @JsonIgnore
     public String getSources(){
         return source;
     }
 
+    @JsonIgnore
     public List<String> getSequences() {
         return sequences;
     }
 
+    @JsonIgnore
     public void setMolecules(List<InchiDescriptor> precursorMolecules){
         this.precursorMolecules = precursorMolecules;
     }
 
+    @JsonIgnore
     public void setSources(String source){
         this.source = source;
     }
 
+    @JsonIgnore
     public void setSequences(List<String> sequences) {
         this.sequences = sequences;
     }
