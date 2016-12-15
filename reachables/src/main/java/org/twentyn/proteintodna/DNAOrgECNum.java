@@ -52,4 +52,7 @@ public class DNAOrgECNum {
     this.listOfOrganismAndEcNums = listOfOrganismAndEcNums;
     this.numProteins = numProteins;
   }
+
+  public DNAOrgECNum() {
+  }
 }

@@ -3,7 +3,6 @@ package act.installer.reachablesexplorer;
 import act.shared.Chemical;
 import com.act.reachables.Cascade;
 import com.act.reachables.ReactionPath;
-import com.github.jsonldjava.utils.Obj;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.MongoClient;
@@ -35,6 +34,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -67,9 +67,9 @@ public class FreemarkerRenderer {
     FreemarkerRenderer renderer = FreemarkerRendererFactory.build(loader);
     //renderer.writePageToDir(new File("/Volumes/shared-data/Thomas/WikiPagesForUpload"));
     renderer.writePageToDir(
-        new File("/Volumes/shared-data-1/Thomas/WikiPagesForTestUpload"),
-        new File("/Volumes/shared-data-1/Thomas/WikiPagesForTestUpload"),
-        new File("/Volumes/shared-data-1/Thomas/WikiPagesForTestUpload"));
+        new File("/Volumes/shared-data/Thomas/WikiPagesWithSeqMetadataForTestUpload"),
+        new File("/Volumes/shared-data/Thomas/WikiPagesWithSeqMetadataForTestUpload"),
+        new File("/Volumes/shared-data/Thomas/WikiPagesWithSeqMetadataForTestUpload"));
   }
 
   private FreemarkerRenderer(Loader loader) {
@@ -96,7 +96,7 @@ public class FreemarkerRenderer {
     MongoClient client = new MongoClient(new ServerAddress("localhost", 27017));
     DB db = client.getDB("wiki_reachables");
 
-    sequenceCollection = JacksonDBCollection.wrap(db.getCollection("dna_designs_2"), DNADesign.class, String.class);
+    sequenceCollection = JacksonDBCollection.wrap(db.getCollection("dna_designs_interest_2"), DNADesign.class, String.class);
   }
 
   public void writePageToDir(File reachableDestination,
@@ -122,12 +122,18 @@ public class FreemarkerRenderer {
         LOGGER.info("Skipping duplicate id %d", thisPath.getTarget());
         continue;
       }
+
+      if (r == null) {
+        LOGGER.info("Skipping id %d, because not found in the DB", thisPath.getTarget());
+        continue;
+      }
+
       seenIds.add(thisPath.getTarget());
 
       String inchiKey = r.getInchiKey();
       if (inchiKey != null) {
-        List<Pair<String, String>> pathwayDocsAndNames = generatePathDocuments(r, pathDestination, sequenceDestination);
         LOGGER.info(inchiKey);
+        List<Pair<String, String>> pathwayDocsAndNames = generatePathDocuments(r, pathDestination, sequenceDestination);
         File f = new File(reachableDestination, inchiKey);
         Writer w = new PrintWriter(f);
         reachableTemplate.process(buildReachableModel(r, loader.getJacksonSequenceCollection(), pathwayDocsAndNames), w);
@@ -435,23 +441,27 @@ public class FreemarkerRenderer {
     String pageTitle = StringUtils.join(chemicalNames, " <- ");
     model.put("pageTitle", pageTitle);
 
-    List<Map<String, Object>> dna = new ArrayList<>();
+    List<Map<String, String>> dna = new ArrayList<>();
     int i = 1;
+
     for (Triple<String, String, DNAOrgECNum> design : designs) {
       final int num = i; // Sigh, must be final to use in this initialization block.
-      dna.add(new HashMap<String, Object>() {
+      
+      dna.add(new HashMap<String, String>() {
         {
           put("file", design.getLeft());
           put("sample", design.getMiddle());
           put("num", Integer.valueOf(num).toString());
-          put("org_ec", design.getRight().
+          put("org_ec", String.join("," ,design.getRight().
               getSetOfOrganismAndEcNums().
               stream().
-              map(setOrgEcNum -> setOrgEcNum.stream().
-                  map(orgAndEcnum -> new HashMap<String, String>() {{
-                    put("org", orgAndEcnum.getOrganism());
-                    put("ec_num", orgAndEcnum.getEcnum());
-                  }}).collect(Collectors.toList())).collect(Collectors.toList()));
+              filter(Objects::nonNull).
+              map(setOrgEcNum -> String.format("[%s]", String.join(", ", setOrgEcNum.stream().filter(Objects::nonNull).
+                  map(orgAndEcnum -> String.format("{%s, %s}",
+                      (orgAndEcnum.getOrganism() == null) ? "NA" : orgAndEcnum.getOrganism(),
+                      (orgAndEcnum.getEcnum() == null) ? "NA" : orgAndEcnum.getEcnum())).
+                  collect(Collectors.toList())))).
+              collect(Collectors.toList())));
         }});
       i++;
     }

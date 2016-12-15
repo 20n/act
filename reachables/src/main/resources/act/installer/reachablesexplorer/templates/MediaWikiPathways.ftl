@@ -40,10 +40,12 @@
  |-
  !
  ! DNA design
+ ! Organisms and EC Numbers
      <#list dna as design>
  |-
  | ${design.num}
  | [[:File:${design.file}|...${design.sample}...]]
+ | ${design.org_ec}
      </#list>
  |}
 
