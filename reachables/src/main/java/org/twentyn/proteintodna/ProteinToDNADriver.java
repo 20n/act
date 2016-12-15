@@ -41,6 +41,7 @@ public class ProteinToDNADriver {
   public static final String DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME = "dna_designs_1";
 
 
+
   private static final String OPTION_DB_HOST = "H";
   private static final String OPTION_DB_PORT = "p";
   private static final String OPTION_OUTPUT_DB_NAME = "o";
