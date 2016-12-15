@@ -24,6 +24,7 @@ import com.mongodb.DB;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
+import net.didion.jwnl.data.Exc;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.io.IOUtils;
@@ -371,6 +372,8 @@ public class Loader {
       LOGGER.error(String.format("Threw IO exception when getting physiochemical properties: %s", e.getMessage()));
     } catch (IOException ex) {
       LOGGER.error(String.format("Threw plugin exception when getting physiochemical properties: %s", ex.getMessage()));
+    } catch (Exception generalException) {
+      LOGGER.error(String.format("Threw general exception when getting physiochemical properties: %s", generalException.getMessage()));
     }
 
     PhysiochemicalProperties physiochemicalProperties = null;
