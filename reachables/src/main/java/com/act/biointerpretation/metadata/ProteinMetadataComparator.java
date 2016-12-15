@@ -49,7 +49,7 @@ public class ProteinMetadataComparator implements Comparator {
         return score2 - score1;
     }
 
-    private int score(ProteinMetadata pmd) {
+    public int score(ProteinMetadata pmd) {
         double out = 0.0;
 
         //Score enzyme efficiency, will result in picking the highest values as the dominant consideration, biased on kcatkm
@@ -161,6 +161,7 @@ public class ProteinMetadataComparator implements Comparator {
 
         //Sort the non-zero metadata's using this Comparator
         Collections.sort(agg2, comp);
+
 
 
         System.out.println("done");

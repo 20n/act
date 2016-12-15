@@ -7,8 +7,6 @@ import java.util.Map;
  * Created by jca20n on 12/7/16.
  */
 public class ProteinMetadata {
-    String peptide;
-
     //These are strict requirements that these be ok
     Map<Host, Integer> cloned;
     Double kcatkm;
