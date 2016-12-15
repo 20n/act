@@ -127,7 +127,14 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
           MergeStrategy.discard
         case ps @ (x :: xs) if ps.last.equals("additional-spring-configuration-metadata.json") =>
           MergeStrategy.last
-        case ps @ (x :: xs) if ps.last.equals("Log4j2Plugins.dat") => MergeStrategy.last
+        case ps @ (x :: xs) if ps.last.equals("log4j2plugins.dat") => MergeStrategy.last
+        case ps @ (x :: xs) if ps.last.equals("spring-configuration-metadata.json") => MergeStrategy.last
+        case ps @ (x :: xs) if ps.last.equals("spring.factories") => MergeStrategy.last
+        case ps @ (x :: xs) if ps.last.equals("spring.handlers") => MergeStrategy.last
+        case ps @ (x :: xs) if ps.last.equals("spring.provides") => MergeStrategy.last
+        case ps @ (x :: xs) if ps.last.equals("spring.schemas") => MergeStrategy.last
+        case ps @ (x :: xs) if ps.last.equals("spring.tooling") => MergeStrategy.last
+        case ps @ (x :: xs) if ps.last.equals("web-fragment.xml") => MergeStrategy.last
         case _ => MergeStrategy.deduplicate
       }
     case "plugin.properties" => MergeStrategy.discard
