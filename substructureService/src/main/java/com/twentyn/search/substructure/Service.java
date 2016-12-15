@@ -3,6 +3,8 @@ package com.twentyn.search.substructure;
 import chemaxon.formats.MolFormatException;
 import chemaxon.license.LicenseManager;
 import chemaxon.sss.search.MolSearch;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
@@ -24,6 +26,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -37,7 +40,6 @@ import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -86,6 +88,8 @@ public class Service {
 
   private static Configuration FREEMARKER_CFG;
 
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
   private Template successTemplate;
   private Template failureTemplate;
 
@@ -117,12 +121,23 @@ public class Service {
           }
         }
 
-        if (matches.size() == 0) {
-          // This could be a 404, but it's not technically "not found": we ran the search, but nothing matched.
-          return new ResponseEntity<>(INSTANCE.renderNoResultsPage(), HttpStatus.OK);
-        } else {
-          return new ResponseEntity<>(INSTANCE.renderResultsPage(queryString, matches), HttpStatus.OK);
-        }
+        List<SearchResult> results = new ArrayList<SearchResult>() {{
+          for (TargetMolecule mol : matches) {
+            add(new SearchResult(
+                String.format("http://localhost:8989/assets/img/%s", mol.getImageName()),
+                mol.getDisplayName(),
+                String.format("http://localhost:8989/mediawiki/%s", mol.getInchiKey())
+            ));
+          }
+        }};
+
+        return new ResponseEntity<>(
+            OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(results),
+            new LinkedMultiValueMap<String, String>() {{
+              put("Content-type", Collections.singletonList("application/json"));
+              put("Access-control-allow-origin", Collections.singletonList("*")); // TODO: remove before deployment.
+            }},
+            HttpStatus.OK);
       } catch (MolFormatException e) {
         LOGGER.warn("Caught MolFormatException: %s", e.getMessage());
         return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
@@ -222,5 +237,50 @@ public class Service {
     template.process(model, outputWriter);
     outputWriter.flush();
     return outputWriter.toString();
+  }
+
+  private static class SearchResult {
+    @JsonProperty("image_name")
+    String imageLink;
+
+    @JsonProperty("page_name")
+    String pageName;
+
+    @JsonProperty("link")
+    String link;
+
+    private SearchResult() {
+
+    }
+
+    public SearchResult(String imageLink, String pageName, String link) {
+      this.imageLink = imageLink;
+      this.pageName = pageName;
+      this.link = link;
+    }
+
+    public String getImageLink() {
+      return imageLink;
+    }
+
+    public void setImageLink(String imageLink) {
+      this.imageLink = imageLink;
+    }
+
+    public String getPageName() {
+      return pageName;
+    }
+
+    public void setPageName(String pageName) {
+      this.pageName = pageName;
+    }
+
+    public String getLink() {
+      return link;
+    }
+
+    public void setLink(String link) {
+      this.link = link;
+    }
   }
 }
