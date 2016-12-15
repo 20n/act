@@ -23,7 +23,7 @@ import scala.collection.mutable
 object Cascade extends Falls {
   val mongoClient: MongoClient = new MongoClient(new ServerAddress("localhost", 27017))
   val db: DB = mongoClient.getDB("wiki_reachables")
-  val collectionName: String = "pathways"
+  val collectionName: String = "pathways_jarvis"
 
   val pathwayCollection: JacksonDBCollection[ReactionPath, String] = JacksonDBCollection.wrap(db.getCollection(collectionName), classOf[ReactionPath], classOf[String])
 
