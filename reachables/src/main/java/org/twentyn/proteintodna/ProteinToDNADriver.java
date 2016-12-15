@@ -218,7 +218,7 @@ public class ProteinToDNADriver {
                     // odd sequence
                     JSONObject metadata = sequenceInfo.getMetadata();
 
-                    if (!metadata.has("inferred_sequences")) {
+                    if (!metadata.has("inferred_sequences") || metadata.getJSONArray("inferred_sequences").length() == 0) {
                       continue;
                     }
 
