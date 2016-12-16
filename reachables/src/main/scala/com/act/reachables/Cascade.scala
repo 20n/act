@@ -487,7 +487,7 @@ class Cascade(target: Long) {
     })
     Node.setAttribute(node.id, "isSpontaneous", isSpontaneous)
 
-    val matchingSequences: Set[Long] = reactionIds.flatMap(r => {
+    var matchingSequences: Set[Long] = reactionIds.flatMap(r => {
       val thisSequenceResult = ReachRxnDescs.rxnSequence(r)
       thisSequenceResult
     }).flatten.map(_.asInstanceOf[Long])
@@ -528,9 +528,9 @@ class Cascade(target: Long) {
       val B: Set[Long] = oddSeqs.map(_.getUUID.toLong: Long).toSet
       val C: Set[Long] = anyInferredSeqs.map(_.getUUID.toLong: Long).toSet
 
-      val matchingSeqs = (A.diff(B)).union(C)
-      Node.setAttribute(node.id, "hasSequence", matchingSeqs.nonEmpty)
-      Node.setAttribute(node.id, "sequences", new util.HashSet(matchingSeqs))
+      matchingSequences = A.diff(B).union(C)
+      Node.setAttribute(node.id, "hasSequence", matchingSequences.nonEmpty)
+      Node.setAttribute(node.id, "sequences", new util.HashSet(matchingSequences))
     } else {
       Node.setAttribute(node.id, "hasSequence", matchingSequences.nonEmpty)
       Node.setAttribute(node.id, "sequences", new util.HashSet(matchingSequences))
