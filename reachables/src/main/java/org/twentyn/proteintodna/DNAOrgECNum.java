@@ -15,11 +15,11 @@ public class DNAOrgECNum {
     this.dna = dna;
   }
 
-  public List<List<OrgAndEcnum>> getListOfOrganismAndEcNums() {
+  public List<Set<OrgAndEcnum>> getListOfOrganismAndEcNums() {
     return listOfOrganismAndEcNums;
   }
 
-  public void setListOfOrganismAndEcNums(List<List<OrgAndEcnum>> listOfOrganismAndEcNums) {
+  public void setListOfOrganismAndEcNums(List<Set<OrgAndEcnum>> listOfOrganismAndEcNums) {
     this.listOfOrganismAndEcNums = listOfOrganismAndEcNums;
   }
 
@@ -42,12 +42,12 @@ public class DNAOrgECNum {
    * of sets.
    */
   @JsonProperty("org_ec")
-  List<List<OrgAndEcnum>> listOfOrganismAndEcNums;
+  List<Set<OrgAndEcnum>> listOfOrganismAndEcNums;
 
   @JsonProperty("num_proteins")
   private Integer numProteins;
 
-  public DNAOrgECNum(String dna, List<List<OrgAndEcnum>> listOfOrganismAndEcNums, Integer numProteins) {
+  public DNAOrgECNum(String dna, List<Set<OrgAndEcnum>> listOfOrganismAndEcNums, Integer numProteins) {
     this.dna = dna;
     this.listOfOrganismAndEcNums = listOfOrganismAndEcNums;
     this.numProteins = numProteins;

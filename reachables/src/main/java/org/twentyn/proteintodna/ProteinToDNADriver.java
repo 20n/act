@@ -38,8 +38,8 @@ public class ProteinToDNADriver {
   private static final String DEFAULT_OUTPUT_DB_NAME = "wiki_reachables";
   private static final String DEFAULT_INPUT_DB_NAME = "jarvis_2016-12-09";
   public static final String DEFAULT_INPUT_PATHWAY_COLLECTION_NAME = "pathways_jarvis";
-  public static final String DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME = "pathways_vijay_3";
-  public static final String DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME = "dna_designs_3";
+  public static final String DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME = "pathways_vijay_4";
+  public static final String DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME = "dna_designs_4";
 
   private static final String OPTION_DB_HOST = "H";
   private static final String OPTION_DB_PORT = "p";
@@ -151,7 +151,7 @@ public class ProteinToDNADriver {
     JacksonDBCollection<DNADesign, String> dnaDesignCollection = JacksonDBCollection.wrap(db.getCollection(outputDnaDeqCollectionName), DNADesign.class, String.class);
     JacksonDBCollection<ReactionPath, String> outputPathwayCollection = JacksonDBCollection.wrap(db.getCollection(outputPathwaysCollectionName), ReactionPath.class, String.class);
 
-    Map<String, List<OrgAndEcnum>> proteinSeqToOrgInfo = new HashMap<>();
+    Map<String, Set<OrgAndEcnum>> proteinSeqToOrgInfo = new HashMap<>();
 
     ProteinsToDNA2 p2d = ProteinsToDNA2.initiate();
 
@@ -222,7 +222,7 @@ public class ProteinToDNADriver {
                   proteinSeqs.add(dnaSeq);
                   OrgAndEcnum orgAndEcnum = new OrgAndEcnum(sequenceInfo.getOrgName(), sequenceInfo.getEc());
                   if (!proteinSeqToOrgInfo.containsKey(dnaSeq)) {
-                    proteinSeqToOrgInfo.put(dnaSeq, new ArrayList<>());
+                    proteinSeqToOrgInfo.put(dnaSeq, new HashSet<>());
                   }
                   proteinSeqToOrgInfo.get(dnaSeq).add(orgAndEcnum);
                 }
@@ -270,7 +270,7 @@ public class ProteinToDNADriver {
           try {
             Construct dna = p2d.computeDNA(proteinsInPathway, Host.Ecoli);
 
-            List<List<OrgAndEcnum>> seqMetadata = new ArrayList<>();
+            List<Set<OrgAndEcnum>> seqMetadata = new ArrayList<>();
             for (String protein : proteinsInPathway) {
               seqMetadata.add(proteinSeqToOrgInfo.get(protein));
             }
