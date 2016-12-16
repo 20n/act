@@ -20,6 +20,7 @@ import org.mongojack.JacksonDBCollection;
 import org.mongojack.WriteResult;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -48,7 +49,7 @@ public class ProteinToDNADriver {
   private static final String OPTION_OUTPUT_PATHWAY_COLLECTION_NAME = "d";
   private static final String OPTION_OUTPUT_DNA_SEQ_COLLECTION_NAME = "e";
   private static final Integer HIGHEST_SCORING_INFERRED_SEQ_INDEX = 0;
-  private static final String BLACKLISTED_WORD_IN_INFERRED_SEQ = "Fragment";
+  private static final Set<String> BLACKLISTED_WORDS_IN_INFERRED_SEQ = new HashSet<>(Arrays.asList("Fragment"));
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_DB_HOST)
@@ -150,7 +151,7 @@ public class ProteinToDNADriver {
     JacksonDBCollection<DNADesign, String> dnaDesignCollection = JacksonDBCollection.wrap(db.getCollection(outputDnaDeqCollectionName), DNADesign.class, String.class);
     JacksonDBCollection<ReactionPath, String> outputPathwayCollection = JacksonDBCollection.wrap(db.getCollection(outputPathwaysCollectionName), ReactionPath.class, String.class);
 
-    Map<String, Set<OrgAndEcnum>> proteinSeqToOrgInfo = new HashMap<>();
+    Map<String, List<OrgAndEcnum>> proteinSeqToOrgInfo = new HashMap<>();
 
     ProteinsToDNA2 p2d = ProteinsToDNA2.initiate();
 
@@ -173,7 +174,7 @@ public class ProteinToDNADriver {
           // TODO: Add a preference for the positive forward direction compared to the negative backward direction seq.
           if (id < 0) {
             LOGGER.info("Found a negative reactin id", id);
-            id = Math.abs(id);
+            id = Reaction.reverseID(id);
           }
 
           Reaction reaction = reactionDB.getReactionFromUUID(id);
@@ -209,8 +210,10 @@ public class ProteinToDNADriver {
                     // get the first inferred sequence since it has the highest hmmer score
                     JSONObject object = inferredSequences.getJSONObject(HIGHEST_SCORING_INFERRED_SEQ_INDEX);
 
-                    if (object.getString("fasta_header").contains(BLACKLISTED_WORD_IN_INFERRED_SEQ)) {
-                      continue;
+                    for (String blacklistWord : BLACKLISTED_WORDS_IN_INFERRED_SEQ) {
+                      if (object.getString("fasta_header").contains(blacklistWord)) {
+                        continue;
+                      }
                     }
 
                     dnaSeq = object.getString("sequence");
@@ -219,7 +222,7 @@ public class ProteinToDNADriver {
                   proteinSeqs.add(dnaSeq);
                   OrgAndEcnum orgAndEcnum = new OrgAndEcnum(sequenceInfo.getOrgName(), sequenceInfo.getEc());
                   if (!proteinSeqToOrgInfo.containsKey(dnaSeq)) {
-                    proteinSeqToOrgInfo.put(dnaSeq, new HashSet<>());
+                    proteinSeqToOrgInfo.put(dnaSeq, new ArrayList<>());
                   }
                   proteinSeqToOrgInfo.get(dnaSeq).add(orgAndEcnum);
                 }
@@ -267,7 +270,7 @@ public class ProteinToDNADriver {
           try {
             Construct dna = p2d.computeDNA(proteinsInPathway, Host.Ecoli);
 
-            Set<Set<OrgAndEcnum>> seqMetadata = new HashSet<>();
+            Set<List<OrgAndEcnum>> seqMetadata = new HashSet<>();
             for (String protein : proteinsInPathway) {
               seqMetadata.add(proteinSeqToOrgInfo.get(protein));
             }
