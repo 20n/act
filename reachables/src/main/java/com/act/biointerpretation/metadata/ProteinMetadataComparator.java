@@ -7,15 +7,18 @@ import org.apache.commons.io.FileUtils;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Set;
 
-/**
- * Created by jca20n on 12/14/16.
- */
 public class ProteinMetadataComparator implements Comparator {
-
-    private Host host;  //The ranking is contextualized on a host
-    private Localization localization;  //The ranking is contextualized on a location within that host
+    //The ranking is contextualized on a host
+    private Host host;  
+    //The ranking is contextualized on a location within that host
+    private Localization localization;
 
     public ProteinMetadataComparator(Host host, Localization localization) {
         this.host = host;
@@ -52,7 +55,8 @@ public class ProteinMetadataComparator implements Comparator {
     public int score(ProteinMetadata pmd) {
         double out = 0.0;
 
-        //Score enzyme efficiency, will result in picking the highest values as the dominant consideration, biased on kcatkm
+        // Score enzyme efficiency, will result in picking the highest values as 
+        // the dominant consideration, biased on kcatkm
         if(pmd.kcatkm != null) {
             out = (Math.log(pmd.kcatkm)) * 20;
         }
@@ -73,9 +77,11 @@ public class ProteinMetadataComparator implements Comparator {
         if(pmd.heteroSubunits == null) {
             //No prediction no change
         } else if(pmd.heteroSubunits == true) {
-            out += -10;  //If needs multiple subunits, this is potentially problematic
+            //If needs multiple subunits, this is potentially problematic
+            out += -10;
         } else {
-            out += 30;   //Great if there is a clear indication that there are no subunits
+            //Great if there is a clear indication that there are no subunits
+            out += 30;
         }
 
         //Score cloned
@@ -84,7 +90,8 @@ public class ProteinMetadataComparator implements Comparator {
             if (cloned == null) {
                 //No prediction no change
             } else {
-                out += cloned * 20;  //Will be positive or negative, scales with organism similarity up to 140 (or -140)
+                //Will be positive or negative, scales with organism similarity up to 140 (or -140)
+                out += cloned * 20;
             }
         }
 
@@ -112,7 +119,8 @@ public class ProteinMetadataComparator implements Comparator {
     public static void main(String[] args) throws Exception {
         ProteinMetadataComparator comp = new ProteinMetadataComparator(Host.Ecoli, Localization.cytoplasm);
 
-        //Connect to the database
+        // TODO: This is referencing a temporary collection. Change it!
+        // TODO: FIX THIS BEFORE MERGE!
         NoSQLAPI api = new NoSQLAPI("actv01_vijay_proteins", "actv01_vijay_proteins");
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
 
@@ -161,9 +169,5 @@ public class ProteinMetadataComparator implements Comparator {
 
         //Sort the non-zero metadata's using this Comparator
         Collections.sort(agg2, comp);
-
-
-
-        System.out.println("done");
     }
 }

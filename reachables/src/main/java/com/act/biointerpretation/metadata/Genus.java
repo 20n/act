@@ -1,16 +1,11 @@
 package com.act.biointerpretation.metadata;
 
 import org.apache.commons.io.FileUtils;
-
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Created by jca20n on 12/13/16.
- */
 public class Genus {
-
     String Domain;
     String Kingdom;
     String Phylum;
@@ -20,10 +15,11 @@ public class Genus {
     String Cgenus;
 
     public static Map<String, Genus> parseGenuses() throws Exception {
-
-        //Import genus classifications for 'cloned'
+        // Import genus classifications for 'cloned'
         Map<String, Genus> nameToGenus = new HashMap<>();
-        File termfile = new File("/Users/jca20n/Dropbox (20n)/20n Team Folder/act_data/ProteinMetadata/2016_12_07-cloned_genus_wikipedia_classification.txt");
+
+        // TODO: Move this to resources directory?
+        File termfile = new File("/mnt/data-level1/data/ProteinMetadata/2016_12_07-cloned_genus_wikipedia_classification.txt");
         String data = FileUtils.readFileToString(termfile);
         String[] regions = data.split(">");
 
@@ -91,11 +87,11 @@ public class Genus {
         return nameToGenus;
     }
 
-    public Genus(String domain, String kingdom, String phylum, String CClass, String order, String family, String cgenus) {
+    public Genus(String domain, String kingdom, String phylum, String cClass, String order, String family, String cgenus) {
         Domain = domain;
         Kingdom = kingdom;
         Phylum = phylum;
-        this.CClass = CClass;
+        CClass = cClass;
         Order = order;
         Family = family;
         Cgenus = cgenus;

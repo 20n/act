@@ -7,7 +7,13 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.util.*;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 /**
  * Requires newer database:
@@ -18,7 +24,6 @@ import java.util.*;
  * Created by jca20n on 12/1/16.
  */
 public class ProteinMetadataFactory {
-
     private Set<String> dataList = new HashSet<>();
     private Map<String, Integer> dataMap = new HashMap<>();
 
@@ -35,7 +40,8 @@ public class ProteinMetadataFactory {
         Set<String>  modTrue = new HashSet<>();
         Set<String>  modFalse = new HashSet<>();
 
-        File termfile = new File("/Users/jca20n/Dropbox (20n)/20n Team Folder/act_data/ProteinMetadata/2016_12_07-modification_terms.txt");
+        // TODO: Move this to resources directory?
+        File termfile = new File("/mnt/data-level1/data/ProteinMetadata/2016_12_07-modification_terms.txt");
         String data = FileUtils.readFileToString(termfile);
         String[] lines = data.split("\\r|\\r?\\n");
         for(int i=1; i<lines.length; i++) {
@@ -53,7 +59,9 @@ public class ProteinMetadataFactory {
 
         //Construct term data for 'cloned'
         Map<String,String> termToGenus = new HashMap<>();
-        termfile = new File("/Users/jca20n/Dropbox (20n)/20n Team Folder/act_data/ProteinMetadata/2016_12_07-cloned_term_to_genus.txt");
+
+        // TODO: Move this to resources directory?
+        termfile = new File("/mnt/data-level1/data/ProteinMetadata/2016_12_07-cloned_term_to_genus.txt");
         data = FileUtils.readFileToString(termfile);
         lines = data.split("\\r|\\r?\\n");
         for(int i=1; i<lines.length; i++) {
@@ -83,7 +91,9 @@ public class ProteinMetadataFactory {
 
         //Construct the data to handle localization
         Map<String, Map<Host, Localization>> locMap = new HashMap<>();
-        termfile = new File("/Users/jca20n/Dropbox (20n)/20n Team Folder/act_data/ProteinMetadata/2016_12_06-localization.txt");
+
+        // TODO: Move this to resources directory?
+        termfile = new File("/mnt/data-level1/data/ProteinMetadata/2016_12_06-localization.txt");
         data = FileUtils.readFileToString(termfile);
         lines = data.split("\\r|\\r?\\n");
         for(int i=1; i<lines.length; i++) {
@@ -139,8 +149,6 @@ public class ProteinMetadataFactory {
     }
 
     public ProteinMetadata create(JSONObject json) throws Exception {
-//        System.out.println(json.toString());
-
         Double kcatkm = handleKcatKm(json);
         Double specificActivity = handleSpecificActivity(json);
         Boolean heteroSubunits = handlesubunits(json);
@@ -330,7 +338,8 @@ public class ProteinMetadataFactory {
      * @throws Exception
      */
     private boolean testHandlesubunits() throws Exception {
-        File testfile = new File("/Users/jca20n/Dropbox (20n)/20n Team Folder/act_data/ProteinMetadata/2016_12_07-subunit_testset.txt");
+        // TODO: Move this to resources directory?
+        File testfile = new File("/mnt/data-level1/data/ProteinMetadata/2016_12_07-subunit_testset.txt");
         String data = FileUtils.readFileToString(testfile);
         data = data.replaceAll("\"\"", "\"");
         String[] lines = data.split("\\r|\\r?\\n");
@@ -461,12 +470,10 @@ public class ProteinMetadataFactory {
         } catch (Exception err) {
         }
 
-        //This is a vestigial line for when I was pulling out host names
-//        printoutHosts(json);
-
         return out;
     }
 
+    // Dead code: This was being called from within `handleCloned` but not now.
     private void printoutHosts(JSONObject json) {
         try {
             JSONArray jarray = json.getJSONArray("cloned");
@@ -541,8 +548,8 @@ public class ProteinMetadataFactory {
                 }
 
                 for (Host host : hostToLoc.keySet()) {
-                    Localization currval = out.get(host);     //Whatever is currently in the Map
-                    Localization newval = hostToLoc.get(host);  //The potential new value
+                    Localization currval = out.get(host);       // Whatever is currently in the Map
+                    Localization newval = hostToLoc.get(host);  // The potential new value
 
                     //If the current value is "unknown", replace that value the one with the term
                     if (currval == Localization.unknown) {
@@ -569,7 +576,8 @@ public class ProteinMetadataFactory {
     }
 
     public static void main(String[] args) throws Exception {
-        //Connect to the database
+        // TODO: This is referencing a temporary collection. Change it!
+        // TODO: FIX THIS BEFORE MERGE!
         NoSQLAPI api = new NoSQLAPI("actv01_vijay_proteins", "actv01_vijay_proteins");
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
 
@@ -693,7 +701,5 @@ public class ProteinMetadataFactory {
         System.out.println("cloned human count: " + humancount);
         System.out.println("cloned both count: " + bothcount);
         System.out.println();
-
-        System.out.println("done");
     }
 }
