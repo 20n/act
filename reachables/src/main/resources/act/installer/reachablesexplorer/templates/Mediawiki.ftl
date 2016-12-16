@@ -13,6 +13,13 @@
 '''Smiles''': ${smiles}
 </#if>
 
+<#if physiochemicalProperties??>
+'''Physio-chemical properties''':
+* pKa acid: ${physiochemicalProperties.pka}
+* logP: ${physiochemicalProperties.logp}
+* HLB: ${physiochemicalProperties.hlb}
+</#if>
+
 
 <#if cascade??>
 [[File:${cascade}.png|800px]]
