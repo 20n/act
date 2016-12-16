@@ -40,7 +40,9 @@ libraryDependencies ++= {
       "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0",
       "org.apache.commons" % "commons-collections4" % "4.1",
       "org.apache.httpcomponents" % "httpclient" % "4.5.2",
-      "org.springframework.boot" % "spring-boot-starter-web" % "1.4.2.RELEASE",
+      "org.eclipse.jetty" % "jetty-server" % "9.4.0.v20161208",
+      "org.eclipse.jetty" % "jetty-servlet" % "9.4.0.v20161208",
+      "org.eclipse.jetty" % "jetty-util" % "9.4.0.v20161208",
       /* Test modules go last. */
       "com.novocode" % "junit-interface" % "0.11" % "test",
       "org.mockito" % "mockito-core" % "1.10.19" % "test",
@@ -125,16 +127,6 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
          * http://stackoverflow.com/questions/999489/invalid-signature-file-when-attempting-to-run-a-jar */
         case ps @ (x :: xs) if ps.last.endsWith(".sf") | ps.last.endsWith(".dsa") | ps.last.endsWith(".rsa3")=>
           MergeStrategy.discard
-        case ps @ (x :: xs) if ps.last.equals("additional-spring-configuration-metadata.json") =>
-          MergeStrategy.last
-        case ps @ (x :: xs) if ps.last.equals("log4j2plugins.dat") => MergeStrategy.last
-        case ps @ (x :: xs) if ps.last.equals("spring-configuration-metadata.json") => MergeStrategy.last
-        case ps @ (x :: xs) if ps.last.equals("spring.factories") => MergeStrategy.last
-        case ps @ (x :: xs) if ps.last.equals("spring.handlers") => MergeStrategy.last
-        case ps @ (x :: xs) if ps.last.equals("spring.provides") => MergeStrategy.last
-        case ps @ (x :: xs) if ps.last.equals("spring.schemas") => MergeStrategy.last
-        case ps @ (x :: xs) if ps.last.equals("spring.tooling") => MergeStrategy.last
-        case ps @ (x :: xs) if ps.last.equals("web-fragment.xml") => MergeStrategy.last
         case _ => MergeStrategy.deduplicate
       }
     case "plugin.properties" => MergeStrategy.discard
