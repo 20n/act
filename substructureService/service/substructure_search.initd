@@ -1,0 +1,66 @@
+#!/bin/bash
+
+
+java_home="/usr/local/java/current"
+user="www-data"
+cwd="/tmp"
+pid_file="/var/run/substructure.pid"
+# Symlink the most recent version of the jar here.
+
+jar="/usr/local/software/substructure_search/current.jar"
+class="com.twentyn.search.substructure.Service"
+args="-c /Users/mdaly/work/act/substructureService/test_config.json"
+
+# TODO: replace these with log4j's rolling log appender
+stdout="/var/log/java/substructure_search.out"
+stderr="/var/log/java/substructure_search.err"
+
+jsvc="/usr/bin/jsvc"
+this_script=$0
+
+jsvc_opts="-java-home $java_home -cwd $cwd -cp $jar -user $user -pidfile $pid_file -outfile $stdout -errfile $stderr"
+
+is_running() {
+    if [[ -e $pid_file ]]; then
+        pid=$(cat $pid_file)
+        ps -p $pid >> /dev/null
+        result=$?
+        return $result
+    else
+        return 1
+    fi
+}
+
+case "$1" in
+    start)
+        if is_running; then
+            pid=$(cat $pid_file)
+            echo "Service is already running with pid $pid"
+        else
+            echo "Starting substructure service with JSVC..."
+            $jsvc $jsvc_opts $class $args
+            pid=$(cat $pid_file)
+            echo "Service started with pid $pid"
+        fi
+    ;;
+    stop)
+        if is_running; then
+            echo "Stopping service"
+            $jsvc $jsvc_opts -stop $class
+        else
+            "Service is not running"
+        fi
+    ;;
+    status)
+        if is_running; then
+            echo "Running"
+        else
+            echo "Stopped"
+            exit 1
+        fi
+    ;;
+    restart)
+    ;;
+esac
+
+exit 0
