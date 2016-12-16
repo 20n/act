@@ -21,9 +21,9 @@ public class OrgAndEcnum {
   private String organism;
   private String ecnum;
 
-  public OrgAndEcnum(String organism, String ecum) {
+  public OrgAndEcnum(String organism, String ecnum) {
     this.organism = organism;
-    this.ecnum = ecum;
+    this.ecnum = ecnum;
   }
 
   public OrgAndEcnum() {

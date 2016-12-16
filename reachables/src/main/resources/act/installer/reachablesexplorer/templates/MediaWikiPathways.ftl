@@ -40,12 +40,12 @@
  |-
  !
  ! DNA design
- ! Organisms and EC Numbers
+ ! Proteins used for DNA design
      <#list dna as design>
  |-
  | ${design.num}
  | [[:File:${design.file}|...${design.sample}...]]
- | ${design.org_ec}
+ | <#list design.org_ec as protein>Protein ${protein?counter}: ${protein}<br></#list>
      </#list>
  |}
 
