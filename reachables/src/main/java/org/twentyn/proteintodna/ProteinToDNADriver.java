@@ -20,6 +20,7 @@ import org.mongojack.JacksonDBCollection;
 import org.mongojack.WriteResult;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,7 +37,7 @@ public class ProteinToDNADriver {
   private static final String DEFAULT_DB_PORT = "27017";
   private static final String DEFAULT_OUTPUT_DB_NAME = "wiki_reachables";
   private static final String DEFAULT_INPUT_DB_NAME = "jarvis_2016-12-09";
-  public static final String DEFAULT_INPUT_PATHWAY_COLLECTION_NAME = "vanillin_pathways";
+  public static final String DEFAULT_INPUT_PATHWAY_COLLECTION_NAME = "pathways_jarvis";
   public static final String DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME = "pathways_vijay";
   public static final String DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME = "dna_designs";
 
@@ -47,6 +48,8 @@ public class ProteinToDNADriver {
   private static final String OPTION_INPUT_PATHWAY_COLLECTION_NAME = "c";
   private static final String OPTION_OUTPUT_PATHWAY_COLLECTION_NAME = "d";
   private static final String OPTION_OUTPUT_DNA_SEQ_COLLECTION_NAME = "e";
+  private static final Integer HIGHEST_SCORING_INFERRED_SEQ_INDEX = 0;
+  private static final Set<String> BLACKLISTED_WORDS_IN_INFERRED_SEQ = new HashSet<>(Arrays.asList("Fragment"));
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_DB_HOST)
@@ -156,7 +159,6 @@ public class ProteinToDNADriver {
 
     while (cursor.hasNext()) {
       ReactionPath reactionPath = cursor.next();
-
       Boolean atleastOneSeqMissingInPathway = false;
       List<Set<String>> proteinPaths = new ArrayList<>();
 
@@ -166,7 +168,15 @@ public class ProteinToDNADriver {
         Set<String> proteinSeqs = new HashSet<>();
 
         for (Long id : nodeInformation.getReactionIds()) {
-          // Get the reaction
+
+          // If the id is negative, it is a reaction in the reverse direction. Moreover, the enzyme for this reverse
+          // reaction is the same, so can use the actual positive reaction id's protein seq reference.
+          // TODO: Add a preference for the positive forward direction compared to the negative backward direction seq.
+          if (id < 0) {
+            LOGGER.info("Found a negative reactin id", id);
+            id = Reaction.reverseID(id);
+          }
+
           Reaction reaction = reactionDB.getReactionFromUUID(id);
 
           for (JSONObject data : reaction.getProteinData()) {
@@ -181,15 +191,40 @@ public class ProteinToDNADriver {
                   Seq sequenceInfo = reactionDB.getSeqFromID(s);
                   String dnaSeq = sequenceInfo.getSequence();
 
-                  if (dnaSeq != null && dnaSeq.length() > 80 && dnaSeq.charAt(0) == 'M') {
-                    proteinSeqs.add(dnaSeq);
-                    OrgAndEcnum orgAndEcnum = new OrgAndEcnum(sequenceInfo.getOrgName(), sequenceInfo.getEc());
-                    if (!proteinSeqToOrgInfo.containsKey(dnaSeq)) {
-                      proteinSeqToOrgInfo.put(dnaSeq, new HashSet<>());
-                    }
-                    proteinSeqToOrgInfo.get(dnaSeq).add(orgAndEcnum);
-
+                  if (dnaSeq == null) {
+                    LOGGER.info(String.format("Sequence string for seq id %d, reaction id %d and reaction path %s is null",
+                        s, id, reactionPath.getId()));
+                    continue;
                   }
+
+                  // odd sequence
+                  if (dnaSeq.length() <= 80 || dnaSeq.charAt(0) != 'M') {
+                    JSONObject metadata = sequenceInfo.getMetadata();
+
+                    if (!metadata.has("inferred_sequences") || metadata.getJSONArray("inferred_sequences").length() == 0) {
+                      continue;
+                    }
+
+                    JSONArray inferredSequences = metadata.getJSONArray("inferred_sequences");
+
+                    // get the first inferred sequence since it has the highest hmmer score
+                    JSONObject object = inferredSequences.getJSONObject(HIGHEST_SCORING_INFERRED_SEQ_INDEX);
+
+                    for (String blacklistWord : BLACKLISTED_WORDS_IN_INFERRED_SEQ) {
+                      if (object.getString("fasta_header").contains(blacklistWord)) {
+                        continue;
+                      }
+                    }
+
+                    dnaSeq = object.getString("sequence");
+                  }
+
+                  proteinSeqs.add(dnaSeq);
+                  OrgAndEcnum orgAndEcnum = new OrgAndEcnum(sequenceInfo.getOrgName(), sequenceInfo.getEc());
+                  if (!proteinSeqToOrgInfo.containsKey(dnaSeq)) {
+                    proteinSeqToOrgInfo.put(dnaSeq, new HashSet<>());
+                  }
+                  proteinSeqToOrgInfo.get(dnaSeq).add(orgAndEcnum);
                 }
               }
             }
@@ -197,7 +232,7 @@ public class ProteinToDNADriver {
         }
 
         if (proteinSeqs.size() == 0) {
-          LOGGER.error("The reaction does not have any viable protein sequences");
+          LOGGER.info("The reaction does not have any viable protein sequences");
           atleastOneSeqMissingInPathway = true;
           break;
         }
@@ -225,6 +260,8 @@ public class ProteinToDNADriver {
       if (atleastOneSeqMissingInPathway) {
         LOGGER.info(String.format("There is atleast one reaction with no sequence in reaction path id: %s", reactionPath.getId()));
       } else {
+        LOGGER.info(String.format("All reactions in reaction path have at least one viable seq: %s", reactionPath.getId()));
+
         // We only compute the dna design if we can find at least one sequence for each reaction in the pathway.
         Set<List<String>> pathwayProteinCombinations = makePermutations(proteinPaths);
         Set<DNAOrgECNum> dnaDesigns = new HashSet<>();
@@ -233,7 +270,7 @@ public class ProteinToDNADriver {
           try {
             Construct dna = p2d.computeDNA(proteinsInPathway, Host.Ecoli);
 
-            Set<Set<OrgAndEcnum>> seqMetadata = new HashSet<>();
+            List<Set<OrgAndEcnum>> seqMetadata = new ArrayList<>();
             for (String protein : proteinsInPathway) {
               seqMetadata.add(proteinSeqToOrgInfo.get(protein));
             }
