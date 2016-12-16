@@ -367,13 +367,9 @@ public class Loader {
     Map<SurfactantAnalysis.FEATURES, Double> analysisFeatures = null;
 
     try {
-      analysisFeatures = SurfactantAnalysis.performAnalysis(inchi, false);
-    } catch (PluginException e) {
-      LOGGER.error(String.format("Threw IO exception when getting physiochemical properties: %s", e.getMessage()));
-    } catch (IOException ex) {
-      LOGGER.error(String.format("Threw plugin exception when getting physiochemical properties: %s", ex.getMessage()));
+      analysisFeatures = SurfactantAnalysis.performAnalysisForPkaLogPAndHLB(inchi);
     } catch (Exception generalException) {
-      LOGGER.error(String.format("Threw general exception when getting physiochemical properties: %s", generalException.getMessage()));
+      LOGGER.error(String.format("Threw exception when getting physiochemical properties for inchi %s: %s", inchi, generalException.getMessage()));
     }
 
     PhysiochemicalProperties physiochemicalProperties = null;
