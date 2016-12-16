@@ -194,9 +194,6 @@ object cascades {
   }
 
   def constructInformationForReachable(reachid: Long, dir: String): Unit = {
-
-    println(s"Started reachable $reachid")
-
     // write to disk; JS front end uses json
     val waterfall = new Waterfall(reachid)
     val json    = waterfall.json()
@@ -214,7 +211,6 @@ object cascades {
     Cascade.clearCascades()
     Node.clearAttributeData()
     // Attributes are cached here so we clear it after each run.
-    println(s"Completed reachable $reachid")
   }
 
   def rxn_json(r: Reaction) = {

@@ -23,7 +23,7 @@ import scala.collection.mutable
 object Cascade extends Falls {
   val mongoClient: MongoClient = new MongoClient(new ServerAddress("localhost", 27017))
   val db: DB = mongoClient.getDB("wiki_reachables")
-  val collectionName: String = "pathways"
+  val collectionName: String = "pathways_jarvis"
 
   val pathwayCollection: JacksonDBCollection[ReactionPath, String] = JacksonDBCollection.wrap(db.getCollection(collectionName), classOf[ReactionPath], classOf[String])
 
@@ -487,13 +487,13 @@ class Cascade(target: Long) {
     })
     Node.setAttribute(node.id, "isSpontaneous", isSpontaneous)
 
-    val matchingSequences: Set[Long] = reactionIds.flatMap(r => {
+    var matchingSequences: Set[Long] = reactionIds.flatMap(r => {
       val thisSequenceResult = ReachRxnDescs.rxnSequence(r)
       thisSequenceResult
     }).flatten.map(_.asInstanceOf[Long])
 
     // Here we choose to add inferred sequences for all entries matching
-    val sequenceSearch: (DbSeq) => Unit =
+    val sequenceSearch: (DbSeq) => Boolean =
       OddSequencesToProteinPredictionFlow.defineSequenceSearch(workingDir)(None)(cascades.DEFAULT_DB._3)
 
     val abstractOrQuestionableSequencesQuery = OddSequencesToProteinPredictionFlow.oddQuery()
@@ -505,16 +505,36 @@ class Cascade(target: Long) {
     abstractOrQuestionableSequencesQuery.put(SequenceKeywords.ID.toString, withinTheseReactions)
 
     val mongoConnection = OddSequencesToProteinPredictionFlow.connectToMongoDatabase(cascades.DEFAULT_DB._3)
-    val oddSeqs = mongoConnection.getSeqIterator(abstractOrQuestionableSequencesQuery).asScala
-    var count = 0
-    oddSeqs.foreach(x => {
-      count += 1
-      sequenceSearch(x)
-    })
-    if (count > 0) logger.info(s"Odd sequence entries HMMer tried to improve: $count")
 
-    Node.setAttribute(node.id, "hasSequence", matchingSequences.nonEmpty)
-    Node.setAttribute(node.id, "sequences", new util.HashSet(matchingSequences))
+    val oddSeqs: List[DbSeq] = mongoConnection.getSeqIterator(abstractOrQuestionableSequencesQuery).asScala.toList
+
+    // TODO Maybe we should only try to infer if there are no/few good sequences.
+    // Evaluate how much this helps.  It makes sense as we don't really want to add more to places
+    // where there are a lot, but to add some where there are none or few.
+    if (matchingSequences.diff(oddSeqs.map(_.getUUID.toLong: Long).toSet).size < 5) {
+      // Filter with side effects, eep.
+      val anyInferredSeqs: List[DbSeq] = oddSeqs.filter(sequenceSearch)
+
+      /*
+      At this point we have three sets,
+
+      A) The overall list of sequences
+      B) The list of sequences that were "odd"
+      C) The list of sequences that were odd, but we were able to infer a sequence for.
+
+      We want (A - B) + (C) to get all the "good" sequences
+    */
+      val A: Set[Long] = matchingSequences
+      val B: Set[Long] = oddSeqs.map(_.getUUID.toLong: Long).toSet
+      val C: Set[Long] = anyInferredSeqs.map(_.getUUID.toLong: Long).toSet
+
+      matchingSequences = A.diff(B).union(C)
+      Node.setAttribute(node.id, "hasSequence", matchingSequences.nonEmpty)
+      Node.setAttribute(node.id, "sequences", new util.HashSet(matchingSequences))
+    } else {
+      Node.setAttribute(node.id, "hasSequence", matchingSequences.nonEmpty)
+      Node.setAttribute(node.id, "sequences", new util.HashSet(matchingSequences))
+    }
   })
 
   val viablePaths: Option[List[Cascade.Path]] = Cascade.getAllPaths(nw, t)
@@ -617,10 +637,13 @@ class Cascade(target: Long) {
       }
     }
 
-    sortedPaths.head.getPath.toList.foreach(ni => {
-      ni.getId()
-    })
-
+    logger.info(
+      s"""
+        | Reachable: $target
+        | Full Sequence Paths: ${sortedPaths.count(_.getPath.forall(p => !p.isReaction || (p.isReaction && (p.sequences.nonEmpty || p.isSpontaneous))))}
+        | Total Paths: ${sortedPaths.length}
+      """.stripMargin
+    )
 
     try {
       sortedPaths.foreach(Cascade.pathwayCollection.insert)

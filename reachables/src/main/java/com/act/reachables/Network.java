@@ -163,7 +163,11 @@ public class Network implements Serializable {
 
         String fullLabel;
         if (filteredRawLabel.isEmpty()) {
-          fullLabel = "Not Available";
+          if ((boolean) Node.getAttribute(n.id, "isSpontaneous")){
+            fullLabel = "Spontaneous";
+          } else {
+            fullLabel = "Not Available";
+          }
         } else {
           fullLabel = filteredRawLabel.get(0);
           if (filteredRawLabel.size() > 1) {
@@ -177,8 +181,8 @@ public class Network implements Serializable {
           String forestGreen = "#228B22";
           color = Cascade.quote(forestGreen);
         } else if ((boolean) Node.getAttribute(n.id, "isSpontaneous")) {
-          String purpleNavy = "#4E5180";
-          color = Cascade.quote(purpleNavy);
+          String goldenrodYellow = "#E8BD2B";
+          color = Cascade.quote(goldenrodYellow);
         } else {
           String crimsonRed = "#DC143C";
           color = Cascade.quote(crimsonRed);

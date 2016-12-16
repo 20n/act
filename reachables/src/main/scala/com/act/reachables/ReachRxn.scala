@@ -3,9 +3,12 @@ package com.act.reachables
 import act.server.MongoDB
 import act.shared.Reaction
 import act.shared.Reaction.RxnDataSource
+import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywords, SequenceKeywords}
+import com.mongodb.BasicDBObject
 import org.json.{JSONArray, JSONObject}
 
 import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scalaz.Memo
 
@@ -81,14 +84,21 @@ object ReachRxnDescs {
         map(x => if (x.has("sequences")) Option(x.getJSONArray("sequences")) else None).
         filter(_.isDefined).map(_.get).toSet
 
+
+
       val sequencesScala: ListBuffer[Long] = ListBuffer[Long]()
       sequences.foreach(s => {
-        for (i <- Range(0, s.length)){
+        for (i <- Range(0, s.length)) {
           sequencesScala.append(s.getLong(i))
         }
       })
 
-      Option(sequencesScala.toSet)
+      // Non null elements
+      val q = new BasicDBObject(SequenceKeywords.ID.toString, new BasicDBObject(MongoKeywords.IN.toString, sequencesScala.toSet.asJavaCollection))
+      q.put(SequenceKeywords.SEQ.toString, new BasicDBObject(MongoKeywords.NOT_EQUAL.toString, null))
+      val nonNullSequences = db.getSeqIterator(q)
+
+      Option(nonNullSequences.map(_.getUUID.toLong: Long).toSet)
     } else {
       None
     }
