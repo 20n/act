@@ -12,7 +12,8 @@ Mediawiki should already be installed on the host, as we'll be using it as the r
 === Steps to deployment ===
 * Run `sbt assembly` in the `substructureSearch` repository to build an uber-jar.  This will appear at `target/scala-2.10/substructureSearch-assembly-0.1.jar`.
 * Build a static frontend package.  `cd` to frontend and run `npm run build`.  You may have to futz with dependency installation if this is the first time building this project--required packages live in `project.json`.  The output will live in `frontend/build`.
-* Use `rsync` to copy `target/scala-2.10/substructureSearch-assembly-0.1.jar`, the `build` directory, and the files in this `service` directory to your remote server.  If this is your first time setting up the service, also rsync `../scripts/azure/install_java` and a suitable JDK package (which will be named something like `jdk-8u77-linux-x64.tar.gz`).
+* Export a TSV of reachable molecules from a reachables DB using `act.installer.reachablesexplorere.SubstructureSearchExporter`.  Also grab a copy of the molecule images
+* Use `rsync` to copy `target/scala-2.10/substructureSearch-assembly-0.1.jar`, the `build` directory, the files in this `service` directory, and the reachables list and images to your remote server.  If this is your first time setting up the service, also rsync `../scripts/azure/install_java` and a suitable JDK package (which will be named something like `jdk-8u77-linux-x64.tar.gz`).
 * SSH to the server to begin installation.
 * If this is the first time setting up the service, start by running `install_java` and installing jsvc:
 ```
@@ -57,8 +58,8 @@ $ sudo cp build /var/www/mediawiki/substructure
 ```
 * Install the mediawiki site config to ensure all paths and reverse proxy configurations are up to date:
 ```
-# Assumes there is no other mediawiki configuration in /etc/nginx/sites-allowed
-$ sudo cp site-wiki /etc/nginx/sites-allowed && sudo ln -sf /etc/nginx/sites-allowed/site-wiki /etc/nginx/sites-enabled/site-wiki
+# Assumes there is no other mediawiki configuration in /etc/nginx/sites-available
+$ sudo cp site-wiki /etc/nginx/sites-available && sudo ln -sf /etc/nginx/sites-available/site-wiki /etc/nginx/sites-enabled/site-wiki
 # Reload the site config
 $ sudo /etc/init.d/nginx reload
 ```
