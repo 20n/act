@@ -270,7 +270,7 @@ public class ProteinToDNADriver {
           try {
             Construct dna = p2d.computeDNA(proteinsInPathway, Host.Ecoli);
 
-            Set<List<OrgAndEcnum>> seqMetadata = new HashSet<>();
+            List<List<OrgAndEcnum>> seqMetadata = new ArrayList<>();
             for (String protein : proteinsInPathway) {
               seqMetadata.add(proteinSeqToOrgInfo.get(protein));
             }
