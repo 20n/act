@@ -47,7 +47,13 @@ class App extends Component {
     });
   }
 
-  runSearch() {
+  runSearch(e) {
+    /* Prevent weird URL change in Chrome, with help from
+     * https://github.com/ReactTraining/react-router/issues/1933#issuecomment-140158983 */
+    if (e != null) {
+      e.preventDefault();
+    }
+
     const that = this; // TODO: remember how to use `bind` correctly.
     const isNotSearching = !this.state.searching;
     console.log("Is searching: " + isNotSearching);
