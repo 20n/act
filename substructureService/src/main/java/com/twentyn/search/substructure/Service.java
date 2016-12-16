@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class Service {
   static final Service INSTANCE = new Service();
@@ -72,6 +73,8 @@ public class Service {
   static {
     HELP_FORMATTER.setWidth(100);
   }
+
+  private static final Long MAX_RESULTS = 100L;
 
   private static final List<TargetMolecule> TARGETS = new ArrayList<>();
 
@@ -140,15 +143,14 @@ public class Service {
           }
         }
 
-        List<SearchResult> results = new ArrayList<>(matches.size());
-        matches.forEach(mol ->
-            results.add(new SearchResult(
+        List<SearchResult> results = matches.stream().
+            limit(MAX_RESULTS).
+            map(mol -> new SearchResult(
                 // TODO: parameterize these URLs based on some CLI or configuration parameter.
                 this.imagesUrlBase + mol.getImageName(),
                 mol.getDisplayName(),
                 this.wikiUrlBase +  mol.getInchiKey())
-            )
-        );
+            ).collect(Collectors.toList());
 
         // TODO: are there constants for these somewhere?
         response.addHeader("Content-type", "application/json");
