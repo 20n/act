@@ -36,11 +36,9 @@ public class ProteinToDNADriver {
   private static final String DEFAULT_DB_PORT = "27017";
   private static final String DEFAULT_OUTPUT_DB_NAME = "wiki_reachables";
   private static final String DEFAULT_INPUT_DB_NAME = "jarvis_2016-12-09";
-  public static final String DEFAULT_INPUT_PATHWAY_COLLECTION_NAME = "vanillin_pathways";
-  public static final String DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME = "pathways_vijay_1";
-  public static final String DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME = "dna_designs_1";
-
-
+  public static final String DEFAULT_INPUT_PATHWAY_COLLECTION_NAME = "pathways_jarvis";
+  public static final String DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME = "pathways_vijay";
+  public static final String DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME = "dna_designs";
 
   private static final String OPTION_DB_HOST = "H";
   private static final String OPTION_DB_PORT = "p";
@@ -49,6 +47,8 @@ public class ProteinToDNADriver {
   private static final String OPTION_INPUT_PATHWAY_COLLECTION_NAME = "c";
   private static final String OPTION_OUTPUT_PATHWAY_COLLECTION_NAME = "d";
   private static final String OPTION_OUTPUT_DNA_SEQ_COLLECTION_NAME = "e";
+  private static final Integer HIGHEST_SCORING_INFERRED_SEQ_INDEX = 0;
+  private static final String BLACKLISTED_WORD_IN_INFERRED_SEQ = "Fragment";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_DB_HOST)
@@ -156,30 +156,8 @@ public class ProteinToDNADriver {
 
     DBCursor<ReactionPath> cursor = inputPathwayCollection.find();
 
-//    Set<Long> targets = new HashSet<>();
-//    targets.add(878L);
-//    targets.add(1443L);
-//    targets.add(174960L);
-//    targets.add(1293L);
-//    targets.add(448L);
-//    targets.add(341L);
-//    targets.add(1496L);
-//    targets.add(1490L);
-//    targets.add(1536L);
-//    targets.add(750L);
-//    targets.add(4026L);
-//    targets.add(10068L);
-//    targets.add(475L);
-//    targets.add(716L);
-//    targets.add(552L);
-
     while (cursor.hasNext()) {
       ReactionPath reactionPath = cursor.next();
-
-//      if (!targets.contains(reactionPath.getTarget())) {
-//        continue;
-//      }
-
       Boolean atleastOneSeqMissingInPathway = false;
       List<Set<String>> proteinPaths = new ArrayList<>();
 
@@ -189,8 +167,15 @@ public class ProteinToDNADriver {
         Set<String> proteinSeqs = new HashSet<>();
 
         for (Long id : nodeInformation.getReactionIds()) {
-          // Get the reaction
-          Reaction reaction = reactionDB.getReactionFromUUID(Math.abs(id));
+
+          // If the id is negative, it is a reaction in the reverse direction. Moreover, the enzyme for this reverse
+          // reaction is the same, so can use the actual positive reaction id's protein seq reference.
+          if (id < 0) {
+            LOGGER.info("Found a negative reactin id", id);
+            id = Math.abs(id);
+          }
+
+          Reaction reaction = reactionDB.getReactionFromUUID(id);
 
           for (JSONObject data : reaction.getProteinData()) {
             // Get the sequences
@@ -210,12 +195,8 @@ public class ProteinToDNADriver {
                     continue;
                   }
 
-                  String dnaSeqRes;
-
-                  if (dnaSeq.length() > 80 && dnaSeq.charAt(0) == 'M') {
-                    dnaSeqRes = dnaSeq;
-                  } else {
-                    // odd sequence
+                  // odd sequence
+                  if (dnaSeq.length() <= 80 || dnaSeq.charAt(0) != 'M') {
                     JSONObject metadata = sequenceInfo.getMetadata();
 
                     if (!metadata.has("inferred_sequences") || metadata.getJSONArray("inferred_sequences").length() == 0) {
@@ -224,17 +205,17 @@ public class ProteinToDNADriver {
 
                     JSONArray inferredSequences = metadata.getJSONArray("inferred_sequences");
 
-                    // get the fixed inferred sequence since it has the highest hmmer score
-                    JSONObject object = inferredSequences.getJSONObject(0);
+                    // get the first inferred sequence since it has the highest hmmer score
+                    JSONObject object = inferredSequences.getJSONObject(HIGHEST_SCORING_INFERRED_SEQ_INDEX);
 
-                    if (object.getString("fasta_header").contains("Fragment")) {
+                    if (object.getString("fasta_header").contains(BLACKLISTED_WORD_IN_INFERRED_SEQ)) {
                       continue;
                     }
 
-                    dnaSeqRes = object.getString("sequence");
+                    dnaSeq = object.getString("sequence");
                   }
 
-                  proteinSeqs.add(dnaSeqRes);
+                  proteinSeqs.add(dnaSeq);
                   OrgAndEcnum orgAndEcnum = new OrgAndEcnum(sequenceInfo.getOrgName(), sequenceInfo.getEc());
                   if (!proteinSeqToOrgInfo.containsKey(dnaSeq)) {
                     proteinSeqToOrgInfo.put(dnaSeq, new HashSet<>());
