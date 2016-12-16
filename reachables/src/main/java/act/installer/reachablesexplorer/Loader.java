@@ -7,11 +7,9 @@ import act.installer.pubchem.PubchemSynonymType;
 import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Seq;
-import act.shared.helpers.MongoDBToJSON;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.marvin.io.MolExportException;
-import chemaxon.marvin.plugin.PluginException;
 import chemaxon.struc.Molecule;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
@@ -24,7 +22,6 @@ import com.mongodb.DB;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
-import net.didion.jwnl.data.Exc;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.io.IOUtils;
@@ -81,8 +78,8 @@ public class Loader {
 
   // Target database and collection. We populate these with reachables
   private static final String DEFAULT_TARGET_DATABASE = "wiki_reachables";
-  private static final String DEFAULT_TARGET_COLLECTION = "reachablesv7_test_vijay";
-  private static final String DEFAULT_SEQUENCE_COLLECTION = "sequencesv7_test_vijay";
+  private static final String DEFAULT_TARGET_COLLECTION = "reachablesv9_test_vijay";
+  private static final String DEFAULT_SEQUENCE_COLLECTION = "sequencesv9_test_vijay";
 
   private static final int ORGANISM_CACHE_SIZE = 1000;
   private static final String ORGANISM_UNKNOWN = "(unknown)";
