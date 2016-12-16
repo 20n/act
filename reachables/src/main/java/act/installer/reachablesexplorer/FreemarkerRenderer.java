@@ -360,9 +360,11 @@ public class FreemarkerRenderer {
       }
 
       // The following line add spaces in the middle of DNA sequences for better display.
-      shortVersion = String.format("%s<br>%s",
-          shortVersion.substring(0, SEQUENCE_SAMPLE_SIZE / 2),
-          shortVersion.substring(SEQUENCE_SAMPLE_SIZE / 2));
+      shortVersion = String.format("%s<br>%s<br>%s<br>%s",
+          shortVersion.substring(0, SEQUENCE_SAMPLE_SIZE / 4),
+          shortVersion.substring(SEQUENCE_SAMPLE_SIZE / 4, SEQUENCE_SAMPLE_SIZE / 2),
+          shortVersion.substring(SEQUENCE_SAMPLE_SIZE / 2, 3 * SEQUENCE_SAMPLE_SIZE / 4),
+          shortVersion.substring(3 * SEQUENCE_SAMPLE_SIZE / 4));
 
       String constructFilename = String.format("Design_%s_seq%d.txt", docPrefix, i + 1);
 
