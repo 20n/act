@@ -459,7 +459,7 @@ public class FreemarkerRenderer {
 
 
   private List<String> renderDNADesignMetadata(DNAOrgECNum dnaOrgECNum) {
-    Set<Set<OrgAndEcnum>> setOfOrgAndEcnum = dnaOrgECNum.getSetOfOrganismAndEcNums();
+    List<Set<OrgAndEcnum>> setOfOrgAndEcnum = dnaOrgECNum.getListOfOrganismAndEcNums();
     return setOfOrgAndEcnum.stream().filter(Objects::nonNull).
         map(setOrgEcNum -> StringUtils.capitalize(String.join(", ", setOrgEcNum.stream().filter(Objects::nonNull).
             map(this::renderProteinMetadata).
