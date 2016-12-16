@@ -43,6 +43,7 @@ libraryDependencies ++= {
       "org.eclipse.jetty" % "jetty-server" % "9.4.0.v20161208",
       "org.eclipse.jetty" % "jetty-servlet" % "9.4.0.v20161208",
       "org.eclipse.jetty" % "jetty-util" % "9.4.0.v20161208",
+      "commons-daemon" % "commons-daemon" % "1.0.15",
       /* Test modules go last. */
       "com.novocode" % "junit-interface" % "0.11" % "test",
       "org.mockito" % "mockito-core" % "1.10.19" % "test",
