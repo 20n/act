@@ -170,6 +170,7 @@ public class ProteinToDNADriver {
 
           // If the id is negative, it is a reaction in the reverse direction. Moreover, the enzyme for this reverse
           // reaction is the same, so can use the actual positive reaction id's protein seq reference.
+          // TODO: Add a preference for the positive forward direction compared to the negative backward direction seq.
           if (id < 0) {
             LOGGER.info("Found a negative reactin id", id);
             id = Math.abs(id);
