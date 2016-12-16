@@ -1,15 +1,41 @@
 #!/bin/bash
 
+# substructure_search init.d script
+#
+# Copy or symlink this as /etc/init.d/substructure_search, and link it
+# into all /etc/rc{0-6}.d directories as 'S99substructure_search'.
+# This can be accomplished conveniently (as root) by running:
+#   $ update-rc.d substructure_search defaults 99
+# and confirming that S99substructure_search exists in rc{2-5}.d.
+#
+# The configuration parameters in this script expect Java to have been
+# installed using the `install_java` script, expectes `jsvc` to be
+# available (installed using apt) and assumes the following files or
+# directories exist:
+#
+# /usr/local/software/substructure_search/current.jar:
+#   Symlink to most recent version of the substructure search JAR.
+# /etc/substructure_search/config.json:
+#   Place the substructure search's configuration file here, and
+#   install any data files (like the reachables list) as necessary
+#   based on paths therein.
+# /var/log/java/:
+#   Create a directory here for logs to be written to.  TODO: use log
+#   rotation properly.
+#
+# This script supports common init.d verbs (start|stop|status|reload)
+# and will report success or failure both on the consol and through
+# its exit code ($?).
 
 java_home="/usr/local/java/current"
 user="www-data"
 cwd="/tmp"
 pid_file="/var/run/substructure.pid"
-# Symlink the most recent version of the jar here.
 
+# Symlink the most recent version of the jar here:
 jar="/usr/local/software/substructure_search/current.jar"
 class="com.twentyn.search.substructure.Service"
-args="-c /Users/mdaly/work/act/substructureService/test_config.json"
+args="-c /etc/substructure_search/config.json"
 
 # TODO: replace these with log4j's rolling log appender
 stdout="/var/log/java/substructure_search.out"
