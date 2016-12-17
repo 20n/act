@@ -45,6 +45,8 @@ public class FreemarkerRenderer {
   private static final String DEFAULT_REACHABLE_TEMPLATE_FILE = "Mediawiki.ftl";
   private static final String DEFAULT_PATHWAY_TEMPLATE_FILE = "MediaWikiPathways.ftl";
 
+  private static final String DEFAULT_CASCADES_DIR = "/Volumes/shared-data/Michael/ActDataNewRun";
+
   private static final int MAX_SEQUENCE_LENGTH = 50;
 
   private static final int SEQUENCE_SAMPLE_START = 3000;
@@ -63,14 +65,14 @@ public class FreemarkerRenderer {
 
   public static void main(String[] args) throws Exception {
     Loader loader =
-        new Loader("localhost", 27017, "wiki_reachables", "reachablesv7", "sequencesv7", "/tmp");
+        new Loader("localhost", 27017, "wiki_reachables", "reachablesv8_release_thomas", "sequencesv8_release_thomas", "/Volumes/shared-data/Thomas/tempCacheRendering");
 
     FreemarkerRenderer renderer = FreemarkerRendererFactory.build(loader);
     //renderer.writePageToDir(new File("/Volumes/shared-data/Thomas/WikiPagesForUpload"));
     renderer.writePageToDir(
-        new File("/Volumes/shared-data/Thomas/WikiPagesWithSeqMetadataForTestUpload"),
-        new File("/Volumes/shared-data/Thomas/WikiPagesWithSeqMetadataForTestUpload"),
-        new File("/Volumes/shared-data/Thomas/WikiPagesWithSeqMetadataForTestUpload"));
+        new File("/Volumes/shared-data/Thomas/WikiContent/DecRelease/Reachables"),
+        new File("/Volumes/shared-data/Thomas/WikiContent/DecRelease/Paths"),
+        new File("/Volumes/shared-data/Thomas/WikiContent/DecRelease/Sequences"));
   }
 
   private FreemarkerRenderer(Loader loader) {
@@ -97,27 +99,29 @@ public class FreemarkerRenderer {
     MongoClient client = new MongoClient(new ServerAddress("localhost", 27017));
     DB db = client.getDB("wiki_reachables");
 
-    dnaDesignCollection = JacksonDBCollection.wrap(db.getCollection("dna_designs_interest_2"), DNADesign.class, String.class);
+    dnaDesignCollection = JacksonDBCollection.wrap(db.getCollection("dna_designs_4"), DNADesign.class, String.class);
   }
 
   public void writePageToDir(File reachableDestination,
                              File pathDestination,
                              File sequenceDestination) throws IOException, TemplateException{
-    //DBCursor<Reachable> reachableDBCursor = loader.getJacksonReachablesCollection().find(new BasicDBObject("names", "vanillin"));
 
     DBCursor<ReactionPath> reachableDBCursor = Cascade.get_pathway_collection().find();
 
     Set<Long> seenIds = new HashSet<>();
 
+    Set<Long> targetsOfInterest = new HashSet<>(Arrays.asList(878L, 1443L, 1293L, 448L, 341L, 1496L, 1536L, 750L, 4026L, 716L));
+
     int i = 0;
     while(reachableDBCursor.hasNext()) {
       // Hacked cursor munging to only consider targets of pathways.
       ReactionPath thisPath = reachableDBCursor.next();
-      if (thisPath.getTarget().equals(878L)) {
-        LOGGER.info("Skipping vanillin");
+      if (!targetsOfInterest.contains(thisPath.getTarget())) {
+        LOGGER.info("Skipping target not of interest");
         continue;
       }
-      Reachable r = loader.getJacksonReachablesCollection().findOne(new BasicDBObject("_id", thisPath.getTarget()));
+      Reachable r = loader.constructReachableFromId(thisPath.getTarget());
+      loader.upsert(r);
 
       if (seenIds.contains(thisPath.getTarget())) {
         LOGGER.info("Skipping duplicate id %d", thisPath.getTarget());
@@ -416,7 +420,8 @@ public class FreemarkerRenderer {
         Collections.sort(organisms);
         nodeModel.put("organisms", organisms);
       } else {
-        Reachable r = loader.getJacksonReachablesCollection().findOne(new BasicDBObject("_id", i.getId()));
+        Reachable r = loader.constructReachableFromId(i.getId());
+        loader.upsert(r);
         if (r == null) {
           LOGGER.error("Unable to locate pathway chemical %d in reachables db", i.getId());
           nodeModel.put("name", "(unknown)");

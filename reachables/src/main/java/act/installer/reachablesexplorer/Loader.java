@@ -65,7 +65,7 @@ public class Loader {
   private static final String OPTION_TARGET_SEQUENCES_COLLECTION = "s";
   private static final String OPTION_RENDERING_CACHE = "e";
 
-  private static final String DEFAULT_ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
+  private static final String DEFAULT_ASSETS_LOCATION = "/Volumes/data-level1/data/reachables-explorer-rendering-cache";
 
   private static final String DEFAULT_REACHABLES_PATH = "/mnt/shared-data/Michael/WikipediaProject/MinimalReachables";
 
@@ -78,8 +78,10 @@ public class Loader {
 
   // Target database and collection. We populate these with reachables
   private static final String DEFAULT_TARGET_DATABASE = "wiki_reachables";
-  private static final String DEFAULT_TARGET_COLLECTION = "reachablesv9_test_vijay";
+  private static final String DEFAULT_TARGET_COLLECTION = "reachablesv8_release_thomas";
   private static final String DEFAULT_SEQUENCE_COLLECTION = "sequencesv9_test_vijay";
+
+  private static final String DEFAULT_CASCADES_DIR = "/Volumes/shared-data/Michael/ActDataNewRun";
 
   private static final int ORGANISM_CACHE_SIZE = 1000;
   private static final String ORGANISM_UNKNOWN = "(unknown)";
@@ -190,7 +192,8 @@ public class Loader {
         cl.getOptionValue(OPTION_TARGET_SEQUENCES_COLLECTION, DEFAULT_SEQUENCE_COLLECTION),
         cl.getOptionValue(OPTION_RENDERING_CACHE, DEFAULT_ASSETS_LOCATION)
     );
-    loader.updateFromReachableDir(reachablesDir);
+    // loader.updateFromReachableDir(reachablesDir);
+    loader.updateFromReachableDir(new File(DEFAULT_CASCADES_DIR));
   }
 
   /**
@@ -218,7 +221,6 @@ public class Loader {
       throw new RuntimeException(e);
     }
     DB reachables = mongoClient.getDB(targetDB);
-
     jacksonReachablesCollection =
             JacksonDBCollection.wrap(reachables.getCollection(targetCollection), Reachable.class, String.class);
     jacksonSequenceCollection =
@@ -304,6 +306,10 @@ public class Loader {
     return new SynonymData(pubchemSynonyms, meshSynonyms);
   }
 
+
+
+
+
   /**
    * Construct a Reachable.
    * Gets names and xref from `db` collection `chemicals`
@@ -387,6 +393,86 @@ public class Loader {
     return new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
         wordcloudFilename, xref, physiochemicalProperties);
   }
+
+
+  public Reachable constructReachableFromId(Long id) {
+
+    Chemical c = db.getChemicalFromChemicalUUID(id);
+    String inchi = c.getInChI();
+    Reachable preconstructedReachable = queryByInchi(inchi);
+    if (preconstructedReachable != null) {
+      return preconstructedReachable;
+    }
+
+    Molecule mol;
+    try {
+      MoleculeImporter.assertNotFakeInchi(inchi);
+      mol = MoleculeImporter.importMolecule(inchi);
+    } catch (MolFormatException e) {
+      LOGGER.error("Failed to import inchi %s", inchi);
+
+      return null;
+    } catch (MoleculeImporter.FakeInchiException e) {
+      LOGGER.error("Failed to import inchi %s as it is fake.", inchi);
+      return null;
+    }
+
+    List<String> names = c != null ? c.getBrendaNames() : Collections.emptyList();
+    Map<Chemical.REFS, BasicDBObject> xref = c != null ? c.getXrefMap() : new HashMap<>();
+
+    String smiles = getSmiles(mol);
+    if (smiles == null) {
+      LOGGER.error("Failed to export molecule %s to smiles", inchi);
+    }
+
+    String inchikey = getInchiKey(mol);
+    if (inchikey == null) {
+      LOGGER.error("Failed to export molecule %s to inchi key", inchi);
+    }
+
+    String pageName = getPageName(mol, names, inchi);
+
+    String renderingFilename = null;
+    Optional<File> rendering = moleculeRenderer.generateRendering(inchi);
+    if (rendering.isPresent()) {
+      renderingFilename = rendering.get().getName();
+    }
+
+    File wordcloud = wordCloudGenerator.getWordcloudFile(inchi);
+    String wordcloudFilename = null;
+    if (wordcloud.exists()) {
+      wordcloudFilename = wordcloud.getName();
+    }
+
+    SynonymData synonymData = getSynonymData(inchi);
+
+    Map<SurfactantAnalysis.FEATURES, Double> analysisFeatures = null;
+
+    try {
+      analysisFeatures = SurfactantAnalysis.performAnalysisForPkaLogPAndHLB(inchi);
+    } catch (Exception generalException) {
+      LOGGER.error(String.format("Threw exception when getting physiochemical properties for inchi %s: %s", inchi, generalException.getMessage()));
+    }
+
+    PhysiochemicalProperties physiochemicalProperties = null;
+
+    if (analysisFeatures != null) {
+      Double pka = analysisFeatures.get(SurfactantAnalysis.FEATURES.PKA_ACID_1) != null ?
+          analysisFeatures.get(SurfactantAnalysis.FEATURES.PKA_ACID_1) : null;
+
+      Double log = analysisFeatures.get(SurfactantAnalysis.FEATURES.LOGP_TRUE) != null ?
+          analysisFeatures.get(SurfactantAnalysis.FEATURES.LOGP_TRUE) : null;
+
+      Double hlb = analysisFeatures.get(SurfactantAnalysis.FEATURES.HLB_VAL) != null ?
+          analysisFeatures.get(SurfactantAnalysis.FEATURES.HLB_VAL) : null;
+
+      physiochemicalProperties = new PhysiochemicalProperties(pka, log, hlb);
+    }
+
+    return new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
+        wordcloudFilename, xref, physiochemicalProperties);
+  }
+
 
 
   private void updateWithPrecursors(String inchi, List<Precursor> pre) throws IOException {
@@ -601,8 +687,8 @@ public class Loader {
   private void updateFromReachableFiles(List<File> files) {
     files.stream().forEach(this::updateFromReachablesFile);
   }
-
-  private void updateFromReachableDir(File file) throws IOException {
+  Set<Long> targetsOfInterest = new HashSet<>(Arrays.asList(878L, 1443L, 1293L, 448L, 341L, 1496L, 1536L, 750L, 4026L, 716L));
+  public void updateFromReachableDir(File file) throws IOException {
     // Get all the reachables from the reachables text file so it doesn't take forever to look for all the files.
 
     File dataDirectory = Arrays.stream(file.listFiles())
@@ -621,7 +707,7 @@ public class Loader {
       }
     }
 
-    List<File> validFiles = chemicalIds.stream().
+    List<File> validFiles = chemicalIds.stream().filter(i -> targetsOfInterest.contains(Long.valueOf(i))).
             map(i -> new File(dataDirectory, "c" + String.valueOf(i) + ".json")).
             collect(Collectors.toList());
 
