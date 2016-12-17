@@ -902,9 +902,11 @@ public class SurfactantAnalysis {
     // From the documentation.  Not sure what these knobs do...
     pka.setBasicpKaLowerLimit(-5.0);
     pka.setAcidicpKaUpperLimit(25.0);
-    pka.setpHLower(2.5); // for ms distr
-    pka.setpHUpper(3.5); // for ms distr
-    pka.setpHStep(0.5);  // for ms distr
+
+    // Set biologically plausible pH values
+    pka.setpHLower(6.0);
+    pka.setpHUpper(8.0);
+    pka.setpHStep(0.5);
     pka.setMolecule(surfactantAnalysis.getMol());
     pka.run();
 
