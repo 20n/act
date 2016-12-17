@@ -63,7 +63,7 @@ public class FreemarkerRenderer {
 
   public static void main(String[] args) throws Exception {
     Loader loader =
-        new Loader("localhost", 27017, "wiki_reachables", "reachablesv7_test_vijay", "sequencesv7", "/tmp");
+        new Loader("localhost", 27017, "wiki_reachables", "reachablesv7", "sequencesv7", "/tmp");
 
     FreemarkerRenderer renderer = FreemarkerRendererFactory.build(loader);
     //renderer.writePageToDir(new File("/Volumes/shared-data/Thomas/WikiPagesForUpload"));
