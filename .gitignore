@@ -56,3 +56,11 @@ reachables/lib/native/linux/libz3java.so
 reachables/lib/native/mac/libz3.dylib
 
 reachables/lib/native/mac/libz3java.dylib
+
+reachables/old_lib/native/linux/libz3.so
+
+reachables/old_lib/native/linux/libz3java.so
+
+reachables/old_lib/native/mac/libz3.dylib
+
+reachables/old_lib/native/mac/libz3java.dylib
