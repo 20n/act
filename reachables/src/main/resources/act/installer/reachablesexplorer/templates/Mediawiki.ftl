@@ -52,7 +52,7 @@ To order pathway information for this molecule, please [${orderLink} click here]
 </#if>
 
 <#if patents??>
-'''Patents''':<br />
+'''Recent Patents''':<br />
 {| class='wikitable'
 ! Id
 ! Title
@@ -63,7 +63,7 @@ To order pathway information for this molecule, please [${orderLink} click here]
   </#list>
 |}
 <#else>
-'''Patents''': none
+'''Recent Patents''': none
 </#if>
 
 
