@@ -16,12 +16,15 @@
 
 <#if physiochemicalProperties??>
 '''Physio-chemical properties''':
-* pKa acid: ${physiochemicalProperties.pka}
+* pKa: ${physiochemicalProperties.pka}
 * logP: ${physiochemicalProperties.logp}
 * HLB: ${physiochemicalProperties.hlb}
 </#if>
 
 
+<#if hideCascades??>
+To order pathway information for this molecule, please [${orderLink} click here].
+<#else>
 <#if cascade??>
 [[File:${cascade}.png|800px]]
 </#if>
@@ -30,13 +33,16 @@
 ''' Pathways
 {| class='wikitable'
 !
+! DNA
 ! Pathway
   <#list pathways as pathway>
 |-
 | ${pathway?counter}
+| ${pathway.hasDna}
 | [[${pathway.link}|${pathway.name}]]
   </#list>
 |}
+</#if>
 </#if>
 
 <#if patents??>
