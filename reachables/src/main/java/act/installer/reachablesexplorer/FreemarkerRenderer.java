@@ -52,6 +52,8 @@ public class FreemarkerRenderer {
   private static final int SEQUENCE_SAMPLE_START = 3000;
   private static final int SEQUENCE_SAMPLE_SIZE = 80;
 
+  private static final Boolean HIDE_CASCADES_AND_PATHWAYS = false;
+
   private String reachableTemplateName;
   private String pathwayTemplateName;
   private Loader loader;
@@ -106,27 +108,34 @@ public class FreemarkerRenderer {
                              File pathDestination,
                              File sequenceDestination) throws IOException, TemplateException{
 
-    DBCursor<ReactionPath> reachableDBCursor = Cascade.get_pathway_collection().find();
+    // Temporary fix: only write pages for molecules with pathways.  This should eventually iterate over all reachables.
+    DBCursor<ReactionPath> cascadeCursor = Cascade.get_pathway_collection().find();
 
     Set<Long> seenIds = new HashSet<>();
 
+    // Temporary fix: limit ourselves to only the molecules used in the demo wiki.
     Set<Long> targetsOfInterest = new HashSet<>(Arrays.asList(878L, 1443L, 1293L, 448L, 341L, 1496L, 1536L, 750L, 4026L, 716L));
 
     int i = 0;
-    while(reachableDBCursor.hasNext()) {
+    while (cascadeCursor.hasNext()) {
       // Hacked cursor munging to only consider targets of pathways.
-      ReactionPath thisPath = reachableDBCursor.next();
+      ReactionPath thisPath = cascadeCursor.next();
       if (!targetsOfInterest.contains(thisPath.getTarget())) {
         LOGGER.info("Skipping target not of interest");
         continue;
       }
-      Reachable r = loader.constructReachableFromId(thisPath.getTarget());
-      loader.upsert(r);
 
       if (seenIds.contains(thisPath.getTarget())) {
         LOGGER.info("Skipping duplicate id %d", thisPath.getTarget());
         continue;
       }
+
+
+      /* Temporary fix: create reachables on the fly for pathway targets to ensure we have documents to use when
+       * generating the molecule pages.  This should not be necessary in a world where reachables are all loaded into
+       * the DB before pathways. */
+      Reachable r = loader.constructReachableFromId(thisPath.getTarget());
+      loader.upsert(r);
 
       if (r == null) {
         LOGGER.error("Skipping id %d, because not found in the DB", thisPath.getTarget());
@@ -138,7 +147,7 @@ public class FreemarkerRenderer {
       String inchiKey = r.getInchiKey();
       if (inchiKey != null) {
         LOGGER.info(inchiKey);
-        List<Pair<String, String>> pathwayDocsAndNames = generatePathDocuments(r, pathDestination, sequenceDestination);
+        List<PathwayDoc> pathwayDocsAndNames = generatePathDocuments(r, pathDestination, sequenceDestination);
         File f = new File(reachableDestination, inchiKey);
         Writer w = new PrintWriter(f);
         reachableTemplate.process(buildReachableModel(r, loader.getJacksonSequenceCollection(), pathwayDocsAndNames), w);
@@ -157,7 +166,7 @@ public class FreemarkerRenderer {
 
   private Object buildReachableModel(Reachable r,
                                      JacksonDBCollection<SequenceData, String> sequenceCollection,
-                                     List<Pair<String, String>> pathwayDocsAndNames
+                                     List<PathwayDoc> pathwayDocs
                                      ) {
     /* Freemarker's template language is based on a notion of "hashes," which are effectively just an untyped hierarchy
      * of maps and arrays culminating in scalar values (think of it like a JSON doc done up in plain Java types).
@@ -178,6 +187,10 @@ public class FreemarkerRenderer {
 
     model.put("cascade", r.getPathwayVisualization());
 
+    if (HIDE_CASCADES_AND_PATHWAYS) {
+      model.put("hideCascades", true);
+    }
+
     if (r.getWordCloudFilename() != null) {
       model.put("wordcloudRendering", r.getWordCloudFilename());
     }
@@ -194,10 +207,12 @@ public class FreemarkerRenderer {
     });
 
     List<Object> pathways = new ArrayList<>();
-    for (Pair<String, String> pair : pathwayDocsAndNames) {
+    for (PathwayDoc doc : pathwayDocs) {
       pathways.add(new HashMap<String, String>() {{
-        put("link", pair.getLeft());
-        put("name", pair.getRight());
+        put("link", doc.getPageName());
+        put("name", doc.getPathText());
+        // With help from http://stackoverflow.com/questions/13183982/html-entity-for-check-mark
+        put("hasDna", doc.getHasDNA() ? "&#10003;" : "");
       }});
     }
     if (pathways.size() > 0) {
@@ -294,11 +309,35 @@ public class FreemarkerRenderer {
     return builder.toString();
   }
 
-  public List<Pair<String, String>> generatePathDocuments(
+  private static class PathwayDoc {
+    String pageName;
+    String pathText;
+    Boolean hasDNA;
+
+    public PathwayDoc(String pageName, String pathText, Boolean hasDNA) {
+      this.pageName = pageName;
+      this.pathText = pathText;
+      this.hasDNA = hasDNA;
+    }
+
+    public String getPageName() {
+      return pageName;
+    }
+
+    public String getPathText() {
+      return pathText;
+    }
+
+    public Boolean getHasDNA() {
+      return hasDNA;
+    }
+  }
+
+  public List<PathwayDoc> generatePathDocuments(
       Reachable target, File pathDestination, File sequenceDestination) throws IOException, TemplateException {
     DBCursor<ReactionPath> cursor = Cascade.get_pathway_collection().find(new BasicDBObject("target", target.getId()));
 
-    List<Pair<String, String>> pathPagesAndNames = new ArrayList<>();
+    List<PathwayDoc> pathwayDocs = new ArrayList<>();
     while (cursor.hasNext()) {
       ReactionPath path = cursor.next();
 
@@ -325,9 +364,13 @@ public class FreemarkerRenderer {
         pathwayTemplate.process(model.getLeft(), new FileWriter(new File(pathDestination, pathwayDocName)));
       }
 
-      pathPagesAndNames.add(Pair.of(pathwayDocName, model.getRight()));
+      pathwayDocs.add(new PathwayDoc(
+          pathwayDocName,
+          model.getRight(),
+          designDocsAndSummaries != null && designDocsAndSummaries.size() > 0)
+      );
     }
-    return pathPagesAndNames;
+    return pathwayDocs;
   }
 
   private List<Triple<String, String, DNAOrgECNum>> renderSequences(File sequenceDestination, String docPrefix, String seqRef) throws IOException {
