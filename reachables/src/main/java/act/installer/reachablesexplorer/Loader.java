@@ -365,6 +365,7 @@ public class Loader {
       wordcloudFilename = wordcloud.getName();
     }
 
+
     SynonymData synonymData = getSynonymData(inchi);
 
     Map<SurfactantAnalysis.FEATURES, Double> analysisFeatures = null;
@@ -454,6 +455,7 @@ public class Loader {
       LOGGER.error(String.format("Threw exception when getting physiochemical properties for inchi %s: %s", inchi, generalException.getMessage()));
     }
 
+
     PhysiochemicalProperties physiochemicalProperties = null;
 
     if (analysisFeatures != null) {
@@ -469,8 +471,10 @@ public class Loader {
       physiochemicalProperties = new PhysiochemicalProperties(pka, log, hlb);
     }
 
-    return new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
+    Reachable r = new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
         wordcloudFilename, xref, physiochemicalProperties);
+    r.setPathwayVisualization("cscd" + id + ".dot");
+    return r;
   }
 
 

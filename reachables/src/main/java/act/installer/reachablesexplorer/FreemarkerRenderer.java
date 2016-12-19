@@ -277,7 +277,8 @@ public class FreemarkerRenderer {
       if (r.getSynonyms().getMeshHeadings() != null) {
         List<Map<String, Object>> meshHeadingModel = r.getSynonyms().getMeshHeadings().entrySet().stream()
             .map(entry -> new HashMap<String, Object>() {{
-              put("synonymType", entry.getKey().toString());
+              String key = entry.getKey().toString();
+              put("synonymType", "NONE".equals(key) ? "MeSH" : key);
               put("synonyms", entry.getValue().stream().collect(Collectors.toList()));
             }})
             .collect(Collectors.toList());
