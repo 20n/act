@@ -359,7 +359,7 @@ public class FreemarkerRenderer {
             designSize / 2 + SEQUENCE_SAMPLE_SIZE / 2);
       }
 
-      // The following line add spaces in the middle of DNA sequences for better display.
+      // Hack to get the DNA design sequence to be displayed on 4 lines. Introduce <br> tags at each 4th of the string.
       shortVersion = String.format("%s<br>%s<br>%s<br>%s",
           shortVersion.substring(0, SEQUENCE_SAMPLE_SIZE / 4),
           shortVersion.substring(SEQUENCE_SAMPLE_SIZE / 4, SEQUENCE_SAMPLE_SIZE / 2),
@@ -460,13 +460,18 @@ public class FreemarkerRenderer {
 
   private List<String> renderDNADesignMetadata(DNAOrgECNum dnaOrgECNum) {
     List<Set<OrgAndEcnum>> setOfOrgAndEcnum = dnaOrgECNum.getListOfOrganismAndEcNums();
-    return setOfOrgAndEcnum.stream().filter(Objects::nonNull).
-        map(setOrgEcNum -> StringUtils.capitalize(String.join(", ", setOrgEcNum.stream().filter(Objects::nonNull).
-            map(this::renderProteinMetadata).
-            collect(Collectors.toList())))).
+    return setOfOrgAndEcnum.stream().
+        filter(Objects::nonNull).
+        map(this::renderSetOfProteinDesignMetadata).
         collect(Collectors.toList());
   }
 
+  private String renderSetOfProteinDesignMetadata(Set<OrgAndEcnum> orgAndEcnumSet) {
+    return StringUtils.capitalize(String.join(", ", orgAndEcnumSet.stream().
+        filter(Objects::nonNull).
+        map(this::renderProteinMetadata).
+        collect(Collectors.toList())));
+  }
 
   private String renderProteinMetadata(OrgAndEcnum orgAndEcnum) {
     String proteinMetadata = orgAndEcnum.getEcnum() == null ?
