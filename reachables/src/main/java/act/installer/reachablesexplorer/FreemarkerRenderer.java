@@ -348,7 +348,12 @@ public class FreemarkerRenderer {
     });
 
     for (int i = 0; i < designs.size(); i++) {
-      String design = designs.get(i).getDna().toUpperCase();
+      String design = designs.get(i).getDna();
+      if (design == null) {
+        LOGGER.error("No DNA found for design %d, reference %s", i, seqRef);
+        continue;
+      }
+      design = design.toUpperCase();
       int designSize = design.length();
       String shortVersion;
       if (designSize > SEQUENCE_SAMPLE_START + SEQUENCE_SAMPLE_SIZE) {
