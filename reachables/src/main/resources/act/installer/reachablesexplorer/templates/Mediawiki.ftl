@@ -2,8 +2,9 @@
 <#if structureRendering??>
 [[File:${structureRendering}|400px]]
 </#if>
+
 <#if wordcloudRendering??>
-'''Word Cloud''':<br />
+'''Word Cloud''':
 [[File:${wordcloudRendering}|800px]]
 </#if>
 
@@ -73,9 +74,9 @@
 </tab>
 </#if>
 
-<#if meshHeadings??>
-<tab name="Mesh headings">
-<#list meshHeadings as synonymsAndType>
+<#if pubchemSynonyms??>
+<tab name="PubChem synonyms">
+<#list pubchemSynonyms as synonymsAndType>
 * ${synonymsAndType.synonymType}
 <#list synonymsAndType.synonyms as syno>
 ** ${syno}
@@ -84,9 +85,9 @@
 </tab>
 </#if>
 
-<#if pubchemSynonyms??>
-<tab name="PubChem synonyms">
-<#list pubchemSynonyms as synonymsAndType>
+<#if meshHeadings??>
+<tab name="Mesh headings">
+<#list meshHeadings as synonymsAndType>
 * ${synonymsAndType.synonymType}
 <#list synonymsAndType.synonyms as syno>
 ** ${syno}
