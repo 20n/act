@@ -1,10 +1,10 @@
 package com.act.biointerpretation.metadata;
 
-import java.util.Comparator;
 import java.util.Map;
 
 public class ProteinMetadata {
     //These are strict requirements that these be ok
+    Long reactionId;
     Map<Host, Integer> cloned;
     Double kcatkm;
     Double specificActivity;

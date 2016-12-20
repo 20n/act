@@ -1,17 +1,15 @@
 package com.act.biointerpretation.metadata;
 
-import act.installer.brenda.BrendaSupportingEntries;
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
-import org.apache.commons.io.FileUtils;
 import org.json.JSONObject;
 
-import java.io.File;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Iterator;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class ProteinMetadataComparator implements Comparator {
@@ -117,6 +115,10 @@ public class ProteinMetadataComparator implements Comparator {
 
 
     public static void main(String[] args) throws Exception {
+        createProteinMetadataTable();
+    }
+
+    public static Map<Long, Integer> createProteinMetadataTable() throws Exception {
         ProteinMetadataComparator comp = new ProteinMetadataComparator(Host.Ecoli, Localization.cytoplasm);
 
         // TODO: This is referencing a temporary collection. Change it!
@@ -141,9 +143,8 @@ public class ProteinMetadataComparator implements Comparator {
 
             Set<JSONObject> jsons = rxn.getProteinData();
 
-
             for (JSONObject json : jsons) {
-                ProteinMetadata meta = factory.create(json);
+                ProteinMetadata meta = factory.create(json, (long) rxn.getUUID());
                 agg.add(meta);
             }
         }
@@ -152,6 +153,7 @@ public class ProteinMetadataComparator implements Comparator {
 
         //For each protein metadata, gather up ones that have a non-zero score into a new list
         List<ProteinMetadata> agg2 = new ArrayList<>();
+        Map<Long, Integer> reactionToScore = new HashMap<>();
         for(ProteinMetadata pmd : agg) {
             //Consider if it is invalid (meaning a really crappy enzyme) and if so ignore it
             if(!pmd.isValid(Host.Ecoli)) {
@@ -160,14 +162,11 @@ public class ProteinMetadataComparator implements Comparator {
 
             //Score the protein
             int score = comp.score(pmd);
+            reactionToScore.put(pmd.reactionId, score);
             if(score > 0) {
                 agg2.add(pmd);
             }
         }
-
-        System.out.println("Non-zero Metadata's: " + agg2.size());
-
-        //Sort the non-zero metadata's using this Comparator
-        Collections.sort(agg2, comp);
+        return reactionToScore;
     }
 }
