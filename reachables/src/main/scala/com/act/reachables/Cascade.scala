@@ -60,8 +60,6 @@ object Cascade extends Falls {
     // we dont want to use reactions that dont have any substrates (most likely bad data)
     val upNonTrivial = upReach.filter(has_substrates)
 
-    // limit the # of up reactions to output to MAX_CASCADE_UPFANOUT
-    // compute all substrates "s" of all rxnsups (upto 10 of them)
     val groupedSubProduct: Map[SubProductPair, List[ReachRxn]] = upNonTrivial.toList
       .map(rxn => (SubProductPair(rxn.substrates.toList.filter(x => !cofactors.contains(x)).sorted, List(m)), rxn)).
       groupBy(_._1).
@@ -280,9 +278,7 @@ object Cascade extends Falls {
     oneValid
   }
 
-  val INCL_ALL_PRECURSORS_EVEN_IF_DOWNSTREAM = false
-
-  val debugIDs = List(1293L, 1209L)
+  val debugIDs = List()
   var currentID = 0L
   def debug(msg: String) {
     if (debugIDs.contains(currentID)) {
@@ -290,14 +286,14 @@ object Cascade extends Falls {
     }
   }
 
-  var DEBUG_DO_CACHE_CASCADES = true
-  def debugSetCascadesCaching(onOff: Boolean) {
-    println("######## Caching set to " + onOff)
-    DEBUG_DO_CACHE_CASCADES = onOff
+  var CACHE_CASCADES = true
+  def doCacheCascades(onOff: Boolean) {
+    println("Cascades caching is: " + (if (onOff) "ON" else "OFF"))
+    CACHE_CASCADES = onOff
   }
 
   def get_cascade(m: Long, depth: Int = 0, source: Option[Long] = None, seen: Set[Long] = Set()): Option[Network] = 
-  if (DEBUG_DO_CACHE_CASCADES && depth > 0 && cache_nw.contains(m)) cache_nw(m) else 
+  if (CACHE_CASCADES && depth > 0 && cache_nw.contains(m)) cache_nw(m) else 
   {
     if (depth == 0) currentID = m
 
@@ -312,15 +308,9 @@ object Cascade extends Falls {
       // do nothing, base case
       Some(network)
     } else {
-      val grouped: List[(SubProductPair, List[ReachRxn])] = {
-        if (INCL_ALL_PRECURSORS_EVEN_IF_DOWNSTREAM) {
-          // We don't filter by higher in tree on the first iteration, so that all possible
-          // reactions producing this product are shown on the graph.
-          pre_rxns(m, higherInTree = depth != 0).toList
-        } else {
-          pre_rxns(m).toList
-        }
-      }
+      // We don't filter by higher in tree on the first iteration, so that all possible
+      // reactions producing this product are shown on the graph.
+      val grouped: List[(SubProductPair, List[ReachRxn])] = pre_rxns(m, higherInTree = depth != 0).toList
 
       debug(s"~~ pre_rxns = ${grouped.map(_._1)} for m = $m") // + s" cache(1209, 1353, 374) = ${cache_nw.contains(1209L)}, ${cache_nw.contains(1353L)}, ${cache_nw.contains(374L)}")
 
@@ -336,13 +326,23 @@ object Cascade extends Falls {
       }
     }
 
-    val RUN_LONGER_BUT_USE_LESS_MEM = false
-
-    if (depth > 0) {
+    // Now we cache the network. Except for two cases:
+    // 1) when the node is the target node (i.e., depth == 0), the `net` for this node
+    //    contains the exceptional case of including edges even if they don't go higher in the tree
+    //    so this computation of its `net` is a one off. If we encounter this other times (i.e., as
+    //    an internal node during some other computation) the exception would not have been applied
+    //    and so we'll be good to cache it then.
+    // 2) when the node happens to have been explored as part of a cycle (that does not lead to 
+    //    natives). In that case, we usually do want to exclude it. But there are times when 
+    //    bidirectional edges exist in the cycle, and so there is a way to use the edges in it
+    //    to actually break out of it. To allow for that case, we don't cache when the computation
+    //    evaluates to None. Every other case, good to go.
+    if (depth > 0 && net.isDefined) {
       // cache the network so we don't recompute it
       cache_nw = cache_nw + (m -> net)
-      if (List(1353L, 374L).contains(m)) println(s"~~ adding $m to the cache while processing $source")
+      debug(s"~~ caching $m")
 
+      val RUN_LONGER_BUT_USE_LESS_MEM = false
       if (RUN_LONGER_BUT_USE_LESS_MEM && cache_nw.size > 5000) {
         println(s"Cache is taking up too much memory. Clearing caches.")
         cache_nw = mutable.Map[Long, Option[Network]]()
@@ -432,7 +432,6 @@ object Cascade extends Falls {
     }
 
     def getReactionSum(): Int ={
-      // println(s"path = $path")
       path.map(getReactionCount).sum
     }
 
