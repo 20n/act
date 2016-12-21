@@ -2,6 +2,7 @@ package com.act.biointerpretation.metadata;
 
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
+import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -118,12 +119,12 @@ public class ProteinMetadataComparator implements Comparator {
         createProteinMetadataTable();
     }
 
-    public static Map<Long, Integer> createProteinMetadataTable() throws Exception {
+    public static Map<Long, List<Pair<ProteinMetadata, Integer>>>  createProteinMetadataTable() throws Exception {
         ProteinMetadataComparator comp = new ProteinMetadataComparator(Host.Ecoli, Localization.cytoplasm);
 
         // TODO: This is referencing a temporary collection. Change it!
         // TODO: FIX THIS BEFORE MERGE!
-        NoSQLAPI api = new NoSQLAPI("actv01_vijay_proteins", "actv01_vijay_proteins");
+        NoSQLAPI api = new NoSQLAPI("jarvis_2016-12-09", "actv01_vijay_proteins");
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
 
         //Create a single instance of the factory method to use for all json
@@ -153,7 +154,7 @@ public class ProteinMetadataComparator implements Comparator {
 
         //For each protein metadata, gather up ones that have a non-zero score into a new list
         List<ProteinMetadata> agg2 = new ArrayList<>();
-        Map<Long, Integer> reactionToScore = new HashMap<>();
+        Map<Long, List<Pair<ProteinMetadata, Integer>>> reactionToScore = new HashMap<>();
         for(ProteinMetadata pmd : agg) {
             //Consider if it is invalid (meaning a really crappy enzyme) and if so ignore it
             if(!pmd.isValid(Host.Ecoli)) {
@@ -162,7 +163,11 @@ public class ProteinMetadataComparator implements Comparator {
 
             //Score the protein
             int score = comp.score(pmd);
-            reactionToScore.put(pmd.reactionId, score);
+            if (!reactionToScore.containsKey(pmd.reactionId)) {
+                reactionToScore.put(pmd.reactionId, new ArrayList<>());
+            }
+
+            reactionToScore.get(pmd.reactionId).add(Pair.of(pmd, score));
             if(score > 0) {
                 agg2.add(pmd);
             }
