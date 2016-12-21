@@ -57,7 +57,7 @@ public class ProteinMetadataComparator implements Comparator {
         // Score enzyme efficiency, will result in picking the highest values as 
         // the dominant consideration, biased on kcatkm
         if(pmd.kcatkm != null) {
-            out = (Math.log(pmd.kcatkm)) * 20;
+            out += (Math.log(pmd.kcatkm)) * 20;
         }
         if(pmd.specificActivity != null) {
             out += (Math.log(pmd.specificActivity)) * 20;

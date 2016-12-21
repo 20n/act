@@ -80,6 +80,7 @@ object RankPathway {
     val reactionNodes = pathway.getPath.asScala.toList.filter(_.isReaction)
     if (reactionNodes.length > MAX_PROTEINS_PER_PATH || !reactionNodes.forall(x => x.sequences.size() > 0)) return None
 
+    // Rank each node in a given pathway.  Some nodes have multiple metadata, therefore we get a list of lists.
     val rankingsForEachNode: List[List[(Long, List[Pair[ProteinMetadata, Integer]])]] =
       reactionNodes.map(node =>
         node.reactionIds.asScala.toList.map(y => (y, rankingTable.get(y))).map(v => {
