@@ -12,7 +12,7 @@ import scala.collection.mutable
 
 object RankPathway {
   /* Filtering Settings */
-  private val MAX_PROTEINS_PER_PATH = 4
+  private val MAX_PROTEINS_PER_PATH = 10
   private val MAX_DESIGNS_PER_TARGET = 5
 
   /* Database connections */
@@ -49,10 +49,12 @@ object RankPathway {
     val flatValidPaths: List[(String, List[Pair[ProteinMetadata, Integer]])] = allValidProteinPaths.flatten.toList
 
     val unpaired = flatValidPaths.map(x => x._2.map(y => (x._1, y.getLeft, y.getRight)))
-    val sorted: List[List[(String, ProteinMetadata, Integer)]] = unpaired.sortBy(s => s.map(x => -x._3).sum / s.length.toDouble)
+    val sorted: List[List[(String, ProteinMetadata, Integer)]] = unpaired.sortBy(scoringFunction).reverse
+
+    val duplicatesRemoved = removeDuplicateProteins(sorted)
 
     // TODO implement what should be done with these.
-    println(sorted.map(x => (x.head._1, x.map(y => y._3: Int).sum/x.length.toDouble)))
+    println(duplicatesRemoved.map(x => (x.head._1, scoringFunction(x))))
   }
 
   private def chooseOneFromEach[T](input: List[List[T]]): List[List[T]] = {
@@ -73,6 +75,51 @@ object RankPathway {
     chooseAll(input)
 
     fullList.toList
+  }
+
+  private def scoringFunction(composition: List[(String, ProteinMetadata, Integer)]): Double = {
+    // Current power of 2
+    var count = 0
+    // We reverse so that we process the target first
+    val compositionSum = composition.reverse.map(c => {
+      count += 1
+      // Assigned score * (1/(2^Count))... exponential decay
+      c._3 * (1/Math.pow(2, count))
+    }).sum
+
+    // We penalize the length by dividing by the length.
+    // Therefore, shorter sequences are penalized less
+    // (This works out as not averaging because we assign value is an exponentially decaying way)
+    val divisor: Double = 1/composition.length.toDouble
+    compositionSum*divisor
+  }
+
+  private def removeDuplicateProteins(s: List[List[(String, ProteinMetadata, Integer)]]): List[List[(String, ProteinMetadata, Integer)]] = {
+    val proteinBlacklist: mutable.HashMap[ProteinMetadata, Long] = mutable.HashMap()
+
+    s.sortBy(scoringFunction).reverse.filter(current => {
+      // Modify outside scope so progressive filter continually strengthens conditions
+      val isValid = current.forall(t => {
+        proteinBlacklist.get(t._2) match {
+          case Some(i) => i <= 2
+          case None => true
+        }
+      })
+
+      // This is a valid sequence, so we increment our protein uses
+      if (isValid){
+        current.foreach(t => {
+          val meta = t._2
+          if (proteinBlacklist.contains(meta)) {
+            proteinBlacklist.put(meta, proteinBlacklist(meta) + 1)
+          } else {
+            proteinBlacklist.put(meta, 1)
+          }
+        })
+      }
+
+      isValid
+    })
   }
 
   def processSinglePath(pathway: ReactionPath): Option[List[List[Pair[ProteinMetadata, Integer]]]] = {
@@ -127,10 +174,10 @@ object RankPathway {
         val sequenceId = jarray.getLong(i): java.lang.Long
         returnList.add(sequenceId)
       }
-      ({
-        i += 1;
+      {
+        i += 1
         i - 1
-      })
+      }
     }
 
     p.sequences = returnList
