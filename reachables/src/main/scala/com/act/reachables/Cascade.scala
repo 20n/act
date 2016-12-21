@@ -290,8 +290,14 @@ object Cascade extends Falls {
     }
   }
 
+  var DEBUG_DO_CACHE_CASCADES = true
+  def debugSetCascadesCaching(onOff: Boolean) {
+    println("######## Caching set to " + onOff)
+    DEBUG_DO_CACHE_CASCADES = onOff
+  }
+
   def get_cascade(m: Long, depth: Int = 0, source: Option[Long] = None, seen: Set[Long] = Set()): Option[Network] = 
-  if (depth > 0 && cache_nw.contains(m)) cache_nw(m) else 
+  if (DEBUG_DO_CACHE_CASCADES && depth > 0 && cache_nw.contains(m)) cache_nw(m) else 
   {
     if (depth == 0) currentID = m
 
@@ -549,7 +555,16 @@ class Cascade(target: Long) {
   val nw = Cascade.get_cascade(t).get
 
   private val workingDir = new java.io.File(".").getCanonicalFile
-  nw.nodeMapping.values().filter(getOrDefault[String](_, "isrxn").toBoolean).foreach(node => {
+  nw.nodeMapping.values().filter(getOrDefault[String](_, "isrxn").toBoolean).foreach(node => 
+    if (true) {
+      Node.setAttribute(node.id, "isSpontaneous", false)
+      Node.setAttribute(node.id, "hasSequence", false)
+      Node.setAttribute(node.id, "sequences", new util.HashSet())
+
+      // This `if (true) { .. } else {` block needs to be removed before PR merge. after cache debugging done
+      println("CRITICAL: REMOVE THIS BLOCK before PR merge. Only here for cascades caching debugging.")
+
+    } else {
     val reactionIds: Set[Long] = getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => Cascade.rxn_node_rxn_ident(x.toLong): Long).toSet
     val isSpontaneous: Boolean = reactionIds.exists(r => {
       val thisSpontaneousResult = ReachRxnDescs.rxnIsSpontaneous(r)
