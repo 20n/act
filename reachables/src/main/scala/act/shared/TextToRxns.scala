@@ -1,40 +1,39 @@
 package act.shared
 
-import java.io.{PrintWriter, File, ObjectOutputStream, ObjectInputStream, FileOutputStream, FileInputStream}
+import java.io.{File, FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream, PrintWriter}
 import java.io.FileNotFoundException
 import java.net.{URI, URLEncoder}
 import java.util.InputMismatchException
+
 import uk.ac.cam.ch.wwmm.chemicaltagger.ChemistryPOSTagger
 import uk.ac.cam.ch.wwmm.chemicaltagger.ChemistrySentenceParser
 import uk.ac.cam.ch.wwmm.chemicaltagger.Utils
-
 import javax.xml.xpath.XPathFactory
 import javax.xml.xpath.XPathConstants
 import javax.xml.parsers.DocumentBuilderFactory
+
 import org.w3c.dom.Node
 import org.w3c.dom.NodeList
 import org.w3c.dom.Document
 import nu.xom.converters.DOMConverter
-
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.util.PDFTextStripper
-
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
-import com.act.biointerpretation.l2expansion.SparkInstance
 import com.act.biointerpretation.cofactorremoval.CofactorsCorpus
-import com.act.biointerpretation.mechanisminspection.Ero
-import com.act.biointerpretation.mechanisminspection.ReactionRenderer
-
+import com.act.biointerpretation.mechanisminspection.{Ero, ErosCorpus, ReactionRenderer}
 import chemaxon.struc.RxnMolecule
 import chemaxon.formats.MolImporter
+import com.act.biointerpretation.l2expansion.sparkprojectors.SparkProjectionInstance
+import com.act.biointerpretation.l2expansion.sparkprojectors.utility.ProjectionResult
+import org.apache.log4j.LogManager
 
 import scala.collection.JavaConverters._
 
 sealed trait InputType
-case class TextFile(val fname: String) extends InputType
-case class WebURL(val url: String) extends InputType
-case class RawText(val text: String) extends InputType
-case class PdfFile(val fname: String) extends InputType
+case class TextFile(fname: String) extends InputType
+case class WebURL(url: String) extends InputType
+case class RawText(text: String) extends InputType
+case class PdfFile(fname: String) extends InputType
 
 object TextToRxns {
 
@@ -122,7 +121,7 @@ object TextToRxns {
   def getRxnsFrom(dataSrc: Option[InputType]): List[ValidatedRxn] = {
     val extractor = new TextToRxns
     val rxns = extractor.extract(dataSrc)
-    extractor.flushWebCache
+    extractor.flushWebCache()
     rxns
   }
 
@@ -219,15 +218,51 @@ class ValidatedRxn(
   override def toString = {
     val s = substrates.map(_.toString).reduce(_ + " + " + _)
     val p = products.map(_.toString).reduce(_ + " + " + _)
-    val ros = getRONames
+    val ros = getRONames()
     s"$s -> $p [$ros]"
   }
 
-  def getRONames(): List[String] = validatingROs match { 
+  def getRONames(): List[String] = validatingROs match {
     case None => List()
     case Some(ros) => ros.map(_.getName)
   }
 }
+
+
+
+object ValidationHandler {
+  val defaultMoleculeFormat = MoleculeFormat.strictNoStereoInchi
+
+  private val LOGGER = LogManager.getLogger(getClass)
+  var eros = new ErosCorpus()
+  eros.loadValidationCorpus()
+
+
+  def validateReaction(exhaustive: Boolean = true)
+                      (substrates: List[String], products: List[String]): Stream[Ero] = {
+    // Normalize and Sort for compare later.  We do this here
+    val normalizedProduct = products.map(p =>
+      MoleculeExporter.exportMolecule(MoleculeImporter.importMolecule(p), defaultMoleculeFormat))
+    val sortedProduct = normalizedProduct.sorted
+
+    val getValidEros: Ero => Boolean = determineValidRosForReaction(reverse = false, exhaustive)(substrates, sortedProduct)
+    val results: Stream[Ero] = this.eros.getRos.asScala.toStream.filter(getValidEros)
+    results
+  }
+
+  private def determineValidRosForReaction(reverse: Boolean, exhaustive: Boolean)
+                                          (substrate: List[String], product: List[String])
+                                          (ro: Ero): Boolean = {
+    // Do the projection
+    val projection: Stream[ProjectionResult] = SparkProjectionInstance.getResultsForSubstrate(substrate, reverse, exhaustive)(ro)
+
+    // If truly the same they should sort the same
+    projection.exists(x => product.equals(x.products.sorted))
+  }
+}
+
+
+
 
 class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
 
@@ -256,7 +291,7 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
   def flushWebCache() = {
     val oos = new ObjectOutputStream(new FileOutputStream(webCacheLoc))
     oos.writeObject(webCache)
-    oos.close
+    oos.close()
     println(s"Web cache flushed.")
   }
 
@@ -286,7 +321,7 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
 
   def getChemicals(text: String) = {
     // Calling ChemistryPOSTagger
-    val posContainer = ChemistryPOSTagger.getDefaultInstance().runTaggers(text)
+    val posContainer = ChemistryPOSTagger.getDefaultInstance.runTaggers(text)
 
     // Returns a string of TAG TOKEN format (e.g.: DT The NN cat VB sat IN on DT the NN matt)
     // Call ChemistrySentenceParser either by passing the POSContainer or by InputStream
@@ -315,14 +350,14 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
     println(s"Removed cofactors found [${cofactors.size}]: $cofactors")
     println(s"Finding reactions using [${chems.size}]: $chems")
     val windows = chems.sliding(TextToRxns.SLIDING_WINDOW_SZ, 1).toList
-    val substrateProductPairs = windows.map(constructLHSRHS).flatten.distinct
-    val passValidation = substrateProductPairs.map(passThroughEROs).filter(_.validatingROs != None)
+    val substrateProductPairs = windows.flatMap(constructLHSRHS).distinct
+    val passValidation = substrateProductPairs.map(passThroughEROs).filter(_.validatingROs.isDefined)
     passValidation
   }
 
   def constructLHSRHS(window: List[NamedInChI]) = {
     val arityLimited = subsetsWithMaxArity(window)
-    val subsProdCandidates = for (s <- arityLimited; p <- arityLimited; if (!s.equals(p))) yield (s, p)
+    val subsProdCandidates = for (s <- arityLimited; p <- arityLimited; if !s.equals(p)) yield (s, p)
     subsProdCandidates
   }
 
@@ -343,7 +378,7 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
 
     val subsInchis = substrates.map(_.inchi).toList
     val prodInchis = products.map(_.inchi).toList
-    val passingEros = SparkInstance.validateReactionNoLicense(true)(subsInchis, prodInchis).toList
+    val passingEros = ValidationHandler.validateReaction(true)(subsInchis, prodInchis).toList
 
     val validatingROs = passingEros.size match {
       case 0 => None
@@ -389,11 +424,11 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
     val chemNames = mols.map(_.toLowerCase).distinct
 
     // some names are just too short, e.g. "DAO", to be good chemical tokens. remove those
-    val chemNamesNotTooShort = chemNames.filter(_.size > TextToRxns.MIN_CHEM_NAME_LEN)
+    val chemNamesNotTooShort = chemNames.filter(_.length > TextToRxns.MIN_CHEM_NAME_LEN)
 
     // from names "n" get inchis "i", and get pairs (n, i)
     val withInchis = chemNamesNotTooShort.map(chemNameToInChI) 
-    val taggedInchis = withInchis.filter(_ != None).map{ case Some((n,i)) => new NamedInChI(n,i) }
+    val taggedInchis = withInchis.filter(_.isDefined).map{ case Some((n,i)) => new NamedInChI(n,i) }
 
     // report those inchis that we could not resolve
     val mappedNames = taggedInchis.map(_.name)

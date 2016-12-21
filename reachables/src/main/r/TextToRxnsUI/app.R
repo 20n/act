@@ -4,8 +4,10 @@ require(shiny)
 library(rscala)
 # Logging library (yay!)
 library(logging)
+basicConfig('DEBUG')
 
 source("text_to_rxns.R")
+
 
 chemStructureCacheFolder <- "test2rxns.chem.structs"
 emptyPNG <- "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
@@ -23,16 +25,14 @@ server <- function(input, output, session) {
     } else if (input$url != "") {
       rxns <- extractFromURL(input$url)
     } else if (!is.null(input$pdf)) {
-      print(paste("PDF:", input$pdf$datapath))
+      loginfo("PDF input path: ", input$pdf$datapath)
       rxns <- extractFromPDF(input$pdf$datapath)
     }
 
     if (rxns$size() > 0) {
-      print(paste("Found reactions. Count:", rxns$size()))
-      num_rxns <- rxns$size() - 1
+      loginfo("Found %d reactions.", length(rxn))
 
-      for (rxnid in 0:num_rxns) {
-        rxn <- rxns$apply(rxnid)
+      for (rxn in rxns) {
 
         rxnDesc <- rxn$apply(0L)
         rxnImg <- rxn$apply(1L)
@@ -65,7 +65,7 @@ server <- function(input, output, session) {
     rr <- reactions()
     if (ncol(rr) >= 1) {
       rxnid <- 1
-      desc <- paste("<b>Reaction ", rxnid, "</b> ", rr[1,rxnid])
+      desc <- paste(b(sprintf("Reaction %d", rxnid)), rr[1,rxnid])
       HTML(desc)
     } else {
       HTML("")
@@ -90,7 +90,7 @@ server <- function(input, output, session) {
     rr <- reactions()
     if (ncol(rr) >= 2) {
       rxnid <- 2
-      desc <- paste("<b>Reaction ", rxnid, "</b> ", rr[1,rxnid])
+      desc <- paste(b(sprintf("Reaction %d", rxnid)), rr[1,rxnid])
       HTML(desc)
     } else {
       HTML("")
@@ -115,7 +115,7 @@ server <- function(input, output, session) {
     rr <- reactions()
     if (ncol(rr) >= 3) {
       rxnid <- 3
-      desc <- paste("<b>Reaction ", rxnid, "</b> ", rr[1,rxnid])
+      desc <- paste(b(sprintf("Reaction %d", rxnid)), rr[1,rxnid])
       HTML(desc)
     } else {
       HTML("")

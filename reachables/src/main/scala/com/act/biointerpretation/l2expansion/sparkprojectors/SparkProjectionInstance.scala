@@ -66,7 +66,7 @@ object SparkProjectionInstance extends Serializable {
     results
   }
 
-  private def getResultsForSubstrate(inputs: List[String], reverse: Boolean, exhaustive: Boolean)
+  def getResultsForSubstrate(inputs: List[String], reverse: Boolean, exhaustive: Boolean)
                                     (ro: Ero): Stream[ProjectionResult] = {
     // We check the substrate or the products to ensure equal length based on if we are reversing the rxn or not.
     if ((!reverse && ro.getSubstrate_count != inputs.length) || (reverse && ro.getProduct_count != inputs.length)) {
