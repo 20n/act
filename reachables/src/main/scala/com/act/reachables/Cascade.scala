@@ -35,10 +35,6 @@ object Cascade extends Falls {
 
   var nodeMerger: mutable.HashMap[SubProductPair, Node] = new mutable.HashMap()
 
-  def clearCascades() {
-    nodeMerger = new mutable.HashMap()
-  }
-
   // depth upto which to generate cascade data
   var max_cascade_depth = GlobalParams.MAX_CASCADE_DEPTH
 
@@ -243,64 +239,89 @@ object Cascade extends Falls {
 
   def addValid(m: Long, depth: Int, source: Option[Long], seen: Set[Long], network: Network, candidate: (SubProductPair, List[ReachRxn])) = {
     val oneValid = candidate match {
-      case (subProduct, reactions) =>
+      case (subProduct, reactions) => {
+        val substrates = subProduct.substrates
+        val products = subProduct.products
 
-        // True for only cofactors and empty ist.
-      if (!subProduct.substrates.forall(cofactors.contains)) {
-        val reactionsNode = rxn_node(reactions.map(r => Long.valueOf(r.rxnid)), subProduct)
+        debug(s"~~ starting addValid(m=$m) with seen = $seen")
+        if (substrates.exists(seen.contains(_))) { false } else 
+        {
 
-        def recurse(s: Long) = {
-          val src = if (depth == 0) Option(m) else source
-          val cache = seen + m
-          (s, get_cascade(s, depth+1, src, cache))
+          // True for only cofactors and empty ist.
+          if (substrates.forall(cofactors.contains)) {
+            // Let this node be activated as it is activated by a coefficient only rxn
+            true // found valid
+          } else {
+            val reactionsNode = rxn_node(reactions.map(r => Long.valueOf(r.rxnid)), subProduct)
+
+            def recurse(s: Long) = {
+              val src = if (depth == 0) Option(m) else source
+              (s, get_cascade(s, depth+1, src, seen + m))
+            }
+            debug(s"~~ recursing on: $substrates inside addValid(m=$m) with seen = $seen")
+            val subProductNetworks = substrates.map(recurse)
+            if (subProductNetworks.forall(_._2.isDefined)) {
+              subProductNetworks.foreach(s => {
+                network.addNode(reactionsNode, rxn_node_ident(reactions.head.rxnid))
+                products.foreach(p => network.addEdge(create_edge(reactionsNode, mol_node(p))))
+                network.mergeInto(s._2.get)
+                // add edges of form "s" -> respective "r" nodeMapping
+                network.addEdge(create_edge(mol_node(s._1), reactionsNode))
+              })
+              true // found valid
+            } else {
+              false // did not find a single valid
+            }
+          }
         }
-        val subProductNetworks = subProduct.substrates.map(recurse)
-        if (subProductNetworks.forall(_._2.isDefined)) {
-          subProductNetworks.foreach(s => {
-            network.addNode(reactionsNode, rxn_node_ident(reactions.head.rxnid))
-
-            subProduct.products.foreach(p => network.addEdge(create_edge(reactionsNode, mol_node(p))))
-
-            network.mergeInto(s._2.get)
-
-            // add edges of form "s" -> respective "r" nodeMapping
-            network.addEdge(create_edge(mol_node(s._1), reactionsNode))
-          })
-          true // found valid
-        } else {
-          false // did not find a single valid
-        }
-      } else {
-        // Let this node be activated as it is activated by a coefficient only rxn
-        true // found valid
       }
     }
 
     oneValid
   }
 
+  val INCL_ALL_PRECURSORS_EVEN_IF_DOWNSTREAM = false
+
+  val debugIDs = List(1293L, 1209L)
+  var currentID = 0L
+  def debug(msg: String) {
+    if (debugIDs.contains(currentID)) {
+      println(msg)
+    }
+  }
+
   def get_cascade(m: Long, depth: Int = 0, source: Option[Long] = None, seen: Set[Long] = Set()): Option[Network] = 
   if (depth > 0 && cache_nw.contains(m)) cache_nw(m) else 
   {
+    if (depth == 0) currentID = m
+
     // first check if we are "re-getting" the cascade for the main target,
     // and if so return empty. this allows us to break cycles around the target
     if (source.isDefined && source.get == m) return None
 
     val network = new Network("cascade_" + m)
-
     network.addNode(mol_node(m), m)
 
     val net = if (is_universal(m)) {
       // do nothing, base case
       Some(network)
     } else {
-      // We don't filter by higher in tree on the first iteration, so that all possible
-      // reactions producing this product are shown on the graph.
-      val groupedSubProduct: List[(SubProductPair, List[ReachRxn])] = pre_rxns(m, higherInTree = depth != 0).toList
+      val grouped: List[(SubProductPair, List[ReachRxn])] = {
+        if (INCL_ALL_PRECURSORS_EVEN_IF_DOWNSTREAM) {
+          // We don't filter by higher in tree on the first iteration, so that all possible
+          // reactions producing this product are shown on the graph.
+          pre_rxns(m, higherInTree = depth != 0).toList
+        } else {
+          pre_rxns(m).toList
+        }
+      }
 
-      val filteredSeen = groupedSubProduct.filter(x => x._1.substrates.forall(x => !seen.contains(x)))
-      val validNodes = filteredSeen.map(x => addValid(m, depth, source, seen, network, x))
-      val oneValid = validNodes.foldLeft(false)(_ || _) // find if there was a single node that was valid (take OR of all valid's)
+      debug(s"~~ pre_rxns = ${grouped.map(_._1)} for m = $m") // + s" cache(1209, 1353, 374) = ${cache_nw.contains(1209L)}, ${cache_nw.contains(1353L)}, ${cache_nw.contains(374L)}")
+
+      val validNodes = grouped.map(x => addValid(m, depth, source, seen, network, x))
+      // find if there was a single node that was valid (take OR of all valid's)
+      val oneValid = validNodes.foldLeft(false)(_ || _) 
+      debug(s"~~ validNodes[${validNodes.size}] = $validNodes")
 
       if (!oneValid && depth > 0){
         None
@@ -314,10 +335,8 @@ object Cascade extends Falls {
     if (depth > 0) {
       // cache the network so we don't recompute it
       cache_nw = cache_nw + (m -> net)
+      if (List(1353L, 374L).contains(m)) println(s"~~ adding $m to the cache while processing $source")
 
-      // relieve cache pressure, as otherwise we will start thrashing
-      // For now, using the count of the cache, something at 2000 seems like the right place to clear
-      // TODO: compute `net` and `cache_nw` actual memory size to make decision
       if (RUN_LONGER_BUT_USE_LESS_MEM && cache_nw.size > 5000) {
         println(s"Cache is taking up too much memory. Clearing caches.")
         cache_nw = mutable.Map[Long, Option[Network]]()
@@ -517,7 +536,7 @@ object Cascade extends Falls {
     val rslt = blk
     val end = System.nanoTime()
     val tm = (end - start)/1000000
-    println(s"## PROFILING: $tm ms for block $msg.")
+    println(f"## PROFILING: $tm%6dms $msg")
     rslt
   }
 

@@ -125,19 +125,44 @@ object cascades {
 
     val counter = new AtomicInteger()
 
-    //TODO Allow CLI options here
-    // THese reachables are ordered such that common biosynthesizable molecules are done first.
-    val longRunningFirst: List[Long] = List(174L, 182957L, 153L)
-    val allReachables: List[Long] = List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 174960L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
-    val reach: List[Long] = longRunningFirst ++ allReachables
-    reach.foreach(reachid => {
-      val msg = s"allRoutes: reachable $reachid count ${counter.getAndIncrement()} cached cascades: ${Cascade.cache_nw.size} cached pre_rxns: ${Cascade.cache_bestpre_rxn.size} nodeMerger: ${Cascade.nodeMerger.size}"
+    // TODO Allow CLI options here
+    // These reachables are ordered such that common biosynthesizable molecules are done first.
+    // val allReachables: List[Long] = List(878L, 1443L, 174960L, 1293L, 448L, 341L, 1496L, 1490L, 1536L, 750L, 4026L, 475L, 716L, 552L) ::: List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 174960L, 1443L, 45655, 19637L, 684L) // , 358L, 2124L, 6790L)
+    // val allReachables: List[Long] = List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 174960L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
+
+    // These two reachables are stellar examples of how caching causes issues
+    val allReachables = List(1293L, 1209L)
+
+    allReachables.foreach(reachid => {
+      val msg = f"id=$reachid%6d\tcount=${counter.getAndIncrement()}%5d\tCACHE SIZES: {cascades=${Cascade.cache_nw.size}%4d, pre_rxns=${Cascade.cache_bestpre_rxn.size}%4d, nodeMerger=${Cascade.nodeMerger.size}%5d}"
       Cascade.time(msg) {
         println(s" Now starting $reachid...")
         // constructInformationForReachable modifies global scope variables, so can't run in parallel.
         constructInformationForReachable(reachid, dir)
       }
     })
+
+
+
+
+
+
+
+
+    // debugging cascade caching....
+    return
+
+
+
+
+
+
+
+
+
+
+
+
 
     println
 
