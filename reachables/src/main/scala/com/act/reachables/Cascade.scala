@@ -260,7 +260,6 @@ object Cascade extends Falls {
         val substrates = subProduct.substrates
         val products = subProduct.products
 
-        debug(s"~~ starting addValid(m=$m) with seen = $seen")
         if (substrates.exists(seen.contains(_))) { false } else 
         {
 
@@ -275,7 +274,6 @@ object Cascade extends Falls {
               val src = if (depth == 0) Option(m) else source
               (s, get_cascade(s, depth+1, src, seen + m))
             }
-            debug(s"~~ recursing on: $substrates inside addValid(m=$m) with seen = $seen")
             val subProductNetworks = substrates.map(recurse)
             if (subProductNetworks.forall(_._2.isDefined)) {
               subProductNetworks.foreach(s => {
@@ -297,19 +295,9 @@ object Cascade extends Falls {
     oneValid
   }
 
-  val debugIDs = List()
-  var currentID = 0L
-  def debug(msg: String) {
-    if (debugIDs.contains(currentID)) {
-      println(msg)
-    }
-  }
-
   def get_cascade(m: Long, depth: Int = 0, source: Option[Long] = None, seen: Set[Long] = Set()): Option[Network] = 
   if (CACHE_CASCADES && depth > 0 && cache_nw.contains(m)) cache_nw(m) else 
   {
-    if (depth == 0) currentID = m
-
     // first check if we are "re-getting" the cascade for the main target,
     // and if so return empty. this allows us to break cycles around the target
     if (source.isDefined && source.get == m) return None
@@ -325,12 +313,9 @@ object Cascade extends Falls {
       // reactions producing this product are shown on the graph.
       val grouped: List[(SubProductPair, List[ReachRxn])] = pre_rxns(m, higherInTree = depth != 0).toList
 
-      debug(s"~~ pre_rxns = ${grouped.map(_._1)} for m = $m")
-
       val validNodes = grouped.map(x => addValid(m, depth, source, seen, network, x))
       // find if there was a single node that was valid (take OR of all valid's)
       val oneValid = validNodes.foldLeft(false)(_ || _) 
-      debug(s"~~ validNodes[${validNodes.size}] = $validNodes")
 
       if (!oneValid && depth > 0){
         None
@@ -353,7 +338,6 @@ object Cascade extends Falls {
     if (depth > 0 && net.isDefined) {
       // cache the network so we don't recompute it
       cache_nw = cache_nw + (m -> net)
-      debug(s"~~ caching $m")
 
       if (Cascade.RUN_LONGER_BUT_USE_LESS_MEM && cache_nw.size > 1000) {
         println(s"Cache is taking up too much memory. Clearing caches.")
