@@ -134,10 +134,7 @@ object cascades {
 
     // TODO Allow CLI options here
     // These reachables are ordered such that common biosynthesizable molecules are done first.
-    val reach: List[Long] = List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 174960L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
-
-    // // These two reachables are stellar examples of how caching causes issues
-    // // val allReachables = List(1293L, 1209L)
+    val reach: List[Long] = List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
 
     reach.foreach(reachid => {
       val msg = f"id=$reachid%6d\tcount=${counter.getAndIncrement()}%5d\tCACHE SIZES: {cascades=${Cascade.cache_nw.size}%4d, pre_rxns=${Cascade.cache_bestpre_rxn.size}%4d, nodeMerger=${Cascade.nodeMerger.size}%5d}"
