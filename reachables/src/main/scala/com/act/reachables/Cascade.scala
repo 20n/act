@@ -38,6 +38,12 @@ object Cascade extends Falls {
     DO_HMMER_SEQ = enable
   }
 
+  var RUN_LONGER_BUT_USE_LESS_MEM = false
+  def doFrequentCachePurges(enable: Boolean) {
+    println("Frequent cache purges to save memory (but run longer): " + (if (enable) "ON" else "OFF"))
+    RUN_LONGER_BUT_USE_LESS_MEM = enable
+  }
+
   val pathwayCollection: JacksonDBCollection[ReactionPath, String] = JacksonDBCollection.wrap(db.getCollection(collectionName), classOf[ReactionPath], classOf[String])
 
   def get_pathway_collection: JacksonDBCollection[ReactionPath, String] = {
@@ -349,8 +355,7 @@ object Cascade extends Falls {
       cache_nw = cache_nw + (m -> net)
       debug(s"~~ caching $m")
 
-      val RUN_LONGER_BUT_USE_LESS_MEM = true
-      if (RUN_LONGER_BUT_USE_LESS_MEM && cache_nw.size > 1000) {
+      if (Cascade.RUN_LONGER_BUT_USE_LESS_MEM && cache_nw.size > 1000) {
         println(s"Cache is taking up too much memory. Clearing caches.")
         cache_nw = mutable.Map[Long, Option[Network]]()
         cache_bestpre_rxn = mutable.HashMap[Long, Map[SubProductPair, List[ReachRxn]]]()

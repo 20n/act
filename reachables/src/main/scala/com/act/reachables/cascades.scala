@@ -35,8 +35,14 @@ object cascades {
       case Some(x) => Cascade.doCacheCascades(x.toBoolean)
       case None => // let the defaults hold
     }
+
     params.get("do-hmmer") match {
       case Some(x) => Cascade.doHmmerSeqFinding(x.toBoolean)
+      case None => // let the default hold
+    }
+
+    params.get("regularly-purge-cache") match {
+      case Some(x) => Cascade.doFrequentCachePurges(x.toBoolean)
       case None => // let the default hold
     }
 
