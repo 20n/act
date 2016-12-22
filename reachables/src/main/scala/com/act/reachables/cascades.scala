@@ -134,7 +134,6 @@ object cascades {
 
     // TODO Allow CLI options here
     // These reachables are ordered such that common biosynthesizable molecules are done first.
-    // val allReachables: List[Long] = List(878L, 1443L, 174960L, 1293L, 448L, 341L, 1496L, 1490L, 1536L, 750L, 4026L, 475L, 716L, 552L) ::: List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 174960L, 1443L, 45655, 19637L, 684L) // , 358L, 2124L, 6790L)
     val allReachables: List[Long] = List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 174960L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
 
     // // These two reachables are stellar examples of how caching causes issues

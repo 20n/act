@@ -319,7 +319,7 @@ object Cascade extends Falls {
       // reactions producing this product are shown on the graph.
       val grouped: List[(SubProductPair, List[ReachRxn])] = pre_rxns(m, higherInTree = depth != 0).toList
 
-      debug(s"~~ pre_rxns = ${grouped.map(_._1)} for m = $m") // + s" cache(1209, 1353, 374) = ${cache_nw.contains(1209L)}, ${cache_nw.contains(1353L)}, ${cache_nw.contains(374L)}")
+      debug(s"~~ pre_rxns = ${grouped.map(_._1)} for m = $m")
 
       val validNodes = grouped.map(x => addValid(m, depth, source, seen, network, x))
       // find if there was a single node that was valid (take OR of all valid's)
