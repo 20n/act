@@ -23,8 +23,7 @@ import scala.collection.mutable
 object Cascade extends Falls {
   val mongoClient: MongoClient = new MongoClient(new ServerAddress("localhost", 27017))
   val db: DB = mongoClient.getDB("wiki_reachables")
-  println("CRITICAL: Change pathways_jarvis to pathways_jarvis_dec21")
-  val collectionName: String = "pathways_jarvis"
+  val collectionName: String = "pathways_jarvis_dec21"
 
   var CACHE_CASCADES = true
   def doCacheCascades(onOff: Boolean) {
