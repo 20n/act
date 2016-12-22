@@ -23,7 +23,20 @@ import scala.collection.mutable
 object Cascade extends Falls {
   val mongoClient: MongoClient = new MongoClient(new ServerAddress("localhost", 27017))
   val db: DB = mongoClient.getDB("wiki_reachables")
+  println("CRITICAL: Change pathways_jarvis to pathways_jarvis_dec21")
   val collectionName: String = "pathways_jarvis"
+
+  var CACHE_CASCADES = true
+  def doCacheCascades(onOff: Boolean) {
+    println("Cascades caching is: " + (if (onOff) "ON" else "OFF"))
+    CACHE_CASCADES = onOff
+  }
+
+  var DO_HMMER_SEQ = true
+  def doHmmerSeqFinding(enable: Boolean) {
+    println("HMMER sequence finding is: " + (if (enable) "ON" else "OFF"))
+    DO_HMMER_SEQ = enable
+  }
 
   val pathwayCollection: JacksonDBCollection[ReactionPath, String] = JacksonDBCollection.wrap(db.getCollection(collectionName), classOf[ReactionPath], classOf[String])
 
@@ -286,12 +299,6 @@ object Cascade extends Falls {
     }
   }
 
-  var CACHE_CASCADES = true
-  def doCacheCascades(onOff: Boolean) {
-    println("Cascades caching is: " + (if (onOff) "ON" else "OFF"))
-    CACHE_CASCADES = onOff
-  }
-
   def get_cascade(m: Long, depth: Int = 0, source: Option[Long] = None, seen: Set[Long] = Set()): Option[Network] = 
   if (CACHE_CASCADES && depth > 0 && cache_nw.contains(m)) cache_nw(m) else 
   {
@@ -342,8 +349,8 @@ object Cascade extends Falls {
       cache_nw = cache_nw + (m -> net)
       debug(s"~~ caching $m")
 
-      val RUN_LONGER_BUT_USE_LESS_MEM = false
-      if (RUN_LONGER_BUT_USE_LESS_MEM && cache_nw.size > 5000) {
+      val RUN_LONGER_BUT_USE_LESS_MEM = true
+      if (RUN_LONGER_BUT_USE_LESS_MEM && cache_nw.size > 1000) {
         println(s"Cache is taking up too much memory. Clearing caches.")
         cache_nw = mutable.Map[Long, Option[Network]]()
         cache_bestpre_rxn = mutable.HashMap[Long, Map[SubProductPair, List[ReachRxn]]]()
@@ -555,14 +562,10 @@ class Cascade(target: Long) {
 
   private val workingDir = new java.io.File(".").getCanonicalFile
   nw.nodeMapping.values().filter(getOrDefault[String](_, "isrxn").toBoolean).foreach(node => 
-    if (true) {
+    if (!Cascade.DO_HMMER_SEQ) {
       Node.setAttribute(node.id, "isSpontaneous", false)
       Node.setAttribute(node.id, "hasSequence", false)
       Node.setAttribute(node.id, "sequences", new util.HashSet())
-
-      // This `if (true) { .. } else {` block needs to be removed before PR merge. after cache debugging done
-      println("CRITICAL: REMOVE THIS BLOCK before PR merge. Only here for cascades caching debugging.")
-
     } else {
     val reactionIds: Set[Long] = getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => Cascade.rxn_node_rxn_ident(x.toLong): Long).toSet
     val isSpontaneous: Boolean = reactionIds.exists(r => {
@@ -721,13 +724,13 @@ class Cascade(target: Long) {
       }
     }
 
-    logger.info(
-      s"""
-        | Reachable: $target
-        | Full Sequence Paths: ${sortedPaths.count(_.getPath.forall(p => !p.isReaction || (p.isReaction && (p.sequences.nonEmpty || p.isSpontaneous))))}
-        | Total Paths: ${sortedPaths.length}
-      """.stripMargin
-    )
+    // logger.info(
+    //   s"""
+    //     | Reachable: $target
+    //     | Full Sequence Paths: ${sortedPaths.count(_.getPath.forall(p => !p.isReaction || (p.isReaction && (p.sequences.nonEmpty || p.isSpontaneous))))}
+    //     | Total Paths: ${sortedPaths.length}
+    //   """.stripMargin
+    // )
 
     try {
       sortedPaths.foreach(Cascade.pathwayCollection.insert)
