@@ -18,6 +18,7 @@ import org.json.{JSONArray, JSONException, JSONObject}
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
@@ -231,13 +232,18 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     firstLevelMap.mapValues(_.toList).toMap
   }
 
+  val cached = mutable.HashMap[DbSeq, Long]()
+
   def defineSequenceSearch(fastaDirectory: File)
                           (currentProteomeLocation: Option[File])
                           (database: String)
                           (sequence: DbSeq): Boolean = {
     try {
       val inferredSequences = sequence.getMetadata.getJSONArray(inferredSequencesKey)
-      return inferredSequences.length() > 0
+      if (cached.contains(sequence)) {
+        cached(sequence) > 0
+      }
+//      return inferredSequences.length() > 0
     } catch {
       case e: JSONException => // Do nothing, key doesn't exist so we want to try to infer this one
     }
@@ -323,6 +329,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
     val jsons = inferredSequences.asJavaCollection.map(x => x.asJson)
     jsons.foreach(inferArray.put)
 
+    cached.put(sequenceEntry, inferArray.length().toLong)
     metadata.put(inferredSequencesKey, inferArray)
     sequenceEntry.setMetadata(metadata)
     mongoDatabaseConnection.updateMetadata(sequenceEntry)
