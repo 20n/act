@@ -43,6 +43,12 @@ object Cascade extends Falls {
     RUN_LONGER_BUT_USE_LESS_MEM = enable
   }
 
+  var VERBOSITY = 2
+  def setVerbosity(v: Integer) {
+    println("Verbosity set to: " + v)
+    VERBOSITY = v
+  }
+
   val pathwayCollection: JacksonDBCollection[ReactionPath, String] = JacksonDBCollection.wrap(db.getCollection(collectionName), classOf[ReactionPath], classOf[String])
 
   def get_pathway_collection: JacksonDBCollection[ReactionPath, String] = {
@@ -259,13 +265,14 @@ object Cascade extends Falls {
         val substrates = subProduct.substrates
         val products = subProduct.products
 
-        if (substrates.exists(seen.contains(_))) { false } else 
-        {
-
+        if (substrates.exists(seen.contains(_))) {
+          // this is not a valid candidate as it leads back to descendent (in `seen`) and will create cycle
+          false
+        } else {
           // True for only cofactors and empty ist.
           if (substrates.forall(cofactors.contains)) {
             // Let this node be activated as it is activated by a coefficient only rxn
-            true // found valid
+            true
           } else {
             val reactionsNode = rxn_node(reactions.map(r => Long.valueOf(r.rxnid)), subProduct)
 
@@ -282,9 +289,13 @@ object Cascade extends Falls {
                 // add edges of form "s" -> respective "r" nodeMapping
                 network.addEdge(create_edge(mol_node(s._1), reactionsNode))
               })
-              true // found valid
+
+              // this is a valid up-edge in the cascade
+              true
             } else {
-              false // did not find a single valid
+              // at last one substrate cannot be traversed all the way back to cofactors
+              // so this edge cannot be a valid edge going upwards in cascade
+              false
             }
           }
         }
@@ -304,7 +315,7 @@ object Cascade extends Falls {
     val network = new Network("cascade_" + m)
     network.addNode(mol_node(m), m)
 
-    val net = if (is_universal(m)) {
+    val optUpwardsCascade = if (is_universal(m)) {
       // do nothing, base case
       Some(network)
     } else {
@@ -312,21 +323,21 @@ object Cascade extends Falls {
       // reactions producing this product are shown on the graph.
       val grouped: List[(SubProductPair, List[ReachRxn])] = pre_rxns(m, higherInTree = depth != 0).toList
 
-      val validNodes = grouped.map(x => addValid(m, depth, source, seen, network, x))
+      val validNodes: List[Boolean] = grouped.map(x => addValid(m, depth, source, seen, network, x))
       // find if there was a single node that was valid (take OR of all valid's)
-      val oneValid = validNodes.foldLeft(false)(_ || _) 
+      val oneValid = validNodes.exists(_ == true)
 
       if (!oneValid && depth > 0){
         None
       } else {
-        Option(network)
+        Some(network)
       }
     }
 
     // Now we cache the network. Except for two cases:
-    // 1) when the node is the target node (i.e., depth == 0), the `net` for this node
+    // 1) when the node is the target node (i.e., depth == 0), the `optUpwardsCascade` for this node
     //    contains the exceptional case of including edges even if they don't go higher in the tree
-    //    so this computation of its `net` is a one off. If we encounter this other times (i.e., as
+    //    so this computation of its `optUpwardsCascade` is a one off. If we encounter this other times (i.e., as
     //    an internal node during some other computation) the exception would not have been applied
     //    and so we'll be good to cache it then.
     // 2) when the node happens to have been explored as part of a cycle (that does not lead to 
@@ -334,9 +345,9 @@ object Cascade extends Falls {
     //    bidirectional edges exist in the cycle, and so there is a way to use the edges in it
     //    to actually break out of it. To allow for that case, we don't cache when the computation
     //    evaluates to None. Every other case, good to go.
-    if (depth > 0 && net.isDefined) {
+    if (depth > 0 && optUpwardsCascade.isDefined) {
       // cache the network so we don't recompute it
-      cache_nw = cache_nw + (m -> net)
+      cache_nw = cache_nw + (m -> optUpwardsCascade)
 
       if (Cascade.RUN_LONGER_BUT_USE_LESS_MEM && cache_nw.size > 1000) {
         println(s"Cache is taking up too much memory. Clearing caches.")
@@ -346,7 +357,7 @@ object Cascade extends Falls {
       }
     }
 
-    net
+    optUpwardsCascade
   }
 
   def getAllPaths(network: Network, target: Long): Option[List[Path]] = {
@@ -536,7 +547,8 @@ object Cascade extends Falls {
     val rslt = blk
     val end = System.nanoTime()
     val tm = (end - start)/1000000
-    println(f"## PROFILING: $tm%6dms $msg")
+    if (Cascade.VERBOSITY > 0) 
+      println(f"## PROFILING: $tm%6dms $msg")
     rslt
   }
 
@@ -712,13 +724,15 @@ class Cascade(target: Long) {
       }
     }
 
-    // logger.info(
-    //   s"""
-    //     | Reachable: $target
-    //     | Full Sequence Paths: ${sortedPaths.count(_.getPath.forall(p => !p.isReaction || (p.isReaction && (p.sequences.nonEmpty || p.isSpontaneous))))}
-    //     | Total Paths: ${sortedPaths.length}
-    //   """.stripMargin
-    // )
+    if (Cascade.VERBOSITY > 1) {
+      logger.info(
+        s"""
+          | Reachable: $target
+          | Full Sequence Paths: ${sortedPaths.count(_.getPath.forall(p => !p.isReaction || (p.isReaction && (p.sequences.nonEmpty || p.isSpontaneous))))}
+          | Total Paths: ${sortedPaths.length}
+        """.stripMargin
+      )
+    }
 
     try {
       sortedPaths.foreach(Cascade.pathwayCollection.insert)

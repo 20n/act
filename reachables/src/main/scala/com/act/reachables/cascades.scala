@@ -46,6 +46,11 @@ object cascades {
       case None => // let the default hold
     }
 
+    params.get("verbosity") match {
+      case Some(x) => Cascade.setVerbosity(x.toInt)
+      case None => // let the default hold
+    }
+
     // the reachables computation should have been run prior
     // to calling cascades, and it would have serialized the
     // the state of ActData. Now read it back in
@@ -145,7 +150,8 @@ object cascades {
     reach.foreach(reachid => {
       val msg = f"id=$reachid%6d\tcount=${counter.getAndIncrement()}%5d\tCACHE SIZES: {cascades=${Cascade.cache_nw.size}%4d, pre_rxns=${Cascade.cache_bestpre_rxn.size}%4d, nodeMerger=${Cascade.nodeMerger.size}%5d}"
       Cascade.time(msg) {
-        print(f"Reachable ID: $reachid%6d: ")
+        if (Cascade.VERBOSITY > 0)
+          print(f"Reachable ID: $reachid%6d: ")
         // constructInformationForReachable modifies global scope variables, so can't run in parallel.
         constructInformationForReachable(reachid, dir)
       }
