@@ -13,6 +13,7 @@ import com.mongodb.{BasicDBList, BasicDBObject, DB, MongoClient, ServerAddress}
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.logging.log4j.LogManager
 import org.mongojack.JacksonDBCollection
+import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
@@ -62,20 +63,33 @@ object Cascade extends Falls {
   // depth upto which to generate cascade data
   var max_cascade_depth = GlobalParams.MAX_CASCADE_DEPTH
 
+  val cacheBnd = Cascade.RUN_LONGER_BUT_USE_LESS_MEM match {
+    case true => Some(1000)
+    case false => None
+  }
   // the best precursor reaction
-  var cache_bestpre_rxn = mutable.HashMap[Long, Map[SubProductPair, List[ReachRxn]]]()
+  val cache_bestpre_rxn = getCaffeineCache[Long, Map[SubProductPair, List[ReachRxn]]](cacheBnd)
+  // mutable.HashMap[Long, Map[SubProductPair, List[ReachRxn]]]()
 
-  // the cache of the cascade if it has been
-  // previously computed
-  var cache_nw = mutable.Map[Long, Option[Network]]()
+  // the cache of the cascade if it has been previously computed
+  val cache_nw = getCaffeineCache[Long, Option[Network]](cacheBnd)
+  // mutable.Map[Long, Option[Network]]()
+
+  def getCaffeineCache[T, S](optBound: Option[Int]) = {
+    val caffeine = Caffeine.newBuilder().asInstanceOf[Caffeine[T, S]]
+    if (optBound.isDefined)
+      caffeine.maximumSize(optBound.get)
+    val cache = caffeine.build[T, S]()
+    cache
+  }
 
   // We only pick rxns that lead monotonically backwards in the tree.
   // This is conservative to avoid cycles (we could be optimistic and jump
   // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
 
   def pre_rxns(m: Long, higherInTree: Boolean = true): Map[SubProductPair, List[ReachRxn]] = {
-    if (higherInTree && cache_bestpre_rxn.contains(m)) {
-      return cache_bestpre_rxn(m)
+    if (higherInTree && cache_bestpre_rxn.asMap.containsKey(m)) {
+      return cache_bestpre_rxn.asMap.get(m)
     }
 
     // incoming unreachable rxns ignored
@@ -306,7 +320,7 @@ object Cascade extends Falls {
   }
 
   def get_cascade(m: Long, depth: Int = 0, source: Option[Long] = None, seen: Set[Long] = Set()): Option[Network] = 
-  if (CACHE_CASCADES && depth > 0 && cache_nw.contains(m)) cache_nw(m) else 
+  if (CACHE_CASCADES && depth > 0 && cache_nw.asMap.containsKey(m)) cache_nw.asMap.get(m) else 
   {
     // first check if we are "re-getting" the cascade for the main target,
     // and if so return empty. this allows us to break cycles around the target
@@ -347,14 +361,7 @@ object Cascade extends Falls {
     //    evaluates to None. Every other case, good to go.
     if (depth > 0 && optUpwardsCascade.isDefined) {
       // cache the network so we don't recompute it
-      cache_nw = cache_nw + (m -> optUpwardsCascade)
-
-      if (Cascade.RUN_LONGER_BUT_USE_LESS_MEM && cache_nw.size > 1000) {
-        println(s"Cache is taking up too much memory. Clearing caches.")
-        cache_nw = mutable.Map[Long, Option[Network]]()
-        cache_bestpre_rxn = mutable.HashMap[Long, Map[SubProductPair, List[ReachRxn]]]()
-        java.lang.System.gc()
-      }
+      cache_nw.put(m, optUpwardsCascade)
     }
 
     optUpwardsCascade
