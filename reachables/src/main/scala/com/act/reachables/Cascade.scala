@@ -24,7 +24,6 @@ import scala.collection.mutable
 object Cascade extends Falls {
   val mongoClient: MongoClient = new MongoClient(new ServerAddress("localhost", 27017))
   val db: DB = mongoClient.getDB("wiki_reachables")
-
   var collectionName: String = "pathways_jarvis"
   def setCollectionName(c: String) {
     collectionName = c
@@ -73,11 +72,9 @@ object Cascade extends Falls {
   }
   // the best precursor reaction
   val cache_bestpre_rxn = getCaffeineCache[Long, Map[SubProductPair, List[ReachRxn]]](cacheBnd)
-  // mutable.HashMap[Long, Map[SubProductPair, List[ReachRxn]]]()
 
   // the cache of the cascade if it has been previously computed
   val cache_nw = getCaffeineCache[Long, Option[Network]](cacheBnd)
-  // mutable.Map[Long, Option[Network]]()
 
   def getCaffeineCache[T, S](optBound: Option[Int]) = {
     val caffeine = Caffeine.newBuilder().asInstanceOf[Caffeine[T, S]]
