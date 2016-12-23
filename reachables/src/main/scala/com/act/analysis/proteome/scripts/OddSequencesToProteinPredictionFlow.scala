@@ -14,7 +14,7 @@ import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Option
 import org.apache.commons.io.{FileUtils, IOUtils}
 import org.apache.jena.atlas.json.JsonException
 import org.apache.logging.log4j.LogManager
-import org.json.{JSONArray, JSONObject}
+import org.json.{JSONArray, JSONException, JSONObject}
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
@@ -239,7 +239,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
       val inferredSequences = sequence.getMetadata.getJSONArray(inferredSequencesKey)
       return inferredSequences.length() > 0
     } catch {
-      case e: JsonException => // Do nothing, key doesn't exist so we want to try to infer this one
+      case e: JSONException => // Do nothing, key doesn't exist so we want to try to infer this one
     }
       val mongoDatabaseConnection = connectToMongoDatabase(database)
 
