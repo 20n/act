@@ -601,7 +601,7 @@ class Cascade(target: Long) {
     // TODO Maybe we should only try to infer if there are no/few good sequences.
     // Evaluate how much this helps.  It makes sense as we don't really want to add more to places
     // where there are a lot, but to add some where there are none or few.
-    if (Cascade.DO_HMMER_SEQ && matchingSequences.diff(oddSeqs.map(_.getUUID.toLong: Long).toSet).isEmpty) {
+    if (Cascade.DO_HMMER_SEQ && matchingSequences.diff(oddSeqs.map(_.getUUID.toLong: Long).toSet).size < 5) {
       // Filter with side effects, eep.
       val anyInferredSeqs: List[DbSeq] = oddSeqs.filter(sequenceSearch)
 
