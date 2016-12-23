@@ -568,12 +568,7 @@ class Cascade(target: Long) {
   val nw = Cascade.get_cascade(t).get
 
   private val workingDir = new java.io.File(".").getCanonicalFile
-  nw.nodeMapping.values().filter(getOrDefault[String](_, "isrxn").toBoolean).foreach(node => 
-    if (!Cascade.DO_HMMER_SEQ) {
-      Node.setAttribute(node.id, "isSpontaneous", false)
-      Node.setAttribute(node.id, "hasSequence", false)
-      Node.setAttribute(node.id, "sequences", new util.HashSet())
-    } else {
+  nw.nodeMapping.values().filter(getOrDefault[String](_, "isrxn").toBoolean).foreach(node => {
     val reactionIds: Set[Long] = getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => Cascade.rxn_node_rxn_ident(x.toLong): Long).toSet
     val isSpontaneous: Boolean = reactionIds.exists(r => {
       val thisSpontaneousResult = ReachRxnDescs.rxnIsSpontaneous(r)
@@ -605,7 +600,7 @@ class Cascade(target: Long) {
     // TODO Maybe we should only try to infer if there are no/few good sequences.
     // Evaluate how much this helps.  It makes sense as we don't really want to add more to places
     // where there are a lot, but to add some where there are none or few.
-    if (matchingSequences.diff(oddSeqs.map(_.getUUID.toLong: Long).toSet).size < 5) {
+    if (Cascade.DO_HMMER_SEQ && matchingSequences.diff(oddSeqs.map(_.getUUID.toLong: Long).toSet).size < 5) {
       // Filter with side effects, eep.
       val anyInferredSeqs: List[DbSeq] = oddSeqs.filter(sequenceSearch)
 
