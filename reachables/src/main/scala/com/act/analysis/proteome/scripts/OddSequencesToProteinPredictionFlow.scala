@@ -3,6 +3,7 @@ package com.act.analysis.proteome.scripts
 import java.io.{File, FileNotFoundException, InputStream, OutputStream}
 import java.util.concurrent.atomic.AtomicInteger
 
+import act.server.MongoDB
 import act.shared.{Seq => DbSeq}
 import com.act.analysis.proteome.files.HmmResultParser
 import com.act.workflow.tool_manager.tool_wrappers.HmmerWrapper
@@ -11,6 +12,7 @@ import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywor
 import com.mongodb.{BasicDBList, BasicDBObject}
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.commons.io.{FileUtils, IOUtils}
+import org.apache.jena.atlas.json.JsonException
 import org.apache.logging.log4j.LogManager
 import org.json.{JSONArray, JSONObject}
 
@@ -39,6 +41,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
   private val counterDisplayRate = 10
   private var orgsToProteomes: Map[String, List[File]] = Map()
   private var hasInit = false
+  private val inferredSequencesKey = "inferred_sequences"
 
 
   def main(args: Array[String]): Unit = {
@@ -232,84 +235,96 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
                           (currentProteomeLocation: Option[File])
                           (database: String)
                           (sequence: DbSeq): Boolean = {
-    // TODO Check if the database already has an entry for this seq that is inferred.
-    // If it is empty, return false, else return true
-    val proteomeLocation = if (currentProteomeLocation.isDefined) {
-      currentProteomeLocation.get
-    } else {
-      defaultReferenceProteomes
+    try {
+      val inferredSequences = sequence.getMetadata.getJSONArray(inferredSequencesKey)
+      return inferredSequences.length() > 0
+    } catch {
+      case e: JsonException => // Do nothing, key doesn't exist so we want to try to infer this one
     }
+      val mongoDatabaseConnection = connectToMongoDatabase(database)
 
-    if (!hasInit) {
-      init(proteomeLocation)
-      hasInit = true
-    }
-    /* - - - - Setup temp files that will hold the data prior to database upload - - - - */
-    val prefix = sequence.getUUID.toString
-    val outputFastaPath = new File(fastaDirectory, s"$prefix.output.fasta")
-
-    if (processed.incrementAndGet() % counterDisplayRate == 0) {
-      logger.debug(s"Found reference proteome for ${found.get()} " +
-        s"(${foundWithSequenceInferred.get()} with inferred sequences) out of ${processed.get()} sequences")
-    }
-
-    // Figure out which reference proteomes should be used for this sequence
-    val proteomesToQueryAgainst = getMatchingProteomes(sequence)
-    if (proteomesToQueryAgainst.isEmpty) return false
-    found.incrementAndGet()
-
-    // Create the FASTA file out of the database sequence
-    writeFastaFileForEachDocument(database, outputFastaPath)(sequence.getUUID.toLong)
-
-    /* - - - - Use Phmmer to find matching/close sequences - - - - */
-    var hmmResponse: Option[List[String]] = None
-    def writeFastaToStdin(out: OutputStream) {
-      val output = createUberProteome(proteomesToQueryAgainst.get)
-      output.foreach(x => out.write(x.getBytes))
-      out.close()
-    }
-
-    def readHmmResultOutput(in: InputStream): Unit = {
-      hmmResponse = Some(IOUtils.toString(in, "UTF-8").split("\n").toList)
-      in.close()
-    }
-    def logErrors(err: InputStream) {
-      val error = IOUtils.toString(err, "UTF-8")
-      if (error.nonEmpty) {
-        logger.error(error)
+      // TODO Check if the database already has an entry for this seq that is inferred.
+      // If it is empty, return false, else return true
+      val proteomeLocation = currentProteomeLocation match {
+        case Some(currentProteome) => currentProteome
+        case None => defaultReferenceProteomes
       }
-      err.close()
-    }
-    // We grab the exit code to ensure that the process has completed before deleting the file.
-    List(HmmerWrapper.HmmCommands.Phmmer.getCommand, outputFastaPath.getAbsolutePath, "-").
-      run(new ProcessIO(writeFastaToStdin, readHmmResultOutput, logErrors)).
-      exitValue()
 
-    FileUtils.deleteQuietly(outputFastaPath)
+      if (!hasInit) {
+        init(proteomeLocation)
+        hasInit = true
+      }
+      /* - - - - Setup temp files that will hold the data prior to database upload - - - - */
+      val prefix = sequence.getUUID.toString
+      val outputFastaPath = new File(fastaDirectory, s"$prefix.output.fasta")
 
-    /* - - - - Take the HMM result and parse the source sequence file for the sequence - - - - */
-    val sourceSequenceLinks = getRelevantSequencesFromPhmmerStdout(hmmResponse.get, proteomeLocation)
-    val resultingSequences = parseResultSequences(sourceSequenceLinks)
+      if (processed.incrementAndGet() % counterDisplayRate == 0) {
+        logger.debug(s"Found reference proteome for ${found.get()} " +
+          s"(${foundWithSequenceInferred.get()} with inferred sequences) out of ${processed.get()} sequences")
+      }
 
-    /* - - - - Do the update to the database - - - - */
-    val mongoDatabaseConnection = connectToMongoDatabase(database)
-    val metadata = sequence.getMetadata
+      // Figure out which reference proteomes should be used for this sequence
+      val proteomesToQueryAgainst = getMatchingProteomes(sequence)
+      if (proteomesToQueryAgainst.isEmpty) {
+        // Has side effect of DB update, indicates that inferred sequences will not be found for this entry.
+        addInferredSequenceArray(mongoDatabaseConnection)(sequence, List())
+      }
+      found.incrementAndGet()
+
+      // Create the FASTA file out of the database sequence
+      writeFastaFileForEachDocument(database, outputFastaPath)(sequence.getUUID.toLong)
+
+      /* - - - - Use Phmmer to find matching/close sequences - - - - */
+      var hmmResponse: Option[List[String]] = None
+      def writeFastaToStdin(out: OutputStream) {
+        val output = createUberProteome(proteomesToQueryAgainst.get)
+        output.foreach(x => out.write(x.getBytes))
+        out.close()
+      }
+
+      def readHmmResultOutput(in: InputStream): Unit = {
+        hmmResponse = Some(IOUtils.toString(in, "UTF-8").split("\n").toList)
+        in.close()
+      }
+      def logErrors(err: InputStream) {
+        val error = IOUtils.toString(err, "UTF-8")
+        if (error.nonEmpty) {
+          logger.error(error)
+        }
+        err.close()
+      }
+      // We grab the exit code to ensure that the process has completed before deleting the file.
+      List(HmmerWrapper.HmmCommands.Phmmer.getCommand, outputFastaPath.getAbsolutePath, "-").
+        run(new ProcessIO(writeFastaToStdin, readHmmResultOutput, logErrors)).
+        exitValue()
+
+      FileUtils.deleteQuietly(outputFastaPath)
+
+      /* - - - - Take the HMM result and parse the source sequence file for the sequence - - - - */
+      val sourceSequenceLinks = getRelevantSequencesFromPhmmerStdout(hmmResponse.get, proteomeLocation)
+      val resultingSequences: List[SequenceEntry] = parseResultSequences(sourceSequenceLinks)
+
+      // Has side effect of DB update
+      addInferredSequenceArray(mongoDatabaseConnection)(sequence, resultingSequences)
+
+      if (resultingSequences.nonEmpty) {
+        logger.debug(s"Finished inferring additional sequences for sequence ${sequence.getUUID}")
+        foundWithSequenceInferred.incrementAndGet()
+      }
+
+      resultingSequences.nonEmpty
+
+  }
+
+  private def addInferredSequenceArray(mongoDatabaseConnection: MongoDB)(sequenceEntry: DbSeq, inferredSequences: List[SequenceEntry]) = {
+    val metadata = sequenceEntry.getMetadata
     val inferArray = new JSONArray()
-    val jsons = resultingSequences.asJavaCollection.map(x => x.asJson)
+    val jsons = inferredSequences.asJavaCollection.map(x => x.asJson)
     jsons.foreach(inferArray.put)
 
-
-    if (resultingSequences.nonEmpty) {
-      logger.debug(s"Finished inferring additional sequences for sequence ${sequence.getUUID}")
-      foundWithSequenceInferred.incrementAndGet()
-    }
-
-    metadata.put("inferred_sequences", inferArray)
-    sequence.setMetadata(metadata)
-
-    mongoDatabaseConnection.updateMetadata(sequence)
-
-    resultingSequences.nonEmpty
+    metadata.put(inferredSequencesKey, inferArray)
+    sequenceEntry.setMetadata(metadata)
+    mongoDatabaseConnection.updateMetadata(sequenceEntry)
   }
 
   private def getMatchingProteomes(sequence: DbSeq): Option[List[File]] = {
