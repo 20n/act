@@ -728,7 +728,7 @@ class Cascade(target: Long) {
     }
 
     if (Cascade.VERBOSITY > 1) {
-      logger.info(
+      logger.debug(
         s"""
           | Reachable: $target
           | Full Sequence Paths: ${sortedPaths.count(_.getPath.forall(p => !p.isReaction || (p.isReaction && (p.sequences.nonEmpty || p.isSpontaneous))))}
