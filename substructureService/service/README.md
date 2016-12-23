@@ -12,7 +12,17 @@ Mediawiki should already be installed on the host, as we'll be using it as the r
 === Steps to deployment ===
 * Run `sbt assembly` in the `substructureSearch` repository to build an uber-jar.  This will appear at `target/scala-2.10/substructureSearch-assembly-0.1.jar`.
 * Build a static frontend package.  `cd` to frontend and run `npm run build`.  You may have to futz with dependency installation if this is the first time building this project--required packages live in `project.json`.  The output will live in `frontend/build`.
-* Export a TSV of reachable molecules from a reachables DB using `act.installer.reachablesexplorere.SubstructureSearchExporter`.  Also grab a copy of the molecule images
+* Modify the configuration JSON file at `service/config.json`.  Set the URL prefixes to match the (soon to be) location of your molecule image assets, and the wiki prefix to be whatever root path you're using for the wiki.  Our default nginx config puts these as seen in the example below.  The default configuration file also expects the reachables list and license file to live alongside the substructure search JAR; move these elsewhere if necessary.  Note that the port needs to be the one to which nginx will forward `/search` traffic.  `The config should look something like this:
+```JSON
+{
+  "port": 8888,
+  "reachables_file": "/usr/local/software/substructure_search/reachables",
+  "license_file": "/usr/local/software/substructure_search/20n_Start-up_license.cxl",
+  "wiki_url_prefix": "/",
+  "image_url_prefix": "/assets/img/"
+}
+```
+* Export a TSV of reachable molecules from a reachables DB using `act.installer.reachablesexplorere.SubstructureSearchExporter` and move it to the path specified in your config file.  Also grab a copy of the molecule images and place them in your `mediawiki` directory at a sub-path that matches the `image_url_prefix` prefix in your config file.  Note that you can't use the mediawiki images directory for this purpose: mediawiki does some sort of hashing that organizes images into sub-directories, and we don't know how to reproduce that right now.
 * Use `rsync` to copy `target/scala-2.10/substructureSearch-assembly-0.1.jar`, the `build` directory, the files in this `service` directory, and the reachables list and images to your remote server.  If this is your first time setting up the service, also rsync `../scripts/azure/install_java` and a suitable JDK package (which will be named something like `jdk-8u77-linux-x64.tar.gz`).
 * SSH to the server to begin installation.
 * If this is the first time setting up the service, start by running `install_java` and installing jsvc:
