@@ -31,6 +31,11 @@ object cascades {
       case None => ""
     }
 
+    params.get("out-collection") match {
+      case Some(x) => Cascade.setCollectionName(x)
+      case None => // let the defaults hold
+    }
+
     params.get("cache-cascades") match {
       case Some(x) => Cascade.doCacheCascades(x.toBoolean)
       case None => // let the defaults hold
