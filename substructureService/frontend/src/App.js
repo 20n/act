@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import { Button, Col, Form, FormControl, FormGroup, Grid, InputGroup, Row, Table } from 'react-bootstrap';
 import axios from 'axios-es6';
 import 'react-router';
+import "./App.css";
 
 class App extends Component {
 
@@ -148,7 +149,8 @@ class App extends Component {
       <div>
         <Grid>
           <Row>
-            <Col xs={6} md={4} /><Col xs={6} md={4} className="text-center"><h1>Substructure Search</h1></Col><Col xs={6} md={4} />
+            <Col xs={6} md={4}><img src="static/assets/img/20n.png" className="App-logo"/></Col>
+            <Col xs={6} md={4} className="text-center"><h1>Substructure Search</h1></Col><Col xs={6} md={4} />
           </Row>
           <Row>
             <Col xs={4} md={2} /><Col xs={10} md={8} className="text-center">{search}</Col><Col xs={4} md={2} />
