@@ -31,6 +31,31 @@ object cascades {
       case None => ""
     }
 
+    params.get("out-collection") match {
+      case Some(x) => Cascade.setCollectionName(x)
+      case None => // let the defaults hold
+    }
+
+    params.get("cache-cascades") match {
+      case Some(x) => Cascade.doCacheCascades(x.toBoolean)
+      case None => // let the defaults hold
+    }
+
+    params.get("do-hmmer") match {
+      case Some(x) => Cascade.doHmmerSeqFinding(x.toBoolean)
+      case None => // let the default hold
+    }
+
+    params.get("regularly-purge-cache") match {
+      case Some(x) => Cascade.doFrequentCachePurges(x.toBoolean)
+      case None => // let the default hold
+    }
+
+    params.get("verbosity") match {
+      case Some(x) => Cascade.setVerbosity(x.toInt)
+      case None => // let the default hold
+    }
+
     // the reachables computation should have been run prior
     // to calling cascades, and it would have serialized the
     // the state of ActData. Now read it back in
@@ -46,7 +71,6 @@ object cascades {
     write_node_cascades(prefix, cascade_depth, outputDirectory)
   }
 
-
   def get_reaction_by_UUID(db: MongoDB, rid: Long): Reaction = {
     val reaction_is_reversed = rid < 0
     if (reaction_is_reversed) {
@@ -57,7 +81,6 @@ object cascades {
       db.getReactionFromUUID(rid)
     }
   }
-
 
   def write_node_cascades(p: String, depth: Integer, outputDirectory: String) {
 
@@ -125,17 +148,20 @@ object cascades {
 
     val counter = new AtomicInteger()
 
-    //TODO Allow CLI options here
-    // THese reachables are ordered such that common biosynthesizable molecules are done first.
+    // TODO Allow CLI options here
+    // These reachables are ordered such that common biosynthesizable molecules are done first.
     val reach: List[Long] = List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
 
-    // constructInformationForReachable modifies global scope variables, so can't run in parallel.
-    reach.foreach({
-      println(s"Reaction number ${counter.getAndIncrement()}")
-      constructInformationForReachable(_, dir)
-    })
+    reach.foreach(reachid => {
+      val msg = f"id=$reachid%6d\tcount=${counter.getAndIncrement()}%5d\tCACHE: {cascades=${Cascade.cache_nw.stats.hitCount}%4d, pre_rxns=${Cascade.cache_bestpre_rxn.stats.hitCount}%4d, nodeMerger=${Cascade.nodeMerger.size}%5d}"
+      Cascade.time(msg) {
+        if (Cascade.VERBOSITY > 0)
+          print(f"Reachable ID: $reachid%6d: ")
 
-    println
+        // constructInformationForReachable modifies global scope variables, so can't run in parallel.
+        constructInformationForReachable(reachid, dir)
+      }
+    })
 
     println("Done: Written node cascades/waterfalls.")
 
@@ -208,9 +234,9 @@ object cascades {
     writer.write(cascade.allStringPaths.mkString("\n"))
     writer.close()
 
-    Cascade.clearCascades()
-    Node.clearAttributeData()
-    // Attributes are cached here so we clear it after each run.
+    // color attributes are cascade specific. so we clear them after each
+    // cascade run. otherwise because we cache nodes, colors bleed across cascades
+    Edge.clearAttributeOnAllEdges("color")
   }
 
   def rxn_json(r: Reaction) = {

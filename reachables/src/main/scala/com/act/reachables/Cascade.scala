@@ -13,6 +13,7 @@ import com.mongodb.{BasicDBList, BasicDBObject, DB, MongoClient, ServerAddress}
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.logging.log4j.LogManager
 import org.mongojack.JacksonDBCollection
+import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
@@ -23,7 +24,34 @@ import scala.collection.mutable
 object Cascade extends Falls {
   val mongoClient: MongoClient = new MongoClient(new ServerAddress("localhost", 27017))
   val db: DB = mongoClient.getDB("wiki_reachables")
-  val collectionName: String = "pathways_jarvis"
+  var collectionName: String = "pathways_jarvis"
+  def setCollectionName(c: String) {
+    collectionName = c
+  }
+
+  var CACHE_CASCADES = true
+  def doCacheCascades(onOff: Boolean) {
+    println("Cascades caching is: " + (if (onOff) "ON" else "OFF"))
+    CACHE_CASCADES = onOff
+  }
+
+  var DO_HMMER_SEQ = true
+  def doHmmerSeqFinding(enable: Boolean) {
+    println("HMMER sequence finding is: " + (if (enable) "ON" else "OFF"))
+    DO_HMMER_SEQ = enable
+  }
+
+  var RUN_LONGER_BUT_USE_LESS_MEM = false
+  def doFrequentCachePurges(enable: Boolean) {
+    println("Frequent cache purges to save memory (but run longer): " + (if (enable) "ON" else "OFF"))
+    RUN_LONGER_BUT_USE_LESS_MEM = enable
+  }
+
+  var VERBOSITY = 2
+  def setVerbosity(v: Integer) {
+    println("Verbosity set to: " + v)
+    VERBOSITY = v
+  }
 
   val pathwayCollection: JacksonDBCollection[ReactionPath, String] = JacksonDBCollection.wrap(db.getCollection(collectionName), classOf[ReactionPath], classOf[String])
 
@@ -35,27 +63,34 @@ object Cascade extends Falls {
 
   var nodeMerger: mutable.HashMap[SubProductPair, Node] = new mutable.HashMap()
 
-  def clearCascades() {
-    nodeMerger = new mutable.HashMap()
-  }
-
   // depth upto which to generate cascade data
   var max_cascade_depth = GlobalParams.MAX_CASCADE_DEPTH
 
+  val cacheBnd = Cascade.RUN_LONGER_BUT_USE_LESS_MEM match {
+    case true => Some(1000)
+    case false => None
+  }
   // the best precursor reaction
-  var cache_bestpre_rxn = mutable.HashMap[Long, Map[SubProductPair, List[ReachRxn]]]()
+  val cache_bestpre_rxn = getCaffeineCache[Long, Map[SubProductPair, List[ReachRxn]]](cacheBnd)
 
-  // the cache of the cascade if it has been
-  // previously computed
-  var cache_nw = mutable.HashMap[Long, Network]()
+  // the cache of the cascade if it has been previously computed
+  val cache_nw = getCaffeineCache[Long, Option[Network]](cacheBnd)
+
+  def getCaffeineCache[T, S](optBound: Option[Int]) = {
+    val caffeine = Caffeine.newBuilder().asInstanceOf[Caffeine[T, S]]
+    if (optBound.isDefined)
+      caffeine.maximumSize(optBound.get)
+    val cache = caffeine.build[T, S]()
+    cache
+  }
 
   // We only pick rxns that lead monotonically backwards in the tree.
   // This is conservative to avoid cycles (we could be optimistic and jump
   // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
 
   def pre_rxns(m: Long, higherInTree: Boolean = true): Map[SubProductPair, List[ReachRxn]] = {
-    if (higherInTree && cache_bestpre_rxn.contains(m)) {
-      return cache_bestpre_rxn(m)
+    if (higherInTree && cache_bestpre_rxn.asMap.containsKey(m)) {
+      return cache_bestpre_rxn.asMap.get(m)
     }
 
     // incoming unreachable rxns ignored
@@ -64,8 +99,6 @@ object Cascade extends Falls {
     // we dont want to use reactions that dont have any substrates (most likely bad data)
     val upNonTrivial = upReach.filter(has_substrates)
 
-    // limit the # of up reactions to output to MAX_CASCADE_UPFANOUT
-    // compute all substrates "s" of all rxnsups (upto 10 of them)
     val groupedSubProduct: Map[SubProductPair, List[ReachRxn]] = upNonTrivial.toList
       .map(rxn => (SubProductPair(rxn.substrates.toList.filter(x => !cofactors.contains(x)).sorted, List(m)), rxn)).
       groupBy(_._1).
@@ -241,54 +274,98 @@ object Cascade extends Falls {
     max_cascade_depth = depth
   }
 
-  def get_cascade(m: Long, depth: Int = 0, source: Option[Long] = None, seen: Set[Long] = Set()): Option[Network] = {
-    if (source.isDefined && source.get == m) return None
+  def addValid(m: Long, depth: Int, source: Option[Long], seen: Set[Long], network: Network, candidate: (SubProductPair, List[ReachRxn])) = {
+    val oneValid = candidate match {
+      case (subProduct, reactions) => {
+        val substrates = subProduct.substrates
+        val products = subProduct.products
 
-    val network = new Network("cascade_" + m)
-
-    network.addNode(mol_node(m), m)
-
-    if (is_universal(m)) {
-      // do nothing, base case
-    } else {
-      // We don't filter by higher in tree on the first iteration, so that all possible
-      // reactions producing this product are shown on the graph.
-      val groupedSubProduct: List[(SubProductPair, List[ReachRxn])] = pre_rxns(m, higherInTree = depth != 0).toList
-      var oneValid = false
-      groupedSubProduct
-        .filter(x => x._1.substrates.forall(x => !seen.contains(x)))
-        .foreach({ case (subProduct, reactions) =>
-
-          // True for only cofactors and empty list.
-        if (!subProduct.substrates.forall(cofactors.contains)) {
-          val reactionsNode = rxn_node(reactions.map(r => Long.valueOf(r.rxnid)), subProduct)
-
-          val subProductNetworks = subProduct.substrates.map(s => (s, get_cascade(s, depth + 1, Option(if (depth == 0) m else source.get), seen + m)))
-          if (subProductNetworks.forall(_._2.isDefined)) {
-            oneValid = true
-            subProductNetworks.foreach(s => {
-              network.addNode(reactionsNode, rxn_node_ident(reactions.head.rxnid))
-
-              subProduct.products.foreach(p => network.addEdge(create_edge(reactionsNode, mol_node(p))))
-
-              network.mergeInto(s._2.get)
-
-              // add edges of form "s" -> respective "r" nodeMapping
-              network.addEdge(create_edge(mol_node(s._1), reactionsNode))
-            })
-          }
+        if (substrates.exists(seen.contains(_))) {
+          // this is not a valid candidate as it leads back to descendent (in `seen`) and will create cycle
+          false
         } else {
-          // Let this node be activated as it is activated by a cofactory only rxn
-          oneValid = true
-        }
-      })
+          // True for only cofactors and empty ist.
+          if (substrates.forall(cofactors.contains)) {
+            // Let this node be activated as it is activated by a coefficient only rxn
+            true
+          } else {
+            val reactionsNode = rxn_node(reactions.map(r => Long.valueOf(r.rxnid)), subProduct)
 
-      if (!oneValid && depth > 0){
-        return None
+            def recurse(s: Long) = {
+              val src = if (depth == 0) Option(m) else source
+              (s, get_cascade(s, depth+1, src, seen + m))
+            }
+            val subProductNetworks = substrates.map(recurse)
+            if (subProductNetworks.forall(_._2.isDefined)) {
+              subProductNetworks.foreach(s => {
+                network.addNode(reactionsNode, rxn_node_ident(reactions.head.rxnid))
+                products.foreach(p => network.addEdge(create_edge(reactionsNode, mol_node(p))))
+                network.mergeInto(s._2.get)
+                // add edges of form "s" -> respective "r" nodeMapping
+                network.addEdge(create_edge(mol_node(s._1), reactionsNode))
+              })
+
+              // this is a valid up-edge in the cascade
+              true
+            } else {
+              // at last one substrate cannot be traversed all the way back to cofactors
+              // so this edge cannot be a valid edge going upwards in cascade
+              false
+            }
+          }
+        }
       }
     }
 
-    Option(network)
+    oneValid
+  }
+
+  def get_cascade(m: Long, depth: Int = 0, source: Option[Long] = None, seen: Set[Long] = Set()): Option[Network] = 
+  if (CACHE_CASCADES && depth > 0 && cache_nw.asMap.containsKey(m)) cache_nw.asMap.get(m) else 
+  {
+    // first check if we are "re-getting" the cascade for the main target,
+    // and if so return empty. this allows us to break cycles around the target
+    if (source.isDefined && source.get == m) return None
+
+    val network = new Network("cascade_" + m)
+    network.addNode(mol_node(m), m)
+
+    val optUpwardsCascade = if (is_universal(m)) {
+      // do nothing, base case
+      Some(network)
+    } else {
+      // We don't filter by higher in tree on the first iteration, so that all possible
+      // reactions producing this product are shown on the graph.
+      val grouped: List[(SubProductPair, List[ReachRxn])] = pre_rxns(m, higherInTree = depth != 0).toList
+
+      val validNodes: List[Boolean] = grouped.map(x => addValid(m, depth, source, seen, network, x))
+      // find if there was a single node that was valid (take OR of all valid's)
+      val oneValid = validNodes.exists(_ == true)
+
+      if (!oneValid && depth > 0){
+        None
+      } else {
+        Some(network)
+      }
+    }
+
+    // Now we cache the network. Except for two cases:
+    // 1) when the node is the target node (i.e., depth == 0), the `optUpwardsCascade` for this node
+    //    contains the exceptional case of including edges even if they don't go higher in the tree
+    //    so this computation of its `optUpwardsCascade` is a one off. If we encounter this other times (i.e., as
+    //    an internal node during some other computation) the exception would not have been applied
+    //    and so we'll be good to cache it then.
+    // 2) when the node happens to have been explored as part of a cycle (that does not lead to 
+    //    natives). In that case, we usually do want to exclude it. But there are times when 
+    //    bidirectional edges exist in the cycle, and so there is a way to use the edges in it
+    //    to actually break out of it. To allow for that case, we don't cache when the computation
+    //    evaluates to None. Every other case, good to go.
+    if (depth > 0 && optUpwardsCascade.isDefined) {
+      // cache the network so we don't recompute it
+      cache_nw.put(m, optUpwardsCascade)
+    }
+
+    optUpwardsCascade
   }
 
   def getAllPaths(network: Network, target: Long): Option[List[Path]] = {
@@ -375,6 +452,7 @@ object Cascade extends Falls {
     @JsonIgnore
     private def getReactionCount(node: Node): Int = {
       // Only reactions contribute
+      // if (Node.getAttribute(node.id, "isrxn") == null)
       if (Node.getAttribute(node.id, "isrxn").asInstanceOf[String].toBoolean) {
         node.getAttribute("reaction_count").asInstanceOf[Int]
       } else {
@@ -470,6 +548,18 @@ object Cascade extends Falls {
       this.isMostNative
     }
   }
+
+
+  def time[T](msg: String)(blk: => T): T = {
+    val start = System.nanoTime()
+    val rslt = blk
+    val end = System.nanoTime()
+    val tm = (end - start)/1000000
+    if (Cascade.VERBOSITY > 0) 
+      println(f"## PROFILING: $tm%6dms $msg")
+    rslt
+  }
+
 }
 
 class Cascade(target: Long) {
@@ -511,7 +601,7 @@ class Cascade(target: Long) {
     // TODO Maybe we should only try to infer if there are no/few good sequences.
     // Evaluate how much this helps.  It makes sense as we don't really want to add more to places
     // where there are a lot, but to add some where there are none or few.
-    if (matchingSequences.diff(oddSeqs.map(_.getUUID.toLong: Long).toSet).size < 5) {
+    if (Cascade.DO_HMMER_SEQ && matchingSequences.diff(oddSeqs.map(_.getUUID.toLong: Long).toSet).size < 5) {
       // Filter with side effects, eep.
       val anyInferredSeqs: List[DbSeq] = oddSeqs.filter(sequenceSearch)
 
@@ -637,13 +727,15 @@ class Cascade(target: Long) {
       }
     }
 
-    logger.info(
-      s"""
-        | Reachable: $target
-        | Full Sequence Paths: ${sortedPaths.count(_.getPath.forall(p => !p.isReaction || (p.isReaction && (p.sequences.nonEmpty || p.isSpontaneous))))}
-        | Total Paths: ${sortedPaths.length}
-      """.stripMargin
-    )
+    if (Cascade.VERBOSITY > 1) {
+      logger.debug(
+        s"""
+          | Reachable: $target
+          | Full Sequence Paths: ${sortedPaths.count(_.getPath.forall(p => !p.isReaction || (p.isReaction && (p.sequences.nonEmpty || p.isSpontaneous))))}
+          | Total Paths: ${sortedPaths.length}
+        """.stripMargin
+      )
+    }
 
     try {
       sortedPaths.foreach(Cascade.pathwayCollection.insert)
