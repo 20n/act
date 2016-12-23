@@ -268,6 +268,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
       if (proteomesToQueryAgainst.isEmpty) {
         // Has side effect of DB update, indicates that inferred sequences will not be found for this entry.
         addInferredSequenceArray(mongoDatabaseConnection)(sequence, List())
+        return false
       }
       found.incrementAndGet()
 
