@@ -17,7 +17,9 @@ import java.util.Map;
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public class Reachable {
   @JsonIgnore
-  static final String inchiFieldName = "InChI";
+  static final String ID_FIELD_NAME = "_id";
+  @JsonIgnore
+  static final String INCHI_FIELD_NAME = "InChI";
 
 
   @JsonProperty("_id")
