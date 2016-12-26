@@ -4,8 +4,21 @@ This repository contains everything needed to package the components
 of the substructure search service for use on a dedicated server.
 This is a work in progress, so please report any deployment problems.
 
+=== Overview ===
+The high-level setup procedure for the substructure search service follows these steps:
+* Ensure mediawiki is working, and that nginx is handling *.php requests properly.
+* Install Java (probably the JDK, just for easier productiond debugging) onto the host.
+* Copy the service JAR to the wiki host, and get all data (like the reachables list) and configuration dependencies in place (like the config JSON) in place.  TODO: get logging working correctly.
+* Copy the /etc/init.d script in place to start the service.  Start it and make a test request to it.
+* Update the mediawiki nginx config to correctly proxy requests to the search service.
+* Place the compiled frontend code into a mediawiki subdirectory, which will make them immediately accessible via nginx.
+* Navigate to the substructure search page and make some searches to ensure things are working.
+* Add a link to the substructure search on the wiki's main page (and maybe in the side bar too).
+
+TODO: maybe we can automate some of this with ansible or something similar, but that's a lot of overhead to incur.
+
 === Preparation ===
-Before installing the substructure search on a host, ensure the firewall is operating in default-deny mode.  Once setup is completed, the only process that should be listening to traffic from the internet is nginx (on either port 80 or 443 if using SSL).  This can be done either by manipulating AWS or Azure routing rules to only allow traffic on the desired port, or by using firewall such as UFW (uncomplicated firewall) to restrict access.  Configuring either of these is outside the scope of this document.
+Before installing the substructure search on a host, ensure the firewall is operating in default-deny mode or the AWS security group restrictions deny public Internet traffic by default.  Once setup is completed, the only process that should be listening to traffic from the internet is nginx (on either port 80 or 443 if using SSL).  This can be done either by manipulating AWS or Azure routing rules to only allow traffic on the desired port, or by using firewall software such as UFW (uncomplicated firewall) to restrict access.  Configuring either of these is outside the scope of this document.
 
 Mediawiki should already be installed on the host, as we'll be using it as the root directory for serving static content.  This practice is a little sketchy but it reduces the complexity of our setup procedure.
 
@@ -28,7 +41,7 @@ Mediawiki should already be installed on the host, as we'll be using it as the r
 * If this is the first time setting up the service, start by running `install_java` and installing jsvc:
 ```
 # Replace the example JDK version here with whatever version you want to install.
-$ jdk_zip=jdk-8u77-linux-x64.tar.gz
+$ jdk_zip=jdk-8u111-linux-x64.tar.gz
 $ ./install_java $jdk_zip
 $ sudo apt-get install jsvc
 ```
