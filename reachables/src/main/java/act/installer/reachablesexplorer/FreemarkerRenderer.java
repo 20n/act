@@ -171,8 +171,15 @@ public class FreemarkerRenderer {
     CLIUtil cliUtil = new CLIUtil(Loader.class, HELP_MESSAGE, OPTION_BUILDERS);
     CommandLine cl = cliUtil.parseCommandLine(args);
 
-    Loader loader = new Loader(
-      );
+    File baseOutputDir = new File(cl.getOptionValue(OPTION_OUTPUT_DEST));
+    if (!baseOutputDir.exists()) {
+      cliUtil.failWithMessage("Unable to find output directory at %s", baseOutputDir.getAbsolutePath());
+      return;
+    }
+
+    File reachablesOut = new File(baseOutputDir, "Reachables");
+    File pathsOut = new File(baseOutputDir, "Paths");
+    File seqsOut = new File(baseOutputDir, "Sequences");
 
     FreemarkerRenderer renderer = FreemarkerRendererFactory.build(
         cl.getOptionValue(OPTION_DB_HOST, DEFAULT_HOST),
@@ -183,11 +190,12 @@ public class FreemarkerRenderer {
         cl.getOptionValue(OPTION_DNA_COLLECTION, DEFAULT_DNA_COLLECTION),
         cl.getOptionValue(OPTION_RENDERING_CACHE, DEFAULT_RENDERING_CACHE),
         cl.getOptionValue(OPTION_INSTALLER_SOURCE_DB, DEFAULT_CHEMICALS_DATABASE),
-        new File("/Volumes/shared-data/Thomas/WikiContent/DecRelease/Reachables"),
-        new File("/Volumes/shared-data/Thomas/WikiContent/DecRelease/Paths"),
-        new File("/Volumes/shared-data/Thomas/WikiContent/DecRelease/Sequences")
+        reachablesOut,
+        pathsOut,
+        seqsOut
     );
-    //renderer.generatePages(new File("/Volumes/shared-data/Thomas/WikiPagesForUpload"));
+    LOGGER.info("Page generation starting");
+
     renderer.generatePages();
   }
 
@@ -268,12 +276,12 @@ public class FreemarkerRenderer {
       }
     }
 
-    //Reachable r = loader.constructOrFindReachableById(thisPath.getTarget());
-    //loader.upsert(r);
+    LOGGER.info("Done generating pathway pages, moving on to reachables");
 
     // No iterate over all the reachable documents we've created and generate pages for each using our pathway links.
     DBCursor<Reachable> reachableCursor = loader.getJacksonReachablesCollection().find();
 
+    i = 0;
     while (reachableCursor.hasNext()) {
       Reachable r = reachableCursor.next();
 
@@ -287,7 +295,14 @@ public class FreemarkerRenderer {
         Object model = buildReachableModel(r, pathwayDocs);
         reachableTemplate.process(model, w);
       }
+
+      i++;
+      if (i % 100 == 0) {
+        LOGGER.info("Completed %d reachables", i);
+      }
     }
+
+    LOGGER.info("Page generation complete");
   }
 
 
