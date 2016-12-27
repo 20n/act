@@ -163,7 +163,10 @@ public class FreemarkerRenderer {
   private static final int SEQUENCE_SAMPLE_START = 3000;
   private static final int SEQUENCE_SAMPLE_SIZE = 80;
 
-  private static final Boolean HIDE_CASCADES_AND_PATHWAYS = false;
+  private static final Pattern REGEX_ID = Pattern.compile("^\\d+$");
+  private static final Pattern REGEX_INCHI = Pattern.compile("^InChI=1S?/");
+  // Based on https://en.wikipedia.org/wiki/International_Chemical_Identifier#InChIKey
+  private static final Pattern REGEX_INCHI_KEY = Pattern.compile("^[A-Z]{14}-[A-Z]{10}-[A-Z]$");
 
   private String reachableTemplateName;
   private String pathwayTemplateName;
@@ -171,7 +174,7 @@ public class FreemarkerRenderer {
   private File reachablesDest;
   private File pathsDest;
   private File seqsDest;
-
+  private Boolean hidePathways = false;
 
   // Note: there should be one of these per process.  TODO: make this a singleton.
   private Configuration cfg;
@@ -217,6 +220,7 @@ public class FreemarkerRenderer {
         cl.getOptionValue(OPTION_DNA_COLLECTION, DEFAULT_DNA_COLLECTION),
         cl.getOptionValue(OPTION_RENDERING_CACHE, DEFAULT_RENDERING_CACHE),
         cl.getOptionValue(OPTION_INSTALLER_SOURCE_DB, DEFAULT_CHEMICALS_DATABASE),
+        cl.hasOption(OPTION_OMIT_PATHWAYS_AND_DESIGNS),
         reachablesOut,
         pathsOut,
         seqsOut
@@ -230,11 +234,6 @@ public class FreemarkerRenderer {
     }
     renderer.generatePages(idsToRender);
   }
-
-  private static final Pattern REGEX_ID = Pattern.compile("^\\d+$");
-  private static final Pattern REGEX_INCHI = Pattern.compile("^InChI=1S?/");
-  // Based on https://en.wikipedia.org/wiki/International_Chemical_Identifier#InChIKey
-  private static final Pattern REGEX_INCHI_KEY = Pattern.compile("^[A-Z]{14}-[A-Z]{10}-[A-Z]$");
 
   private Long lookupMolecule(String someKey) {
 
@@ -261,11 +260,12 @@ public class FreemarkerRenderer {
     throw new IllegalArgumentException(msg);
   }
 
-  private FreemarkerRenderer(Loader loader,
+  private FreemarkerRenderer(Loader loader, Boolean hidePathways,
                              File reachablesDest, File pathsDest, File seqsDest) {
     this.reachableTemplateName = DEFAULT_REACHABLE_TEMPLATE_FILE;
     this.pathwayTemplateName = DEFAULT_PATHWAY_TEMPLATE_FILE;
     this.loader = loader;
+    this.hidePathways = hidePathways;
 
     this.reachablesDest = reachablesDest;
     this.pathsDest = pathsDest;
@@ -392,7 +392,7 @@ public class FreemarkerRenderer {
 
     model.put("cascade", r.getPathwayVisualization());
 
-    if (HIDE_CASCADES_AND_PATHWAYS) {
+    if (hidePathways) {
       model.put("hideCascades", true);
     }
 
@@ -729,11 +729,12 @@ public class FreemarkerRenderer {
         String dbHost, Integer dbPort, String dbName,
         String reachablesCollection, String sequencesCollection, String dnaCollection, String renderingCache,
         String chemicalsDB,
+        Boolean hidePathways,
         File reachablesDest, File pathsDest, File seqsDest)
         throws IOException {
       Loader loader =
           new Loader(dbHost, dbPort, dbName, reachablesCollection, sequencesCollection, renderingCache, chemicalsDB);
-      FreemarkerRenderer renderer = new FreemarkerRenderer(loader, reachablesDest, pathsDest, seqsDest);
+      FreemarkerRenderer renderer = new FreemarkerRenderer(loader, hidePathways, reachablesDest, pathsDest, seqsDest);
       renderer.init(dbHost, dbPort, dbName, dnaCollection);
       return renderer;
     }
