@@ -598,22 +598,20 @@ public class FreemarkerRenderer {
         Collections.sort(organisms);
         nodeModel.put("organisms", organisms);
       } else {
-        Reachable r = loader.constructOrFindReachableById(i.getId());
-        loader.upsert(r);
-        if (r == null) {
+        if (target == null) {
           LOGGER.error("Unable to locate pathway chemical %d in reachables db", i.getId());
           nodeModel.put("name", "(unknown)");
         } else {
-          nodeModel.put("link", r.getInchiKey());
+          nodeModel.put("link", target.getInchiKey());
           // TODO: we really need a way of picking a good name for each molecule.
           // If the page name is the InChI, we reduce it to the formula for the purpose of pathway visualisation.
-          String name = r.getPageName().startsWith("InChI") ? r.getPageName().split("/")[1] : r.getPageName();
+          String name = target.getPageName().startsWith("InChI") ? target.getPageName().split("/")[1] : target.getPageName();
           nodeModel.put("name", name);
           chemicalNames.add(name);
-          if (r.getStructureFilename() != null) {
-            nodeModel.put("structureRendering", r.getStructureFilename());
+          if (target.getStructureFilename() != null) {
+            nodeModel.put("structureRendering", target.getStructureFilename());
           } else {
-            LOGGER.warn("No structure filename for %s", r.getPageName());
+            LOGGER.warn("No structure filename for %s", target.getPageName());
           }
         }
       }
