@@ -183,6 +183,7 @@ public class FreemarkerRenderer {
     for (File subdir : Arrays.asList(reachablesOut, pathsOut, seqsOut)) {
       if (!subdir.exists()) {
         LOGGER.info("Creating output directory at %s", subdir.getAbsolutePath());
+        subdir.mkdir();
       } else if (!subdir.isDirectory()) {
         cliUtil.failWithMessage("Output directory at %s is not a directory", subdir.getAbsolutePath());
         return;
