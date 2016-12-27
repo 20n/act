@@ -266,7 +266,7 @@ public class ProteinToDNADriver {
       }
 
       if (atleastOneSeqMissingInPathway) {
-        LOGGER.info(String.format("There is atleast one reaction with no sequence in reaction path id: %s", reactionPath.getId()));
+        LOGGER.info(String.format("There is at least one reaction with no sequence in reaction path id: %s", reactionPath.getId()));
       } else {
         LOGGER.info(String.format("All reactions in reaction path have at least one viable seq: %s", reactionPath.getId()));
 

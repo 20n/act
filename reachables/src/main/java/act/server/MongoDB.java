@@ -1558,6 +1558,10 @@ public class MongoDB {
     return convertDBObjectToChemicalFromActData("InChI", inchi);
   }
 
+  public Chemical getChemicalFromInChIKey(String inchiKey) {
+    return convertDBObjectToChemicalFromActData("InChIKey", inchiKey);
+  }
+
   public Chemical getChemicalFromChemicalUUID(Long cuuid) {
     return convertDBObjectToChemicalFromActData("_id", cuuid);
   }

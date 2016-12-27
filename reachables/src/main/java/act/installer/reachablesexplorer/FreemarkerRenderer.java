@@ -1,6 +1,5 @@
 package act.installer.reachablesexplorer;
 
-import act.installer.metacyc.processes.Pathway;
 import act.shared.Chemical;
 import com.act.reachables.Cascade;
 import com.act.reachables.ReactionPath;
@@ -23,6 +22,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.mongojack.DBCursor;
+import org.mongojack.DBQuery;
 import org.mongojack.JacksonDBCollection;
 import org.twentyn.proteintodna.DNADesign;
 import org.twentyn.proteintodna.DNAOrgECNum;
@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class FreemarkerRenderer {
@@ -56,6 +57,8 @@ public class FreemarkerRenderer {
   private static final String OPTION_DNA_COLLECTION = "d";
   private static final String OPTION_RENDERING_CACHE = "c";
   private static final String OPTION_OUTPUT_DEST = "o";
+  private static final String OPTION_OMIT_PATHWAYS_AND_DESIGNS = "x";
+  private static final String OPTION_RENDER_SOME = "m";
 
   private static final String DEFAULT_HOST = "localhost";
   private static final Integer DEFAULT_PORT = 27017;
@@ -135,6 +138,21 @@ public class FreemarkerRenderer {
         .hasArg().required()
         .longOpt("output")
     );
+    add(Option.builder(OPTION_OMIT_PATHWAYS_AND_DESIGNS)
+        .desc("Omit pathways and designs, replacing them with an order link")
+        .longOpt("no-pathways")
+    );
+    add(Option.builder(OPTION_OMIT_PATHWAYS_AND_DESIGNS)
+        .desc("Omit pathways and designs, replacing them with an order link")
+        .longOpt("no-pathways")
+    );
+    add(Option.builder(OPTION_RENDER_SOME)
+        .argName("molecule")
+        .desc("Render pages for specified molecules; can be a numeric ids, InChIs, or InChI Keys, *separated by '|'* " +
+            "for InChI compatibility.  Molecules ust exist in chemical source DB if InChI or InChI Key is used.")
+        .hasArgs().valueSeparator('|')
+        .longOpt("render-this")
+    );
   }};
 
   private static final String DEFAULT_REACHABLE_TEMPLATE_FILE = "Mediawiki.ftl";
@@ -205,7 +223,42 @@ public class FreemarkerRenderer {
     );
     LOGGER.info("Page generation starting");
 
-    renderer.generatePages();
+    List<Long> idsToRender = Collections.emptyList();
+    if (cl.hasOption(OPTION_RENDER_SOME)) {
+      idsToRender = Arrays.stream(cl.getOptionValues(OPTION_RENDER_SOME))
+          .map(renderer::lookupMolecule).collect(Collectors.toList());
+    }
+    renderer.generatePages(idsToRender);
+  }
+
+  private static final Pattern REGEX_ID = Pattern.compile("^\\d+$");
+  private static final Pattern REGEX_INCHI = Pattern.compile("^InChI=1S?/");
+  // Based on https://en.wikipedia.org/wiki/International_Chemical_Identifier#InChIKey
+  private static final Pattern REGEX_INCHI_KEY = Pattern.compile("^[A-Z]{14}-[A-Z]{10}-[A-Z]$");
+
+  private Long lookupMolecule(String someKey) {
+
+    if (REGEX_ID.matcher(someKey).find()) {
+      // Note: this doesn't verify that the chemical id is valid.  Maybe we should do that?
+      return Long.valueOf(someKey);
+    } else if (REGEX_INCHI.matcher(someKey).find()) {
+      Chemical c = loader.getChemicalSourceDB().getChemicalFromInChI(someKey);
+      if (c != null) {
+        return c.getUuid();
+      }
+    } else if (REGEX_INCHI_KEY.matcher(someKey).find()) {
+      Chemical c = loader.getChemicalSourceDB().getChemicalFromInChIKey(someKey);
+      if (c != null) {
+        return c.getUuid();
+      }
+    } else {
+      String msg = String.format("Unable to find key type for query '%s'", someKey);
+      LOGGER.error(msg);
+      throw new IllegalArgumentException(msg);
+    }
+    String msg = String.format("Unable to find matching chemical for query %s", someKey);
+    LOGGER.error(msg);
+    throw new IllegalArgumentException(msg);
   }
 
   private FreemarkerRenderer(Loader loader,
@@ -239,10 +292,12 @@ public class FreemarkerRenderer {
     dnaDesignCollection = JacksonDBCollection.wrap(db.getCollection(dnaCollection), DNADesign.class, String.class);
   }
 
-  public void generatePages() throws IOException, TemplateException{
+  public void generatePages(List<Long> idsToRender) throws IOException, TemplateException{
 
-    // Temporary fix: only write pages for molecules with pathways.  This should eventually iterate over all reachables.
-    DBCursor<ReactionPath> cascadeCursor = Cascade.get_pathway_collection().find();
+    // Limit iteration to only molecules we care about if any are specified.
+    DBCursor<ReactionPath> cascadeCursor = idsToRender == null || idsToRender.size() == 0 ?
+        Cascade.get_pathway_collection().find() :
+        Cascade.get_pathway_collection().find(DBQuery.in("target", idsToRender));
 
     int i = 0;
     while (cascadeCursor.hasNext()) {
@@ -288,7 +343,9 @@ public class FreemarkerRenderer {
     LOGGER.info("Done generating pathway pages, moving on to reachables");
 
     // No iterate over all the reachable documents we've created and generate pages for each using our pathway links.
-    DBCursor<Reachable> reachableCursor = loader.getJacksonReachablesCollection().find();
+    DBCursor<Reachable> reachableCursor = idsToRender == null || idsToRender.size() == 0 ?
+        loader.getJacksonReachablesCollection().find() :
+        loader.getJacksonReachablesCollection().find(DBQuery.in("_id", idsToRender));
 
     i = 0;
     while (reachableCursor.hasNext()) {
