@@ -117,10 +117,9 @@ public class FreemarkerRenderer {
     add(Option.builder(OPTION_DNA_COLLECTION)
         .argName("collection name")
         .desc(String.format(
-            "The name of the collection from which to read DNA designs (default: %s)",
-            DEFAULT_DNA_COLLECTION))
+            "The name of the collection from which to read DNA designs (default: %s)", DEFAULT_DNA_COLLECTION))
         .hasArg()
-        .longOpt("seq-collection")
+        .longOpt("dna-collection")
     );
     add(Option.builder(OPTION_RENDERING_CACHE)
         .argName("path to cache")
@@ -180,6 +179,15 @@ public class FreemarkerRenderer {
     File reachablesOut = new File(baseOutputDir, "Reachables");
     File pathsOut = new File(baseOutputDir, "Paths");
     File seqsOut = new File(baseOutputDir, "Sequences");
+
+    for (File subdir : Arrays.asList(reachablesOut, pathsOut, seqsOut)) {
+      if (!subdir.exists()) {
+        LOGGER.info("Creating output directory at %s", subdir.getAbsolutePath());
+      } else if (!subdir.isDirectory()) {
+        cliUtil.failWithMessage("Output directory at %s is not a directory", subdir.getAbsolutePath());
+        return;
+      }
+    }
 
     FreemarkerRenderer renderer = FreemarkerRendererFactory.build(
         cl.getOptionValue(OPTION_DB_HOST, DEFAULT_HOST),
