@@ -236,7 +236,6 @@ public class FreemarkerRenderer {
   }
 
   private Long lookupMolecule(String someKey) {
-
     if (REGEX_ID.matcher(someKey).find()) {
       // Note: this doesn't verify that the chemical id is valid.  Maybe we should do that?
       return Long.valueOf(someKey);
@@ -321,6 +320,12 @@ public class FreemarkerRenderer {
         reachablesCache.put(r.getId(), r);
       }
 
+      /* Don't generate any pathway pages if we're instructed to skip pathways.  We still have to make sure the
+       * Reachable objects are constructed, however, so allow the loop to progress to this point before continuing. */
+      if (this.hidePathways) {
+        continue;
+      }
+
       String inchiKey = r.getInchiKey();
       if (inchiKey != null) {
         PathwayDoc pathwayDoc = generatePathDoc(r, thisPath, this.pathsDest, this.seqsDest);
@@ -370,7 +375,6 @@ public class FreemarkerRenderer {
 
     LOGGER.info("Page generation complete");
   }
-
 
   private Object buildReachableModel(Reachable r, List<PathwayDoc> pathwayDocs) {
     /* Freemarker's template language is based on a notion of "hashes," which are effectively just an untyped hierarchy
@@ -500,19 +504,6 @@ public class FreemarkerRenderer {
     }
 
     return model;
-  }
-
-  // Limit long sequences to somethign we can show on a wiki page.
-  private String truncateSequence(String seq) {
-    if (seq.length() <= MAX_SEQUENCE_LENGTH) {
-      return seq;
-    }
-
-    StringBuilder builder = new StringBuilder(MAX_SEQUENCE_LENGTH + 3);
-    builder.append(seq.substring(0, MAX_SEQUENCE_LENGTH / 2));
-    builder.append("...");
-    builder.append(seq.substring(seq.length() - MAX_SEQUENCE_LENGTH / 2, seq.length() - 1));
-    return builder.toString();
   }
 
   private static class PathwayDoc {
