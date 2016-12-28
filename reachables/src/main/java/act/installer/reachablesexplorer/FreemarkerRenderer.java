@@ -398,6 +398,7 @@ public class FreemarkerRenderer {
 
     if (hidePathways) {
       model.put("hideCascades", true);
+      model.put("orderLink", "TODO: add link");
     }
 
     if (r.getWordCloudFilename() != null) {
