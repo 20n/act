@@ -2,7 +2,7 @@ import AssemblyKeys._
 
 assemblySettings
 
-name := "substructureSearch"
+name := "wikiServices"
 
 /*
   This option allows us to run Spark through the job manager.
@@ -44,12 +44,20 @@ libraryDependencies ++= {
       "org.eclipse.jetty" % "jetty-servlet" % "9.4.0.v20161208",
       "org.eclipse.jetty" % "jetty-util" % "9.4.0.v20161208",
       "commons-daemon" % "commons-daemon" % "1.0.15",
-      /* Test modules go last. */
+      "commons-validator" % "commons-validator" % "1.5.1",
+      /* Note: while this version of freemarker includes "incubating" in its artifact name, it is in
+       * fact a proper release.  Apparently the "incubating" suffix is required of projects in the
+       * Apache incubator program, and does not reflect immaturity of the artifact. */
+      "org.freemarker" % "freemarker" % "2.3.25-incubating",
+      "com.amazonaws" % "aws-java-sdk-sns" % "1.11.73",
+      "com.github.ben-manes.caffeine" % "caffeine" % "2.3.5",
+    /* Test modules go last. */
       "com.novocode" % "junit-interface" % "0.11" % "test",
       "org.mockito" % "mockito-core" % "1.10.19" % "test",
       "org.powermock" % "powermock" % "1.6.4" % "test",
       "org.scalatest" %% "scalatest" % "3.0.0-RC4" % "test",
       "org.apache.maven.plugins" % "maven-surefire-report-plugin" % "2.17" % "test"
+
      )
 }
 
