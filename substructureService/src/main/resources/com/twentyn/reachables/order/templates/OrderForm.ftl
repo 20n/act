@@ -68,6 +68,7 @@
         <div class="col-md-8">
           <form action="/order" method="POST">
             <input type="hidden" name="inchi_key" value="${inchiKey}" aria-hidden="true" />
+            <input type="hidden" name="order_id" value="${orderId}" aria-hidden="true" />
             <div class="form-group">
               <label for="email">Contact email</label>
               <input type="email" class="form-control" id="email" placeholder="Email" name="email" /><br />

@@ -12,6 +12,8 @@ import com.amazonaws.services.sns.model.PublishResult;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.twentyn.TargetMolecule;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
@@ -204,6 +206,7 @@ public class Service implements Daemon {
     private static final String EXPECTED_TARGET = "/order";
     private static final String PARAM_INCHI_KEY = "inchi_key";
     private static final String PARAM_EMAIL = "email";
+    private static final String PARAM_ORDER_ID = "order_id";
 
     // Wait 5 seconds for an SNS request to complete.
     private static final long SNS_REQUEST_TIMEOUT = 5;
@@ -216,6 +219,10 @@ public class Service implements Daemon {
     // TODO: make this a proper singleton.
     Configuration cfg;
     AmazonSNSAsync snsClient;
+
+    Cache<UUID, String> orderIdCache = Caffeine.newBuilder()
+        .expireAfterWrite(24, TimeUnit.HOURS)
+        .build();
 
     public Controller(ServiceConfig config, Configuration cfg) {
       this.serviceConfig = config;
@@ -271,7 +278,7 @@ public class Service implements Daemon {
       if (!params.containsKey(PARAM_INCHI_KEY) ||
           params.get(PARAM_INCHI_KEY).length != 1 ||
           params.get(PARAM_INCHI_KEY)[0] == null || params.get(PARAM_INCHI_KEY)[0].isEmpty()) {
-        makeInvalidResponse(response);
+        makeErrorResponse(ORDER_ERRORS.UNKNOWN_MOL, null, response);
         return;
       }
 
@@ -279,12 +286,16 @@ public class Service implements Daemon {
       // Content-aware invariant checks: InChI Key must be valid and exist in our list of targets.
       if (!REGEX_INCHI_KEY.matcher(inchiKey).matches() ||
           !INCHI_KEY_TO_TARGET.containsKey(inchiKey)) {
-        LOGGER.info("Invalid inchi key: '%s', %s", inchiKey, INCHI_KEY_TO_TARGET.containsKey(inchiKey));
-        makeInvalidResponse(response);
+        LOGGER.info("Invalid inchi key: '%s', in targets: %s", inchiKey, INCHI_KEY_TO_TARGET.containsKey(inchiKey));
+        makeErrorResponse(ORDER_ERRORS.UNKNOWN_MOL, null, response);
         return;
       }
 
-      makeOrderFormResponse(inchiKey, null, response);
+      // Save the order id for lookup later to make sure the POST endpoint can't be easily spammed.
+      UUID orderId = UUID.randomUUID();
+      orderIdCache.put(orderId, inchiKey);
+
+      makeOrderFormResponse(inchiKey, orderId.toString(), null, response);
     }
 
     void handlePost(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
@@ -293,7 +304,7 @@ public class Service implements Daemon {
       if (!params.containsKey(PARAM_INCHI_KEY) ||
           params.get(PARAM_INCHI_KEY).length != 1 ||
           params.get(PARAM_INCHI_KEY)[0] == null || params.get(PARAM_INCHI_KEY)[0].isEmpty()) {
-        makeInvalidResponse(response);
+        makeErrorResponse(ORDER_ERRORS.UNKNOWN_MOL, null, response);
         return;
       }
 
@@ -302,7 +313,24 @@ public class Service implements Daemon {
       if (!REGEX_INCHI_KEY.matcher(inchiKey).matches() ||
           !INCHI_KEY_TO_TARGET.containsKey(inchiKey)) {
         LOGGER.info("Invalid inchi key: '%s', %s", inchiKey, INCHI_KEY_TO_TARGET.containsKey(inchiKey));
-        makeInvalidResponse(response);
+        makeErrorResponse(ORDER_ERRORS.UNKNOWN_MOL, null, response);
+        return;
+      }
+
+      // Basic invariant checks: request must have exactly one order ID parameter.
+      UUID orderId;
+      if (!params.containsKey(PARAM_ORDER_ID) ||
+          params.get(PARAM_ORDER_ID).length != 1 ||
+          params.get(PARAM_ORDER_ID)[0] == null || params.get(PARAM_ORDER_ID)[0].isEmpty()) {
+        makeErrorResponse(ORDER_ERRORS.UNKNOWN_ID, inchiKey, response);
+        return;
+      }
+
+      try {
+        orderId = UUID.fromString(params.get(PARAM_ORDER_ID)[0]);
+      } catch (IllegalArgumentException e) {
+        LOGGER.error("Parsing order id resulted in illegal argument exception: %s", e.getMessage());
+        makeErrorResponse(ORDER_ERRORS.UNKNOWN_ID, inchiKey, response);
         return;
       }
 
@@ -310,28 +338,43 @@ public class Service implements Daemon {
       if (!params.containsKey(PARAM_EMAIL) ||
           params.get(PARAM_EMAIL).length != 1 ||
           params.get(PARAM_EMAIL)[0] == null || params.get(PARAM_EMAIL)[0].isEmpty()) {
-        makeOrderFormResponse(inchiKey, "A contact email address must be specified.", response);
+        makeOrderFormResponse(inchiKey, orderId.toString(), "A contact email address must be specified.", response);
         return;
       }
 
       String email = params.get(PARAM_EMAIL)[0];
       // Content-aware invariant checks: ensure email is valid.
       if (!EmailValidator.getInstance().isValid(email)) {
-        makeOrderFormResponse(inchiKey, "A specified email address is invalid.", response);
+        makeOrderFormResponse(inchiKey, orderId.toString(), "The specified email address is invalid.", response);
         return;
       }
 
-      UUID orderId = UUID.randomUUID();
+      // Verify that our order token hasn't timed out or already been used.
+      String expectedInchiKey = orderIdCache.getIfPresent(orderId);
+      if (expectedInchiKey == null) {
+        LOGGER.warn("Couldn't find InChI Key for order id %s w/ user supplied InChI Key", orderId.toString(), inchiKey);
+        makeErrorResponse(ORDER_ERRORS.UNKNOWN_ID, inchiKey, response);
+        return;
+      }
+
+      if (!expectedInchiKey.equals(inchiKey)) {
+        LOGGER.warn("Expected and actual InChI Keys don't match for order id %s (%s vs %s)",
+            orderId.toString(), expectedInchiKey, inchiKey);
+        makeErrorResponse(ORDER_ERRORS.UNKNOWN_ID, inchiKey, response); // Take them back to the molecule they specified.
+        return;
+      }
+      // Mark this order id as claimed by removing it from the cache.
+      orderIdCache.invalidate(orderId);
 
       OrderRequest orderRequest = new OrderRequest(
           inchiKey, serviceConfig.getClientKeyword(), email, orderId.toString()
       );
-
       PublishRequest snsRequest = new PublishRequest(
           serviceConfig.getSnsTopic(),
           OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(orderRequest),
           "New reachables order request"
       );
+      // Perform an async SNS request so we can time out if it takes too long to complete.
       Future<PublishResult> snsResultFuture = snsClient.publishAsync(snsRequest);
 
       try {
@@ -356,7 +399,7 @@ public class Service implements Daemon {
       makeOrderSubmittedResponse(inchiKey, orderId.toString(), response);
     }
 
-    void makeOrderFormResponse(String inchiKey, String errorMessage, HttpServletResponse response)
+    void makeOrderFormResponse(String inchiKey, String orderId, String errorMessage, HttpServletResponse response)
         throws IOException, ServletException{
       TargetMolecule target = INCHI_KEY_TO_TARGET.get(inchiKey);
 
@@ -367,6 +410,7 @@ public class Service implements Daemon {
         put("imageLink", imagesUrlBase + target.getImageName());
         put("name", target.getDisplayName());
         put("inchiKey", target.getInchiKey());
+        put("orderId", orderId);
         if (errorMessage != null && !errorMessage.isEmpty()) {
           put("errorMsg", errorMessage);
         }
@@ -390,10 +434,15 @@ public class Service implements Daemon {
       response.setStatus(HttpServletResponse.SC_OK);
     }
 
-    void makeInvalidResponse(HttpServletResponse response) throws IOException, ServletException {
+    void makeErrorResponse(ORDER_ERRORS error, String inchiKey, HttpServletResponse response)
+        throws IOException, ServletException {
       Template t = cfg.getTemplate(TEMPLATE_NAME_ORDER_INVALID);
       Map<String, String> model = new HashMap<String, String>() {{
         put("adminEmail", serviceConfig.getAdminEmail());
+        put(error.getTemplateKey(), Boolean.TRUE.toString()); // Just a flag.
+        if (inchiKey != null) {
+          put("sourcePageLink", String.format("%s?%s=%s", EXPECTED_TARGET, PARAM_INCHI_KEY, inchiKey));
+        }
       }};
       processTemplate(t, model, response);
     }
@@ -410,6 +459,22 @@ public class Service implements Daemon {
       response.setStatus(HttpServletResponse.SC_OK);
     }
   }
+
+  private enum ORDER_ERRORS {
+    UNKNOWN_MOL("molNotRecognized"),
+    UNKNOWN_ID("orderIdInvalid"),
+    ;
+
+    String templateKey;
+    ORDER_ERRORS(String templateKey) {
+      this.templateKey = templateKey;
+    }
+
+    public String getTemplateKey() {
+      return this.templateKey;
+    }
+  }
+
 
   // Container class for easy JSON serialization of orders.
   private static class OrderRequest {

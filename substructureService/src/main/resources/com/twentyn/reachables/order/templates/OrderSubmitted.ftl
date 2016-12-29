@@ -27,7 +27,9 @@
         <div class="col-md-2"></div>
         <div class="col-md-8">
           <p class="text-center">
-          Thank you for submitting your order.  Your order id is ${orderId}.<br />
+          Thank you for submitting your order.  Your order id is <b>${orderId}</b>.<br />
+          The site administrator will contact you when pathways and designs are available.  No automatic confirmation
+          of this order request will be sent.<br />
           Please click the link below to return to the wiki.<br />
           <a class="btn btn-default" href="${returnUrl}" role="button">Return to the wiki</a>
           </p>

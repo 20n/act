@@ -27,8 +27,21 @@
         <div class="col-md-2"></div>
         <div class="col-md-8">
           <p>
-          We were unable to recognize the molecule you are attempting to order.  Please use the order links on
-          individual reachables pages to make order requests.  If you are having trouble with order links, please
+          <#if molNotRecognized??>
+            We were unable to recognize the molecule you are attempting to order.
+            Please use the order links on individual reachables pages to make order requests.
+          <#elseif orderIdInvalid??>
+            We were unable to complete your order.  You may have attempted to place your order multiple times
+            or your order may have timed out.  Please use the link below to navigate back to the order page and
+            try again. <br />
+            <div class="text-center">
+              <a class="btn btn-default" href="${sourcePageLink}" role="button">Return to the order page</a>
+            </div>
+            <br />
+          <#else>
+            An unexpected error occurred.
+          </#if>
+            If you are having trouble with order links, please
           <a href="mailto:${adminEmail}">email the site administrator</a> for assistance.
           </p>
         </div>
