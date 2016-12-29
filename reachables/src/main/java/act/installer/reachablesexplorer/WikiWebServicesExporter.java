@@ -9,14 +9,17 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.mongojack.DBCursor;
+import org.mongojack.DBQuery;
 import org.mongojack.JacksonDBCollection;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * This class outputs a TSV file that can be consumed by various web services that support the reachables wiki.
@@ -31,6 +34,7 @@ public class WikiWebServicesExporter {
   private static final String OPTION_INPUT_DB_PORT = "p";
   private static final String OPTION_INPUT_DB_COLLECTION = "c";
   private static final String OPTION_OUTPUT_FILE = "o";
+  private static final String OPTION_EXPORT_SOME = "m";
 
   private static final String DEFAULT_HOST = "localhost";
   private static final String DEFAULT_PORT = "27017";
@@ -70,6 +74,12 @@ public class WikiWebServicesExporter {
         .hasArg().required()
         .longOpt("out")
     );
+    add(Option.builder(OPTION_EXPORT_SOME)
+        .argName("ids")
+        .desc("Only export molecules with the specified ids")
+        .hasArgs().valueSeparator(',')
+        .longOpt("only-export")
+    );
   }};
 
   private static final String HELP_MESSAGE = StringUtils.join(new String[] {
@@ -97,10 +107,17 @@ public class WikiWebServicesExporter {
 
     LOGGER.info("Connected to DB, reading reachables");
 
+    List<Long> exportIds = cl.hasOption(OPTION_EXPORT_SOME) ?
+        Collections.emptyList() :
+        Arrays.stream(cl.getOptionValues(OPTION_EXPORT_SOME))
+            .map(Long::valueOf)
+            .collect(Collectors.toList());
+
     TSVWriter<String, String> tsvWriter = new TSVWriter<>(HEADER);
     tsvWriter.open(new File(cl.getOptionValue(OPTION_OUTPUT_FILE)));
     try {
-      DBCursor<Reachable> cursor = reachables.find();
+      DBCursor<Reachable> cursor = exportIds.isEmpty() ? reachables.find() :
+          reachables.find(DBQuery.in("_id", exportIds));
       int written = 0;
       while (cursor.hasNext()) {
         final Reachable r = cursor.next();
