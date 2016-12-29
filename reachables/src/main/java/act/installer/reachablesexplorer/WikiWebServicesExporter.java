@@ -30,7 +30,7 @@ public class WikiWebServicesExporter {
   private static final List<String> HEADER = Arrays.asList("inchi", "inchi_key", "display_name", "image_name");
 
   private static final String OPTION_INPUT_DB = "d";
-  private static final String OPTION_INPUT_DB_HOST = "s";
+  private static final String OPTION_INPUT_DB_HOST = "H";
   private static final String OPTION_INPUT_DB_PORT = "p";
   private static final String OPTION_INPUT_DB_COLLECTION = "c";
   private static final String OPTION_OUTPUT_FILE = "o";
@@ -46,25 +46,25 @@ public class WikiWebServicesExporter {
   private static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_INPUT_DB)
         .argName("db name")
-        .desc("The name of the reachables database to read")
+        .desc(String.format("The name of the reachables database to read (default: %s)", DEFAULT_DB))
         .hasArg()
         .longOpt("db")
     );
     add(Option.builder(OPTION_INPUT_DB_HOST)
         .argName("db host")
-        .desc("The host to which connect when reading from a DB")
+        .desc(String.format("The host to which connect when reading from a DB (default: %s)", DEFAULT_HOST))
         .hasArg()
         .longOpt("host")
     );
     add(Option.builder(OPTION_INPUT_DB_PORT)
         .argName("db port")
-        .desc("The port to which connect when reading from a DB")
+        .desc(String.format("The port to which connect when reading from a DB (default: %s)", DEFAULT_PORT))
         .hasArg()
         .longOpt("port")
     );
     add(Option.builder(OPTION_INPUT_DB_COLLECTION)
         .argName("collection")
-        .desc("The collection from which to read reachables documents")
+        .desc(String.format("The collection from which to read reachables documents (default: %s)", DEFAULT_COLLECTION))
         .hasArg()
         .longOpt("collection")
     );
