@@ -107,7 +107,7 @@ public class WikiWebServicesExporter {
 
     LOGGER.info("Connected to DB, reading reachables");
 
-    List<Long> exportIds = cl.hasOption(OPTION_EXPORT_SOME) ?
+    List<Long> exportIds = !cl.hasOption(OPTION_EXPORT_SOME) ?
         Collections.emptyList() :
         Arrays.stream(cl.getOptionValues(OPTION_EXPORT_SOME))
             .map(Long::valueOf)
