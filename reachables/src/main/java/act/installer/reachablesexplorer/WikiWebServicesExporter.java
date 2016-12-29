@@ -14,19 +14,15 @@ import org.mongojack.JacksonDBCollection;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
- * This class outputs a TSV file
+ * This class outputs a TSV file that can be consumed by various web services that support the reachables wiki.
  */
-public class SubstructureSearchExporter {
-  private static final Logger LOGGER = LogManager.getFormatterLogger(SubstructureSearchExporter.class);
+public class WikiWebServicesExporter {
+  private static final Logger LOGGER = LogManager.getFormatterLogger(WikiWebServicesExporter.class);
 
   private static final List<String> HEADER = Arrays.asList("inchi", "inchi_key", "display_name", "image_name");
 
@@ -86,7 +82,7 @@ public class SubstructureSearchExporter {
   }
 
   public static void main(String[] args) throws Exception {
-    CLIUtil cliUtil = new CLIUtil(SubstructureSearchExporter.class, HELP_MESSAGE, OPTION_BUILDERS);
+    CLIUtil cliUtil = new CLIUtil(WikiWebServicesExporter.class, HELP_MESSAGE, OPTION_BUILDERS);
     CommandLine cl = cliUtil.parseCommandLine(args);
 
     String host = cl.getOptionValue(OPTION_INPUT_DB_HOST, DEFAULT_HOST);
