@@ -6,6 +6,7 @@ import chemaxon.sss.search.MolSearch;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.twentyn.TargetMolecule;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -14,14 +15,13 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVParser;
-import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.daemon.Daemon;
 import org.apache.commons.daemon.DaemonContext;
 import org.apache.commons.daemon.DaemonInitException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.server.NCSARequestLog;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
@@ -31,7 +31,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,16 +40,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class Service implements Daemon {
-  static final Service INSTANCE = new Service();
-
   private static final Logger LOGGER = LogManager.getFormatterLogger(Service.class);
 
   public static final CSVFormat TSV_FORMAT = CSVFormat.newFormat('\t').
       withRecordSeparator('\n').withQuote('"').withIgnoreEmptyLines(true).withHeader();
 
   public static final String OPTION_CONFIG_FILE = "c";
-
-  public static final String DEFAULT_PORT = "8080";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_CONFIG_FILE)
@@ -84,14 +79,6 @@ public class Service implements Daemon {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private Server jettyServer;
-
-  private static void loadTargets(File inputFile) throws IOException {
-    try (CSVParser parser = new CSVParser(new FileReader(inputFile), TSV_FORMAT)) {
-      for (CSVRecord record : parser) {
-        TARGETS.add(TargetMolecule.fromCSVRecord(record));
-      }
-    }
-  }
 
   public void init(String[] args) throws Exception {
     Options opts = new Options();
@@ -135,7 +122,7 @@ public class Service implements Daemon {
     LicenseManager.setLicenseFile(config.getLicenseFile());
 
     LOGGER.info("Loading targets");
-    loadTargets(new File(config.getReachablesFile()));
+    TARGETS.addAll(TargetMolecule.loadTargets(new File(config.getReachablesFile()))); // Ensure TARGETS != null.
     LOGGER.info("Read %d targets from input TSV", TARGETS.size());
 
     LOGGER.info("Constructing service");
@@ -174,7 +161,7 @@ public class Service implements Daemon {
 
   @Override
   public void destroy() {
-
+    jettyServer.destroy();
   }
 
   public static void main(String[] args) throws Exception {
@@ -212,9 +199,14 @@ public class Service implements Daemon {
     @Override
     public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
         throws IOException, ServletException {
-      // Only handle /search queries.
+      // Only handle /search GET queries.
       if (!EXPECTED_TARGET.equals(target)) {
         response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+        return;
+      }
+
+      if(!HttpMethod.GET.asString().equalsIgnoreCase(request.getMethod())) {
+        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         return;
       }
 
