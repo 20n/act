@@ -5,14 +5,11 @@ import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.regions.Regions;
-import com.amazonaws.services.sns.AmazonSNS;
 import com.amazonaws.services.sns.AmazonSNSAsync;
 import com.amazonaws.services.sns.AmazonSNSAsyncClientBuilder;
-import com.amazonaws.services.sns.AmazonSNSClient;
-import com.amazonaws.services.sns.AmazonSNSClientBuilder;
 import com.amazonaws.services.sns.model.PublishRequest;
 import com.amazonaws.services.sns.model.PublishResult;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.twentyn.TargetMolecule;
@@ -326,9 +323,13 @@ public class Service implements Daemon {
 
       UUID orderId = UUID.randomUUID();
 
+      OrderRequest orderRequest = new OrderRequest(
+          inchiKey, serviceConfig.getClientKeyword(), email, orderId.toString()
+      );
+
       PublishRequest snsRequest = new PublishRequest(
           serviceConfig.getSnsTopic(),
-          String.format("Reachables order request: %s from %s; id: %s", inchiKey, email, orderId),
+          OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(orderRequest),
           "New reachables order request"
       );
       Future<PublishResult> snsResultFuture = snsClient.publishAsync(snsRequest);
@@ -408,7 +409,63 @@ public class Service implements Daemon {
       }
       response.setStatus(HttpServletResponse.SC_OK);
     }
+  }
 
+  // Container class for easy JSON serialization of orders.
+  private static class OrderRequest {
+    @JsonProperty("inchi_key")
+    String inchiKey;
 
+    @JsonProperty("client_keyword")
+    String clientKeyword;
+
+    @JsonProperty("email")
+    String email;
+
+    @JsonProperty("order_id")
+    String orderId;
+
+    private OrderRequest() {
+
+    }
+
+    public OrderRequest(String inchiKey, String clientKeyword, String email, String orderId) {
+      this.inchiKey = inchiKey;
+      this.clientKeyword = clientKeyword;
+      this.email = email;
+      this.orderId = orderId;
+    }
+
+    public String getInchiKey() {
+      return inchiKey;
+    }
+
+    public void setInchiKey(String inchiKey) {
+      this.inchiKey = inchiKey;
+    }
+
+    public String getClientKeyword() {
+      return clientKeyword;
+    }
+
+    public void setClientKeyword(String clientKeyword) {
+      this.clientKeyword = clientKeyword;
+    }
+
+    public String getEmail() {
+      return email;
+    }
+
+    public void setEmail(String email) {
+      this.email = email;
+    }
+
+    public String getOrderId() {
+      return orderId;
+    }
+
+    public void setOrderId(String orderId) {
+      this.orderId = orderId;
+    }
   }
 }

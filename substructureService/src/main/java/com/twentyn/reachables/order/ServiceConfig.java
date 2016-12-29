@@ -23,25 +23,30 @@ public class ServiceConfig {
   @JsonProperty(value = "image_url_prefix", required = true)
   String imageUrlPrefix;
 
-  @JsonProperty(value = "aws_access_key_id")
+  // A keyword that uniquely identifies the client who owns the wiki from which the order request originated.
+  @JsonProperty(value = "client_keyword", required = true)
+  String clientKeyword;
+
+  // AWS access credentials, which can be found in the AWS IAM dashboard.
+  @JsonProperty(value = "aws_access_key_id", required = true)
   String accessKeyId;
 
-  @JsonProperty(value = "aws_secret_access_key")
+  @JsonProperty(value = "aws_secret_access_key", required = true)
   String secretAccessKey;
 
   // The AWS region where the SNS topic to which to publish order messages lives.
-  @JsonProperty(value = "aws_region")
+  @JsonProperty(value = "aws_region", required = true)
   String region;
 
   // The SNS topic to which to send order messages.
-  @JsonProperty(value = "aws_sns_topic")
+  @JsonProperty(value = "aws_sns_topic", required = true)
   String snsTopic;
 
   public ServiceConfig() {
   }
 
   public ServiceConfig(Integer port, String reachablesFile, String adminEmail,
-                       String wikiUrlPrefix, String imageUrlPrefix,
+                       String wikiUrlPrefix, String imageUrlPrefix, String clientKeyword,
                        String accessKeyId, String secretAccessKey,
                        String region, String snsTopic) {
     this.port = port;
@@ -49,6 +54,7 @@ public class ServiceConfig {
     this.adminEmail = adminEmail;
     this.wikiUrlPrefix = wikiUrlPrefix;
     this.imageUrlPrefix = imageUrlPrefix;
+    this.clientKeyword = clientKeyword;
     this.accessKeyId = accessKeyId;
     this.secretAccessKey = secretAccessKey;
     this.region = region;
@@ -93,6 +99,14 @@ public class ServiceConfig {
 
   public void setImageUrlPrefix(String imageUrlPrefix) {
     this.imageUrlPrefix = imageUrlPrefix;
+  }
+
+  public String getClientKeyword() {
+    return clientKeyword;
+  }
+
+  public void setClientKeyword(String clientKeyword) {
+    this.clientKeyword = clientKeyword;
   }
 
   public String getAccessKeyId() {
