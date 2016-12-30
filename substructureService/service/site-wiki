@@ -5,75 +5,118 @@
 # from your root server if this is part of a shared installation (or
 # if you want to separate ssl termination from serving wiki content).
 
+
+limit_req_zone $binary_remote_addr zone=one:10m rate=1r/s;
+
 server {
-    listen 8080 default_server;
+  listen 8080 default_server;
 
-    # Run all the mediawiki php codes.
-    # with help from:
-    # http://askubuntu.com/questions/134666/what-is-the-easiest-way-to-enable-php-on-nginx
-    # https://www.nginx.com/resources/wiki/start/topics/recipes/mediawiki/
+  # Run all the mediawiki php codes.
+  # with help from:
+  # http://askubuntu.com/questions/134666/what-is-the-easiest-way-to-enable-php-on-nginx
+  # https://www.nginx.com/resources/wiki/start/topics/recipes/mediawiki/
 
-    # Note that we also host some static content from the mediawiki directory.
-    # This is a little sketchy, but I think it's better than
-    root /var/www/mediawiki;
+  # Note that we also host some static content from the mediawiki directory.
+  # This is a little sketchy, but I think it's better than
+  root /var/www/mediawiki;
 
-    client_max_body_size 5m;
-    client_body_timeout 60;
+  client_max_body_size 5m;
+  client_body_timeout 60;
 
-    location = /search {
-      proxy_set_header   Host             $host:$server_port;
-      proxy_set_header   X-Real-IP        $remote_addr;
-      proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;
-      proxy_pass         http://localhost:8888; # Shouldn't be publicly accessible.
-      proxy_redirect     default;
+  # Substructure search service
+  location = /search {
+    proxy_set_header   Host             $host:$server_port;
+    proxy_set_header   X-Real-IP        $remote_addr;
+    proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;
+    proxy_pass         http://localhost:8888; # Shouldn't be publicly accessible.
+    proxy_redirect     default;
 
-      break;
-      # Break required to prevent additional processing by other location blocks.
-    }
-
-    location /substructure {
-      autoindex off;
-      index  index.html index.htm;
-    }
-
-    location / {
-      autoindex off;
-      try_files $uri $uri/ @rewrite;
-    }
-
-    location @rewrite {
-      rewrite ^/(.*)$ /index.php?title=$1&$args;
-    }
-
-    location ^~ /maintenance/ {
-      return 403;
-    }
-
-    location ~ \.php$ {
-      include fastcgi_params;
-      fastcgi_pass unix:/var/run/php5-fpm.sock;
-    }
-
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico)$ {
-      try_files $uri /index.php;
-      expires max;
-      log_not_found off;
-    }
-
-    location = /_.gif {
-      expires max;
-      empty_gif;
-    }
-
-    location ^~ /cache/ {
-      deny all;
-    }
-
-    location /dumps {
-      root /var/www/mediawiki/local;
-      autoindex on;
-    }
+    break;
+    # Break required to prevent additional processing by other location blocks.
   }
+
+  location /substructure {
+    autoindex off;
+    index  index.html index.htm;
+  }
+
+  # Orders service
+  location = /order {
+    proxy_set_header   Host             $host:$server_port;
+    proxy_set_header   X-Real-IP        $remote_addr;
+    proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;
+    proxy_pass         http://localhost:8889; # Shouldn't be publicly accessible.
+    proxy_redirect     default;
+
+    break;
+    # Break required to prevent additional processing by other location blocks.
+  }
+
+  # Normal mediawiki config, with some extra rate limiting and hardening.
+  location / {
+    limit_req zone=one burst=5;
+    index index.php;
+    try_files $uri $uri/ @rewrite;
+  }
+
+  location @rewrite {
+    rewrite ^/(.*)$ /index.php?title=$1&$args;
+  }
+
+  location ^~ /mw-config/ {
+    return 403;
+  }
+
+  location ^~ /maintenance/ {
+    return 403;
+  }
+
+  location ^~ /tests/ {
+    return 403;
+  }
+
+  location ^~ /docs/ {
+    return 403;
+  }
+
+  location = /api.php {
+    allow 127.0.0.1;
+    deny all;
+
+    include fastcgi_params;
+    fastcgi_pass unix:/var/run/php/php7.0-fpm.sock;
+  }
+
+  location = /LocalSettings.php {
+    return 403;
+  }
+
+  location ~ \.php$ {
+    limit_req zone=one burst=5;
+    include fastcgi_params;
+    fastcgi_pass unix:/var/run/php5-fpm.sock;
+  }
+
+  location ~* \.(js|css|png|jpg|jpeg|gif|ico)$ {
+    try_files $uri /index.php;
+    expires max;
+    log_not_found off;
+  }
+
+  location = /_.gif {
+    expires max;
+    empty_gif;
+  }
+
+  location ^~ /cache/ {
+    deny all;
+  }
+
+  location /dumps {
+    root /var/www/mediawiki/local;
+    autoindex on;
+  }
+}
 
   # HTTPS server
   #
@@ -95,5 +138,3 @@ server {
   #        index  index.html index.htm;
   #    }
   #}
-
-}
