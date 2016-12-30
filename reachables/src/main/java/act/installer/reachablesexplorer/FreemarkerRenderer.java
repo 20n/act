@@ -168,6 +168,9 @@ public class FreemarkerRenderer {
   // Based on https://en.wikipedia.org/wiki/International_Chemical_Identifier#InChIKey
   private static final Pattern REGEX_INCHI_KEY = Pattern.compile("^[A-Z]{14}-[A-Z]{10}-[A-Z]$");
 
+  private static final String ORDER_PATH = "/order";
+  private static final String ORDER_INCHI_KEY_PARAM = "inchi_key";
+
   private String reachableTemplateName;
   private String pathwayTemplateName;
   private Loader loader;
@@ -398,7 +401,8 @@ public class FreemarkerRenderer {
 
     if (hidePathways) {
       model.put("hideCascades", true);
-      model.put("orderLink", "TODO: add link");
+      // TODO: is there a cleaner way to make this URL?
+      model.put("orderLink", String.format("%s?%s=%s", ORDER_PATH, ORDER_INCHI_KEY_PARAM, r.getInchiKey()));
     }
 
     if (r.getWordCloudFilename() != null) {
