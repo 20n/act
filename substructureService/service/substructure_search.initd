@@ -13,9 +13,9 @@
 # available (installed using apt) and assumes the following files or
 # directories exist:
 #
-# /usr/local/software/substructure_search/current.jar:
-#   Symlink to most recent version of the substructure search JAR.
-# /etc/substructure_search/config.json:
+# /usr/local/software/wiki_web_services/current.jar:
+#   Symlink to most recent version of the wiki services search JAR.
+# /etc/wiki_web_services/substructure_config.json:
 #   Place the substructure search's configuration file here, and
 #   install any data files (like the reachables list) as necessary
 #   based on paths therein.
@@ -33,9 +33,9 @@ cwd="/tmp"
 pid_file="/var/run/substructure.pid"
 
 # Symlink the most recent version of the jar here:
-jar="/usr/local/software/substructure_search/current.jar"
+jar="/usr/local/software/wiki_web_services/current.jar"
 class="com.twentyn.search.substructure.Service"
-args="-c /etc/substructure_search/config.json"
+args="-c /etc/wiki_web_services/substructure_config.json"
 
 # TODO: replace these with log4j's rolling log appender
 stdout="/var/log/java/substructure_search.out"
@@ -63,7 +63,7 @@ case "$1" in
             pid=$(cat $pid_file)
             echo "Service is already running with pid $pid"
         else
-            echo "Starting substructure service with JSVC..."
+            echo "Starting service with JSVC..."
             $jsvc $jsvc_opts $class $args
             pid=$(cat $pid_file)
             echo "Service started with pid $pid"
