@@ -34,7 +34,7 @@ pid_file="/var/run/orders.pid"
 
 # Symlink the most recent version of the jar here:
 jar="/usr/local/software/wiki_web_services/current.jar"
-class="com.twentyn.search.substructure.Service"
+class="com.twentyn.reachables.order.Service"
 args="-c /etc/wiki_web_services/orders_config.json"
 
 # TODO: replace these with log4j's rolling log appender
