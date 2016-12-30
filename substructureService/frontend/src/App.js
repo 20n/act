@@ -61,7 +61,7 @@ class App extends Component {
     if (isNotSearching) {
       this.setState({searching: true});
       const query = this.state.searchText;
-      axios.get('http://localhost:8080/search', {
+      axios.get('/search', {
         params: {q: query},
         timeout: 5000,
         responseType: 'json',
@@ -111,10 +111,10 @@ class App extends Component {
     }
 
     const rows = this.state.results.map(function (r, idx) {
-      const imageName = r.image_name== null ? <div>No image available</div> : <img src={r.image_name} width="200"/>;
+      const imageName = r.image_name == null ? <div>No image available</div> : <img src={r.image_name} width="200"/>;
       return <tr key={idx}>
-        <td>{imageName} </td>
-        <td><a href={r.link}>{r.page_name}</a></td>
+        <td className="col-md-4">{imageName}</td>
+        <td className="col-md-8"><a href={r.link}>{r.page_name}</a></td>
       </tr>
     });
 
