@@ -113,16 +113,22 @@ class App extends Component {
     const rows = this.state.results.map(function (r, idx) {
       const imageName = r.image_name == null ? <div>No image available</div> : <img src={r.image_name} width="200"/>;
       return <tr key={idx}>
-        <td className="col-md-4">{imageName}</td>
-        <td className="col-md-8"><a href={r.link}>{r.page_name}</a></td>
+        <td className="col-md-2">{imageName}</td>
+        <td className="col-md-10"><a href={r.link}>{r.page_name}</a></td>
       </tr>
     });
 
     return (
-      <Table striped>
-        <thead><tr><th>Image</th><th>Link</th></tr></thead>
-        <tbody>{rows}</tbody>
-      </Table>
+      <div class="container">
+        <div className="col-md-2"></div>
+        <div className="col-md-8">
+          <Table striped>
+            <thead><tr><th>Image</th><th>Link</th></tr></thead>
+            <tbody>{rows}</tbody>
+          </Table>
+        </div>
+        <div className="col-md-2"></div>
+      </div>
     );
   }
 
