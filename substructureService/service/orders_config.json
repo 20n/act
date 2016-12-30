@@ -1,0 +1,12 @@
+{
+  "port": 8889,
+  "reachables_file": "/etc/wiki_web_services/reachables",
+  "admin_email": "saurabh@20n.com",
+  "wiki_url_prefix": "/",
+  "image_url_prefix": "/assets/img/",
+  "client_keyword": "PICK_A_KEYWORD",
+  "aws_access_key_id": "SET_ACCESS_KEY",
+  "aws_secret_access_key": "SET_SECRET_KEY",
+  "aws_region": "us-west-2",
+  "aws_sns_topic": "arn:aws:sns:us-west-2:523573371322:wiki_order_notifications"
+}
