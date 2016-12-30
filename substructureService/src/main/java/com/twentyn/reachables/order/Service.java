@@ -274,6 +274,7 @@ public class Service implements Daemon {
     void handleGet(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
       LOGGER.info("In handle GET");
       Map<String, String[]> params = request.getParameterMap();
+
       // Basic invariant checks: request must have exactly one InChI Key parameter.
       if (!params.containsKey(PARAM_INCHI_KEY) ||
           params.get(PARAM_INCHI_KEY).length != 1 ||

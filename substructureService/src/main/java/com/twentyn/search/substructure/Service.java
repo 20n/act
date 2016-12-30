@@ -213,7 +213,7 @@ public class Service implements Daemon {
       Map<String, String[]> parameters = request.getParameterMap();
 
       // Search query is required.
-      if (!parameters.containsKey(PARAM_QUERY) && parameters.get(PARAM_QUERY).length == 0) {
+      if (!parameters.containsKey(PARAM_QUERY) || parameters.get(PARAM_QUERY).length == 0) {
         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         return;
       }
