@@ -1,4 +1,4 @@
-# This configuration file can go into a sites-allowed/sites-enabled
+# This configuration file can go into a sites-available/sites-enabled
 # setup, which works nicely with the default ubuntu nginx setup.  It
 # uses hard-coded ports, as nginx doesn't support variables in
 # configuration files--adjust these as needed, and proxy accordingly
