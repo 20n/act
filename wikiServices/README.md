@@ -1,4 +1,4 @@
-== Mediawiki Web Services ==
+## Mediawiki Web Services ##
 
 This directory contains source and config files for web services that support our mediawiki installation.  These should only be enabled on **private** wiki installations, not on the public preview wiki.
 
@@ -8,13 +8,13 @@ Still TODO:
 * Backups/disaster recovery
 * Anything but trivial ordering capabilities (we just send an email for now)
 
-== Mediawiki Setup from Scratch ==
+## Mediawiki Setup from Scratch ##
 
 These instructions shouldn't be strictly necessary, as an EC2 AMI with a complete mediawiki setup is available.  Fall back to these instructions in case we ever need to set it up from scratch.
 
 This assumes the host OS is Ubuntu 14.04LTS or 16.04.
 
-=== Install and Set Up MySQL ===
+### Install and Set Up MySQL ###
 
 This assumes MySQL will be running on the wiki host, which is fine for our simple, non-redundant setup.  Note that we won't open MySQL's default port to the public Internet--it will only be accessible locally on the wiki host.
 
@@ -37,7 +37,7 @@ mysql> grant all privileges on 20n_wiki.* to 'mediawiki'@'localhost';
 
 The `mediawiki` user now has the access it requires to create all the tables it needs.
 
-=== Install PHP ===
+### Install PHP ###
 
 Run this command to install all the required PHP packages:
 ```
@@ -49,7 +49,7 @@ This will start a PHP 7.0 FPM service that will accept traffic on a UNIX domain 
 
 The default PHP-FPM configuration should be sufficient for our purposes.  TODO: do we need to harden this?
 
-=== Install and Configure NGINX ===
+### Install and Configure NGINX ###
 
 Install nginx using apt.  **Note that if the firewall or security group rules allow public access to port 80, nginx will be immediately visible to the public Internet, which we definitely do not want yet.**
 
@@ -89,7 +89,7 @@ fastcgi_param  REDIRECT_STATUS    200;
 
 For a reason I don't understand, Ubuntu's nginx ships with one of these parameters missing, which results in blank pages appearing when trying to access the wiki.
 
-=== Unpack and Set Up Mediawiki ===
+### Unpack and Set Up Mediawiki ###
 
 First, install imagemagick, which the wiki will use for image manipulation:
 ```
@@ -179,11 +179,11 @@ One more change needs to be made: in order to make the logo point to `20n.com`, 
 echo htmlspecialchars( 'http://20n.com' )
 ```
 
-=== Loading Data into the Wiki ===
+### Loading Data into the Wiki ###
 
 All of the content in the wiki will be uploaded using maintenance scripts.  These scripts are easy to use and fairly quick to run.
 
-==== Loading Images ====
+#### Loading Images ####
 
 To load a directory of PNGs into the wiki, use this command:
 ```
@@ -193,7 +193,7 @@ $ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwri
 Replace `png` with a different image type/extension if you need to upload other kinds of images.
 
 
-==== Loading Page Text ====
+#### Loading Page Text ####
 
 To load a directory of only pages into the wiki (no other files, please), use this command:
 ```
@@ -210,7 +210,7 @@ done
 
 Note that this must be done on the wiki host itself: public access `api.php` is blocked to all traffic sources except `localhost`.
 
-==== Example: Loading the Wiki Front-Matter ====
+#### Example: Loading the Wiki Front-Matter ####
 
 There is a directory in this repository called `wiki_front_matter` that contains the main page and assets for our wiki.  Let's install it!
 
