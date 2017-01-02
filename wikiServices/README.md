@@ -4,9 +4,12 @@ This directory contains source and config files for web services that support ou
 
 Still TODO:
 * Authentication, basic or certificate based
+* Serving multiple host names per instance, with proper URL hostname rewriting in nginx
 * Monitoring
 * Backups/disaster recovery
 * Anything but trivial ordering capabilities (we just send an email for now)
+
+**Important**: a good but not strictly necessary step is to replace `$wgSecretKey` in `LocalSettings.php` for each new wiki instance.  Doing so will limit the scope of work that needs to be done should any one wiki instance be compromised by a malicious party.
 
 ## Mediawiki Setup from Scratch ##
 
@@ -229,3 +232,27 @@ done
 The front page should now contain our usual intro page and images.  The `All_Chemicals` list is empty, but can be populated and re-uploaded in the same way.
 
 To edit the side bar content (i.e. to remove `Random Page` and `Recent Changes`), navigate to `/index.php?title=MediaWiki:Sidebar` and edit the source.  Use http://preview.bioreachables.20n.com/index.php?title=MediaWiki:Sidebar as an example of this.
+
+## AWS ##
+
+We're currently hosting our wikis in EC2, though this could change in the future (i.e. there is nothing strictly tying us to EC2--we could move to Azure if needed).  Most of AWS's services are fairly self-explanatory; just the same, here is a brief overview of the AWS facilities we're using and how they're configured.
+
+### EC2 ###
+
+We're currently using `t2.medium` instances, which have enough memory to run MySQL, nginx, and our Java web services fairly comfortably.  Our instances started out with a vanilla Ubuntu 16.04 AMI, but snapshots now exist that should provide a fully configured base wiki image that can be used to create new private, per-customer wiki instances.  Specifically, a new instance created with AMI `reachables-wiki-20161229T1800` should have a full wiki + supporting software stack installed but no reachables data populated: you'll need to upload wiki pages, images (**important**: molecule renderings need to be uploaded to the wiki **and** copied to `/var/www/mediawiki/assets/img`), and a reachables list (see `service/README.md`), but the rest should already be in place.
+
+### Security Groups, Elastic IPs, and DNS ###
+
+By default, EC2 instances will only be accessible from within their VPC (virtual private cloud), a group of instances that AWS groups together for security purposes.  In order to grant network access from other locations, instances must be enrolled in security groups.  During set up, only port 22 (ssh) should be open to anything outside the VPC; the `office-ssh` security group in `us-west-2` opens port 22 only to the office's static IP.  Once setup is complete, the poorly named `wiki-group` security group can be used instead.  This grants public access to port 80 (http) and 22, though the latter can be restricted to specific IPs if necessary.
+
+Security groups can also be used for IP-based whitelisting of clients.  I strongly recommend, however, that whitelisting not be the exclusive access protection mechanism: either basic or certificate-based authentication should also be used to prevent unauthorized access in the event of client IP reallocation.  Also, we should purchase and install SSL certificates on our wiki hosts to protect in-flight traffic--SSL + client certificate authentication is the strongest authentication mechanism we can realistically employ.
+
+Each wiki host is assigned an Elastic IP address, which is static.  Once an instance has been assigned an Elastic IP, an entry can be added in our Route 53 configuration to assign a DNS name to that host.  Create an `A` record that points to that Elastic IP in the `20n.com` record set; in a few hours, the name should propagate to all major public DNS servers.
+
+**Important**: once a DNS name has been assigned to a wiki server, update `$wgServer` in `LocalSettings.php` to reference that name.  Mediawiki has a tendency to rewrite the current URL with its canonical hostname, which may result in unexpected connection failures if the hostname is not updated before clients access the wiki.
+
+### SNS ###
+
+We use AWS's simple notification service (SNS) to send emails when users submit pathway order requests.  These are sent via a single message topic whose ARN (resource id) is stored in `orders_config.json`.  Only the `wiki-order-notification-user` user has privileges to publish to this topic, and its AWS access/secret key must be used when setting up the orders service.  The current wiki AMI already contains credentials for this user, but they are not checked into GitHub.
+
+Users who wish to receive order notification emails must subscribe to the `wiki_order_notifications` topic.  Subscription requests can be sent through the SNS dashboard, and must be confirmed/accepted by each user before further emails will be sent.
