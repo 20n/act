@@ -118,7 +118,8 @@ public class CofactorRemover extends BiointerpretationProcessor {
         LOGGER.error(msg);
         throw new RuntimeException(msg);
       } else {
-        LOGGER.warn("%s (might be the result of blacklisted InChI correction)", msg);
+        LOGGER.warn("%s (might be the result of blacklisted InChI correction, " +
+            "which can reduce the number of cofactors in the new DB)", msg);
       }
     }
     LOGGER.info("New cofactor id map constructed, ready to process reactions.");
