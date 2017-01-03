@@ -339,6 +339,32 @@ public class Loader {
       return preconstructedReachable;
     }
 
+    Chemical c = db.getChemicalFromInChI(inchi);
+
+    Reachable r = constructReachableFromChemical(c);
+
+    // TODO: this should save the Reachable like constructOrFindReachableById.  Make sure that's safe.
+    return r;
+  }
+
+  public Reachable constructOrFindReachableById(Long id) {
+    Reachable preconstructedReachable = queryById(id);
+
+    if (preconstructedReachable != null) {
+      return preconstructedReachable;
+    }
+
+    Chemical c = db.getChemicalFromChemicalUUID(id);
+    Reachable r = constructReachableFromChemical(c);
+
+    // We didn't find this in the DB before but expect to the next time we look for it, so store before returning.
+    jacksonReachablesCollection.insert(r);
+    return r;
+  }
+
+  private Reachable constructReachableFromChemical(Chemical c) {
+    String inchi = c.getInChI();
+
     Molecule mol;
     try {
       MoleculeImporter.assertNotFakeInchi(inchi);
@@ -352,7 +378,6 @@ public class Loader {
       return null;
     }
 
-    Chemical c = db.getChemicalFromInChI(inchi);
     List<String> names = c != null ? c.getBrendaNames() : Collections.emptyList();
     Map<Chemical.REFS, BasicDBObject> xref = c != null ? c.getXrefMap() : new HashMap<>();
 
@@ -401,82 +426,6 @@ public class Loader {
     Reachable r = new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
         wordcloudFilename, xref, physiochemicalProperties);
     r.setPathwayVisualization("cscd" + r.getId() + ".dot");
-    return r;
-  }
-
-  public Reachable constructOrFindReachableById(Long id) {
-    Reachable preconstructedReachable = queryById(id);
-
-    if (preconstructedReachable != null) {
-      return preconstructedReachable;
-    }
-
-    Chemical c = db.getChemicalFromChemicalUUID(id);
-    String inchi = c.getInChI();
-
-    Molecule mol;
-    try {
-      MoleculeImporter.assertNotFakeInchi(inchi);
-      mol = MoleculeImporter.importMolecule(inchi);
-    } catch (MolFormatException e) {
-      LOGGER.error("Failed to import inchi %s", inchi);
-
-      return null;
-    } catch (MoleculeImporter.FakeInchiException e) {
-      LOGGER.error("Failed to import inchi %s as it is fake.", inchi);
-      return null;
-    }
-
-    List<String> names = c != null ? c.getBrendaNames() : Collections.emptyList();
-    Map<Chemical.REFS, BasicDBObject> xref = c != null ? c.getXrefMap() : new HashMap<>();
-
-    String smiles = getSmiles(mol);
-    if (smiles == null) {
-      LOGGER.error("Failed to export molecule %s to smiles", inchi);
-    }
-
-    String inchikey = getInchiKey(mol);
-    if (inchikey == null) {
-      LOGGER.error("Failed to export molecule %s to inchi key", inchi);
-    }
-
-    String pageName = getPageName(mol, names, inchi);
-
-    String renderingFilename = null;
-    Optional<File> rendering = moleculeRenderer.generateRendering(inchi);
-    if (rendering.isPresent()) {
-      renderingFilename = rendering.get().getName();
-    }
-
-    File wordcloud = wordCloudGenerator.getWordcloudFile(inchi);
-    String wordcloudFilename = null;
-    if (wordcloud.exists()) {
-      wordcloudFilename = wordcloud.getName();
-    }
-
-    SynonymData synonymData = getSynonymData(inchi);
-
-    PhysiochemicalPropertiesCalculator.Features analysisFeatures = null;
-
-    try {
-      analysisFeatures = calculator.computeFeatures(mol);
-    } catch (PluginException e) {
-      LOGGER.error(String.format("Caught a PluginException when computing physiochemical properties for inchi %s: %s",
-          inchi, e.getMessage()));
-    } catch (IOException e) {
-      LOGGER.error(String.format("Caught an IOException when computing physiochemical properties for inchi %s: %s",
-          inchi, e.getMessage()));
-    }
-
-    PhysiochemicalProperties physiochemicalProperties = analysisFeatures == null ? null:
-        new PhysiochemicalProperties(analysisFeatures.getpKa(), analysisFeatures.getLogP(), analysisFeatures.getHlb());
-
-    Reachable r = new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
-        wordcloudFilename, xref, physiochemicalProperties);
-    r.setPathwayVisualization("cscd" + id + ".dot");
-
-    // We didn't find this in the DB before but expect to the next time we look for it, so store before returning.
-    jacksonReachablesCollection.insert(r);
     return r;
   }
 
