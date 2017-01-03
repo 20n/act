@@ -14,7 +14,6 @@ import chemaxon.marvin.plugin.PluginException;
 import chemaxon.struc.Molecule;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
-import com.act.analysis.surfactant.SurfactantAnalysis;
 import com.act.utils.CLIUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
