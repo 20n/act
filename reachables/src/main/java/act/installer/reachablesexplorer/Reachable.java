@@ -72,9 +72,13 @@ public class Reachable {
     this.physiochemicalProperties = physiochemicalProperties;
   }
 
-  public Reachable(Long id, String pageName, String inchi, String smiles, String inchiKey, List<String> names,
-                   SynonymData synonymData, String structureFilename, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref, PhysiochemicalProperties physiochemicalProperties) {
-    this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null, structureFilename, wordCloudFilename, null, xref, null, physiochemicalProperties);
+  public Reachable(
+      Long id, String pageName, String inchi, String smiles, String inchiKey, List<String> names,
+      SynonymData synonymData, String structureFilename, String wordCloudFilename, Map<Chemical.REFS,
+      BasicDBObject> xref, PhysiochemicalProperties physiochemicalProperties) {
+    // TODO: these arguments are out of hand, and this could use a Builder.
+    this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null,
+        structureFilename, wordCloudFilename, null, xref, null, physiochemicalProperties);
   }
 
   public Long getId() {
@@ -187,7 +191,9 @@ public class Reachable {
     this.patentSummaries = patentSummaries;
   }
 
-  public PhysiochemicalProperties getPhysiochemicalProperties() { return physiochemicalProperties; }
+  public PhysiochemicalProperties getPhysiochemicalProperties() {
+    return physiochemicalProperties;
+  }
 
   public void setPhysiochemicalProperties(PhysiochemicalProperties physiochemicalProperties) {
     this.physiochemicalProperties = physiochemicalProperties;

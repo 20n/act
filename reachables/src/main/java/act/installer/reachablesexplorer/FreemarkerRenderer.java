@@ -125,7 +125,7 @@ public class FreemarkerRenderer {
       }
 
       if (r == null) {
-        LOGGER.info("Skipping id %d, because not found in the DB", thisPath.getTarget());
+        LOGGER.error("Skipping id %d, because not found in the DB", thisPath.getTarget());
         continue;
       }
 
@@ -167,8 +167,6 @@ public class FreemarkerRenderer {
     model.put("pageTitle", r.getPageName());
 
     model.put("inchi", r.getInchi());
-    String formula = r.getInchi().split("/")[1];
-    model.put("formula", formula);
 
     model.put("smiles", r.getSmiles());
 
@@ -270,9 +268,9 @@ public class FreemarkerRenderer {
     if (r.getPhysiochemicalProperties() != null) {
       PhysiochemicalProperties physiochemicalProperties = r.getPhysiochemicalProperties();
       model.put("physiochemicalProperties", new HashMap<String, String>() {{
-        put("pka", String.format("%.2f", physiochemicalProperties.getPKA_ACID_1()));
-        put("logp", String.format("%.2f", physiochemicalProperties.getLOGP_TRUE()));
-        put("hlb", String.format("%.2f", physiochemicalProperties.getHLB_VAL()));
+        put("pka", String.format("%.2f", physiochemicalProperties.getPkaAcid1()));
+        put("logp", String.format("%.2f", physiochemicalProperties.getLogPTrue()));
+        put("hlb", String.format("%.2f", physiochemicalProperties.getHlbVal()));
       }});
     }
 
@@ -365,11 +363,12 @@ public class FreemarkerRenderer {
       }
 
       // Hack to get the DNA design sequence to be displayed on 4 lines. Introduce <br> tags at each 4th of the string.
-      shortVersion = String.format("%s<br>%s<br>%s<br>%s",
+      shortVersion = StringUtils.join(new String[]{
           shortVersion.substring(0, SEQUENCE_SAMPLE_SIZE / 4),
           shortVersion.substring(SEQUENCE_SAMPLE_SIZE / 4, SEQUENCE_SAMPLE_SIZE / 2),
           shortVersion.substring(SEQUENCE_SAMPLE_SIZE / 2, 3 * SEQUENCE_SAMPLE_SIZE / 4),
-          shortVersion.substring(3 * SEQUENCE_SAMPLE_SIZE / 4));
+          shortVersion.substring(3 * SEQUENCE_SAMPLE_SIZE / 4)
+      }, "<br />");
 
       String constructFilename = String.format("Design_%s_seq%d.txt", docPrefix, i + 1);
 
@@ -445,14 +444,12 @@ public class FreemarkerRenderer {
     for (Triple<String, String, DNAOrgECNum> design : designs) {
       final int num = i; // Sigh, must be final to use in this initialization block.
 
-      dna.add(new HashMap<String, Object>() {
-        {
-          put("file", design.getLeft());
-          put("sample", design.getMiddle());
-          put("num", Integer.valueOf(num).toString());
-          put("org_ec", renderDNADesignMetadata(design.getRight()));
-        }
-      });
+      dna.add(new HashMap<String, Object>() {{
+        put("file", design.getLeft());
+        put("sample", design.getMiddle());
+        put("num", Integer.valueOf(num).toString());
+        put("org_ec", renderDNADesignMetadata(design.getRight()));
+      }});
       i++;
     }
     if (dna.size() > 0) {
@@ -472,10 +469,12 @@ public class FreemarkerRenderer {
   }
 
   private String renderSetOfProteinDesignMetadata(Set<OrgAndEcnum> orgAndEcnumSet) {
-    return StringUtils.capitalize(String.join(", ", orgAndEcnumSet.stream().
+    return StringUtils.capitalize(StringUtils.join(orgAndEcnumSet.stream().
         filter(Objects::nonNull).
         map(this::renderProteinMetadata).
-        collect(Collectors.toList())));
+        collect(Collectors.toList()),
+        ", ")
+    );
   }
 
   private String renderProteinMetadata(OrgAndEcnum orgAndEcnum) {

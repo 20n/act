@@ -26,7 +26,7 @@ public class OrgAndEcnum {
     this.ecnum = ecnum;
   }
 
-  public OrgAndEcnum() {
+  private OrgAndEcnum() {
   }
 
   @Override

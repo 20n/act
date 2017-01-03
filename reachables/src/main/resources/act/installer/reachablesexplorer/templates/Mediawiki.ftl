@@ -16,9 +16,15 @@
 
 <#if physiochemicalProperties??>
 '''Physio-chemical properties''':
+<#if physiochemicalProperties.pka??>
 * pKa acid: ${physiochemicalProperties.pka}
+</#if>
+<#if physiochemicalProperties.logp??>
 * logP: ${physiochemicalProperties.logp}
+</#if>
+<#if physiochemicalProperties.hlb??>
 * HLB: ${physiochemicalProperties.hlb}
+</#if>
 </#if>
 
 
@@ -86,7 +92,7 @@
 </#if>
 
 <#if meshHeadings??>
-<tab name="Mesh headings">
+<tab name="Medical Subject Headings (MeSH)">
 <#list meshHeadings as synonymsAndType>
 * ${synonymsAndType.synonymType}
 <#list synonymsAndType.synonyms as syno>

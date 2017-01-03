@@ -878,47 +878,4 @@ public class SurfactantAnalysis {
 
     return features;
   }
-
-  /**
-   * This function gets the HLB, PKA_1 and LogP values for a given inchi
-   * @param inchi The inchi to get the physiochemical properties from
-   * @return A map of the physiochemical property to the value
-   * @throws Exception
-   */
-  public static Map<FEATURES, Double> performAnalysisForPkaLogPAndHLB(String inchi) throws Exception {
-    SurfactantAnalysis surfactantAnalysis = new SurfactantAnalysis();
-    surfactantAnalysis.init(inchi);
-
-    // A map of the molecule features we'll eventually output.
-    Map<FEATURES, Double> features = new HashMap<>();
-    features.put(FEATURES.LOGP_TRUE, surfactantAnalysis.plugin.getlogPTrue()); // Save absolute logP since we calculated it.
-
-    HlbPlugin hlb = HlbPlugin.Builder.createNew();
-    hlb.setMolecule(surfactantAnalysis.getMol());
-    hlb.run();
-    double hlbVal = hlb.getHlbValue();
-
-    pKaPlugin pka = new pKaPlugin();
-    // From the documentation.  Not sure what these knobs do...
-    pka.setBasicpKaLowerLimit(-5.0);
-    pka.setAcidicpKaUpperLimit(25.0);
-
-    // Set biologically plausible pH values
-    pka.setpHLower(6.0);
-    pka.setpHUpper(8.0);
-    pka.setpHStep(0.5);
-    pka.setMolecule(surfactantAnalysis.getMol());
-    pka.run();
-
-    double[] pkaAcidVals = new double[3];
-    int[] pkaAcidIndices = new int[3];
-
-    // Also not sure these are the values we're interested in.
-    pka.getMacropKaValues(pKaPlugin.ACIDIC, pkaAcidVals, pkaAcidIndices);
-
-    features.put(FEATURES.PKA_ACID_1, pkaAcidVals[0]);
-    features.put(FEATURES.HLB_VAL, hlbVal);
-
-    return features;
-  }
 }

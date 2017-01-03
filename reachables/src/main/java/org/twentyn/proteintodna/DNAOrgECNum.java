@@ -53,6 +53,6 @@ public class DNAOrgECNum {
     this.numProteins = numProteins;
   }
 
-  public DNAOrgECNum() {
+  private DNAOrgECNum() {
   }
 }

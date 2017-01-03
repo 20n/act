@@ -10,6 +10,7 @@ import act.shared.Seq;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.marvin.io.MolExportException;
+import chemaxon.marvin.plugin.PluginException;
 import chemaxon.struc.Molecule;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
@@ -172,6 +173,8 @@ public class Loader {
   private WordCloudGenerator wordCloudGenerator;
   private MoleculeRenderer moleculeRenderer;
 
+  private PhysiochemicalPropertiesCalculator calculator;
+
   public static void main(String[] args) throws IOException {
     CLIUtil cliUtil = new CLIUtil(Loader.class, HELP_MESSAGE, OPTION_BUILDERS);
     CommandLine cl = cliUtil.parseCommandLine(args);
@@ -218,6 +221,14 @@ public class Loader {
       throw new RuntimeException(e);
     }
     DB reachables = mongoClient.getDB(targetDB);
+
+    // TODO: this unsafe initialization does not belong in the constructor.
+    try {
+      calculator = new PhysiochemicalPropertiesCalculator.Factory().build();
+    } catch (PluginException e) {
+      LOGGER.error("Unable to initialize physiochemical calculator: %s", e.getMessage());
+      throw new RuntimeException(e);
+    }
 
     jacksonReachablesCollection =
             JacksonDBCollection.wrap(reachables.getCollection(targetCollection), Reachable.class, String.class);
@@ -361,28 +372,20 @@ public class Loader {
 
     SynonymData synonymData = getSynonymData(inchi);
 
-    Map<SurfactantAnalysis.FEATURES, Double> analysisFeatures = null;
+    PhysiochemicalPropertiesCalculator.Features analysisFeatures = null;
 
     try {
-      analysisFeatures = SurfactantAnalysis.performAnalysisForPkaLogPAndHLB(inchi);
-    } catch (Exception generalException) {
-      LOGGER.error(String.format("Threw exception when getting physiochemical properties for inchi %s: %s", inchi, generalException.getMessage()));
+      analysisFeatures = calculator.computeFeatures(mol);
+    } catch (PluginException e) {
+      LOGGER.error(String.format("Caught a PluginException when computing physiochemical properties for inchi %s: %s",
+          inchi, e.getMessage()));
+    } catch (IOException e) {
+      LOGGER.error(String.format("Caught an IOException when computing physiochemical properties for inchi %s: %s",
+          inchi, e.getMessage()));
     }
 
-    PhysiochemicalProperties physiochemicalProperties = null;
-
-    if (analysisFeatures != null) {
-      Double pka = analysisFeatures.get(SurfactantAnalysis.FEATURES.PKA_ACID_1) != null ?
-          analysisFeatures.get(SurfactantAnalysis.FEATURES.PKA_ACID_1) : null;
-
-      Double log = analysisFeatures.get(SurfactantAnalysis.FEATURES.LOGP_TRUE) != null ?
-          analysisFeatures.get(SurfactantAnalysis.FEATURES.LOGP_TRUE) : null;
-
-      Double hlb = analysisFeatures.get(SurfactantAnalysis.FEATURES.HLB_VAL) != null ?
-          analysisFeatures.get(SurfactantAnalysis.FEATURES.HLB_VAL) : null;
-
-      physiochemicalProperties = new PhysiochemicalProperties(pka, log, hlb);
-    }
+    PhysiochemicalProperties physiochemicalProperties = analysisFeatures == null ? null:
+        new PhysiochemicalProperties(analysisFeatures.getpKa(), analysisFeatures.getLogP(), analysisFeatures.getHlb());
 
     return new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
         wordcloudFilename, xref, physiochemicalProperties);
