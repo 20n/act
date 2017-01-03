@@ -162,6 +162,7 @@ public class ProteinMetadataFactory {
         out.heteroSubunits = heteroSubunits;
         out.modifications = modifications;
         out.cloned = cloning;
+        out.localization = localization;
         return out;
     }
 
