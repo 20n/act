@@ -1,6 +1,6 @@
 ## Mediawiki Web Services ##
 
-This directory contains source and config files for web services that support our mediawiki installation.  These should only be enabled on **private** wiki installations, not on the public preview wiki.
+This directory contains source and config files for web services that support our mediawiki installation.  These should only be enabled on **private** wiki installations, not on the public preview wiki.  Private wikis should be created by launching new instances of existing wiki AMIs (in EC2).  If complete installation instructions are required, see `service/README.md`.  Please read that document for additional information about resource placement.
 
 Still TODO:
 * Authentication, basic or certificate based
@@ -9,7 +9,33 @@ Still TODO:
 * Backups/disaster recovery
 * Anything but trivial ordering capabilities (we just send an email for now)
 
-**Important**: a good but not strictly necessary step is to replace `$wgSecretKey` in `LocalSettings.php` for each new wiki instance.  Doing so will limit the scope of work that needs to be done should any one wiki instance be compromised by a malicious party.
+## New Wiki Instance Setup Steps ##
+
+### Update LocalSettings.php ###
+
+The `reachables-wiki` AMIs in EC2 (TODO: add more info for Azure) contain a full Mediawiki, MySQL, nginx, and web services stack necessary to run a private wiki instance for a single client.  Only a few configuration changes are need to be made to prepare a wiki for client use; most of the work will involve loading data into the wiki--see the section on [Loading Data into the Wiki](#loading-data-into-the-wiki).
+
+#### Set `$wgSecretKey` ####
+
+An *important manual step* when setting up a new wiki instance is to replace `$wgSecretKey` in `LocalSettings.php`.  Doing so will limit the scope of work that needs to be done should any one wiki instance be compromised by a malicious party.
+
+The following command will create a strongly random, 64 character hex string for use as a secret key:
+```
+$ cat /dev/random | hexdump -n32 -e '8/ "%08x"' -e '"\n"'
+```
+Note that if you run this on Linux hosts, repeated invocations will block until `/dev/random`'s entropy pool has been refilled.  Run `cat /proc/sys/kernel/random/entropy_avail` to see the number of available bits; at 256, the command should be able to execute but will completely empty the pool.
+
+The MySQL credentials for each wiki may be left at their default values.  While a leaked `LocalSettings.php` would expose these credentials, the MySQL processes running on our wiki instances are not publicly accessible with the current security groups: an attacker would need to gain (key-based) ssh access to our wiki hosts to access the DB, which is extremely unlikely.
+
+#### Set `$wgServer` ####
+
+Another *important manual step* is to set `$wgServer` to the appropriate base URL for all wiki links.  Once a DNS name has been assigned to a wiki server, update `$wgServer` in `LocalSettings.php` to reference that name.  Mediawiki has a tendency to rewrite the current URL with its canonical hostname, which may result in unexpected connection failures if the hostname is not updated before clients access the wiki.
+
+Note that if you are using SSL to encrypt traffic to the wiki, use `https` as the protocol for `$wgServer`.  This will ensure all URL rewrites force secure HTTP.
+
+### Page Generation and Loading Workflow ###
+
+TODO: complete this once the remaining wiki workflow PRs are merged.
 
 ## Mediawiki Setup from Scratch ##
 
@@ -90,7 +116,7 @@ fastcgi_param  HTTPS              $https if_not_empty;
 fastcgi_param  REDIRECT_STATUS    200;
 ```
 
-For a reason I don't understand, Ubuntu's nginx ships with one of these parameters missing, which results in blank pages appearing when trying to access the wiki.
+For a reason I don't understand, Ubuntu's nginx ships without a `SCRIPT_FILENAME` parameter in its `fastcgi_params` file, which results in blank pages appearing when trying to access the wiki.
 
 ### Unpack and Set Up Mediawiki ###
 

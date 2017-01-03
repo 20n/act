@@ -10,7 +10,6 @@ class App extends Component {
     super(props);
     this.handleTextChange = this.handleTextChange.bind(this);
     this.runSearch = this.runSearch.bind(this);
-    console.log("Query params: ", this.props);
     const lastQuery = this.props.location.query == null ? null : this.props.location.query.q;
     this.state = {
       error: null,
@@ -43,7 +42,6 @@ class App extends Component {
 
   updateURL(newQuery) {
     this.props.router.replace({
-//      pathname: this.props.location.pathname,
       query: {q: newQuery}
     });
   }
@@ -57,7 +55,6 @@ class App extends Component {
 
     const that = this; // TODO: remember how to use `bind` correctly.
     const isNotSearching = !this.state.searching;
-    console.log("Is searching: " + isNotSearching);
     if (isNotSearching) {
       this.setState({searching: true});
       const query = this.state.searchText;
