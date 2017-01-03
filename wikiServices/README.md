@@ -23,6 +23,7 @@ The following command will create a strongly random, 64 character hex string for
 ```
 $ cat /dev/random | hexdump -n32 -e '8/ "%08x"' -e '"\n"'
 ```
+(See [this page](https://www.technovelty.org/tips/hexdump-format-strings.html) for more information on `hexdump` formatting).
 Note that if you run this on Linux hosts, repeated invocations will block until `/dev/random`'s entropy pool has been refilled.  Run `cat /proc/sys/kernel/random/entropy_avail` to see the number of available bits; at 256, the command should be able to execute but will completely empty the pool.
 
 The MySQL credentials for each wiki may be left at their default values.  While a leaked `LocalSettings.php` would expose these credentials, the MySQL processes running on our wiki instances are not publicly accessible with the current security groups: an attacker would need to gain (key-based) ssh access to our wiki hosts to access the DB, which is extremely unlikely.

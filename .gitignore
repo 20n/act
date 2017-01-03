@@ -27,4 +27,4 @@ bioreactor/lib
 # Ignore downloaded JS modules
 node_modules/
 # Ignore built JS packages
-buiod/
+build/
