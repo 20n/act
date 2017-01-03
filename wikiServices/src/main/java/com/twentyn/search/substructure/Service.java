@@ -251,10 +251,6 @@ public class Service implements Daemon {
 
         // TODO: are there constants for these somewhere?
         response.addHeader("Content-type", "application/json");
-        /* IMPORTANT TODO: remove access-control-allow-origin before deployment!  This should not be necessary
-         * when all of the service components are served by a single web server.  This header represents an
-         * unnecessary security risk for production deployments, but is useful for testing. */
-        response.addHeader("Access-control-allow-origin", "*");
 
         response.getWriter().write(OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(results));
         response.getWriter().flush();
