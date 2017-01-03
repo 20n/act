@@ -10,9 +10,11 @@ import act.shared.Seq;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.marvin.io.MolExportException;
+import chemaxon.marvin.plugin.PluginException;
 import chemaxon.struc.Molecule;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
+import com.act.analysis.surfactant.SurfactantAnalysis;
 import com.act.utils.CLIUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -77,8 +79,8 @@ public class Loader {
 
   // Target database and collection. We populate these with reachables
   private static final String DEFAULT_TARGET_DATABASE = "wiki_reachables";
-  private static final String DEFAULT_TARGET_COLLECTION = "reachablesv6_test_thomas";
-  private static final String DEFAULT_SEQUENCE_COLLECTION = "sequencesv6_test_thomas";
+  private static final String DEFAULT_TARGET_COLLECTION = "reachablesv9_test_vijay";
+  private static final String DEFAULT_SEQUENCE_COLLECTION = "sequencesv9_test_vijay";
 
   private static final int ORGANISM_CACHE_SIZE = 1000;
   private static final String ORGANISM_UNKNOWN = "(unknown)";
@@ -171,6 +173,8 @@ public class Loader {
   private WordCloudGenerator wordCloudGenerator;
   private MoleculeRenderer moleculeRenderer;
 
+  private PhysiochemicalPropertiesCalculator calculator;
+
   public static void main(String[] args) throws IOException {
     CLIUtil cliUtil = new CLIUtil(Loader.class, HELP_MESSAGE, OPTION_BUILDERS);
     CommandLine cl = cliUtil.parseCommandLine(args);
@@ -217,6 +221,14 @@ public class Loader {
       throw new RuntimeException(e);
     }
     DB reachables = mongoClient.getDB(targetDB);
+
+    // TODO: this unsafe initialization does not belong in the constructor.
+    try {
+      calculator = new PhysiochemicalPropertiesCalculator.Factory().build();
+    } catch (PluginException e) {
+      LOGGER.error("Unable to initialize physiochemical calculator: %s", e.getMessage());
+      throw new RuntimeException(e);
+    }
 
     jacksonReachablesCollection =
             JacksonDBCollection.wrap(reachables.getCollection(targetCollection), Reachable.class, String.class);
@@ -360,7 +372,23 @@ public class Loader {
 
     SynonymData synonymData = getSynonymData(inchi);
 
-    return new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename, wordcloudFilename, xref);
+    PhysiochemicalPropertiesCalculator.Features analysisFeatures = null;
+
+    try {
+      analysisFeatures = calculator.computeFeatures(mol);
+    } catch (PluginException e) {
+      LOGGER.error(String.format("Caught a PluginException when computing physiochemical properties for inchi %s: %s",
+          inchi, e.getMessage()));
+    } catch (IOException e) {
+      LOGGER.error(String.format("Caught an IOException when computing physiochemical properties for inchi %s: %s",
+          inchi, e.getMessage()));
+    }
+
+    PhysiochemicalProperties physiochemicalProperties = analysisFeatures == null ? null:
+        new PhysiochemicalProperties(analysisFeatures.getpKa(), analysisFeatures.getLogP(), analysisFeatures.getHlb());
+
+    return new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
+        wordcloudFilename, xref, physiochemicalProperties);
   }
 
 

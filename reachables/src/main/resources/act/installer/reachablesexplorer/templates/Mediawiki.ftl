@@ -2,8 +2,9 @@
 <#if structureRendering??>
 [[File:${structureRendering}|400px]]
 </#if>
+
 <#if wordcloudRendering??>
-'''Word Cloud''':<br />
+'''Word Cloud''':
 [[File:${wordcloudRendering}|800px]]
 </#if>
 
@@ -11,6 +12,19 @@
 
 <#if smiles??>
 '''Smiles''': ${smiles}
+</#if>
+
+<#if physiochemicalProperties??>
+'''Physio-chemical properties''':
+<#if physiochemicalProperties.pka??>
+* pKa acid: ${physiochemicalProperties.pka}
+</#if>
+<#if physiochemicalProperties.logp??>
+* logP: ${physiochemicalProperties.logp}
+</#if>
+<#if physiochemicalProperties.hlb??>
+* HLB: ${physiochemicalProperties.hlb}
+</#if>
 </#if>
 
 
@@ -66,9 +80,9 @@
 </tab>
 </#if>
 
-<#if meshHeadings??>
-<tab name="Mesh headings">
-<#list meshHeadings as synonymsAndType>
+<#if pubchemSynonyms??>
+<tab name="PubChem synonyms">
+<#list pubchemSynonyms as synonymsAndType>
 * ${synonymsAndType.synonymType}
 <#list synonymsAndType.synonyms as syno>
 ** ${syno}
@@ -77,9 +91,9 @@
 </tab>
 </#if>
 
-<#if pubchemSynonyms??>
-<tab name="PubChem synonyms">
-<#list pubchemSynonyms as synonymsAndType>
+<#if meshHeadings??>
+<tab name="Medical Subject Headings (MeSH)">
+<#list meshHeadings as synonymsAndType>
 * ${synonymsAndType.synonymType}
 <#list synonymsAndType.synonyms as syno>
 ** ${syno}

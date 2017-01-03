@@ -2,10 +2,13 @@ package act.installer.reachablesexplorer;
 
 
 import act.shared.Chemical;
+import act.shared.helpers.MongoDBToJSON;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +36,7 @@ public class Reachable {
   private Map<Chemical.REFS, BasicDBObject> xref;
   private SynonymData synonyms;
   private List<PatentSummary> patentSummaries;
+  private PhysiochemicalProperties physiochemicalProperties;
 
   public Reachable() {}
 
@@ -49,7 +53,8 @@ public class Reachable {
                    String wordCloudFilename,
                    String pathwayVisualization,
                    Map<Chemical.REFS, BasicDBObject> xref,
-                   List<PatentSummary> patentSummaries) {
+                   List<PatentSummary> patentSummaries,
+                   PhysiochemicalProperties physiochemicalProperties) {
     this.id = id;
     this.pageName = pageName;
     this.inchi = inchi;
@@ -64,11 +69,16 @@ public class Reachable {
     this.pathwayVisualization = pathwayVisualization;
     this.xref = xref;
     this.patentSummaries = patentSummaries;
+    this.physiochemicalProperties = physiochemicalProperties;
   }
 
-  public Reachable(Long id, String pageName, String inchi, String smiles, String inchiKey, List<String> names,
-                   SynonymData synonymData, String structureFilename, String wordCloudFilename, Map<Chemical.REFS, BasicDBObject> xref) {
-    this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null, structureFilename, wordCloudFilename, null, xref, null);
+  public Reachable(
+      Long id, String pageName, String inchi, String smiles, String inchiKey, List<String> names,
+      SynonymData synonymData, String structureFilename, String wordCloudFilename, Map<Chemical.REFS,
+      BasicDBObject> xref, PhysiochemicalProperties physiochemicalProperties) {
+    // TODO: these arguments are out of hand, and this could use a Builder.
+    this(id, pageName, inchi, smiles, inchiKey, names, new PrecursorData(), synonymData, null,
+        structureFilename, wordCloudFilename, null, xref, null, physiochemicalProperties);
   }
 
   public Long getId() {
@@ -179,6 +189,14 @@ public class Reachable {
 
   public void setPatentSummaries(List<PatentSummary> patentSummaries) {
     this.patentSummaries = patentSummaries;
+  }
+
+  public PhysiochemicalProperties getPhysiochemicalProperties() {
+    return physiochemicalProperties;
+  }
+
+  public void setPhysiochemicalProperties(PhysiochemicalProperties physiochemicalProperties) {
+    this.physiochemicalProperties = physiochemicalProperties;
   }
 
   public void addPatentSummaries(List<PatentSummary> patentSummaries) {
