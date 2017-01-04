@@ -23,3 +23,8 @@ bioreactor/lib
 # Ignore IntelliJ files.
 *.iml
 .idea
+
+# Ignore downloaded JS modules
+node_modules/
+# Ignore built JS packages
+build/

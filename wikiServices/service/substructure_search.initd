@@ -1,0 +1,102 @@
+#!/bin/bash
+
+### BEGIN INIT INFO
+# Provides:          substructure_search
+# Required-Start:    $local_fs $network nginx
+# Required-Stop:     $local_fs $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: starts the substructure search service
+# Description:       starts the substructure search service using jsvc
+### END INIT INFO
+
+# substructure_search init.d script
+#
+# Copy or symlink this as /etc/init.d/substructure_search, and link it
+# into all /etc/rc{0-6}.d directories as 'S99substructure_search'.
+# This can be accomplished conveniently (as root) by running:
+#   $ update-rc.d substructure_search defaults 99
+# and confirming that S99substructure_search exists in rc{2-5}.d.
+#
+# The configuration parameters in this script expect Java to have been
+# installed using the `install_java` script, expectes `jsvc` to be
+# available (installed using apt) and assumes the following files or
+# directories exist:
+#
+# /usr/local/software/wiki_web_services/current.jar:
+#   Symlink to most recent version of the wiki services search JAR.
+# /etc/wiki_web_services/substructure_config.json:
+#   Place the substructure search's configuration file here, and
+#   install any data files (like the reachables list) as necessary
+#   based on paths therein.
+# /var/log/java/:
+#   Create a directory here for logs to be written to.  TODO: use log
+#   rotation properly.
+#
+# This script supports common init.d verbs (start|stop|status|reload)
+# and will report success or failure both on the consol and through
+# its exit code ($?).
+
+java_home="/usr/local/java/current"
+user="www-data"
+cwd="/tmp"
+pid_file="/var/run/substructure.pid"
+
+# Symlink the most recent version of the jar here:
+jar="/usr/local/software/wiki_web_services/current.jar"
+class="com.twentyn.search.substructure.Service"
+args="-c /etc/wiki_web_services/substructure_config.json"
+
+# TODO: replace these with log4j's rolling log appender
+stdout="/var/log/java/substructure_search.out"
+stderr="/var/log/java/substructure_search.err"
+
+jsvc="/usr/bin/jsvc"
+this_script=$0
+
+jsvc_opts="-java-home $java_home -cwd $cwd -cp $jar -user $user -pidfile $pid_file -outfile $stdout -errfile $stderr"
+
+is_running() {
+    if [[ -e $pid_file ]]; then
+        pid=$(cat $pid_file)
+        ps -p $pid >> /dev/null
+        result=$?
+        return $result
+    else
+        return 1
+    fi
+}
+
+case "$1" in
+    start)
+        if is_running; then
+            pid=$(cat $pid_file)
+            echo "Service is already running with pid $pid"
+        else
+            echo "Starting service with JSVC..."
+            $jsvc $jsvc_opts $class $args
+            pid=$(cat $pid_file)
+            echo "Service started with pid $pid"
+        fi
+    ;;
+    stop)
+        if is_running; then
+            echo "Stopping service"
+            $jsvc $jsvc_opts -stop $class
+        else
+            "Service is not running"
+        fi
+    ;;
+    status)
+        if is_running; then
+            echo "Running"
+        else
+            echo "Stopped"
+            exit 1
+        fi
+    ;;
+    restart)
+    ;;
+esac
+
+exit 0
