@@ -14,7 +14,6 @@ import chemaxon.marvin.plugin.PluginException;
 import chemaxon.struc.Molecule;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
-import com.act.analysis.surfactant.SurfactantAnalysis;
 import com.act.utils.CLIUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -196,6 +195,12 @@ public class Loader {
     loader.updateFromReachableDir(reachablesDir);
   }
 
+
+  public Loader(String host, Integer port, String targetDB,
+                String targetCollection, String targetSequenceCollection, String renderingCache) {
+    this(host, port, targetDB, targetCollection, targetSequenceCollection, renderingCache, DEFAULT_CHEMICALS_DATABASE);
+  }
+
   /**
    * Constructor for Loader. Instantiates connexions to Mongo databases
    * and Virtuoso triple store (Pubchem synonyms only)
@@ -207,8 +212,8 @@ public class Loader {
    * @param renderingCache A directory where rendered images should live
    */
   public Loader(String host, Integer port, String targetDB,
-                String targetCollection, String targetSequenceCollection, String renderingCache) {
-    db = new MongoDB(host, port, DEFAULT_CHEMICALS_DATABASE);
+                String targetCollection, String targetSequenceCollection, String renderingCache, String chemicalsDB) {
+    db = new MongoDB(host, port, chemicalsDB);
     pubchemSynonymsDriver = new PubchemMeshSynonyms();
     moleculeRenderer = new MoleculeRenderer(new File(renderingCache));
     wordCloudGenerator = new WordCloudGenerator(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_CHEMICALS_DATABASE, renderingCache);
@@ -235,17 +240,21 @@ public class Loader {
     jacksonSequenceCollection =
             JacksonDBCollection.wrap(reachables.getCollection(targetSequenceCollection), SequenceData.class, String.class);
 
-    jacksonReachablesCollection.ensureIndex(new BasicDBObject(Reachable.inchiFieldName, "hashed"));
-    jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.sequenceFieldName, "hashed"));
-    jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.organismFieldName, 1));
+    jacksonReachablesCollection.ensureIndex(new BasicDBObject(Reachable.INCHI_FIELD_NAME, "hashed"));
+    jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.SEQUENCE_FIELD_NAME, "hashed"));
+    jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.ORGANISM_FIELD_NAME, 1));
   }
 
-  public JacksonDBCollection<Reachable, String> getJacksonReachablesCollection() {
+  JacksonDBCollection<Reachable, String> getJacksonReachablesCollection() {
     return jacksonReachablesCollection;
   }
 
-  public JacksonDBCollection<SequenceData, String> getJacksonSequenceCollection() {
+  JacksonDBCollection<SequenceData, String> getJacksonSequenceCollection() {
     return jacksonSequenceCollection;
+  }
+
+  MongoDB getChemicalSourceDB() {
+    return db;
   }
 
   /**
@@ -329,6 +338,32 @@ public class Loader {
       return preconstructedReachable;
     }
 
+    Chemical c = db.getChemicalFromInChI(inchi);
+
+    Reachable r = constructReachableFromChemical(c);
+
+    // TODO: this should save the Reachable like constructOrFindReachableById.  Make sure that's safe.
+    return r;
+  }
+
+  public Reachable constructOrFindReachableById(Long id) {
+    Reachable preconstructedReachable = queryById(id);
+
+    if (preconstructedReachable != null) {
+      return preconstructedReachable;
+    }
+
+    Chemical c = db.getChemicalFromChemicalUUID(id);
+    Reachable r = constructReachableFromChemical(c);
+
+    // We didn't find this in the DB before but expect to the next time we look for it, so store before returning.
+    jacksonReachablesCollection.insert(r);
+    return r;
+  }
+
+  private Reachable constructReachableFromChemical(Chemical c) {
+    String inchi = c.getInChI();
+
     Molecule mol;
     try {
       MoleculeImporter.assertNotFakeInchi(inchi);
@@ -342,7 +377,6 @@ public class Loader {
       return null;
     }
 
-    Chemical c = db.getChemicalFromInChI(inchi);
     List<String> names = c != null ? c.getBrendaNames() : Collections.emptyList();
     Map<Chemical.REFS, BasicDBObject> xref = c != null ? c.getXrefMap() : new HashMap<>();
 
@@ -370,6 +404,7 @@ public class Loader {
       wordcloudFilename = wordcloud.getName();
     }
 
+
     SynonymData synonymData = getSynonymData(inchi);
 
     PhysiochemicalPropertiesCalculator.Features analysisFeatures = null;
@@ -387,10 +422,11 @@ public class Loader {
     PhysiochemicalProperties physiochemicalProperties = analysisFeatures == null ? null:
         new PhysiochemicalProperties(analysisFeatures.getpKa(), analysisFeatures.getLogP(), analysisFeatures.getHlb());
 
-    return new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
+    Reachable r = new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
         wordcloudFilename, xref, physiochemicalProperties);
+    r.setPathwayVisualization("cscd" + r.getId() + ".dot");
+    return r;
   }
-
 
   private void updateWithPrecursors(String inchi, List<Precursor> pre) throws IOException {
     Reachable reachable = queryByInchi(inchi);
@@ -409,7 +445,12 @@ public class Loader {
   }
 
   private Reachable queryByInchi(String inchi) {
-    DBObject query = new BasicDBObject(Reachable.inchiFieldName, inchi);
+    DBObject query = new BasicDBObject(Reachable.INCHI_FIELD_NAME, inchi);
+    return jacksonReachablesCollection.findOne(query);
+  }
+
+  Reachable queryById(Long id) {
+    DBObject query = new BasicDBObject(Reachable.ID_FIELD_NAME, id);
     return jacksonReachablesCollection.findOne(query);
   }
 

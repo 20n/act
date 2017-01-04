@@ -6,6 +6,7 @@ import act.shared.Seq;
 import com.act.reachables.Cascade;
 import com.act.reachables.ReactionPath;
 import com.act.utils.CLIUtil;
+import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
@@ -16,6 +17,7 @@ import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.mongojack.DBCursor;
+import org.mongojack.DBQuery;
 import org.mongojack.JacksonDBCollection;
 import org.mongojack.WriteResult;
 
@@ -155,10 +157,16 @@ public class ProteinToDNADriver {
 
     ProteinsToDNA2 p2d = ProteinsToDNA2.initiate();
 
-    DBCursor<ReactionPath> cursor = inputPathwayCollection.find();
-
+    /* Extract all pathway ids, then read pathways one id at a time.  This will reduce the likelihood of the cursor
+     * timing out, which has a tendency to happen when doing expensive operations before advancing (as done here). */
+    DBCursor<ReactionPath> cursor = inputPathwayCollection.find(new BasicDBObject(), new BasicDBObject("_id", true));
+    List<String> ids = new ArrayList<>();
     while (cursor.hasNext()) {
-      ReactionPath reactionPath = cursor.next();
+      ids.add(cursor.next().getId());
+    }
+
+    for (String pathwayId : ids) {
+      ReactionPath reactionPath = inputPathwayCollection.findOne(DBQuery.is("_id", pathwayId));
       Boolean atleastOneSeqMissingInPathway = false;
       List<Set<String>> proteinPaths = new ArrayList<>();
 
@@ -173,7 +181,7 @@ public class ProteinToDNADriver {
           // reaction is the same, so can use the actual positive reaction id's protein seq reference.
           // TODO: Add a preference for the positive forward direction compared to the negative backward direction seq.
           if (id < 0) {
-            LOGGER.info("Found a negative reactin id", id);
+            LOGGER.info("Found a negative reaction id", id);
             id = Reaction.reverseID(id);
           }
 
@@ -258,7 +266,7 @@ public class ProteinToDNADriver {
       }
 
       if (atleastOneSeqMissingInPathway) {
-        LOGGER.info(String.format("There is atleast one reaction with no sequence in reaction path id: %s", reactionPath.getId()));
+        LOGGER.info(String.format("There is at least one reaction with no sequence in reaction path id: %s", reactionPath.getId()));
       } else {
         LOGGER.info(String.format("All reactions in reaction path have at least one viable seq: %s", reactionPath.getId()));
 

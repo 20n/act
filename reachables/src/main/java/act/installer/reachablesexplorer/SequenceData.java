@@ -6,9 +6,9 @@ import org.mongojack.ObjectId;
 
 public class SequenceData implements Comparable<SequenceData> {
   @JsonIgnore
-  static final String organismFieldName = "organism_name";
+  static final String ORGANISM_FIELD_NAME = "organism_name";
   @JsonIgnore
-  static final String sequenceFieldName = "sequence";
+  static final String SEQUENCE_FIELD_NAME = "sequence";
 
   @ObjectId
   @JsonProperty("_id")

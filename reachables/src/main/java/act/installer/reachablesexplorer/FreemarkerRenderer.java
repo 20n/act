@@ -3,6 +3,9 @@ package act.installer.reachablesexplorer;
 import act.shared.Chemical;
 import com.act.reachables.Cascade;
 import com.act.reachables.ReactionPath;
+import com.act.utils.CLIUtil;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.MongoClient;
@@ -11,12 +14,15 @@ import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import freemarker.template.TemplateExceptionHandler;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.mongojack.DBCursor;
+import org.mongojack.DBQuery;
 import org.mongojack.JacksonDBCollection;
 import org.twentyn.proteintodna.DNADesign;
 import org.twentyn.proteintodna.DNAOrgECNum;
@@ -31,16 +37,123 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class FreemarkerRenderer {
   public static final Logger LOGGER = LogManager.getFormatterLogger(FreemarkerRenderer.class);
+
+  private static final String OPTION_DB_HOST = "H";
+  private static final String OPTION_DB_PORT = "p";
+  private static final String OPTION_DB_NAME = "n";
+  private static final String OPTION_INSTALLER_SOURCE_DB = "i";
+  private static final String OPTION_REACHABLES_COLLECTION = "r";
+  private static final String OPTION_SEQUENCES_COLLECTION = "s";
+  private static final String OPTION_DNA_COLLECTION = "d";
+  private static final String OPTION_RENDERING_CACHE = "c";
+  private static final String OPTION_OUTPUT_DEST = "o";
+  private static final String OPTION_OMIT_PATHWAYS_AND_DESIGNS = "x";
+  private static final String OPTION_RENDER_SOME = "m";
+
+  private static final String DEFAULT_HOST = "localhost";
+  private static final Integer DEFAULT_PORT = 27017;
+  private static final String DEFAULT_CHEMICALS_DATABASE = "jarvis_2016-12-09";
+  private static final String DEFAULT_DB_NAME = "wiki_reachables";
+  private static final String DEFAULT_REACHABLES_COLLECTION = "reachables_2016-12-26";
+  private static final String DEFAULT_SEQUENCES_COLLECTION = "sequences_2016-12-26";
+  private static final String DEFAULT_DNA_COLLECTION = "designs_2016-12-26";
+  private static final String DEFAULT_RENDERING_CACHE = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
+
+  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
+      "This class consumes and renders a DB of reachable molecules, pathways, and DNA designs."
+  }, " ");
+
+  public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
+    add(Option.builder(OPTION_DB_HOST)
+        .argName("DB host")
+        .desc(String.format("The database host to which to connect (default: %s)", DEFAULT_HOST))
+        .hasArg()
+        .longOpt("db-host")
+    );
+    add(Option.builder(OPTION_DB_PORT)
+        .argName("DB port")
+        .desc(String.format("The port on which to connect to the database (default: %d)", DEFAULT_PORT))
+        .hasArg()
+        .longOpt("db-port")
+    );
+    add(Option.builder(OPTION_INSTALLER_SOURCE_DB)
+        .argName("DB name")
+        .desc(String.format(
+            "The name of the database from which to fetch chemicals and reactions (default: %s)",
+            DEFAULT_CHEMICALS_DATABASE))
+        .hasArg()
+        .longOpt("source-db-name")
+    );
+    add(Option.builder(OPTION_DB_NAME)
+        .argName("DB name")
+        .desc(String.format("The name of the DB where reachables, pathways, and designs are located(default: %s)",
+            DEFAULT_DB_NAME))
+        .hasArg()
+        .longOpt("dest-db-name")
+    );
+    add(Option.builder(OPTION_REACHABLES_COLLECTION)
+        .argName("collection name")
+        .desc(String.format(
+            "The name of the collection from which to read reachables data (default: %s)",
+            DEFAULT_REACHABLES_COLLECTION))
+        .hasArg()
+        .longOpt("reachables-collection")
+    );
+    add(Option.builder(OPTION_SEQUENCES_COLLECTION)
+        .argName("collection name")
+        .desc(String.format(
+            "The name of the collection from which to read sequence documents (default: %s)",
+            DEFAULT_SEQUENCES_COLLECTION))
+        .hasArg()
+        .longOpt("seq-collection")
+    );
+    add(Option.builder(OPTION_DNA_COLLECTION)
+        .argName("collection name")
+        .desc(String.format(
+            "The name of the collection from which to read DNA designs (default: %s)", DEFAULT_DNA_COLLECTION))
+        .hasArg()
+        .longOpt("dna-collection")
+    );
+    add(Option.builder(OPTION_RENDERING_CACHE)
+        .argName("path to cache")
+        .desc(String.format(
+            "A directory in which to find rendered images for reachables documents (default: %s)",
+            DEFAULT_RENDERING_CACHE))
+        .hasArg()
+        .longOpt("cache-dir")
+    );
+    add(Option.builder(OPTION_OUTPUT_DEST)
+        .argName("path")
+        .desc("A directory into which to write wiki pages (subdirectories will be automatically created)")
+        .hasArg().required()
+        .longOpt("output")
+    );
+    add(Option.builder(OPTION_OMIT_PATHWAYS_AND_DESIGNS)
+        .desc("Omit pathways and designs, replacing them with an order link")
+        .longOpt("no-pathways")
+    );
+    add(Option.builder(OPTION_OMIT_PATHWAYS_AND_DESIGNS)
+        .desc("Omit pathways and designs, replacing them with an order link")
+        .longOpt("no-pathways")
+    );
+    add(Option.builder(OPTION_RENDER_SOME)
+        .argName("molecule")
+        .desc("Render pages for specified molecules; can be a numeric ids, InChIs, or InChI Keys, *separated by '|'* " +
+            "for InChI compatibility.  Molecules ust exist in chemical source DB if InChI or InChI Key is used.")
+        .hasArgs().valueSeparator('|')
+        .longOpt("render-this")
+    );
+  }};
 
   private static final String DEFAULT_REACHABLE_TEMPLATE_FILE = "Mediawiki.ftl";
   private static final String DEFAULT_PATHWAY_TEMPLATE_FILE = "MediaWikiPathways.ftl";
@@ -50,9 +163,21 @@ public class FreemarkerRenderer {
   private static final int SEQUENCE_SAMPLE_START = 3000;
   private static final int SEQUENCE_SAMPLE_SIZE = 80;
 
+  private static final Pattern REGEX_ID = Pattern.compile("^\\d+$");
+  private static final Pattern REGEX_INCHI = Pattern.compile("^InChI=1S?/");
+  // Based on https://en.wikipedia.org/wiki/International_Chemical_Identifier#InChIKey
+  private static final Pattern REGEX_INCHI_KEY = Pattern.compile("^[A-Z]{14}-[A-Z]{10}-[A-Z]$");
+
+  private static final String ORDER_PATH = "/order";
+  private static final String ORDER_INCHI_KEY_PARAM = "inchi_key";
+
   private String reachableTemplateName;
   private String pathwayTemplateName;
   private Loader loader;
+  private File reachablesDest;
+  private File pathsDest;
+  private File seqsDest;
+  private Boolean hidePathways = false;
 
   // Note: there should be one of these per process.  TODO: make this a singleton.
   private Configuration cfg;
@@ -61,26 +186,95 @@ public class FreemarkerRenderer {
 
   private JacksonDBCollection<DNADesign, String> dnaDesignCollection;
 
-  public static void main(String[] args) throws Exception {
-    Loader loader =
-        new Loader("localhost", 27017, "wiki_reachables", "reachablesv7", "sequencesv7", "/tmp");
+  private Map<Long, List<PathwayDoc>> completedPathways = new HashMap<>();
+  private Cache<Long, Reachable> reachablesCache = Caffeine.newBuilder().maximumSize(100).build();
 
-    FreemarkerRenderer renderer = FreemarkerRendererFactory.build(loader);
-    //renderer.writePageToDir(new File("/Volumes/shared-data/Thomas/WikiPagesForUpload"));
-    renderer.writePageToDir(
-        new File("/Volumes/shared-data/Thomas/WikiPagesWithSeqMetadataForTestUpload"),
-        new File("/Volumes/shared-data/Thomas/WikiPagesWithSeqMetadataForTestUpload"),
-        new File("/Volumes/shared-data/Thomas/WikiPagesWithSeqMetadataForTestUpload"));
+
+  public static void main(String[] args) throws Exception {
+    CLIUtil cliUtil = new CLIUtil(Loader.class, HELP_MESSAGE, OPTION_BUILDERS);
+    CommandLine cl = cliUtil.parseCommandLine(args);
+
+    File baseOutputDir = new File(cl.getOptionValue(OPTION_OUTPUT_DEST));
+    if (!baseOutputDir.exists()) {
+      cliUtil.failWithMessage("Unable to find output directory at %s", baseOutputDir.getAbsolutePath());
+      return;
+    }
+
+    File reachablesOut = new File(baseOutputDir, "Reachables");
+    File pathsOut = new File(baseOutputDir, "Paths");
+    File seqsOut = new File(baseOutputDir, "Sequences");
+
+    for (File subdir : Arrays.asList(reachablesOut, pathsOut, seqsOut)) {
+      if (!subdir.exists()) {
+        LOGGER.info("Creating output directory at %s", subdir.getAbsolutePath());
+        subdir.mkdir();
+      } else if (!subdir.isDirectory()) {
+        cliUtil.failWithMessage("Output directory at %s is not a directory", subdir.getAbsolutePath());
+        return;
+      }
+    }
+
+    FreemarkerRenderer renderer = FreemarkerRendererFactory.build(
+        cl.getOptionValue(OPTION_DB_HOST, DEFAULT_HOST),
+        Integer.valueOf(cl.getOptionValue(OPTION_DB_PORT, DEFAULT_PORT.toString())),
+        cl.getOptionValue(OPTION_DB_NAME, DEFAULT_DB_NAME),
+        cl.getOptionValue(OPTION_REACHABLES_COLLECTION, DEFAULT_REACHABLES_COLLECTION),
+        cl.getOptionValue(OPTION_SEQUENCES_COLLECTION, DEFAULT_SEQUENCES_COLLECTION),
+        cl.getOptionValue(OPTION_DNA_COLLECTION, DEFAULT_DNA_COLLECTION),
+        cl.getOptionValue(OPTION_RENDERING_CACHE, DEFAULT_RENDERING_CACHE),
+        cl.getOptionValue(OPTION_INSTALLER_SOURCE_DB, DEFAULT_CHEMICALS_DATABASE),
+        cl.hasOption(OPTION_OMIT_PATHWAYS_AND_DESIGNS),
+        reachablesOut,
+        pathsOut,
+        seqsOut
+    );
+    LOGGER.info("Page generation starting");
+
+    List<Long> idsToRender = Collections.emptyList();
+    if (cl.hasOption(OPTION_RENDER_SOME)) {
+      idsToRender = Arrays.stream(cl.getOptionValues(OPTION_RENDER_SOME))
+          .map(renderer::lookupMolecule).collect(Collectors.toList());
+    }
+    renderer.generatePages(idsToRender);
   }
 
-  private FreemarkerRenderer(Loader loader) {
+  private Long lookupMolecule(String someKey) {
+    if (REGEX_ID.matcher(someKey).find()) {
+      // Note: this doesn't verify that the chemical id is valid.  Maybe we should do that?
+      return Long.valueOf(someKey);
+    } else if (REGEX_INCHI.matcher(someKey).find()) {
+      Chemical c = loader.getChemicalSourceDB().getChemicalFromInChI(someKey);
+      if (c != null) {
+        return c.getUuid();
+      }
+    } else if (REGEX_INCHI_KEY.matcher(someKey).find()) {
+      Chemical c = loader.getChemicalSourceDB().getChemicalFromInChIKey(someKey);
+      if (c != null) {
+        return c.getUuid();
+      }
+    } else {
+      String msg = String.format("Unable to find key type for query '%s'", someKey);
+      LOGGER.error(msg);
+      throw new IllegalArgumentException(msg);
+    }
+    String msg = String.format("Unable to find matching chemical for query %s", someKey);
+    LOGGER.error(msg);
+    throw new IllegalArgumentException(msg);
+  }
+
+  private FreemarkerRenderer(Loader loader, Boolean hidePathways,
+                             File reachablesDest, File pathsDest, File seqsDest) {
     this.reachableTemplateName = DEFAULT_REACHABLE_TEMPLATE_FILE;
     this.pathwayTemplateName = DEFAULT_PATHWAY_TEMPLATE_FILE;
     this.loader = loader;
+    this.hidePathways = hidePathways;
 
+    this.reachablesDest = reachablesDest;
+    this.pathsDest = pathsDest;
+    this.seqsDest = seqsDest;
   }
 
-  private void init() throws IOException {
+  private void init(String dbHost, Integer dbPort, String dbName, String dnaCollection) throws IOException {
     cfg = new Configuration(Configuration.VERSION_2_3_23);
 
     cfg.setClassLoaderForTemplateLoading(
@@ -94,67 +288,98 @@ public class FreemarkerRenderer {
     pathwayTemplate = cfg.getTemplate(pathwayTemplateName);
 
     // TODO: move this elsewhere.
-    MongoClient client = new MongoClient(new ServerAddress("localhost", 27017));
-    DB db = client.getDB("wiki_reachables");
+    MongoClient client = new MongoClient(new ServerAddress(dbHost, dbPort));
+    DB db = client.getDB(dbName);
 
-    dnaDesignCollection = JacksonDBCollection.wrap(db.getCollection("dna_designs_interest_2"), DNADesign.class, String.class);
+    dnaDesignCollection = JacksonDBCollection.wrap(db.getCollection(dnaCollection), DNADesign.class, String.class);
   }
 
-  public void writePageToDir(File reachableDestination,
-                             File pathDestination,
-                             File sequenceDestination) throws IOException, TemplateException{
-    //DBCursor<Reachable> reachableDBCursor = loader.getJacksonReachablesCollection().find(new BasicDBObject("names", "vanillin"));
+  public void generatePages(List<Long> idsToRender) throws IOException, TemplateException {
 
-    DBCursor<ReactionPath> reachableDBCursor = Cascade.get_pathway_collection().find();
-
-    Set<Long> seenIds = new HashSet<>();
+    // Limit iteration to only molecules we care about if any are specified.
+    DBCursor<ReactionPath> cascadeCursor = idsToRender == null || idsToRender.size() == 0 ?
+        Cascade.get_pathway_collection().find() :
+        Cascade.get_pathway_collection().find(DBQuery.in("target", idsToRender));
 
     int i = 0;
-    while(reachableDBCursor.hasNext()) {
+    while (cascadeCursor.hasNext()) {
       // Hacked cursor munging to only consider targets of pathways.
-      ReactionPath thisPath = reachableDBCursor.next();
-      if (thisPath.getTarget().equals(878L)) {
-        LOGGER.info("Skipping vanillin");
-        continue;
-      }
-      Reachable r = loader.getJacksonReachablesCollection().findOne(new BasicDBObject("_id", thisPath.getTarget()));
+      ReactionPath thisPath = cascadeCursor.next();
 
-      if (seenIds.contains(thisPath.getTarget())) {
-        LOGGER.info("Skipping duplicate id %d", thisPath.getTarget());
-        continue;
-      }
-
+      Reachable r = reachablesCache.getIfPresent(thisPath.getTarget());
       if (r == null) {
-        LOGGER.error("Skipping id %d, because not found in the DB", thisPath.getTarget());
-        continue;
+        /* Temporary fix: create reachables on the fly for pathway targets to ensure we have documents to use when
+         * generating the molecule pages.  This should not be necessary in a world where reachables are all loaded into
+         * the DB before pathways. */
+
+        r = loader.constructOrFindReachableById(thisPath.getTarget());
+        if (r == null) {
+          // This should be impossible, but there was previously a check for this condition so...
+          String msg =
+              String.format("Could not construct reachable %d, because not found in the DB", thisPath.getTarget());
+          LOGGER.error(msg);
+          throw new RuntimeException(msg);
+        }
+        reachablesCache.put(r.getId(), r);
       }
 
-      seenIds.add(thisPath.getTarget());
+      /* Don't generate any pathway pages if we're instructed to skip pathways.  We still have to make sure the
+       * Reachable objects are constructed, however, so allow the loop to progress to this point before continuing. */
+      if (this.hidePathways) {
+        continue;
+      }
 
       String inchiKey = r.getInchiKey();
       if (inchiKey != null) {
-        LOGGER.info(inchiKey);
-        List<Pair<String, String>> pathwayDocsAndNames = generatePathDocuments(r, pathDestination, sequenceDestination);
-        File f = new File(reachableDestination, inchiKey);
-        Writer w = new PrintWriter(f);
-        reachableTemplate.process(buildReachableModel(r, loader.getJacksonSequenceCollection(), pathwayDocsAndNames), w);
-        w.close();
-        assert f.exists();
-        i++;
+        PathwayDoc pathwayDoc = generatePathDoc(r, thisPath, this.pathsDest, this.seqsDest);
+        List<PathwayDoc> attributions = completedPathways.get(thisPath.getTarget());
+        if (attributions == null) {
+          attributions = new ArrayList<>();
+          completedPathways.put(thisPath.getTarget(), attributions);
+        }
+        attributions.add(pathwayDoc);
 
+        i++;
         if (i % 100 == 0) {
-          LOGGER.info(i);
+          LOGGER.info("Completed %d pathways", i);
         }
       } else {
         LOGGER.error("page does not have an inchiKey");
       }
     }
+
+    LOGGER.info("Done generating pathway pages, moving on to reachables");
+
+    // No iterate over all the reachable documents we've created and generate pages for each using our pathway links.
+    DBCursor<Reachable> reachableCursor = idsToRender == null || idsToRender.size() == 0 ?
+        loader.getJacksonReachablesCollection().find() :
+        loader.getJacksonReachablesCollection().find(DBQuery.in("_id", idsToRender));
+
+    i = 0;
+    while (reachableCursor.hasNext()) {
+      Reachable r = reachableCursor.next();
+
+      if (r.getInchiKey() == null || r.getInchiKey().isEmpty()) {
+        LOGGER.error("Found reachable %d with no InChI key--skipping", r.getId());
+        continue;
+      }
+
+      try (Writer w = new PrintWriter(new File(this.reachablesDest, r.getInchiKey()))) {
+        List<PathwayDoc> pathwayDocs = completedPathways.getOrDefault(r.getId(), new ArrayList<>());
+        Object model = buildReachableModel(r, pathwayDocs);
+        reachableTemplate.process(model, w);
+      }
+
+      i++;
+      if (i % 100 == 0) {
+        LOGGER.info("Completed %d reachables", i);
+      }
+    }
+
+    LOGGER.info("Page generation complete");
   }
 
-  private Object buildReachableModel(Reachable r,
-                                     JacksonDBCollection<SequenceData, String> sequenceCollection,
-                                     List<Pair<String, String>> pathwayDocsAndNames
-                                     ) {
+  private Object buildReachableModel(Reachable r, List<PathwayDoc> pathwayDocs) {
     /* Freemarker's template language is based on a notion of "hashes," which are effectively just an untyped hierarchy
      * of maps and arrays culminating in scalar values (think of it like a JSON doc done up in plain Java types).
      * There are new facilities to run some Java accessors from within freemarker templates, but the language is
@@ -174,6 +399,12 @@ public class FreemarkerRenderer {
 
     model.put("cascade", r.getPathwayVisualization());
 
+    if (hidePathways) {
+      model.put("hideCascades", true);
+      // TODO: is there a cleaner way to make this URL?
+      model.put("orderLink", String.format("%s?%s=%s", ORDER_PATH, ORDER_INCHI_KEY_PARAM, r.getInchiKey()));
+    }
+
     if (r.getWordCloudFilename() != null) {
       model.put("wordcloudRendering", r.getWordCloudFilename());
     }
@@ -190,10 +421,12 @@ public class FreemarkerRenderer {
     });
 
     List<Object> pathways = new ArrayList<>();
-    for (Pair<String, String> pair : pathwayDocsAndNames) {
+    for (PathwayDoc doc : pathwayDocs) {
       pathways.add(new HashMap<String, String>() {{
-        put("link", pair.getLeft());
-        put("name", pair.getRight());
+        put("link", doc.getPageName());
+        put("name", doc.getPathText());
+        // With help from http://stackoverflow.com/questions/13183982/html-entity-for-check-mark
+        put("hasDna", doc.getHasDNA() ? "&#10003;" : "");
       }});
     }
     if (pathways.size() > 0) {
@@ -256,7 +489,8 @@ public class FreemarkerRenderer {
       if (r.getSynonyms().getMeshHeadings() != null) {
         List<Map<String, Object>> meshHeadingModel = r.getSynonyms().getMeshHeadings().entrySet().stream()
             .map(entry -> new HashMap<String, Object>() {{
-              put("synonymType", entry.getKey().toString());
+              String key = entry.getKey().toString();
+              put("synonymType", "NONE".equals(key) ? "MeSH" : key);
               put("synonyms", entry.getValue().stream().collect(Collectors.toList()));
             }})
             .collect(Collectors.toList());
@@ -277,53 +511,55 @@ public class FreemarkerRenderer {
     return model;
   }
 
-  // Limit long sequences to somethign we can show on a wiki page.
-  private String truncateSequence(String seq) {
-    if (seq.length() <= MAX_SEQUENCE_LENGTH) {
-      return seq;
+  private static class PathwayDoc {
+    String pageName;
+    String pathText;
+    Boolean hasDNA;
+
+    public PathwayDoc(String pageName, String pathText, Boolean hasDNA) {
+      this.pageName = pageName;
+      this.pathText = pathText;
+      this.hasDNA = hasDNA;
     }
 
-    StringBuilder builder = new StringBuilder(MAX_SEQUENCE_LENGTH + 3);
-    builder.append(seq.substring(0, MAX_SEQUENCE_LENGTH / 2));
-    builder.append("...");
-    builder.append(seq.substring(seq.length() - MAX_SEQUENCE_LENGTH / 2, seq.length() - 1));
-    return builder.toString();
+    public String getPageName() {
+      return pageName;
+    }
+
+    public String getPathText() {
+      return pathText;
+    }
+
+    public Boolean getHasDNA() {
+      return hasDNA;
+    }
   }
 
-  public List<Pair<String, String>> generatePathDocuments(
-      Reachable target, File pathDestination, File sequenceDestination) throws IOException, TemplateException {
+  public PathwayDoc generatePathDoc(
+      Reachable target, ReactionPath path, File pathDestination, File sequenceDestination) throws IOException, TemplateException {
     DBCursor<ReactionPath> cursor = Cascade.get_pathway_collection().find(new BasicDBObject("target", target.getId()));
 
-    List<Pair<String, String>> pathPagesAndNames = new ArrayList<>();
-    while (cursor.hasNext()) {
-      ReactionPath path = cursor.next();
-
-      if (target == null) {
-        // This should not happen, methinks.
-        String msg = String.format("Unable to locate chemical %d in reachables db", path.getTarget());
-        LOGGER.error(msg);
-        throw new RuntimeException(msg);
-      }
-
-      String sourceDocName = makeSourceDocName(target);
-      if (sourceDocName == null) {
-        LOGGER.error("Target %d does not have inchiKey", path.getTarget());
-        continue;
-      }
-
-      String pathwayDocName = String.format("Pathway_%s_%d", sourceDocName, path.getRank());
-
-      List<Triple<String, String, DNAOrgECNum>> designDocsAndSummaries = path.getDnaDesignRef() != null ?
-          renderSequences(sequenceDestination, pathwayDocName, path.getDnaDesignRef()) : Collections.emptyList();
-
-      Pair<Object, String> model = buildPathModel(path, target, designDocsAndSummaries);
-      if (model != null) {
-        pathwayTemplate.process(model.getLeft(), new FileWriter(new File(pathDestination, pathwayDocName)));
-      }
-
-      pathPagesAndNames.add(Pair.of(pathwayDocName, model.getRight()));
+    String sourceDocName = makeSourceDocName(target);
+    if (sourceDocName == null) {
+      LOGGER.error("Target %d does not have inchiKey", path.getTarget());
+      return null;
     }
-    return pathPagesAndNames;
+
+    String pathwayDocName = String.format("Pathway_%s_%d", sourceDocName, path.getRank());
+
+    List<Triple<String, String, DNAOrgECNum>> designDocsAndSummaries = path.getDnaDesignRef() != null ?
+        renderSequences(sequenceDestination, pathwayDocName, path.getDnaDesignRef()) : Collections.emptyList();
+
+    Pair<Object, String> model = buildPathModel(path, target, designDocsAndSummaries);
+    if (model != null) {
+      pathwayTemplate.process(model.getLeft(), new FileWriter(new File(pathDestination, pathwayDocName)));
+    }
+
+    return new PathwayDoc(
+        pathwayDocName,
+        model.getRight(),
+        designDocsAndSummaries != null && designDocsAndSummaries.size() > 0
+    );
   }
 
   private List<Triple<String, String, DNAOrgECNum>> renderSequences(File sequenceDestination, String docPrefix, String seqRef) throws IOException {
@@ -415,21 +651,20 @@ public class FreemarkerRenderer {
         Collections.sort(organisms);
         nodeModel.put("organisms", organisms);
       } else {
-        Reachable r = loader.getJacksonReachablesCollection().findOne(new BasicDBObject("_id", i.getId()));
-        if (r == null) {
+        if (target == null) {
           LOGGER.error("Unable to locate pathway chemical %d in reachables db", i.getId());
           nodeModel.put("name", "(unknown)");
         } else {
-          nodeModel.put("link", r.getInchiKey());
+          nodeModel.put("link", target.getInchiKey());
           // TODO: we really need a way of picking a good name for each molecule.
           // If the page name is the InChI, we reduce it to the formula for the purpose of pathway visualisation.
-          String name = r.getPageName().startsWith("InChI") ? r.getPageName().split("/")[1] : r.getPageName();
+          String name = target.getPageName().startsWith("InChI") ? target.getPageName().split("/")[1] : target.getPageName();
           nodeModel.put("name", name);
           chemicalNames.add(name);
-          if (r.getStructureFilename() != null) {
-            nodeModel.put("structureRendering", r.getStructureFilename());
+          if (target.getStructureFilename() != null) {
+            nodeModel.put("structureRendering", target.getStructureFilename());
           } else {
-            LOGGER.warn("No structure filename for %s", r.getPageName());
+            LOGGER.warn("No structure filename for %s", target.getPageName());
           }
         }
       }
@@ -486,9 +721,17 @@ public class FreemarkerRenderer {
 
 
   public static class FreemarkerRendererFactory {
-    public static FreemarkerRenderer build(Loader loader) throws IOException {
-      FreemarkerRenderer renderer = new FreemarkerRenderer(loader);
-      renderer.init();
+    public static FreemarkerRenderer build(
+        String dbHost, Integer dbPort, String dbName,
+        String reachablesCollection, String sequencesCollection, String dnaCollection, String renderingCache,
+        String chemicalsDB,
+        Boolean hidePathways,
+        File reachablesDest, File pathsDest, File seqsDest)
+        throws IOException {
+      Loader loader =
+          new Loader(dbHost, dbPort, dbName, reachablesCollection, sequencesCollection, renderingCache, chemicalsDB);
+      FreemarkerRenderer renderer = new FreemarkerRenderer(loader, hidePathways, reachablesDest, pathsDest, seqsDest);
+      renderer.init(dbHost, dbPort, dbName, dnaCollection);
       return renderer;
     }
   }
