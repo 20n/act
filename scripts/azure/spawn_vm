@@ -21,14 +21,14 @@
 #
 # This script can (carefully!) be used in a loop like:
 #   for i in $(seq 1 10); do
-#     spawn_vm d11_v2_worker worker-$i;
+#     spawn_vm d11_v2_worker twentyn-azure-central-us worker-$i;
 #   done
 #
 # Note that azure only allows one VM to be created at a time, so this script cannot be
 # executed in parallel.
 ########################################
 
-usage="usage: $0 <config dir> <hostname> [<admin username> [<public key file>]]"
+usage="usage: $0 <config dir> <resource group> <hostname> [<admin username> [<public key file>]]"
 
 # Check for dependencies.
 AZURE=`which azure`

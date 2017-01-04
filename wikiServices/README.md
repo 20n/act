@@ -63,6 +63,7 @@ mysql> create database 20n_wiki;
 mysql> create user 'mediawiki'@'localhost';
 mysql> set password for 'mediawiki'@'localhost' = PASSWORD('<put password here>');
 mysql> grant all privileges on 20n_wiki.* to 'mediawiki'@'localhost';
+mysql> flush privileges;
 ```
 
 The `mediawiki` user now has the access it requires to create all the tables it needs.
@@ -72,7 +73,7 @@ The `mediawiki` user now has the access it requires to create all the tables it 
 Run this command to install all the required PHP packages:
 ```
 pkgs='php php-cli php-common php-fpm php-gd php-json php-mbstring php-mysql php-readline php-wikidiff2 php-xml'
-echo $pkgs | xargs sudo apt-get install
+echo $pkgs | xargs sudo apt-get install -y
 ```
 
 This will start a PHP 7.0 FPM service that will accept traffic on a UNIX domain socket in /var/run.  Ensure `/var/run/php/php7.0-fpm.sock` exists or the wiki's PHP processing requests will fail.
@@ -137,7 +138,6 @@ $ sudo chown -R www-data:www-data /var/www/mediawiki
 You'll also need to install the following extensions into `/var/www/mediawiki/extensions` (and make `www-data` the owner).  I recommend just copying these directories from another wiki instance, as the source code should be identical:
 ```
 GraphViz
-ImageMap
 iDisplay
 Tabs
 ```
@@ -145,21 +145,32 @@ Tabs
 Now the wiki source is in place, but nginx doesn't know how to serve it yet.  Follow the `site-wiki` installation instructions in `service/README.md` (under the heading "Enabling Reverse-Proxy Endpoints in Nginx").  Once nginx has reloaded its config, you should be able to get to the wiki in a web browser (at `/`), preferably over a tunnel.  Better still, do the *entire* wiki services setup process now, as everything will work by the time the wiki is up and ready to go.
 
 Mediawiki installation is mostly self explanatory, but make sure to do the following things:
-* Specify `20n_wiki` as the DB, or whatever you created during MySQL setup.
+* Specify `20n_wiki` as the DB, or whatever you created during MySQL setup.  `localhost` is the correct DB hostname.
 * Use `mediawiki` as the user and the password you set while setting up MySQL.
-* **Disable** file uploads, we won't need them.
-* Set a `wiki_admin` user as the administrator with the password used in other wiki installations.
-* In the "enable extensions" section, check the boxes next to the four extensions above.
+* Use the default settings on `Database settings`
+* Use `20n Wiki` or something similar as the name of the wiki.  This doesn't matter all that much.
+* Set a `wiki_admin` user as the administrator with the password used in other wiki installations.  Don't bother with an email address.
+* On the `Options` page:
+** Select `Authorized editors only` as the `User rights profile`.
+** Disable the `Enable outbound email` checkbox.
+** In the "Extensions" section, check the boxes next to the three extensions above plus `ImageMap`.
+** **Disable** file uploads, we won't need them.
 
 At the end of the installation process, you'll be asked to download a `LocalSettings.php` file that needs to be dropped into `/var/www/mediawiki`.  Before you copy and move it in place, make the following edits:
 
 Set `$wgLogo` to this value (around line 39):
-```
+```php
 $wgLogo = "$wgResourceBasePath/resources/assets/20n_small.png";
 ```
+Don't forget to put the image file in place:
+```
+$ sudo cp /var/www/mediawiki/assets/img/20n_small.png /var/www/mediawiki/resources/assets
+sudo chown -R www-data:www-data  /var/www/mediawiki/resources/assets
+```
+
 
 Append the following code to the end of `LocalSettings.php`:
-```
+```php
 # Prevent file uploads as a hardening measure.
 $wgEnableUploads = false;
 $wgUseImageMagick = true;
@@ -203,11 +214,44 @@ $wgEnableParserLimitReporting = false;
 With the security settings added in the above code block, only the administrator can make accounts, and only the administrator (I think?) can make edits--public edits are definitely not allowed.
 
 Now you should be ready to move `LocalSettings.php` to `/var/www/mediawiki/LocalSettings.php` and change its owner to `www-data`.
+```
+$ sudo mv LocalSettings.php /var/www/mediawiki
+$ sudo chown www-data:www-data /var/www/mediawiki/LocalSettings.php
+```
 
 One more change needs to be made: in order to make the logo point to `20n.com`, change the logo link in `/var/www/mediawiki/skins/Vector/VectorTemplate.php` (around line 191):
-```
+```php
 echo htmlspecialchars( 'http://20n.com' )
 ```
+Here's the full patch:
+```diff
+--- VectorTemplate.php.orig	2017-01-04 18:42:16.872660024 +0000
++++ VectorTemplate.php	2017-01-04 18:42:43.721636871 +0000
+@@ -186,11 +186,11 @@
+                                         <?php $this->renderNavigation( [ 'VIEWS', 'ACTIONS', 'SEARCH' ] ); ?>
+                                 </div>
+                         </div>
+                         <div id="mw-panel">
+                                 <div id="p-logo" role="banner"><a class="mw-wiki-logo" href="<?php
+-                                        echo htmlspecialchars( $this->data['nav_urls']['mainpage']['href'] )
++                                        echo htmlspecialchars( 'http://20n.com' )
+                                         ?>" <?php
+                                         echo Xml::expandAttributes( Linker::tooltipAndAccesskeyAttribs( 'p-logo' ) )
+                                         ?>></a></div>
+                                 <?php $this->renderPortals( $this->data['sidebar'] ); ?>
+                         </div>
+```
+
+Now you should be able to access the wiki over an ssh tunnel:
+```
+$ ssh -L8080:localhost:80 <my-wiki-host>
+```
+Navigate to `http://localhost:8080/index.php?title=Main_Page` in a web browser and make sure things look sane.
+
+#### Exploring the Wiki Via a Tunnel ####
+
+The default linking mechanism used by mediawiki (frustratingly) rewrites URLs to include the fully qualified hostname.  This can make exploration of the wiki over a tunnel challenging.  You can always access a specific page by entering `http://localhost:8080/index.php?title=<Page Name>` in your browser, substituting `<Page Name>` with the name of the page you're trying to reach.
+
 
 ### Loading Data into the Wiki ###
 
@@ -245,8 +289,11 @@ Note that this must be done on the wiki host itself: public access `api.php` is 
 There is a directory in this repository called `wiki_front_matter` that contains the main page and assets for our wiki.  Let's install it!
 
 ```
-# Upload all the images.
+# Upload the images.
 $ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions png wiki_front_matter/images
+# Disregard any warnings like `PHP Warning:  mkdir(): No such file or directory in /var/www/mediawiki/extensions/GraphViz/GraphViz_body.php on line 1786`.
+# One of the images is a JPEG.
+$ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions jpg wiki_front_matter/images
 # Upload all the pages.
 $ find wiki_front_matter/pages -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
 # Ensure they're re-rendered.  Don't use find, as we just want the page names.
@@ -260,9 +307,13 @@ The front page should now contain our usual intro page and images.  The `All_Che
 
 To edit the side bar content (i.e. to remove `Random Page` and `Recent Changes`), navigate to `/index.php?title=MediaWiki:Sidebar` and edit the source.  Use http://preview.bioreachables.20n.com/index.php?title=MediaWiki:Sidebar as an example of this.
 
+## Azure ##
+
+
+
 ## AWS ##
 
-We're currently hosting our wikis in EC2, though this could change in the future (i.e. there is nothing strictly tying us to EC2--we could move to Azure if needed).  Most of AWS's services are fairly self-explanatory; just the same, here is a brief overview of the AWS facilities we're using and how they're configured.
+We started hosting our wiis in EC2, though have since moved to Azure to reduce costs.  This section remains in case we ever want/need to move back to EC2.  Most of AWS's services are fairly self-explanatory; just the same, here is a brief overview of the AWS facilities we're using and how they're configured.
 
 ### EC2 ###
 
