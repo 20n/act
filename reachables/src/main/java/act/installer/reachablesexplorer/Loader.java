@@ -241,8 +241,8 @@ public class Loader {
             JacksonDBCollection.wrap(reachables.getCollection(targetSequenceCollection), SequenceData.class, String.class);
 
     jacksonReachablesCollection.ensureIndex(new BasicDBObject(Reachable.INCHI_FIELD_NAME, "hashed"));
-    jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.sequenceFieldName, "hashed"));
-    jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.organismFieldName, 1));
+    jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.SEQUENCE_FIELD_NAME, "hashed"));
+    jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.ORGANISM_FIELD_NAME, 1));
   }
 
   JacksonDBCollection<Reachable, String> getJacksonReachablesCollection() {

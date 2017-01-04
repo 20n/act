@@ -294,7 +294,7 @@ public class FreemarkerRenderer {
     dnaDesignCollection = JacksonDBCollection.wrap(db.getCollection(dnaCollection), DNADesign.class, String.class);
   }
 
-  public void generatePages(List<Long> idsToRender) throws IOException, TemplateException{
+  public void generatePages(List<Long> idsToRender) throws IOException, TemplateException {
 
     // Limit iteration to only molecules we care about if any are specified.
     DBCursor<ReactionPath> cascadeCursor = idsToRender == null || idsToRender.size() == 0 ?
