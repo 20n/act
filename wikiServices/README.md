@@ -401,6 +401,8 @@ This section will omit the first step, as wiki host setup procedures are documen
 
 **Hopefully you will never need to do this.**
 
+Full, official instructions live [here](https://docs.microsoft.com/en-us/azure/virtual-machines/virtual-machines-linux-capture-image).
+
 #### De-provision the Template Instance ####
 
 **Note: the next step makes the host inaccessible via ssh.  Make very sure things are perfect before you start the image creation process.**
