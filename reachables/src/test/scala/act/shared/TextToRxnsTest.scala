@@ -23,25 +23,24 @@ class TextToRxnsTest extends FlatSpec with Matchers {
       a reaction that is from the EC class 3.1.4.38. The cell also converted pyruvate to lactate."""
   )
 
-
-
-  val validReactions: List[ValidatedRxn] = TextToRxns.getRxnsFromString(testSentences.head)
-  validReactions.size should be > 0
-
-
-  ignore should "be able to extract sentences from string, URLs and pdfs" in {
+  "TextToRxns" should "be able to extract sentences from strings" in {
     for (testSent <- testSentences) {
-      List(1,2).size should be > 0
       val validReactions: List[ValidatedRxn] = TextToRxns.getRxnsFromString(testSent)
-      println(validReactions)
-      validReactions.size should be > 0
+      validReactions.length should be > 0
     }
+  }
 
+
+  ignore should "be able to extract sentences from pdfs" in {
+    TextToRxns.getRxnsFromPDF("/Volumes/shared-data/Saurabh/text2rxns/limitedchems.pdf").length should be > 0
+  }
+
+
+  ignore should "be able to extract sentences from URLs" in {
     // test extractions from a web url
     val testURL1 = "https://www.ncbi.nlm.nih.gov/pubmed/20564561?dopt=Abstract&report=abstract&format=text"
     val testURL2 = "http://www.nature.com/articles/ncomms5037"
 
-    // TextToRxns.getRxnsFromURL(testURL1).length should be > 0
-    // TextToRxns.getRxnsFromPDF("/Volumes/shared-data/Saurabh/text2rxns/limitedchems.pdf").length should be > 0
+    TextToRxns.getRxnsFromURL(testURL1).length should be > 0
   }
 }
