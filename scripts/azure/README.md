@@ -40,6 +40,12 @@ Host twentyn-*
   ServerAliveInterval 30
   ForwardAgent Yes
 
+# Note: this must appear before the *-west2 block.
+Host *-wiki-west2
+  ProxyCommand ssh 52.183.73.127 -W %h:%p
+  ServerAliveInterval 30
+  ForwardAgent Yes
+
 Host *-west2
   ProxyCommand ssh 13.66.211.16 -W %h:%p
   ServerAliveInterval 30
@@ -110,6 +116,8 @@ $ ssh -L 20142:127.0.0.1:3128 azure-west-us-2
 # Open a tunnel to south-central-us hosts, for connecting to a
 # GPU-enabled host
 $ ssh -L 20143:127.0.0.1:3128 azure-south-central-us
+# Wiki hosts
+$ ssh -L 20144:127.0.0.1:3128 azure-wiki-west-us-2
 ```
 
 If it becomes convenient to do so, we can use `autossh` to establish
@@ -169,7 +177,7 @@ service:
 
 State | Description | Availability | Billed for time
 --- | --- | --- | ---
-Running | Host is operating. | Immediate | Yes
+Running | Host is operating | Immediate | Yes
 Stopped | Host is shutdown at the software layer | After boot cycle (somewhat fast) | Yes
 Deallocated | Host has been shutdown and its resources returned to the pool | After allocation and boot (very slow) | No
 
@@ -218,8 +226,27 @@ YMMV.
 
 ## Creating and setting up VMs
 
-TODO
-
-For now, ask Mark for assistance.  There may already be machines available for you.
+Use the `spawn_vm` command to create instances from existing machine templates.  You will need to have logged in via the Azure CLI; follow the instructions in the preliminary documentation in `spawn_vm`.
+```
+$ ./spawn_vm reachables_wiki twentyn-azure-west-us-2 private-1-wiki-west2
+```
+Hosts will be created with sensible configurations, and can be accessed via `ssh` once provisioning is complete.
 
 ## Connecting to Azure VMs
+
+Once the ssh and HTTP proxy auto config setup explained above is complete, you should be able to connect to hosts as if you were in the same network:
+```
+$ ssh twentyn-worker-2
+```
+Open an ssh tunnel like this:
+```
+$ ssh -L 20141:127.0.0.1:3128 azure-central-us
+```
+And navigate to `http://twentyn-worker-2` in your web browser to access web services on the remote host.
+
+To do the same for another zone:
+```
+$ ssh private-1-wiki-west-2
+$ ssh -L 20144:127.0.0.1:3128 azure-wiki-west-us-2
+# Now navigate to http://private-1-wiki-west2/index.php?title=Main_Page in your web browser.
+```

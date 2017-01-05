@@ -29,6 +29,9 @@
     },
     "subnetName": {
       "type": "string"
+    },
+    "vhdUUID": {
+      "type": "string"
     }
   },
   "variables": {
@@ -45,20 +48,20 @@
         "storageProfile": {
           "osDisk": {
             "osType": "Linux",
-            "name": "twentyn-wiki-osDisk.f5c7fda7-761c-4340-bf9f-c761f60d513c.vhd",
+            "name": "twentyn-wiki-osDisk.0c7fd5b6-8135-40f8-a94a-1e02f441e087.vhd",
             "createOption": "FromImage",
             "image": {
-              "uri": "https://twentynazureus2.blob.core.windows.net/system/Microsoft.Compute/Images/vhds/twentyn-wiki-osDisk.f5c7fda7-761c-4340-bf9f-c761f60d513c.vhd"
+              "uri": "https://twentynazureus2.blob.core.windows.net/system/Microsoft.Compute/Images/vhds/twentyn-wiki-osDisk.0c7fd5b6-8135-40f8-a94a-1e02f441e087.vhd"
             },
             "vhd": {
-              "uri": "https://twentynazureus2.blob.core.windows.net/vmcontainer28d13010-3b3b-4e1b-ba72-fccecfe184ae/osDisk.28d13010-3b3b-4e1b-ba72-fccecfe184ae.vhd"
+              "uri": "[concat('https://twentynazureus2.blob.core.windows.net/vhds/', parameters('virtualMachineName'), '.', parameters('vhdUUID'), '.vhd')]"
             },
             "caching": "ReadWrite"
           }
         },
         "osProfile": {
           "computerName": "[parameters('virtualMachineName')]",
-          "adminUsername": "[parameters('adminUsername')]",
+          "adminUsername": "[parameters('adminUserName')]",
           "linuxConfiguration": {
             "disablePasswordAuthentication": "true",
             "ssh": {

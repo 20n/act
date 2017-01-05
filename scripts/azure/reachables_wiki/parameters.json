@@ -25,6 +25,9 @@
         },
         "subnetName": {
             "value": "default"
+        },
+        "vhdUUID": {
+            "value": "INSERT UUID HERE"
         }
     }
 }
