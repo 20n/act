@@ -297,7 +297,7 @@ Then navigate to any of these links in your browser:
 ```
 http://localhost:8080/substructure/
 http://localhost:8080/order
-http://
+http://localhost:8080/index.php?title=Main_Page
 ```
 
 All of these should return HTTP 200s and should not produce wiki HTML (it should be obvious from curl's output if they're working correctly).
