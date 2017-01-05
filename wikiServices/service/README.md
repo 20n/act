@@ -6,7 +6,7 @@ This is a work in progress, so please report any deployment problems.
 
 ### Overview ###
 The high-level setup procedure for the substructure search service follows these steps:
-* Ensure mediawiki is working, and that nginx is handling *.php requests properly.
+* Ensure mediawiki is working, and that nginx is handling `*.php` requests properly.
 * Install Java (probably the JDK, just for easier production debugging) onto the host.
 * Copy the service JAR to the wiki host, and get all data (like the reachables list) and configuration dependencies in place (like the config JSON) in place.  TODO: get logging working correctly.
 * Copy the /etc/init.d scripts in place to start the service.  Start it and make a test request to it.
