@@ -7,6 +7,7 @@ Get started by running the following commands on your mac:
 $ brew install azure-cli
 $ azure login
 $ azure config mode arm
+$ azure account set <subscription UUID>
 ```
 Follow the prompts to authenticate your host via a web browser.
 
