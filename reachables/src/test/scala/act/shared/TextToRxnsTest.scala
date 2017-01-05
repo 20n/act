@@ -11,9 +11,9 @@ class TextToRxnsTest extends FlatSpec with Matchers {
 
     // should extract:
     // 4-chloro-phenylglycine + H2O + O2 -> (4-chlorophenyl)acetic acid + NH3 + H2O2
-    """The cell converted 4-chloro-phenylglycine to (4-chlorophenyl)acetic acid in
-      the presence of water and O2 and released ammonia and H2O2.
-      This happened in Rhodosporidium toruloides and BRENDA has it under 1.4.3.3""",
+    // """The cell converted 4-chloro-phenylglycine to (4-chlorophenyl)acetic acid in
+    //   the presence of water and O2 and released ammonia and H2O2.
+    //   This happened in Rhodosporidium toruloides and BRENDA has it under 1.4.3.3""",
 
     // Should extract 3 reactions:
     // p-aminophenylphosphocholine -> p-aminophenol + choline phosphate
