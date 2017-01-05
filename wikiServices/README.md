@@ -472,9 +472,3 @@ Users who wish to receive order notification emails must subscribe to the `wiki_
 While the default mediawiki install uses Apache as its web server, our custom setup uses nginx, a lighter-weight, easy to configure HTTP server and reverse proxy.  The Ubuntu nginx installation uses a slightly non-standard configuration, where configuration files for virtual servers live in `/etc/nginx/sites-available` and are symlinked into `/etc/nginx/sites-enabled` to activate them.  The `site-wiki` configuration file in the `services` directory should be copied to `/etc/nginx/sites-available` and symlinked into `/etc/nginx/sites-enabled`; `/etc/nginx/sites-enabled/default` should then be removed (as root) and nginx reloaded/restarted with `/etc/init.d/nginx reload` to update the configuration.
 
 The `site-wiki` configuration file enables request rate limiting.  This has not been tested in our setup, but follows the instructions on nginx's website.
-
-
-
-```
-$ azure vm create twentyn-azure-west-us-2 private-1-wiki-west2 -j default -F twentyn-azure-wiki-west-us-2 -z Standard_DS2_v2 -M ~/.ssh/id_rsa.pub -y Linux -Q https://twentynazureus2.blob.core.windows.net/vhds/private-1-wiki-west2-restore-20170104230108.vhd -u mdaly -l westus2 -R vhds --storage-account-name twentynazureus2 -s a5ad93a3-26a2-435a-8bcc-1288372059e8  -D /subscriptions/a5ad93a3-26a2-435a-8bcc-1288372059e8/resourceGroups/twentyn-azure-west-us-2/providers/Microsoft.Network/networkInterfaces/private-1-wiki-west292 --disable-boot-diagnostics
-```
