@@ -378,7 +378,7 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
 
     val subsInchis = substrates.map(_.inchi).toList
     val prodInchis = products.map(_.inchi).toList
-    val passingEros = ValidationHandler.validateReaction(false)(subsInchis, prodInchis).toList
+    val passingEros = ValidationHandler.validateReaction(true)(subsInchis, prodInchis).toList
 
     val validatingROs = passingEros.size match {
       case 0 => None
