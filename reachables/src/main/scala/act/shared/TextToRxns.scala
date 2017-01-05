@@ -125,10 +125,10 @@ object TextToRxns {
     rxns
   }
 
-  def getRxnsFromURL(url: String) = getRxnsFrom(Some(new WebURL(url)))
-  def getRxnsFromPDF(fileLoc: String) = getRxnsFrom(Some(new PdfFile(fileLoc)))
-  def getRxnsFromTxt(fileLoc: String) = getRxnsFrom(Some(new TextFile(fileLoc)))
-  def getRxnsFromString(sentence: String) = getRxnsFrom(Some(new RawText(sentence)))
+  def getRxnsFromURL(url: String) = getRxnsFrom(Some(WebURL(url)))
+  def getRxnsFromPDF(fileLoc: String) = getRxnsFrom(Some(PdfFile(fileLoc)))
+  def getRxnsFromTxt(fileLoc: String) = getRxnsFrom(Some(TextFile(fileLoc)))
+  def getRxnsFromString(sentence: String) = getRxnsFrom(Some(RawText(sentence)))
 
   def getRxnsFromURLUI(url: String) = pretty(getRxnsFromURL(url))
   def getRxnsFromPDFUI(fileLoc: String) = pretty(getRxnsFromPDF(fileLoc))
@@ -378,7 +378,7 @@ class TextToRxns(val webCacheLoc: String = "text2rxns.webcache") {
 
     val subsInchis = substrates.map(_.inchi).toList
     val prodInchis = products.map(_.inchi).toList
-    val passingEros = ValidationHandler.validateReaction(true)(subsInchis, prodInchis).toList
+    val passingEros = ValidationHandler.validateReaction(false)(subsInchis, prodInchis).toList
 
     val validatingROs = passingEros.size match {
       case 0 => None
