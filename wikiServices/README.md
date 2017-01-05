@@ -159,10 +159,10 @@ Mediawiki installation is mostly self explanatory, but make sure to do the follo
 * Use `20n Wiki` or something similar as the name of the wiki.  This doesn't matter all that much.
 * Set a `wiki_admin` user as the administrator with the password used in other wiki installations.  Don't bother with an email address.
 * On the `Options` page:
-** Select `Authorized editors only` as the `User rights profile`.
-** Disable the `Enable outbound email` checkbox.
-** In the "Extensions" section, check the boxes next to the three extensions above plus `ImageMap`.
-** **Disable** file uploads, we won't need them.
+    * Select `Authorized editors only` as the `User rights profile`.
+    * Disable the `Enable outbound email` checkbox.
+    * In the "Extensions" section, check the boxes next to the three extensions above plus `ImageMap`.
+    * **Disable** file uploads, we won't need them.
 
 At the end of the installation process, you'll be asked to download a `LocalSettings.php` file that needs to be dropped into `/var/www/mediawiki`.  Before you copy and move it in place, make the following edits:
 
