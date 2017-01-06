@@ -53,7 +53,7 @@ object TextToRxns {
   }
 
   def main(args: Array[String]) {
-    val opts = List(optOutFile, optRawText, optPdfFile, optTextFile, optUrl, optChecks)
+    val opts = List(optOutFile, optRawText, optPdfFile, optTextFile, optUrl)
     val className = this.getClass.getCanonicalName
     val cmdLine: CmdLineParser = new CmdLineParser(className, args, opts)
 
@@ -64,23 +64,20 @@ object TextToRxns {
         new PrintWriter(System.out)
     }
 
-    if (cmdLine has optChecks) {
-      runChecks(out)
-    } else {
-      val data = {
-        if (cmdLine has optUrl)
-          Some(new WebURL(cmdLine get optUrl))
-        else if (cmdLine has optTextFile)
-          Some(new TextFile(cmdLine get optTextFile))
-        else if (cmdLine has optPdfFile)
-          Some(new PdfFile(cmdLine get optPdfFile))
-        else if (cmdLine has optRawText)
-          Some(new RawText(cmdLine get optRawText))
-        else None
-      }
-
-      getRxnsFrom(data)
+    val data = {
+      if (cmdLine has optUrl)
+        Some(new WebURL(cmdLine get optUrl))
+      else if (cmdLine has optTextFile)
+        Some(new TextFile(cmdLine get optTextFile))
+      else if (cmdLine has optPdfFile)
+        Some(new PdfFile(cmdLine get optPdfFile))
+      else if (cmdLine has optRawText)
+        Some(new RawText(cmdLine get optRawText))
+      else None
     }
+
+    getRxnsFrom(data)
+
   }
 
   def runChecks(out: PrintWriter) {
@@ -197,13 +194,6 @@ object TextToRxns {
                     name = "URI",
                     desc = s"web location to retrieve for text",
                     isReqd = false, hasArg = true)
-
-  val optChecks = new OptDesc(
-                    param = "c",
-                    longParam = "check-tests",
-                    name = "tests",
-                    desc = s"runs a few tests",
-                    isReqd = false, hasArg = false)
 }
 
 class NamedInChI(val name: String, val inchi: String) {

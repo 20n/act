@@ -129,7 +129,7 @@ object SparkProjectionInstance extends Serializable {
   private def matchesSubstructure(query: Molecule, target: Molecule): Boolean = {
     val q = MoleculeExporter.exportAsSmarts(query)
     val t = MoleculeExporter.exportAsSmarts(target)
-    // LOGGER.info(s"Running search ${q} on ${t}")
+    LOGGER.debug(s"Running search ${q} on ${t}")
     val search = substructureSearch.get()
     search.setQuery(query)
     search.setTarget(target)
