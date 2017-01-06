@@ -228,7 +228,9 @@ public class ProteinToDNADriver {
                   }
 
                   proteinSeqs.add(dnaSeq);
-                  OrgAndEcnum orgAndEcnum = new OrgAndEcnum(sequenceInfo.getOrgName(), sequenceInfo.getEc());
+                  OrgAndEcnum orgAndEcnum = new OrgAndEcnum(sequenceInfo.getOrgName(), sequenceInfo.getEc(),
+                      sequenceInfo.getSequence(), reaction.getReactionName());
+
                   if (!proteinSeqToOrgInfo.containsKey(dnaSeq)) {
                     proteinSeqToOrgInfo.put(dnaSeq, new HashSet<>());
                   }
