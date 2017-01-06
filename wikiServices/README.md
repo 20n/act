@@ -81,7 +81,7 @@ The `mediawiki` user now has the access it requires to create all the tables it 
 Run this command to install all the required PHP packages:
 ```
 pkgs='php php-cli php-common php-fpm php-gd php-json php-mbstring php-mysql php-readline php-wikidiff2 php-xml'
-echo $pkgs | xargs sudo apt-get install -y
+$ echo $pkgs | xargs sudo apt-get install -y
 ```
 
 This will start a PHP 7.0 FPM service that will accept traffic on a UNIX domain socket in /var/run.  Ensure `/var/run/php/php7.0-fpm.sock` exists or the wiki's PHP processing requests will fail.

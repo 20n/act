@@ -31,7 +31,7 @@ Run `sbt assembly` in the `substructureSearch` repository to build an uber-jar. 
 ##### One-time Setup: Install Java #####
 If this is your first time setting up the service, also rsync `../scripts/azure/install_java` and a suitable JDK package (which will be named something like `jdk-8u77-linux-x64.tar.gz`).  You can get a JDK package from the Oracle website, or use this command to download one directly on the host where it'll be installed (which is much faster):
 ```
-curl -v -j -k -L -O -H "Cookie: oraclelicense=accept-securebackup-cookie" 'https://download.oracle.com/otn-pub/java/jdk/8u111-b14/jdk-8u111-linux-x64.tar.gz'
+$ curl -v -j -k -L -O -H "Cookie: oraclelicense=accept-securebackup-cookie" 'https://download.oracle.com/otn-pub/java/jdk/8u111-b14/jdk-8u111-linux-x64.tar.gz'
 ```
 (See [this Stack Overflow post](http://stackoverflow.com/questions/10268583/downloading-java-jdk-on-linux-via-wget-is-shown-license-page-instead) for more tips.)
 
@@ -291,7 +291,7 @@ $ curl -vvv http://localhost/order
 
 Alternatively, you can open an ssh tunnel to the webserver and access the pages through your browser:
 ```
-ssh -L8080:localhost:80 <my-wiki-host>
+$ ssh -L8080:localhost:80 <my-wiki-host>
 ```
 Then navigate to any of these links in your browser:
 ```
