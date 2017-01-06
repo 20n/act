@@ -26,7 +26,7 @@ import org.mongojack.DBQuery;
 import org.mongojack.JacksonDBCollection;
 import org.twentyn.proteintodna.DNADesign;
 import org.twentyn.proteintodna.DNAOrgECNum;
-import org.twentyn.proteintodna.OrgAndEcnum;
+import org.twentyn.proteintodna.ProteinInformation;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -694,15 +694,15 @@ public class FreemarkerRenderer {
 
 
   private List<String> renderDNADesignMetadata(DNAOrgECNum dnaOrgECNum) {
-    List<Set<OrgAndEcnum>> setOfOrgAndEcnum = dnaOrgECNum.getListOfOrganismAndEcNums();
+    List<Set<ProteinInformation>> setOfOrgAndEcnum = dnaOrgECNum.getListOfOrganismAndEcNums();
     return setOfOrgAndEcnum.stream().
         filter(Objects::nonNull).
         map(this::renderSetOfProteinDesignMetadata).
         collect(Collectors.toList());
   }
 
-  private String renderSetOfProteinDesignMetadata(Set<OrgAndEcnum> orgAndEcnumSet) {
-    return StringUtils.capitalize(StringUtils.join(orgAndEcnumSet.stream().
+  private String renderSetOfProteinDesignMetadata(Set<ProteinInformation> proteinInformationSet) {
+    return StringUtils.capitalize(StringUtils.join(proteinInformationSet.stream().
         filter(Objects::nonNull).
         map(this::renderProteinMetadata).
         collect(Collectors.toList()),
@@ -710,10 +710,10 @@ public class FreemarkerRenderer {
     );
   }
 
-  private String renderProteinMetadata(OrgAndEcnum orgAndEcnum) {
-    String proteinMetadata = orgAndEcnum.getEcnum() == null ?
-        String.format("from organism %s", orgAndEcnum.getOrganism()) :
-        String.format("from organism %s, enzyme from EC# %s", orgAndEcnum.getOrganism(), orgAndEcnum.getEcnum());
+  private String renderProteinMetadata(ProteinInformation proteinInformation) {
+    String proteinMetadata = proteinInformation.getEcnum() == null ?
+        String.format("from organism %s", proteinInformation.getOrganism()) :
+        String.format("from organism %s, enzyme from EC# %s", proteinInformation.getOrganism(), proteinInformation.getEcnum());
     return proteinMetadata;
   }
 

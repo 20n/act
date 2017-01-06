@@ -1,6 +1,6 @@
 package org.twentyn.proteintodna;
 
-public class OrgAndEcnum {
+public class ProteinInformation {
 
   public String getOrganism() {
     return organism;
@@ -32,14 +32,14 @@ public class OrgAndEcnum {
   private String proteinSeq;
   private String proteinDesc;
 
-  public OrgAndEcnum(String organism, String ecnum, String proteinSeq, String proteinDesc) {
+  public ProteinInformation(String organism, String ecnum, String proteinSeq, String proteinDesc) {
     this.organism = organism;
     this.ecnum = ecnum;
     this.proteinDesc = proteinDesc;
     this.proteinSeq = proteinSeq;
   }
 
-  private OrgAndEcnum() {
+  private ProteinInformation() {
   }
 
   @Override
@@ -47,7 +47,7 @@ public class OrgAndEcnum {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
 
-    OrgAndEcnum that = (OrgAndEcnum) o;
+    ProteinInformation that = (ProteinInformation) o;
 
     if (organism != null ? !organism.equals(that.organism) : that.organism != null) return false;
     if (ecnum != null ? !ecnum.equals(that.ecnum) : that.ecnum != null) return false;

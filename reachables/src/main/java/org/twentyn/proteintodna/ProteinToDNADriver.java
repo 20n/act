@@ -153,7 +153,7 @@ public class ProteinToDNADriver {
     JacksonDBCollection<DNADesign, String> dnaDesignCollection = JacksonDBCollection.wrap(db.getCollection(outputDnaDeqCollectionName), DNADesign.class, String.class);
     JacksonDBCollection<ReactionPath, String> outputPathwayCollection = JacksonDBCollection.wrap(db.getCollection(outputPathwaysCollectionName), ReactionPath.class, String.class);
 
-    Map<String, Set<OrgAndEcnum>> proteinSeqToOrgInfo = new HashMap<>();
+    Map<String, Set<ProteinInformation>> proteinSeqToOrgInfo = new HashMap<>();
 
     ProteinsToDNA2 p2d = ProteinsToDNA2.initiate();
 
@@ -228,13 +228,13 @@ public class ProteinToDNADriver {
                   }
 
                   proteinSeqs.add(dnaSeq);
-                  OrgAndEcnum orgAndEcnum = new OrgAndEcnum(sequenceInfo.getOrgName(), sequenceInfo.getEc(),
+                  ProteinInformation proteinInformation = new ProteinInformation(sequenceInfo.getOrgName(), sequenceInfo.getEc(),
                       sequenceInfo.getSequence(), reaction.getReactionName());
 
                   if (!proteinSeqToOrgInfo.containsKey(dnaSeq)) {
                     proteinSeqToOrgInfo.put(dnaSeq, new HashSet<>());
                   }
-                  proteinSeqToOrgInfo.get(dnaSeq).add(orgAndEcnum);
+                  proteinSeqToOrgInfo.get(dnaSeq).add(proteinInformation);
                 }
               }
             }
@@ -280,7 +280,7 @@ public class ProteinToDNADriver {
           try {
             Construct dna = p2d.computeDNA(proteinsInPathway, Host.Ecoli);
 
-            List<Set<OrgAndEcnum>> seqMetadata = new ArrayList<>();
+            List<Set<ProteinInformation>> seqMetadata = new ArrayList<>();
             for (String protein : proteinsInPathway) {
               seqMetadata.add(proteinSeqToOrgInfo.get(protein));
             }
