@@ -66,7 +66,7 @@ object SparkProjectionInstance extends Serializable {
     results
   }
 
-  private def getResultsForSubstrate(inputs: List[String], reverse: Boolean, exhaustive: Boolean)
+  def getResultsForSubstrate(inputs: List[String], reverse: Boolean, exhaustive: Boolean)
                                     (ro: Ero): Stream[ProjectionResult] = {
     // We check the substrate or the products to ensure equal length based on if we are reversing the rxn or not.
     if ((!reverse && ro.getSubstrate_count != inputs.length) || (reverse && ro.getProduct_count != inputs.length)) {
@@ -129,7 +129,7 @@ object SparkProjectionInstance extends Serializable {
   private def matchesSubstructure(query: Molecule, target: Molecule): Boolean = {
     val q = MoleculeExporter.exportAsSmarts(query)
     val t = MoleculeExporter.exportAsSmarts(target)
-    LOGGER.info(s"Running search ${q} on ${t}")
+    LOGGER.debug(s"Running search ${q} on ${t}")
     val search = substructureSearch.get()
     search.setQuery(query)
     search.setTarget(target)
