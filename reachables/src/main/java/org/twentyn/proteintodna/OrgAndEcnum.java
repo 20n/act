@@ -18,8 +18,17 @@ public class OrgAndEcnum {
     this.ecnum = ecnum;
   }
 
+  public String getProteinDesc() { return proteinDesc; }
+
+  public void setProteinDesc(String proteinDesc) { this.proteinDesc = proteinDesc; }
+
+  public String getProteinSeq() { return proteinSeq; }
+
+  public void setProteinSeq(String proteinSeq) { this.proteinSeq = proteinSeq; }
+
   private String organism;
   private String ecnum;
+
   private String proteinSeq;
   private String proteinDesc;
 
