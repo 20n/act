@@ -225,13 +225,19 @@ It also seems to be slightly faster to run the commands separately
 (particularly if they are to be run on many machines in parallel), but
 YMMV.
 
-## Creating and setting up VMs
+## Creating and Setting Up VMs
 
 Use the `spawn_vm` command to create instances from existing machine templates.  You will need to have logged in via the Azure CLI; follow the instructions in the preliminary documentation in `spawn_vm`.
 ```
 $ ./spawn_vm reachables_wiki twentyn-azure-west-us-2 private-1-wiki-west2
 ```
 Hosts will be created with sensible configurations, and can be accessed via `ssh` once provisioning is complete.
+
+### Host Templates ###
+
+The subdirectories that contain `template.json` and `parameters.json` files represent classes of VMs that can be instantiated repeatedly.  These files should not need to be edited manually--the `spawn_vm` command takes care of all the required parameter updates.  (The parameters with values like `"INSERT ??? HERE"` are there to cause failures if they are not correctly substituted.)  The `generate_uuid` file lists parameters that need to have UUIDs generated an added prior to instance creation.
+
+One exception to this rule is the `location` field.  The VM classes are currently tied to specific Azure locations.  These can be changed by updating the value of the `location` parameter.  In general this should not be necessary, but may be useful should you need to relocate a server.  The value of the `location` field must match the specified resource group; each resource group name indicates its location.
 
 ## Connecting to Azure VMs
 
