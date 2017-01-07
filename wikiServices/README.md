@@ -474,3 +474,70 @@ Users who wish to receive order notification emails must subscribe to the `wiki_
 While the default mediawiki install uses Apache as its web server, our custom setup uses nginx, a lighter-weight, easy to configure HTTP server and reverse proxy.  The Ubuntu nginx installation uses a slightly non-standard configuration, where configuration files for virtual servers live in `/etc/nginx/sites-available` and are symlinked into `/etc/nginx/sites-enabled` to activate them.  The `site-wiki` configuration file in the `services` directory should be copied to `/etc/nginx/sites-available` and symlinked into `/etc/nginx/sites-enabled`; `/etc/nginx/sites-enabled/default` should then be removed (as root) and nginx reloaded/restarted with `/etc/init.d/nginx reload` to update the configuration.
 
 The `site-wiki` configuration file enables request rate limiting.  This has not been tested in our setup, but follows the instructions on nginx's website.
+
+### Basic Authentication ###
+
+Setting up simple username and password authentication in nginx is very straightforward.  This sort of authentication only makes sense if you protecting in-flight traffic with SSL.  The setup process is for a wiki that has no authentication enabled at all.
+```
+# Install the htpasswd utility.
+$ sudo apt-get install apache2-utils
+# Create a password file that nginx will read.
+# Note that this doesn't live in /var/www/mediawiki so that it's not publicly accessible.
+$ sudo htpasswd -c /etc/nginx/htpasswd <username>
+# Enter and confirm a password when prompted
+```
+
+Now we'll update the nginx config file at `/etc/nginx/sites-available/site-wiki` to use require basic authentication for all wiki links.  You'll need to choose an *authentication realm* that identifies this wiki so that users who might be looking at multiple wikis won't have the credentials accidentally reused.  Here, the realm is `20n WIki 1`, though you could use anything (like a UUID or some random ASCII identifier).
+```diff
+--- site-wiki.orig	2017-01-06 23:46:58.199008128 +0000
++++ site-wiki	2017-01-06 23:50:33.516182634 +0000
+@@ -16,20 +16,23 @@
+   # http://askubuntu.com/questions/134666/what-is-the-easiest-way-to-enable-php-on-nginx
+   # https://www.nginx.com/resources/wiki/start/topics/recipes/mediawiki/
+
+   # Note that we also host some static content from the mediawiki directory.
+   # This is a little sketchy, but I think it's better than
+   root /var/www/mediawiki;
+
+   client_max_body_size 5m;
+   client_body_timeout 60;
+
++  auth_basic "20n Wiki 1";
++  auth_basic_user_file /etc/nginx/htpasswd;
++
+   # Substructure search service
+   location = /search {
+     proxy_set_header   Host             $host:$server_port;
+     proxy_set_header   X-Real-IP        $remote_addr;
+     proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;
+     proxy_pass         http://localhost:8888; # Shouldn't be publicly accessible.
+     proxy_redirect     default;
+
+     break;
+     # Break required to prevent additional processing by other location blocks.
+     ```
+
+Here's just the text to be added to the `server` config block in `/etc/nginx/sites-available/site-wiki`:
+```
+      auth_basic "20n Wiki 1";
+      auth_basic_user_file /etc/nginx/htpasswd;
+```
+
+Now we'll check that our modification was correct and tell nginx to reload it's configuration file.
+```
+$ sudo /etc/init.d/nginx configtest
+ * Testing nginx configuration                    [ OK ]
+$ echo $?
+0
+$ sudo /etc/init.d/nginx reload
+```
+
+If you now navigate to any wiki page (including over a tunnel) you should not be prompted for a username and password.
+
+### Adding/Updating a Password ###
+
+To change or add a password, just omit the `-c` option to `htpasswd`:
+```
+$ sudo htpasswd /etc/nginx/htpasswd <username>
+```
+A password change should not require an nginx config reload.
