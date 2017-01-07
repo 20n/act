@@ -84,10 +84,13 @@ public class FastaGeneratorFromDNADesign {
       ids.add(cursor.next().getId());
     }
 
-    System.out.println(ids.size());
-
     for (String pathwayId : ids) {
       DNADesign dnaDesign = dnaDesignCollection.findOne(DBQuery.is("_id", pathwayId));
+
+      if (dnaDesign == null) {
+        continue;
+      }
+      
       for (DNAOrgECNum design : dnaDesign.getDnaDesigns()) {
         try (BufferedWriter fastaFile = new BufferedWriter(new FileWriter("test.txt"))) {
           for (Set<ProteinInformation> proteinSet : design.getListOfOrganismAndEcNums()) {
