@@ -22,6 +22,7 @@
  * 20141 -> Azure central-us
  * 20142 -> Azure west-us-2
  * 20143 -> Azure south-central-us
+ * 20144 -> Azure west-us-2 wiki subnet
  */
 
 function FindProxyForURL(url, host) {
@@ -29,12 +30,15 @@ function FindProxyForURL(url, host) {
         // Azure central-us
         // TODO: update naming scheme to match other regions.
         return "PROXY 127.0.0.1:20141";
+    } else if (isInNet(host, "10.23.0.0", "255.255.0.0") || host.match("-wiki-west2$")) {
+        // Azure west-us-2
+        return "PROXY 127.0.0.1:20144";
     } else if (isInNet(host, "10.21.0.0", "255.255.0.0") || host.match("-west2$")) {
         // Azure west-us-2
         return "PROXY 127.0.0.1:20142";
     } else if (isInNet(host, "10.22.0.0", "255.255.0.0") || host.match("-scus$")) {
         // Azure south-central-us
-        return "PROXY 127.0.0.1:20144";
+        return "PROXY 127.0.0.1:20143";
     }
 
     return "DIRECT";

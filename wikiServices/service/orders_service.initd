@@ -67,25 +67,33 @@ is_running() {
     fi
 }
 
+start() {
+    if is_running; then
+        pid=$(cat $pid_file)
+        echo "Service is already running with pid $pid"
+    else
+        echo "Starting service with JSVC..."
+        $jsvc $jsvc_opts $class $args
+        pid=$(cat $pid_file)
+        echo "Service started with pid $pid"
+    fi
+}
+
+stop() {
+    if is_running; then
+        echo "Stopping service"
+        $jsvc $jsvc_opts -stop $class
+    else
+        echo "Service is not running"
+    fi
+}
+
 case "$1" in
     start)
-        if is_running; then
-            pid=$(cat $pid_file)
-            echo "Service is already running with pid $pid"
-        else
-            echo "Starting service with JSVC..."
-            $jsvc $jsvc_opts $class $args
-            pid=$(cat $pid_file)
-            echo "Service started with pid $pid"
-        fi
+        start
     ;;
     stop)
-        if is_running; then
-            echo "Stopping service"
-            $jsvc $jsvc_opts -stop $class
-        else
-            "Service is not running"
-        fi
+        stop
     ;;
     status)
         if is_running; then
@@ -96,6 +104,11 @@ case "$1" in
         fi
     ;;
     restart)
+        stop
+        start
+    ;;
+    *)
+        echo "Usage: $0 {start|stop|status|restart}"
     ;;
 esac
 

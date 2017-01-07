@@ -7,6 +7,7 @@ Get started by running the following commands on your mac:
 $ brew install azure-cli
 $ azure login
 $ azure config mode arm
+$ azure account set <subscription UUID>
 ```
 Follow the prompts to authenticate your host via a web browser.
 
@@ -37,6 +38,12 @@ Add this to your ssh config to enable transparent ssh-ing through the bastion ho
 ```
 Host twentyn-*
   ProxyCommand ssh 13.89.34.25 -W %h:%p
+  ServerAliveInterval 30
+  ForwardAgent Yes
+
+# Note: this must appear before the *-west2 block.
+Host *-wiki-west2
+  ProxyCommand ssh 52.183.73.127 -W %h:%p
   ServerAliveInterval 30
   ForwardAgent Yes
 
@@ -110,6 +117,8 @@ $ ssh -L 20142:127.0.0.1:3128 azure-west-us-2
 # Open a tunnel to south-central-us hosts, for connecting to a
 # GPU-enabled host
 $ ssh -L 20143:127.0.0.1:3128 azure-south-central-us
+# Wiki hosts
+$ ssh -L 20144:127.0.0.1:3128 azure-wiki-west-us-2
 ```
 
 If it becomes convenient to do so, we can use `autossh` to establish
@@ -169,7 +178,7 @@ service:
 
 State | Description | Availability | Billed for time
 --- | --- | --- | ---
-Running | Host is operating. | Immediate | Yes
+Running | Host is operating | Immediate | Yes
 Stopped | Host is shutdown at the software layer | After boot cycle (somewhat fast) | Yes
 Deallocated | Host has been shutdown and its resources returned to the pool | After allocation and boot (very slow) | No
 
@@ -216,10 +225,35 @@ It also seems to be slightly faster to run the commands separately
 (particularly if they are to be run on many machines in parallel), but
 YMMV.
 
-## Creating and setting up VMs
+## Creating and Setting Up VMs
 
-TODO
+Use the `spawn_vm` command to create instances from existing machine templates.  You will need to have logged in via the Azure CLI; follow the instructions in the preliminary documentation in `spawn_vm`.
+```
+$ ./spawn_vm reachables_wiki twentyn-azure-west-us-2 private-1-wiki-west2
+```
+Hosts will be created with sensible configurations, and can be accessed via `ssh` once provisioning is complete.
 
-For now, ask Mark for assistance.  There may already be machines available for you.
+### Host Templates ###
+
+The subdirectories that contain `template.json` and `parameters.json` files represent classes of VMs that can be instantiated repeatedly.  These files should not need to be edited manually--the `spawn_vm` command takes care of all the required parameter updates.  (The parameters with values like `"INSERT ??? HERE"` are there to cause failures if they are not correctly substituted.)  The `generate_uuid` file lists parameters that need to have UUIDs generated an added prior to instance creation.
+
+One exception to this rule is the `location` field.  The VM classes are currently tied to specific Azure locations.  These can be changed by updating the value of the `location` parameter.  In general this should not be necessary, but may be useful should you need to relocate a server.  The value of the `location` field must match the specified resource group; each resource group name indicates its location.
 
 ## Connecting to Azure VMs
+
+Once the ssh and HTTP proxy auto config setup explained above is complete, you should be able to connect to hosts as if you were in the same network:
+```
+$ ssh twentyn-worker-2
+```
+Open an ssh tunnel like this:
+```
+$ ssh -L 20141:127.0.0.1:3128 azure-central-us
+```
+And navigate to `http://twentyn-worker-2` in your web browser to access web services on the remote host.
+
+To do the same for another zone:
+```
+$ ssh private-1-wiki-west-2
+$ ssh -L 20144:127.0.0.1:3128 azure-wiki-west-us-2
+# Now navigate to http://private-1-wiki-west2/index.php?title=Main_Page in your web browser.
+```

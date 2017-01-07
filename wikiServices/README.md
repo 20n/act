@@ -34,6 +34,14 @@ Another *important manual step* is to set `$wgServer` to the appropriate base UR
 
 Note that if you are using SSL to encrypt traffic to the wiki, use `https` as the protocol for `$wgServer`.  This will ensure all URL rewrites force secure HTTP.
 
+### Set Orders Service Client Key ###
+
+The `/order` service endpoint uses a host-specific key to identify where an order request came from.  You'll need to update the `client_key` parameter in `/etc/wiki_web_services/orders_config.json` to something that represents the client for whom the wiki is being set up (could be a name or a codeword).  Once you've changed this parameter, run:
+```
+$ sudo /etc/init.d/orders_service restart
+```
+for the config change to take place.
+
 ### Page Generation and Loading Workflow ###
 
 TODO: complete this once the remaining wiki workflow PRs are merged.
@@ -63,6 +71,7 @@ mysql> create database 20n_wiki;
 mysql> create user 'mediawiki'@'localhost';
 mysql> set password for 'mediawiki'@'localhost' = PASSWORD('<put password here>');
 mysql> grant all privileges on 20n_wiki.* to 'mediawiki'@'localhost';
+mysql> flush privileges;
 ```
 
 The `mediawiki` user now has the access it requires to create all the tables it needs.
@@ -72,7 +81,7 @@ The `mediawiki` user now has the access it requires to create all the tables it 
 Run this command to install all the required PHP packages:
 ```
 pkgs='php php-cli php-common php-fpm php-gd php-json php-mbstring php-mysql php-readline php-wikidiff2 php-xml'
-echo $pkgs | xargs sudo apt-get install
+$ echo $pkgs | xargs sudo apt-get install -y
 ```
 
 This will start a PHP 7.0 FPM service that will accept traffic on a UNIX domain socket in /var/run.  Ensure `/var/run/php/php7.0-fpm.sock` exists or the wiki's PHP processing requests will fail.
@@ -137,7 +146,6 @@ $ sudo chown -R www-data:www-data /var/www/mediawiki
 You'll also need to install the following extensions into `/var/www/mediawiki/extensions` (and make `www-data` the owner).  I recommend just copying these directories from another wiki instance, as the source code should be identical:
 ```
 GraphViz
-ImageMap
 iDisplay
 Tabs
 ```
@@ -145,21 +153,31 @@ Tabs
 Now the wiki source is in place, but nginx doesn't know how to serve it yet.  Follow the `site-wiki` installation instructions in `service/README.md` (under the heading "Enabling Reverse-Proxy Endpoints in Nginx").  Once nginx has reloaded its config, you should be able to get to the wiki in a web browser (at `/`), preferably over a tunnel.  Better still, do the *entire* wiki services setup process now, as everything will work by the time the wiki is up and ready to go.
 
 Mediawiki installation is mostly self explanatory, but make sure to do the following things:
-* Specify `20n_wiki` as the DB, or whatever you created during MySQL setup.
+* Specify `20n_wiki` as the DB, or whatever you created during MySQL setup.  `localhost` is the correct DB hostname.
 * Use `mediawiki` as the user and the password you set while setting up MySQL.
-* **Disable** file uploads, we won't need them.
-* Set a `wiki_admin` user as the administrator with the password used in other wiki installations.
-* In the "enable extensions" section, check the boxes next to the four extensions above.
+* Use the default settings on `Database settings`
+* Use `20n Wiki` or something similar as the name of the wiki.  This doesn't matter all that much.
+* Set a `wiki_admin` user as the administrator with the password used in other wiki installations.  Don't bother with an email address.
+* On the `Options` page:
+    * Select `Authorized editors only` as the `User rights profile`.
+    * Disable the `Enable outbound email` checkbox.
+    * In the "Extensions" section, check the boxes next to the three extensions above plus `ImageMap`.
+    * **Disable** file uploads, we won't need them.
 
 At the end of the installation process, you'll be asked to download a `LocalSettings.php` file that needs to be dropped into `/var/www/mediawiki`.  Before you copy and move it in place, make the following edits:
 
 Set `$wgLogo` to this value (around line 39):
-```
+```php
 $wgLogo = "$wgResourceBasePath/resources/assets/20n_small.png";
+```
+Don't forget to put the image file in place:
+```
+$ sudo cp /var/www/mediawiki/assets/img/20n_small.png /var/www/mediawiki/resources/assets
+sudo chown -R www-data:www-data  /var/www/mediawiki/resources/assets
 ```
 
 Append the following code to the end of `LocalSettings.php`:
-```
+```php
 # Prevent file uploads as a hardening measure.
 $wgEnableUploads = false;
 $wgUseImageMagick = true;
@@ -203,11 +221,44 @@ $wgEnableParserLimitReporting = false;
 With the security settings added in the above code block, only the administrator can make accounts, and only the administrator (I think?) can make edits--public edits are definitely not allowed.
 
 Now you should be ready to move `LocalSettings.php` to `/var/www/mediawiki/LocalSettings.php` and change its owner to `www-data`.
+```
+$ sudo mv LocalSettings.php /var/www/mediawiki
+$ sudo chown www-data:www-data /var/www/mediawiki/LocalSettings.php
+```
 
 One more change needs to be made: in order to make the logo point to `20n.com`, change the logo link in `/var/www/mediawiki/skins/Vector/VectorTemplate.php` (around line 191):
-```
+```php
 echo htmlspecialchars( 'http://20n.com' )
 ```
+Here's the full patch:
+```diff
+--- VectorTemplate.php.orig	2017-01-04 18:42:16.872660024 +0000
++++ VectorTemplate.php	2017-01-04 18:42:43.721636871 +0000
+@@ -186,11 +186,11 @@
+                                         <?php $this->renderNavigation( [ 'VIEWS', 'ACTIONS', 'SEARCH' ] ); ?>
+                                 </div>
+                         </div>
+                         <div id="mw-panel">
+                                 <div id="p-logo" role="banner"><a class="mw-wiki-logo" href="<?php
+-                                        echo htmlspecialchars( $this->data['nav_urls']['mainpage']['href'] )
++                                        echo htmlspecialchars( 'http://20n.com' )
+                                         ?>" <?php
+                                         echo Xml::expandAttributes( Linker::tooltipAndAccesskeyAttribs( 'p-logo' ) )
+                                         ?>></a></div>
+                                 <?php $this->renderPortals( $this->data['sidebar'] ); ?>
+                         </div>
+```
+
+Now you should be able to access the wiki over an ssh tunnel:
+```
+$ ssh -L8080:localhost:80 <my-wiki-host>
+```
+Navigate to `http://localhost:8080/index.php?title=Main_Page` in a web browser and make sure things look sane.
+
+#### Exploring the Wiki Via a Tunnel ####
+
+The default linking mechanism used by mediawiki (frustratingly) rewrites URLs to include the fully qualified hostname.  This can make exploration of the wiki over a tunnel challenging.  You can always access a specific page by entering `http://localhost:8080/index.php?title=<Page Name>` in your browser, substituting `<Page Name>` with the name of the page you're trying to reach.
+
 
 ### Loading Data into the Wiki ###
 
@@ -245,8 +296,11 @@ Note that this must be done on the wiki host itself: public access `api.php` is 
 There is a directory in this repository called `wiki_front_matter` that contains the main page and assets for our wiki.  Let's install it!
 
 ```
-# Upload all the images.
+# Upload the images.
 $ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions png wiki_front_matter/images
+# Disregard any warnings like `PHP Warning:  mkdir(): No such file or directory in /var/www/mediawiki/extensions/GraphViz/GraphViz_body.php on line 1786`.
+# One of the images is a JPEG.
+$ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions jpg wiki_front_matter/images
 # Upload all the pages.
 $ find wiki_front_matter/pages -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
 # Ensure they're re-rendered.  Don't use find, as we just want the page names.
@@ -260,9 +314,140 @@ The front page should now contain our usual intro page and images.  The `All_Che
 
 To edit the side bar content (i.e. to remove `Random Page` and `Recent Changes`), navigate to `/index.php?title=MediaWiki:Sidebar` and edit the source.  Use http://preview.bioreachables.20n.com/index.php?title=MediaWiki:Sidebar as an example of this.
 
+## Azure ##
+
+Azure's VM image deployment process is more involved than AWS's, but their costs are (for us as part of our YC membership) lower than AWS.  New VMs can be spun up using the Azure CLI tools, so you shouldn't only occasionally need to grapple with the web dashboard.
+
+### SSH Configuration ###
+
+**Note: these instructions are identical to those in `act/scripts/azure/README.md`, but are partially included here for continuity.**
+
+Before manipulating any Azure instances, you'll need to set up you `~/.ssh/config` file to access Azure hosts.  Thanks to Azure's convenient internal DNS service, we're able to reference instances by hostname (rather than by IP as must be done in AWS).  We capitalize on this situation by requiring that all ssh access to Azure hosts goes through a *bastion* VM.  This bastion is the only server in Azure that needs to allow ssh access to the public Internet--this means that we can trivially revoke a user's access to Azure, and can monitor all ssh access to any of our Azure hosts via the bastion.
+
+The bastion does not have a meaningful public DNS name, but does have a static IP.  Add this block to your Azure configuration file:
+```
+Host *-wiki-west2
+  ProxyCommand ssh 52.183.73.127 -W %h:%p
+  ServerAliveInterval 30
+  ForwardAgent Yes
+```
+Note that you may also need to specify a `User` directive if your laptop username is not the same as your server username.
+
+We can also use the bastion as an HTTP proxy host, granting us easy web browser access to Azure hosts that are not publicly accessible.  You can enable HTTP proxying via ssh tunnels to the `-wiki-west2` zone the same way is done for other zones; consult `act/scripts/azure/README.md` for instructions.
+
+### Presrequisites ###
+
+The setup process we'll use depend on the `azure` and `jq` cli tools.  You should be able to install them on your lappy using `homebrew`:
+```
+$ brew install azure
+$ brew install jq
+```
+
+You'll also need to log into Azure using the CLI tools:
+```
+$ azure login
+# Follow the login instructions, which will involve copying a URL to your browser and entering a code.
+$ azure config mode arm
+# Now you're using the Azure Resource Manager, which is what we want.
+# You can get the subscription UUID from the `subscriptions` panel in the Azure dashboard.
+$ azure account set `<subscription UUID>`
+```
+
+All of the setup instructions can now be run from your lappy (which is a better option than a shared server, as your login credentials are now stored locally).
+
+### Instantiating New Wiki Instances ###
+
+While the actual VM image setup is convoluted, creating a new wiki instance is not difficult.  In fact, we'll reuse `spawn_vm` in `act/scripts/azure` to create a new wiki instance with no data loaded and only vanillin available via the substructure search:
+```
+$ n=1 # Set a host number or designator accordingly.
+$ ./spawn_vm reachables_wiki twentyn-azure-west-us-2 private-${n}-wiki-west2
+```
+
+This will create a wiki instance **without** a public IP so that you can set it up without it being exposed to the public Internet.  To make it accessible from outside, you'll need to create and associate a public IP address and change the instance's network security group to one that allows public access on port 80:
+```
+$ n=1
+$ azure network public-ip create --allocation-method Static --name private-${n}-wiki-west2-public-ip --resource-group twentyn-azure-west-us-2 --idle-timeout 4 --location westus2
+# IP is allocated!  Now let's associate it with an NIC.
+# First, we'll look up the configuration name for the NIC on our wiki host
+$ azure network nic ip-config list twentyn-azure-west-us-2 private-${n}-wiki-west2-nic
+# The name column says it's `ipconfig1`.  Let's take a closer look.
+$ azure network nic ip-config show twentyn-azure-west-us-2 private-${n}-wiki-west2-nic ipconfig1
+# We should not see any public IP associated with the NIC at this time.  Let's connect the two!
+$ azure network nic ip-config set --public-ip-name private-${n}-wiki-west2-public-ip twentyn-azure-west-us-2 private-${n}-wiki-west2-nic ipconfig1
+# Run `show` again to make sure we did the right thing.
+$ azure network nic ip-config show twentyn-azure-west-us-2 private-${n}-wiki-west2-nic ipconfig1
+# Now there should be a looong resource id in place for the public IP field.
+# We're almost done, but our wiki is still closed to the public internet.  Let's change that.
+# First, we'll make sure we can see the `twentyn-public-access-wiki-west-us-2-nsg` security group.
+$ azure network nsg list twentyn-azure-west-us-2
+# If it's there, we can associate it with the wiki's NIC.
+$ azure network nic set --network-security-group-name twentyn-public-access-wiki-west-us-2-nsg twentyn-azure-west-us-2 private-${n}-wiki-west2-nic
+```
+
+The network security group changes can take a little while to take effect.  You should be able to `curl` the public IP of your wiki instance about 90 seconds after the network security group change completes.
+
+Now go to Route 53 (in AWS) and create an appropriately named `A` record that points to this public IP.
+
+### Creating New Wiki Images ###
+
+While the Azure instance instantiation protocol is fairly straightforward, creating images from scratch is an involved process.  At a high level, the steps are:
+
+1.  Configure an instance with all software and configuration bits in place.
+1.  "De-provision" that instance to remove environment-specific configuration data.  **Important:** this does not make the instance ready for use outside of 20n, it just forgets its name and location.  This also renders it impossible to log back into the instance, so make sure things are *really* how you want them.
+1.  Deallocate, "generalize," and "capture" the instance to create a template OS disk.
+1.  Update our JSON template file with values that reference the newly created OS disk.
+
+This section will omit the first step, as wiki host setup procedures are documented elsewhere.  For now, we'll assume that a fully configured and functioning wiki instance exists at `private-1-wiki-west2` in the resource group `twentyn-azure-west-us-2`.
+
+**Hopefully you will never need to do this.**
+
+Full, official instructions live [here](https://docs.microsoft.com/en-us/azure/virtual-machines/virtual-machines-linux-capture-image).
+
+#### De-provision the Template Instance ####
+
+**Note: the next step makes the host inaccessible via ssh.  Make very sure things are perfect before you start the image creation process.**
+
+Log into the host you wish to replicate and run:
+```
+$ sudo waagent -deprovision
+```
+Read and respond to the prompt.  This will make the host forget all of its DNS settings, which makes provisioning as an instance template possible.  Note that you can alternatively run:
+```
+$ sudo waagent -deprovision+user
+```
+This will **also eliminate your home directory and user entry.**  Maybe you want to do this for some reason, but for our internal use it's fine to leave your home directory as part of the image.
+
+#### Deallocate, Generalize, Capture ####
+
+We'll run three Azure CLI commands to shut the host down, prep its OS disk for reuse, store that OS disk in a reusable image, and capture the disk's parameters so that we can save it to our own template file.
+
+On your laptop (see the login instructions above if needed):
+```
+# Shut the host down.
+$ azure vm deallocate twentyn-azure-west-us-2 private-1-wiki-west2
+# Important: after generalization, you will not be able to boot this host again.  But if you de-provisioned it, you can't log in anyway.
+$ azure vm generalize twentyn-azure-west-us-2 private-1-wiki-west2
+# Create a `twentyn-wiki` image in Azure's default location for images, and write the configuration info to `twentyn-wiki-image-template.json`.
+$ azure vm capture twentyn-azure-west-us-2 private-1-wiki-west2 -p twentyn-wiki -t twentyn-wiki-image-template.json
+```
+
+#### Update the Reachables Wiki Template File ####
+
+The file `twentyn-wiki-image-template.json` should now exist, but is likely an un-readable mess of JSON.  But that's okay--we'll use `jq` to extract the bits we need and update our host template accordingly!  This assumes you're in the `act` directory.
+```
+$ image_name=$(jq '.resources[0].properties.storageProfile.osDisk.name' twentyn-wiki-image-template.json)
+$ image_uri=$(jq '.resources[0].properties.storageProfile.osDisk.image.uri' twentyn-wiki-image-template.json)
+$ jq ".resources[0].properties.storageProfile.osDisk.name = ${image_name} | .resources[0].properties.storageProfile.osDisk.image.uri = ${image_uri}" scripts/azure/reachables_wiki/template.json > scripts/azure/reachables_wiki/template.json.new
+$ mv scripts/azure/reachables_wiki/template.json{.new,}
+```
+
+If `jq` complains about any of these steps, stop before you overwrite `scripts/azure/reachables_wiki/template.json`.
+
+Once this is complete, you can commit `scripts/azure/reachables_wiki/template.json` to GH.  Subsequence instances created using `spawn_vm` and the `reachables_wiki` host type should use your new image.
+
 ## AWS ##
 
-We're currently hosting our wikis in EC2, though this could change in the future (i.e. there is nothing strictly tying us to EC2--we could move to Azure if needed).  Most of AWS's services are fairly self-explanatory; just the same, here is a brief overview of the AWS facilities we're using and how they're configured.
+We started hosting our wiis in EC2, though have since moved to Azure to reduce costs.  This section remains in case we ever want/need to move back to EC2.  Most of AWS's services are fairly self-explanatory; just the same, here is a brief overview of the AWS facilities we're using and how they're configured.
 
 ### EC2 ###
 
@@ -289,3 +474,70 @@ Users who wish to receive order notification emails must subscribe to the `wiki_
 While the default mediawiki install uses Apache as its web server, our custom setup uses nginx, a lighter-weight, easy to configure HTTP server and reverse proxy.  The Ubuntu nginx installation uses a slightly non-standard configuration, where configuration files for virtual servers live in `/etc/nginx/sites-available` and are symlinked into `/etc/nginx/sites-enabled` to activate them.  The `site-wiki` configuration file in the `services` directory should be copied to `/etc/nginx/sites-available` and symlinked into `/etc/nginx/sites-enabled`; `/etc/nginx/sites-enabled/default` should then be removed (as root) and nginx reloaded/restarted with `/etc/init.d/nginx reload` to update the configuration.
 
 The `site-wiki` configuration file enables request rate limiting.  This has not been tested in our setup, but follows the instructions on nginx's website.
+
+### Basic Authentication ###
+
+Setting up simple username and password authentication in nginx is very straightforward.  This sort of authentication only makes sense if you protecting in-flight traffic with SSL.  The setup process is for a wiki that has no authentication enabled at all.
+```
+# Install the htpasswd utility.
+$ sudo apt-get install apache2-utils
+# Create a password file that nginx will read.
+# Note that this doesn't live in /var/www/mediawiki so that it's not publicly accessible.
+$ sudo htpasswd -c /etc/nginx/htpasswd <username>
+# Enter and confirm a password when prompted
+```
+
+Now we'll update the nginx config file at `/etc/nginx/sites-available/site-wiki` to use require basic authentication for all wiki links.  You'll need to choose an *authentication realm* that identifies this wiki so that users who might be looking at multiple wikis won't have the credentials accidentally reused.  Here, the realm is `20n WIki 1`, though you could use anything (like a UUID or some random ASCII identifier).
+```diff
+--- site-wiki.orig	2017-01-06 23:46:58.199008128 +0000
++++ site-wiki	2017-01-06 23:50:33.516182634 +0000
+@@ -16,20 +16,23 @@
+   # http://askubuntu.com/questions/134666/what-is-the-easiest-way-to-enable-php-on-nginx
+   # https://www.nginx.com/resources/wiki/start/topics/recipes/mediawiki/
+
+   # Note that we also host some static content from the mediawiki directory.
+   # This is a little sketchy, but I think it's better than
+   root /var/www/mediawiki;
+
+   client_max_body_size 5m;
+   client_body_timeout 60;
+
++  auth_basic "20n Wiki 1";
++  auth_basic_user_file /etc/nginx/htpasswd;
++
+   # Substructure search service
+   location = /search {
+     proxy_set_header   Host             $host:$server_port;
+     proxy_set_header   X-Real-IP        $remote_addr;
+     proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;
+     proxy_pass         http://localhost:8888; # Shouldn't be publicly accessible.
+     proxy_redirect     default;
+
+     break;
+     # Break required to prevent additional processing by other location blocks.
+     ```
+
+Here's just the text to be added to the `server` config block in `/etc/nginx/sites-available/site-wiki`:
+```
+      auth_basic "20n Wiki 1";
+      auth_basic_user_file /etc/nginx/htpasswd;
+```
+
+Now we'll check that our modification was correct and tell nginx to reload it's configuration file.
+```
+$ sudo /etc/init.d/nginx configtest
+ * Testing nginx configuration                    [ OK ]
+$ echo $?
+0
+$ sudo /etc/init.d/nginx reload
+```
+
+If you now navigate to any wiki page (including over a tunnel) you should not be prompted for a username and password.
+
+### Adding/Updating a Password ###
+
+To change or add a password, just omit the `-c` option to `htpasswd`:
+```
+$ sudo htpasswd /etc/nginx/htpasswd <username>
+```
+A password change should not require an nginx config reload.

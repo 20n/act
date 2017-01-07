@@ -6,7 +6,7 @@ This is a work in progress, so please report any deployment problems.
 
 ### Overview ###
 The high-level setup procedure for the substructure search service follows these steps:
-* Ensure mediawiki is working, and that nginx is handling *.php requests properly.
+* Ensure mediawiki is working, and that nginx is handling `*.php` requests properly.
 * Install Java (probably the JDK, just for easier production debugging) onto the host.
 * Copy the service JAR to the wiki host, and get all data (like the reachables list) and configuration dependencies in place (like the config JSON) in place.  TODO: get logging working correctly.
 * Copy the /etc/init.d scripts in place to start the service.  Start it and make a test request to it.
@@ -31,7 +31,7 @@ Run `sbt assembly` in the `substructureSearch` repository to build an uber-jar. 
 ##### One-time Setup: Install Java #####
 If this is your first time setting up the service, also rsync `../scripts/azure/install_java` and a suitable JDK package (which will be named something like `jdk-8u77-linux-x64.tar.gz`).  You can get a JDK package from the Oracle website, or use this command to download one directly on the host where it'll be installed (which is much faster):
 ```
-curl -v -j -k -L -O -H "Cookie: oraclelicense=accept-securebackup-cookie" 'https://download.oracle.com/otn-pub/java/jdk/8u111-b14/jdk-8u111-linux-x64.tar.gz'
+$ curl -v -j -k -L -O -H "Cookie: oraclelicense=accept-securebackup-cookie" 'https://download.oracle.com/otn-pub/java/jdk/8u111-b14/jdk-8u111-linux-x64.tar.gz'
 ```
 (See [this Stack Overflow post](http://stackoverflow.com/questions/10268583/downloading-java-jdk-on-linux-via-wget-is-shown-license-page-instead) for more tips.)
 
@@ -73,7 +73,14 @@ The default home directory for `www-data` is `/var/www`, which (correctly) is ow
 ```
 $ sudo mkdir /home/www-data
 $ sudo chown -R www-data:www-data /home/www-data
+# We have to stop all of www-data's processes before we can invoke usermod.
+$ sudo /etc/init.d/nginx stop
+$ sudo /etc/init.d/php7.0-fpm stop
+# Change www-data's home directory.
 $ sudo usermod -d /home/www-data www-data
+# Start up the services again.
+$ sudo /etc/init.d/php7.0-fpm start
+$ sudo /etc/init.d/nginx start
 ```
 
 #### Build a frontend package ####
@@ -90,11 +97,11 @@ While we don't need Node.js to run the substructure search, we do need to use it
 
 On speakeasy, we currently have v6.9.2, and we need at least v4 to build our frontend code--hurrah!  If `node` isn't recognized or is too old, download a Node.js distribution from the Node website, verify it with checksums/gpg, and then run this to install it (in this example I'm installing 6.9.2, but you should use whatever version you downloaded):
 ```
-tar zxvf node-v6.9.2-linux-x64.tar.gz
-sudo mv node-v6.9.2-linux-x64 /usr/local/software/
-sudo chown -R root:root /usr/local/software/node-v6.9.2-linux-x64
-sudo ln -s /usr/local/software/node-v6.9.2-linux-x64/bin/node /usr/local/bin/node
-sudo ln -s /usr/local/software/node-v6.9.2-linux-x64/bin/npm /usr/local/bin/npm
+$ tar zxvf node-v6.9.2-linux-x64.tar.gz
+$ sudo mv node-v6.9.2-linux-x64 /usr/local/software/
+$ sudo chown -R root:root /usr/local/software/node-v6.9.2-linux-x64
+$ sudo ln -s /usr/local/software/node-v6.9.2-linux-x64/bin/node /usr/local/bin/node
+$ sudo ln -s /usr/local/software/node-v6.9.2-linux-x64/bin/npm /usr/local/bin/npm
 ```
 Now check that we're using the right node with the version we expect:
 ```
@@ -116,14 +123,20 @@ but you should already know how to do that at this point. :grimace:
 ##### Preparing a Frontend Package #####
 Now that we have an up-to-date version of Node installed, `cd frontend` and run `npm install` to install all required js packages; this will take a while, so go grab a coffee or something.  When that's done, run `npm run build` to make an optimized js build.  You may have to futz with dependency installation if this is the first time building this project--required packages live in `project.json`.  The output will live in `frontend/build`.  Finally, get rid of the source maps before upload.  This will prevent users from snooping on our original js source.  All the steps together look like this:
 ```
-  pushd frontend
-  npm install
-  npm run build
-  # TODO: maybe blow away old source maps
-  mkdir -p maps
-  find build -name '*.map'  | xargs -n1 -I__ mv __ maps
-  mv build/asset-manifest.json ./maps
-  popd
+$ pushd frontend
+$ npm install
+$ npm run build
+# TODO: maybe blow away old source maps
+$ mkdir -p maps
+$ find build -name '*.map'  | xargs -n1 -I__ mv __ maps
+$ mv build/asset-manifest.json ./maps
+$ popd
+```
+
+Once you have a build directory, copy it to the wiki host and install it:
+```
+$ sudo mv build /var/www/mediawiki/substructure
+$ sudo chown -R www-data:www-data /var/www/mediawiki/substructure
 ```
 
 #### Configuring the Wiki Web Services ####
@@ -184,9 +197,15 @@ Copy this TSV file into `/etc/wiki_web_services` and make it owned by root.
 
 While the substructure search UI is a single-page react.js app, the orders service is just a simple form-based Java service.  It needs a couple of additional static resources in order to style the HTML that it generates.
 
-##### JS/CSS #####
+##### Static JS/CSS #####
 
 The `assets` directory in this `service` directory should be copied to `/var/www/mediawiki/assets` and its owner set to `www-data`.  These JS/CSS files are used by the orders service, and so need to be available at `/assets` via nginx.  Note that the `site-wiki` nginx config will allow access to the files in `assets` without issue.
+
+```
+# This is the directory at service/assets, which we don't expect to already exist in /var/www/mediawiki
+$ sudo mv assets /var/www/mediawiki/assets
+$ sudo chown -R www-data:www-data /var/www/mediawiki/assets
+```
 
 ##### Put Molecule Renderings in Place #####
 
@@ -204,8 +223,10 @@ The `service` directory contains two `init.d` scripts that can be used to easily
 ```
 $ sudo cp substructure_search.initd /etc/init.d/substructure_search
 $ sudo chown root:root /etc/init.d/substructure_search
+$ sudo chmod 755 /etc/init.d/substructure_search
 $ sudo cp orders_service.initd /etc/init.d/orders_service
-$ sudo chown root:root /etc/init.d/substructure_search
+$ sudo chown root:root /etc/init.d/orders_service
+$ sudo chmod 755 /etc/init.d/orders_service
 $ sudo update-rc.d substructure_search defaults 99
 $ sudo update-rc.d orders_service defaults 99
 ```
@@ -218,7 +239,7 @@ You should now see the following files in at least `/etc/rc5.d/`:
 
 ### Home Stretch: Starting Up ###
 
-Do a sanity check that all of these files exist.  Everything but `/var/www/mediawiki/assets` should be owned by root.
+Do a sanity check that all of these files exist.  Everything but `/var/log/java` and `/var/www/mediawiki/assets` should be owned by root.
 ```
 /usr/local/software/wiki_web_services/wikiServices-assembly-0.1.jar
 /usr/local/software/wiki_web_services/current.jar
@@ -238,10 +259,10 @@ And now we start the service!  If everything goes to plan, you should see `Runni
 ```
 $ sudo /etc/init.d/substructure_search start
 $ sudo /etc/init.d/substructure_search status
-Running
+# Should print "Running"
 $ sudo /etc/init.d/orders_service start
 $ sudo /etc/init.d/orders_service status
-Running
+# Should print "Running"
 ```
 
 ### Enabling Reverse-Proxy Endpoints in Nginx ###
@@ -249,12 +270,15 @@ Running
 It's likely that you're already using an nginx config file that passes proxy requests to the services, but if not we can install the `site-wiki` file in the `service` directory to enable public access to the services.
 ```
 $ sudo cp site-wiki /etc/nginx/sites-available
+$ sudo chown root:root /etc/nginx/sites-available/site-wiki
 # Remove any default site, which will conflict with ours.
 # Optionally you can remove *everything* in /etc/nginx/sites-enabled, but we won't do that by default.
 $ sudo rm /etc/nginx/sites-enabled/default
 # Enable the wiki site configuration.
 $ sudo ln -sf /etc/nginx/sites-available/site-wiki /etc/nginx/sites-enabled/site-wiki
-# Tell nginx to reload its configurations, which will enable the proxy endpoints.
+$ ls -l /etc/nginx/sites-enabled
+# You should only see site-wiki in the output of ls
+# Now, tell nginx to reload its configurations, which will enable the proxy endpoints.
 $ sudo /etc/init.d/nginx reload
 ```
 
@@ -263,6 +287,17 @@ You can run these test queries on the wiki host to ensure proxying is working an
 $ curl -vvv http://localhost/search?q=C
 $ curl -vvv http://localhost/substructure/
 $ curl -vvv http://localhost/order
+```
+
+Alternatively, you can open an ssh tunnel to the webserver and access the pages through your browser:
+```
+$ ssh -L8080:localhost:80 <my-wiki-host>
+```
+Then navigate to any of these links in your browser:
+```
+http://localhost:8080/substructure/
+http://localhost:8080/order
+http://localhost:8080/index.php?title=Main_Page
 ```
 
 All of these should return HTTP 200s and should not produce wiki HTML (it should be obvious from curl's output if they're working correctly).

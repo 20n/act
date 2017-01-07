@@ -15,20 +15,21 @@
 # Before running this script, run the following commands and follow any instructions:
 #   $ azure login
 #   $ azure config mode arm
+#   $ azure account set <subscription UUID>
 # These will create a persistent session for interacting with Azure and will configure that
 # session to use the new resource manager, which makes management possible through the new Azure
 # web portal.
 #
 # This script can (carefully!) be used in a loop like:
 #   for i in $(seq 1 10); do
-#     spawn_vm d11_v2_worker worker-$i;
+#     spawn_vm d11_v2_worker twentyn-azure-central-us worker-$i;
 #   done
 #
 # Note that azure only allows one VM to be created at a time, so this script cannot be
 # executed in parallel.
 ########################################
 
-usage="usage: $0 <config dir> <hostname> [<admin username> [<public key file>]]"
+usage="usage: $0 <config dir> <resource group> <hostname> [<admin username> [<public key file>]]"
 
 # Check for dependencies.
 AZURE=`which azure`
@@ -45,6 +46,12 @@ if [[ -z $JQ ]]; then
     exit 1
 fi
 
+UUIDGEN=`which uuidgen`
+if [[ -z $UUIDGEN ]]; then
+    echo "Couldn't find uuidgen.  This should be installed by default on OS X; on Linux, install 'uuid-runtime'."
+    echo $usage
+    exit 1
+fi
 
 # Read and validate arguments.
 if [[ -z $1 || ! -d $1 ]]; then
@@ -105,10 +112,26 @@ echo "Temporary parameters file at $PARAMS_OUT."
 
 NIC="${NEW_HOSTNAME}-nic"
 
+JQ_COMMANDS=".parameters.virtualMachineName.value = \"${NEW_HOSTNAME}\" \
+  | .parameters.networkInterfaceName.value = \"$NIC\" \
+  | .parameters.adminUsername.value = \"$USER\" \
+  | .parameters.adminPublicKey.value = \"$KEY\""
+
+JQ_EXTRA_COMMANDS=""
+if [[ -e "$CONFIG_DIR/generate_uuid" ]]; then
+    UUID_FIELDS=$(cat ${CONFIG_DIR}/generate_uuid);
+    echo "Generating values for required UUID field(s): $UUID_FIELDS"
+    for this_field in $UUID_FIELDS; do
+        # Generate and downcase a UUID.
+        UUID=$($UUIDGEN | tr '[A-F]' '[a-f]')
+        # Don't use echo here, as we want to keep all of the escaped quotes as-is.
+        JQ_EXTRA_COMMANDS="$JQ_EXTRA_COMMANDS | .parameters.${this_field}.value = \"$UUID\""
+    done
+fi
+
 # Populate the parameters file.
-echo "Substituting hostname and NIC parameter values."
-$JQ ".parameters.virtualMachineName.value = \"${NEW_HOSTNAME}\" | .parameters.networkInterfaceName.value = \"$NIC\" | .parameters.adminUsername.value = \"$USER\" | .parameters.adminPublicKey.value = \"$KEY\"" \
-    $CONFIG_DIR/parameters.json > $PARAMS_OUT
+echo "Substituting parameter values."
+$JQ "$JQ_COMMANDS $JQ_EXTRA_COMMANDS" $CONFIG_DIR/parameters.json > $PARAMS_OUT
 
 # Spin up a VM.
 echo "----------------------------------------"
