@@ -90,9 +90,9 @@ public class FastaGeneratorFromDNADesign {
       if (dnaDesign == null) {
         continue;
       }
-      
+
       for (DNAOrgECNum design : dnaDesign.getDnaDesigns()) {
-        try (BufferedWriter fastaFile = new BufferedWriter(new FileWriter("test.txt"))) {
+        try (BufferedWriter fastaFile = new BufferedWriter(new FileWriter("/home/vijay/act/reachables/test.txt"))) {
           for (Set<ProteinInformation> proteinSet : design.getListOfOrganismAndEcNums()) {
             String header = ">";
             String proteinSeq = "";
@@ -152,9 +152,8 @@ public class FastaGeneratorFromDNADesign {
             fastaFile.write("\n");
           }
         }
+        break;
       }
-
-      break;
     }
   }
 }
