@@ -84,6 +84,8 @@ public class FastaGeneratorFromDNADesign {
       ids.add(cursor.next().getId());
     }
 
+    System.out.println(ids.size());
+
     for (String pathwayId : ids) {
       DNADesign dnaDesign = dnaDesignCollection.findOne(DBQuery.is("_id", pathwayId));
       for (DNAOrgECNum design : dnaDesign.getDnaDesigns()) {
