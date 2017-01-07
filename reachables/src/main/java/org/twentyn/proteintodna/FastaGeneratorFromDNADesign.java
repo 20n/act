@@ -12,6 +12,7 @@ import org.apache.commons.cli.Option;
 import org.mongojack.DBCursor;
 import org.mongojack.DBQuery;
 import org.mongojack.JacksonDBCollection;
+import org.mongojack.ObjectId;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -79,17 +80,9 @@ public class FastaGeneratorFromDNADesign {
         JacksonDBCollection.wrap(db.getCollection(outputDnaDeqCollectionName), DNADesign.class, String.class);
 
     DBCursor<DNADesign> cursor = dnaDesignCollection.find(new BasicDBObject(), new BasicDBObject("_id", true));
-    List<String> ids = new ArrayList<>();
+
     while (cursor.hasNext()) {
-      ids.add(cursor.next().getId());
-    }
-
-    for (String pathwayId : ids) {
-      DNADesign dnaDesign = dnaDesignCollection.findOne(DBQuery.is("_id", pathwayId));
-
-      if (dnaDesign == null) {
-        continue;
-      }
+      DNADesign dnaDesign = cursor.curr();
 
       for (DNAOrgECNum design : dnaDesign.getDnaDesigns()) {
         try (BufferedWriter fastaFile = new BufferedWriter(new FileWriter("/home/vijay/act/reachables/test.txt"))) {
