@@ -145,7 +145,7 @@ public class ProteinMetadataComparator implements Comparator {
             Set<JSONObject> jsons = rxn.getProteinData();
 
             for (JSONObject json : jsons) {
-                ProteinMetadata meta = factory.create(json, (long) rxn.getUUID());
+                ProteinMetadata meta = factory.create(json);
                 agg.add(meta);
             }
         }
