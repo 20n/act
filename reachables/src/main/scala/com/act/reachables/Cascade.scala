@@ -6,7 +6,7 @@ import java.util
 
 import act.shared.{Seq => DbSeq}
 import com.act.analysis.proteome.scripts.OddSequencesToProteinPredictionFlow
-import com.act.reachables.Cascade.NodeInformation
+import com.act.reachables.Cascade.{LocalNode, NodeInformation}
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywords, SequenceKeywords}
 import com.fasterxml.jackson.annotation._
 import com.github.benmanes.caffeine.cache.Caffeine
@@ -382,55 +382,89 @@ object Cascade extends Falls {
       if (network.nodes.isEmpty) {
         return None
       }
-      return Option(List(new Path(List(network.nodes.toList.head))))
+      return Option(List(new Path(Set(LocalNode(network.nodes.toList.head, 0)))))
     }
 
     val sourceEdges = sourceEdgesSet.asScala.toList
 
     Option(sourceEdges.flatMap(e => {
-      val path = getPath(network, e)
+      val path = getPath(network, e, 1)
       if (path.isDefined) {
         counter = counter + 1
-        Option(path.get.map(p => new Path(List(e.dst) ::: p.getPath)))
+        Option(path.get.map(p => new Path(Set(LocalNode(e.dst, 0)) union p.getPath)))
       } else {
         None
       }
     }).flatten)
   }
 
+  private def chooseOneFromEach[T](input: List[List[T]]): List[List[T]] = {
+    val fullList = mutable.ListBuffer[List[T]]()
 
-  private def getPath(network: Network, edge: Edge, seenNodes: Set[Node] = Set()): Option[List[Path]] = {
-    // Base case
+    def chooseAll(remainingInput: List[List[T]], createdListSoFar: List[T] = List()): Unit = {
+      val headElements: List[T] = remainingInput.head
+
+      val tailElements: List[List[T]] = remainingInput.tail
+      if (tailElements.isEmpty) {
+        // Woo we are done so we add it to our list of combinations
+        headElements.foreach(x => fullList.append(createdListSoFar ::: List(x)))
+        return
+      }
+
+      headElements.foreach(x => chooseAll(tailElements, createdListSoFar ::: List(x)))
+    }
+    chooseAll(input)
+
+    fullList.toList
+  }
+
+  private def getPath(network: Network, edge: Edge, distance: Int, seenNodes: Set[Node] = Set()): Option[List[Path]] = {
     val reactionNode = edge.src
 
     // If reaction node has more than one edge we say that this isn't a viable path
-    if (network.getEdgesGoingInto(reactionNode).size() > 1) return None
+    val substratesOfThisReaction: List[Node] = network.getEdgesGoingInto(reactionNode).toList.map(x => x.src)
 
-    val substrateNode = network.getEdgesGoingInto(reactionNode).head.src
-    if (seenNodes.contains(substrateNode)) {
+    // We have already seen a componenet of this path
+    if (substratesOfThisReaction.exists(x => seenNodes.contains(x))) {
       return None
     }
 
-    if (cofactors.contains(substrateNode.id)) {
-      return Option(List())
-    }
+    // This is a list of all the combinations of each individual path.
+    val a: List[List[Path]] = substratesOfThisReaction.map(substrateNode => {
+      val localReactionNode = LocalNode(reactionNode, distance)
+      val localSubstrateNode = LocalNode(substrateNode, distance)
 
-    if (is_universal(substrateNode.id)) return Option(List(new Path(List(reactionNode, substrateNode))))
 
-    if (network.getEdgesGoingInto(substrateNode) == null) {
-      return Option(List())
-    }
-    val edgesGoingInto: List[Edge] = network.getEdgesGoingInto(substrateNode).toList
-
-    // Get back a bunch of maybe paths
-    val resultingPaths: List[Path] = edgesGoingInto.flatMap(x => {
-      val grabPath = getPath(network, x, seenNodes + substrateNode)
-      if (grabPath.isDefined) {
-        Option(grabPath.get.map(p => new Path(List(reactionNode, substrateNode) ::: p.getPath)))
-      } else {
-        None
+      if (cofactors.contains(substrateNode.id)) {
+        return Option(List())
       }
-    }).flatten
+
+      // Determine if this is a universal, in which case we have found the complete path portion.
+      if (is_universal(substrateNode.id)) return Option(List(new Path(Set(localReactionNode, localSubstrateNode))))
+
+      if (network.getEdgesGoingInto(substrateNode) == null) {
+        return Option(List())
+      }
+
+      val edgesGoingInto: List[Edge] = network.getEdgesGoingInto(substrateNode).toList
+
+      // Get back a bunch of maybe paths
+      val resultingPaths: List[Path] = edgesGoingInto.flatMap(x => {
+        val grabPath = getPath(network, x, distance + 1, seenNodes + substrateNode)
+        if (grabPath.isDefined) {
+          Option(grabPath.get.map(p => new Path(Set(localReactionNode, localSubstrateNode) union p.getPath)))
+        } else {
+          None
+        }
+      }).flatten
+
+      resultingPaths
+    })
+
+    // List of all multi-substrate paths
+    val combinedPaths = chooseOneFromEach(a)
+    val resultingPaths = combinedPaths.map(x => new Path(x.map(x => x.getPath).reduce(_ union _)))
+
 
     if (resultingPaths.isEmpty){
       None
@@ -439,30 +473,37 @@ object Cascade extends Falls {
     }
   }
 
-  class Path(path: List[Node]) {
-    def getPath: List[Node] ={
+  case class LocalNode(node: Node, distanceFromTarget: Int)
+
+  class Path(path: Set[LocalNode]) {
+    def getPath: Set[LocalNode] ={
       path
     }
 
     def getDegree(): Int = {
       // This references the first reaction in the path (First element is the product/reachable).
       // Therefore, by counting the reactions associated with this node we get the in-degree of the reachable
-      getReactionCount(path.get(1))
+      getReactionCount(path.find(x => x.distanceFromTarget == 0 && nodeIsReaction(x.node)).get.node)
     }
 
     def getReactionSum(): Int ={
-      path.map(getReactionCount).sum
+      path.map(n => getReactionCount(n.node)).sum
     }
 
     @JsonIgnore
     private def getReactionCount(node: Node): Int = {
       // Only reactions contribute
       // if (Node.getAttribute(node.id, "isrxn") == null)
-      if (Node.getAttribute(node.id, "isrxn").asInstanceOf[String].toBoolean) {
+      if (nodeIsReaction(node)) {
         node.getAttribute("reaction_count").asInstanceOf[Int]
       } else {
         0
       }
+    }
+
+    @JsonIgnore
+    private def nodeIsReaction(node: Node): Boolean = {
+      Node.getAttribute(node.id, "isrxn").asInstanceOf[String].toBoolean
     }
   }
 
@@ -471,6 +512,7 @@ object Cascade extends Falls {
   @JsonCreator
   class NodeInformation(@JsonProperty("isReaction") var isReaction: Boolean,
                         @JsonProperty("isSpontaneous") var isSpontaneous: Boolean,
+                        @JsonProperty("distanceFromTarget") var distance: Int,
                         @JsonProperty("sequences") var sequences: util.HashSet[Long],
                         @JsonProperty("organisms") var organisms: util.HashSet[String],
                         @JsonProperty("reactionIds") var reactionIds: util.HashSet[Long],
@@ -498,7 +540,7 @@ object Cascade extends Falls {
       this.sequences = sequences
     }
 
-    def getisSpontaneous(): Boolean = {
+    def getIsSpontaneous(): Boolean = {
       isSpontaneous
     }
 
@@ -560,6 +602,14 @@ object Cascade extends Falls {
 
     def getMostNative(): Boolean = {
       this.isMostNative
+    }
+
+    def getDistanceFromTarget: Int = {
+      this.distance
+    }
+
+    def setDistanceFromTraget(distance: Int) = {
+      this.distance = distance
     }
   }
 
@@ -655,34 +705,22 @@ class Cascade(target: Long) {
   // Things such as coloring interesting paths, setting up strings,
   // and converting reactionIds to the db form are done here.
   val constructedAllPaths: List[ReactionPath] = allPaths.map(p => {
-    c += 1
-
-    if (c == 0) {
-      val reversePath = p.getPath.reverse
-      for (i <- reversePath.indices) {
-        if (i >= reversePath.length - 1) {
-          // Skip last node, has no edge
-        } else {
-          val edgesGoingInto = network().edgesGoingToNode(reversePath.get(i + 1))
-          val currentEdge: Edge = edgesGoingInto.find(e => e.src.equals(reversePath.get(i))).get
-
-          Edge.setAttribute(currentEdge, "color", "\"#cc3300\", penwidth=5")
-        }
-      }
-    }
-
     val rp = new ReactionPath(s"${target}w$c", p.getPath.map(node => {
+
       val isRxn = getOrDefault[String](node, "isrxn").toBoolean
       val isSpontaneous = getOrDefault[Boolean](node, "isSpontaneous", false)
       val sequences = getOrDefault[util.HashSet[Long]](node, "sequences", new util.HashSet[Long]())
+      val distanceFromTarget = node.distanceFromTarget
+
       new NodeInformation(
         isRxn,
         isSpontaneous,
+        distanceFromTarget,
         sequences,
         getOrDefault[util.HashSet[String]](node, "organisms", new util.HashSet[String]()),
         new util.HashSet[Long](getOrDefault[util.HashSet[Long]](node, "reaction_ids", new util.HashSet[Long]()).map(x => Cascade.rxn_node_rxn_ident(x.toLong): Long)),
         getOrDefault[Int](node, "reaction_count", 0),
-        node.getIdentifier,
+        node.node.getIdentifier,
         if (isRxn) {
           getOrDefault[util.HashSet[String]](node, "label_string", new util.HashSet[String]()).mkString(",")
         } else {
@@ -690,7 +728,7 @@ class Cascade(target: Long) {
         },
         getOrDefault[util.HashSet[String]](node, "pmids", new util.HashSet[String]())
       )
-    }).asJava)
+    }).toList.sortBy(x => (x.distance, x.isReaction)).asJava)
 
     val organismStuff = getMostFrequentOrganism(rp)
 
@@ -803,8 +841,13 @@ class Cascade(target: Long) {
     }
   }
 
-  val allStringPaths: List[String] = allPaths.map(currentPath => {val allChemicalStrings: List[String] = currentPath.getPath.flatMap(node => {
-    Option(ActData.instance.chemId2ReadableName.get(node.id))
+  def getOrDefault[A](localNode: LocalNode, key: String, default: A = null) : A = {
+    getOrDefault(localNode.node, key, default)
+  }
+
+  val allStringPaths: List[String] = allPaths.map(currentPath => {
+    val allChemicalStrings: List[String] = currentPath.getPath.toList.sortBy(x => x.distanceFromTarget).flatMap(node => {
+    Option(ActData.instance.chemId2ReadableName.get(node.node.id))
   })
     allChemicalStrings.mkString(", ")
   })
