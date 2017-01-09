@@ -618,3 +618,5 @@ To change or add a password, just omit the `-c` option to `htpasswd`:
 $ sudo htpasswd /etc/nginx/htpasswd <username>
 ```
 A password change should not require an nginx config reload.
+
+:moyai:
