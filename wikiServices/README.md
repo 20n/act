@@ -11,6 +11,74 @@ Still TODO:
 
 ## New Wiki Instance Setup Steps ##
 
+At a high level, setting up a wiki follows these steps:
+1.  Create a new Azure VM
+1.  Update `LocalSettings.php`.
+
+### Create an Azure VM Instance ###
+
+Azure's VM image deployment process is more involved than AWS's, but their costs are (for us as part of our YC membership) lower than AWS.  New VMs can be spun up using the Azure CLI tools, so you shouldn't only occasionally need to grapple with the web dashboard.
+
+#### SSH Configuration ####
+
+**Note: these instructions are identical to those in `act/scripts/azure/README.md`, but are partially included here for continuity.**
+
+Before manipulating any Azure instances, you'll need to set up you `~/.ssh/config` file to access Azure hosts.  Thanks to Azure's convenient internal DNS service, we're able to reference instances by hostname (rather than by IP as must be done in AWS).  We capitalize on this situation by requiring that all ssh access to Azure hosts goes through a *bastion* VM.  This bastion is the only server in Azure that needs to allow ssh access to the public Internet--this means that we can trivially revoke a user's access to Azure, and can monitor all ssh access to any of our Azure hosts via the bastion.
+
+The bastion does not have a meaningful public DNS name, but does have a static IP.  Add this block to your Azure configuration file:
+```
+Host *-wiki-west2
+  ProxyCommand ssh 52.183.73.127 -W %h:%p
+  ServerAliveInterval 30
+  ForwardAgent Yes
+```
+Note that you may also need to specify a `User` directive if your laptop username is not the same as your server username.
+
+We can also use the bastion as an HTTP proxy host, granting us easy web browser access to Azure hosts that are not publicly accessible.  You can enable HTTP proxying via ssh tunnels to the `-wiki-west2` zone the same way is done for other zones; consult `act/scripts/azure/README.md` for instructions.
+
+#### Prerequisites ####
+
+The setup process we'll use depend on the `azure` and `jq` cli tools.  You should be able to install them on your lappy using `homebrew`:
+```
+$ brew install azure
+$ brew install jq
+```
+
+Visit `http://portal.azure.com` in your browser and sign in.  If you can't sign in, stop here and ask Saurabh for credentials. Once you're logged in, run the following commands on your lappy:
+```
+$ azure login
+# Follow the login instructions, which will involve copying a URL to your browser and entering a code.
+$ azure config mode arm
+# Now you're using the Azure Resource Manager, which is what we want.
+```
+Follow the prompts to authenticate your host via a web browser.
+
+You should set a default subscription ID in your Azure CLI environment to ensure that billing is handled the correct way.  Try the following command and look for `Microsoft Azure Sponsorship` in the `Name` field--that should be our sponsored Azure subscription, which is the one we should use for all things Azure:
+```
+$ azure account list
+info:    Executing command account list
+data:    Name                         Id                                    Current  State
+data:    ---------------------------  ------------------------------------  -------  -------
+data:    Microsoft Azure Sponsorship  xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx  true     Enabled
+info:    account list command OK
+```
+The `Id` field should contain a UUID (omitted here).  If you can't see the `Microsoft Azure Sponsorship` subscription here, go to the Azure portal and access the `Subscriptions` panel.  The `Subscription Id` field should have the UUID you need.  Once you've got it, paste it into this command:
+```
+$ azure account set <subscription UUID>
+```
+
+All of the setup instructions can now be run from your lappy (which is a better option than a shared server, as your login credentials are now stored locally).
+
+#### Instantiating New Wiki Instances ####
+
+While the actual VM image setup is convoluted, creating a new wiki instance is not difficult.  In fact, we'll reuse `spawn_vm` in `act/scripts/azure` to create a new wiki instance with no data loaded and only vanillin available via the substructure search:
+```
+$ n=1 # Set a host number or designator accordingly.
+$ ./spawn_vm reachables_wiki twentyn-azure-west-us-2 private-${n}-wiki-west2
+```
+
+This will create a wiki instance **without** a public IP so that you can set it up without it being exposed to the public Internet.  We'll need to make some modifications before exposing it to the public Internet.
+
 ### Update LocalSettings.php ###
 
 The `reachables-wiki` AMIs in EC2 (TODO: add more info for Azure) contain a full Mediawiki, MySQL, nginx, and web services stack necessary to run a private wiki instance for a single client.  Only a few configuration changes are need to be made to prepare a wiki for client use; most of the work will involve loading data into the wiki--see the section on [Loading Data into the Wiki](#loading-data-into-the-wiki).
@@ -42,9 +110,81 @@ $ sudo /etc/init.d/orders_service restart
 ```
 for the config change to take place.
 
+### Moving Files to the Wiki Host ###
+
+Assuming you've followed the [SSH configuration instructions](#ssh-configuration) above, you should be able to move files to Azure VMs using `rsync`.  By default `rsync` will use `ssh` as its transport, and `ssh` will transparently proxy all connections through the bastion.  In general, the command to use is:
+```
+$ rsync -azP my_local_directory_or_file private-${n}-wiki-west2:
+```
+This will copy files into your home directory on the VM.  The options used here are:
+```
+-a    Preserve all possible file attributes, like modification times and permissions.
+-z    Do inline compression, which will increase transfer speed significantly.  Omit this option if you are rsync-ing compressed files.
+-P    Report per-file transfer progress.  This gives you an idea how long the transfer will take.
+```
+
+Note that running `rsync` from a `screen` session when copying many files is perilous: once you disconnect from `screen`, `rsync` and `ssh` will no longer have access to your `ssh agent`, and so will be unable to create new connections to the remote host.  Moving single large files (like `tar` files) is fine in screen, however.
+
 ### Page Generation and Loading Workflow ###
 
 TODO: complete this once the remaining wiki workflow PRs are merged.
+
+### Making the VM Publicly Accessible ###
+
+The wiki VM we created earlier only has a private IP address, which is fine while for setup.  To make it accessible from outside, you'll need to create and associate a public IP address and change the instance's network security group to one that allows public access on port 80:
+```
+# Pick a host number.
+$ n=1
+
+$ azure network public-ip create --allocation-method Static --name private-${n}-wiki-west2-public-ip --resource-group twentyn-azure-west-us-2 --idle-timeout 4 --location westus2
+# IP is allocated!  Now let's associate it with an NIC.
+
+# First, we'll look up the configuration name for the NIC on our wiki host
+$ azure network nic ip-config list twentyn-azure-west-us-2 private-${n}-wiki-west2-nic
+
+# The name column says it's `ipconfig1`.  Let's take a closer look.
+$ azure network nic ip-config show twentyn-azure-west-us-2 private-${n}-wiki-west2-nic ipconfig1
+
+# We should not see any public IP associated with the NIC at this time.  Let's connect the two!
+$ azure network nic ip-config set --public-ip-name private-${n}-wiki-west2-public-ip twentyn-azure-west-us-2 private-${n}-wiki-west2-nic ipconfig1
+
+# Run `show` again to make sure we did the right thing.
+$ azure network nic ip-config show twentyn-azure-west-us-2 private-${n}-wiki-west2-nic ipconfig1
+# Now there should be a looong resource id in place for the public IP field.
+
+# We're almost done, but our wiki is still closed to the public internet.  Let's change that.
+# First, we'll make sure we can see the `twentyn-public-access-wiki-west-us-2-nsg` security group.
+$ azure network nsg list twentyn-azure-west-us-2
+
+# If it's there, we can associate it with the wiki's NIC.
+$ azure network nic set --network-security-group-name twentyn-public-access-wiki-west-us-2-nsg twentyn-azure-west-us-2 private-${n}-wiki-west2-nic
+```
+
+The network security group changes can take a little while to take effect.  You should be able to `curl` the public IP of your wiki instance about 90 seconds after the network security group change completes:
+```
+# First, let's check what the public IP is (in case we forgot what was printed at allocation time)
+$ azure network public-ip show twentyn-azure-west-us-2 private-${n}-wiki-west2-public-ip
+...
+data:    IP Address                      : 52.183.69.103
+...
+
+# There's our IP!  Now let's try to access it.
+# We're going to give it a complete mediawiki URL, as it'll try to redirect us to the designated hostname ($wgServer) if we just request /.
+$ curl -vvv http://52.183.69.103/index.php?title=Main_Page
+> GET /index.php?title=Main_Page HTTP/1.1
+> Host: localhost
+> User-Agent: curl/7.47.0
+> Accept: */*
+>
+< HTTP/1.1 200 OK
+< Server: nginx/1.10.0 (Ubuntu)
+...
+
+# There'll be a bunch of HTML output here.  The 200 status code at the top is really what we're looking for.
+```
+
+Now go to Route 53 (in AWS) and create an appropriately named `A` record that points to this public IP.
+
 
 ## Mediawiki Setup from Scratch ##
 
@@ -149,6 +289,8 @@ GraphViz
 iDisplay
 Tabs
 ```
+Note that the `Graphviz` extension depends on `ImageMap`, which is installed by default in recent mediawiki distributions.
+
 
 Now the wiki source is in place, but nginx doesn't know how to serve it yet.  Follow the `site-wiki` installation instructions in `service/README.md` (under the heading "Enabling Reverse-Proxy Endpoints in Nginx").  Once nginx has reloaded its config, you should be able to get to the wiki in a web browser (at `/`), preferably over a tunnel.  Better still, do the *entire* wiki services setup process now, as everything will work by the time the wiki is up and ready to go.
 
@@ -314,79 +456,9 @@ The front page should now contain our usual intro page and images.  The `All_Che
 
 To edit the side bar content (i.e. to remove `Random Page` and `Recent Changes`), navigate to `/index.php?title=MediaWiki:Sidebar` and edit the source.  Use http://preview.bioreachables.20n.com/index.php?title=MediaWiki:Sidebar as an example of this.
 
-## Azure ##
+## Hosting In Azure ##
 
-Azure's VM image deployment process is more involved than AWS's, but their costs are (for us as part of our YC membership) lower than AWS.  New VMs can be spun up using the Azure CLI tools, so you shouldn't only occasionally need to grapple with the web dashboard.
-
-### SSH Configuration ###
-
-**Note: these instructions are identical to those in `act/scripts/azure/README.md`, but are partially included here for continuity.**
-
-Before manipulating any Azure instances, you'll need to set up you `~/.ssh/config` file to access Azure hosts.  Thanks to Azure's convenient internal DNS service, we're able to reference instances by hostname (rather than by IP as must be done in AWS).  We capitalize on this situation by requiring that all ssh access to Azure hosts goes through a *bastion* VM.  This bastion is the only server in Azure that needs to allow ssh access to the public Internet--this means that we can trivially revoke a user's access to Azure, and can monitor all ssh access to any of our Azure hosts via the bastion.
-
-The bastion does not have a meaningful public DNS name, but does have a static IP.  Add this block to your Azure configuration file:
-```
-Host *-wiki-west2
-  ProxyCommand ssh 52.183.73.127 -W %h:%p
-  ServerAliveInterval 30
-  ForwardAgent Yes
-```
-Note that you may also need to specify a `User` directive if your laptop username is not the same as your server username.
-
-We can also use the bastion as an HTTP proxy host, granting us easy web browser access to Azure hosts that are not publicly accessible.  You can enable HTTP proxying via ssh tunnels to the `-wiki-west2` zone the same way is done for other zones; consult `act/scripts/azure/README.md` for instructions.
-
-### Presrequisites ###
-
-The setup process we'll use depend on the `azure` and `jq` cli tools.  You should be able to install them on your lappy using `homebrew`:
-```
-$ brew install azure
-$ brew install jq
-```
-
-You'll also need to log into Azure using the CLI tools:
-```
-$ azure login
-# Follow the login instructions, which will involve copying a URL to your browser and entering a code.
-$ azure config mode arm
-# Now you're using the Azure Resource Manager, which is what we want.
-# You can get the subscription UUID from the `subscriptions` panel in the Azure dashboard.
-$ azure account set `<subscription UUID>`
-```
-
-All of the setup instructions can now be run from your lappy (which is a better option than a shared server, as your login credentials are now stored locally).
-
-### Instantiating New Wiki Instances ###
-
-While the actual VM image setup is convoluted, creating a new wiki instance is not difficult.  In fact, we'll reuse `spawn_vm` in `act/scripts/azure` to create a new wiki instance with no data loaded and only vanillin available via the substructure search:
-```
-$ n=1 # Set a host number or designator accordingly.
-$ ./spawn_vm reachables_wiki twentyn-azure-west-us-2 private-${n}-wiki-west2
-```
-
-This will create a wiki instance **without** a public IP so that you can set it up without it being exposed to the public Internet.  To make it accessible from outside, you'll need to create and associate a public IP address and change the instance's network security group to one that allows public access on port 80:
-```
-$ n=1
-$ azure network public-ip create --allocation-method Static --name private-${n}-wiki-west2-public-ip --resource-group twentyn-azure-west-us-2 --idle-timeout 4 --location westus2
-# IP is allocated!  Now let's associate it with an NIC.
-# First, we'll look up the configuration name for the NIC on our wiki host
-$ azure network nic ip-config list twentyn-azure-west-us-2 private-${n}-wiki-west2-nic
-# The name column says it's `ipconfig1`.  Let's take a closer look.
-$ azure network nic ip-config show twentyn-azure-west-us-2 private-${n}-wiki-west2-nic ipconfig1
-# We should not see any public IP associated with the NIC at this time.  Let's connect the two!
-$ azure network nic ip-config set --public-ip-name private-${n}-wiki-west2-public-ip twentyn-azure-west-us-2 private-${n}-wiki-west2-nic ipconfig1
-# Run `show` again to make sure we did the right thing.
-$ azure network nic ip-config show twentyn-azure-west-us-2 private-${n}-wiki-west2-nic ipconfig1
-# Now there should be a looong resource id in place for the public IP field.
-# We're almost done, but our wiki is still closed to the public internet.  Let's change that.
-# First, we'll make sure we can see the `twentyn-public-access-wiki-west-us-2-nsg` security group.
-$ azure network nsg list twentyn-azure-west-us-2
-# If it's there, we can associate it with the wiki's NIC.
-$ azure network nic set --network-security-group-name twentyn-public-access-wiki-west-us-2-nsg twentyn-azure-west-us-2 private-${n}-wiki-west2-nic
-```
-
-The network security group changes can take a little while to take effect.  You should be able to `curl` the public IP of your wiki instance about 90 seconds after the network security group change completes.
-
-Now go to Route 53 (in AWS) and create an appropriately named `A` record that points to this public IP.
+We take advantage of our Azure sponsorship by running our wiki VMs there.  Note that we still use AWS for DNS, but rely on Azure for all the hosting.
 
 ### Creating New Wiki Images ###
 
@@ -397,9 +469,14 @@ While the Azure instance instantiation protocol is fairly straightforward, creat
 1.  Deallocate, "generalize," and "capture" the instance to create a template OS disk.
 1.  Update our JSON template file with values that reference the newly created OS disk.
 
-This section will omit the first step, as wiki host setup procedures are documented elsewhere.  For now, we'll assume that a fully configured and functioning wiki instance exists at `private-1-wiki-west2` in the resource group `twentyn-azure-west-us-2`.
+So once we have a template wiki set up, the Azure-specific bits are:
+* `de-provision`: so the VM forgets who/where it is
+* `deallocate+generalize+capture`: so the VM's OS disk image is prepared for reuse
+* `update JSON templates`: so `act/scripts/azure/spawn_vm` can make more using the correct disk image.
 
-**Hopefully you will never need to do this.**
+These instructions will omit the first step, as wiki host setup procedures were documented [in an earlier section](#mediawiki-setup-from-scratch).  For now, we'll assume that a fully configured and functioning wiki instance exists at `private-1-wiki-west2` in the resource group `twentyn-azure-west-us-2`, and we'll proceed from step 2 (de-provisioning) above.
+
+**Hopefully you will never need to create a fresh image, and can instead just reuse the current one.**
 
 Full, official instructions live [here](https://docs.microsoft.com/en-us/azure/virtual-machines/virtual-machines-linux-capture-image).
 
@@ -445,9 +522,9 @@ If `jq` complains about any of these steps, stop before you overwrite `scripts/a
 
 Once this is complete, you can commit `scripts/azure/reachables_wiki/template.json` to GH.  Subsequence instances created using `spawn_vm` and the `reachables_wiki` host type should use your new image.
 
-## AWS ##
+## Alternative Hosting Provider: AWS ##
 
-We started hosting our wiis in EC2, though have since moved to Azure to reduce costs.  This section remains in case we ever want/need to move back to EC2.  Most of AWS's services are fairly self-explanatory; just the same, here is a brief overview of the AWS facilities we're using and how they're configured.
+We started hosting our wikis in EC2, though have since moved to Azure to reduce costs.  This section remains in case we ever want/need to move back to EC2.  Most of AWS's services are fairly self-explanatory; just the same, here is a brief overview of the AWS facilities we're using and how they're configured.
 
 ### EC2 ###
 
@@ -515,7 +592,7 @@ Now we'll update the nginx config file at `/etc/nginx/sites-available/site-wiki`
 
      break;
      # Break required to prevent additional processing by other location blocks.
-     ```
+```
 
 Here's just the text to be added to the `server` config block in `/etc/nginx/sites-available/site-wiki`:
 ```
@@ -541,3 +618,5 @@ To change or add a password, just omit the `-c` option to `htpasswd`:
 $ sudo htpasswd /etc/nginx/htpasswd <username>
 ```
 A password change should not require an nginx config reload.
+
+:moyai:

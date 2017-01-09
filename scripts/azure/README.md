@@ -2,17 +2,29 @@
 
 This collection of scripts and config files can be used to automate the setup of azure VMs.
 
-Get started by running the following commands on your mac:
+Get started by visiting `http://portal.azure.com` in your browser and signing in.  If you can't sign in, stop here and ask Saurabh for credentials. Once you're logged in, run the following commands on your lappy:
 ```Shell
 $ brew install azure-cli
 $ azure login
 $ azure config mode arm
-$ azure account set <subscription UUID>
 ```
 Follow the prompts to authenticate your host via a web browser.
 
-Each of the script contains documentation regarding its usage.
+You should set a default subscription ID in your Azure CLI environment to ensure that billing is handled the correct way.  Try the following command and look for `Microsoft Azure Sponsorship` in the `Name` field--that should be our sponsored Azure subscription, which is the one we should use for all things Azure:
+```
+$ azure account list
+info:    Executing command account list
+data:    Name                         Id                                    Current  State
+data:    ---------------------------  ------------------------------------  -------  -------
+data:    Microsoft Azure Sponsorship  xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx  true     Enabled
+info:    account list command OK
+```
+The `Id` field should contain a UUID (omitted here).  If you can't see the `Microsoft Azure Sponsorship` subscription here, go to the Azure portal and access the `Subscriptions` panel.  The `Subscription Id` field should have the UUID you need.  Once you've got it, paste it into this command:
+```
+$ azure account set <subscription UUID>
+```
 
+Each of script contains documentation regarding its usage.
 
 ## SSH Configuration
 
@@ -255,5 +267,9 @@ To do the same for another zone:
 ```
 $ ssh private-1-wiki-west-2
 $ ssh -L 20144:127.0.0.1:3128 azure-wiki-west-us-2
+# In a separate terminal (on your lappy), do a quick check that the tunnel and HTTP proxy are working correctly.
+$ $ curl -vvv -x http://localhost:20144 http://private-1-wiki-west2/index.php?title=Main_Page
+# Make sure you get an HTTP 200 in the response.  If so, you're good to go.
+
 # Now navigate to http://private-1-wiki-west2/index.php?title=Main_Page in your web browser.
 ```
