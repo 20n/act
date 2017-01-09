@@ -12,7 +12,7 @@ import scala.collection.mutable
 
 object RankPathway {
   /* Filtering Settings */
-  private val MAX_PROTEINS_PER_PATH = 10
+  private val MAX_PROTEINS_PER_PATH = 4
   private val MAX_DESIGNS_PER_TARGET = 5
 
   /* Database connections */
