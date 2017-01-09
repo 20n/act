@@ -131,17 +131,18 @@ object cascades {
     def getp(n: Long): Long = { val p = ActData.instance.ActTree.get_parent(n); if (p == null) -1 else p; }
     val parents = reachables.map( getp )
 
-    val reach_neighbors = (reachables zip parents) zip (upRxns zip downRxns)
-    for (tuple <- reach_neighbors) {
-      val reachid = tuple._1._1
-      val json = updowns_json(tuple)
-      val jsonstr = json.toString(2)
-      write_to(new File(dir, s"c$reachid.json").getAbsolutePath, jsonstr)
-    }
+//    val reach_neighbors = (reachables zip parents) zip (upRxns zip downRxns)
+//    for (tuple <- reach_neighbors) {
+//      val reachid = tuple._1._1
+//      val json = updowns_json(tuple)
+//      val jsonstr = json.toString(2)
+//      write_to(new File(dir, s"c$reachid.json").getAbsolutePath, jsonstr)
+//    }
 
     println("Done: Written node updowns.")
 
     // construct cascades for each reachable and then convert it to json
+    println("init")
     Waterfall.init(reachables, upRxns)
     Cascade.init(reachables, upRxns)
     Cascade.set_max_cascade_depth(depth)
@@ -152,11 +153,12 @@ object cascades {
     // These reachables are ordered such that common biosynthesizable molecules are done first.
     val reach: List[Long] = List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
 
+    println("Hi")
     reach.foreach(reachid => {
       val msg = f"id=$reachid%6d\tcount=${counter.getAndIncrement()}%5d\tCACHE: {cascades=${Cascade.cache_nw.stats.hitCount}%4d, pre_rxns=${Cascade.cache_bestpre_rxn.stats.hitCount}%4d, nodeMerger=${Cascade.nodeMerger.size}%5d}"
+      println(msg)
       Cascade.time(msg) {
-        if (Cascade.VERBOSITY > 0)
-          print(f"Reachable ID: $reachid%6d: ")
+        println(f"Reachable ID: $reachid%6d: ")
 
         // constructInformationForReachable modifies global scope variables, so can't run in parallel.
         constructInformationForReachable(reachid, dir)
