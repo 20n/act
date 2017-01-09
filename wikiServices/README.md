@@ -129,7 +129,7 @@ Note that running `rsync` from a `screen` session when copying many files is per
 
 TODO: complete this once the remaining wiki workflow PRs are merged.
 
-#### Making the VM Publicly Accessible ####
+### Making the VM Publicly Accessible ###
 
 The wiki VM we created earlier only has a private IP address, which is fine while for setup.  To make it accessible from outside, you'll need to create and associate a public IP address and change the instance's network security group to one that allows public access on port 80:
 ```
@@ -289,6 +289,8 @@ GraphViz
 iDisplay
 Tabs
 ```
+Note that the `Graphviz` extension depends on `ImageMap`, which is installed by default in recent mediawiki distributions.
+
 
 Now the wiki source is in place, but nginx doesn't know how to serve it yet.  Follow the `site-wiki` installation instructions in `service/README.md` (under the heading "Enabling Reverse-Proxy Endpoints in Nginx").  Once nginx has reloaded its config, you should be able to get to the wiki in a web browser (at `/`), preferably over a tunnel.  Better still, do the *entire* wiki services setup process now, as everything will work by the time the wiki is up and ready to go.
 
@@ -590,7 +592,7 @@ Now we'll update the nginx config file at `/etc/nginx/sites-available/site-wiki`
 
      break;
      # Break required to prevent additional processing by other location blocks.
-     ```
+```
 
 Here's just the text to be added to the `server` config block in `/etc/nginx/sites-available/site-wiki`:
 ```
