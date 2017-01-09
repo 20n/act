@@ -12,6 +12,7 @@ Still TODO:
 ## New Wiki Instance Setup Steps ##
 
 At a high level, setting up a wiki follows these steps:
+
 1.  Create a new Azure VM
 1.  Update `LocalSettings.php`.
 
@@ -81,9 +82,14 @@ This will create a wiki instance **without** a public IP so that you can set it 
 
 ### Update LocalSettings.php ###
 
+// SSH to private host name
+// Add location of .php file
+
 The `reachables-wiki` AMIs in EC2 (TODO: add more info for Azure) contain a full Mediawiki, MySQL, nginx, and web services stack necessary to run a private wiki instance for a single client.  Only a few configuration changes are need to be made to prepare a wiki for client use; most of the work will involve loading data into the wiki--see the section on [Loading Data into the Wiki](#loading-data-into-the-wiki).
 
 #### Set `$wgSecretKey` ####
+
+// E.g., stardust.bioreachables.20n.com -- it does not matter that the name is not mapped yet
 
 An *important manual step* when setting up a new wiki instance is to replace `$wgSecretKey` in `LocalSettings.php`.  Doing so will limit the scope of work that needs to be done should any one wiki instance be compromised by a malicious party.
 
@@ -104,6 +110,8 @@ Note that if you are using SSL to encrypt traffic to the wiki, use `https` as th
 
 ### Set Orders Service Client Key ###
 
+// is client_key => client_keyword
+
 The `/order` service endpoint uses a host-specific key to identify where an order request came from.  You'll need to update the `client_key` parameter in `/etc/wiki_web_services/orders_config.json` to something that represents the client for whom the wiki is being set up (could be a name or a codeword).  Once you've changed this parameter, run:
 ```
 $ sudo /etc/init.d/orders_service restart
@@ -111,6 +119,8 @@ $ sudo /etc/init.d/orders_service restart
 for the config change to take place.
 
 ### Moving Files to the Wiki Host ###
+
+Now, what remains is to move data (generated locally, using [these instructions]() below) to the server, and we'll then use that data to populate the wiki. For example, for the preview wiki, the data is at `NAS/MARK_WILL_DIG_THIS_UP`
 
 Assuming you've followed the [SSH configuration instructions](#ssh-configuration) above, you should be able to move files to Azure VMs using `rsync`.  By default `rsync` will use `ssh` as its transport, and `ssh` will transparently proxy all connections through the bastion.  In general, the command to use is:
 ```
@@ -185,6 +195,9 @@ $ curl -vvv http://52.183.69.103/index.php?title=Main_Page
 
 Now go to Route 53 (in AWS) and create an appropriately named `A` record that points to this public IP.
 
+STOP HERE! You have a wiki now, and it has data in it. If the shortcut instructions above don't work, you can setup the wiki from scratch by following the instructions below.
+
+---------
 
 ## Mediawiki Setup from Scratch ##
 
@@ -401,6 +414,8 @@ Navigate to `http://localhost:8080/index.php?title=Main_Page` in a web browser a
 
 The default linking mechanism used by mediawiki (frustratingly) rewrites URLs to include the fully qualified hostname.  This can make exploration of the wiki over a tunnel challenging.  You can always access a specific page by entering `http://localhost:8080/index.php?title=<Page Name>` in your browser, substituting `<Page Name>` with the name of the page you're trying to reach.
 
+
+// Move sections below to after "STOP HERE". And decrease indentation on these heading by 1. All the way down to "Hosting.."
 
 ### Loading Data into the Wiki ###
 
