@@ -826,8 +826,8 @@ class Cascade(target: Long) {
     }
   }
 
-  def getOrDefault[A](localNode: LocalNode, key: String, default: A = null) : A = {
-    getOrDefault(localNode.node, key, default)
+  implicit def localNodeConverter(localNode: LocalNode): Node = {
+    localNode.node
   }
 
   val allStringPaths: List[String] = allPaths.map(currentPath => {
