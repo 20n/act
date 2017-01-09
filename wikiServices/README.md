@@ -44,7 +44,7 @@ $ brew install azure
 $ brew install jq
 ```
 
-You'll also need to log into Azure using the CLI tools:
+Visit `http://portal.azure.com` in your browser and sign in.  If you can't sign in, stop here and ask Saurabh for credentials. Once you're logged in, run the following commands on your lappy:
 ```
 $ azure login
 # Follow the login instructions, which will involve copying a URL to your browser and entering a code.

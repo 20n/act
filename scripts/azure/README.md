@@ -2,7 +2,7 @@
 
 This collection of scripts and config files can be used to automate the setup of azure VMs.
 
-Get started by running the following commands on your mac:
+Get started by visiting `http://portal.azure.com` in your browser and signing in.  If you can't sign in, stop here and ask Saurabh for credentials. Once you're logged in, run the following commands on your lappy:
 ```Shell
 $ brew install azure-cli
 $ azure login
