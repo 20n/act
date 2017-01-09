@@ -776,7 +776,7 @@ class Cascade(target: Long) {
     }
 
     try {
-      sortedPaths.foreach(Cascade.pathwayCollection.insert)
+//      sortedPaths.foreach(Cascade.pathwayCollection.insert)
     } catch {
       case e: Exception => None
     }
