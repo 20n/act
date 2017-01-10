@@ -9,11 +9,11 @@ import com.act.analysis.proteome.scripts.OddSequencesToProteinPredictionFlow
 import com.act.reachables.Cascade.NodeInformation
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywords, SequenceKeywords}
 import com.fasterxml.jackson.annotation._
+import com.github.benmanes.caffeine.cache.Caffeine
 import com.mongodb.{BasicDBList, BasicDBObject, DB, MongoClient, ServerAddress}
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.logging.log4j.LogManager
 import org.mongojack.JacksonDBCollection
-import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
@@ -24,7 +24,7 @@ import scala.collection.mutable
 object Cascade extends Falls {
   val mongoClient: MongoClient = new MongoClient(new ServerAddress("localhost", 27017))
   val db: DB = mongoClient.getDB("wiki_reachables")
-  var collectionName: String = "pathways_jarvis_dec21"
+  var collectionName: String = "pathways_jarvis_dec21_2"
   def setCollectionName(c: String) {
     collectionName = c
   }

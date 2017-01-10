@@ -18,7 +18,6 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.mongojack.DBCursor;
@@ -46,6 +45,37 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class FreemarkerRenderer {
+
+  public class TableProperties {
+    private String dnaConstructFileName;
+    private String proteinConstructFileName;
+    private String dnaSeqShortName;
+    private DNAOrgECNum dnaSeq;
+
+    public TableProperties(String dnaConstructFileName, String proteinConstructFileName, String dnaSeqShortName, DNAOrgECNum dnaSeq) {
+      this.dnaConstructFileName = dnaConstructFileName;
+      this.proteinConstructFileName = proteinConstructFileName;
+      this.dnaSeq = dnaSeq;
+      this.dnaSeqShortName = dnaSeqShortName;
+    }
+
+    public String getDnaConstructFileName() {
+      return dnaConstructFileName;
+    }
+
+    public String getProteinConstructFileName() {
+      return proteinConstructFileName;
+    }
+
+    public String getDnaSeqShortName() {
+      return dnaSeqShortName;
+    }
+
+    public DNAOrgECNum getDnaSeq() {
+      return dnaSeq;
+    }
+  }
+
   public static final Logger LOGGER = LogManager.getFormatterLogger(FreemarkerRenderer.class);
 
   private static final String OPTION_DB_HOST = "H";
@@ -62,12 +92,14 @@ public class FreemarkerRenderer {
 
   private static final String DEFAULT_HOST = "localhost";
   private static final Integer DEFAULT_PORT = 27017;
-  private static final String DEFAULT_CHEMICALS_DATABASE = "jarvis_2016-12-09";
+  //private static final String DEFAULT_CHEMICALS_DATABASE = "jarvis_2016-12-09";
+  private static final String DEFAULT_CHEMICALS_DATABASE = "validator_profiling_2";
   private static final String DEFAULT_DB_NAME = "wiki_reachables";
   private static final String DEFAULT_REACHABLES_COLLECTION = "reachables_2016-12-26";
   private static final String DEFAULT_SEQUENCES_COLLECTION = "sequences_2016-12-26";
-  private static final String DEFAULT_DNA_COLLECTION = "designs_2016-12-26";
-  private static final String DEFAULT_RENDERING_CACHE = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
+  //private static final String DEFAULT_DNA_COLLECTION = "designs_2016-12-26";
+  private static final String DEFAULT_DNA_COLLECTION = "dna_designs";
+  private static final String DEFAULT_RENDERING_CACHE = "/Volumes/data-level1/data/reachables-explorer-rendering-cache";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class consumes and renders a DB of reachable molecules, pathways, and DNA designs."
@@ -544,7 +576,7 @@ public class FreemarkerRenderer {
 
     String pathwayDocName = String.format("Pathway_%s_%d", sourceDocName, path.getRank());
 
-    List<Triple<String, String, DNAOrgECNum>> designDocsAndSummaries = path.getDnaDesignRef() != null ?
+    List<TableProperties> designDocsAndSummaries = path.getDnaDesignRef() != null ?
         renderSequences(sequenceDestination, pathwayDocName, path.getDnaDesignRef()) : Collections.emptyList();
 
     Pair<Object, String> model = buildPathModel(path, designDocsAndSummaries);
@@ -559,14 +591,14 @@ public class FreemarkerRenderer {
     );
   }
 
-  private List<Triple<String, String, DNAOrgECNum>> renderSequences(File sequenceDestination, String docPrefix, String seqRef) throws IOException {
+  private List<TableProperties> renderSequences(File sequenceDestination, String docPrefix, String seqRef) throws IOException {
     DNADesign designDoc = dnaDesignCollection.findOneById(seqRef);
     if (designDoc == null) {
       LOGGER.error("Could not find dna seq for id %s", seqRef);
       return Collections.emptyList();
     }
 
-    List<Triple<String, String, DNAOrgECNum>> sequenceFilesAndSummaries = new ArrayList<>();
+    List<TableProperties> sequenceFilesAndSummaries = new ArrayList<>();
 
     List<DNAOrgECNum> designs = new ArrayList<>(designDoc.getDnaDesigns());
     Collections.sort(designs, (a, b) -> {
@@ -610,7 +642,69 @@ public class FreemarkerRenderer {
         writer.write("\n");
       }
 
-      sequenceFilesAndSummaries.add(Triple.of(constructFilename, shortVersion, designs.get(i)));
+      String proteinDataFileName = String.format("Protein_%s_seq%d.txt", docPrefix, i + 1);
+      try (FileWriter writer = new FileWriter(new File(proteinDataFileName, constructFilename))) {
+        for (Set<ProteinInformation> proteinSet : designs.get(i).getListOfOrganismAndEcNums()) {
+          String header = ">";
+          String proteinSeq = "";
+          List<String> descriptions = new ArrayList<>();
+          List<String> organisms = new ArrayList<>();
+
+          Boolean isEcNumSet = false;
+          Boolean proteinSeqSet = false;
+
+          for (ProteinInformation proteinInformation : proteinSet) {
+            if (!isEcNumSet && proteinInformation.getEcnum() != null && !proteinInformation.getEcnum().equals("")) {
+              header += proteinInformation.getEcnum();
+              isEcNumSet = true;
+            }
+
+            if (!proteinSeqSet) {
+              proteinSeq = proteinInformation.getProteinSeq();
+              proteinSeqSet = true;
+            }
+
+            if (proteinInformation.getOrganism() != null && !proteinInformation.getOrganism().equals("")) {
+              organisms.add(proteinInformation.getOrganism());
+            }
+
+            if (proteinInformation.getProteinDesc() != null && !proteinInformation.getProteinDesc().equals("")) {
+              descriptions.add(proteinInformation.getProteinDesc());
+            }
+          }
+
+          header += " | [";
+
+          int counter = 0;
+          for (String description : descriptions) {
+            header += description;
+            if (counter < descriptions.size() - 1) {
+              header += ", ";
+            }
+            counter++;
+          }
+
+          header += "] [";
+
+          counter = 0;
+          for (String organism : organisms) {
+            header += organism;
+            if (counter < organisms.size() - 1) {
+              header += ", ";
+            }
+            counter++;
+          }
+
+          header += "]";
+
+          writer.write(header);
+          writer.write("\n");
+          writer.write(proteinSeq);
+          writer.write("\n");
+        }
+      }
+
+      sequenceFilesAndSummaries.add(new TableProperties(constructFilename, proteinDataFileName, shortVersion, designs.get(i)));
     }
 
     return sequenceFilesAndSummaries;
@@ -625,8 +719,8 @@ public class FreemarkerRenderer {
     return inchiKey;
   }
 
-  private Pair<Object, String> buildPathModel(ReactionPath p, List<Triple<String, String, DNAOrgECNum>> designs) throws IOException {
 
+  private Pair<Object, String> buildPathModel(ReactionPath p, List<TableProperties> designs) throws IOException {
     Map<String, Object> model = new HashMap<>();
 
     LinkedList<Object> pathwayItems = new LinkedList<>();
@@ -674,17 +768,19 @@ public class FreemarkerRenderer {
     List<Map<String, Object>> dna = new ArrayList<>();
     int i = 1;
 
-    for (Triple<String, String, DNAOrgECNum> design : designs) {
+    for (TableProperties design : designs) {
       final int num = i; // Sigh, must be final to use in this initialization block.
 
       dna.add(new HashMap<String, Object>() {{
-        put("file", design.getLeft());
-        put("sample", design.getMiddle());
+        put("file", design.getDnaConstructFileName());
+        put("sample", design.getDnaSeqShortName());
         put("num", Integer.valueOf(num).toString());
-        put("org_ec", renderDNADesignMetadata(design.getRight()));
+        put("proteinFile", design.getProteinConstructFileName());
+        put("org_ec", renderDNADesignMetadata(design.getDnaSeq()));
       }});
       i++;
     }
+
     if (dna.size() > 0) {
       model.put("dna", dna);
     }

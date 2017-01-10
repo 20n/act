@@ -11,7 +11,8 @@ import scala.collection.JavaConverters._
 import scala.io.Source
 
 object reachables {
-  val defaultDb = "jarvis_2016-12-09"
+  //val defaultDb = "jarvis_2016-12-09"
+  val defaultDb = "vijay_2017-01-09"
 
   private val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   HELP_FORMATTER.setWidth(100)

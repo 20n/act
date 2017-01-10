@@ -1,7 +1,6 @@
 package org.twentyn.proteintodna;
 
 import act.server.MongoDB;
-import com.act.reachables.ReactionPath;
 import com.act.utils.CLIUtil;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
@@ -9,10 +8,10 @@ import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
+import org.bson.types.ObjectId;
 import org.mongojack.DBCursor;
 import org.mongojack.DBQuery;
 import org.mongojack.JacksonDBCollection;
-import org.mongojack.ObjectId;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -80,12 +79,17 @@ public class FastaGeneratorFromDNADesign {
         JacksonDBCollection.wrap(db.getCollection(outputDnaDeqCollectionName), DNADesign.class, String.class);
 
     DBCursor<DNADesign> cursor = dnaDesignCollection.find(new BasicDBObject(), new BasicDBObject("_id", true));
-
+    List<String> ids = new ArrayList<>();
     while (cursor.hasNext()) {
-      DNADesign dnaDesign = cursor.curr();
+      ids.add(cursor.next().getId());
+    }
 
-      for (DNAOrgECNum design : dnaDesign.getDnaDesigns()) {
-        try (BufferedWriter fastaFile = new BufferedWriter(new FileWriter("/home/vijay/act/reachables/test.txt"))) {
+    for (String id : ids) {
+
+      DNADesign dnaDesign = dnaDesignCollection.findOne(DBQuery.is("_id", new ObjectId(id)));
+
+      try (BufferedWriter fastaFile = new BufferedWriter(new FileWriter("/Users/vijaytramakrishnan/act/reachables/" + id + ".faa"))) {
+        for (DNAOrgECNum design : dnaDesign.getDnaDesigns()) {
           for (Set<ProteinInformation> proteinSet : design.getListOfOrganismAndEcNums()) {
             String header = ">";
             String proteinSeq = "";
@@ -96,7 +100,7 @@ public class FastaGeneratorFromDNADesign {
             Boolean proteinSeqSet = false;
 
             for (ProteinInformation proteinInformation : proteinSet) {
-              if (!isEcNumSet && !proteinInformation.getEcnum().equals("")) {
+              if (!isEcNumSet && proteinInformation.getEcnum() != null && !proteinInformation.getEcnum().equals("")) {
                 header += proteinInformation.getEcnum();
                 isEcNumSet = true;
               }
@@ -106,16 +110,16 @@ public class FastaGeneratorFromDNADesign {
                 proteinSeqSet = true;
               }
 
-              if (!proteinInformation.getOrganism().equals("")) {
+              if (proteinInformation.getOrganism() != null && !proteinInformation.getOrganism().equals("")) {
                 organisms.add(proteinInformation.getOrganism());
               }
 
-              if (!proteinInformation.getProteinDesc().equals("")) {
+              if (proteinInformation.getProteinDesc() != null && !proteinInformation.getProteinDesc().equals("")) {
                 descriptions.add(proteinInformation.getProteinDesc());
               }
             }
 
-            header += "| [";
+            header += " | [";
 
             int counter = 0;
             for (String description : descriptions) {
@@ -145,7 +149,6 @@ public class FastaGeneratorFromDNADesign {
             fastaFile.write("\n");
           }
         }
-        break;
       }
     }
   }
