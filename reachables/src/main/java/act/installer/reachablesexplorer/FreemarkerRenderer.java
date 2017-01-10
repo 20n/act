@@ -672,6 +672,10 @@ public class FreemarkerRenderer {
             }
           }
 
+          if (!isEcNumSet) {
+            header += "EC ?.?.?.?";
+          }
+
           header += " | [";
 
           int counter = 0;
