@@ -14,7 +14,6 @@ import chemaxon.marvin.plugin.PluginException;
 import chemaxon.struc.Molecule;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
-import com.act.biointerpretation.l2expansion.sparkprojectors.utility.ProjectionResult;
 import com.act.utils.CLIUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -72,7 +71,9 @@ public class Loader {
   private static final String DEFAULT_ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
 
   private static final String DEFAULT_REACHABLES_PATH = "/mnt/shared-data/Michael/WikipediaProject/MinimalReachables";
+
   private static final String DEFAULT_PROJECTIONS_PATH = "/mnt/shared-data/Gil/L4N2pubchem/n1_inchis/projectedReactions";
+  private static final Long BASE_ID_PROJECTIONS = 5000000L;
 
   // All of the source data on reactions and chemicals comes from jarvis_2016-12-09
   private static final String DEFAULT_CHEMICALS_DATABASE = "jarvis_2016-12-09";
@@ -135,7 +136,8 @@ public class Loader {
     );
     add(Option.builder(OPTION_PROJECTIONS_SOURCE_DATA)
         .argName("path")
-        .desc("A path to a file containing the output of L3 or L4 projections to read (no default)")
+        .desc(String.format("A path to a file containing the output of L3 or L4 projections to read (default: %s)",
+            DEFAULT_PROJECTIONS_PATH))
         .hasArg()
         .longOpt("projections-dir")
     );
@@ -205,7 +207,7 @@ public class Loader {
     );
     // loader.updateFromReachableDir(reachablesDir);
     if (cl.hasOption(OPTION_PROJECTIONS_SOURCE_DATA)) {
-      loader.updateFromProjectionFile(new File(cl.getOptionValue(OPTION_PROJECTIONS_SOURCE_DATA)));
+      loader.updateFromProjectionFile(new File(cl.getOptionValue(OPTION_PROJECTIONS_SOURCE_DATA, DEFAULT_PROJECTIONS_PATH)));
     }
   }
 
@@ -354,7 +356,10 @@ public class Loader {
 
     Chemical c = db.getChemicalFromInChI(inchi);
 
-    Reachable r = constructReachableFromChemical(c);
+    // For L3/L4 molecules, we won't find them in the DB but still need to construct a Reachable object.
+    // In this case, fall back to `constructReachableFromInchi`
+
+    Reachable r = c == null ? constructReachableFromInchi(inchi) : constructReachableFromChemical(c);
 
     // TODO: this should save the Reachable like constructOrFindReachableById.  Make sure that's safe.
     return r;
@@ -375,6 +380,65 @@ public class Loader {
     return r;
   }
 
+  private Reachable constructReachableFromInchi(String inchi) {
+
+    Molecule mol;
+    try {
+      MoleculeImporter.assertNotFakeInchi(inchi);
+      mol = MoleculeImporter.importMolecule(inchi);
+    } catch (MolFormatException e) {
+      LOGGER.error("Failed to import inchi %s", inchi);
+
+      return null;
+    } catch (MoleculeImporter.FakeInchiException e) {
+      LOGGER.error("Failed to import inchi %s as it is fake.", inchi);
+      return null;
+    }
+
+    String smiles = getSmiles(mol);
+    if (smiles == null) {
+      LOGGER.error("Failed to export molecule %s to smiles", inchi);
+    }
+
+    String inchikey = getInchiKey(mol);
+    if (inchikey == null) {
+      LOGGER.error("Failed to export molecule %s to inchi key", inchi);
+    }
+
+    List<String> names = new ArrayList<>();
+    String pageName = getPageName(mol, names, inchi);
+
+    String renderingFilename = null;
+    Optional<File> rendering = moleculeRenderer.generateRendering(inchi);
+    if (rendering.isPresent()) {
+      renderingFilename = rendering.get().getName();
+    }
+
+    SynonymData synonymData = getSynonymData(inchi);
+
+    PhysiochemicalPropertiesCalculator.Features analysisFeatures = null;
+
+    try {
+      analysisFeatures = calculator.computeFeatures(mol);
+    } catch (PluginException e) {
+      LOGGER.error(String.format("Caught a PluginException when computing physiochemical properties for inchi %s: %s",
+          inchi, e.getMessage()));
+    } catch (IOException e) {
+      LOGGER.error(String.format("Caught an IOException when computing physiochemical properties for inchi %s: %s",
+          inchi, e.getMessage()));
+    }
+    PhysiochemicalProperties physiochemicalProperties = analysisFeatures == null ? null:
+        new PhysiochemicalProperties(analysisFeatures.getpKa(), analysisFeatures.getLogP(), analysisFeatures.getHlb());
+
+    String wordcloudFilename = null;
+    Map<Chemical.REFS, BasicDBObject> xref = null;
+
+    Long uuid = jacksonReachablesCollection.count() + BASE_ID_PROJECTIONS;
+
+    return new Reachable(uuid, pageName, inchi, smiles, inchikey, null, synonymData, renderingFilename,
+        wordcloudFilename, xref, physiochemicalProperties);
+  }
+
   private Reachable constructReachableFromChemical(Chemical c) {
     String inchi = c.getInChI();
 
@@ -390,6 +454,7 @@ public class Loader {
       LOGGER.error("Failed to import inchi %s as it is fake.", inchi);
       return null;
     }
+
 
     List<String> names = c != null ? c.getBrendaNames() : Collections.emptyList();
     Map<Chemical.REFS, BasicDBObject> xref = c != null ? c.getXrefMap() : new HashMap<>();
