@@ -213,6 +213,7 @@ Here's the home stretch: we have a wiki working, but it's empty by default.  You
 All of the content in the wiki will be uploaded using maintenance scripts.  These scripts are easy to use and fairly quick to run.
 
 Here's the appropriate maintenance script to use when loading each type of content, and the sub-directory in which they live in the output of the `FreemarkerRenderer` (with `renderings` being populated with word clouds manually):
+
 Content/directory | Maintenance Script | Extensions | Sub-directory
 ----------------- | ------------------ | ---------- | ---------
 Reachables | `importTextFiles.php` | N/A | Reachables
