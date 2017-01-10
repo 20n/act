@@ -187,7 +187,7 @@ public class FreemarkerRenderer {
   private JacksonDBCollection<DNADesign, String> dnaDesignCollection;
 
   private Map<Long, List<PathwayDoc>> completedPathways = new HashMap<>();
-  private Cache<Long, Reachable> reachablesCache = Caffeine.newBuilder().maximumSize(100).build();
+  private Cache<Long, Reachable> reachablesCache = Caffeine.newBuilder().maximumSize(1000).build();
 
 
   public static void main(String[] args) throws Exception {
@@ -306,22 +306,7 @@ public class FreemarkerRenderer {
       // Hacked cursor munging to only consider targets of pathways.
       ReactionPath thisPath = cascadeCursor.next();
 
-      Reachable r = reachablesCache.getIfPresent(thisPath.getTarget());
-      if (r == null) {
-        /* Temporary fix: create reachables on the fly for pathway targets to ensure we have documents to use when
-         * generating the molecule pages.  This should not be necessary in a world where reachables are all loaded into
-         * the DB before pathways. */
-
-        r = loader.constructOrFindReachableById(thisPath.getTarget());
-        if (r == null) {
-          // This should be impossible, but there was previously a check for this condition so...
-          String msg =
-              String.format("Could not construct reachable %d, because not found in the DB", thisPath.getTarget());
-          LOGGER.error(msg);
-          throw new RuntimeException(msg);
-        }
-        reachablesCache.put(r.getId(), r);
-      }
+      Reachable r = getReachable(thisPath.getTarget());
 
       /* Don't generate any pathway pages if we're instructed to skip pathways.  We still have to make sure the
        * Reachable objects are constructed, however, so allow the loop to progress to this point before continuing. */
@@ -377,6 +362,26 @@ public class FreemarkerRenderer {
     }
 
     LOGGER.info("Page generation complete");
+  }
+
+  private Reachable getReachable(Long id) {
+    Reachable r = reachablesCache.getIfPresent(id);
+    if (r == null) {
+        /* Temporary fix: create reachables on the fly for pathway targets to ensure we have documents to use when
+         * generating the molecule pages.  This should not be necessary in a world where reachables are all loaded into
+         * the DB before pathways. */
+
+      r = loader.constructOrFindReachableById(id);
+      if (r == null) {
+        // This should be impossible, but there was previously a check for this condition so...
+        String msg =
+            String.format("Could not construct reachable %d, because not found in the DB", id);
+        LOGGER.error(msg);
+        throw new RuntimeException(msg);
+      }
+      reachablesCache.put(r.getId(), r);
+    }
+    return r;
   }
 
   private Object buildReachableModel(Reachable r, List<PathwayDoc> pathwayDocs) {
@@ -550,7 +555,7 @@ public class FreemarkerRenderer {
     List<Triple<String, String, DNAOrgECNum>> designDocsAndSummaries = path.getDnaDesignRef() != null ?
         renderSequences(sequenceDestination, pathwayDocName, path.getDnaDesignRef()) : Collections.emptyList();
 
-    Pair<Object, String> model = buildPathModel(path, target, designDocsAndSummaries);
+    Pair<Object, String> model = buildPathModel(path, designDocsAndSummaries);
     if (model != null) {
       pathwayTemplate.process(model.getLeft(), new FileWriter(new File(pathDestination, pathwayDocName)));
     }
@@ -628,7 +633,7 @@ public class FreemarkerRenderer {
     return inchiKey;
   }
 
-  private Pair<Object, String> buildPathModel(ReactionPath p, Reachable target, List<Triple<String, String, DNAOrgECNum>> designs) throws IOException {
+  private Pair<Object, String> buildPathModel(ReactionPath p, List<Triple<String, String, DNAOrgECNum>> designs) throws IOException {
 
     Map<String, Object> model = new HashMap<>();
 
@@ -651,20 +656,21 @@ public class FreemarkerRenderer {
         Collections.sort(organisms);
         nodeModel.put("organisms", organisms);
       } else {
-        if (target == null) {
+        Reachable r = getReachable(i.getId());
+        if (r == null) {
           LOGGER.error("Unable to locate pathway chemical %d in reachables db", i.getId());
           nodeModel.put("name", "(unknown)");
         } else {
-          nodeModel.put("link", target.getInchiKey());
+          nodeModel.put("link", r.getInchiKey());
           // TODO: we really need a way of picking a good name for each molecule.
           // If the page name is the InChI, we reduce it to the formula for the purpose of pathway visualisation.
-          String name = target.getPageName().startsWith("InChI") ? target.getPageName().split("/")[1] : target.getPageName();
+          String name = r.getPageName().startsWith("InChI") ? r.getPageName().split("/")[1] : r.getPageName();
           nodeModel.put("name", name);
           chemicalNames.add(name);
-          if (target.getStructureFilename() != null) {
-            nodeModel.put("structureRendering", target.getStructureFilename());
+          if (r.getStructureFilename() != null) {
+            nodeModel.put("structureRendering", r.getStructureFilename());
           } else {
-            LOGGER.warn("No structure filename for %s", target.getPageName());
+            LOGGER.warn("No structure filename for %s", r.getPageName());
           }
         }
       }
