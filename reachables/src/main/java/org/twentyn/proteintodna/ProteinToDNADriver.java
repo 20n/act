@@ -41,7 +41,7 @@ public class ProteinToDNADriver {
   private static final String DEFAULT_INPUT_DB_NAME = "jarvis_2016-12-09";
   public static final String DEFAULT_INPUT_PATHWAY_COLLECTION_NAME = "pathways_jarvis_dec21";
   public static final String DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME = "pathways_jarvis_dec21_2";
-  public static final String DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME = "dna_designs";
+  public static final String DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME = "dna_designs_2016-12-26_2";
 
   private static final String OPTION_DB_HOST = "H";
   private static final String OPTION_DB_PORT = "p";
