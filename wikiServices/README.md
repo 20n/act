@@ -3,11 +3,16 @@
 This directory contains source and config files for web services that support our mediawiki installation.  These should only be enabled on **private** wiki installations, not on the public preview wiki.  Private wikis should be created by launching new instances of existing wiki AMIs (in EC2).  If complete installation instructions are required, see `service/README.md`.  Please read that document for additional information about resource placement.
 
 Still TODO:
-* Authentication, basic or certificate based
 * Serving multiple host names per instance, with proper URL hostname rewriting in nginx
 * Monitoring
 * Backups/disaster recovery
 * Anything but trivial ordering capabilities (we just send an email for now)
+
+## Wiki Content Generation ##
+
+If you need fresh wiki content generated prior to loading, start this process in the background while you set up a new VM--it will likely take longer than the VM setup process.
+
+TODO: complete this once the remaining wiki workflow PRs are merged.
 
 ## New Wiki Instance Setup Steps ##
 
@@ -15,6 +20,10 @@ At a high level, setting up a wiki follows these steps:
 
 1.  Create a new Azure VM
 1.  Update `LocalSettings.php`.
+1.  Update `orders_config.json` and restart the orders service.
+1.  Load content into the wiki.
+1.  Set basic authentication credentials.
+1.  Enable public access to the wiki.
 
 ### Create an Azure VM Instance ###
 
@@ -78,18 +87,47 @@ $ n=1 # Set a host number or designator accordingly.
 $ ./spawn_vm reachables_wiki twentyn-azure-west-us-2 private-${n}-wiki-west2
 ```
 
-This will create a wiki instance **without** a public IP so that you can set it up without it being exposed to the public Internet.  We'll need to make some modifications before exposing it to the public Internet.
+This will create a wiki instance **without** a public IP so that you can set it up without it being exposed to the public Internet.  We'll need to make some modifications before exposing it to the public Internet, but we'll do that after the wiki is ready to go.
+
+### SSH to Your New VM ###
+
+To make the remaining modifications to your new wiki VM, you'll need to `ssh` to it.  If you followed the [SSH configuration instructions](#ssh-configuration) above, `ssh` will automatically proxy your connections through the appropriate Azure bastion (the bastions are the only hosts who serve `ssh` traffic from the public Internet).  Connect to your host like this:
+```
+$ n=1
+$ ssh private-${n}-wiki-west2
+```
+
+You may have to specify a user if your server username doesn't match your laptop username (the name used on the VMs is the same username on our office servers).  If this is the case, add a `Username <server username>` directive to the `Host *-wiki-west2` block in your `~/.ssh/config` file.
+
+If this is your first time connecting to *any* wiki host, you'll be asked for host key confirmation *twice*--this is expected, and you should answer "yes" both times.  If you've recreated a wiki VM with a name that's been used before, `ssh` will complain loudly about mismatching host keys.  In this happens, either edit your `~/.ssh/known_hosts` file manually to remove the previous entry for the problematic host, or follow the instructions in the error message to remedy the error.
+
+Note that ignoring host key warnings is slightly sketchy, but it's really just part of the job of creating/destroying/recreating VMs in a virtualized hosting environment.  The fact that all of our VMs only allow public-key-based `ssh` authentication reduces the likelihood of someone compromising our hosts in a way that the keys could be replaced (Azure DNS security notwithstanding).
+
+### Set an Nginx Password ###
+
+Assuming you have SSL enabled, you'll want to protect the wiki with a username and password.  Full instructions are [in this section](#addingupdating-a-password), but you can just run this command:
+```
+$ sudo htpasswd -c /etc/nginx/htpasswd <username>
+```
+and input a password.  This will wipe out the existing username and password and replace it with whatever you specify--it will be the *only* username/password combination that will work.
 
 ### Update LocalSettings.php ###
 
-// SSH to private host name
-// Add location of .php file
+The `reachables-wiki` Azure VM images and EC2 AMIs contain a full Mediawiki, MySQL, nginx, and web services stack necessary to run a private wiki instance for a single client.  Only a few configuration changes are need to be made to prepare a wiki for client use; most of the work will involve loading data into the wiki--see the section on [Loading Data into the Wiki](#loading-data-into-the-wiki).
 
-The `reachables-wiki` AMIs in EC2 (TODO: add more info for Azure) contain a full Mediawiki, MySQL, nginx, and web services stack necessary to run a private wiki instance for a single client.  Only a few configuration changes are need to be made to prepare a wiki for client use; most of the work will involve loading data into the wiki--see the section on [Loading Data into the Wiki](#loading-data-into-the-wiki).
+The mediawiki configuration file that we'll need to change lives here:
+```
+/var/www/mediawiki/LocalSettings.php
+```
+This is the *only* PHP file you should need to change as part of your VM instance configuration--everything else has already be configured/altered as necessary.
+
+Edit this file with:
+```
+$ sudo vim /var/www/mediawiki/LocalSettings.php
+```
+(or use the editor of your choice).  Note that `LocalSettings.php` should be owned by `www-data`, so don't copy over this file without changing its ownership as well (editing will not change its ownership).
 
 #### Set `$wgSecretKey` ####
-
-// E.g., stardust.bioreachables.20n.com -- it does not matter that the name is not mapped yet
 
 An *important manual step* when setting up a new wiki instance is to replace `$wgSecretKey` in `LocalSettings.php`.  Doing so will limit the scope of work that needs to be done should any one wiki instance be compromised by a malicious party.
 
@@ -104,16 +142,16 @@ The MySQL credentials for each wiki may be left at their default values.  While 
 
 #### Set `$wgServer` ####
 
-Another *important manual step* is to set `$wgServer` to the appropriate base URL for all wiki links.  Once a DNS name has been assigned to a wiki server, update `$wgServer` in `LocalSettings.php` to reference that name.  Mediawiki has a tendency to rewrite the current URL with its canonical hostname, which may result in unexpected connection failures if the hostname is not updated before clients access the wiki.
+Another *important manual step* is to set `$wgServer` to the appropriate base URL for all wiki links.  Update `$wgServer` in `LocalSettings.php` to reference whatever name you intend to assign to this VM in DNS.  *You need not assign the DNS name before you set this variable*: this is what mediawiki will use for its own URLs, and will be used even if you access the host via some other name or IP address.  Mediawiki has a tendency to rewrite the current URL with its canonical hostname, which may result in unexpected connection failures if the hostname is not updated before clients access the wiki.
 
-Note that if you are using SSL to encrypt traffic to the wiki, use `https` as the protocol for `$wgServer`.  This will ensure all URL rewrites force secure HTTP.
+Note that if you are using SSL to encrypt traffic to the wiki, use `https` as the protocol for `$wgServer`.  This will ensure all URL rewrites force secure HTTP (though nginx should already be doing this if SSL is configured correctly).
 
 ### Set Orders Service Client Key ###
 
-// is client_key => client_keyword
-
-The `/order` service endpoint uses a host-specific key to identify where an order request came from.  You'll need to update the `client_key` parameter in `/etc/wiki_web_services/orders_config.json` to something that represents the client for whom the wiki is being set up (could be a name or a codeword).  Once you've changed this parameter, run:
+The `/order` service endpoint uses a host-specific key to identify where an order request came from.  You'll need to update the `client_keyword` parameter in `/etc/wiki_web_services/orders_config.json` to something that represents the client for whom the wiki is being set up (could be a name or a codeword).  Here are the commands you'll run:
 ```
+$ sudo vim /etc/wiki_web_services/orders_config.json
+# Make your edits.  Then restart the service.
 $ sudo /etc/init.d/orders_service restart
 ```
 for the config change to take place.
@@ -135,15 +173,98 @@ This will copy files into your home directory on the VM.  The options used here 
 
 Note that running `rsync` from a `screen` session when copying many files is perilous: once you disconnect from `screen`, `rsync` and `ssh` will no longer have access to your `ssh agent`, and so will be unable to create new connections to the remote host.  Moving single large files (like `tar` files) is fine in screen, however.
 
-### Page Generation and Loading Workflow ###
+### Create, upload, and Install a Reachables ###
 
-TODO: complete this once the remaining wiki workflow PRs are merged.
+The substructure search and orders services require a static TSV of reachable molecules in order to do their jobs.  This needs to be exported from the *same reachables collection* as was used to generate the wiki pages (to be in sync) using a class in the `reachables` project and installed on the wiki host.  There's some documentation in the [service README](./service#export-a-list-of-reachables), but here's a quick set of commands to run.
+
+```
+# Run this command on the server where the MongoDB instance with the Reachables collection lives.
+$ sbt 'runMain act.installer.reachablesexplorer.WikiWebServicesExporter -c <reachables collection> -o reachables.out'
+# Copy the output file to the wiki host.
+$ n=1
+$ rsync -azP reachables.out private-${n}-wiki-west2:
+# Connect to the host for the next commands.
+$ ssh private-${n}-wiki-west2
+
+# Run these commands on the remote host.
+$ Put the new reachables file in place.
+$ sudo mv reachables.out /etc/wiki_web_services/reachables
+# Restart the web services to load the new list of molecules.
+$ sudo /etc/init.d/substructure_search restart
+$ sudo /etc/init.d/orders_service restart
+```
+
+### Loading Data into the Wiki ###
+
+Here's the home stretch: we have a wiki working, but it's empty by default.  You'll need to load a bunch of data into it for it to be useful.  If you started generating content at the beginning of these steps, you'll probably need to wait a bit before it's all ready.  If you already have content, upload it with `rsync` and continue on.
+
+All of the content in the wiki will be uploaded using maintenance scripts.  These scripts are easy to use and fairly quick to run.
+
+Here's the appropriate maintenance script to use when loading each type of content:
+Content/directory | Maintenance Script | Extensions
+----------------- | ------------------ | ---------------
+Reachables | `importTextFiles.php` | N/A
+Pathways | `importTextFiles.php` | N/A
+DNA Designs | `importImages.php` | txt
+Renderings/word clouds | `importImages.php` | png
+
+### Loading Images ###
+
+To load a directory of PNGs into the wiki, use this command:
+```
+$ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions png <directory of images>
+```
+
+Replace `png` with a different image type/extension if you need to upload other kinds of images.
+
+#### Loading Page Text ####
+
+To load a directory of only pages into the wiki (no other files, please), use this command:
+```
+$ find <directory of page text files> -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
+```
+
+The Tabs extension we rely on doesn't automatically render the tab assets when using the maintenance script, so we have to force mediawiki to purge its cache and rebuild the page.  We can do this via the `api.php` endpoint:
+```shell
+for i in $(ls <directory of pages>); do
+  echo $i;
+  curl -vvv -X POST "http://localhost/api.php?action=purge&titles=${i}&format=json";
+done
+```
+
+You can redirect the output of `curl` to `/dev/null` if you want, but it's good to ensure that some of the requests are working first.
+
+Note that this must be done on the wiki host itself: public access `api.php` is blocked to all traffic sources except `localhost`.
+
+#### Example: Loading the Wiki Front-Matter ####
+
+There is a directory in this repository called `wiki_front_matter` that contains the main page and assets for our wiki.  Let's install it!
+
+```
+# Upload the images.
+$ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions png wiki_front_matter/images
+# Disregard any warnings like `PHP Warning:  mkdir(): No such file or directory in /var/www/mediawiki/extensions/GraphViz/GraphViz_body.php on line 1786`.
+# One of the images is a JPEG.
+$ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions jpg wiki_front_matter/images
+# Upload all the pages.
+$ find wiki_front_matter/pages -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
+# Ensure they're re-rendered.  Don't use find, as we just want the page names.
+for i in $(ls wiki_front_matter/pages); do
+  echo $i;
+  curl -vvv -X POST "http://localhost/api.php?action=purge&titles=${i}&format=json";
+done
+```
+
+The front page should now contain our usual intro page and images.  The `All_Chemicals` list is empty, but can be populated and re-uploaded in the same way.
+
+To edit the side bar content (i.e. to remove `Random Page` and `Recent Changes`), navigate to `/index.php?title=MediaWiki:Sidebar` and edit the source.  Use http://preview.bioreachables.20n.com/index.php?title=MediaWiki:Sidebar as an example of this.
+
 
 ### Making the VM Publicly Accessible ###
 
 The wiki VM we created earlier only has a private IP address, which is fine while for setup.  To make it accessible from outside, you'll need to create and associate a public IP address and change the instance's network security group to one that allows public access on port 80:
 ```
-# Pick a host number.
+# Pick your host number.
 $ n=1
 
 $ azure network public-ip create --allocation-method Static --name private-${n}-wiki-west2-public-ip --resource-group twentyn-azure-west-us-2 --idle-timeout 4 --location westus2
@@ -195,7 +316,11 @@ $ curl -vvv http://52.183.69.103/index.php?title=Main_Page
 
 Now go to Route 53 (in AWS) and create an appropriately named `A` record that points to this public IP.
 
-STOP HERE! You have a wiki now, and it has data in it. If the shortcut instructions above don't work, you can setup the wiki from scratch by following the instructions below.
+### Done! ###
+
+If things are working, *STOP HERE*! You have a wiki now, and it has data in it. If the shortcut instructions above don't work, you can setup the wiki from scratch by following the instructions below.  In all likelihood, you should not have to proceed farther than this.
+
+:end: :hand: :stop_sign: :stop_button:
 
 ---------
 
@@ -413,63 +538,6 @@ Navigate to `http://localhost:8080/index.php?title=Main_Page` in a web browser a
 #### Exploring the Wiki Via a Tunnel ####
 
 The default linking mechanism used by mediawiki (frustratingly) rewrites URLs to include the fully qualified hostname.  This can make exploration of the wiki over a tunnel challenging.  You can always access a specific page by entering `http://localhost:8080/index.php?title=<Page Name>` in your browser, substituting `<Page Name>` with the name of the page you're trying to reach.
-
-
-// Move sections below to after "STOP HERE". And decrease indentation on these heading by 1. All the way down to "Hosting.."
-
-### Loading Data into the Wiki ###
-
-All of the content in the wiki will be uploaded using maintenance scripts.  These scripts are easy to use and fairly quick to run.
-
-#### Loading Images ####
-
-To load a directory of PNGs into the wiki, use this command:
-```
-$ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions png <directory of images>
-```
-
-Replace `png` with a different image type/extension if you need to upload other kinds of images.
-
-
-#### Loading Page Text ####
-
-To load a directory of only pages into the wiki (no other files, please), use this command:
-```
-$ find <directory of page text files> -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
-```
-
-The Tabs extension we rely on doesn't automatically render the tab assets when using the maintenance script, so we have to force mediawiki to purge its cache and rebuild the page.  We can do this via the `api.php` endpoint:
-```shell
-for i in $(ls <directory of pages>); do
-  echo $i;
-  curl -vvv -X POST "http://localhost/api.php?action=purge&titles=${i}&format=json";
-done
-```
-
-Note that this must be done on the wiki host itself: public access `api.php` is blocked to all traffic sources except `localhost`.
-
-#### Example: Loading the Wiki Front-Matter ####
-
-There is a directory in this repository called `wiki_front_matter` that contains the main page and assets for our wiki.  Let's install it!
-
-```
-# Upload the images.
-$ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions png wiki_front_matter/images
-# Disregard any warnings like `PHP Warning:  mkdir(): No such file or directory in /var/www/mediawiki/extensions/GraphViz/GraphViz_body.php on line 1786`.
-# One of the images is a JPEG.
-$ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions jpg wiki_front_matter/images
-# Upload all the pages.
-$ find wiki_front_matter/pages -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
-# Ensure they're re-rendered.  Don't use find, as we just want the page names.
-for i in $(ls wiki_front_matter/pages); do
-  echo $i;
-  curl -vvv -X POST "http://localhost/api.php?action=purge&titles=${i}&format=json";
-done
-```
-
-The front page should now contain our usual intro page and images.  The `All_Chemicals` list is empty, but can be populated and re-uploaded in the same way.
-
-To edit the side bar content (i.e. to remove `Random Page` and `Recent Changes`), navigate to `/index.php?title=MediaWiki:Sidebar` and edit the source.  Use http://preview.bioreachables.20n.com/index.php?title=MediaWiki:Sidebar as an example of this.
 
 ## Hosting In Azure ##
 
