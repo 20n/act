@@ -52,8 +52,8 @@
  | ${design.num}
  | [[:File:${design.file}|...${design.sample}...]]
  | <#list design.org_ec as protein>Protein ${protein?counter}: ${protein}<br></#list>
-     </#list>
  | [[:File:${design.proteinFile}| Protein Fasta File ${design.num}]]
+     </#list>
  |}
 
 <#else>

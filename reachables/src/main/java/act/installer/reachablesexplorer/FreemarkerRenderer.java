@@ -642,7 +642,7 @@ public class FreemarkerRenderer {
       }
 
       String proteinDataFileName = String.format("Protein_%s_seq%d.txt", docPrefix, i + 1);
-      try (FileWriter writer = new FileWriter(new File(proteinDataFileName, constructFilename))) {
+      try (FileWriter writer = new FileWriter(new File(sequenceDestination, proteinDataFileName))) {
         for (Set<ProteinInformation> proteinSet : designs.get(i).getListOfOrganismAndEcNums()) {
           String header = ">";
           String proteinSeq = "";
