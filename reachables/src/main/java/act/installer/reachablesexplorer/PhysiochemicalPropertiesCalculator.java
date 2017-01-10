@@ -12,7 +12,6 @@ import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.coode.owlapi.latex.LatexOWLObjectRenderer;
 
 import java.io.IOException;
 
