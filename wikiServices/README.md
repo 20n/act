@@ -158,7 +158,7 @@ for the config change to take place.
 
 ### Moving Files to the Wiki Host ###
 
-Now, what remains is to move data (generated locally, using [these instructions]() below) to the server, and we'll then use that data to populate the wiki. For example, for the preview wiki, the data is at `NAS/MARK_WILL_DIG_THIS_UP`
+Now, what remains is to move data (generated locally, using [the instructions above](#wiki-content-generation)) to the server, and we'll then use that data to populate the wiki. For example, for the preview wiki, the data lives on the NAS at `/shared-data/Mark/demo_wiki_2016-12-21`.
 
 Assuming you've followed the [SSH configuration instructions](#ssh-configuration) above, you should be able to move files to Azure VMs using `rsync`.  By default `rsync` will use `ssh` as its transport, and `ssh` will transparently proxy all connections through the bastion.  In general, the command to use is:
 ```
@@ -171,9 +171,21 @@ This will copy files into your home directory on the VM.  The options used here 
 -P    Report per-file transfer progress.  This gives you an idea how long the transfer will take.
 ```
 
+**Important**: when copying directories to your home dir on the wiki VM, **do not include a trailing slash!**  That will likely result in your home directory being made globally writeable, which **will lock you out of the VM.**  Here's an example:
+```
+# This is fine:
+$ rsync -azP my_local_directory private-${n}-wiki-west2:
+
+# This is bad, do not do this:
+$ rsync -azP my_local_directory/ private-${n}-wiki-west2:
+
+# This is also fine--note that the destination is explicitly specified:
+$ rsync -azP my_local_directory/ private-1-wiki-west2:my_local_directory
+```
+
 Note that running `rsync` from a `screen` session when copying many files is perilous: once you disconnect from `screen`, `rsync` and `ssh` will no longer have access to your `ssh agent`, and so will be unable to create new connections to the remote host.  Moving single large files (like `tar` files) is fine in screen, however.
 
-### Create, upload, and Install a Reachables ###
+### Create, Upload, and Install a Reachables List ###
 
 The substructure search and orders services require a static TSV of reachable molecules in order to do their jobs.  This needs to be exported from the *same reachables collection* as was used to generate the wiki pages (to be in sync) using a class in the `reachables` project and installed on the wiki host.  There's some documentation in the [service README](./service#export-a-list-of-reachables), but here's a quick set of commands to run.
 
@@ -200,13 +212,15 @@ Here's the home stretch: we have a wiki working, but it's empty by default.  You
 
 All of the content in the wiki will be uploaded using maintenance scripts.  These scripts are easy to use and fairly quick to run.
 
-Here's the appropriate maintenance script to use when loading each type of content:
-Content/directory | Maintenance Script | Extensions
------------------ | ------------------ | ---------------
-Reachables | `importTextFiles.php` | N/A
-Pathways | `importTextFiles.php` | N/A
-DNA Designs | `importImages.php` | txt
-Renderings/word clouds | `importImages.php` | png
+Here's the appropriate maintenance script to use when loading each type of content, and the sub-directory in which they live in the output of the `FreemarkerRenderer` (with `renderings` being populated with word clouds manually):
+Content/directory | Maintenance Script | Extensions | Sub-directory
+----------------- | ------------------ | ---------- | ---------
+Reachables | `importTextFiles.php` | N/A | Reachables
+Pathways | `importTextFiles.php` | N/A | Pathways
+DNA Designs | `importImages.php` | txt | Sequences
+Renderings/word clouds | `importImages.php` | png | renderings
+
+Check out the demo wiki content on the NAS at `/shared-data/Mark/demo_wiki_2016-12-21` for an example of these files.
 
 ### Loading Images ###
 
