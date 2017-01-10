@@ -713,7 +713,7 @@ public class Loader {
 
   public void updateFromProjectionFile(File file) throws IOException {
     LOGGER.info("Processing projection file: %s", file.getName());
-    List<ProjectionResult> projectionResults = Arrays.asList(MAPPER.readValue(file, ProjectionResult[].class));
+    List<ReachableProjectionResult> projectionResults = Arrays.asList(MAPPER.readValue(file, ReachableProjectionResult[].class));
     List<ReachablesProjectionUpdate> projectionUpdates = projectionResults.stream().map(ReachablesProjectionUpdate::new).collect(Collectors.toList());
     projectionUpdates.forEach(this::updateFromProjection);
   }
