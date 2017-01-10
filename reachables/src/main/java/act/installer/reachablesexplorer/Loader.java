@@ -14,6 +14,7 @@ import chemaxon.marvin.plugin.PluginException;
 import chemaxon.struc.Molecule;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
+import com.act.biointerpretation.l2expansion.sparkprojectors.utility.ProjectionResult;
 import com.act.utils.CLIUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -51,6 +52,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 
 public class Loader {
   private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
@@ -711,8 +713,8 @@ public class Loader {
 
   public void updateFromProjectionFile(File file) throws IOException {
     LOGGER.info("Processing projection file: %s", file.getName());
-    ReachablesProjectionUpdate[] projectionUpdates = MAPPER.readValue(file, ReachablesProjectionUpdate[].class);
-    List<ReachablesProjectionUpdate> projections = Arrays.asList(projectionUpdates);
-    projections.forEach(this::updateFromProjection);
+    List<ProjectionResult> projectionResults = Arrays.asList(MAPPER.readValue(file, ProjectionResult[].class));
+    List<ReachablesProjectionUpdate> projectionUpdates = projectionResults.stream().map(ReachablesProjectionUpdate::new).collect(Collectors.toList());
+    projectionUpdates.forEach(this::updateFromProjection);
   }
 }
