@@ -292,9 +292,14 @@ public class ProteinToDNADriver {
         }
 
         DNADesign dnaDesignSeq = new DNADesign(dnaDesigns);
-        WriteResult<DNADesign, String> result = dnaDesignCollection.insert(dnaDesignSeq);
-        String id = result.getSavedId();
-        reactionPath.setDnaDesignRef(id);
+        try {
+          WriteResult<DNADesign, String> result = dnaDesignCollection.insert(dnaDesignSeq);
+          String id = result.getSavedId();
+          reactionPath.setDnaDesignRef(id);
+        } catch (Exception e) {
+          LOGGER.error(String.format("Exception caught will inserting results: %s", e.getMessage()));
+        }
+
       }
 
       outputPathwayCollection.insert(reactionPath);
