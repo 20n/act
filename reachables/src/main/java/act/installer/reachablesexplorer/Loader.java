@@ -290,7 +290,7 @@ public class Loader {
   }
 
   // TODO Move these getters to a different place/divide up concerns better?
-  private String getSmiles(Molecule mol) {
+  private static String getSmiles(Molecule mol) {
     try {
       return MoleculeExporter.exportAsSmiles(mol);
     } catch (MolExportException e) {
@@ -301,7 +301,7 @@ public class Loader {
   /**
    * Get inchi key from molecule
    */
-  private String getInchiKey(Molecule mol) {
+  private static String getInchiKey(Molecule mol) {
     try {
       String inchikey = MoleculeExporter.exportAsInchiKey(mol);
       return inchikey.replaceAll("InChIKey=", "");
@@ -310,15 +310,8 @@ public class Loader {
     }
   }
 
-  /**
-   * Heuristic to choose the best page name
-   */
-  private String getPageName(Molecule mol, List<String> brendaNames, String inchi) {
-    // If we have some brenda names, get the first one. This is equivalent to Chemical.getFirstName()
-    if (!brendaNames.isEmpty()) {
-      return brendaNames.get(0);
-    }
-    // Otherwise, generate a Chemaxon name
+  private static String getMoleculeName(Molecule mol, String inchi) {
+    // Generate a Chemaxon name
     String chemaxonTraditionalName;
     try {
       chemaxonTraditionalName = MolExporter.exportToFormat(mol, CHEMAXON_TRADITIONAL_NAME_FORMAT);
@@ -358,7 +351,6 @@ public class Loader {
 
     // For L3/L4 molecules, we won't find them in the DB but still need to construct a Reachable object.
     // In this case, fall back to `constructReachableFromInchi`
-
     Reachable r = c == null ? constructReachableFromInchi(inchi) : constructReachableFromChemical(c);
 
     // TODO: this should save the Reachable like constructOrFindReachableById.  Make sure that's safe.
@@ -405,8 +397,7 @@ public class Loader {
       LOGGER.error("Failed to export molecule %s to inchi key", inchi);
     }
 
-    List<String> names = new ArrayList<>();
-    String pageName = getPageName(mol, names, inchi);
+    String pageName = getMoleculeName(mol, inchi);
 
     String renderingFilename = null;
     Optional<File> rendering = moleculeRenderer.generateRendering(inchi);
@@ -429,13 +420,13 @@ public class Loader {
     }
     PhysiochemicalProperties physiochemicalProperties = analysisFeatures == null ? null:
         new PhysiochemicalProperties(analysisFeatures.getpKa(), analysisFeatures.getLogP(), analysisFeatures.getHlb());
+    
+    Long uuid = jacksonReachablesCollection.count() + BASE_ID_PROJECTIONS;
 
     String wordcloudFilename = null;
     Map<Chemical.REFS, BasicDBObject> xref = null;
-
-    Long uuid = jacksonReachablesCollection.count() + BASE_ID_PROJECTIONS;
-
-    return new Reachable(uuid, pageName, inchi, smiles, inchikey, null, synonymData, renderingFilename,
+    List<String> names = new ArrayList<>();
+    return new Reachable(uuid, pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
         wordcloudFilename, xref, physiochemicalProperties);
   }
 
@@ -455,9 +446,10 @@ public class Loader {
       return null;
     }
 
+    List<String> names = c.getBrendaNames();
+    String pageName = names.isEmpty() ? getMoleculeName(mol, inchi) : names.get(0);
 
-    List<String> names = c != null ? c.getBrendaNames() : Collections.emptyList();
-    Map<Chemical.REFS, BasicDBObject> xref = c != null ? c.getXrefMap() : new HashMap<>();
+    Map<Chemical.REFS, BasicDBObject> xref = c.getXrefMap();
 
     String smiles = getSmiles(mol);
     if (smiles == null) {
@@ -468,8 +460,6 @@ public class Loader {
     if (inchikey == null) {
       LOGGER.error("Failed to export molecule %s to inchi key", inchi);
     }
-
-    String pageName = getPageName(mol, names, inchi);
 
     String renderingFilename = null;
     Optional<File> rendering = moleculeRenderer.generateRendering(inchi);
@@ -482,7 +472,6 @@ public class Loader {
     if (wordcloud.exists()) {
       wordcloudFilename = wordcloud.getName();
     }
-
 
     SynonymData synonymData = getSynonymData(inchi);
 
