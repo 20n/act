@@ -1,20 +1,16 @@
-## Mediawiki Web Services ##
+## Introduction: Mediawiki Web Services ##
 
-This directory contains source and config files for web services that support our mediawiki installation.  These should only be enabled on **private** wiki installations, not on the public preview wiki.  Private wikis should be created by launching new instances of existing wiki AMIs (in EC2).  If complete installation instructions are required, see `service/README.md`.  Please read that document for additional information about resource placement.
+This directory contains source and config files for web services that support our mediawiki installation.  These should only be enabled on **private** wiki installations, not on the public preview wiki.  Below are the instructions: Step 1) create wiki data (or use preview wiki data on NAS), Step 2) setup a wiki VM and upload data to it.
 
-Still TODO:
-* Serving multiple host names per instance, with proper URL hostname rewriting in nginx
-* Monitoring
-* Backups/disaster recovery
-* Anything but trivial ordering capabilities (we just send an email for now)
+// Revise this statement: Private wikis should be created by launching new instances of existing wiki AMIs (in EC2).  If complete installation instructions are required, see `service/README.md`.  Please read that document for additional information about resource placement.
 
-## Wiki Content Generation ##
+## 1. Wiki Content Generation ##
 
 If you need fresh wiki content generated prior to loading, start this process in the background while you set up a new VM--it will likely take longer than the VM setup process.
 
 TODO: complete this once the remaining wiki workflow PRs are merged.
 
-## New Wiki Instance Setup Steps ##
+## 2. New Wiki Instance Setup Steps ##
 
 At a high level, setting up a wiki follows these steps:
 
@@ -229,8 +225,7 @@ To load a directory of PNGs into the wiki, use this command:
 ```
 $ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions png <directory of images>
 ```
-
-Replace `png` with a different image type/extension if you need to upload other kinds of images.
+E.g., if you are using the preview data from the NAS `<directory of images>` =  `demo_wiki_2016-12-21/renderings/`. Replace `png` with a different image type/extension if you need to upload other kinds of images.
 
 #### Loading Page Text ####
 
@@ -238,14 +233,14 @@ To load a directory of only pages into the wiki (no other files, please), use th
 ```
 $ find <directory of page text files> -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
 ```
+E.g., if you are using the preview data from the NAS `<directory of page text files>` = `demo_wiki_2016-12-21/{Paths/,Reachables/,Sequences/}`, i.e., you run the command 3 times.
 
 The Tabs extension we rely on doesn't automatically render the tab assets when using the maintenance script, so we have to force mediawiki to purge its cache and rebuild the page.  We can do this via the `api.php` endpoint:
 ```shell
-for i in $(ls <directory of pages>); do
-  echo $i;
-  curl -vvv -X POST "http://localhost/api.php?action=purge&titles=${i}&format=json";
-done
+$ function rebuild() { for i in $(ls $1); do echo $i; curl -vvv -X POST "http://localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP"; done; }
+$ rebuild <directory of page text files>
 ```
+E.g., if you are using the preview data from the NAS then rerun `rebuild` with  each of `demo_wiki_2016-12-21/{Paths,Sequences,Reachables}`. Make sure the output of `rebuld` only output "200 OK" messages.
 
 You can redirect the output of `curl` to `/dev/null` if you want, but it's good to ensure that some of the requests are working first.
 
@@ -261,16 +256,23 @@ $ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwri
 # Disregard any warnings like `PHP Warning:  mkdir(): No such file or directory in /var/www/mediawiki/extensions/GraphViz/GraphViz_body.php on line 1786`.
 # One of the images is a JPEG.
 $ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions jpg wiki_front_matter/images
+
 # Upload all the pages.
 $ find wiki_front_matter/pages -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
+
 # Ensure they're re-rendered.  Don't use find, as we just want the page names.
 for i in $(ls wiki_front_matter/pages); do
   echo $i;
-  curl -vvv -X POST "http://localhost/api.php?action=purge&titles=${i}&format=json";
+  curl -vvv -X POST "http://localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP"; 
 done
+# Make sure all responses codes are "200 OK"
 ```
 
-The front page should now contain our usual intro page and images.  The `All_Chemicals` list is empty, but can be populated and re-uploaded in the same way.
+The front page should now contain our usual intro page and images.  The `All_Chemicals` list is empty, You should generate a new one based on the data you have (replace `demo_wiki_2016-12-21` with whatever your parent directory is:
+  ```
+  dir="demo_wiki_2016-12-21/Reachables/"; for page in `ls $dir`; do molecule=`cat $dir/$page | head -1 | sed 's/=//g'`; echo "[[$page|$molecule]]"; echo; done > wiki_front_matter/pages/All_Chemicals 
+  find wiki_front_matter/pages -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
+  ``` 
 
 To edit the side bar content (i.e. to remove `Random Page` and `Recent Changes`), navigate to `/index.php?title=MediaWiki:Sidebar` and edit the source.  Use http://preview.bioreachables.20n.com/index.php?title=MediaWiki:Sidebar as an example of this.
 
@@ -365,8 +367,15 @@ If things are working, *STOP HERE*! You have a wiki now, and it has data in it. 
 :end: :hand: :stop_sign: :stop_button:
 
 ---------
+# Appendices
 
-## Mediawiki Setup from Scratch ##
+## A1. Remaining TODOs
+* Serving multiple host names per instance, with proper URL hostname rewriting in nginx
+* Monitoring
+* Backups/disaster recovery
+* Anything but trivial ordering capabilities (we just send an email for now)
+
+## A2. Mediawiki Setup from Scratch ##
 
 These instructions shouldn't be strictly necessary, as an EC2 AMI with a complete mediawiki setup is available.  Fall back to these instructions in case we ever need to set it up from scratch.
 
@@ -581,7 +590,7 @@ Navigate to `http://localhost:8080/index.php?title=Main_Page` in a web browser a
 
 The default linking mechanism used by mediawiki (frustratingly) rewrites URLs to include the fully qualified hostname.  This can make exploration of the wiki over a tunnel challenging.  You can always access a specific page by entering `http://localhost:8080/index.php?title=<Page Name>` in your browser, substituting `<Page Name>` with the name of the page you're trying to reach.
 
-## Hosting In Azure ##
+## A3. Hosting In Azure ##
 
 We take advantage of our Azure sponsorship by running our wiki VMs there.  Note that we still use AWS for DNS, but rely on Azure for all the hosting.
 
@@ -647,7 +656,7 @@ If `jq` complains about any of these steps, stop before you overwrite `scripts/a
 
 Once this is complete, you can commit `scripts/azure/reachables_wiki/template.json` to GH.  Subsequence instances created using `spawn_vm` and the `reachables_wiki` host type should use your new image.
 
-## Alternative Hosting Provider: AWS ##
+## A4. Alternative Hosting Provider: AWS ##
 
 We started hosting our wikis in EC2, though have since moved to Azure to reduce costs.  This section remains in case we ever want/need to move back to EC2.  Most of AWS's services are fairly self-explanatory; just the same, here is a brief overview of the AWS facilities we're using and how they're configured.
 
