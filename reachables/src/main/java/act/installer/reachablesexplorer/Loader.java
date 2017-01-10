@@ -201,7 +201,7 @@ public class Loader {
         cl.getOptionValue(OPTION_TARGET_SEQUENCES_COLLECTION, DEFAULT_SEQUENCE_COLLECTION),
         cl.getOptionValue(OPTION_RENDERING_CACHE, DEFAULT_ASSETS_LOCATION)
     );
-    loader.updateFromReachableDir(reachablesDir);
+    // loader.updateFromReachableDir(reachablesDir);
     if (cl.hasOption(OPTION_PROJECTIONS_SOURCE_DATA)) {
       loader.updateFromProjectionFile(new File(cl.getOptionValue(OPTION_PROJECTIONS_SOURCE_DATA)));
     }
