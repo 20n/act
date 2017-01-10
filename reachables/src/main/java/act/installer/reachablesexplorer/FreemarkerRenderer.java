@@ -96,8 +96,8 @@ public class FreemarkerRenderer {
   private static final String DEFAULT_DB_NAME = "wiki_reachables";
   private static final String DEFAULT_REACHABLES_COLLECTION = "reachables_2016-12-26";
   private static final String DEFAULT_SEQUENCES_COLLECTION = "sequences_2016-12-26";
-  //private static final String DEFAULT_DNA_COLLECTION = "designs_2016-12-26";
-  private static final String DEFAULT_DNA_COLLECTION = "dna_designs";
+  private static final String DEFAULT_DNA_COLLECTION = "dna_designs_2016-12-26_2";
+  //private static final String DEFAULT_DNA_COLLECTION = "dna_designs";
   private static final String DEFAULT_RENDERING_CACHE = "/Volumes/data-level1/data/reachables-explorer-rendering-cache";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
