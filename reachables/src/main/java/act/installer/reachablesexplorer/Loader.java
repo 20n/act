@@ -15,6 +15,7 @@ import chemaxon.struc.Molecule;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import com.act.utils.CLIUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.mongodb.BasicDBObject;
@@ -53,13 +54,14 @@ import java.util.stream.Collectors;
 
 public class Loader {
   private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
-
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private static final String OPTION_DB_HOST = "H";
   private static final String OPTION_DB_PORT = "p";
 
   private static final String OPTION_INSTALLER_SOURCE_DB = "i";
   private static final String OPTION_REACHABLES_SOURCE_DATA = "r";
+  private static final String OPTION_PROJECTIONS_SOURCE_DATA = "P";
   private static final String OPTION_TARGET_DB = "t";
   private static final String OPTION_TARGET_REACHABLES_COLLECTION = "c";
   private static final String OPTION_TARGET_SEQUENCES_COLLECTION = "s";
@@ -68,6 +70,7 @@ public class Loader {
   private static final String DEFAULT_ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
 
   private static final String DEFAULT_REACHABLES_PATH = "/mnt/shared-data/Michael/WikipediaProject/MinimalReachables";
+  private static final String DEFAULT_PROJECTIONS_PATH = "/mnt/shared-data/Gil/L4N2pubchem/n1_inchis/projectedReactions";
 
   // All of the source data on reactions and chemicals comes from jarvis_2016-12-09
   private static final String DEFAULT_CHEMICALS_DATABASE = "jarvis_2016-12-09";
@@ -78,8 +81,8 @@ public class Loader {
 
   // Target database and collection. We populate these with reachables
   private static final String DEFAULT_TARGET_DATABASE = "wiki_reachables";
-  private static final String DEFAULT_TARGET_COLLECTION = "reachablesv9_test_vijay";
-  private static final String DEFAULT_SEQUENCE_COLLECTION = "sequencesv9_test_vijay";
+  private static final String DEFAULT_TARGET_COLLECTION = "reachablesv10_test_thomas";
+  private static final String DEFAULT_SEQUENCE_COLLECTION = "sequencesv10_test_thomas";
 
   private static final int ORGANISM_CACHE_SIZE = 1000;
   private static final String ORGANISM_UNKNOWN = "(unknown)";
@@ -127,6 +130,12 @@ public class Loader {
             DEFAULT_REACHABLES_PATH))
         .hasArg()
         .longOpt("reachables-dir")
+    );
+    add(Option.builder(OPTION_PROJECTIONS_SOURCE_DATA)
+        .argName("path")
+        .desc("A path to a file containing the output of L3 or L4 projections to read (no default)")
+        .hasArg()
+        .longOpt("projections-dir")
     );
     add(Option.builder(OPTION_TARGET_DB)
         .argName("DB name")
@@ -193,6 +202,9 @@ public class Loader {
         cl.getOptionValue(OPTION_RENDERING_CACHE, DEFAULT_ASSETS_LOCATION)
     );
     loader.updateFromReachableDir(reachablesDir);
+    if (cl.hasOption(OPTION_PROJECTIONS_SOURCE_DATA)) {
+      loader.updateFromProjectionFile(new File(cl.getOptionValue(OPTION_PROJECTIONS_SOURCE_DATA)));
+    }
   }
 
 
@@ -643,7 +655,7 @@ public class Loader {
   }
 
   private void updateFromReachableFiles(List<File> files) {
-    files.stream().forEach(this::updateFromReachablesFile);
+    files.forEach(this::updateFromReachablesFile);
   }
 
   private void updateFromReachableDir(File file) throws IOException {
@@ -680,7 +692,7 @@ public class Loader {
             .collect(Collectors.toList());
 
     // Add substrates in, or make sure they were added.
-    substrates.stream().forEach(this::upsert);
+    substrates.forEach(this::upsert);
 
     // Construct descriptors.
     List<InchiDescriptor> precursors = substrates.stream()
@@ -688,12 +700,18 @@ public class Loader {
             .collect(Collectors.toList());
 
     // For each product, create and add precursors.
-    projection.getProducts().stream().forEach(p -> {
+    projection.getProducts().forEach(p -> {
       // Get product
       Reachable product = constructOrFindReachable(p);
       // TODO Don't punt on sequences
       product.getPrecursorData().addPrecursor(new Precursor(precursors, projection.getRos().get(0), new ArrayList<>()));
       upsert(product);
     });
+  }
+
+  public void updateFromProjectionFile(File file) throws IOException {
+    LOGGER.info("Processing projection file: %s", file.getName());
+    List<ReachablesProjectionUpdate> projections = Arrays.asList(MAPPER.readValue(file, ReachablesProjectionUpdate[].class));
+    projections.forEach(this::updateFromProjection);
   }
 }
