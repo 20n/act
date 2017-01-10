@@ -46,7 +46,7 @@ public class ReachablesProjectionUpdate {
     this.products = JavaConversions.asJavaList(projectionResult.products());
   }
 
-  public ReachablesProjectionUpdate(ReachableProjectionResult projectionResult) {
+  public ReachablesProjectionUpdate(ReachablesProjectionResult projectionResult) {
     this.ros = Arrays.asList(projectionResult.getRos());
     this.substrates = projectionResult.getSubstrates();
     this.products = projectionResult.getProducts();
