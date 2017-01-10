@@ -217,7 +217,7 @@ Here's the appropriate maintenance script to use when loading each type of conte
 Content/directory | Maintenance Script | Extensions | Sub-directory
 ----------------- | ------------------ | ---------- | ---------
 Reachables | `importTextFiles.php` | N/A | Reachables
-Pathways | `importTextFiles.php` | N/A | Pathways
+Pathways | `importTextFiles.php` | N/A | Paths
 DNA Designs | `importImages.php` | txt | Sequences
 Renderings/word clouds | `importImages.php` | png | renderings
 
@@ -274,6 +274,33 @@ The front page should now contain our usual intro page and images.  The `All_Che
 
 To edit the side bar content (i.e. to remove `Random Page` and `Recent Changes`), navigate to `/index.php?title=MediaWiki:Sidebar` and edit the source.  Use http://preview.bioreachables.20n.com/index.php?title=MediaWiki:Sidebar as an example of this.
 
+#### Example: Loading the Preview Wiki Content ####
+
+On an office server:
+```
+$ n=1
+# Note no trailing slash on the source directory.
+$ rsync -azP /mnt/shared-data/Mark/demo_wiki_2016-12-21 private-${n}-wiki-west:
+# Now connect and complete the remaining steps.
+$ ssh private-${n}-wiki-west
+```
+
+Run these commands on the remote server:
+```
+# Upload all the molecule and word cloud images.
+$ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions png demo_wiki_2016-12-21/renderings
+# Import the DNA designs.  We use `importImages` to make them appear as file uploads as opposed to wiki documents.
+$ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions txt demo_wiki_2016-12-21/Sequences
+
+# Import the pathway pages:
+$ find demo_wiki_2016-12-21/Paths -type f | sort -S1G | xargs -n 400 sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
+
+# Import the reachables docs:
+$ find demo_wiki_2016-12-21/Reachables -type f | sort -S1G | xargs -n 400 sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
+# Invalid cached version of the reachables docs to ensure tabs are rendered correctly:
+$ for i in $(ls demo_wiki_2016-12-21/Reachables/); do echo $i; curl -vvv -X POST "http://localhost:80/api.php?action=purge&titles=${i}&format=json"; done
+```
+Still TODO: all molecule and category pages.
 
 ### Making the VM Publicly Accessible ###
 
