@@ -53,7 +53,7 @@ object Cascade extends Falls {
     VERBOSITY = v
   }
 
-  val pathwayCollection: JacksonDBCollection[ReactionPath, String] = JacksonDBCollection.wrap(db.getCollection(collectionName), classOf[ReactionPath], classOf[String])
+  lazy val pathwayCollection: JacksonDBCollection[ReactionPath, String] = JacksonDBCollection.wrap(db.getCollection(collectionName), classOf[ReactionPath], classOf[String])
 
   def get_pathway_collection: JacksonDBCollection[ReactionPath, String] = {
     pathwayCollection

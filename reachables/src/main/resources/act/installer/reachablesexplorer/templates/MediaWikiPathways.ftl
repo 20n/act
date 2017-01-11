@@ -24,7 +24,6 @@
  ! Step
  ! EC numbers
  ! Organisms
- ! PMID
 <#list pathwayitems?reverse as pathwayitem>
   <#if pathwayitem.isreaction>
   |-
@@ -36,7 +35,6 @@
   <#else>
   |${pathwayitem.organisms?join(", ")}
   </#if>
-  |${pathwayitem.id}
   </#if>
 </#list>
 |}

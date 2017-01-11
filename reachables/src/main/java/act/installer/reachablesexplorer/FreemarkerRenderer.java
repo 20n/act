@@ -89,6 +89,7 @@ public class FreemarkerRenderer {
   private static final String OPTION_OUTPUT_DEST = "o";
   private static final String OPTION_OMIT_PATHWAYS_AND_DESIGNS = "x";
   private static final String OPTION_RENDER_SOME = "m";
+  private static final String OPTION_PATHWAY_COLLECTION = "g";
 
   private static final String DEFAULT_HOST = "localhost";
   private static final Integer DEFAULT_PORT = 27017;
@@ -97,7 +98,8 @@ public class FreemarkerRenderer {
   private static final String DEFAULT_REACHABLES_COLLECTION = "reachables_2016-12-26";
   private static final String DEFAULT_SEQUENCES_COLLECTION = "sequences_2016-12-26";
   private static final String DEFAULT_DNA_COLLECTION = "designs_2016-12-26";
-  private static final String DEFAULT_RENDERING_CACHE = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
+  private static final String DEFAULT_RENDERING_CACHE = "/Volumes/data-level1/data/reachables-explorer-rendering-cache";
+  private static final String DEFAULT_PATHWAY_COLLECTION = "pathways_jarvis_dec21";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class consumes and renders a DB of reachable molecules, pathways, and DNA designs."
@@ -183,6 +185,12 @@ public class FreemarkerRenderer {
         .hasArgs().valueSeparator('|')
         .longOpt("render-this")
     );
+    add(Option.builder(OPTION_PATHWAY_COLLECTION)
+        .argName("pathways")
+        .desc("The pathway collection to read pathways from")
+        .longOpt("pathways")
+        .hasArg().required()
+    );
   }};
 
   private static final String DEFAULT_REACHABLE_TEMPLATE_FILE = "Mediawiki.ftl";
@@ -253,6 +261,7 @@ public class FreemarkerRenderer {
         cl.getOptionValue(OPTION_DNA_COLLECTION, DEFAULT_DNA_COLLECTION),
         cl.getOptionValue(OPTION_RENDERING_CACHE, DEFAULT_RENDERING_CACHE),
         cl.getOptionValue(OPTION_INSTALLER_SOURCE_DB, DEFAULT_CHEMICALS_DATABASE),
+        cl.getOptionValue(OPTION_PATHWAY_COLLECTION, DEFAULT_PATHWAY_COLLECTION),
         cl.hasOption(OPTION_OMIT_PATHWAYS_AND_DESIGNS),
         reachablesOut,
         pathsOut,
@@ -304,7 +313,7 @@ public class FreemarkerRenderer {
     this.seqsDest = seqsDest;
   }
 
-  private void init(String dbHost, Integer dbPort, String dbName, String dnaCollection) throws IOException {
+  private void init(String dbHost, Integer dbPort, String dbName, String dnaCollection, String pathwayCollection) throws IOException {
     cfg = new Configuration(Configuration.VERSION_2_3_23);
 
     cfg.setClassLoaderForTemplateLoading(
@@ -322,10 +331,10 @@ public class FreemarkerRenderer {
     DB db = client.getDB(dbName);
 
     dnaDesignCollection = JacksonDBCollection.wrap(db.getCollection(dnaCollection), DNADesign.class, String.class);
+    Cascade.setCollectionName(pathwayCollection);
   }
 
   public void generatePages(List<Long> idsToRender) throws IOException, TemplateException {
-
     // Limit iteration to only molecules we care about if any are specified.
     DBCursor<ReactionPath> cascadeCursor = idsToRender == null || idsToRender.size() == 0 ?
         Cascade.get_pathway_collection().find() :
@@ -818,14 +827,14 @@ public class FreemarkerRenderer {
     public static FreemarkerRenderer build(
         String dbHost, Integer dbPort, String dbName,
         String reachablesCollection, String sequencesCollection, String dnaCollection, String renderingCache,
-        String chemicalsDB,
+        String chemicalsDB, String pathwayCollection,
         Boolean hidePathways,
         File reachablesDest, File pathsDest, File seqsDest)
         throws IOException {
       Loader loader =
           new Loader(dbHost, dbPort, dbName, reachablesCollection, sequencesCollection, renderingCache, chemicalsDB);
       FreemarkerRenderer renderer = new FreemarkerRenderer(loader, hidePathways, reachablesDest, pathsDest, seqsDest);
-      renderer.init(dbHost, dbPort, dbName, dnaCollection);
+      renderer.init(dbHost, dbPort, dbName, dnaCollection, pathwayCollection);
       return renderer;
     }
   }
