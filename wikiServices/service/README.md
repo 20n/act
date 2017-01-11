@@ -279,6 +279,17 @@ The files `bioreachables.com.key` and `bioreachables.com.crt` should now be pres
 $ rm bioreachables.com.key bioreachables.com.crt bioreachables.com.ssl.tar.gz
 ```
 
+Note: the `bioreachables.com.ssl.tar.gz` file's certificate file (`bioreachables.com.crt`) is the concatenation of the signed wildcard certificate and GoDaddy's intermediate certificate chain.  This is necessary for browsers to correctly build a trust chain back to a known root CA cert.  To generate this file from the contents of the `zip` file that GoDaddy allows you to download, run these commands:
+```
+# GoDaddy uses - instead of *, which is a pain to deal with.
+$ mv -- -.bioreachables.com.zip bioreachables.com.zip
+$ unzip bioreachables.com.zip
+# The zip file had two certificates in it.  We put ours first, and then concatenate the intermediate certs to it.
+$ cat 388a4aab45947c59.crt  gd_bundle-g2-g1.crt > bioreachables.com.crt
+```
+
+Now `bioreachables.com.crt` is ready for use by NGINX.
+
 #### Upload and Adjust Certificate Permissions ####
 
 First, rsync the certificate and key to the remote wiki server.  Then connect to complete the remaining steps.
