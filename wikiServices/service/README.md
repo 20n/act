@@ -19,7 +19,7 @@ The high-level setup procedure for the substructure search service follows these
 TODO: maybe we can automate some of this with ansible or something similar, but that's a lot of overhead to incur.
 
 ### Preparation ###
-Before installing the substructure search on a host, ensure the firewall is operating in default-deny mode or the AWS security group restrictions deny public Internet traffic by default.  Once setup is completed, the only process that should be listening to traffic from the internet is nginx (on either port 80 or 443 if using SSL).  This can be done either by manipulating AWS or Azure routing rules to only allow traffic on the desired port, or by using firewall software such as UFW (uncomplicated firewall) to restrict access.  Configuring either of these is outside the scope of this document.
+Before installing the substructure search on a host, ensure the firewall is operating in default-deny mode or the Azure/AWS security group restrictions deny public Internet traffic by default.  Once setup is completed, the only process that should be listening to traffic from the internet is nginx (on either port 80 or 443 if using SSL).  This can be done either by manipulating AWS or Azure routing rules to only allow traffic on the desired port, or by using firewall software such as UFW (uncomplicated firewall) to restrict access.  Configuring either of these is outside the scope of this document.
 
 Mediawiki should already be installed on the host, as we'll be using it as the root directory for serving static content.  This practice is a little sketchy but it reduces the complexity of our setup procedure.
 
@@ -199,7 +199,7 @@ While the substructure search UI is a single-page react.js app, the orders servi
 
 ##### Static JS/CSS #####
 
-The `assets` directory in this `service` directory should be copied to `/var/www/mediawiki/assets` and its owner set to `www-data`.  These JS/CSS files are used by the orders service, and so need to be available at `/assets` via nginx.  Note that the `site-wiki` nginx config will allow access to the files in `assets` without issue.
+The `assets` directory in this `service` directory should be copied to `/var/www/mediawiki/assets` and its owner set to `www-data`.  These JS/CSS files are used by the orders service, and so need to be available at `/assets` via nginx.  Note that the `site-wiki-ssl` nginx config will allow access to the files in `assets` without issue.
 
 ```
 # This is the directory at service/assets, which we don't expect to already exist in /var/www/mediawiki
@@ -265,39 +265,118 @@ $ sudo /etc/init.d/orders_service status
 # Should print "Running"
 ```
 
-### Enabling Reverse-Proxy Endpoints in Nginx ###
+### Installing SSL Certificates for NGINX ###
 
-It's likely that you're already using an nginx config file that passes proxy requests to the services, but if not we can install the `site-wiki` file in the `service` directory to enable public access to the services.
+The `site-wiki-ssl` configuration file contains references to security certificates and keys that must be put in place before the server will start.  These certificates and keys live on NAS in an **encrypted tar file** for their protection.  Saurabh has the decryption password for this tar file.  To decrypt this file on an office server, run the following command:
 ```
-$ sudo cp site-wiki /etc/nginx/sites-available
-$ sudo chown root:root /etc/nginx/sites-available/site-wiki
+$ openssl enc -d -aes-256-cbc -salt -in /mnt/shared-data/Mark/bioreachables.com.ssl.tar.gz.encrypted -out bioreachables.com.ssl.tar.gz
+# Input password when prompted
+$ tar zxvf bioreachables.com.ssl.tar.gz
+```
+
+The files `bioreachables.com.key` and `bioreachables.com.crt` should now be present in the current directory.  **Be careful with these files, and do not let them live on office servers for long.**  When done with this step, run this command in your current directory:
+```
+$ rm bioreachables.com.key bioreachables.com.crt bioreachables.com.ssl.tar.gz
+```
+
+Note: the `bioreachables.com.ssl.tar.gz` file's certificate file (`bioreachables.com.crt`) is the concatenation of the signed wildcard certificate and GoDaddy's intermediate certificate chain.  This is necessary for browsers to correctly build a trust chain back to a known root CA cert.  To generate this file from the contents of the `zip` file that GoDaddy allows you to download, run these commands:
+```
+# GoDaddy uses - instead of *, which is a pain to deal with.
+$ mv -- -.bioreachables.com.zip bioreachables.com.zip
+$ unzip bioreachables.com.zip
+# The zip file had two certificates in it.  We put ours first, and then concatenate the intermediate certs to it.
+$ cat 388a4aab45947c59.crt  gd_bundle-g2-g1.crt > bioreachables.com.crt
+```
+
+Now `bioreachables.com.crt` is ready for use by NGINX.
+
+#### Upload and Adjust Certificate Permissions ####
+
+First, rsync the certificate and key to the remote wiki server.  Then connect to complete the remaining steps.
+```
+# Use -a to preserve key and certiciate permissions, which should be correct in the tar file.
+$ rsync -azP bioreachables.com.key <wiki-host>:
+$ rsync -azP bioreachables.com.crt <wiki-host>:
+$ ssh <wiki-host>
+
+# On the remote host:
+$ sudo mkdir -p /etc/nginx/ssl
+$ sudo chown root:root /etc/nginx/ssl
+$ sudo chmod 750 /etc/nginx/ssl
+# Move the key and fix permissions to be safe.
+$ sudo mv bioreachables.com.key /etc/nginx/ssl
+$ sudo chmod 600 /etc/nginx/ssl/bioreachables.com.key
+$ sudo mv bioreachables.com.crt /etc/nginx/ssl
+# The certificate will be used for client communication, so is safe to be read locally.
+$ sudo chmod 664 /etc/nginx/ssl/bioreachables.com.crt
+# Make sure root owns everything.
+$ sudo chown -R root:root /etc/nginx/ssl
+```
+
+The `site-wiki-ssl` config file uses the above file paths by default.
+
+#### Create a Diffie-Hellman Parameters File ####
+
+As an added security measure, we use an explicit Diffie-Hellman key exchange parameters file with a high bit count.  DH makes it extremely difficult for malicious parties to decrypt previous traffic even if they are able to access our certificate's public key.  Creating an explicit high-bit-count key makes DH key exchange more secure than the default 1024 key would allow (note that we use a similar configuration for our office VPN setup, though our DH key there is smaller than we use here).  Note that this process can take anywhere from 30 minutes to an hour or more to complete, so be sure to allow for enough time for key generation to complete:
+```
+$ openssl dhparam -out dhparam.pem 4096
+$ sudo mv dhparam.pem /etc/nginx/ssl/dhparam.pem
+$ sudo chown -R root:root /etc/nginx/ssl/
+$ sudo chmod 600 /etc/nginx/ssl/dhparam.pem
+```
+
+Note that you could reduce the number of bits to 2048 in the interest of time (which will only take seconds to minutes to complete), but this provides weaker security.
+
+The `site-wiki-ssl` config file uses the above file paths by default.
+
+#### Create a Password File ####
+
+To enable basic HTTP authentication, we must create a password file with `htpasswd` that NGINX can access:
+```
+$ sudo htpasswd -c /etc/nginx/htpasswd wiki_test
+# Enter a password here.  The test user is for internal use only.
+# Run exactly these chown/chmod commands.  More strict access control will likely cause HTTP 500s.
+$ sudo chown root:www-data /etc/nginx/htpasswd
+$ sudo chmod 640 /etc/nginx/htpasswd
+```
+
+Note that the strange ownership and permission rules above are necessary for NGINX worker processes to serve basic auth traffic.  This has been confirmed via testing.
+
+The `site-wiki-ssl` config file uses the above file paths by default.
+
+### Enabling Reverse-Proxy Endpoints in NGINX ###
+
+It's likely that you're already using an nginx config file that passes proxy requests to the services, but if not we can install the `site-wiki-ssl` file in the `service` directory to enable public access to the services.
+```
+$ sudo cp site-wiki-ssl /etc/nginx/sites-available
+$ sudo chown root:root /etc/nginx/sites-available/site-wiki-ssl
 # Remove any default site, which will conflict with ours.
 # Optionally you can remove *everything* in /etc/nginx/sites-enabled, but we won't do that by default.
 $ sudo rm /etc/nginx/sites-enabled/default
 # Enable the wiki site configuration.
-$ sudo ln -sf /etc/nginx/sites-available/site-wiki /etc/nginx/sites-enabled/site-wiki
+$ sudo ln -sf /etc/nginx/sites-available/site-wiki-ssl /etc/nginx/sites-enabled/site-wiki-ssl
 $ ls -l /etc/nginx/sites-enabled
-# You should only see site-wiki in the output of ls
+# You should only see site-wiki-ssl in the output of ls
 # Now, tell nginx to reload its configurations, which will enable the proxy endpoints.
 $ sudo /etc/init.d/nginx reload
 ```
 
 You can run these test queries on the wiki host to ensure proxying is working and the services are up:
 ```
-$ curl -vvv http://localhost/search?q=C
-$ curl -vvv http://localhost/substructure/
-$ curl -vvv http://localhost/order
+$ curl --insecure -vvv https://localhost/search?q=C
+$ curl --insecure -vvv https://localhost/substructure/
+$ curl --insecure -vvv https://localhost/order
 ```
 
 Alternatively, you can open an ssh tunnel to the webserver and access the pages through your browser:
 ```
-$ ssh -L8080:localhost:80 <my-wiki-host>
+$ ssh -L8080:localhost:443 <my-wiki-host>
 ```
 Then navigate to any of these links in your browser:
 ```
-http://localhost:8080/substructure/
-http://localhost:8080/order
-http://localhost:8080/index.php?title=Main_Page
+https://localhost:8080/substructure/
+https://localhost:8080/order
+https://localhost:8080/index.php?title=Main_Page
 ```
 
 All of these should return HTTP 200s and should not produce wiki HTML (it should be obvious from curl's output if they're working correctly).

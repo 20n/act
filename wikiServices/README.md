@@ -102,17 +102,70 @@ If this is your first time connecting to *any* wiki host, you'll be asked for ho
 
 Note that ignoring host key warnings is slightly sketchy, but it's really just part of the job of creating/destroying/recreating VMs in a virtualized hosting environment.  The fact that all of our VMs only allow public-key-based `ssh` authentication reduces the likelihood of someone compromising our hosts in a way that the keys could be replaced (Azure DNS security notwithstanding).
 
-### Set an Nginx Password ###
+### Set an NGINX Hostname ###
+
+In order to use our `*.bioreachables.com` SSL certificates, we must configure NGINX to identify itself using the hostname we expect to associate with the new VM.  This name must match the hostname [we set as `$wgServer`](#set-wgserver).  Here is a diff representing the required change to `/etc/nginx/sites-available/site-wiki-ssl`, where the new hostname is `stardust.bioreachables.com`:
+```diff
+--- site-wiki-ssl	2017-01-11 00:48:05.254290466 +0000
++++ site-wiki-ssl.new	2017-01-11 21:28:56.342049859 +0000
+@@ -10,17 +10,17 @@
+
+ server {
+   # With help from http://serverfault.com/questions/250476/how-to-force-or-redirect-to-ssl-in-nginx
+   listen 80;
+
+-  server_name changeme.bioreachables.com;
++  server_name stardust.bioreachables.com;
+   rewrite ^ https://$server_name$request_uri? permanent;
+ }
+
+ server {
+   listen 443 ssl;
+-  server_name changeme.bioreachables.com;
++  server_name stardust.bioreachables.com;
+
+   keepalive_timeout 70;
+
+   ssl_certificate /etc/nginx/ssl/bioreachables.com.crt;
+   ssl_certificate_key /etc/nginx/ssl/bioreachables.com.key;
+```
+
+The commands will look like:
+```
+$ sudo vim /etc/nginx/sites-available/site-wiki-ssl
+# Change `changeme` to `stardust` or some host name you will use.
+$ sudo /etc/init.d/nginx reload
+```
+
+*You need not assign the DNS name before you set this variable.*  Certificate validation in your browser will require this hostname to be used, but you can still connect to the host via other names/addresses and override the certificate warnings to access it in a browser.  You can also use `curl`'s `--insecure` parameter to ignore the hostname mismatch; uses of `curl` later in this document make use of this parameter.
+
+### Set an NGINX Password ###
 
 Assuming you have SSL enabled, you'll want to protect the wiki with a username and password.  Full instructions are [in this section](#addingupdating-a-password), but you can just run this command:
 ```
 $ sudo htpasswd -c /etc/nginx/htpasswd <username>
 ```
-and input a password.  This will wipe out the existing username and password and replace it with whatever you specify--it will be the *only* username/password combination that will work.
+and input a password.  This will wipe out the default username and password (see the [basic auth](#basic-authentication) section) and replace it with whatever you specify--it will be the *only* username/password combination that will work.
+
+### Set an NGINX Auth Domain ###
+
+It is a good security practice to change the authentication domain for each wiki instance, which will prevent the unlikely event of a user who is authorized to access one wiki being able to reach another (note that this would require identical basic auth credentials on both hosts, which should be impossible if the password generation step above is followed).  To do so, find the following line in `/etc/nginx/sites-available/site-wiki-ssl` and change the value (in quotations) to something different:
+```
+  auth_basic "20n Wiki 1";
+```
+Then reload the NGINX configuration.
+
+Example commands for this step are:
+```
+$ sudo vim /etc/nginx/sites-available/site-wiki-ssl
+# Change auth_basic to "20n Wiki 2" or something else.
+# Now reload the nginx configuration.
+$ sudo /etc/init.d/nginx reload
+```
 
 ### Update LocalSettings.php ###
 
-The `reachables-wiki` Azure VM images and EC2 AMIs contain a full Mediawiki, MySQL, nginx, and web services stack necessary to run a private wiki instance for a single client.  Only a few configuration changes are need to be made to prepare a wiki for client use; most of the work will involve loading data into the wiki--see the section on [Loading Data into the Wiki](#loading-data-into-the-wiki).
+The `reachables-wiki` Azure VM images and EC2 AMIs contain a full Mediawiki, MySQL, NGINX, and web services stack necessary to run a private wiki instance for a single client.  Only a few configuration changes are need to be made to prepare a wiki for client use; most of the work will involve loading data into the wiki--see the section on [Loading Data into the Wiki](#loading-data-into-the-wiki).
 
 The mediawiki configuration file that we'll need to change lives here:
 ```
@@ -141,9 +194,11 @@ The MySQL credentials for each wiki may be left at their default values.  While 
 
 #### Set `$wgServer` ####
 
-Another *important manual step* is to set `$wgServer` to the appropriate base URL for all wiki links.  Update `$wgServer` in `LocalSettings.php` to reference whatever name you intend to assign to this VM in DNS.  *You need not assign the DNS name before you set this variable*: this is what mediawiki will use for its own URLs, and will be used even if you access the host via some other name or IP address.  Mediawiki has a tendency to rewrite the current URL with its canonical hostname, which may result in unexpected connection failures if the hostname is not updated before clients access the wiki.
+Another *important manual step* is to set `$wgServer` to the appropriate base URL for all wiki links.  Update `$wgServer` in `LocalSettings.php` to reference whatever name you intend to assign to this VM in DNS.  This must match the hostname used in the [NGINX hostname configuration step above](#set-an-nginx-hostname).
 
-Note that if you are using SSL to encrypt traffic to the wiki, use `https` as the protocol for `$wgServer`.  This will ensure all URL rewrites force secure HTTP (though nginx should already be doing this if SSL is configured correctly).
+*You need not assign the DNS name before you set this variable*: this is what mediawiki will use for its own URLs, and will be used even if you access the host via some other name or IP address.  Mediawiki has a tendency to rewrite the current URL with its canonical hostname, which may result in unexpected connection failures if the hostname is not updated before clients access the wiki.
+
+Note that if you are using SSL to encrypt traffic to the wiki, use `https` as the protocol for `$wgServer`.  This will ensure all URL rewrites force secure HTTP (though NGINX should already be doing this if SSL is configured correctly).
 
 ### Set Orders Service Client Key ###
 
@@ -240,7 +295,7 @@ If you are using the preview data from the NAS `<directory of page text files>` 
 
 The Tabs extension we rely on doesn't automatically render the tab assets when using the maintenance script, so we have to force mediawiki to purge its cache and rebuild the page.  We can do this via the `api.php` endpoint:
 ```shell
-$ function rebuild() { for i in $(ls $1); do echo $i; curl -vvv -X POST "http://localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP"; done; }
+$ function rebuild() { for i in $(ls $1); do echo $i; curl --insecure -vvv -X POST "https://localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP"; done; }
 $ rebuild <directory of page text files>
 ```
 If you are using the preview data from the NAS then rerun `rebuild` with  each of `demo_wiki_2016-12-21/{Paths,Reachables}`. Make sure the output of `rebuild` only output "200 OK" messages.
@@ -268,7 +323,7 @@ $ find wiki_front_matter/pages -type f | sort -S1G | xargs sudo -u www-data php 
 # Ensure they're re-rendered.  Don't use find, as we just want the page names.
 for i in $(ls wiki_front_matter/pages); do
   echo $i;
-  curl -vvv -X POST "http://localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP";
+  curl --insecure -vvv -X POST "https://localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP";
 done
 # Make sure all responses codes are "200 OK"
 ```
@@ -306,7 +361,7 @@ $ find demo_wiki_2016-12-21/Paths -type f | sort -S1G | xargs -n 400 sudo -u www
 # Import the reachables docs:
 $ find demo_wiki_2016-12-21/Reachables -type f | sort -S1G | xargs -n 400 sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
 # Invalid cached version of the reachables docs to ensure tabs are rendered correctly:
-$ for i in $(ls demo_wiki_2016-12-21/Reachables/); do echo $i; curl -vvv -X POST "http://localhost:80/api.php?action=purge&titles=${i}&format=json"; done
+$ for i in $(ls demo_wiki_2016-12-21/Reachables/); do echo $i; curl --insecure -vvv -X POST "https://localhost:80/api.php?action=purge&titles=${i}&format=json"; done
 ```
 Still TODO: all molecule and category pages.
 
@@ -351,7 +406,7 @@ data:    IP Address                      : 52.183.69.103
 
 # There's our IP!  Now let's try to access it.
 # We're going to give it a complete mediawiki URL, as it'll try to redirect us to the designated hostname ($wgServer) if we just request /.
-$ curl -vvv http://52.183.69.103/index.php?title=Main_Page
+$ curl --insecure -vvv https://52.183.69.103/index.php?title=Main_Page
 > GET /index.php?title=Main_Page HTTP/1.1
 > Host: localhost
 > User-Agent: curl/7.47.0
@@ -376,7 +431,7 @@ If things are working, *STOP HERE*! You have a wiki now, and it has data in it. 
 # Appendices
 
 ## A1. Remaining TODOs
-* Serving multiple host names per instance, with proper URL hostname rewriting in nginx
+* Serving multiple host names per instance, with proper URL hostname rewriting in NGINX
 * Monitoring
 * Backups/disaster recovery
 * Anything but trivial ordering capabilities (we just send an email for now)
@@ -425,13 +480,13 @@ The default PHP-FPM configuration should be sufficient for our purposes.  TODO: 
 
 ### Install and Configure NGINX ###
 
-Install nginx using apt.  **Note that if the firewall or security group rules allow public access to port 80, nginx will be immediately visible to the public Internet, which we definitely do not want yet.**
+Install NGINX using apt.  **Note that if the firewall or security group rules allow public access to port 80, NGINX will be immediately visible to the public Internet, which we definitely do not want yet.**
 
 ```
 $ sudo apt-get install nginx
 ```
 
-We'll enable access to the wiki using the `site-wiki` file in the `services` directory of this project, but we need to tweak one of the configuration files to get PHP processing working correctly.  Open `/etc/nginx/fastcgi_params` in an editor (as root) and make it look like this if it doesn't already:
+We'll enable access to the wiki using the `site-wiki-ssl` file in the `services` directory of this project, but we need to tweak one of the configuration files to get PHP processing working correctly.  Open `/etc/nginx/fastcgi_params` in an editor (as root) and make it look like this if it doesn't already:
 ```
 fastcgi_param  QUERY_STRING       $query_string;
 fastcgi_param  REQUEST_METHOD     $request_method;
@@ -461,7 +516,11 @@ fastcgi_param  HTTPS              $https if_not_empty;
 fastcgi_param  REDIRECT_STATUS    200;
 ```
 
-For a reason I don't understand, Ubuntu's nginx ships without a `SCRIPT_FILENAME` parameter in its `fastcgi_params` file, which results in blank pages appearing when trying to access the wiki.
+For a reason I don't understand, Ubuntu's NGINX ships without a `SCRIPT_FILENAME` parameter in its `fastcgi_params` file, which results in blank pages appearing when trying to access the wiki.
+
+### Install SSL Certificates for NGINX ###
+
+The instructions for installing SSL certificates for NGINX live in the [service README file](service/README.md#installing-ssl-certificates-for-nginx).  Follow these instructions to allow connections to be protected with SSL.  Note that the `server_name` parameter is changed on a per-instance basis, so there is no need to change it for the default setup.
 
 ### Unpack and Set Up Mediawiki ###
 
@@ -487,7 +546,7 @@ Tabs
 Note that the `Graphviz` extension depends on `ImageMap`, which is installed by default in recent mediawiki distributions.
 
 
-Now the wiki source is in place, but nginx doesn't know how to serve it yet.  Follow the `site-wiki` installation instructions in `service/README.md` (under the heading "Enabling Reverse-Proxy Endpoints in Nginx").  Once nginx has reloaded its config, you should be able to get to the wiki in a web browser (at `/`), preferably over a tunnel.  Better still, do the *entire* wiki services setup process now, as everything will work by the time the wiki is up and ready to go.
+Now the wiki source is in place, but NGINX doesn't know how to serve it yet.  Follow `site-wiki-ssl` installation instructions in [service/README.md](service/README.md#enabling-reverse-proxy-endpoints-in-nginx).  Once NGINX has reloaded its config, you should be able to get to the wiki in a web browser (at `/`), preferably over a tunnel.  Better still, do the *entire* wiki services setup process now, as everything will work by the time the wiki is up and ready to go.
 
 Mediawiki installation is mostly self explanatory, but make sure to do the following things:
 * Specify `20n_wiki` as the DB, or whatever you created during MySQL setup.  `localhost` is the correct DB hostname.
@@ -668,7 +727,7 @@ We started hosting our wikis in EC2, though have since moved to Azure to reduce 
 
 ### EC2 ###
 
-We're currently using `t2.medium` instances, which have enough memory to run MySQL, nginx, and our Java web services fairly comfortably.  Our instances started out with a vanilla Ubuntu 16.04 AMI, but snapshots now exist that should provide a fully configured base wiki image that can be used to create new private, per-customer wiki instances.  Specifically, a new instance created with AMI `reachables-wiki-20161229T1800` should have a full wiki + supporting software stack installed but no reachables data populated: you'll need to upload wiki pages, images (**important**: molecule renderings need to be uploaded to the wiki **and** copied to `/var/www/mediawiki/assets/img`), and a reachables list (see `service/README.md`), but the rest should already be in place.
+We're currently using `t2.medium` instances, which have enough memory to run MySQL, NGINX, and our Java web services fairly comfortably.  Our instances started out with a vanilla Ubuntu 16.04 AMI, but snapshots now exist that should provide a fully configured base wiki image that can be used to create new private, per-customer wiki instances.  Specifically, a new instance created with AMI `reachables-wiki-20161229T1800` should have a full wiki + supporting software stack installed but no reachables data populated: you'll need to upload wiki pages, images (**important**: molecule renderings need to be uploaded to the wiki **and** copied to `/var/www/mediawiki/assets/img`), and a reachables list (see `service/README.md`), but the rest should already be in place.
 
 ### Security Groups, Elastic IPs, and DNS ###
 
@@ -686,15 +745,25 @@ We use AWS's simple notification service (SNS) to send emails when users submit 
 
 Users who wish to receive order notification emails must subscribe to the `wiki_order_notifications` topic.  Subscription requests can be sent through the SNS dashboard, and must be confirmed/accepted by each user before further emails will be sent.
 
-## Nginx ##
+## NGINX ##
 
-While the default mediawiki install uses Apache as its web server, our custom setup uses nginx, a lighter-weight, easy to configure HTTP server and reverse proxy.  The Ubuntu nginx installation uses a slightly non-standard configuration, where configuration files for virtual servers live in `/etc/nginx/sites-available` and are symlinked into `/etc/nginx/sites-enabled` to activate them.  The `site-wiki` configuration file in the `services` directory should be copied to `/etc/nginx/sites-available` and symlinked into `/etc/nginx/sites-enabled`; `/etc/nginx/sites-enabled/default` should then be removed (as root) and nginx reloaded/restarted with `/etc/init.d/nginx reload` to update the configuration.
+While the default mediawiki install uses Apache as its web server, our custom setup uses NGINX, a lighter-weight, easy to configure HTTP server and reverse proxy.  The Ubuntu NGINX installation uses a slightly non-standard configuration, where configuration files for virtual servers live in `/etc/nginx/sites-available` and are symlinked into `/etc/nginx/sites-enabled` to activate them.  The `site-wiki-ssl` configuration file in the `services` directory should be copied to `/etc/nginx/sites-available` and symlinked into `/etc/nginx/sites-enabled`; `/etc/nginx/sites-enabled/default` should then be removed (as root) and NGINX reloaded/restarted with `/etc/init.d/nginx reload` to update the configuration.
 
-The `site-wiki` configuration file enables request rate limiting.  This has not been tested in our setup, but follows the instructions on nginx's website.
+The `site-wiki-ssl` configuration file enables request rate limiting.  This has not been tested in our setup, but follows the instructions on NGINX's website.
 
 ### Basic Authentication ###
 
-Setting up simple username and password authentication in nginx is very straightforward.  This sort of authentication only makes sense if you protecting in-flight traffic with SSL.  The setup process is for a wiki that has no authentication enabled at all.
+By default, the `site-wiki-ssl` configuration enables HTTP basic authorization for any access to the wiki or supporting services.  A default username and password has been established to prevent unauthorized access in the event that a wiki VM is made publicly accessible before it is prepared for client use:
+```
+username: wiki_test
+password: dogwood563{Della
+```
+
+This username and password are considered non-sensitive, as they should be replaced before the wiki is made accessible to any client.  If you followed the [setup steps above](#set-an-nginx-password), you would have changed this value before assigning a public IP address to the host.
+
+#### From-scratch Set up ####
+
+Setting up simple username and password authentication in NGINX is very straightforward.  This sort of authentication only makes sense if you protecting in-flight traffic with SSL.  The setup process is for a wiki that has no authentication enabled at all.
 ```
 # Install the htpasswd utility.
 $ sudo apt-get install apache2-utils
@@ -704,16 +773,11 @@ $ sudo htpasswd -c /etc/nginx/htpasswd <username>
 # Enter and confirm a password when prompted
 ```
 
-Now we'll update the nginx config file at `/etc/nginx/sites-available/site-wiki` to use require basic authentication for all wiki links.  You'll need to choose an *authentication realm* that identifies this wiki so that users who might be looking at multiple wikis won't have the credentials accidentally reused.  Here, the realm is `20n WIki 1`, though you could use anything (like a UUID or some random ASCII identifier).
+The `site-wiki-ssl` NGINX config file should already have basic auth enabled; the change to enable it is outlined in the diff below.  You'll need to choose an *authentication realm* that identifies this wiki so that users who might be looking at multiple wikis won't have the credentials accidentally reused.  Here, the realm is `20n WIki 1`, though you could use anything (like a UUID or some random ASCII identifier).
 ```diff
---- site-wiki.orig	2017-01-06 23:46:58.199008128 +0000
-+++ site-wiki	2017-01-06 23:50:33.516182634 +0000
-@@ -16,20 +16,23 @@
-   # http://askubuntu.com/questions/134666/what-is-the-easiest-way-to-enable-php-on-nginx
-   # https://www.nginx.com/resources/wiki/start/topics/recipes/mediawiki/
-
-   # Note that we also host some static content from the mediawiki directory.
-   # This is a little sketchy, but I think it's better than
+--- site-wiki-ssl.orig	2017-01-11 21:24:42.583678198 +0000
++++ site-wiki-ssl	2017-01-11 00:48:05.254290466 +0000
+@@ -60,10 +60,13 @@
    root /var/www/mediawiki;
 
    client_max_body_size 5m;
@@ -727,20 +791,15 @@ Now we'll update the nginx config file at `/etc/nginx/sites-available/site-wiki`
      proxy_set_header   Host             $host:$server_port;
      proxy_set_header   X-Real-IP        $remote_addr;
      proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;
-     proxy_pass         http://localhost:8888; # Shouldn't be publicly accessible.
-     proxy_redirect     default;
-
-     break;
-     # Break required to prevent additional processing by other location blocks.
 ```
 
-Here's just the text to be added to the `server` config block in `/etc/nginx/sites-available/site-wiki`:
+Here's just the text to be added to the `server` config block in `/etc/nginx/sites-available/site-wiki-ssl`:
 ```
       auth_basic "20n Wiki 1";
       auth_basic_user_file /etc/nginx/htpasswd;
 ```
 
-Now we'll check that our modification was correct and tell nginx to reload it's configuration file.
+Now we'll check that our modification was correct and tell NGINX to reload it's configuration file.
 ```
 $ sudo /etc/init.d/nginx configtest
  * Testing nginx configuration                    [ OK ]
@@ -757,6 +816,10 @@ To change or add a password, just omit the `-c` option to `htpasswd`:
 ```
 $ sudo htpasswd /etc/nginx/htpasswd <username>
 ```
-A password change should not require an nginx config reload.
+A password change should not require an NGINX config reload.
+
+### SSL ###
+
+We have purchased a wildcard SSL certificate for `*.bioreachables.com` that allows us to protect in-flight HTTP traffic to our wiki VMs.  The `site-wiki-ssl` config file contains parameters that enable SSL and redirect insecure connections to the SSL virtual server.  The VM image should have SSL certificates/keys and DH parameters installed or created as needed during setup.  Instructions for SSL installation live in the [service README](service/README.md#installing-ssl-certificates-for-nginx).  Note that certificate and DH parameter installation on a VM that will be used as an image for replication does *not* require changes to `site-wiki-ssl`.
 
 :moyai:
