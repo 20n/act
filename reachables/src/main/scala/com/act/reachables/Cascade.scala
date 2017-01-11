@@ -392,10 +392,13 @@ object Cascade extends Falls {
       }
     }).flatten)
 
+    println(paths.isEmpty)
     if (paths.isEmpty || paths.get.isEmpty) {
       // Use other methods
-      val paths = PathwayConstructor.getAllPaths(network, target)
-      val result = PathwayConstructor.createNetworksFromPath(paths, network)
+      val branchedPaths = PathwayConstructor.getAllPaths(network, target)
+      val result = PathwayConstructor.createNetworksFromPath(branchedPaths, network)
+      println(branchedPaths)
+      println(result)
       Option(result.map(convertNetworkToPath(_, target)))
     } else {
       paths
