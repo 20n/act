@@ -442,8 +442,8 @@ public class FreemarkerRenderer {
     }
 
     Map<Chemical.REFS, BasicDBObject> xrefs = r.getXref();
-
-
+    // We check that xrefs is not null to avoid NPEs when a Reachable does not have xrefs (cross-references) populated.
+    // It is expected that projections such as L3 or L4 are in that situation.
     if (xrefs != null) {
       // Each XREF being populated in a Reachable as DBObjects, serialization and deserialization causes funky problems
       // to appear. In particular, casting to BasicDBObjects fails because Jackson deserialized it as a LinkedHashMap
