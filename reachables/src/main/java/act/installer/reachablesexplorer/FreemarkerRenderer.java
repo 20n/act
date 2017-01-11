@@ -753,6 +753,10 @@ public class FreemarkerRenderer {
         List<String> organisms = new ArrayList<>(i.getOrganisms());
         Collections.sort(organisms);
         nodeModel.put("organisms", organisms);
+
+        List<String> pmids = new ArrayList<>(i.getPmids());
+        Collections.sort(pmids);
+        nodeModel.put("pmids", pmids);
       } else {
         Reachable r = getReachable(i.getId());
         if (r == null) {

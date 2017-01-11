@@ -180,6 +180,7 @@ object Cascade extends Falls {
 
     // Get sorted list of organisms
     val organisms = ids.flatMap(id => ReachRxnDescs.rxnOrganismNames(id).get).sorted(Ordering[String].reverse)
+    val pmids = ids.flatMap(id => ReachRxnDescs.rxnLiteratureReference(id).get).sorted(Ordering[String].reverse)
 
     if (nodeMerger.contains(unique)){
       val previouslyCreatedNode = nodeMerger(unique)
@@ -197,7 +198,10 @@ object Cascade extends Falls {
       Node.setAttribute(ident, "label_string", current)
 
       val addedOrganisms: Set[String] = Node.getAttribute(ident, "organisms").asInstanceOf[util.HashSet[String]].toSet ++ organisms
+      val addedPmids: Set[String] = Node.getAttribute(ident, "pmids").asInstanceOf[util.HashSet[String]].toSet ++ pmids
+
       Node.setAttribute(ident, "organisms",  new util.HashSet(addedOrganisms.asJava))
+      Node.setAttribute(ident, "pmids", new util.HashSet(addedPmids.asJava))
       return nodeMerger(unique)
     }
 
@@ -212,6 +216,7 @@ object Cascade extends Falls {
     Node.setAttribute(ident, "tooltip_string", rxn_node_tooltip_string(ids.head))
     Node.setAttribute(ident, "url_string", rxn_node_url_string(ids.head))
     Node.setAttribute(ident, "organisms", new util.HashSet(organisms.asJava))
+    Node.setAttribute(ident, "pmids", new util.HashSet(pmids.asJava))
     nodeMerger.put(unique, node)
     node
   }
@@ -472,9 +477,18 @@ object Cascade extends Falls {
                         @JsonProperty("reactionCount") var reactionCount: Int,
                         @JsonProperty("id") var id: Long,
                         @JsonProperty("label") var label: String,
-                        @JsonProperty("mostNative") var isMostNative: Boolean = false) {
+                        @JsonProperty("mostNative") var isMostNative: Boolean = false,
+                        @JsonProperty("pmids") var pmids: util.HashSet[String]) {
 
     def NodeInformation() {}
+
+    def getPmids(): util.HashSet[String] = {
+      pmids
+    }
+
+    def setPmids(pmids: util.HashSet[String]) = {
+      this.pmids = pmids
+    }
 
     def getSequences(): util.HashSet[Long] = {
       sequences
@@ -673,7 +687,9 @@ class Cascade(target: Long) {
           getOrDefault[util.HashSet[String]](node, "label_string", new util.HashSet[String]()).mkString(",")
         } else {
           getOrDefault[String](node, "label_string")
-        }
+        },
+        false,
+        getOrDefault[util.HashSet[String]](node, "pmids", new util.HashSet[String]())
       )
     }).asJava)
 
