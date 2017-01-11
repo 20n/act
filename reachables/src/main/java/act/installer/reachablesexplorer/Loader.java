@@ -84,8 +84,7 @@ public class Loader {
 
   // Target database and collection. We populate these with reachables
   private static final String DEFAULT_TARGET_DATABASE = "wiki_reachables";
-  private static final String DEFAULT_TARGET_COLLECTION = "reachablesv10_test_thomas";
-  private static final String DEFAULT_SEQUENCE_COLLECTION = "sequencesv10_test_thomas";
+  private static final String DUMMY_SEQUENCE_COLLECTION = "dummy_sequences_collection";
 
   private static final int ORGANISM_CACHE_SIZE = 1000;
   private static final String ORGANISM_UNKNOWN = "(unknown)";
@@ -150,18 +149,16 @@ public class Loader {
     );
     add(Option.builder(OPTION_TARGET_REACHABLES_COLLECTION)
         .argName("collection name")
-        .desc(String.format(
-            "The name of the collection in the dest DB into which to write reachables documents (default: %s)",
-            DEFAULT_TARGET_COLLECTION))
+        .desc("The name of the collection in the dest DB into which to write reachables documents (no default)")
         .hasArg()
+        .required()
         .longOpt("reachables-collection")
     );
     add(Option.builder(OPTION_TARGET_SEQUENCES_COLLECTION)
         .argName("collection name")
-        .desc(String.format(
-            "The name of the collection in the dest DB into which to write seqeunce documents (default: %s)",
-            DEFAULT_SEQUENCE_COLLECTION))
+        .desc("The name of the collection in the dest DB into which to write sequence documents (no default)")
         .hasArg()
+        .required()
         .longOpt("seq-collection")
     );
     add(Option.builder(OPTION_RENDERING_CACHE)
@@ -192,7 +189,7 @@ public class Loader {
     CommandLine cl = cliUtil.parseCommandLine(args);
 
     File reachablesDir = new File(cl.getOptionValue(OPTION_REACHABLES_SOURCE_DATA, DEFAULT_REACHABLES_PATH));
-    if (!reachablesDir.exists() && reachablesDir.isDirectory()) {
+    if (!(reachablesDir.exists() && reachablesDir.isDirectory())) {
       cliUtil.failWithMessage("Reachables directory at %s does not exist or is not a directory",
           reachablesDir.getAbsolutePath());
     }
@@ -201,13 +198,19 @@ public class Loader {
         cl.getOptionValue(OPTION_DB_HOST, DEFAULT_HOST),
         Integer.parseInt(cl.getOptionValue(OPTION_DB_PORT, DEFAULT_PORT.toString())),
         cl.getOptionValue(OPTION_TARGET_DB, DEFAULT_TARGET_DATABASE),
-        cl.getOptionValue(OPTION_TARGET_REACHABLES_COLLECTION, DEFAULT_TARGET_COLLECTION),
-        cl.getOptionValue(OPTION_TARGET_SEQUENCES_COLLECTION, DEFAULT_SEQUENCE_COLLECTION),
+        cl.getOptionValue(OPTION_TARGET_REACHABLES_COLLECTION),
+        cl.getOptionValue(OPTION_TARGET_SEQUENCES_COLLECTION),
         cl.getOptionValue(OPTION_RENDERING_CACHE, DEFAULT_ASSETS_LOCATION)
     );
     loader.updateFromReachableDir(reachablesDir);
+
     if (cl.hasOption(OPTION_PROJECTIONS_SOURCE_DATA)) {
-      loader.updateFromProjectionFile(new File(cl.getOptionValue(OPTION_PROJECTIONS_SOURCE_DATA, DEFAULT_PROJECTIONS_PATH)));
+      File projectionFile = new File(cl.getOptionValue(OPTION_PROJECTIONS_SOURCE_DATA, DEFAULT_PROJECTIONS_PATH));
+      if (!projectionFile.exists() || projectionFile.isDirectory()) {
+        cliUtil.failWithMessage("Projection file at %s does not exist or is a directory",
+            projectionFile.getAbsolutePath());
+      }
+      loader.updateFromProjectionFile(projectionFile);
     }
   }
 
@@ -281,12 +284,7 @@ public class Loader {
    * @param targetCollection The collection for the target Reachables MongoDB
    */
   public Loader(String host, Integer port, String targetDB, String targetCollection) {
-    this(host, port, targetDB, targetCollection, DEFAULT_SEQUENCE_COLLECTION, DEFAULT_ASSETS_LOCATION);
-  }
-
-  public Loader() {
-    this(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_TARGET_DATABASE,
-        DEFAULT_TARGET_COLLECTION, DEFAULT_SEQUENCE_COLLECTION, DEFAULT_ASSETS_LOCATION);
+    this(host, port, targetDB, targetCollection, DUMMY_SEQUENCE_COLLECTION, DEFAULT_ASSETS_LOCATION);
   }
 
   // TODO Move these getters to a different place/divide up concerns better?
@@ -347,14 +345,15 @@ public class Loader {
       return preconstructedReachable;
     }
 
-    Chemical c = db.getChemicalFromInChI(inchi);
+    Chemical chemical = db.getChemicalFromInChI(inchi);
 
     // For L3/L4 molecules, we won't find them in the DB but still need to construct a Reachable object.
     // In this case, fall back to `constructReachableFromInchi`
-    Reachable r = c == null ? constructReachableFromInchi(inchi) : constructReachableFromChemical(c);
+    Reachable reachable = chemical == null ?
+        constructReachableFromInchi(inchi) : constructReachableFromChemical(chemical);
 
     // TODO: this should save the Reachable like constructOrFindReachableById.  Make sure that's safe.
-    return r;
+    return reachable;
   }
 
   public Reachable constructOrFindReachableById(Long id) {
@@ -364,15 +363,21 @@ public class Loader {
       return preconstructedReachable;
     }
 
-    Chemical c = db.getChemicalFromChemicalUUID(id);
-    Reachable r = constructReachableFromChemical(c);
+    Chemical chemical = db.getChemicalFromChemicalUUID(id);
 
-    // We didn't find this in the DB before but expect to the next time we look for it, so store before returning.
-    jacksonReachablesCollection.insert(r);
-    return r;
+    if (chemical != null) {
+      Reachable reachable = constructReachableFromChemical(chemical);
+      // We didn't find this in the DB before but expect to the next time we look for it, so store before returning.
+      jacksonReachablesCollection.insert(reachable);
+      return reachable;
+    } else {
+      LOGGER.error("Chemical ID %d not found in the database. Returning null");
+      return null;
+    }
   }
 
-  private Reachable constructReachableFromInchi(String inchi) {
+  private Reachable constructReachable(Long id, String inchi, List<String> names,
+                                       String wordcloudFilename, Map<Chemical.REFS, BasicDBObject> xrefs) {
 
     Molecule mol;
     try {
@@ -397,7 +402,7 @@ public class Loader {
       LOGGER.error("Failed to export molecule %s to inchi key", inchi);
     }
 
-    String pageName = getMoleculeName(mol, inchi);
+    String pageName = names.isEmpty() ? getMoleculeName(mol, inchi) : names.get(0);
 
     String renderingFilename = null;
     Optional<File> rendering = moleculeRenderer.generateRendering(inchi);
@@ -420,52 +425,29 @@ public class Loader {
     }
     PhysiochemicalProperties physiochemicalProperties = analysisFeatures == null ? null:
         new PhysiochemicalProperties(analysisFeatures.getpKa(), analysisFeatures.getLogP(), analysisFeatures.getHlb());
-    
-    Long uuid = jacksonReachablesCollection.count() + BASE_ID_PROJECTIONS;
 
-    String wordcloudFilename = null;
-    Map<Chemical.REFS, BasicDBObject> xref = null;
+    return new Reachable(id, pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
+        wordcloudFilename, xrefs, physiochemicalProperties);
+  }
+
+  private Reachable constructReachableFromInchi(String inchi) {
+    Long id = jacksonReachablesCollection.count() + BASE_ID_PROJECTIONS;
     List<String> names = new ArrayList<>();
-    return new Reachable(uuid, pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
-        wordcloudFilename, xref, physiochemicalProperties);
+    String wordcloudFilename = null;
+    Map<Chemical.REFS, BasicDBObject> xrefs = null;
+    return constructReachable(id, inchi, names, wordcloudFilename, xrefs);
   }
 
   private Reachable constructReachableFromChemical(Chemical c) {
+
+    if (c == null) {
+      LOGGER.error("Cannot create a Reachable from a null input Chemical.");
+      return null;
+    }
     String inchi = c.getInChI();
-
-    Molecule mol;
-    try {
-      MoleculeImporter.assertNotFakeInchi(inchi);
-      mol = MoleculeImporter.importMolecule(inchi);
-    } catch (MolFormatException e) {
-      LOGGER.error("Failed to import inchi %s", inchi);
-
-      return null;
-    } catch (MoleculeImporter.FakeInchiException e) {
-      LOGGER.error("Failed to import inchi %s as it is fake.", inchi);
-      return null;
-    }
-
     List<String> names = c.getBrendaNames();
-    String pageName = names.isEmpty() ? getMoleculeName(mol, inchi) : names.get(0);
-
-    Map<Chemical.REFS, BasicDBObject> xref = c.getXrefMap();
-
-    String smiles = getSmiles(mol);
-    if (smiles == null) {
-      LOGGER.error("Failed to export molecule %s to smiles", inchi);
-    }
-
-    String inchikey = getInchiKey(mol);
-    if (inchikey == null) {
-      LOGGER.error("Failed to export molecule %s to inchi key", inchi);
-    }
-
-    String renderingFilename = null;
-    Optional<File> rendering = moleculeRenderer.generateRendering(inchi);
-    if (rendering.isPresent()) {
-      renderingFilename = rendering.get().getName();
-    }
+    Map<Chemical.REFS, BasicDBObject> xrefs = c.getXrefMap();
+    Long id = c.getUuid();
 
     File wordcloud = wordCloudGenerator.getWordcloudFile(inchi);
     String wordcloudFilename = null;
@@ -473,27 +455,10 @@ public class Loader {
       wordcloudFilename = wordcloud.getName();
     }
 
-    SynonymData synonymData = getSynonymData(inchi);
+    Reachable reachable = constructReachable(id, inchi, names, wordcloudFilename, xrefs);
 
-    PhysiochemicalPropertiesCalculator.Features analysisFeatures = null;
-
-    try {
-      analysisFeatures = calculator.computeFeatures(mol);
-    } catch (PluginException e) {
-      LOGGER.error(String.format("Caught a PluginException when computing physiochemical properties for inchi %s: %s",
-          inchi, e.getMessage()));
-    } catch (IOException e) {
-      LOGGER.error(String.format("Caught an IOException when computing physiochemical properties for inchi %s: %s",
-          inchi, e.getMessage()));
-    }
-
-    PhysiochemicalProperties physiochemicalProperties = analysisFeatures == null ? null:
-        new PhysiochemicalProperties(analysisFeatures.getpKa(), analysisFeatures.getLogP(), analysisFeatures.getHlb());
-
-    Reachable r = new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
-        wordcloudFilename, xref, physiochemicalProperties);
-    r.setPathwayVisualization("cscd" + r.getId() + ".dot");
-    return r;
+    reachable.setPathwayVisualization("cscd" + reachable.getId() + ".dot");
+    return reachable;
   }
 
   private void updateWithPrecursors(String inchi, List<Precursor> pre) throws IOException {
@@ -767,8 +732,10 @@ public class Loader {
 
   public void updateFromProjectionFile(File file) throws IOException {
     LOGGER.info("Processing projection file: %s", file.getName());
-    List<ReachablesProjectionResult> projectionResults = Arrays.asList(MAPPER.readValue(file, ReachablesProjectionResult[].class));
-    List<ReachablesProjectionUpdate> projectionUpdates = projectionResults.stream().map(ReachablesProjectionUpdate::new).collect(Collectors.toList());
+    List<ReachablesProjectionResult> projectionResults = Arrays.asList(
+        MAPPER.readValue(file, ReachablesProjectionResult[].class));
+    List<ReachablesProjectionUpdate> projectionUpdates = projectionResults.stream().map(
+        ReachablesProjectionUpdate::new).collect(Collectors.toList());
     projectionUpdates.forEach(this::updateFromProjection);
   }
 }
