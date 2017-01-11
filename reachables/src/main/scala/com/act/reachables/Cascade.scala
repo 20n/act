@@ -322,52 +322,52 @@ object Cascade extends Falls {
   }
 
   def get_cascade(m: Long, depth: Int = 0, source: Option[Long] = None, seen: Set[Long] = Set()): Option[Network] =
-    if (CACHE_CASCADES && depth > 0 && cache_nw.asMap.containsKey(m)) cache_nw.asMap.get(m) else
-    {
-      // first check if we are "re-getting" the cascade for the main target,
-      // and if so return empty. this allows us to break cycles around the target
-      if (source.isDefined && source.get == m) return None
+  if (CACHE_CASCADES && depth > 0 && cache_nw.asMap.containsKey(m)) cache_nw.asMap.get(m) else
+  {
+    // first check if we are "re-getting" the cascade for the main target,
+    // and if so return empty. this allows us to break cycles around the target
+    if (source.isDefined && source.get == m) return None
 
-      val network = new Network("cascade_" + m)
-      network.addNode(mol_node(m), m)
+    val network = new Network("cascade_" + m)
+    network.addNode(mol_node(m), m)
 
-      val optUpwardsCascade = if (is_universal(m)) {
-        // do nothing, base case
-        Some(network)
+    val optUpwardsCascade = if (is_universal(m)) {
+      // do nothing, base case
+      Some(network)
+    } else {
+      // We don't filter by higher in tree on the first iteration, so that all possible
+      // reactions producing this product are shown on the graph.
+      val grouped: List[(SubProductPair, List[ReachRxn])] = pre_rxns(m, higherInTree = depth != 0).toList
+
+      val validNodes: List[Boolean] = grouped.map(x => addValid(m, depth, source, seen, network, x))
+      // find if there was a single node that was valid (take OR of all valid's)
+      val oneValid = validNodes.exists(_ == true)
+
+      if (!oneValid && depth > 0){
+        None
       } else {
-        // We don't filter by higher in tree on the first iteration, so that all possible
-        // reactions producing this product are shown on the graph.
-        val grouped: List[(SubProductPair, List[ReachRxn])] = pre_rxns(m, higherInTree = depth != 0).toList
-
-        val validNodes: List[Boolean] = grouped.map(x => addValid(m, depth, source, seen, network, x))
-        // find if there was a single node that was valid (take OR of all valid's)
-        val oneValid = validNodes.exists(_ == true)
-
-        if (!oneValid && depth > 0){
-          None
-        } else {
-          Some(network)
-        }
+        Some(network)
       }
-
-      // Now we cache the network. Except for two cases:
-      // 1) when the node is the target node (i.e., depth == 0), the `optUpwardsCascade` for this node
-      //    contains the exceptional case of including edges even if they don't go higher in the tree
-      //    so this computation of its `optUpwardsCascade` is a one off. If we encounter this other times (i.e., as
-      //    an internal node during some other computation) the exception would not have been applied
-      //    and so we'll be good to cache it then.
-      // 2) when the node happens to have been explored as part of a cycle (that does not lead to
-      //    natives). In that case, we usually do want to exclude it. But there are times when
-      //    bidirectional edges exist in the cycle, and so there is a way to use the edges in it
-      //    to actually break out of it. To allow for that case, we don't cache when the computation
-      //    evaluates to None. Every other case, good to go.
-      if (depth > 0 && optUpwardsCascade.isDefined) {
-        // cache the network so we don't recompute it
-        cache_nw.put(m, optUpwardsCascade)
-      }
-
-      optUpwardsCascade
     }
+
+    // Now we cache the network. Except for two cases:
+    // 1) when the node is the target node (i.e., depth == 0), the `optUpwardsCascade` for this node
+    //    contains the exceptional case of including edges even if they don't go higher in the tree
+    //    so this computation of its `optUpwardsCascade` is a one off. If we encounter this other times (i.e., as
+    //    an internal node during some other computation) the exception would not have been applied
+    //    and so we'll be good to cache it then.
+    // 2) when the node happens to have been explored as part of a cycle (that does not lead to
+    //    natives). In that case, we usually do want to exclude it. But there are times when
+    //    bidirectional edges exist in the cycle, and so there is a way to use the edges in it
+    //    to actually break out of it. To allow for that case, we don't cache when the computation
+    //    evaluates to None. Every other case, good to go.
+    if (depth > 0 && optUpwardsCascade.isDefined) {
+      // cache the network so we don't recompute it
+      cache_nw.put(m, optUpwardsCascade)
+    }
+
+    optUpwardsCascade
+  }
 
   def getAllPaths(network: Network, target: Long): Option[List[Path]] = {
     val sourceEdgesSet: util.Set[Edge] = network.getEdgesGoingInto(target)
