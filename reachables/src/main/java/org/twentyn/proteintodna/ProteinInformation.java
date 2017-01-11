@@ -28,7 +28,6 @@ public class ProteinInformation {
 
   private String organism;
   private String ecnum;
-
   private String proteinSeq;
   private String proteinDesc;
 
@@ -39,8 +38,7 @@ public class ProteinInformation {
     this.proteinSeq = proteinSeq;
   }
 
-  private ProteinInformation() {
-  }
+  private ProteinInformation() {}
 
   @Override
   public boolean equals(Object o) {

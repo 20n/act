@@ -39,9 +39,9 @@ public class ProteinToDNADriver {
   private static final String DEFAULT_DB_PORT = "27017";
   private static final String DEFAULT_OUTPUT_DB_NAME = "wiki_reachables";
   private static final String DEFAULT_INPUT_DB_NAME = "jarvis_2016-12-09";
-  public static final String DEFAULT_INPUT_PATHWAY_COLLECTION_NAME = "pathways_jarvis_dec21";
-  public static final String DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME = "pathways_jarvis_dec21_2";
-  public static final String DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME = "dna_designs_2016-12-26_2";
+  public static final String DEFAULT_INPUT_PATHWAY_COLLECTION_NAME = "pathways_jarvis";
+  public static final String DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME = "pathways_vijay";
+  public static final String DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME = "dna_designs";
 
   private static final String OPTION_DB_HOST = "H";
   private static final String OPTION_DB_PORT = "p";
@@ -297,7 +297,7 @@ public class ProteinToDNADriver {
           String id = result.getSavedId();
           reactionPath.setDnaDesignRef(id);
         } catch (Exception e) {
-          LOGGER.error(String.format("Exception caught will inserting results: %s", e.getMessage()));
+          LOGGER.error(String.format("Exception caught will inserting dna design: %s", e.getMessage()));
         }
 
       }

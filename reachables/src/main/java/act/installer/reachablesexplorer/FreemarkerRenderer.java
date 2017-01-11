@@ -46,13 +46,13 @@ import java.util.stream.Collectors;
 
 public class FreemarkerRenderer {
 
-  public class TableProperties {
+  public class DnaDesignTableProperties {
     private String dnaConstructFileName;
     private String proteinConstructFileName;
     private String dnaSeqShortName;
     private DNAOrgECNum dnaSeq;
 
-    public TableProperties(String dnaConstructFileName, String proteinConstructFileName, String dnaSeqShortName, DNAOrgECNum dnaSeq) {
+    public DnaDesignTableProperties(String dnaConstructFileName, String proteinConstructFileName, String dnaSeqShortName, DNAOrgECNum dnaSeq) {
       this.dnaConstructFileName = dnaConstructFileName;
       this.proteinConstructFileName = proteinConstructFileName;
       this.dnaSeq = dnaSeq;
@@ -96,9 +96,8 @@ public class FreemarkerRenderer {
   private static final String DEFAULT_DB_NAME = "wiki_reachables";
   private static final String DEFAULT_REACHABLES_COLLECTION = "reachables_2016-12-26";
   private static final String DEFAULT_SEQUENCES_COLLECTION = "sequences_2016-12-26";
-  private static final String DEFAULT_DNA_COLLECTION = "dna_designs_2016-12-26_2";
-  //private static final String DEFAULT_DNA_COLLECTION = "dna_designs";
-  private static final String DEFAULT_RENDERING_CACHE = "/Volumes/data-level1/data/reachables-explorer-rendering-cache";
+  private static final String DEFAULT_DNA_COLLECTION = "designs_2016-12-26";
+  private static final String DEFAULT_RENDERING_CACHE = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class consumes and renders a DB of reachable molecules, pathways, and DNA designs."
@@ -575,7 +574,7 @@ public class FreemarkerRenderer {
 
     String pathwayDocName = String.format("Pathway_%s_%d", sourceDocName, path.getRank());
 
-    List<TableProperties> designDocsAndSummaries = path.getDnaDesignRef() != null ?
+    List<DnaDesignTableProperties> designDocsAndSummaries = path.getDnaDesignRef() != null ?
         renderSequences(sequenceDestination, pathwayDocName, path.getDnaDesignRef()) : Collections.emptyList();
 
     Pair<Object, String> model = buildPathModel(path, designDocsAndSummaries);
@@ -590,14 +589,14 @@ public class FreemarkerRenderer {
     );
   }
 
-  private List<TableProperties> renderSequences(File sequenceDestination, String docPrefix, String seqRef) throws IOException {
+  private List<DnaDesignTableProperties> renderSequences(File sequenceDestination, String docPrefix, String seqRef) throws IOException {
     DNADesign designDoc = dnaDesignCollection.findOneById(seqRef);
     if (designDoc == null) {
       LOGGER.error("Could not find dna seq for id %s", seqRef);
       return Collections.emptyList();
     }
 
-    List<TableProperties> sequenceFilesAndSummaries = new ArrayList<>();
+    List<DnaDesignTableProperties> sequenceFilesAndSummaries = new ArrayList<>();
 
     List<DNAOrgECNum> designs = new ArrayList<>(designDoc.getDnaDesigns());
     Collections.sort(designs, (a, b) -> {
@@ -707,7 +706,7 @@ public class FreemarkerRenderer {
         }
       }
 
-      sequenceFilesAndSummaries.add(new TableProperties(constructFilename, proteinDataFileName, shortVersion, designs.get(i)));
+      sequenceFilesAndSummaries.add(new DnaDesignTableProperties(constructFilename, proteinDataFileName, shortVersion, designs.get(i)));
     }
 
     return sequenceFilesAndSummaries;
@@ -723,7 +722,7 @@ public class FreemarkerRenderer {
   }
 
 
-  private Pair<Object, String> buildPathModel(ReactionPath p, List<TableProperties> designs) throws IOException {
+  private Pair<Object, String> buildPathModel(ReactionPath p, List<DnaDesignTableProperties> designs) throws IOException {
     Map<String, Object> model = new HashMap<>();
 
     LinkedList<Object> pathwayItems = new LinkedList<>();
@@ -771,7 +770,7 @@ public class FreemarkerRenderer {
     List<Map<String, Object>> dna = new ArrayList<>();
     int i = 1;
 
-    for (TableProperties design : designs) {
+    for (DnaDesignTableProperties design : designs) {
       final int num = i; // Sigh, must be final to use in this initialization block.
 
       dna.add(new HashMap<String, Object>() {{
@@ -801,12 +800,10 @@ public class FreemarkerRenderer {
   }
 
   private String renderSetOfProteinDesignMetadata(Set<ProteinInformation> proteinInformationSet) {
-    return StringUtils.capitalize(StringUtils.join(proteinInformationSet.stream().
-        filter(Objects::nonNull).
-        map(this::renderProteinMetadata).
-        collect(Collectors.toList()),
-        ", ")
-    );
+    List<String> listOfProteinMetaData = proteinInformationSet.stream().filter(Objects::nonNull).map(this::renderProteinMetadata).
+        collect(Collectors.toList());
+    String concatenatedListOfProteinMetaData = StringUtils.join(listOfProteinMetaData, ", ");
+    return StringUtils.capitalize(concatenatedListOfProteinMetaData);
   }
 
   private String renderProteinMetadata(ProteinInformation proteinInformation) {
