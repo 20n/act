@@ -1,0 +1,173 @@
+package com.act.reachables
+
+
+import scala.collection.JavaConverters._
+import scala.collection.mutable
+
+
+object PathwayConstructor {
+
+//  lazy val sampleNetwork: Network = {
+//    val nw = new Network("test")
+//
+//    val edgeCreator = createEdge(nw)_
+//
+//    // Reactions to target
+//    edgeCreator(100L, 0L)
+//    edgeCreator(101L, 0L)
+//
+//    // Reaction 0 substrates
+//    edgeCreator(1L, 100L)
+//    edgeCreator(2L, 100L)
+//    edgeCreator(3L, 100L)
+//
+//    // Reaction 1 substrates
+//    edgeCreator(3L, 101L)
+//    edgeCreator(4L, 101L)
+//    edgeCreator(8L, 103L)
+//
+//    // Reactions to substrate 3
+//    edgeCreator(102L, 3L)
+//    edgeCreator(103L, 3L)
+//
+//    edgeCreator(5L, 102L)
+//    edgeCreator(6L, 103L)
+//    edgeCreator(7L, 103L)
+//
+//    //
+//    edgeCreator(104, 5)
+//    edgeCreator(8, 104)
+//
+//    //
+//    edgeCreator(105, 5)
+//    edgeCreator(9, 105)
+//
+//    edgeCreator(5, 110)
+//    edgeCreator(110, 10)
+//    edgeCreator(10, 111)
+//    edgeCreator(111, 5)
+//
+//    edgeCreator(10, 101)
+//
+//    nw
+//  }
+
+//  lazy val sampleNetwork = Network.deserialize("SavedVanillinNetwork")
+//
+//  private def createEdge(network: Network)(l1: Long, l2: Long): Unit = {
+//    val node1 = Node.get(l1, true)
+//    val node2 = Node.get(l2, true)
+//
+//    network.addNode(node1, l1)
+//    network.addNode(node2, l2)
+//
+//    network.addEdge(Edge.get(node1, node2, true))
+//  }
+
+//  def main(args: Array[String]) {
+//    ActData.instance().deserialize(new File("/Users/michaellampe/ComputedNativesSet", "r-2016-12-19.actdata").getAbsolutePath)
+////    Cascade.natives = List(1L, 2L, 4, 8L, 9L)
+////    Cascade.cofactors = List(3, 7, 6)
+//    Cascade.natives = ActData.instance.natives.asScala.map(Long.unbox(_)).toList
+//    Cascade.cofactors = ActData.instance.cofactors.asScala.map(Long.unbox(_)).toList
+//    println(sampleNetwork.toDOT)
+//    val paths = getAllPaths(sampleNetwork, 878L)
+//    val result = createNetworksFromPath(paths, sampleNetwork)
+//    println(result.map(x => x.toDOT).mkString("\n\n"))
+//    println(result.length)
+//  }
+
+  def getAllPaths(network: Network, target: Long, level: Int = 0): List[ComplexPath] = {
+    if (Cascade.is_universal(target)) {
+      return List(ComplexPath(network.idToNode.get(target), None, None, level))
+    }
+
+    if (network.getEdgesGoingInto(target) == null || network.getEdgesGoingInto(target).isEmpty) {
+      return List()
+    }
+    val reactionsThatProduceTarget: List[Edge] = network.getEdgesGoingInto(target).asScala.toList
+
+    reactionsThatProduceTarget.map(reactionEdge => {
+      val reactionNode = reactionEdge.src
+
+      // Get all the needed nodes for this reaction, then filter out cofactors to get the needed chems
+      val requiredChemicalEdges: List[Edge] = network.getEdgesGoingInto(reactionNode).asScala.toList
+      val chemicalsNeededForThisReaction: List[Node] = requiredChemicalEdges.map(_.src).filter(s => !Cascade.cofactors.contains(s.id))
+
+      // Need a list of this path + all the other paths
+      val producerPaths: List[List[ComplexPath]] = chemicalsNeededForThisReaction.map(c => {
+        getAllPaths(network, c.id, level+1)
+      })
+      ComplexPath(reactionEdge.dst, if (producerPaths.exists(_.nonEmpty)) Option(reactionEdge) else None, if (producerPaths.exists(_.nonEmpty)) Option(producerPaths) else None, level)
+    })
+  }
+
+
+  case class ComplexPath(produced: Node, reaction: Option[Edge], producers: Option[List[List[ComplexPath]]], level: Int = 0) {
+    override def toString(): String = {
+        s"""
+          |${"\t"*level}Produced: ${produced.id}
+          |${"\t"*level}Reaction: $reaction
+          |${"\t"*level}Producers: $producers
+        """.stripMargin
+    }
+  }
+
+  def createNetworksFromPath(cPath: List[ComplexPath], sourceNetwork: Network): List[Network] = {
+    // Get all the values that produce a given needed chemical in this path.
+    cPath.flatMap(createAllNetworks(_, sourceNetwork))
+  }
+
+  def createAllNetworks(path: ComplexPath, sourceNetwork: Network): List[Network] = {
+    val MAX_PATHS_TAKEN = 2
+
+    if (path.reaction.isEmpty) return List(new Network("native"))
+
+    // Create all viable combinations of pathways from this complex path's producers
+    val possibleSubsequentPaths: List[List[ComplexPath]] = path.producers match {
+      case Some(x) => chooseOneFromEach(x)
+    }
+
+    val resultingGraphs = possibleSubsequentPaths.map(eachPath => {
+
+      // Each path is a group of chemicals that we need the path for
+      val neededPaths: List[List[Network]] = chooseOneFromEach[Network](eachPath.map(createAllNetworks(_, sourceNetwork))).take(MAX_PATHS_TAKEN)
+      neededPaths.map(x => {
+        val newInstance = new Network("pathway")
+        newInstance.addNode(path.produced, path.produced.id)
+        newInstance.addNode(path.reaction.get.src, path.reaction.get.src.id)
+        newInstance.addEdge(path.reaction.get)
+
+        val relatedEdges: List[Edge] = sourceNetwork.getEdgesGoingInto(path.reaction.get.src).asScala.toList
+
+        relatedEdges.foreach(e => newInstance.addNode(e.src, e.src.id))
+        relatedEdges.foreach(e => newInstance.addEdge(e))
+
+        x.foreach(newInstance.mergeInto)
+        newInstance
+      })
+    })
+
+    resultingGraphs.flatten
+  }
+
+  private def chooseOneFromEach[T](input: List[List[T]]): List[List[T]] = {
+    val fullList = mutable.ListBuffer[List[T]]()
+
+    def chooseAll(remainingInput: List[List[T]], createdListSoFar: List[T] = List()): Unit = {
+      val headElements: List[T] = remainingInput.head
+
+      val tailElements: List[List[T]] = remainingInput.tail
+      if (tailElements.isEmpty) {
+        // Woo we are done so we add it to our list of combinations
+        headElements.foreach(x => fullList.append(createdListSoFar ::: List(x)))
+        return
+      }
+
+      headElements.foreach(x => chooseAll(tailElements, createdListSoFar ::: List(x)))
+    }
+    chooseAll(input)
+
+    fullList.toList
+  }
+}
