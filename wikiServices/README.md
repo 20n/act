@@ -1,8 +1,11 @@
 ## Introduction: Mediawiki Web Services ##
 
-This directory contains source and config files for web services that support our mediawiki installation.  These should only be enabled on **private** wiki installations, not on the public preview wiki.  Below are the instructions: Step 1) create wiki data (or use preview wiki data on NAS), Step 2) setup a wiki VM and upload data to it.
+This directory contains source and config files for web services that support our mediawiki installation.  These should only be enabled on **private** wiki installations, not on the public preview wiki.  The high-level steps to setting up a wiki are:
 
-// Revise this statement: Private wikis should be created by launching new instances of existing wiki AMIs (in EC2).  If complete installation instructions are required, see `service/README.md`.  Please read that document for additional information about resource placement.
+1. create wiki data (or use preview wiki data on NAS)
+1. setup a wiki VM and upload data to it.
+
+Private wikis should be created by launching new instances of existing wiki Azure VM images (or, if necessary, EC2 AMIs).  Instructions on creating VM images and AMIs from scratch appear in the [appendices of this document](#appendices) and in `service/README.md`; creating from-scratch images should *not* be necessary during normal wiki instance deployment.
 
 ## 1. Wiki Content Generation ##
 
@@ -233,14 +236,16 @@ To load a directory of only pages into the wiki (no other files, please), use th
 ```
 $ find <directory of page text files> -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
 ```
-E.g., if you are using the preview data from the NAS `<directory of page text files>` = `demo_wiki_2016-12-21/{Paths/,Reachables/,Sequences/}`, i.e., you run the command 3 times.
+If you are using the preview data from the NAS `<directory of page text files>` = `demo_wiki_2016-12-21/{Paths/,Reachables/}`, i.e., you run the command twice.
 
 The Tabs extension we rely on doesn't automatically render the tab assets when using the maintenance script, so we have to force mediawiki to purge its cache and rebuild the page.  We can do this via the `api.php` endpoint:
 ```shell
 $ function rebuild() { for i in $(ls $1); do echo $i; curl -vvv -X POST "http://localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP"; done; }
 $ rebuild <directory of page text files>
 ```
-E.g., if you are using the preview data from the NAS then rerun `rebuild` with  each of `demo_wiki_2016-12-21/{Paths,Sequences,Reachables}`. Make sure the output of `rebuld` only output "200 OK" messages.
+If you are using the preview data from the NAS then rerun `rebuild` with  each of `demo_wiki_2016-12-21/{Paths,Reachables}`. Make sure the output of `rebuild` only output "200 OK" messages.
+
+Complete commands to import preview data into a wiki instance are available in one of the [example sections](#example-loading-the-preview-wiki-content).
 
 You can redirect the output of `curl` to `/dev/null` if you want, but it's good to ensure that some of the requests are working first.
 
@@ -263,16 +268,17 @@ $ find wiki_front_matter/pages -type f | sort -S1G | xargs sudo -u www-data php 
 # Ensure they're re-rendered.  Don't use find, as we just want the page names.
 for i in $(ls wiki_front_matter/pages); do
   echo $i;
-  curl -vvv -X POST "http://localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP"; 
+  curl -vvv -X POST "http://localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP";
 done
 # Make sure all responses codes are "200 OK"
 ```
 
 The front page should now contain our usual intro page and images.  The `All_Chemicals` list is empty, You should generate a new one based on the data you have (replace `demo_wiki_2016-12-21` with whatever your parent directory is:
-  ```
-  dir="demo_wiki_2016-12-21/Reachables/"; for page in `ls $dir`; do molecule=`cat $dir/$page | head -1 | sed 's/=//g'`; echo "[[$page|$molecule]]"; echo; done > wiki_front_matter/pages/All_Chemicals 
-  find wiki_front_matter/pages -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
-  ``` 
+```
+$ dir="demo_wiki_2016-12-21/Reachables/"
+$ for page in `ls $dir`; do molecule=`cat $dir/$page | head -1 | sed 's/=//g'`; echo "[[$page|$molecule]]"; echo; done > wiki_front_matter/pages/All_Chemicals
+$ find wiki_front_matter/pages -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
+```
 
 To edit the side bar content (i.e. to remove `Random Page` and `Recent Changes`), navigate to `/index.php?title=MediaWiki:Sidebar` and edit the source.  Use http://preview.bioreachables.20n.com/index.php?title=MediaWiki:Sidebar as an example of this.
 
