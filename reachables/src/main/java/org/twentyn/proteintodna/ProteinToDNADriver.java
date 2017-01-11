@@ -9,6 +9,7 @@ import com.act.utils.CLIUtil;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.MongoClient;
+import com.mongodb.MongoInternalException;
 import com.mongodb.ServerAddress;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -296,8 +297,10 @@ public class ProteinToDNADriver {
           WriteResult<DNADesign, String> result = dnaDesignCollection.insert(dnaDesignSeq);
           String id = result.getSavedId();
           reactionPath.setDnaDesignRef(id);
-        } catch (Exception e) {
-          LOGGER.error(String.format("Exception caught will inserting dna design: %s", e.getMessage()));
+        } catch (MongoInternalException e) {
+          // This condition happens whent the protein designs are too big and cannot be inserted in to the JSON object.
+          // TODO: Handle this case without dropping the record
+          LOGGER.error(String.format("Mongo internal exception caught while inserting dna design: %s", e.getMessage()));
         }
 
       }
