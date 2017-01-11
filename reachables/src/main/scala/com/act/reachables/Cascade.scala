@@ -783,8 +783,7 @@ class Cascade(target: Long) {
     }
 
     try {
-      System.exit(1)
-      sortedPaths.foreach(Cascade.pathwayCollection.insert)
+//      sortedPaths.foreach(Cascade.pathwayCollection.insert)
     } catch {
       case e: Exception => None
     }
