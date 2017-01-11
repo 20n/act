@@ -98,7 +98,7 @@ public class FreemarkerRenderer {
   private static final String DEFAULT_REACHABLES_COLLECTION = "reachables_2016-12-26";
   private static final String DEFAULT_SEQUENCES_COLLECTION = "sequences_2016-12-26";
   private static final String DEFAULT_DNA_COLLECTION = "designs_2016-12-26";
-  private static final String DEFAULT_RENDERING_CACHE = "/Volumes/data-level1/data/reachables-explorer-rendering-cache";
+  private static final String DEFAULT_RENDERING_CACHE = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
   private static final String DEFAULT_PATHWAY_COLLECTION = "pathways_jarvis_dec21";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
@@ -189,7 +189,8 @@ public class FreemarkerRenderer {
         .argName("pathways")
         .desc("The pathway collection to read pathways from")
         .longOpt("pathways")
-        .hasArg().required()
+        .hasArg()
+        .required()
     );
   }};
 
@@ -651,7 +652,7 @@ public class FreemarkerRenderer {
 
       String proteinDataFileName = String.format("Protein_%s_seq%d.txt", docPrefix, i + 1);
       try (FileWriter writer = new FileWriter(new File(sequenceDestination, proteinDataFileName))) {
-        for (Set<ProteinInformation> proteinSet : designs.get(i).getListOfOrganismAndEcNums()) {
+        for (Set<ProteinInformation> proteinSet : designs.get(i).getListOfProteinInformation()) {
           String header = ">";
           String proteinSeq = "";
           List<String> descriptions = new ArrayList<>();
@@ -801,7 +802,7 @@ public class FreemarkerRenderer {
 
 
   private List<String> renderDNADesignMetadata(DNAOrgECNum dnaOrgECNum) {
-    List<Set<ProteinInformation>> setOfOrgAndEcnum = dnaOrgECNum.getListOfOrganismAndEcNums();
+    List<Set<ProteinInformation>> setOfOrgAndEcnum = dnaOrgECNum.getListOfProteinInformation();
     return setOfOrgAndEcnum.stream().
         filter(Objects::nonNull).
         map(this::renderSetOfProteinDesignMetadata).
