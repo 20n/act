@@ -46,11 +46,13 @@
  !
  ! DNA design
  ! Proteins used for DNA design
+ ! Protein Sequence Design Files
      <#list dna as design>
  |-
  | ${design.num}
  | [[:File:${design.file}|...${design.sample}...]]
  | <#list design.org_ec as protein>Protein ${protein?counter}: ${protein}<br></#list>
+ | [[:File:${design.proteinFile}| Protein Fasta File ${design.num}]]
      </#list>
  |}
 

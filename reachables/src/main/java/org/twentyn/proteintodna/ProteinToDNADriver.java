@@ -9,6 +9,7 @@ import com.act.utils.CLIUtil;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.MongoClient;
+import com.mongodb.MongoInternalException;
 import com.mongodb.ServerAddress;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -144,7 +145,6 @@ public class ProteinToDNADriver {
     MongoClient inputClient = new MongoClient(new ServerAddress(dbHost, dbPort));
     DB db = inputClient.getDB(cl.getOptionValue(OPTION_OUTPUT_DB_NAME, DEFAULT_OUTPUT_DB_NAME));
 
-
     String inputPathwaysCollectionName = cl.getOptionValue(OPTION_INPUT_PATHWAY_COLLECTION_NAME, DEFAULT_INPUT_PATHWAY_COLLECTION_NAME);
     String outputPathwaysCollectionName = cl.getOptionValue(OPTION_OUTPUT_PATHWAY_COLLECTION_NAME, DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME);
     String outputDnaDeqCollectionName = cl.getOptionValue(OPTION_OUTPUT_DNA_SEQ_COLLECTION_NAME, DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME);
@@ -153,7 +153,7 @@ public class ProteinToDNADriver {
     JacksonDBCollection<DNADesign, String> dnaDesignCollection = JacksonDBCollection.wrap(db.getCollection(outputDnaDeqCollectionName), DNADesign.class, String.class);
     JacksonDBCollection<ReactionPath, String> outputPathwayCollection = JacksonDBCollection.wrap(db.getCollection(outputPathwaysCollectionName), ReactionPath.class, String.class);
 
-    Map<String, Set<OrgAndEcnum>> proteinSeqToOrgInfo = new HashMap<>();
+    Map<String, Set<ProteinInformation>> proteinSeqToOrgInfo = new HashMap<>();
 
     ProteinsToDNA2 p2d = ProteinsToDNA2.initiate();
 
@@ -228,11 +228,13 @@ public class ProteinToDNADriver {
                   }
 
                   proteinSeqs.add(dnaSeq);
-                  OrgAndEcnum orgAndEcnum = new OrgAndEcnum(sequenceInfo.getOrgName(), sequenceInfo.getEc());
+                  ProteinInformation proteinInformation = new ProteinInformation(sequenceInfo.getOrgName(), sequenceInfo.getEc(),
+                      sequenceInfo.getSequence(), reaction.getReactionName());
+
                   if (!proteinSeqToOrgInfo.containsKey(dnaSeq)) {
                     proteinSeqToOrgInfo.put(dnaSeq, new HashSet<>());
                   }
-                  proteinSeqToOrgInfo.get(dnaSeq).add(orgAndEcnum);
+                  proteinSeqToOrgInfo.get(dnaSeq).add(proteinInformation);
                 }
               }
             }
@@ -278,7 +280,7 @@ public class ProteinToDNADriver {
           try {
             Construct dna = p2d.computeDNA(proteinsInPathway, Host.Ecoli);
 
-            List<Set<OrgAndEcnum>> seqMetadata = new ArrayList<>();
+            List<Set<ProteinInformation>> seqMetadata = new ArrayList<>();
             for (String protein : proteinsInPathway) {
               seqMetadata.add(proteinSeqToOrgInfo.get(protein));
             }
@@ -291,9 +293,16 @@ public class ProteinToDNADriver {
         }
 
         DNADesign dnaDesignSeq = new DNADesign(dnaDesigns);
-        WriteResult<DNADesign, String> result = dnaDesignCollection.insert(dnaDesignSeq);
-        String id = result.getSavedId();
-        reactionPath.setDnaDesignRef(id);
+        try {
+          WriteResult<DNADesign, String> result = dnaDesignCollection.insert(dnaDesignSeq);
+          String id = result.getSavedId();
+          reactionPath.setDnaDesignRef(id);
+        } catch (MongoInternalException e) {
+          // This condition happens whent the protein designs are too big and cannot be inserted in to the JSON object.
+          // TODO: Handle this case without dropping the record
+          LOGGER.error(String.format("Mongo internal exception caught while inserting dna design: %s", e.getMessage()));
+        }
+
       }
 
       outputPathwayCollection.insert(reactionPath);

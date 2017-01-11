@@ -18,7 +18,6 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.mongojack.DBCursor;
@@ -26,7 +25,7 @@ import org.mongojack.DBQuery;
 import org.mongojack.JacksonDBCollection;
 import org.twentyn.proteintodna.DNADesign;
 import org.twentyn.proteintodna.DNAOrgECNum;
-import org.twentyn.proteintodna.OrgAndEcnum;
+import org.twentyn.proteintodna.ProteinInformation;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -46,6 +45,37 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class FreemarkerRenderer {
+
+  public class DnaDesignTableProperties {
+    private String dnaConstructFileName;
+    private String proteinConstructFileName;
+    private String dnaSeqShortName;
+    private DNAOrgECNum dnaSeq;
+
+    public DnaDesignTableProperties(String dnaConstructFileName, String proteinConstructFileName, String dnaSeqShortName, DNAOrgECNum dnaSeq) {
+      this.dnaConstructFileName = dnaConstructFileName;
+      this.proteinConstructFileName = proteinConstructFileName;
+      this.dnaSeq = dnaSeq;
+      this.dnaSeqShortName = dnaSeqShortName;
+    }
+
+    public String getDnaConstructFileName() {
+      return dnaConstructFileName;
+    }
+
+    public String getProteinConstructFileName() {
+      return proteinConstructFileName;
+    }
+
+    public String getDnaSeqShortName() {
+      return dnaSeqShortName;
+    }
+
+    public DNAOrgECNum getDnaSeq() {
+      return dnaSeq;
+    }
+  }
+
   public static final Logger LOGGER = LogManager.getFormatterLogger(FreemarkerRenderer.class);
 
   private static final String OPTION_DB_HOST = "H";
@@ -59,6 +89,7 @@ public class FreemarkerRenderer {
   private static final String OPTION_OUTPUT_DEST = "o";
   private static final String OPTION_OMIT_PATHWAYS_AND_DESIGNS = "x";
   private static final String OPTION_RENDER_SOME = "m";
+  private static final String OPTION_PATHWAY_COLLECTION = "g";
 
   private static final String DEFAULT_HOST = "localhost";
   private static final Integer DEFAULT_PORT = 27017;
@@ -68,6 +99,7 @@ public class FreemarkerRenderer {
   private static final String DEFAULT_SEQUENCES_COLLECTION = "sequences_2016-12-26";
   private static final String DEFAULT_DNA_COLLECTION = "designs_2016-12-26";
   private static final String DEFAULT_RENDERING_CACHE = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
+  private static final String DEFAULT_PATHWAY_COLLECTION = "pathways_jarvis_dec21";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class consumes and renders a DB of reachable molecules, pathways, and DNA designs."
@@ -153,6 +185,13 @@ public class FreemarkerRenderer {
         .hasArgs().valueSeparator('|')
         .longOpt("render-this")
     );
+    add(Option.builder(OPTION_PATHWAY_COLLECTION)
+        .argName("pathways")
+        .desc("The pathway collection to read pathways from")
+        .longOpt("pathways")
+        .hasArg()
+        .required()
+    );
   }};
 
   private static final String DEFAULT_REACHABLE_TEMPLATE_FILE = "Mediawiki.ftl";
@@ -223,6 +262,7 @@ public class FreemarkerRenderer {
         cl.getOptionValue(OPTION_DNA_COLLECTION, DEFAULT_DNA_COLLECTION),
         cl.getOptionValue(OPTION_RENDERING_CACHE, DEFAULT_RENDERING_CACHE),
         cl.getOptionValue(OPTION_INSTALLER_SOURCE_DB, DEFAULT_CHEMICALS_DATABASE),
+        cl.getOptionValue(OPTION_PATHWAY_COLLECTION, DEFAULT_PATHWAY_COLLECTION),
         cl.hasOption(OPTION_OMIT_PATHWAYS_AND_DESIGNS),
         reachablesOut,
         pathsOut,
@@ -274,7 +314,7 @@ public class FreemarkerRenderer {
     this.seqsDest = seqsDest;
   }
 
-  private void init(String dbHost, Integer dbPort, String dbName, String dnaCollection) throws IOException {
+  private void init(String dbHost, Integer dbPort, String dbName, String dnaCollection, String pathwayCollection) throws IOException {
     cfg = new Configuration(Configuration.VERSION_2_3_23);
 
     cfg.setClassLoaderForTemplateLoading(
@@ -292,10 +332,10 @@ public class FreemarkerRenderer {
     DB db = client.getDB(dbName);
 
     dnaDesignCollection = JacksonDBCollection.wrap(db.getCollection(dnaCollection), DNADesign.class, String.class);
+    Cascade.setCollectionName(pathwayCollection);
   }
 
   public void generatePages(List<Long> idsToRender) throws IOException, TemplateException {
-
     // Limit iteration to only molecules we care about if any are specified.
     DBCursor<ReactionPath> cascadeCursor = idsToRender == null || idsToRender.size() == 0 ?
         Cascade.get_pathway_collection().find() :
@@ -544,7 +584,7 @@ public class FreemarkerRenderer {
 
     String pathwayDocName = String.format("Pathway_%s_%d", sourceDocName, path.getRank());
 
-    List<Triple<String, String, DNAOrgECNum>> designDocsAndSummaries = path.getDnaDesignRef() != null ?
+    List<DnaDesignTableProperties> designDocsAndSummaries = path.getDnaDesignRef() != null ?
         renderSequences(sequenceDestination, pathwayDocName, path.getDnaDesignRef()) : Collections.emptyList();
 
     Pair<Object, String> model = buildPathModel(path, designDocsAndSummaries);
@@ -559,14 +599,14 @@ public class FreemarkerRenderer {
     );
   }
 
-  private List<Triple<String, String, DNAOrgECNum>> renderSequences(File sequenceDestination, String docPrefix, String seqRef) throws IOException {
+  private List<DnaDesignTableProperties> renderSequences(File sequenceDestination, String docPrefix, String seqRef) throws IOException {
     DNADesign designDoc = dnaDesignCollection.findOneById(seqRef);
     if (designDoc == null) {
       LOGGER.error("Could not find dna seq for id %s", seqRef);
       return Collections.emptyList();
     }
 
-    List<Triple<String, String, DNAOrgECNum>> sequenceFilesAndSummaries = new ArrayList<>();
+    List<DnaDesignTableProperties> sequenceFilesAndSummaries = new ArrayList<>();
 
     List<DNAOrgECNum> designs = new ArrayList<>(designDoc.getDnaDesigns());
     Collections.sort(designs, (a, b) -> {
@@ -610,7 +650,73 @@ public class FreemarkerRenderer {
         writer.write("\n");
       }
 
-      sequenceFilesAndSummaries.add(Triple.of(constructFilename, shortVersion, designs.get(i)));
+      String proteinDataFileName = String.format("Protein_%s_seq%d.txt", docPrefix, i + 1);
+      try (FileWriter writer = new FileWriter(new File(sequenceDestination, proteinDataFileName))) {
+        for (Set<ProteinInformation> proteinSet : designs.get(i).getListOfProteinInformation()) {
+          String header = ">";
+          String proteinSeq = "";
+          List<String> descriptions = new ArrayList<>();
+          List<String> organisms = new ArrayList<>();
+
+          Boolean isEcNumSet = false;
+          Boolean proteinSeqSet = false;
+
+          for (ProteinInformation proteinInformation : proteinSet) {
+            if (!isEcNumSet && proteinInformation.getEcnum() != null && !proteinInformation.getEcnum().equals("")) {
+              header += proteinInformation.getEcnum();
+              isEcNumSet = true;
+            }
+
+            if (!proteinSeqSet) {
+              proteinSeq = proteinInformation.getProteinSeq();
+              proteinSeqSet = true;
+            }
+
+            if (proteinInformation.getOrganism() != null && !proteinInformation.getOrganism().equals("")) {
+              organisms.add(proteinInformation.getOrganism());
+            }
+
+            if (proteinInformation.getProteinDesc() != null && !proteinInformation.getProteinDesc().equals("")) {
+              descriptions.add(proteinInformation.getProteinDesc());
+            }
+          }
+
+          if (!isEcNumSet) {
+            header += "EC ?.?.?.?";
+          }
+
+          header += " | [";
+
+          int counter = 0;
+          for (String description : descriptions) {
+            header += description;
+            if (counter < descriptions.size() - 1) {
+              header += ", ";
+            }
+            counter++;
+          }
+
+          header += "] [";
+
+          counter = 0;
+          for (String organism : organisms) {
+            header += organism;
+            if (counter < organisms.size() - 1) {
+              header += ", ";
+            }
+            counter++;
+          }
+
+          header += "]";
+
+          writer.write(header);
+          writer.write("\n");
+          writer.write(proteinSeq);
+          writer.write("\n");
+        }
+      }
+
+      sequenceFilesAndSummaries.add(new DnaDesignTableProperties(constructFilename, proteinDataFileName, shortVersion, designs.get(i)));
     }
 
     return sequenceFilesAndSummaries;
@@ -625,8 +731,8 @@ public class FreemarkerRenderer {
     return inchiKey;
   }
 
-  private Pair<Object, String> buildPathModel(ReactionPath p, List<Triple<String, String, DNAOrgECNum>> designs) throws IOException {
 
+  private Pair<Object, String> buildPathModel(ReactionPath p, List<DnaDesignTableProperties> designs) throws IOException {
     Map<String, Object> model = new HashMap<>();
 
     LinkedList<Object> pathwayItems = new LinkedList<>();
@@ -674,17 +780,19 @@ public class FreemarkerRenderer {
     List<Map<String, Object>> dna = new ArrayList<>();
     int i = 1;
 
-    for (Triple<String, String, DNAOrgECNum> design : designs) {
+    for (DnaDesignTableProperties design : designs) {
       final int num = i; // Sigh, must be final to use in this initialization block.
 
       dna.add(new HashMap<String, Object>() {{
-        put("file", design.getLeft());
-        put("sample", design.getMiddle());
+        put("file", design.getDnaConstructFileName());
+        put("sample", design.getDnaSeqShortName());
         put("num", Integer.valueOf(num).toString());
-        put("org_ec", renderDNADesignMetadata(design.getRight()));
+        put("proteinFile", design.getProteinConstructFileName());
+        put("org_ec", renderDNADesignMetadata(design.getDnaSeq()));
       }});
       i++;
     }
+
     if (dna.size() > 0) {
       model.put("dna", dna);
     }
@@ -694,26 +802,24 @@ public class FreemarkerRenderer {
 
 
   private List<String> renderDNADesignMetadata(DNAOrgECNum dnaOrgECNum) {
-    List<Set<OrgAndEcnum>> setOfOrgAndEcnum = dnaOrgECNum.getListOfOrganismAndEcNums();
+    List<Set<ProteinInformation>> setOfOrgAndEcnum = dnaOrgECNum.getListOfProteinInformation();
     return setOfOrgAndEcnum.stream().
         filter(Objects::nonNull).
         map(this::renderSetOfProteinDesignMetadata).
         collect(Collectors.toList());
   }
 
-  private String renderSetOfProteinDesignMetadata(Set<OrgAndEcnum> orgAndEcnumSet) {
-    return StringUtils.capitalize(StringUtils.join(orgAndEcnumSet.stream().
-        filter(Objects::nonNull).
-        map(this::renderProteinMetadata).
-        collect(Collectors.toList()),
-        ", ")
-    );
+  private String renderSetOfProteinDesignMetadata(Set<ProteinInformation> proteinInformationSet) {
+    List<String> listOfProteinMetaData = proteinInformationSet.stream().filter(Objects::nonNull).map(this::renderProteinMetadata).
+        collect(Collectors.toList());
+    String concatenatedListOfProteinMetaData = StringUtils.join(listOfProteinMetaData, ", ");
+    return StringUtils.capitalize(concatenatedListOfProteinMetaData);
   }
 
-  private String renderProteinMetadata(OrgAndEcnum orgAndEcnum) {
-    String proteinMetadata = orgAndEcnum.getEcnum() == null ?
-        String.format("from organism %s", orgAndEcnum.getOrganism()) :
-        String.format("from organism %s, enzyme from EC# %s", orgAndEcnum.getOrganism(), orgAndEcnum.getEcnum());
+  private String renderProteinMetadata(ProteinInformation proteinInformation) {
+    String proteinMetadata = proteinInformation.getEcnum() == null ?
+        String.format("from organism %s", proteinInformation.getOrganism()) :
+        String.format("from organism %s, enzyme from EC# %s", proteinInformation.getOrganism(), proteinInformation.getEcnum());
     return proteinMetadata;
   }
 
@@ -722,14 +828,14 @@ public class FreemarkerRenderer {
     public static FreemarkerRenderer build(
         String dbHost, Integer dbPort, String dbName,
         String reachablesCollection, String sequencesCollection, String dnaCollection, String renderingCache,
-        String chemicalsDB,
+        String chemicalsDB, String pathwayCollection,
         Boolean hidePathways,
         File reachablesDest, File pathsDest, File seqsDest)
         throws IOException {
       Loader loader =
           new Loader(dbHost, dbPort, dbName, reachablesCollection, sequencesCollection, renderingCache, chemicalsDB);
       FreemarkerRenderer renderer = new FreemarkerRenderer(loader, hidePathways, reachablesDest, pathsDest, seqsDest);
-      renderer.init(dbHost, dbPort, dbName, dnaCollection);
+      renderer.init(dbHost, dbPort, dbName, dnaCollection, pathwayCollection);
       return renderer;
     }
   }

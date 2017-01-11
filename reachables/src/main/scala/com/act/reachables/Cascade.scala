@@ -9,11 +9,11 @@ import com.act.analysis.proteome.scripts.OddSequencesToProteinPredictionFlow
 import com.act.reachables.Cascade.NodeInformation
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywords, SequenceKeywords}
 import com.fasterxml.jackson.annotation._
+import com.github.benmanes.caffeine.cache.Caffeine
 import com.mongodb.{BasicDBList, BasicDBObject, DB, MongoClient, ServerAddress}
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.logging.log4j.LogManager
 import org.mongojack.JacksonDBCollection
-import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
@@ -53,7 +53,7 @@ object Cascade extends Falls {
     VERBOSITY = v
   }
 
-  val pathwayCollection: JacksonDBCollection[ReactionPath, String] = JacksonDBCollection.wrap(db.getCollection(collectionName), classOf[ReactionPath], classOf[String])
+  lazy val pathwayCollection: JacksonDBCollection[ReactionPath, String] = JacksonDBCollection.wrap(db.getCollection(collectionName), classOf[ReactionPath], classOf[String])
 
   def get_pathway_collection: JacksonDBCollection[ReactionPath, String] = {
     pathwayCollection

@@ -35,7 +35,5 @@ public class DNADesign {
     this.dnaDesigns = dnaDesigns;
   }
 
-  private DNADesign() {
-
-  }
+  private DNADesign() {}
 }
