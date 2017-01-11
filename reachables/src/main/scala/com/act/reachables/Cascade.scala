@@ -3,6 +3,7 @@ package com.act.reachables
 import java.io.File
 import java.lang.Long
 import java.util
+import java.util.NoSuchElementException
 
 import act.shared.{Seq => DbSeq}
 import com.act.analysis.proteome.scripts.OddSequencesToProteinPredictionFlow
@@ -418,9 +419,11 @@ object Cascade extends Falls {
         pathList.append(e.src)
 
         // Add all the edges going into this one to the list
-        if (!is_universal(e.src.id)) {
+        try {
           val resultingNodes = nw.edgesGoingToId(e.src.id)
           resultingNodes.foreach(e => frontier.append(e))
+        } catch {
+          case NoSuchElementException =>
         }
       })
 
