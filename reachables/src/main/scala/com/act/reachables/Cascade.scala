@@ -396,12 +396,7 @@ object Cascade extends Falls {
       // Use other methods
       val branchedPaths = PathwayConstructor.getAllPaths(network, target)
       val result = PathwayConstructor.createNetworksFromPath(branchedPaths, network)
-      result.foreach(x => {
-        println
-        println(x.toDOT)
-      })
-      println()
-      println(network.toDOT)
+      println(s"Constructed Pathways: ${result.length}")
       Option(result.map(convertNetworkToPath(_, target)))
     } else {
       paths
@@ -423,8 +418,10 @@ object Cascade extends Falls {
         pathList.append(e.src)
 
         // Add all the edges going into this one to the list
-        val resultingNodes = nw.edgesGoingToId(e.src.id)
-        resultingNodes.foreach(e => frontier.append(e))
+        if (!is_universal(e.src.id)) {
+          val resultingNodes = nw.edgesGoingToId(e.src.id)
+          resultingNodes.foreach(e => frontier.append(e))
+        }
       })
 
       // Switch frontier with current to get the next level.
