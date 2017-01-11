@@ -8,11 +8,18 @@ import chemaxon.marvin.calculations.logPPlugin;
 import chemaxon.marvin.calculations.pKaPlugin;
 import chemaxon.marvin.plugin.PluginException;
 import chemaxon.struc.Molecule;
+import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 
+
 public class PhysiochemicalPropertiesCalculator {
+
+  private static final Logger LOGGER = LogManager.getFormatterLogger(PhysiochemicalPropertiesCalculator.class);
+
   private logPPlugin logpPlugin = new logPPlugin();  // Capitalized incorrectly to avoid conflicting with class name.
   private HlbPlugin hlbPlugin = HlbPlugin.Builder.createNew();
   private pKaPlugin pkaPlugin = new pKaPlugin(); // Capitalized incorrectly to avoid conflicting with class name.
@@ -44,7 +51,7 @@ public class PhysiochemicalPropertiesCalculator {
    * @throws PluginException
    * @throws IOException
    */
-  public Features computeFeatures(String inchi) throws MolFormatException, PluginException, IOException {
+  public Features computeFeatures(String inchi) throws PluginException, IOException {
     return computeFeatures(MoleculeImporter.importMolecule(inchi));
   }
 
@@ -55,13 +62,18 @@ public class PhysiochemicalPropertiesCalculator {
    * @throws PluginException
    * @throws IOException
    */
-  public Features computeFeatures(Molecule inputMol) throws PluginException, IOException {
+  public Features computeFeatures(Molecule inputMol) throws MolFormatException, PluginException, IOException {
     Cleaner.clean(inputMol, 3); // TODO: can this be 2D instead?
 
-    // LogP calculation
-    logpPlugin.standardize(inputMol);
-    logpPlugin.setMolecule(inputMol);
-    logpPlugin.run();
+    try {
+      // LogP calculation
+      logpPlugin.standardize(inputMol);
+      logpPlugin.setMolecule(inputMol);
+      logpPlugin.run();
+    } catch (ArrayIndexOutOfBoundsException e) {
+      LOGGER.error("Failed to compute logP physio-chemical property for %s", MoleculeExporter.exportAsStdInchi(inputMol));
+      return null;
+    }
     // Capture the standardized molecule for reuse.
     Molecule mol = logpPlugin.getResultMolecule();
     Double logP = logpPlugin.getlogPTrue();
@@ -72,6 +84,7 @@ public class PhysiochemicalPropertiesCalculator {
     double hlbVal = hlbPlugin.getHlbValue();
 
     // pKa calculation
+    pkaPlugin.standardize(mol);
     pkaPlugin.setMolecule(mol);
     pkaPlugin.run();
     double[] pKaAcidVals = new double[3];

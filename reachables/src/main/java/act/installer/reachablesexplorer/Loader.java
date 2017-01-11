@@ -15,6 +15,7 @@ import chemaxon.struc.Molecule;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
 import com.act.utils.CLIUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.mongodb.BasicDBObject;
@@ -51,15 +52,17 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+
 public class Loader {
   private static final Logger LOGGER = LogManager.getFormatterLogger(Loader.class);
-
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private static final String OPTION_DB_HOST = "H";
   private static final String OPTION_DB_PORT = "p";
 
   private static final String OPTION_INSTALLER_SOURCE_DB = "i";
   private static final String OPTION_REACHABLES_SOURCE_DATA = "r";
+  private static final String OPTION_PROJECTIONS_SOURCE_DATA = "P";
   private static final String OPTION_TARGET_DB = "t";
   private static final String OPTION_TARGET_REACHABLES_COLLECTION = "c";
   private static final String OPTION_TARGET_SEQUENCES_COLLECTION = "s";
@@ -68,6 +71,9 @@ public class Loader {
   private static final String DEFAULT_ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
 
   private static final String DEFAULT_REACHABLES_PATH = "/mnt/shared-data/Michael/WikipediaProject/MinimalReachables";
+
+  private static final String DEFAULT_PROJECTIONS_PATH = "/mnt/shared-data/Gil/L4N2pubchem/n1_inchis/projectedReactions";
+  private static final Long BASE_ID_PROJECTIONS = 5000000L;
 
   // All of the source data on reactions and chemicals comes from jarvis_2016-12-09
   private static final String DEFAULT_CHEMICALS_DATABASE = "jarvis_2016-12-09";
@@ -78,8 +84,7 @@ public class Loader {
 
   // Target database and collection. We populate these with reachables
   private static final String DEFAULT_TARGET_DATABASE = "wiki_reachables";
-  private static final String DEFAULT_TARGET_COLLECTION = "reachablesv9_test_vijay";
-  private static final String DEFAULT_SEQUENCE_COLLECTION = "sequencesv9_test_vijay";
+  private static final String DUMMY_SEQUENCE_COLLECTION = "dummy_sequences_collection";
 
   private static final int ORGANISM_CACHE_SIZE = 1000;
   private static final String ORGANISM_UNKNOWN = "(unknown)";
@@ -128,6 +133,13 @@ public class Loader {
         .hasArg()
         .longOpt("reachables-dir")
     );
+    add(Option.builder(OPTION_PROJECTIONS_SOURCE_DATA)
+        .argName("path")
+        .desc(String.format("A path to a file containing the output of L3 or L4 projections to read (default: %s)",
+            DEFAULT_PROJECTIONS_PATH))
+        .hasArg()
+        .longOpt("projections-dir")
+    );
     add(Option.builder(OPTION_TARGET_DB)
         .argName("DB name")
         .desc(String.format("The name of the DB into which to write reachable molecule documents (default: %s)",
@@ -137,18 +149,16 @@ public class Loader {
     );
     add(Option.builder(OPTION_TARGET_REACHABLES_COLLECTION)
         .argName("collection name")
-        .desc(String.format(
-            "The name of the collection in the dest DB into which to write reachables documents (default: %s)",
-            DEFAULT_TARGET_COLLECTION))
+        .desc("The name of the collection in the dest DB into which to write reachables documents (no default)")
         .hasArg()
+        .required()
         .longOpt("reachables-collection")
     );
     add(Option.builder(OPTION_TARGET_SEQUENCES_COLLECTION)
         .argName("collection name")
-        .desc(String.format(
-            "The name of the collection in the dest DB into which to write seqeunce documents (default: %s)",
-            DEFAULT_SEQUENCE_COLLECTION))
+        .desc("The name of the collection in the dest DB into which to write sequence documents (no default)")
         .hasArg()
+        .required()
         .longOpt("seq-collection")
     );
     add(Option.builder(OPTION_RENDERING_CACHE)
@@ -179,7 +189,7 @@ public class Loader {
     CommandLine cl = cliUtil.parseCommandLine(args);
 
     File reachablesDir = new File(cl.getOptionValue(OPTION_REACHABLES_SOURCE_DATA, DEFAULT_REACHABLES_PATH));
-    if (!reachablesDir.exists() && reachablesDir.isDirectory()) {
+    if (!(reachablesDir.exists() && reachablesDir.isDirectory())) {
       cliUtil.failWithMessage("Reachables directory at %s does not exist or is not a directory",
           reachablesDir.getAbsolutePath());
     }
@@ -188,11 +198,20 @@ public class Loader {
         cl.getOptionValue(OPTION_DB_HOST, DEFAULT_HOST),
         Integer.parseInt(cl.getOptionValue(OPTION_DB_PORT, DEFAULT_PORT.toString())),
         cl.getOptionValue(OPTION_TARGET_DB, DEFAULT_TARGET_DATABASE),
-        cl.getOptionValue(OPTION_TARGET_REACHABLES_COLLECTION, DEFAULT_TARGET_COLLECTION),
-        cl.getOptionValue(OPTION_TARGET_SEQUENCES_COLLECTION, DEFAULT_SEQUENCE_COLLECTION),
+        cl.getOptionValue(OPTION_TARGET_REACHABLES_COLLECTION),
+        cl.getOptionValue(OPTION_TARGET_SEQUENCES_COLLECTION),
         cl.getOptionValue(OPTION_RENDERING_CACHE, DEFAULT_ASSETS_LOCATION)
     );
     loader.updateFromReachableDir(reachablesDir);
+
+    if (cl.hasOption(OPTION_PROJECTIONS_SOURCE_DATA)) {
+      File projectionFile = new File(cl.getOptionValue(OPTION_PROJECTIONS_SOURCE_DATA, DEFAULT_PROJECTIONS_PATH));
+      if (!projectionFile.exists() || projectionFile.isDirectory()) {
+        cliUtil.failWithMessage("Projection file at %s does not exist or is a directory",
+            projectionFile.getAbsolutePath());
+      }
+      loader.updateFromProjectionFile(projectionFile);
+    }
   }
 
 
@@ -265,16 +284,11 @@ public class Loader {
    * @param targetCollection The collection for the target Reachables MongoDB
    */
   public Loader(String host, Integer port, String targetDB, String targetCollection) {
-    this(host, port, targetDB, targetCollection, DEFAULT_SEQUENCE_COLLECTION, DEFAULT_ASSETS_LOCATION);
-  }
-
-  public Loader() {
-    this(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_TARGET_DATABASE,
-        DEFAULT_TARGET_COLLECTION, DEFAULT_SEQUENCE_COLLECTION, DEFAULT_ASSETS_LOCATION);
+    this(host, port, targetDB, targetCollection, DUMMY_SEQUENCE_COLLECTION, DEFAULT_ASSETS_LOCATION);
   }
 
   // TODO Move these getters to a different place/divide up concerns better?
-  private String getSmiles(Molecule mol) {
+  private static String getSmiles(Molecule mol) {
     try {
       return MoleculeExporter.exportAsSmiles(mol);
     } catch (MolExportException e) {
@@ -285,7 +299,7 @@ public class Loader {
   /**
    * Get inchi key from molecule
    */
-  private String getInchiKey(Molecule mol) {
+  private static String getInchiKey(Molecule mol) {
     try {
       String inchikey = MoleculeExporter.exportAsInchiKey(mol);
       return inchikey.replaceAll("InChIKey=", "");
@@ -294,15 +308,8 @@ public class Loader {
     }
   }
 
-  /**
-   * Heuristic to choose the best page name
-   */
-  private String getPageName(Molecule mol, List<String> brendaNames, String inchi) {
-    // If we have some brenda names, get the first one. This is equivalent to Chemical.getFirstName()
-    if (!brendaNames.isEmpty()) {
-      return brendaNames.get(0);
-    }
-    // Otherwise, generate a Chemaxon name
+  private static String getMoleculeName(Molecule mol, String inchi) {
+    // Generate a Chemaxon name
     String chemaxonTraditionalName;
     try {
       chemaxonTraditionalName = MolExporter.exportToFormat(mol, CHEMAXON_TRADITIONAL_NAME_FORMAT);
@@ -338,12 +345,15 @@ public class Loader {
       return preconstructedReachable;
     }
 
-    Chemical c = db.getChemicalFromInChI(inchi);
+    Chemical chemical = db.getChemicalFromInChI(inchi);
 
-    Reachable r = constructReachableFromChemical(c);
+    // For L3/L4 molecules, we won't find them in the DB but still need to construct a Reachable object.
+    // In this case, fall back to `constructReachableFromInchi`
+    Reachable reachable = chemical == null ?
+        constructReachableFromInchi(inchi) : constructReachableFromChemical(chemical);
 
     // TODO: this should save the Reachable like constructOrFindReachableById.  Make sure that's safe.
-    return r;
+    return reachable;
   }
 
   public Reachable constructOrFindReachableById(Long id) {
@@ -353,16 +363,21 @@ public class Loader {
       return preconstructedReachable;
     }
 
-    Chemical c = db.getChemicalFromChemicalUUID(id);
-    Reachable r = constructReachableFromChemical(c);
+    Chemical chemical = db.getChemicalFromChemicalUUID(id);
 
-    // We didn't find this in the DB before but expect to the next time we look for it, so store before returning.
-    jacksonReachablesCollection.insert(r);
-    return r;
+    if (chemical != null) {
+      Reachable reachable = constructReachableFromChemical(chemical);
+      // We didn't find this in the DB before but expect to the next time we look for it, so store before returning.
+      jacksonReachablesCollection.insert(reachable);
+      return reachable;
+    } else {
+      LOGGER.error("Chemical ID %d not found in the database. Returning null");
+      return null;
+    }
   }
 
-  private Reachable constructReachableFromChemical(Chemical c) {
-    String inchi = c.getInChI();
+  private Reachable constructReachable(Long id, String inchi, List<String> names,
+                                       String wordcloudFilename, Map<Chemical.REFS, BasicDBObject> xrefs) {
 
     Molecule mol;
     try {
@@ -377,9 +392,6 @@ public class Loader {
       return null;
     }
 
-    List<String> names = c != null ? c.getBrendaNames() : Collections.emptyList();
-    Map<Chemical.REFS, BasicDBObject> xref = c != null ? c.getXrefMap() : new HashMap<>();
-
     String smiles = getSmiles(mol);
     if (smiles == null) {
       LOGGER.error("Failed to export molecule %s to smiles", inchi);
@@ -390,20 +402,13 @@ public class Loader {
       LOGGER.error("Failed to export molecule %s to inchi key", inchi);
     }
 
-    String pageName = getPageName(mol, names, inchi);
+    String pageName = names.isEmpty() ? getMoleculeName(mol, inchi) : names.get(0);
 
     String renderingFilename = null;
     Optional<File> rendering = moleculeRenderer.generateRendering(inchi);
     if (rendering.isPresent()) {
       renderingFilename = rendering.get().getName();
     }
-
-    File wordcloud = wordCloudGenerator.getWordcloudFile(inchi);
-    String wordcloudFilename = null;
-    if (wordcloud.exists()) {
-      wordcloudFilename = wordcloud.getName();
-    }
-
 
     SynonymData synonymData = getSynonymData(inchi);
 
@@ -418,14 +423,42 @@ public class Loader {
       LOGGER.error(String.format("Caught an IOException when computing physiochemical properties for inchi %s: %s",
           inchi, e.getMessage()));
     }
-
     PhysiochemicalProperties physiochemicalProperties = analysisFeatures == null ? null:
         new PhysiochemicalProperties(analysisFeatures.getpKa(), analysisFeatures.getLogP(), analysisFeatures.getHlb());
 
-    Reachable r = new Reachable(c.getUuid(), pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
-        wordcloudFilename, xref, physiochemicalProperties);
-    r.setPathwayVisualization("cscd" + r.getId() + ".dot");
-    return r;
+    return new Reachable(id, pageName, inchi, smiles, inchikey, names, synonymData, renderingFilename,
+        wordcloudFilename, xrefs, physiochemicalProperties);
+  }
+
+  private Reachable constructReachableFromInchi(String inchi) {
+    Long id = jacksonReachablesCollection.count() + BASE_ID_PROJECTIONS;
+    List<String> names = new ArrayList<>();
+    String wordcloudFilename = null;
+    Map<Chemical.REFS, BasicDBObject> xrefs = null;
+    return constructReachable(id, inchi, names, wordcloudFilename, xrefs);
+  }
+
+  private Reachable constructReachableFromChemical(Chemical c) {
+
+    if (c == null) {
+      LOGGER.error("Cannot create a Reachable from a null input Chemical.");
+      return null;
+    }
+    String inchi = c.getInChI();
+    List<String> names = c.getBrendaNames();
+    Map<Chemical.REFS, BasicDBObject> xrefs = c.getXrefMap();
+    Long id = c.getUuid();
+
+    File wordcloud = wordCloudGenerator.getWordcloudFile(inchi);
+    String wordcloudFilename = null;
+    if (wordcloud.exists()) {
+      wordcloudFilename = wordcloud.getName();
+    }
+
+    Reachable reachable = constructReachable(id, inchi, names, wordcloudFilename, xrefs);
+
+    reachable.setPathwayVisualization("cscd" + reachable.getId() + ".dot");
+    return reachable;
   }
 
   private void updateWithPrecursors(String inchi, List<Precursor> pre) throws IOException {
@@ -643,7 +676,7 @@ public class Loader {
   }
 
   private void updateFromReachableFiles(List<File> files) {
-    files.stream().forEach(this::updateFromReachablesFile);
+    files.forEach(this::updateFromReachablesFile);
   }
 
   private void updateFromReachableDir(File file) throws IOException {
@@ -680,7 +713,7 @@ public class Loader {
             .collect(Collectors.toList());
 
     // Add substrates in, or make sure they were added.
-    substrates.stream().forEach(this::upsert);
+    substrates.forEach(this::upsert);
 
     // Construct descriptors.
     List<InchiDescriptor> precursors = substrates.stream()
@@ -688,12 +721,21 @@ public class Loader {
             .collect(Collectors.toList());
 
     // For each product, create and add precursors.
-    projection.getProducts().stream().forEach(p -> {
+    projection.getProducts().forEach(p -> {
       // Get product
       Reachable product = constructOrFindReachable(p);
       // TODO Don't punt on sequences
       product.getPrecursorData().addPrecursor(new Precursor(precursors, projection.getRos().get(0), new ArrayList<>()));
       upsert(product);
     });
+  }
+
+  public void updateFromProjectionFile(File file) throws IOException {
+    LOGGER.info("Processing projection file: %s", file.getName());
+    List<ReachablesProjectionResult> projectionResults = Arrays.asList(
+        MAPPER.readValue(file, ReachablesProjectionResult[].class));
+    List<ReachablesProjectionUpdate> projectionUpdates = projectionResults.stream().map(
+        ReachablesProjectionUpdate::new).collect(Collectors.toList());
+    projectionUpdates.forEach(this::updateFromProjection);
   }
 }

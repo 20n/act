@@ -414,17 +414,6 @@ public class FreemarkerRenderer {
       model.put("wordcloudRendering", r.getWordCloudFilename());
     }
 
-    List<Precursor> orderedPrecursors = new ArrayList<>(r.getPrecursorData().getPrecursors());
-    Collections.sort(orderedPrecursors, (a, b) -> {
-      if (a.getSequences() != null && b.getSequences() == null) {
-        return -1;
-      }
-      if (a.getSequences() == null && b.getSequences() != null) {
-        return 1;
-      }
-      return Integer.valueOf(b.getSequences().size()).compareTo(a.getSequences().size());
-    });
-
     List<Object> pathways = new ArrayList<>();
     for (PathwayDoc doc : pathwayDocs) {
       pathways.add(new HashMap<String, String>() {{
@@ -540,8 +529,8 @@ public class FreemarkerRenderer {
     }
   }
 
-  public PathwayDoc generatePathDoc(
-      Reachable target, ReactionPath path, File pathDestination, File sequenceDestination) throws IOException, TemplateException {
+  public PathwayDoc generatePathDoc(Reachable target, ReactionPath path, File pathDestination, File sequenceDestination)
+      throws IOException, TemplateException {
     DBCursor<ReactionPath> cursor = Cascade.get_pathway_collection().find(new BasicDBObject("target", target.getId()));
 
     String sourceDocName = makeSourceDocName(target);
