@@ -623,7 +623,6 @@ class Cascade(target: Long) {
 
   val t = target
   val nw = Cascade.get_cascade(t).get
-  val viablePaths: Option[List[Cascade.Path]] = Cascade.getAllPaths(nw, t)
 
   private val workingDir = new java.io.File(".").getCanonicalFile
   nw.nodeMapping.values().filter(getOrDefault[String](_, "isrxn").toBoolean).foreach(node => {
@@ -683,6 +682,8 @@ class Cascade(target: Long) {
       Node.setAttribute(node.id, "sequences", new util.HashSet(matchingSequences))
     }
   })
+
+  val viablePaths: Option[List[Cascade.Path]] = Cascade.getAllPaths(nw, t)
 
   val allPaths: List[Cascade.Path] = if (viablePaths.isDefined) {
     viablePaths.get.sortBy(p => (-p.getDegree(), -p.getReactionSum()))

@@ -222,10 +222,10 @@ public class Network implements Serializable {
 
         label = Cascade.quote(fullLabel);
         tooltip = Cascade.quote((String)Node.getAttribute(n.id, "tooltip_string"));
-        if (Node.getAttribute(n.id, "hasSequence") != null && (boolean) Node.getAttribute(n.id, "hasSequence")) {
+        if ((boolean) Node.getAttribute(n.id, "hasSequence")) {
           String forestGreen = "#228B22";
           color = Cascade.quote(forestGreen);
-        } else if (Node.getAttribute(n.id, "isSpontaneous") != null && (boolean) Node.getAttribute(n.id, "isSpontaneous")) {
+        } else if ((boolean) Node.getAttribute(n.id, "isSpontaneous")) {
           String goldenrodYellow = "#E8BD2B";
           color = Cascade.quote(goldenrodYellow);
         } else {
