@@ -697,22 +697,6 @@ class Cascade(target: Long) {
   // Things such as coloring interesting paths, setting up strings,
   // and converting reactionIds to the db form are done here.
   val constructedAllPaths: List[ReactionPath] = allPaths.map(p => {
-    c += 1
-
-    if (c == 0) {
-      val reversePath = p.getPath.reverse
-      for (i <- reversePath.indices) {
-        if (i >= reversePath.length - 1) {
-          // Skip last node, has no edge
-        } else {
-          val edgesGoingInto = network().edgesGoingToNode(reversePath.get(i + 1))
-          val currentEdge: Edge = edgesGoingInto.find(e => e.src.equals(reversePath.get(i))).get
-
-          Edge.setAttribute(currentEdge, "color", "\"#cc3300\", penwidth=5")
-        }
-      }
-    }
-
     val rp = new ReactionPath(s"${target}w$c", p.getPath.map(node => {
       val isRxn = getOrDefault[String](node, "isrxn").toBoolean
       val isSpontaneous = getOrDefault[Boolean](node, "isSpontaneous", false)
