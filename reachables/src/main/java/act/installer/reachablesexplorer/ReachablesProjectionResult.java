@@ -6,6 +6,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
+// The original ProjectionResult is a Scala case class, which Jackson doesn't handle well.
+// This class is the Java equivalent, used for the purpose of Jackson de-serialization.
+// TODO: ProjectionResult.scala and this class should be eventually merged together
+
 public class ReachablesProjectionResult {
 
   @JsonProperty("substrates")

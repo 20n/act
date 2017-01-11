@@ -62,7 +62,7 @@ public class PhysiochemicalPropertiesCalculator {
    * @throws PluginException
    * @throws IOException
    */
-  public Features computeFeatures(Molecule inputMol) throws PluginException, IOException {
+  public Features computeFeatures(Molecule inputMol) throws MolFormatException, PluginException, IOException {
     Cleaner.clean(inputMol, 3); // TODO: can this be 2D instead?
 
     try {
