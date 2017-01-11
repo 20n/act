@@ -80,8 +80,6 @@ object ReachRxnDescs {
 
   val rxnLiteratureReference = Memo.mutableHashMapMemo[Long, Option[Set[String]]] { rid =>
     if (meta(rid).isDefined) {
-//      val literatureRefs: List[Long] =  meta(rid).get.getProteinData.map(x => if (x.has("literature_ref"))
-//        Option(x.getLong("literature_ref")) else None).filter(_.isDefined).map(_.get).toList
       Option(meta(rid).get.getReferences(Reaction.RefDataSource.PMID).toSet)
     } else {
       None
