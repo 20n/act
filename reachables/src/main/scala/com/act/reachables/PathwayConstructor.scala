@@ -119,8 +119,6 @@ object PathwayConstructor {
   }
 
   def createAllNetworks(path: ComplexPath, sourceNetwork: Network): List[Network] = {
-    val MAX_PATHS_TAKEN = 2
-
     if (path.reaction.isEmpty) return List(new Network("native"))
 
     // Create all viable combinations of pathways from this complex path's producers
@@ -131,7 +129,7 @@ object PathwayConstructor {
     val resultingGraphs = possibleSubsequentPaths.map(eachPath => {
 
       // Each path is a group of chemicals that we need the path for
-      val neededPaths: List[List[Network]] = chooseOneFromEach[Network](eachPath.map(createAllNetworks(_, sourceNetwork))).take(MAX_PATHS_TAKEN)
+      val neededPaths: List[List[Network]] = chooseOneFromEach[Network](eachPath.map(createAllNetworks(_, sourceNetwork)))
       neededPaths.map(x => {
         val newInstance = new Network("pathway")
         newInstance.addNode(path.produced, path.produced.id)
