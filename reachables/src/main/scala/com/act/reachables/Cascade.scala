@@ -428,7 +428,7 @@ object Cascade extends Falls {
           val resultingNodes = nw.edgesGoingToId(e.src.id)
           resultingNodes.foreach(e => frontier.append(e))
         } catch {
-          case NoSuchElementException =>
+          case e: NoSuchElementException =>
         }
       })
 
