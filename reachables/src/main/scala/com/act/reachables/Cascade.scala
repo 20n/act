@@ -411,7 +411,8 @@ object Cascade extends Falls {
 
   def convertNetworkToPath(nw: Network, target: Long): Cascade.Path = {
     val pathList = mutable.ListBuffer[Node]()
-
+    println("This is a network")
+    println(nw.toDOT)
     pathList.append(nw.idToNode(target))
 
     var current: List[Edge] = nw.edgesGoingToId(target).toList
