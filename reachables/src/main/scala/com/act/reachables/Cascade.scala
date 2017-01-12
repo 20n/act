@@ -403,7 +403,6 @@ object Cascade extends Falls {
       val branchedPaths = PathwayConstructor.getAllPaths(network, target)
       val result = PathwayConstructor.createNetworksFromPath(branchedPaths, network)
       println(s"Constructed Pathways: ${result.length}")
-      println(branchedPaths)
       Option(result.map(convertNetworkToPath(_, target)))
     } else {
       paths
@@ -412,8 +411,6 @@ object Cascade extends Falls {
 
   def convertNetworkToPath(nw: Network, target: Long): Cascade.Path = {
     val pathList = mutable.ListBuffer[Node]()
-    println("This is a network")
-    println(nw.toDOT)
     pathList.append(nw.idToNode(target))
 
     var current: List[Edge] = nw.edgesGoingToId(target).toList
