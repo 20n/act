@@ -43,6 +43,8 @@ class PathwayConstructor(sourceNetwork: Network) {
 
   def createNetworksFromPath(cPath: List[ComplexPath]): List[Network] = {
     // Get all the values that produce a given needed chemical in this path.
+    // This returns all valid subgraphs that constitute a path (All chemical dependencies are met, 
+    // starting from a native.
     cPath.filter(p => p.reaction.isDefined).flatMap(createAllNetworks(_, sourceNetwork))
   }
 
@@ -89,6 +91,9 @@ class PathwayConstructor(sourceNetwork: Network) {
 }
 
 object PathwayConstructor {
+  // A complex path is a simplification of the network that I use to make later subgraph construction easier.
+  // It is a recursive data structure that holds a produced chemical, reaction, 
+  // and the possible paths to making the substrates of the reaction.
   case class ComplexPath(produced: Node, reaction: Option[Edge], producers: Option[List[List[ComplexPath]]], level: Int = 0) {
     override def toString(): String = {
       s"""
