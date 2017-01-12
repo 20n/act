@@ -398,6 +398,7 @@ object Cascade extends Falls {
       val branchedPaths = PathwayConstructor.getAllPaths(network, target)
       val result = PathwayConstructor.createNetworksFromPath(branchedPaths, network)
       println(s"Constructed Pathways: ${result.length}")
+      println(branchedPaths)
       Option(result.map(convertNetworkToPath(_, target)))
     } else {
       paths
