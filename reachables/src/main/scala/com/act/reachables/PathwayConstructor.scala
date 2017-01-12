@@ -12,7 +12,9 @@ class PathwayConstructor(sourceNetwork: Network) {
     if (Cascade.is_universal(target)) {
       List(ComplexPath(sourceNetwork.idToNode.get(target), None, None, level))
     } else if (sourceNetwork.getEdgesGoingInto(target) == null || sourceNetwork.getEdgesGoingInto(target).isEmpty) {
-      List()
+      // Caused by cofactor filtering wherein the chemical is only produced by cofactors, 
+      // but we didn't add the cofactors to the network originally.
+      List(ComplexPath(sourceNetwork.idToNode.get(target), None, None, level))
     } else {
       val reactionsThatProduceTarget: List[Edge] = sourceNetwork.getEdgesGoingInto(target).asScala.toList
 
