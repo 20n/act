@@ -44,7 +44,7 @@ object PathwayConstructor {
 
   def createNetworksFromPath(cPath: List[ComplexPath], sourceNetwork: Network): List[Network] = {
     // Get all the values that produce a given needed chemical in this path.
-    cPath.flatMap(createAllNetworks(_, sourceNetwork))
+    cPath.filter(p => p.reaction.isDefined).flatMap(createAllNetworks(_, sourceNetwork))
   }
 
   def createAllNetworks(path: ComplexPath, sourceNetwork: Network): List[Network] = {
