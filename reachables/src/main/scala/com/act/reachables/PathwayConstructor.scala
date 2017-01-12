@@ -54,7 +54,13 @@ object PathwayConstructor {
     val possibleSubsequentPaths: List[List[ComplexPath]] = path.producers match {
       case Some(x) => chooseOneFromEach(x)
     }
-    println(possibleSubsequentPaths)
+    println(
+      s"""
+         |
+         |Before: ${path.producers}
+         |After: $possibleSubsequentPaths
+         |
+       """.stripMargin)
 
     val resultingGraphs = possibleSubsequentPaths.map(eachPath => {
       // Each path is a group of chemicals that we need the path for
