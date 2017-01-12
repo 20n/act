@@ -47,6 +47,8 @@ class PathwayConstructor(sourceNetwork: Network) {
   }
 
   private def createAllNetworks(path: ComplexPath, sourceNetwork: Network): List[Network] = {
+    val MAX_COMBINATIONS_OF_SUBSTRATES = 15
+    
     if (path.reaction.isEmpty) return List(new Network("native"))
 
     // Create all viable combinations of pathways from this complex path's producers
@@ -59,7 +61,7 @@ class PathwayConstructor(sourceNetwork: Network) {
       // Each path is a group of chemicals that we need the path for
       // See chooseOneFromEach for an explanation of what it looks like.
       val eachNetworkPath = eachPath.map(createAllNetworks(_, sourceNetwork))
-      val neededPaths: List[List[Network]] = PathwayConstructor.chooseOneFromEach[Network](eachNetworkPath)
+      val neededPaths: List[List[Network]] = PathwayConstructor.chooseOneFromEach[Network](eachNetworkPath).take(MAX_COMBINATIONS_OF_SUBSTRATES)
 
       // A "needed path" is composed of all the combinations of subsequent reactions
       // and chemicals to satisfy the chemical needs of the current reaction.
