@@ -374,7 +374,6 @@ object Cascade extends Falls {
     val sourceEdgesSet: util.Set[Edge] = network.getEdgesGoingInto(target)
 
     // If the target is a native then the only path is the node itself.
-    var counter: Int = -1
     if (sourceEdgesSet == null) {
       if (network.nodes.isEmpty) {
         return None
@@ -387,7 +386,6 @@ object Cascade extends Falls {
     val paths = Option(sourceEdges.flatMap(e => {
       val path = getPath(network, e)
       if (path.isDefined) {
-        counter = counter + 1
         Option(path.get.map(p => new Path(List(e.dst) ::: p.getPath)))
       } else {
         None
@@ -688,6 +686,7 @@ class Cascade(target: Long) {
   // Things such as coloring interesting paths, setting up strings,
   // and converting reactionIds to the db form are done here.
   val constructedAllPaths: List[ReactionPath] = allPaths.map(p => {
+    c += 1
     val rp = new ReactionPath(s"${target}w$c", p.getPath.map(node => {
       val isRxn = getOrDefault[String](node, "isrxn").toBoolean
       val isSpontaneous = getOrDefault[Boolean](node, "isSpontaneous", false)
