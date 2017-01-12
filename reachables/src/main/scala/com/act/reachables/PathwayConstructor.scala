@@ -56,7 +56,6 @@ object PathwayConstructor {
     }
 
     val resultingGraphs = possibleSubsequentPaths.map(eachPath => {
-
       // Each path is a group of chemicals that we need the path for
       val neededPaths: List[List[Network]] = chooseOneFromEach[Network](eachPath.map(createAllNetworks(_, sourceNetwork)))
       neededPaths.map(x => {
