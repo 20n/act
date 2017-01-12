@@ -400,6 +400,7 @@ object Cascade extends Falls {
       println(s"Constructed Pathways: ${result.length}")
       if (result.length == 0) {
         println(s"\n\n\n$branchedPaths\n\n\n")
+        System.exit(1)
       }
       Option(result.map(convertNetworkToPath(_, target)))
     } else {
