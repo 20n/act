@@ -45,10 +45,7 @@ public class Network implements Serializable {
   HashMap<Node, Set<Edge>> edgesGoingToNode;
   HashMap<Long, Set<Edge>> edgesGoingToId;
 
-  static int count = 0;
-
   Network(String name) {
-    count += 1;
     this.name = name;
     this.nodes =  new HashSet<Node>();
     this.nodeMapping = new HashMap<Node, Node>();
