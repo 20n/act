@@ -321,8 +321,8 @@ object Cascade extends Falls {
     oneValid
   }
 
-  def get_cascade(m: Long, depth: Int = 0, source: Option[Long] = None, seen: Set[Long] = Set()): Option[Network] =
-  if (CACHE_CASCADES && depth > 0 && cache_nw.asMap.containsKey(m)) cache_nw.asMap.get(m) else
+  def get_cascade(m: Long, depth: Int = 0, source: Option[Long] = None, seen: Set[Long] = Set()): Option[Network] = 
+  if (CACHE_CASCADES && depth > 0 && cache_nw.asMap.containsKey(m)) cache_nw.asMap.get(m) else 
   {
     // first check if we are "re-getting" the cascade for the main target,
     // and if so return empty. this allows us to break cycles around the target
@@ -356,8 +356,8 @@ object Cascade extends Falls {
     //    so this computation of its `optUpwardsCascade` is a one off. If we encounter this other times (i.e., as
     //    an internal node during some other computation) the exception would not have been applied
     //    and so we'll be good to cache it then.
-    // 2) when the node happens to have been explored as part of a cycle (that does not lead to
-    //    natives). In that case, we usually do want to exclude it. But there are times when
+    // 2) when the node happens to have been explored as part of a cycle (that does not lead to 
+    //    natives). In that case, we usually do want to exclude it. But there are times when 
     //    bidirectional edges exist in the cycle, and so there is a way to use the edges in it
     //    to actually break out of it. To allow for that case, we don't cache when the computation
     //    evaluates to None. Every other case, good to go.
@@ -601,7 +601,7 @@ object Cascade extends Falls {
     val rslt = blk
     val end = System.nanoTime()
     val tm = (end - start)/1000000
-    if (Cascade.VERBOSITY > 0)
+    if (Cascade.VERBOSITY > 0) 
       println(f"## PROFILING: $tm%6dms $msg")
     rslt
   }
@@ -737,8 +737,8 @@ class Cascade(target: Long) {
         val sourceNode: Node = network().getNodeById(mostNativePath(i).getId())
         val destNode: Node = network().getNodeById(mostNativePath(i + 1).getId())
 
-          val edgesGoingInto = network().edgesGoingToNode(destNode)
-          val currentEdge: Edge = edgesGoingInto.find(e => e.src.equals(sourceNode)).get
+        val edgesGoingInto = network().edgesGoingToNode(destNode)
+        val currentEdge: Edge = edgesGoingInto.find(e => e.src.equals(sourceNode)).get
 
         if (getOrDefault[String](sourceNode, "isrxn").toBoolean) {
           val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](sourceNode, "organisms", new util.HashSet[String]())
@@ -760,9 +760,9 @@ class Cascade(target: Long) {
     if (Cascade.VERBOSITY > 1) {
       logger.debug(
         s"""
-         | Reachable: $target
-         | Full Sequence Paths: ${sortedPaths.count(_.getPath.forall(p => !p.isReaction || (p.isReaction && (p.sequences.nonEmpty || p.isSpontaneous))))}
-         | Total Paths: ${sortedPaths.length}
+          | Reachable: $target
+          | Full Sequence Paths: ${sortedPaths.count(_.getPath.forall(p => !p.isReaction || (p.isReaction && (p.sequences.nonEmpty || p.isSpontaneous))))}
+          | Total Paths: ${sortedPaths.length}
         """.stripMargin
       )
     }
