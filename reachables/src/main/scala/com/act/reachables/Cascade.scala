@@ -403,9 +403,8 @@ object Cascade extends Falls {
       val branchedPaths = PathwayConstructor.getAllPaths(network, target)
       val result = PathwayConstructor.createNetworksFromPath(branchedPaths, network)
       println(s"Constructed Pathways: ${result.length}")
-      if (result.length == 0) {
-        println(s"\n\n\n$branchedPaths\n\n\n")
-        System.exit(1)
+      if (result.isEmpty) {
+        throw new RuntimeException("Branched pathway construction is exhaustive, so a result should always exist for a reachable.")
       }
       Option(result.map(convertNetworkToPath(_, target)))
     } else {
