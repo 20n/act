@@ -27,6 +27,7 @@ object Cascade extends Falls {
   val db: DB = mongoClient.getDB("wiki_reachables")
   var collectionName: String = "pathways_jarvis_dec21"
   def setCollectionName(c: String) {
+    println(s"Output collection changed to $c")
     collectionName = c
   }
 
