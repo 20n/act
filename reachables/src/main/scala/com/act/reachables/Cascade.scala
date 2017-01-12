@@ -399,14 +399,16 @@ object Cascade extends Falls {
     }).flatten)
 
     if (paths.isEmpty || paths.get.isEmpty) {
-      // Use other methods
-      val branchedPaths = PathwayConstructor.getAllPaths(network, target)
-      val result = PathwayConstructor.createNetworksFromPath(branchedPaths, network)
-      println(s"Constructed Pathways: ${result.length}")
-      if (result.isEmpty) {
+      // If no paths found, lets see if we can construct paths by considering branched pathways
+      val pathwayConstructor = new PathwayConstructor(network)
+      val branchedPaths: List[PathwayConstructor.ComplexPath] = pathwayConstructor.getAllPaths(target)
+      val pathAsNetwork: List[Network] = pathwayConstructor.createNetworksFromPath(branchedPaths)
+      println(s"Constructed Pathways: ${pathAsNetwork.length}")
+      if (pathAsNetwork.isEmpty) {
         throw new RuntimeException("Branched pathway construction is exhaustive, so a result should always exist for a reachable.")
       }
-      Option(result.map(convertNetworkToPath(_, target)))
+      // Sometimes we create hundreds of thousands of paths.
+      Option(pathAsNetwork.map(convertNetworkToPath(_, target)).take(1000))
     } else {
       paths
     }
@@ -750,26 +752,22 @@ class Cascade(target: Long) {
         val sourceNode: Node = network().getNodeById(mostNativePath(i).getId())
         val destNode: Node = network().getNodeById(mostNativePath(i + 1).getId())
 
-        try {
           val edgesGoingInto = network().edgesGoingToNode(destNode)
           val currentEdge: Edge = edgesGoingInto.find(e => e.src.equals(sourceNode)).get
 
-          if (getOrDefault[String](sourceNode, "isrxn").toBoolean) {
-            val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](sourceNode, "organisms", new util.HashSet[String]())
+        if (getOrDefault[String](sourceNode, "isrxn").toBoolean) {
+          val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](sourceNode, "organisms", new util.HashSet[String]())
 
-            if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
-              Edge.setAttribute(currentEdge, "color", f""""$limeGreen", penwidth=5""")
-            }
+          if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
+            Edge.setAttribute(currentEdge, "color", f""""$limeGreen", penwidth=5""")
           }
+        }
 
-          if (getOrDefault[String](destNode, "isrxn").toBoolean) {
-            val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](destNode, "organisms", new util.HashSet[String]())
-            if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
-              Edge.setAttribute(currentEdge, "color", f""""$limeGreen", penwidth=5""")
-            }
+        if (getOrDefault[String](destNode, "isrxn").toBoolean) {
+          val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](destNode, "organisms", new util.HashSet[String]())
+          if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
+            Edge.setAttribute(currentEdge, "color", f""""$limeGreen", penwidth=5""")
           }
-        } catch {
-          case e: NoSuchElementException =>
         }
       }
     }
@@ -777,9 +775,9 @@ class Cascade(target: Long) {
     if (Cascade.VERBOSITY > 1) {
       logger.debug(
         s"""
-           | Reachable: $target
-           | Full Sequence Paths: ${sortedPaths.count(_.getPath.forall(p => !p.isReaction || (p.isReaction && (p.sequences.nonEmpty || p.isSpontaneous))))}
-           | Total Paths: ${sortedPaths.length}
+         | Reachable: $target
+         | Full Sequence Paths: ${sortedPaths.count(_.getPath.forall(p => !p.isReaction || (p.isReaction && (p.sequences.nonEmpty || p.isSpontaneous))))}
+         | Total Paths: ${sortedPaths.length}
         """.stripMargin
       )
     }
