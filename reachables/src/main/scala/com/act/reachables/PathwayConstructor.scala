@@ -27,7 +27,7 @@ object PathwayConstructor {
       val producerPaths: List[List[ComplexPath]] = chemicalsNeededForThisReaction.map(c => {
         getAllPaths(network, c.id, level+1)
       })
-      ComplexPath(reactionEdge.dst, if (producerPaths.exists(_.nonEmpty)) Option(reactionEdge) else None, if (producerPaths.exists(_.nonEmpty)) Option(producerPaths) else None, level)
+      ComplexPath(reactionEdge.dst, if (producerPaths.exists(_.nonEmpty)) Option(reactionEdge) else None, if (producerPaths.exists(_.nonEmpty)) Option(producerPaths.filter(_.nonEmpty)) else None, level)
     })
   }
 
