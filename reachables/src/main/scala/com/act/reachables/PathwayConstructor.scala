@@ -8,13 +8,16 @@ import scala.collection.mutable
 
 
 class PathwayConstructor(sourceNetwork: Network) {
-  def getAllPaths(target: Long, level: Int = 0): List[ComplexPath] = {
+  def getAllPaths(target: Long, level: Int = 0): List[Option[ComplexPath]] = {
     if (Cascade.is_universal(target)) {
-      List(ComplexPath(sourceNetwork.idToNode.get(target), None, None, level))
+      List(Some(ComplexPath(sourceNetwork.idToNode.get(target), None, None, level)))
     } else if (sourceNetwork.getEdgesGoingInto(target) == null || sourceNetwork.getEdgesGoingInto(target).isEmpty) {
       // Caused by cofactor filtering wherein the chemical is only produced by cofactors, 
       // but we didn't add the cofactors to the network originally.
-      List(ComplexPath(sourceNetwork.idToNode.get(target), None, None, level))
+      List(Some(ComplexPath(sourceNetwork.idToNode.get(target), None, None, level)))
+    } else if (level > 15) {
+      // Probably a cycle and even if not the pathway is likely too long
+      List(None)
     } else {
       val reactionsThatProduceTarget: List[Edge] = sourceNetwork.getEdgesGoingInto(target).asScala.toList
 
@@ -26,19 +29,26 @@ class PathwayConstructor(sourceNetwork: Network) {
         val chemicalsNeededForThisReaction: List[Node] = requiredChemicalEdges.map(_.src).filter(s => !Cascade.cofactors.contains(s.id))
 
         // Need a list of this path + all the other paths
-        val producerPaths: List[List[ComplexPath]] = chemicalsNeededForThisReaction.map(c => {
+        val producerPaths: List[List[Option[ComplexPath]]] = chemicalsNeededForThisReaction.map(c => {
           getAllPaths(c.id, level + 1)
         })
 
-        val reaction = if (producerPaths.exists(_.nonEmpty))
-          Option(reactionEdge)
-        else None
+        // Could not produce one of the needed members without a cycle
+        if (producerPaths.exists(_.isEmpty)) 
+          None 
+        else {
+          val reaction = if (producerPaths.exists(_.nonEmpty))
+            Option(reactionEdge)
+          else 
+            None
 
-        val complexPathsThatProduceCurrentTarget = if (producerPaths.exists(_.nonEmpty))
-          Option(producerPaths.filter(_.nonEmpty))
-        else None
-
-        ComplexPath(reactionEdge.dst, reaction, complexPathsThatProduceCurrentTarget, level)
+          val complexPathsThatProduceCurrentTarget = if (producerPaths.exists(_.nonEmpty))
+            Option(producerPaths.map(x => x.flatMap(y => y)))
+          else 
+            None
+          
+          Some(ComplexPath(reactionEdge.dst, reaction, complexPathsThatProduceCurrentTarget, level))
+        }
       })
     }
   }
