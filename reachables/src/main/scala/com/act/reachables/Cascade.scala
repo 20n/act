@@ -785,7 +785,7 @@ class Cascade(target: Long) {
     try {
       sortedPaths.foreach(Cascade.pathwayCollection.insert)
     } catch {
-      case e: Exception => None
+      case e: Exception => logger.info(s"Failed to insert pathways for target $target.  Error was ${e.getMessage}.")
     }
   }
 
