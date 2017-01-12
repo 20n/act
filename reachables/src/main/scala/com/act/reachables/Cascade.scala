@@ -726,39 +726,7 @@ class Cascade(target: Long) {
 
   if (sortedPaths.nonEmpty) {
     sortedPaths.head.setMostNative(true)
-
-    val limeGreen = "#009933"
-
-    val mostNativePath: List[Cascade.NodeInformation] = sortedPaths.head.getPath.toList.reverse
-    for (i <- mostNativePath.indices) {
-      if (i >= mostNativePath.length - 1) {
-        // Skip last node, has no edge
-      } else {
-        val sourceNode: Node = network().getNodeById(mostNativePath(i).getId())
-        val destNode: Node = network().getNodeById(mostNativePath(i + 1).getId())
-
-        val edgesGoingInto: Set[Edge] = network().edgesGoingToNode(destNode).toSet
-        if (edgesGoingInto.nonEmpty) {
-          val currentEdge: Edge = edgesGoingInto.find(e => e.src.equals(sourceNode)).get
-
-          if (getOrDefault[String](sourceNode, "isrxn").toBoolean) {
-            val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](sourceNode, "organisms", new util.HashSet[String]())
-
-            if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
-              Edge.setAttribute(currentEdge, "color", f""""$limeGreen", penwidth=5""")
-            }
-          }
-
-          if (getOrDefault[String](destNode, "isrxn").toBoolean) {
-            val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](destNode, "organisms", new util.HashSet[String]())
-            if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
-              Edge.setAttribute(currentEdge, "color", f""""$limeGreen", penwidth=5""")
-            }
-          }
-        }
-      }
-    }
-
+    
     if (Cascade.VERBOSITY > 1) {
       logger.debug(
         s"""
