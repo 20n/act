@@ -106,7 +106,7 @@ object PathwayConstructor {
   // It is a recursive data structure that holds a produced chemical, reaction, 
   // and the possible paths to making the substrates of the reaction.
   case class ComplexPath(produced: Node, reaction: Option[Edge], producers: Option[List[List[ComplexPath]]], level: Int = 0) {
-    override def toString(): String = {
+    override def toString: String = {
       s"""
          |${"\t"*level}Produced: ${produced.id}
          |${"\t"*level}Reaction: $reaction
