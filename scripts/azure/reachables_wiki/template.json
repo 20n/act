@@ -48,10 +48,10 @@
         "storageProfile": {
           "osDisk": {
             "osType": "Linux",
-            "name": "twentyn-wiki-osDisk.0c7fd5b6-8135-40f8-a94a-1e02f441e087.vhd",
+            "name": "twentyn-wiki-osDisk.3713fccf-fdfd-4df0-962c-ddc174200659.vhd",
             "createOption": "FromImage",
             "image": {
-              "uri": "https://twentynazureus2.blob.core.windows.net/system/Microsoft.Compute/Images/vhds/twentyn-wiki-osDisk.0c7fd5b6-8135-40f8-a94a-1e02f441e087.vhd"
+              "uri": "https://twentynazureus2.blob.core.windows.net/system/Microsoft.Compute/Images/vhds/twentyn-wiki-osDisk.3713fccf-fdfd-4df0-962c-ddc174200659.vhd"
             },
             "vhd": {
               "uri": "[concat('https://twentynazureus2.blob.core.windows.net/vhds/', parameters('virtualMachineName'), '.', parameters('vhdUUID'), '.vhd')]"
