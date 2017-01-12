@@ -4,7 +4,6 @@ package com.act.reachables
 import com.act.reachables.PathwayConstructor.ComplexPath
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable
 
 
 class PathwayConstructor(sourceNetwork: Network) {
@@ -122,45 +121,9 @@ object PathwayConstructor {
     //
     // For example, if I give you the list List(List(A, B), List(C))
     // The expected return is List(List(A, C), List(B, C))
-
-    // We use a closure here so that we can fill this list as we fill in the last element and
-    // not have to worry about the complexities of recursing back all this
-    val fullList = mutable.ListBuffer[List[T]]()
-
-    def chooseAll(remainingInput: List[List[T]], createdListSoFar: List[T] = List()): Unit = {
-      val headElements: List[T] = remainingInput.head
-
-      val tailElements: List[List[T]] = remainingInput.tail
-
-      // If the tail is empty, there are no more items in the list to add
-      if (tailElements.isEmpty) {
-        // We are done so we add it to our list of combinations
-        //
-        // This is the base case (We found the end, and therefore have created a single
-        // combination that contains one element from each of the input lists.
-        headElements.foreach(x => fullList.append(createdListSoFar ::: List(x)))
-        return
-      }
-
-      // This takes the previous path so far and creates new lists containing the last element.
-      // For example:
-      //
-      // createdListSoFar = List()
-      // Input = List(List(A, B), List(C), List(D))
-      // Head = List(A,B)
-      // Tail = List(List(C), List(D))
-      //
-      // We then have two recursive calls:
-      // 1) chooseAll(List(List(C), List(D)), List() ::: List(A))
-      // 2) chooseAll(List(List(C), List(D)), List() ::: List(B))
-      //
-      // Thus, we take each element in the head list and create a new list where each value is concatenated
-      // We then pass the rest of the lists on so that those can be added.
-      headElements.foreach(x => chooseAll(tailElements, createdListSoFar ::: List(x)))
+    input match {
+      case hd :: tl => hd.flatMap(h => chooseOneFromEach(tl).map(t => h :: t))
+      case _ => List(List())
     }
-    chooseAll(input)
-
-    // Make our list immutable before returning
-    fullList.toList
   }
 }
