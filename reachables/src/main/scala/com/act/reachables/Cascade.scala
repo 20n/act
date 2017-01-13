@@ -401,10 +401,11 @@ object Cascade extends Falls {
       // If no paths found, lets see if we can construct paths by considering branched pathways
       val pathwayConstructor = new PathwayConstructor(network)
       val branchedPaths: List[PathwayConstructor.ComplexPath] = pathwayConstructor.getAllPaths(target).flatten
-      val pathAsNetwork: List[Network] = pathwayConstructor.createNetworksFromPath(branchedPaths)
-      println(s"Constructed Pathways: ${pathAsNetwork.length}")
+      val MAX_PATHS = 100
+      val pathAsNetwork: List[Network] = pathwayConstructor.createNetworksFromPath(branchedPaths).take(MAX_PATHS)
+      println(s"Constructed Pathways: ${pathAsNetwork.length}.  A value of $MAX_PATHS means that the result is not complete.")
       // Sometimes we create hundreds of thousands of paths.
-      Option(pathAsNetwork.map(convertNetworkToPath(_, target)).take(1000))
+      Option(pathAsNetwork.map(convertNetworkToPath(_, target)))
     } else {
       paths
     }
