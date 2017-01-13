@@ -670,8 +670,14 @@ class Cascade(target: Long) {
     }
   })
 
+  if (Cascade.VERBOSITY > 1){
+    println("##Started constructing paths.")
+  }
   val viablePaths: Option[List[Cascade.Path]] = Cascade.getAllPaths(nw, t)
-
+  if (Cascade.VERBOSITY > 1){
+    println("##Finished constructing paths.")
+  }
+  
   val allPaths: List[Cascade.Path] = if (viablePaths.isDefined) {
     viablePaths.get.sortBy(p => (-p.getDegree(), -p.getReactionSum()))
   } else {
@@ -680,6 +686,9 @@ class Cascade(target: Long) {
 
   var c = -1
 
+  if (Cascade.VERBOSITY > 1){
+    println("## Determining Organism Frequenecy.")
+  }
   // Do any formatting necessary that will be used later on.
   // Things such as coloring interesting paths, setting up strings,
   // and converting reactionIds to the db form are done here.
@@ -712,8 +721,14 @@ class Cascade(target: Long) {
 
     rp
   })
+  if (Cascade.VERBOSITY > 1){
+    println("## Finished determining organism frequency.")
+  }
 
 
+  if (Cascade.VERBOSITY > 1){
+    println("## Sorting by organism frequency.")
+  }
   val sortedPaths = constructedAllPaths.sortBy(p => {
     try {
       -p.getMostCommonOrganismCount.max
@@ -721,6 +736,9 @@ class Cascade(target: Long) {
       case e: Exception => 0
     }
   })
+  if (Cascade.VERBOSITY > 1){
+    println("## Finished sorting by organism frequency.")
+  }
 
   if (sortedPaths.nonEmpty) {
     sortedPaths.head.setMostNative(true)
@@ -735,6 +753,9 @@ class Cascade(target: Long) {
       )
     }
 
+    if (Cascade.VERBOSITY > 1){
+      println(s"## Inserting pathways into pathway collection ${Cascade.pathwayCollection.getFullName}.")
+    }
     try {
       sortedPaths.foreach(Cascade.pathwayCollection.insert)
     } catch {
