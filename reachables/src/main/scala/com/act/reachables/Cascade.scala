@@ -398,7 +398,7 @@ object Cascade extends Falls {
       val branchedPaths: List[PathwayConstructor.ComplexPath] = pathwayConstructor.getAllPaths(target).flatten
       val MAX_PATHS = 100
       val pathAsNetwork: List[Network] = pathwayConstructor.createNetworksFromPath(branchedPaths).take(MAX_PATHS)
-      println(s"Constructed Pathways: ${pathAsNetwork.length}.  A value of $MAX_PATHS means that the result is not complete.")
+      println(s"Constructed Pathways: ${pathAsNetwork.length}.${if (pathAsNetwork.length >= MAX_PATHS) " A value of $MAX_PATHS means that the result is likely not complete." else ""}")
       // Sometimes we create hundreds of thousands of paths.
       Option(pathAsNetwork.map(convertNetworkToPath(_, target)))
     } else {
@@ -412,7 +412,7 @@ object Cascade extends Falls {
 
     var current: List[Edge] = nw.edgesGoingToId(target).toList
     var frontier = mutable.ListBuffer[Edge]()
-    var seen = mutable.HashSet[Edge]()
+    val seen = mutable.HashSet[Edge]()
     while(current.nonEmpty) {
       current.foreach(e => {
         // Compound => Reaction Edges
