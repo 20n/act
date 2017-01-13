@@ -156,7 +156,7 @@ object cascades {
       val msg = f"id=$reachid%6d\tcount=${counter.getAndIncrement()}%5d\tCACHE: {cascades=${Cascade.cache_nw.stats.hitCount}%4d, pre_rxns=${Cascade.cache_bestpre_rxn.stats.hitCount}%4d, nodeMerger=${Cascade.nodeMerger.size}%5d}"
       Cascade.time(msg) {
         if (Cascade.VERBOSITY > 0)
-          print(f"Reachable ID: $reachid%6d: ")
+          print(f"\n\nReachable ID: $reachid%6d: ")
 
         // constructInformationForReachable modifies global scope variables, so can't run in parallel.
         constructInformationForReachable(reachid, dir)
