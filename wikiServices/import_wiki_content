@@ -1,0 +1,83 @@
+#!/bin/bash
+
+########################################
+# import_wiki_content: imports a directory of wiki content into the local wiki
+#
+# usage: import_wiki_content <content directory> <basic auth credentials>
+#
+# example: import_wiki_content full_wiki_20170113 wiki_test:foobarbaz
+#
+# This script consumes the output of the `run_full_pipeline` script, loading it
+# into the wiki running on localhost.  You can run this script multiple times on
+# a host and it will overwrite whatever content is already present.  Note that it
+# does not delete existing pages that do not appear in the content directory.
+# Page pruning is best done by blowing away the wiki and starting over.
+#
+# The file structure of content_dir should be:
+#   /All_Chemicals: a list of all chemicals
+#   /Reachables/: a directory of per-chemical wiki pages
+#   /Pathways/: a directory of per-pathway wiki pages
+#   /Sequences/: a directory of plain-text DNA design files
+#   /renderings/: a directory of all images (molecules, word clouds, cascades)
+########################################
+
+usage="$0 <content directory> <basic auth user:password>"
+
+content_dir=$1
+
+if [[ ! -e $content_dir ]]; then
+    echo "No content directory specified."
+    echo $usage
+    exit 1
+fi
+
+basic_auth_creds=$2
+
+if [[ -z $basic_auth_creds ]]; then
+    echo "No basic auth credentials specified."
+    echo "Please provide <username>:<password> argument."
+    echo $usage
+    exit 1
+fi
+
+
+echo "Importing renderings."
+sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions png ${content_dir}/renderings
+echo "Done importing renderings."
+
+echo "Importing sequence designs."
+sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions txt ${content_dir}/Sequences
+echo "Done importing sequence designs."
+
+echo "Importing pathway pages."
+find ${content_dir}/Pathways -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
+echo "Done importing pathway pages."
+
+echo "Importing molecule pages."
+find ${content_dir}/Reachables -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
+echo "Done importing molecule pages."
+
+echo "Importing all chemicals page."
+sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite ${content_dir}/All_Chemicals
+echo "Done importing all chemicals page."
+
+echo "TODO: import category pages once they are generated."
+
+function rebuild() {
+    for i in $(ls $1); do
+        echo $i;
+        curl --user "$basic_auth" --insecure -vvv -X POST "https://localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP";
+    done;
+}
+
+echo "Rebuilding reachables pages."
+rebuild ${content_dir}/Reachables
+echo "Done rebuilding reachables pages."
+
+echo "Rebuilding pathways pages."
+rebuild ${content_dir}/Pathways
+echo "Done rebuilding pathways pages."
+
+echo "----------------------------------------"
+echo "Done with import process."
+echo "Wiki should be ready for use."
