@@ -447,7 +447,7 @@ public class FreemarkerRenderer {
     if (hidePathways) {
       model.put("hidePathways", true);
       // TODO: is there a cleaner way to make this URL?
-      model.put("orderLink", String.format("{{SERVER}}/%s?%s=%s", ORDER_PATH, ORDER_INCHI_KEY_PARAM, r.getInchiKey()));
+      model.put("orderLink", String.format("{{SERVER}}%s?%s=%s", ORDER_PATH, ORDER_INCHI_KEY_PARAM, r.getInchiKey()));
     }
 
     if (r.getWordCloudFilename() != null) {
