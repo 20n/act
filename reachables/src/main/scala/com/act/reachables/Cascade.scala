@@ -376,6 +376,12 @@ object Cascade extends Falls {
   }
 
   def getAllPaths(network: Network, target: Long): Option[List[Path]] = {
+    val checkIfExists = Cascade.pathwayCollection.count(new BasicDBObject("target", target))
+    // Hey it is already in the db
+    if (checkIfExists > 0){
+      return None
+    }
+    
     val sourceEdgesSet: util.Set[Edge] = network.getEdgesGoingInto(target)
 
     // If the target is a native then the only path is the node itself.
