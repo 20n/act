@@ -156,6 +156,8 @@ echo "Rendering wiki pages."
 sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o $dest --pathways pathways_jarvis_${today} -r reachables_${today} -i jarvis_${today} --no-pathways"
 echo "Done rendering wiki pages."
 
+# TODO: add commands for WikiWebServicesExporter
+
 # ----------------------------------------
 # Wiki content staging
 

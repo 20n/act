@@ -40,6 +40,8 @@ if [[ -z $basic_auth_creds ]]; then
     exit 1
 fi
 
+# ----------------------------------------
+# Import supporting files
 
 echo "Importing renderings."
 sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions png ${content_dir}/renderings
@@ -48,6 +50,9 @@ echo "Done importing renderings."
 echo "Importing sequence designs."
 sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions txt ${content_dir}/Sequences
 echo "Done importing sequence designs."
+
+# ----------------------------------------
+# Import pages
 
 echo "Importing pathway pages."
 find ${content_dir}/Pathways -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
@@ -63,6 +68,9 @@ echo "Done importing all chemicals page."
 
 echo "TODO: import category pages once they are generated."
 
+# ----------------------------------------
+# Rebuild pages
+
 function rebuild() {
     for i in $(ls $1); do
         echo $i;
@@ -77,6 +85,8 @@ echo "Done rebuilding reachables pages."
 echo "Rebuilding pathways pages."
 rebuild ${content_dir}/Pathways
 echo "Done rebuilding pathways pages."
+
+echo "TODO: install reachables list and copy molecule images to assets directory."
 
 echo "----------------------------------------"
 echo "Done with import process."
