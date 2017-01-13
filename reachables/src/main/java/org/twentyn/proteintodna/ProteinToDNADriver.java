@@ -109,7 +109,7 @@ public class ProteinToDNADriver {
     add(Option.builder(OPTION_DESIGN_SOME)
         .argName("molecule")
         .desc("Generate designs for specified molecules; can be a numeric ids, InChIs, or InChI Keys, *separated by '|'* " +
-            "for InChI compatibility.  Molecules ust exist in chemical source DB if InChI or InChI Key is used.")
+            "for InChI compatibility.  Molecules must exist in chemical source DB if InChI or InChI Key is used.")
         .hasArgs().valueSeparator('|')
         .longOpt("design-this")
     );

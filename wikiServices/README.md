@@ -38,17 +38,17 @@ the `BiointepretationDriver` class looks like this:
   {
     "operation": "MERGE_REACTIONS",
     "read": "actv01",
-    "write": "drknow_2017-01-11"
+    "write": "drknow_20170111"
   },
   {
     "operation": "DESALT",
-    "read": "drknow_2017-01-11",
-    "write": "synapse_2017-01-11"
+    "read": "drknow_20170111",
+    "write": "synapse_20170111"
   },
   {
     "operation": "REMOVE_COFACTORS",
-    "read": "synapse_2017-01-11",
-    "write": "jarvis_2017-01-11"
+    "read": "synapse_20170111",
+    "write": "jarvis_20170111"
   }
 ]
 ```
@@ -80,15 +80,15 @@ The output of the installer pipeline will be a database named `jarvis_2017-01-11
 To run reachables computation on your new database, alter the `DEFAULT_DB` parameters in your `reachables.scala`,
 `postprocess_reachables.scala`, and `cascades.scala` files.  Then run this command:
 ```
-$ today=`date +%Y-%m-%d`;
-$ dirName="computed-$today";
+$ today=`date +%Y%m%d`;
+$ dirName="reachables-$today";
 $ PRE="r-$today";
 $ sbt "runMain com.act.reachables.reachables --prefix=$PRE --useNativesFile=/mnt/shared-data/Michael/ReachablesInputFiles/valid_starting_points.txt --useCofactorsFile=/mnt/shared-data/Michael/ReachablesInputFiles/my_cofactors_file.txt -o $dirName";
 $ sbt "runMain com.act.reachables.postprocess_reachables --prefix=$PRE --output-dir=$dirName --extractReachables --writeGraphToo";
 $ sbt "runMain com.act.reachables.cascades --prefix=r-$today --output-dir=$dirName --cache-cascades=true --do-hmmer=false --out-collection=pathways_jarvis_$today --verbosity=1”
 ```
 
-You should now have `r-${today}.reachables.txt` and `r-${today}-data` in your `computed-$today` directory.  We'll
+You should now have `r-${today}.reachables.txt` and `r-${today}-data` in your `reachables-$today` directory.  We'll
 need these to complete the remaining steps.
 
 
@@ -101,7 +101,7 @@ be available for this process to work.
 
 ```
 $ cut -d$'\t' -f 3 r-${today}.reachables.txt >  r-${today}.reachables.just_inchis.txt
-$ sbt 'runMain act.installer.reachablesexplorer.WordCloudGenerator -l r-${today}.reachables.just_inchis.txt -r /usr/bin/Rscript'
+$ sbt "runMain act.installer.reachablesexplorer.WordCloudGenerator -l r-${today}.reachables.just_inchis.txt -r /usr/bin/Rscript"
 ```
 
 ### Run the Loader to Create a Reachables Collection ###
@@ -109,9 +109,7 @@ $ sbt 'runMain act.installer.reachablesexplorer.WordCloudGenerator -l r-${today}
 Run the loader to produce a collection of `reachable` documents in MongoDB.
 
 ```
-$ r_date=$(date +"%Y%m%d")
-$ db_date="2017-01-11"
-$ sbt "runMain act.installer.reachablesexplorer.Loader -c reachables_${r_date} -i jarvis_${db_date} -r $dirName -s sequences_${c_date} -P /mnt/shared-data/Gil/L4N2pubchem/n1_inchis/projectedReactions"
+$ sbt "runMain act.installer.reachablesexplorer.Loader -c reachables_${today} -i jarvis_${today} -r $dirName -s sequences_${today} -P /mnt/shared-data/Gil/L4N2pubchem/n1_inchis/projectedReactions"
 ```
 
 The `-P` option installs a set of L4 projections, and can be omitted if necessary.  This command will output any missing
@@ -124,7 +122,7 @@ in `act.installer.pubchem.PubchemMeshSynonyms`.
 
 To find recent patents for reachable molecules, use the `PatentFinder`
 ```
-$ sbt 'runMain act.installer.reachablesexplorer.PatentFinder -c reachables_${r_date}'
+$ sbt "runMain act.installer.reachablesexplorer.PatentFinder -c reachables_${today}"
 ```
 
 This expects a collection of patent indexes to live at `/mnt/shared-data/Mark/patents`.  An alternative path can be
@@ -143,26 +141,36 @@ $ find r-${today}-data -name '*.dot' | xargs dot -Tpng -O
 Note that this will write the images in the same directory as the dot files.  If this is not desired, you can copy them
 to another directory with this command:
 ```
-$ find r-${today}-data -name '*.dot' -exec cp {} dest \;
+$ find r-${today}-data -name '*.dot.png' -exec cp {} dest \;
 ```
 
 ### Wiki Page Rendering ###
 
 To render pathway-free wiki pages for all reachable molecules, run this command:
 ```
-$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer  -o wiki_pages -r reachables_${r_date} -i jarvis_2017-01-11 --no-pathways
+$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages --pathways pathways_jarvis_${today} -r reachables_${today} -i jarvis_2017-01-11 --no-pathways
 ```
+Note that we specify a pathways collection here to make sure that no molecules are opportunistically loaded into the reachables collection from stale pathways.
 
 You can later specify specific pages to re-render with pathways and sequence designs (we'll get to designs in a moment):
 ```
-$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer  -o wiki_pages_custom -r reachables_${r_date} -i jarvis_2017-01-11 -m MWOOGOJBHIARFG-UHFFFAOYSA-N
+$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages_custom --pathways pathways_jarvis_${today} -r reachables_${today} -i jarvis_2017-01-11 -m MWOOGOJBHIARFG-UHFFFAOYSA-N
 ```
 
 Once the pages are generated, follow the upload and import instructions below.
 
 ### Building DNA Designs ###
 
-There is currently no way to produce DNA designs for only one molecule at a time.  This section will be updated once that is possible.
+To produce DNA designs for just a few molcules, run the following:
+```
+$ inchi_key=<inchi key>
+$ sbt "runMain org.twentyn.proteintodna.ProteinToDNADriver -c pathways_jarvis_${today} -d pathways_jarvis_w_designs_${today} -e designs_jarvis_${today} -m $inchi_key"
+```
+Then render just the pages for the molecules you're interested using the command above, like this:
+```
+$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages_custom --pathways pathways_jarvis_w_designs_${today} -r reachables_${today} -i jarvis_2017-01-11 -m $inchi_key
+```
+
 
 ## 2. New Wiki Instance Setup Steps ##
 
