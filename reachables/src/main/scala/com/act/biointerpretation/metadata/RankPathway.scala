@@ -91,7 +91,7 @@ object RankPathway {
     // Therefore, shorter sequences are penalized less
     // (This works out as not averaging because we assign value is an exponentially decaying way)
     val divisor: Double = 1/composition.length.toDouble
-    compositionSum*divisor
+    compositionSum * divisor
   }
 
   private def removeDuplicateProteins(s: List[List[(String, ProteinMetadata, Integer)]]): List[List[(String, ProteinMetadata, Integer)]] = {
@@ -170,14 +170,9 @@ object RankPathway {
     val returnList: java.util.List[java.lang.Long] = new java.util.ArrayList[java.lang.Long]
     var i: Int = 0
     while (i < jarray.length) {
-      {
-        val sequenceId = jarray.getLong(i): java.lang.Long
-        returnList.add(sequenceId)
-      }
-      {
-        i += 1
-        i - 1
-      }
+      val sequenceId = jarray.getLong(i): java.lang.Long
+      returnList.add(sequenceId)
+      i += 1
     }
 
     p.sequences = returnList

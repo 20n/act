@@ -20,7 +20,7 @@ public class Genus {
         Map<String, Genus> nameToGenus = new HashMap<>();
 
         // TODO: Move this to resources directory?
-        File termfile = new File("/Volumes/data-level1/data/ProteinMetadata/2016_12_07-cloned_genus_wikipedia_classification.txt");
+        File termfile = new File("/mnt/data-level1/data/ProteinMetadata/2016_12_07-cloned_genus_wikipedia_classification.txt");
         String data = FileUtils.readFileToString(termfile);
         String[] regions = data.split(">");
 
