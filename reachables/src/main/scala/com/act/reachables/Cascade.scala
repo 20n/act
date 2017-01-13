@@ -412,6 +412,7 @@ object Cascade extends Falls {
 
     var current: List[Edge] = nw.edgesGoingToId(target).toList
     var frontier = mutable.ListBuffer[Edge]()
+    var seen = mutable.HashSet[Edge]()
     while(current.nonEmpty) {
       current.foreach(e => {
         // Compound => Reaction Edges
@@ -422,7 +423,10 @@ object Cascade extends Falls {
         // Add all the edges going into this one to the list
         try {
           val resultingNodes = nw.edgesGoingToId(e.src.id)
-          resultingNodes.foreach(e => frontier.append(e))
+          resultingNodes.filter(e => !seen.contains(e)).foreach(e => {
+            seen.add(e)
+            frontier.append(e)
+          })
         } catch {
           case e: NoSuchElementException =>
         }
