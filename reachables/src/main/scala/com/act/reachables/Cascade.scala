@@ -417,6 +417,7 @@ object Cascade extends Falls {
 
     var current: List[Edge] = nw.edgesGoingToId(target).toList
     var frontier = mutable.ListBuffer[Edge]()
+    // Cycle prevention by noting which edges we've already dealt with.
     val seen = mutable.HashSet[Edge]()
     while(current.nonEmpty) {
       current.foreach(e => {
