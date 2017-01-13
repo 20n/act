@@ -1,13 +1,15 @@
 #!/bin/bash
 
-########################################
-# run_full_pipeline: runs the installer, reachabes + cascades, loader, and
-#   wiki page renderer to a date-based output directory
-#
-# usage: run_full_pipeline
-#
-# Note: this must be run on a Linux host.  It is unlikely to work on OS X.
-########################################
+me=$(basename $0)
+full_usage="
+Usage:
+  $me: runs the installer, reachabes + cascades, loader, and
+    wiki page renderer to a date-based output directory
+
+  usage: $me
+
+  Note: this must be run on a Linux host.  It is unlikely to work on OS X.
+"
 
 mongo="/usr/local/bin/mongo"
 
@@ -22,13 +24,34 @@ fi
 JQ=`which jq`
 if [[ -z $JQ ]]; then
     echo "Couldn't find jq.  Install with 'sudo apt-get install jq' and try again."
-    echo $usage
+    echo $full_usage
     exit 1
 fi
 
 echo "Creating desitnation directory: $dest"
 mkdir $dest
 mkdir ${dest}/renderings
+
+# ----------------------------------------
+# DB and collection naming:
+act_db="jarvis_${today}"
+dirName="reachables-$today";
+r_prefix="r-$today";
+
+pathways_c="pathways_jarvis_${today}"
+reachables_c="reachables_${today}"
+sequences_c="sequences_${today}"
+
+echo "Configuration: "
+echo "----------------------------------------"
+echo "Output act DB:         $act_db"
+echo "Reachables output dir: $dirName"
+echo "Reachables prefix:     $r_prefix"
+echo ""
+echo "Pathways collection:   $pathways_c"
+echo "Reachables collection: $reachables_c"
+echo "Sequences collection:  $sequences_c"
+echo "----------------------------------------"
 
 # ----------------------------------------
 
@@ -44,7 +67,7 @@ db_exists() {
     return $?
 }
 
-for db in actv01 "drknow_$today" "synapse_$today" "jarvis_$today"; do
+for db in actv01 "drknow_$today" "synapse_$today" $act_db; do
     echo "Searching for db $db"
     if [[ db_exists $db ]]; then
         echo "DB '${db}' already exists, exiting"
@@ -52,6 +75,7 @@ for db in actv01 "drknow_$today" "synapse_$today" "jarvis_$today"; do
     fi
 done
 echo "ACT DB sanity check passes."
+
 
 # ----------------------------------------
 
@@ -79,7 +103,7 @@ jq_params=".[0].write = \"drknow_${today}\" \
     | .[1].read  = \"drknow_${today}\" \
     | .[1].write = \"synapse_${today}\" \
     | .[2].read  = \"synapse_${today}\" \
-    | .[2].write = \"jarvis_${today}\" \
+    | .[2].write = \"${act_db}\" \
 "
 
 echo
@@ -108,35 +132,33 @@ echo "Biointerpretation done."
 # Reachables and Cascades computation
 
 echo "Running reachables/cascades."
-dirName="reachables-$today";
-PRE="r-$today";
 sbt "runMain com.act.reachables.reachables --prefix=$PRE --useNativesFile=/mnt/shared-data/Michael/ReachablesInputFiles/valid_starting_points.txt --useCofactorsFile=/mnt/shared-data/Michael/ReachablesInputFiles/my_cofactors_file.txt -o $dirName";
 sbt "runMain com.act.reachables.postprocess_reachables --prefix=$PRE --output-dir=$dirName --extractReachables --writeGraphToo";
 sbt "runMain com.act.reachables.cascades --prefix=r-$today --output-dir=$dirName --cache-cascades=true --do-hmmer=false --out-collection=pathways_jarvis_$today --verbosity=1"
 echo "Done reachables/cascades."
 
 echo "Generating InChI-only reachables list."
-cut -d$'\t' -f 3 ${dirName}/r-${today}.reachables.txt >  ${dirName}/r-${today}.reachables.just_inchis.txt
+cut -d$'\t' -f 3 ${dirName}/${r_prefix}.reachables.txt >  ${dirName}/${r_prefix}.reachables.just_inchis.txt
 echo "Generating word clouds."
-sbt "runMain act.installer.reachablesexplorer.WordCloudGenerator -l ${dirName}/r-${today}.reachables.just_inchis.txt -r /usr/bin/Rscript"
+sbt "runMain act.installer.reachablesexplorer.WordCloudGenerator -l ${dirName}/${r_prefix}.reachables.just_inchis.txt -r /usr/bin/Rscript"
 echo "Done generating word clouds."
 
 # ----------------------------------------
 # Reachable document loading and data enrichment
 
 echo "Running loader."
-sbt "runMain act.installer.reachablesexplorer.Loader -c reachables_${today} -i jarvis_${today} -r $dirName -s sequences_${today} -P /mnt/shared-data/Gil/L4N2pubchem/n1_inchis/projectedReactions"
+sbt "runMain act.installer.reachablesexplorer.Loader -c $reachables_c -i $act_db -r $dirName -s $sequences_c -P /mnt/shared-data/Gil/L4N2pubchem/n1_inchis/projectedReactions"
 echo "Done running loader."
 
 echo "Running patent finder."
-sbt "runMain act.installer.reachablesexplorer.PatentFinder -c reachables_${today}"
+sbt "runMain act.installer.reachablesexplorer.PatentFinder -c $reachables_c"
 echo "Done finding patents."
 
 # ----------------------------------------
 # Cascade image rendering and staging
 
 echo "Rendering dot files."
-for i in $(find ${dirName}/r-${today}-data -type f | grep '\.dot$'); do
+for i in $(find ${dirName}/${r_prefix}-data -type f | grep '\.dot$'); do
     if [[ ! -e "${i}.png" ]]; then
         dot -Tpng -O $i;
     else
@@ -146,17 +168,19 @@ done
 echo "Done rendering dot files."
 
 echo "Copying cascade images."
-find ${dirName}/r-${today}-data -type f -name '*.dot.png' -exec cp {} ${dest}/renderings \;
+find ${dirName}/${r_prefix}-data -type f -name '*.dot.png' -exec cp {} ${dest}/renderings \;
 echo "Done copying cascade images."
 
 # ----------------------------------------
 # Wiki content rendering
 
 echo "Rendering wiki pages."
-sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o $dest --pathways pathways_jarvis_${today} -r reachables_${today} -i jarvis_${today} --no-pathways"
+sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o $dest --pathways $pathways_c -r $reachables_c -i $act_db --no-pathways"
 echo "Done rendering wiki pages."
 
-# TODO: add commands for WikiWebServicesExporter
+echo "Exporting reachables list."
+sbt "runMain act.installer.reachablesexplorer.WikiWebServicesExporter -o ${dest}/reachables -c $reachables_c"
+echo "Done exporting reachables list."
 
 # ----------------------------------------
 # Wiki content staging
@@ -166,11 +190,11 @@ find ${dest}/Reachables/ -type f | xargs grep 'molecule-' | sed 's/^.*File://' |
 echo "Done copying molecule images."
 
 echo "Copying word cloud images from the rendering cache."
-find ${dest}/Reachables/ -type f | xargs grep 'molecule-' | sed 's/^.*File://' | sed 's/png.*/png/' | xargs -n1 -I__ cp /mnt/data-level1/data/reachables-explorer-rendering-cache/__ ${dest}/renderings
+find ${dest}/Reachables/ -type f | xargs grep 'wordcloud-' | sed 's/^.*File://' | sed 's/png.*/png/' | xargs -n1 -I__ cp /mnt/data-level1/data/reachables-explorer-rendering-cache/__ ${dest}/renderings
 echo "Done copying word cloud images."
 
 echo "Generating All_Chemicals page"
-for i in $(find ${dest}/Reachables -type f); do
+for i in $(find ${dest}/Reachables -type f | sort -S1G); do
     key=$(basename $i);
     name=$(head -1 $i | sed 's/^= *//' | sed 's/ *=$//');
     echo "[[$key|$name]]"; echo "";

@@ -1,42 +1,41 @@
 #!/bin/bash
 
-########################################
-# import_wiki_content: imports a directory of wiki content into the local wiki
-#
-# usage: import_wiki_content <content directory> <basic auth credentials>
-#
-# example: import_wiki_content full_wiki_20170113 wiki_test:foobarbaz
-#
-# This script consumes the output of the `run_full_pipeline` script, loading it
-# into the wiki running on localhost.  You can run this script multiple times on
-# a host and it will overwrite whatever content is already present.  Note that it
-# does not delete existing pages that do not appear in the content directory.
-# Page pruning is best done by blowing away the wiki and starting over.
-#
-# The file structure of content_dir should be:
-#   /All_Chemicals: a list of all chemicals
-#   /Reachables/: a directory of per-chemical wiki pages
-#   /Pathways/: a directory of per-pathway wiki pages
-#   /Sequences/: a directory of plain-text DNA design files
-#   /renderings/: a directory of all images (molecules, word clouds, cascades)
-########################################
+me=$(basename $0)
+full_usage="
+Usage:
+  $me: imports a directory of wiki content into the local wiki
 
-usage="$0 <content directory> <basic auth user:password>"
+  usage: $me <content directory> <basic auth credentials>
+
+  example: $me full_wiki_20170113 wiki_test:foobarbaz
+
+  This script consumes the output of the `run_full_pipeline` script, loading it
+  into the wiki running on localhost.  You can run this script multiple times on
+  a host and it will overwrite whatever content is already present.  Note that it
+  does not delete existing pages that do not appear in the content directory.
+  Page pruning is best done by blowing away the wiki and starting over.
+
+  The file structure of content_dir should be:
+    /All_Chemicals: a list of all chemicals
+    /Reachables/: a directory of per-chemical wiki pages
+    /Pathways/: a directory of per-pathway wiki pages
+    /Sequences/: a directory of plain-text DNA design files
+    /renderings/: a directory of all images (molecules, word clouds, cascades)
+"
 
 content_dir=$1
 
 if [[ ! -e $content_dir ]]; then
-    echo "No content directory specified."
-    echo $usage
+    echo "Error: no content directory specified."
+    echo "$full_usage"
     exit 1
 fi
 
 basic_auth_creds=$2
-
 if [[ -z $basic_auth_creds ]]; then
-    echo "No basic auth credentials specified."
+    echo "Error: no basic auth credentials specified."
     echo "Please provide <username>:<password> argument."
-    echo $usage
+    echo $full_usage
     exit 1
 fi
 
@@ -86,7 +85,24 @@ echo "Rebuilding pathways pages."
 rebuild ${content_dir}/Pathways
 echo "Done rebuilding pathways pages."
 
-echo "TODO: install reachables list and copy molecule images to assets directory."
+echo "Copying molecule images to assets directory."
+sudo find ${content_dir}/renderings -type f -name 'molecule-*.png' -exec cp {} /var/www/mediawiki/assets/img \;
+sudo chown -R www-data:www-data /var/www/mediawiki/assets/img
+
+# ----------------------------------------
+# Update wiki web services
+
+echo "Installing reachables list."
+sudo cp ${content_dir}/reachables /etc/wiki_web_services/reachables
+sudo chown root:root /etc/wiki_web_services/reachables
+echo "Restarting wiki web services to read reachables list."
+sudo /etc/init.d/substructure_search restart
+sudo /etc/init.d/orders_service restart
+
+echo "Checking substructure search service status:"
+sudo /etc/init.d/substructure_search status
+echo "Checking orders service status:"
+sudo /etc/init.d/orders_service status
 
 echo "----------------------------------------"
 echo "Done with import process."
