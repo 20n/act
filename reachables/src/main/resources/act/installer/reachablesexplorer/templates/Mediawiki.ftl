@@ -27,14 +27,13 @@
 </#if>
 </#if>
 
-
-<#if hideCascades??>
-To order pathway information for this molecule, please [${orderLink} click here].
-<#else>
 <#if cascade??>
 [[File:${cascade}.png|800px]]
 </#if>
 
+<#if hidePathways??>
+To order pathway information for this molecule, please [${orderLink} click here].
+<#else>
 <#if pathways??>
 ''' Pathways
 {| class='wikitable'

@@ -1,6 +1,7 @@
 package org.twentyn.proteintodna;
 
 import act.server.MongoDB;
+import act.shared.Chemical;
 import act.shared.Reaction;
 import act.shared.Seq;
 import com.act.reachables.Cascade;
@@ -8,6 +9,7 @@ import com.act.reachables.ReactionPath;
 import com.act.utils.CLIUtil;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
+import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoInternalException;
 import com.mongodb.ServerAddress;
@@ -30,6 +32,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class ProteinToDNADriver {
@@ -51,8 +54,14 @@ public class ProteinToDNADriver {
   private static final String OPTION_INPUT_PATHWAY_COLLECTION_NAME = "c";
   private static final String OPTION_OUTPUT_PATHWAY_COLLECTION_NAME = "d";
   private static final String OPTION_OUTPUT_DNA_SEQ_COLLECTION_NAME = "e";
+  private static final String OPTION_DESIGN_SOME = "m";
   private static final Integer HIGHEST_SCORING_INFERRED_SEQ_INDEX = 0;
   private static final Set<String> BLACKLISTED_WORDS_IN_INFERRED_SEQ = new HashSet<>(Arrays.asList("Fragment"));
+
+  private static final Pattern REGEX_ID = Pattern.compile("^\\d+$");
+  private static final Pattern REGEX_INCHI = Pattern.compile("^InChI=1S?/");
+  // Based on https://en.wikipedia.org/wiki/International_Chemical_Identifier#InChIKey
+  private static final Pattern REGEX_INCHI_KEY = Pattern.compile("^[A-Z]{14}-[A-Z]{10}-[A-Z]$");
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_DB_HOST)
@@ -80,22 +89,29 @@ public class ProteinToDNADriver {
         .longOpt("db-name")
     );
     add(Option.builder(OPTION_INPUT_PATHWAY_COLLECTION_NAME)
-        .argName("input-pathway-collection-name")
+        .argName("collection-name")
         .desc(String.format("The name of the input pathway collection to read from (default: %s)", DEFAULT_INPUT_PATHWAY_COLLECTION_NAME))
         .hasArg()
         .longOpt("input-pathway-collection-name")
     );
     add(Option.builder(OPTION_OUTPUT_PATHWAY_COLLECTION_NAME)
-        .argName("output-pathway-collection-name")
+        .argName("collection-name")
         .desc(String.format("The name of the output pathway collection to write to (default: %s)", DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME))
         .hasArg()
         .longOpt("output-pathway-collection-name")
     );
     add(Option.builder(OPTION_OUTPUT_DNA_SEQ_COLLECTION_NAME)
-        .argName("output-dna-seq-collection-name")
+        .argName("collection-name")
         .desc(String.format("The name of the output dna seq collection to write to (default: %s)", DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME))
         .hasArg()
         .longOpt("output-dna-seq-collection-name")
+    );
+    add(Option.builder(OPTION_DESIGN_SOME)
+        .argName("molecule")
+        .desc("Generate designs for specified molecules; can be a numeric ids, InChIs, or InChI Keys, *separated by '|'* " +
+            "for InChI compatibility.  Molecules must exist in chemical source DB if InChI or InChI Key is used.")
+        .hasArgs().valueSeparator('|')
+        .longOpt("design-this")
     );
   }};
 
@@ -157,15 +173,23 @@ public class ProteinToDNADriver {
 
     ProteinsToDNA2 p2d = ProteinsToDNA2.initiate();
 
+    List<Long> reachableIds = cl.hasOption(OPTION_DESIGN_SOME) ?
+        Arrays.stream(cl.getOptionValues(OPTION_DESIGN_SOME)).
+            map(m -> lookupMolecule(reactionDB, m)).collect(Collectors.toList()) :
+        Collections.emptyList();
+
+    // If there is a list of molecules for which to create designs, only consider their pathways.  Otherwise, find all.
+    DBObject query = reachableIds.isEmpty() ? new BasicDBObject() : DBQuery.in("target", reachableIds);
+
     /* Extract all pathway ids, then read pathways one id at a time.  This will reduce the likelihood of the cursor
      * timing out, which has a tendency to happen when doing expensive operations before advancing (as done here). */
-    DBCursor<ReactionPath> cursor = inputPathwayCollection.find(new BasicDBObject(), new BasicDBObject("_id", true));
-    List<String> ids = new ArrayList<>();
+    DBCursor<ReactionPath> cursor = inputPathwayCollection.find(query, new BasicDBObject("_id", true));
+    List<String> pathwayIds = new ArrayList<>();
     while (cursor.hasNext()) {
-      ids.add(cursor.next().getId());
+      pathwayIds.add(cursor.next().getId());
     }
 
-    for (String pathwayId : ids) {
+    for (String pathwayId : pathwayIds) {
       ReactionPath reactionPath = inputPathwayCollection.findOne(DBQuery.is("_id", pathwayId));
       Boolean atleastOneSeqMissingInPathway = false;
       List<Set<String>> proteinPaths = new ArrayList<>();
@@ -307,5 +331,29 @@ public class ProteinToDNADriver {
 
       outputPathwayCollection.insert(reactionPath);
     }
+  }
+
+  private static Long lookupMolecule(MongoDB db, String someKey) {
+    if (REGEX_ID.matcher(someKey).find()) {
+      // Note: this doesn't verify that the chemical id is valid.  Maybe we should do that?
+      return Long.valueOf(someKey);
+    } else if (REGEX_INCHI.matcher(someKey).find()) {
+      Chemical c = db.getChemicalFromInChI(someKey);
+      if (c != null) {
+        return c.getUuid();
+      }
+    } else if (REGEX_INCHI_KEY.matcher(someKey).find()) {
+      Chemical c = db.getChemicalFromInChIKey(someKey);
+      if (c != null) {
+        return c.getUuid();
+      }
+    } else {
+      String msg = String.format("Unable to find key type for query '%s'", someKey);
+      LOGGER.error(msg);
+      throw new IllegalArgumentException(msg);
+    }
+    String msg = String.format("Unable to find matching chemical for query %s", someKey);
+    LOGGER.error(msg);
+    throw new IllegalArgumentException(msg);
   }
 }

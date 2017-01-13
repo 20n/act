@@ -1,0 +1,207 @@
+#!/bin/bash
+
+me=$(basename $0)
+full_usage="
+Usage:
+  $me: runs the installer, reachabes + cascades, loader, and
+    wiki page renderer to a date-based output directory
+
+  usage: $me
+
+  Note: this must be run on a Linux host.  It is unlikely to work on OS X.
+"
+
+mongo="/usr/local/bin/mongo"
+
+today=$(date +"%Y%m%d")
+dest="$PWD/full_wiki_${today}"
+
+if [[ -e $dest ]]; then
+    echo "Output destination already exists, exiting to avoid overwriting."
+    exit 1
+fi
+
+JQ=`which jq`
+if [[ -z $JQ ]]; then
+    echo "Couldn't find jq.  Install with 'sudo apt-get install jq' and try again."
+    echo $full_usage
+    exit 1
+fi
+
+echo "Creating desitnation directory: $dest"
+mkdir $dest
+mkdir ${dest}/renderings
+
+# ----------------------------------------
+# DB and collection naming:
+act_db="jarvis_${today}"
+dirName="reachables-$today";
+r_prefix="r-$today";
+
+pathways_c="pathways_jarvis_${today}"
+reachables_c="reachables_${today}"
+sequences_c="sequences_${today}"
+
+echo "Configuration: "
+echo "----------------------------------------"
+echo "Output act DB:         $act_db"
+echo "Reachables output dir: $dirName"
+echo "Reachables prefix:     $r_prefix"
+echo ""
+echo "Pathways collection:   $pathways_c"
+echo "Reachables collection: $reachables_c"
+echo "Sequences collection:  $sequences_c"
+echo "----------------------------------------"
+
+# ----------------------------------------
+
+echo "Performing ACT DB sanity check."
+db_exists() {
+    db_name=$1
+    if [[ -z $db_name ]]; then
+        echo "Fatal error: no db name specified to db_exists!"
+        exit 1
+    fi
+
+    echo "show dbs" | $mongo | egrep -q "^${db_name} +"
+    return $?
+}
+
+for db in actv01 "drknow_$today" "synapse_$today" $act_db; do
+    echo "Searching for db $db"
+    if [[ db_exists $db ]]; then
+        echo "DB '${db}' already exists, exiting"
+        exit 1
+    fi
+done
+echo "ACT DB sanity check passes."
+
+
+# ----------------------------------------
+
+bioreachables_template=" \
+[ \
+  { \
+    \"operation\": \"MERGE_REACTIONS\", \
+    \"read\": \"actv01\", \
+    \"write\": \"drknow_20170111\" \
+  }, \
+  { \
+    \"operation\": \"DESALT\", \
+    \"read\": \"drknow_20170111\", \
+    \"write\": \"synapse_20170111\" \
+  }, \
+  { \
+    \"operation\": \"REMOVE_COFACTORS\", \
+    \"read\": \"synapse_20170111\", \
+    \"write\": \"jarvis_20170111\" \
+  } \
+] \
+"
+
+jq_params=".[0].write = \"drknow_${today}\" \
+    | .[1].read  = \"drknow_${today}\" \
+    | .[1].write = \"synapse_${today}\" \
+    | .[2].read  = \"synapse_${today}\" \
+    | .[2].write = \"${act_db}\" \
+"
+
+echo
+
+echo "Creating bioreachables configuration file."
+# Note: this works with Linux mktemp, but not OS X.
+bioreachables_config=$(mktemp "bioreachables.XXXXX")
+echo $bioreachables_template | jq "$jq_params" > $bioreachables_config
+echo "Temporary bioreachables file at $bioreachables_config."
+echo "Done creating bioreachables configuration file at $bioreachables_config."
+
+# ----------------------------------------
+# ACT DB Installation
+
+echo "Running installer"
+time sbt 'runMain com.act.reachables.initdb install omit_kegg omit_infer_ops omit_vendors omit_patents omit_infer_rxnquants omit_infer_sar omit_infer_ops omit_keywords omit_chebi'
+echo "Installer finished."
+
+echo "Running biointerpretation."
+time sbt "runMain com.act.biointerpretation.BiointerpretationDriver -c $bioreachables_config"
+echo "Cleaning up bioreachables configuration."
+rm -f $bioreachables_config
+echo "Biointerpretation done."
+
+# ----------------------------------------
+# Reachables and Cascades computation
+
+echo "Running reachables/cascades."
+sbt "runMain com.act.reachables.reachables --prefix=$PRE --useNativesFile=/mnt/shared-data/Michael/ReachablesInputFiles/valid_starting_points.txt --useCofactorsFile=/mnt/shared-data/Michael/ReachablesInputFiles/my_cofactors_file.txt -o $dirName";
+sbt "runMain com.act.reachables.postprocess_reachables --prefix=$PRE --output-dir=$dirName --extractReachables --writeGraphToo";
+sbt "runMain com.act.reachables.cascades --prefix=r-$today --output-dir=$dirName --cache-cascades=true --do-hmmer=false --out-collection=pathways_jarvis_$today --verbosity=1"
+echo "Done reachables/cascades."
+
+echo "Generating InChI-only reachables list."
+cut -d$'\t' -f 3 ${dirName}/${r_prefix}.reachables.txt >  ${dirName}/${r_prefix}.reachables.just_inchis.txt
+echo "Generating word clouds."
+sbt "runMain act.installer.reachablesexplorer.WordCloudGenerator -l ${dirName}/${r_prefix}.reachables.just_inchis.txt -r /usr/bin/Rscript"
+echo "Done generating word clouds."
+
+# ----------------------------------------
+# Reachable document loading and data enrichment
+
+echo "Running loader."
+sbt "runMain act.installer.reachablesexplorer.Loader -c $reachables_c -i $act_db -r $dirName -s $sequences_c -P /mnt/shared-data/Gil/L4N2pubchem/n1_inchis/projectedReactions"
+echo "Done running loader."
+
+echo "Running patent finder."
+sbt "runMain act.installer.reachablesexplorer.PatentFinder -c $reachables_c"
+echo "Done finding patents."
+
+# ----------------------------------------
+# Cascade image rendering and staging
+
+echo "Rendering dot files."
+for i in $(find ${dirName}/${r_prefix}-data -type f | grep '\.dot$'); do
+    if [[ ! -e "${i}.png" ]]; then
+        dot -Tpng -O $i;
+    else
+        echo "Skipping already rendered ${i}"
+    fi;
+done
+echo "Done rendering dot files."
+
+echo "Copying cascade images."
+find ${dirName}/${r_prefix}-data -type f -name '*.dot.png' -exec cp {} ${dest}/renderings \;
+echo "Done copying cascade images."
+
+# ----------------------------------------
+# Wiki content rendering
+
+echo "Rendering wiki pages."
+sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o $dest --pathways $pathways_c -r $reachables_c -i $act_db --no-pathways"
+echo "Done rendering wiki pages."
+
+echo "Exporting reachables list."
+sbt "runMain act.installer.reachablesexplorer.WikiWebServicesExporter -o ${dest}/reachables -c $reachables_c"
+echo "Done exporting reachables list."
+
+# ----------------------------------------
+# Wiki content staging
+
+echo "Copying relevant molecule images from the rendering cache."
+find ${dest}/Reachables/ -type f | xargs grep 'molecule-' | sed 's/^.*File://' | sed 's/png.*/png/' | xargs -n1 -I__ cp /mnt/data-level1/data/reachables-explorer-rendering-cache/__ ${dest}/renderings
+echo "Done copying molecule images."
+
+echo "Copying word cloud images from the rendering cache."
+find ${dest}/Reachables/ -type f | xargs grep 'wordcloud-' | sed 's/^.*File://' | sed 's/png.*/png/' | xargs -n1 -I__ cp /mnt/data-level1/data/reachables-explorer-rendering-cache/__ ${dest}/renderings
+echo "Done copying word cloud images."
+
+echo "Generating All_Chemicals page"
+for i in $(find ${dest}/Reachables -type f | sort -S1G); do
+    key=$(basename $i);
+    name=$(head -1 $i | sed 's/^= *//' | sed 's/ *=$//');
+    echo "[[$key|$name]]"; echo "";
+done > ${dest}/All_Chemicals
+echo "Done generating All_Chemicals page."
+
+echo "----------------------------------------"
+echo "Done with full pipeline."
+echo "${dest} is ready to be copied to a remote host for upload."
+echo "Run `rsync -azP ${dest} your-wiki-host:` to transfer data."

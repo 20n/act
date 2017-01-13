@@ -11,7 +11,166 @@ Private wikis should be created by launching new instances of existing wiki Azur
 
 If you need fresh wiki content generated prior to loading, start this process in the background while you set up a new VM--it will likely take longer than the VM setup process.
 
-TODO: complete this once the remaining wiki workflow PRs are merged.
+### Create an ACT DB ###
+
+Note: it's best to run all of the following commands in a `screen` session, as they will take a long time to complete.
+
+
+It is likely that you'll have an ACT database on hand from which to produce reachables and cascades.  If not, run this
+command on `speakeasy`:
+```
+$ time sbt 'runMain com.act.reachables.initdb install omit_kegg omit_infer_ops omit_vendors omit_patents omit_infer_rxnquants omit_infer_sar omit_infer_ops omit_keywords omit_chebi'
+```
+
+This process will install a DB to `actv01` on machine.  This process will probably take somewhere on the
+order of 48 hours to complete.  Note that this process has several external dependencies that would have to be moved
+and their locations changed in order for this process to run outside of our office network:
+
+* The BRENDA MySQL DB (currently on `speakeasy`) would need to be replicated, and the connection parameters changed to match.
+* The Metacyc Biopax XML would need to be copied and its location updated.
+* Other static data files on the NAS in `/data-leve1/data` would need to be copied to the correct location, like wikipedia molecules and the important molecules lists.
+* The Bing search result cache would need to be copied and its location updated (in `act.installer.bing.BingSearchResults`).
+
+Once the installer has run, the biointerpretation pipeline should be run on `actv01`.  The configuration file for
+the `BiointepretationDriver` class looks like this:
+```JSON
+[
+  {
+    "operation": "MERGE_REACTIONS",
+    "read": "actv01",
+    "write": "drknow_20170111"
+  },
+  {
+    "operation": "DESALT",
+    "read": "drknow_20170111",
+    "write": "synapse_20170111"
+  },
+  {
+    "operation": "REMOVE_COFACTORS",
+    "read": "synapse_20170111",
+    "write": "jarvis_20170111"
+  }
+]
+```
+This process will take on the order of 12-15 hours to complete.
+
+Note that mechanistic validation is not included in this pipeline due to performance reasons.  To enable it, add the
+following block to the array of operations above:
+```JSON
+  {
+    "operation": "VALIDATE",
+    "read": "jarvis_2017-01-11",
+    "write": "marvin_2017-01-11"
+  }
+```
+Validation on `master` may take up to a week to complete.  The `limit-reactor-products-for-validation` branch has
+WIP fixes that limit the scope of the validator's search, and may increase its performance by a significant margin.
+
+Save your JSON configuration in a file, in our case `biointerpretation_config.json`, and run this command:
+```
+$ sbt 'runMain com.act.biointerpretation.BiointerpretationDriver -c biointerpretation_config.json'
+```
+
+The output of the installer pipeline will be a database named `jarvis_2017-01-11`.
+
+### Run Reachables and Cascades ###
+
+**TODO: validate this section**
+
+To run reachables computation on your new database, alter the `DEFAULT_DB` parameters in your `reachables.scala`,
+`postprocess_reachables.scala`, and `cascades.scala` files.  Then run this command:
+```
+$ today=`date +%Y%m%d`;
+$ dirName="reachables-$today";
+$ PRE="r-$today";
+$ sbt "runMain com.act.reachables.reachables --prefix=$PRE --useNativesFile=/mnt/shared-data/Michael/ReachablesInputFiles/valid_starting_points.txt --useCofactorsFile=/mnt/shared-data/Michael/ReachablesInputFiles/my_cofactors_file.txt -o $dirName";
+$ sbt "runMain com.act.reachables.postprocess_reachables --prefix=$PRE --output-dir=$dirName --extractReachables --writeGraphToo";
+$ sbt "runMain com.act.reachables.cascades --prefix=r-$today --output-dir=$dirName --cache-cascades=true --do-hmmer=false --out-collection=pathways_jarvis_$today --verbosity=1”
+```
+
+You should now have `r-${today}.reachables.txt` and `r-${today}-data` in your `reachables-$today` directory.  We'll
+need these to complete the remaining steps.
+
+
+### Run Word Cloud Generation ###
+
+Word cloud generation must be done before the reachables collection is loaded, as the word cloud images must exist for
+them to be recognized by the loader.  We cut out the InChIs from the reachables list and feed that to the word cloud
+loader.  Note that Bing data must have been made available to the installer in the first step and the Bing search cache
+be available for this process to work.
+
+```
+$ cut -d$'\t' -f 3 r-${today}.reachables.txt >  r-${today}.reachables.just_inchis.txt
+$ sbt "runMain act.installer.reachablesexplorer.WordCloudGenerator -l r-${today}.reachables.just_inchis.txt -r /usr/bin/Rscript"
+```
+
+### Run the Loader to Create a Reachables Collection ###
+
+Run the loader to produce a collection of `reachable` documents in MongoDB.
+
+```
+$ sbt "runMain act.installer.reachablesexplorer.Loader -c reachables_${today} -i jarvis_${today} -r $dirName -s sequences_${today} -P /mnt/shared-data/Gil/L4N2pubchem/n1_inchis/projectedReactions"
+```
+
+The `-P` option installs a set of L4 projections, and can be omitted if necessary.  This command will output any missing
+molecule renderings to the rendering cache at `/mnt/data-level1/data/reachables-explorer-rendering-cache/`.  It
+depends on a Virtuoso RDF store process being available to find synonyms and MeSH headings; **the target of these requests
+is hardcoded as `chimay`, so this needs DNS in order to work without modification.**  The Virtuoso host can be changed
+in `act.installer.pubchem.PubchemMeshSynonyms`.
+
+### Enrich the Reachables with Patents ###
+
+To find recent patents for reachable molecules, use the `PatentFinder`
+```
+$ sbt "runMain act.installer.reachablesexplorer.PatentFinder -c reachables_${today}"
+```
+
+This expects a collection of patent indexes to live at `/mnt/shared-data/Mark/patents`.  An alternative path can be
+specified on the command line.
+
+### Dot File Rendering ###
+
+Once you have run the `Loader`, molecule renderings for all reachable molecules should be available on the NAS at
+`/mnt/data-level1/data/reachables-explorer-rendering-cache/`.  These are referenced by the dot files, which expect
+them to live at `/mnt/data-level1/data/reachables-explorer-rendering-cache/`.
+
+To render the dot PNGs, run this command:
+```
+$ find r-${today}-data -name '*.dot' | xargs dot -Tpng -O
+```
+Note that this will write the images in the same directory as the dot files.  If this is not desired, you can copy them
+to another directory with this command:
+```
+$ find r-${today}-data -name '*.dot.png' -exec cp {} dest \;
+```
+
+### Wiki Page Rendering ###
+
+To render pathway-free wiki pages for all reachable molecules, run this command:
+```
+$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages --pathways pathways_jarvis_${today} -r reachables_${today} -i jarvis_2017-01-11 --no-pathways
+```
+Note that we specify a pathways collection here to make sure that no molecules are opportunistically loaded into the reachables collection from stale pathways.
+
+You can later specify specific pages to re-render with pathways and sequence designs (we'll get to designs in a moment):
+```
+$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages_custom --pathways pathways_jarvis_${today} -r reachables_${today} -i jarvis_2017-01-11 -m MWOOGOJBHIARFG-UHFFFAOYSA-N
+```
+
+Once the pages are generated, follow the upload and import instructions below.
+
+### Building DNA Designs ###
+
+To produce DNA designs for just a few molcules, run the following:
+```
+$ inchi_key=<inchi key>
+$ sbt "runMain org.twentyn.proteintodna.ProteinToDNADriver -c pathways_jarvis_${today} -d pathways_jarvis_w_designs_${today} -e designs_jarvis_${today} -m $inchi_key"
+```
+Then render just the pages for the molecules you're interested using the command above, like this:
+```
+$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages_custom --pathways pathways_jarvis_w_designs_${today} -r reachables_${today} -i jarvis_2017-01-11 -m $inchi_key
+```
+
 
 ## 2. New Wiki Instance Setup Steps ##
 
