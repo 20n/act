@@ -1,10 +1,12 @@
 package com.act.biointerpretation.metadata;
 
-import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
 public class ProteinMetadata {
     //These are strict requirements that these be ok
+    Long reactionId;
+    List<Long> sequences;
     Map<Host, Integer> cloned;
     Double kcatkm;
     Double specificActivity;
@@ -15,6 +17,9 @@ public class ProteinMetadata {
     Boolean modifications;
 
     public boolean isValid(Host host) {
+        if (sequences.isEmpty()) {
+            return false;
+        }
         //Don't bother if it's a really bad enzyme
         if(kcatkm != null && kcatkm < 1.0) {
             //Not in the top 80% of proteins, and anecdotally the bare minimum activity limit
