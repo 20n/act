@@ -107,7 +107,7 @@ object RankPathway {
       })
 
       // This is a valid sequence, so we increment our protein uses
-      if (isValid){
+      if (isValid) {
         current.foreach(t => {
           val meta = t._2
           if (proteinBlacklist.contains(meta)) {
