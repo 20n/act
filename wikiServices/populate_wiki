@@ -9,7 +9,7 @@ Usage:
 
   example: $me full_wiki_20170113 wiki_test:foobarbaz
 
-  This script consumes the output of the `run_full_pipeline` script, loading it
+  This script consumes the output of the 'run_full_pipeline' script, loading it
   into the wiki running on localhost.  You can run this script multiple times on
   a host and it will overwrite whatever content is already present.  Note that it
   does not delete existing pages that do not appear in the content directory.
