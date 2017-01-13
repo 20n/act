@@ -78,6 +78,14 @@ object ReachRxnDescs {
     }
   }
 
+  val rxnLiteratureReference = Memo.mutableHashMapMemo[Long, Option[Set[String]]] { rid =>
+    if (meta(rid).isDefined) {
+      Option(meta(rid).get.getReferences(Reaction.RefDataSource.PMID).toSet)
+    } else {
+      None
+    }
+  }
+
   val rxnSequence = Memo.mutableHashMapMemo[Long, Option[Set[Long]]] { rid =>
     if (meta(rid).isDefined) {
       val sequences: Set[JSONArray] = meta(rid).get.getProteinData.
