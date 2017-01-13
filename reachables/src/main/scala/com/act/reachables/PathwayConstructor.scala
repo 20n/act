@@ -14,7 +14,7 @@ class PathwayConstructor(sourceNetwork: Network) {
       // Caused by cofactor filtering wherein the chemical is only produced by cofactors, 
       // but we didn't add the cofactors to the network originally.
       List(Some(ComplexPath(sourceNetwork.idToNode.get(target), None, None, level)))
-    } else if (level > 15) {
+    } else if (level > 10) {
       // Probably a cycle and even if not the pathway is likely too long
       List(None)
     } else {
@@ -60,7 +60,7 @@ class PathwayConstructor(sourceNetwork: Network) {
   }
 
   private def createAllNetworks(path: ComplexPath, sourceNetwork: Network): List[Network] = {
-    val MAX_COMBINATIONS_OF_SUBSTRATES = 15
+    val MAX_COMBINATIONS_OF_SUBSTRATES = 5
     
     if (path.reaction.isEmpty) return List(new Network("native"))
 
