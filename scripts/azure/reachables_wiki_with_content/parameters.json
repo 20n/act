@@ -1,0 +1,33 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "value": "westus2"
+        },
+        "virtualMachineName": {
+            "value": "INSERT VALUE HERE"
+        },
+        "adminUsername": {
+            "value": "INSERT USER NAME HERE"
+        },
+        "virtualNetworkName": {
+            "value": "twentyn-azure-wiki-west-us-2"
+        },
+        "networkInterfaceName": {
+            "value": "INSERT INTERFACE NAME HERE"
+        },
+        "networkSecurityGroupName": {
+            "value": "twentyn-wiki-west-us-2-nsg"
+        },
+        "adminPublicKey": {
+            "value": "INSERT KEY HERE"
+        },
+        "subnetName": {
+            "value": "default"
+        },
+        "vhdUUID": {
+            "value": "INSERT UUID HERE"
+        }
+    }
+}
