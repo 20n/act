@@ -32,6 +32,7 @@ if [[ ! -e $content_dir ]]; then
 fi
 
 basic_auth_creds=$2
+
 if [[ -z $basic_auth_creds ]]; then
     echo "Error: no basic auth credentials specified."
     echo "Please provide <username>:<password> argument."
@@ -73,7 +74,7 @@ echo "TODO: import category pages once they are generated."
 function rebuild() {
     for i in $(ls $1); do
         echo $i;
-        curl --user "$basic_auth" --insecure -vvv -X POST "https://localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP";
+        curl --user "$basic_auth_creds" --insecure -vvv -X POST "https://localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP";
     done;
 }
 
