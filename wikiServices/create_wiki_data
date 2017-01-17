@@ -202,7 +202,9 @@ done > ${dest}/All_Chemicals
 echo "Done generating All_Chemicals page."
 
 echo "Generating Category pages"
-python /mnt/shared-data/Vijay/wiki/generate_nav_pages.py $reachables_c $dest
+# TO FIX BEFORE MERGE:
+# Is this path correct? At this point, is PWD=act/reachables/?
+python src/main/python/Wiki/generate_category_pages.py $reachables_c $dest
 echo "Done generating category pages."
 
 echo "----------------------------------------"
