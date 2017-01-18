@@ -418,7 +418,7 @@ object Cascade extends Falls {
         println("Attempting to determine branched paths.")
         Await.result(future, 1 minute)
       } catch {
-        case TimeoutException => {
+        case e: TimeoutException => {
           println("Future failed because of timeout.")
           None
         }
