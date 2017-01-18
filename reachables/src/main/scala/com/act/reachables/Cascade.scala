@@ -21,7 +21,7 @@ import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Future, blocking}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
@@ -414,7 +414,11 @@ object Cascade extends Falls {
     }).flatten)
 
     if (paths.isEmpty || paths.get.isEmpty) {
-      val future = TimeoutFuture.create[Option[List[Path]]](Future { getPathwaysWeird(network, target) })(20 seconds)
+      val future = TimeoutFuture.create[Option[List[Path]]](Future { 
+        blocking {
+          getPathwaysWeird(network, target)
+        } 
+      })(1 minute)
 
       var returnValue: Option[List[Path]] = None
       future.onComplete({
