@@ -4,9 +4,9 @@ import java.util.concurrent.{TimeUnit, TimeoutException}
 
 import io.netty.util.{HashedWheelTimer, Timeout, TimerTask}
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
-import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.concurrent.ExecutionContext.global
+import scala.concurrent.{Future, Promise}
 
 // Stolen from http://stackoverflow.com/a/16305056/4978569
 object TimeoutFuture {
