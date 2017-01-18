@@ -8,6 +8,7 @@ import java.util.NoSuchElementException
 import act.shared.{Seq => DbSeq}
 import com.act.analysis.proteome.scripts.OddSequencesToProteinPredictionFlow
 import com.act.reachables.Cascade.NodeInformation
+import com.act.workflow.tool_manager.jobs.management.utility.{CanceleableFuture, TimeoutFuture}
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywords, SequenceKeywords}
 import com.fasterxml.jackson.annotation._
 import com.github.benmanes.caffeine.cache.Caffeine
@@ -19,6 +20,10 @@ import org.mongojack.JacksonDBCollection
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.concurrent.{CancellationException, Future}
+import scala.concurrent.duration._
+import scala.util.{Failure, Success}
+import scala.concurrent.ExecutionContext.global
 
 // Default host. If running on a laptop, please set a SSH bridge to access speakeasy
 
@@ -409,19 +414,34 @@ object Cascade extends Falls {
     }).flatten)
 
     if (paths.isEmpty || paths.get.isEmpty) {
-      // If no paths found, lets see if we can construct paths by considering branched pathways
-      val pathwayConstructor = new PathwayConstructor(network)
-      val branchedPaths: List[PathwayConstructor.ComplexPath] = pathwayConstructor.getAllPaths(target).flatten
-      val MAX_PATHS = 100
-      val pathAsNetwork: List[Network] = pathwayConstructor.createNetworksFromPath(branchedPaths).take(MAX_PATHS)
-      println(s"Constructed Pathways: ${pathAsNetwork.length}.${if (pathAsNetwork.length >= MAX_PATHS) " A value of $MAX_PATHS means that the result is likely not complete." else ""}")
-      // Sometimes we create hundreds of thousands of paths.
-      Option(pathAsNetwork.map(convertNetworkToPath(_, target)))
+      val future = TimeoutFuture.create[Option[List[Path]]](Future { getPathwaysWeird(network, target) })(20 seconds)
+
+      var returnValue: Option[List[Path]] = None
+      future.onComplete({
+        case Success(x) => {
+          returnValue = x
+        }
+        case Failure(x) => None
+      })
+      returnValue
     } else {
       paths
     }
   }
-
+  
+  
+  def getPathwaysWeird(network: Network, target: Long)(): Option[List[Path]] = {
+    // If no paths found, lets see if we can construct paths by considering branched pathways
+    val pathwayConstructor = new PathwayConstructor(network)
+    val branchedPaths: List[PathwayConstructor.ComplexPath] = pathwayConstructor.getAllPaths(target).flatten
+    val MAX_PATHS = 100
+    val pathAsNetwork: List[Network] = pathwayConstructor.createNetworksFromPath(branchedPaths).take(MAX_PATHS)
+    println(s"Constructed Pathways: ${pathAsNetwork.length}.${if (pathAsNetwork.length >= MAX_PATHS) " A value of $MAX_PATHS means that the result is likely not complete." else ""}")
+    // Sometimes we create hundreds of thousands of paths.
+    Option(pathAsNetwork.map(convertNetworkToPath(_, target)))
+  }
+  
+  
   def convertNetworkToPath(nw: Network, target: Long): Cascade.Path = {
     val pathList = mutable.ListBuffer[Node]()
     pathList.append(nw.idToNode(target))
