@@ -98,7 +98,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
     blacklistedInchisCorpus = new BlacklistedInchisCorpus();
     blacklistedInchisCorpus.loadCorpus();
 
-    projector = new ReactionProjector();
+    projector = new ReactionProjector(true);
 
     initReactors();
 
@@ -312,7 +312,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
     List<Molecule[]> productSets;
 
     try {
-      productSets = projector.getAllProjectedProductSets(substrateArray, reactor);
+      productSets = projector.getAllProjectedProductSets(substrateArray, reactor, 10);
     } catch (IOException e) {
       LOGGER.error("Encountered IOException when projecting reactor for ERO %d onto substrates of %d: %s",
           ero.getId(), newRxnId, e.getMessage());
