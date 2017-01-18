@@ -376,6 +376,11 @@ object Cascade extends Falls {
     if (checkIfExists > 0){
       return None
     }
+
+    // Natives don't have pathways, so let's not let these create any edge cases.
+    if (is_universal(target)) {
+      return None
+    }
     
     val sourceEdgesSet: util.Set[Edge] = network.getEdgesGoingInto(target)
 
@@ -648,6 +653,7 @@ class Cascade(target: Long) {
     val withinTheseReactions = new BasicDBObject(MongoKeywords.IN.toString, theseReactions)
     abstractOrQuestionableSequencesQuery.put(SequenceKeywords.ID.toString, withinTheseReactions)
 
+    // Only connect if we are doing HMMer Seq
     lazy val mongoConnection = OddSequencesToProteinPredictionFlow.connectToMongoDatabase(cascades.DEFAULT_DB._3)
 
     lazy val oddSeqs: List[DbSeq] = mongoConnection.getSeqIterator(abstractOrQuestionableSequencesQuery).asScala.toList
