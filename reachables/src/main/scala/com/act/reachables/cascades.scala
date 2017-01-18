@@ -221,18 +221,24 @@ object cascades {
 
   def constructInformationForReachable(reachid: Long, dir: String): Unit = {
     // write to disk; JS front end uses json
-    val waterfall = new Waterfall(reachid)
-    val json    = waterfall.json()
-    val jsonstr = json.toString(2)
-    write_to(new File(dir, s"p$reachid.json").getAbsolutePath, jsonstr)
+    val waterfallFile = new File(dir, s"p$reachid.json")
+    if (!waterfallFile.exists()) {
+      val waterfall = new Waterfall(reachid)
+      val json = waterfall.json()
+      val jsonstr = json.toString(2)
+      write_to(waterfallFile.getAbsolutePath, jsonstr)
+    }
 
     // write to disk; cascade as dot file
-    val cascade = new Cascade(reachid)
-    val dot     = cascade.dot()
-    write_to(new File(dir, s"cscd$reachid.dot").getAbsolutePath, dot)
-    val writer = new FileWriter(new File(dir, s"paths$reachid.txt"))
-    writer.write(cascade.allStringPaths.mkString("\n"))
-    writer.close()
+    val cascadesFile = new File(dir, s"cscd$reachid.dot")
+    if (!cascadesFile.exists()) {
+      val cascade = new Cascade(reachid)
+      val dot = cascade.dot()
+      write_to(cascadesFile.getAbsolutePath, dot)
+      val writer = new FileWriter(new File(dir, s"paths$reachid.txt"))
+      writer.write(cascade.allStringPaths.mkString("\n"))
+      writer.close()
+    }
 
     // color attributes are cascade specific. so we clear them after each
     // cascade run. otherwise because we cache nodes, colors bleed across cascades
