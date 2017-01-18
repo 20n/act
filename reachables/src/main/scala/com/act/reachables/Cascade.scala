@@ -4,11 +4,11 @@ import java.io.File
 import java.lang.Long
 import java.util
 import java.util.NoSuchElementException
+import java.util.concurrent.TimeoutException
 
 import act.shared.{Seq => DbSeq}
 import com.act.analysis.proteome.scripts.OddSequencesToProteinPredictionFlow
 import com.act.reachables.Cascade.NodeInformation
-import com.act.workflow.tool_manager.jobs.management.utility.TimeoutFuture
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywords, SequenceKeywords}
 import com.fasterxml.jackson.annotation._
 import com.github.benmanes.caffeine.cache.Caffeine
@@ -21,9 +21,8 @@ import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Future, blocking}
 import scala.concurrent.duration._
-import scala.util.{Failure, Success}
+import scala.concurrent.{Await, Future, blocking}
 
 // Default host. If running on a laptop, please set a SSH bridge to access speakeasy
 
@@ -409,20 +408,21 @@ object Cascade extends Falls {
     }).flatten)
 
     if (paths.isEmpty || paths.get.isEmpty) {
-      val future = TimeoutFuture.create[Option[List[Path]]](Future { 
+      val future: Future[Option[List[Path]]] = Future { 
         blocking {
           getPathwaysWeird(network, target)
-        } 
-      })(1 minute)
-
-      var returnValue: Option[List[Path]] = None
-      future.onComplete({
-        case Success(x) => {
-          returnValue = x
         }
-        case Failure(x) => None
-      })
-      returnValue
+      }
+
+      try {
+        println("Attempting to determine branched paths.")
+        Await.result(future, 1 minute)
+      } catch {
+        case TimeoutException => {
+          println("Future failed because of timeout.")
+          None
+        }
+      }
     } else {
       paths
     }
