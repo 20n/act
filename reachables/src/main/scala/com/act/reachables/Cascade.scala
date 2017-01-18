@@ -8,7 +8,7 @@ import java.util.NoSuchElementException
 import act.shared.{Seq => DbSeq}
 import com.act.analysis.proteome.scripts.OddSequencesToProteinPredictionFlow
 import com.act.reachables.Cascade.NodeInformation
-import com.act.workflow.tool_manager.jobs.management.utility.{CanceleableFuture, TimeoutFuture}
+import com.act.workflow.tool_manager.jobs.management.utility.TimeoutFuture
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywords, SequenceKeywords}
 import com.fasterxml.jackson.annotation._
 import com.github.benmanes.caffeine.cache.Caffeine
@@ -20,10 +20,10 @@ import org.mongojack.JacksonDBCollection
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-import scala.concurrent.{CancellationException, Future}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
-import scala.concurrent.ExecutionContext.global
 
 // Default host. If running on a laptop, please set a SSH bridge to access speakeasy
 
