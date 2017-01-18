@@ -415,7 +415,7 @@ object Cascade extends Falls {
     if (paths.isEmpty || paths.get.isEmpty) {
       val future: Future[Option[List[Path]]] = Future { 
         blocking {
-          getPathwaysWeird(network, target)
+          getBranchedPathways(network, target)
         }
       }
 
@@ -434,7 +434,7 @@ object Cascade extends Falls {
   }
   
   
-  def getPathwaysWeird(network: Network, target: Long)(): Option[List[Path]] = {
+  def getBranchedPathways(network: Network, target: Long)(): Option[List[Path]] = {
     // If no paths found, lets see if we can construct paths by considering branched pathways
     val pathwayConstructor = new PathwayConstructor(network)
     val branchedPaths: List[PathwayConstructor.ComplexPath] = pathwayConstructor.getAllPaths(target).flatten
