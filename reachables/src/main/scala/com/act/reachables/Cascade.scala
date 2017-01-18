@@ -648,9 +648,9 @@ class Cascade(target: Long) {
     val withinTheseReactions = new BasicDBObject(MongoKeywords.IN.toString, theseReactions)
     abstractOrQuestionableSequencesQuery.put(SequenceKeywords.ID.toString, withinTheseReactions)
 
-    val mongoConnection = OddSequencesToProteinPredictionFlow.connectToMongoDatabase(cascades.DEFAULT_DB._3)
+    lazy val mongoConnection = OddSequencesToProteinPredictionFlow.connectToMongoDatabase(cascades.DEFAULT_DB._3)
 
-    val oddSeqs: List[DbSeq] = mongoConnection.getSeqIterator(abstractOrQuestionableSequencesQuery).asScala.toList
+    lazy val oddSeqs: List[DbSeq] = mongoConnection.getSeqIterator(abstractOrQuestionableSequencesQuery).asScala.toList
 
     // TODO Maybe we should only try to infer if there are no/few good sequences.
     // Evaluate how much this helps.  It makes sense as we don't really want to add more to places
