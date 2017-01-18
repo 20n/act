@@ -6,6 +6,10 @@ import math
 import sys
 import os
 
+if (len(sys.argv) < 4):
+    print("Not enough arguments given.")
+    sys.exit()
+
 reachables_db = sys.argv[1]
 base_dir = sys.argv[2]
 db_name = sys.argv[3]
