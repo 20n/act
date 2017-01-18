@@ -1,7 +1,6 @@
 package com.act.workflow.tool_manager.jobs.management.utility
 
 import java.util.concurrent.CancellationException
-
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /**
@@ -20,3 +19,4 @@ object CanceleableFuture {
     (f, () => p.tryFailure(new CancellationException))
   }
 }
+
