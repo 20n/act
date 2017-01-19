@@ -28,8 +28,9 @@ def makePage(fileName, chemicals):
     with open(os.path.join(categoryPath, fileName), 'w') as target:
         for chemical in chemicals:
             if (chemical["inchikey"] is not None):
-                chemName = chemical["inchikey"].encode("utf-8")
-                chemLink = "[[{0}]]".format(chemName)
+                inchiKey = chemical["inchikey"].encode("utf-8")
+                chemName = chemical["page_name"].encode("utf-8")
+                chemLink = "[[{0} | {1}]]".format(inchiKey, chemName)
                 target.write(chemLink)
                 target.write("\n\n")
 
@@ -54,9 +55,10 @@ usageTerms = {"aroma": [], "flavor": [], "monomer": [], "polymer": [], "analgesi
 
 ### First we find all the chemicals that have usage terms associated with them.
 for chemical in db[reachables_db].find({"usage-wordcloud-filename": {"$ne": None}}):
-    if (chemical["inchikey"]):
-        chemName = chemical["inchikey"].encode("utf-8")
-        chemLink = "[[{0}]]".format(chemName)
+    if (chemical["inchikey"] is not None):
+        inchiKey = chemical["inchikey"].encode("utf-8")
+        chemName = chemical["page_name"].encode("utf-8")
+        chemLink = "[[{0} | {1}]]".format(inchiKey, chemName)
 
         dictOfUsageTerms = {}
         totalCount = 0
@@ -77,8 +79,7 @@ for term in usageTerms:
 
     with open(os.path.join(categoryPath, fileName), 'w') as target:
         sortedChemicals = sorted(usageTerms[term], key=lambda x: x[1])
-        for chem, freq in sortedChemicals:
-                chemLink = "[[{0}]]".format(chem)
+        for chemLink, freq in sortedChemicals:
                 target.write(chemLink)
                 target.write("\n\n")
 
