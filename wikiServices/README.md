@@ -494,7 +494,14 @@ $ for page in `ls $dir`; do molecule=`cat $dir/$page | head -1 | sed 's/=//g'`; 
 $ find wiki_front_matter/pages -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
 ```
 
-To edit the side bar content (i.e. to remove `Random Page` and `Recent Changes`), navigate to `/index.php?title=MediaWiki:Sidebar` and edit the source.  Use http://preview.bioreachables.20n.com/index.php?title=MediaWiki:Sidebar as an example of this.
+To edit the side bar content (i.e. to remove `Random Page` and `Recent Changes`), navigate to `/index.php?title=MediaWiki:Sidebar` and edit the source.  You will need to login as wiki_admin (ask SS for password from imp-20n_mdaly_credentials).  Use http://heartofgold.bioreachables.com/index.php?title=MediaWiki:Sidebar as an example of this.  Change it to:
+```
+* navigation
+** mainpage|mainpage-description
+** All_Chemicals|List of chemicals
+** {{SERVER}}/substructure/|Substructure search
+** helppage|help
+```
 
 #### Example: Loading the Preview Wiki Content ####
 
