@@ -77,17 +77,24 @@ object Cascade extends Falls {
     case false => None
   }
   // the best precursor reaction
-  val cache_bestpre_rxn = getCaffeineCache[Long, Map[SubProductPair, List[ReachRxn]]](cacheBnd)
+  var cache_bestpre_rxn = getCaffeineCache[Long, Map[SubProductPair, List[ReachRxn]]](cacheBnd)
 
   // the cache of the cascade if it has been previously computed
-  val cache_nw = getCaffeineCache[Long, Option[Network]](cacheBnd)
+  var cache_nw = getCaffeineCache[Long, Option[Network]](cacheBnd)
 
   def getCaffeineCache[T, S](optBound: Option[Int]) = {
     val caffeine = Caffeine.newBuilder().asInstanceOf[Caffeine[T, S]]
     if (optBound.isDefined)
       caffeine.maximumSize(optBound.get)
+    caffeine.recordStats()
     val cache = caffeine.build[T, S]()
     cache
+  }
+  
+  def clearAndRecreateCaches(): Unit = {
+    var cache_bestpre_rxn = getCaffeineCache[Long, Map[SubProductPair, List[ReachRxn]]](cacheBnd)
+    var cache_nw = getCaffeineCache[Long, Option[Network]](cacheBnd)
+    var nodeMerger = mutable.HashMap[SubProductPair, Node] = new mutable.HashMap()
   }
 
   // We only pick rxns that lead monotonically backwards in the tree.

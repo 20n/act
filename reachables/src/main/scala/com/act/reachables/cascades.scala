@@ -151,7 +151,7 @@ object cascades {
     // TODO Allow CLI options here
     // These reachables are ordered such that common biosynthesizable molecules are done first.
     val reach: List[Long] = List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
-
+    
     reach.distinct.foreach(reachid => {
       val msg = f"id=$reachid%6d\tcount=${counter.getAndIncrement()}%5d\tCACHE: {cascades=${Cascade.cache_nw.stats.hitCount}%4d, pre_rxns=${Cascade.cache_bestpre_rxn.stats.hitCount}%4d, nodeMerger=${Cascade.nodeMerger.size}%5d}"
       Cascade.time(msg) {
@@ -160,6 +160,11 @@ object cascades {
 
         // constructInformationForReachable modifies global scope variables, so can't run in parallel.
         constructInformationForReachable(reachid, dir)
+      }
+      
+      if (counter.get() % 1000 == 0) {
+        // Clear every 1000 to keep mem usage low so we don't slow down too much.
+        Node.clearAttributeData()
       }
     })
 
