@@ -812,8 +812,9 @@ class Cascade(target: Long) {
     if (Cascade.VERBOSITY > 1){
       println(s"## Inserting pathways into pathway collection ${Cascade.pathwayCollection.getFullName}.")
     }
+    
     try {
-      sortedPaths.foreach(Cascade.pathwayCollection.insert)
+      Cascade.pathwayCollection.insert(sortedPaths)
     } catch {
       case e: Exception => logger.info(s"Failed to insert pathways for target $target.  Error was ${e.getMessage}.")
     }
