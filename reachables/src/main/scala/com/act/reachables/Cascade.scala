@@ -92,9 +92,9 @@ object Cascade extends Falls {
   }
   
   def clearAndRecreateCaches(): Unit = {
-    var cache_bestpre_rxn = getCaffeineCache[Long, Map[SubProductPair, List[ReachRxn]]](cacheBnd)
-    var cache_nw = getCaffeineCache[Long, Option[Network]](cacheBnd)
-    var nodeMerger = new mutable.HashMap()
+    cache_bestpre_rxn = getCaffeineCache[Long, Map[SubProductPair, List[ReachRxn]]](cacheBnd)
+    cache_nw = getCaffeineCache[Long, Option[Network]](cacheBnd)
+    nodeMerger = new mutable.HashMap()
   }
 
   // We only pick rxns that lead monotonically backwards in the tree.
