@@ -748,6 +748,11 @@ public class Loader {
     });
   }
 
+  private void createAndUpdateReachable(String inchi) {
+    Reachable reachable = constructOrFindReachable(inchi);
+    upsert(reachable);
+  }
+
   public void updateFromProjectionFile(File file) throws IOException {
     LOGGER.info("Processing projection file: %s", file.getName());
     List<ReachablesProjectionResult> projectionResults = Arrays.asList(
@@ -761,9 +766,6 @@ public class Loader {
     LOGGER.info("Processing InChI file: %s", file.getName());
     L2InchiCorpus inchiCorpus = new L2InchiCorpus();
     inchiCorpus.loadCorpus(file);
-    inchiCorpus.getInchiList().forEach(inchi -> {
-      Reachable reachable = constructOrFindReachable(inchi);
-      upsert(reachable);
-    });
+    inchiCorpus.getInchiList().forEach(this::createAndUpdateReachable);
   }
 }
