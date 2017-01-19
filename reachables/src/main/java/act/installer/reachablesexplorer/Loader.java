@@ -228,7 +228,7 @@ public class Loader {
         cliUtil.failWithMessage("InChI file at %s does not exist or is a directory",
             projectedInchisFile.getAbsolutePath());
       }
-      loader.updateFromInchiFile(projectedInchisFile);
+      loader.updateFromProjectedInchiFile(projectedInchisFile);
     }
   }
 
@@ -757,7 +757,7 @@ public class Loader {
     projectionUpdates.forEach(this::updateFromProjection);
   }
 
-  public void updateFromInchiFile(File file) throws IOException {
+  public void updateFromProjectedInchiFile(File file) throws IOException {
     LOGGER.info("Processing InChI file: %s", file.getName());
     L2InchiCorpus inchiCorpus = new L2InchiCorpus();
     inchiCorpus.loadCorpus(file);
