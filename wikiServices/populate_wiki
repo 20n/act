@@ -66,6 +66,10 @@ echo "Importing all chemicals page."
 sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite ${content_dir}/All_Chemicals
 echo "Done importing all chemicals page."
 
+echo "Importing category pages."
+find ${content_dir}/Categories -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
+echo "Done importing all category page."
+
 echo "TODO: import category pages once they are generated."
 
 # ----------------------------------------
