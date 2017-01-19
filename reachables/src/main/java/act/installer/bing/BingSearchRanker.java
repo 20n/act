@@ -54,7 +54,7 @@ public class BingSearchRanker {
   // Default configuration for the Installer database
   public static final String DEFAULT_HOST = "localhost";
   public static final int DEFAULT_PORT = 27017;
-  public static final String INSTALLER_DATABASE = "actv01";
+  public static final String DEFAULT_INSTALLER_DATABASE = "actv01";
 
   // Configuration for usage explorer UI
   public static final String HOST_USAGE_EXPLORER = "usage-explorer";
@@ -164,27 +164,20 @@ public class BingSearchRanker {
   private Boolean includeChebiApplications;
   private Boolean includeWikipediaUrl;
   private Boolean includeUsageExplorerUrl;
-  private Boolean forceUpdate;
 
   public BingSearchRanker() {
-    mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, INSTALLER_DATABASE);
-    bingSearcher = new BingSearcher();
-    includeChebiApplications = false;
-    includeWikipediaUrl = false;
-    includeUsageExplorerUrl = false;
-    forceUpdate = false;
+    this(false, false, false, false);
   }
 
   public BingSearchRanker(Boolean includeChebiApplications,
                           Boolean includeWikipediaUrl,
                           Boolean includeUsageExplorerUrl,
                           Boolean forceUpdate) {
-    this.mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, INSTALLER_DATABASE);
-    this.bingSearcher = new BingSearcher();
+    this.mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_INSTALLER_DATABASE);
+    this.bingSearcher = new BingSearcher(this.mongoDB, forceUpdate);
     this.includeChebiApplications = includeChebiApplications;
     this.includeWikipediaUrl = includeWikipediaUrl;
     this.includeUsageExplorerUrl = includeUsageExplorerUrl;
-    this.forceUpdate = forceUpdate;
   }
 
   public static void main(final String[] args) throws Exception {
@@ -270,7 +263,7 @@ public class BingSearchRanker {
    * @param inchis set of InChI string representations
    */
   public void addBingSearchResults(Set<String> inchis) throws IOException {
-    bingSearcher.addBingSearchResultsForInchiSet(mongoDB, inchis, forceUpdate);
+    bingSearcher.addBingSearchResultsForInchiSet(inchis);
   }
 
   /**

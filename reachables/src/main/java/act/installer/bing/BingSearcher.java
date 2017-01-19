@@ -1,9 +1,15 @@
 package act.installer.bing;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import com.act.utils.CLIUtil;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import com.mongodb.BasicDBObject;
@@ -17,15 +23,97 @@ import act.server.MongoDB;
 public class BingSearcher {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(BingSearcher.class);
-  static final private String USAGE_TERMS_FILENAME = "usage_terms.txt";
+  private static final String USAGE_TERMS_FILENAME = "usage_terms.txt";
 
-  public BingSearcher() {
+  public static final String HELP_MESSAGE =
+      "This class contains the main logic for installing Bing Search results in the Installer DB.";
+
+  public static final String OPTION_DB_NAME = "n";
+  public static final String OPTION_DB_PORT = "p";
+  public static final String OPTION_DB_HOST = "h";
+  public static final String OPTION_CACHE_ONLY = "c";
+
+  public static final String DEFAULT_HOST = "localhost";
+  public static final String DEFAULT_PORT = "27017";
+  public static final String DEFAULT_DATABASE = "actv01";
+
+
+  public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
+    add(Option.builder(OPTION_DB_NAME)
+        .argName("db name")
+        .desc(String.format("The name of the database from which to fetch chemicals inchis and " +
+            "write Bing cross-references (default: %s). It needs to contains a 'chemicals' collection.",
+            DEFAULT_DATABASE))
+        .hasArg()
+        .longOpt("db")
+        .type(String.class)
+    );
+    add(Option.builder(OPTION_DB_HOST)
+        .argName("DB host")
+        .desc(String.format("The database host to which to connect (default: %s)", DEFAULT_HOST))
+        .hasArg()
+        .longOpt("db-host")
+    );
+    add(Option.builder(OPTION_DB_PORT)
+        .argName("DB port")
+        .desc(String.format("The port on which to connect to the database (default: %d)", DEFAULT_PORT))
+        .hasArg()
+        .longOpt("db-port")
+    );
+    add(Option.builder(OPTION_CACHE_ONLY)
+        .argName("CACHE_ONLY")
+        .desc("Use the cache only. If that option is used, they will not be any queries against the Bing search API.")
+        .longOpt("cache-only")
+        .type(String.class)
+    );
+  }};
+
+
+  private MongoDB db;
+  private BingSearchResults bingSearchResults;
+  private Set<String> usageTerms;
+  private boolean forceUpdate;
+
+  public void main(String args[]) {
+
+    CLIUtil cliUtil = new CLIUtil(BingSearcher.class, HELP_MESSAGE, OPTION_BUILDERS);
+    CommandLine cl = cliUtil.parseCommandLine(args);
+    MongoDB db = new MongoDB(
+        cl.getOptionValue(OPTION_DB_HOST, DEFAULT_HOST),
+        Integer.parseInt(cl.getOptionValue(OPTION_DB_PORT, DEFAULT_PORT)),
+        cl.getOptionValue(OPTION_DB_NAME, DEFAULT_DATABASE)
+    );
+    BingSearcher bingSearcher = new BingSearcher(db, false);
+    bingSearcher.addBingSearchResultsForEntireDatabase();
   }
 
-  private void addBingSearchResultsForInChI(MongoDB db,
-                                           BingSearchResults bingSearchResults,
-                                           String inchi,
-                                           Set<String> usageTerms) throws IOException {
+  public BingSearcher(MongoDB db) {
+    this(db, false);
+  }
+
+  public BingSearcher(MongoDB db, boolean forceUpdate) {
+    this.db = db;
+    this.forceUpdate = forceUpdate;
+    this.bingSearchResults = new BingSearchResults();
+    // Get the usage terms
+    LOGGER.debug("Getting usage terms corpus.");
+    UsageTermsCorpus usageTermsCorpus = new UsageTermsCorpus(USAGE_TERMS_FILENAME);
+    try {
+      usageTermsCorpus.buildCorpus();
+    } catch (IOException e) {
+      LOGGER.error("Usage term corpus source file not found in class resources: %s", USAGE_TERMS_FILENAME);
+      System.exit(1);
+    }
+    this.usageTerms = usageTermsCorpus.getUsageTerms();
+  }
+
+  private void addBingSearchResultsForEntireDatabase() {
+    Map<String, Long> m = db.constructAllInChIs();
+    Set<String> inchis = m.keySet();
+    addBingSearchResultsForInchiSet(inchis);
+  }
+
+  private void addBingSearchResultsForInChI(String inchi) throws IOException {
     LOGGER.debug("Processing InChI " + inchi);
     // Fetches the names (Brenda, Metacyc, Chebi, Drugbank)
     NamesOfMolecule namesOfMolecule = db.fetchNamesFromInchi(inchi);
@@ -59,24 +147,19 @@ public class BingSearcher {
     db.updateChemicalWithBingSearchResults(inchi, bestName, doc);
   }
 
-  public void addBingSearchResultsForInchiSet(MongoDB db, Set<String> inchis, Boolean forceUpdate)
-      throws IOException {
-
-    // Get the usage terms
-    LOGGER.debug("Getting usage terms corpus.");
-    UsageTermsCorpus usageTermsCorpus = new UsageTermsCorpus(USAGE_TERMS_FILENAME);
-    usageTermsCorpus.buildCorpus();
-    Set<String> usageTerms = usageTermsCorpus.getUsageTerms();
+  public void addBingSearchResultsForInchiSet(Set<String> inchis) {
 
     LOGGER.debug("Annotating chemicals with Bing Search results and usage terms.");
-    BingSearchResults bingSearchResults = new BingSearchResults();
-
     for (String inchi : inchis) {
       if (!forceUpdate && db.hasBingSearchResultsFromInchi(inchi)) {
         LOGGER.debug("Existing Bing search results found for %s. Skipping.", inchi);
         continue;
       }
-      addBingSearchResultsForInChI(db, bingSearchResults, inchi, usageTerms);
+      try {
+        addBingSearchResultsForInChI(inchi);
+      } catch (IOException e) {
+        LOGGER.error("Could not add bing results for %s. Skipping.", inchi);
+      }
     }
   }
 }
