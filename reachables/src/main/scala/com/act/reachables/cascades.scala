@@ -164,6 +164,7 @@ object cascades {
       
       if (counter.get() % 1000 == 0) {
         // Clear every 1000 to keep mem usage low so we don't slow down too much.
+        Cascade.clearAndRecreateCaches()
         Node.clearAttributeData()
       }
     })
