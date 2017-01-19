@@ -578,7 +578,10 @@ $ curl --insecure -vvv https://52.183.69.103/index.php?title=Main_Page
 # There'll be a bunch of HTML output here.  The 200 status code at the top is really what we're looking for.
 ```
 
-Now go to Route 53 (in AWS) and create an appropriately named `A` record that points to this public IP.
+### Creating a public name for this wiki ###
+Use the following instructions to create an appropriately named `A` record that points to this public IP in Route 53 (in AWS):
+
+Go to https://20n.signin.aws.amazon.com/console/ and sign in using MFA (saurabh, ..). Navigate to Route 53 and to the Hosted Zone of `.bioreachables.com`. Within it create a `A` type Record Set, and use the name you used earlier in [NGINX hostname configuration step above](#set-an-nginx-hostname) and set the `A` value to the public IP address recovered earlier.
 
 ### Done! ###
 
