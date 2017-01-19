@@ -14,6 +14,7 @@ import chemaxon.marvin.plugin.PluginException;
 import chemaxon.struc.Molecule;
 import com.act.analysis.chemicals.molecules.MoleculeExporter;
 import com.act.analysis.chemicals.molecules.MoleculeImporter;
+import com.act.biointerpretation.l2expansion.L2InchiCorpus;
 import com.act.utils.CLIUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -63,6 +64,7 @@ public class Loader {
   private static final String OPTION_INSTALLER_SOURCE_DB = "i";
   private static final String OPTION_REACHABLES_SOURCE_DATA = "r";
   private static final String OPTION_PROJECTIONS_SOURCE_DATA = "P";
+  private static final String OPTION_PROJECTED_INCHIS_SOURCE_DATA = "l";
   private static final String OPTION_TARGET_DB = "t";
   private static final String OPTION_TARGET_REACHABLES_COLLECTION = "c";
   private static final String OPTION_TARGET_SEQUENCES_COLLECTION = "s";
@@ -138,7 +140,14 @@ public class Loader {
         .desc(String.format("A path to a file containing the output of L3 or L4 projections to read (default: %s)",
             DEFAULT_PROJECTIONS_PATH))
         .hasArg()
-        .longOpt("projections-dir")
+        .longOpt("projections-file")
+    );
+    add(Option.builder(OPTION_PROJECTED_INCHIS_SOURCE_DATA)
+        .argName("path")
+        .desc("A path to a file containing the output of L3 or L4 projections, " +
+            "in the form of an InChI list, to read (no default)")
+        .hasArg()
+        .longOpt("projected-inchis-file")
     );
     add(Option.builder(OPTION_TARGET_DB)
         .argName("DB name")
@@ -211,6 +220,15 @@ public class Loader {
             projectionFile.getAbsolutePath());
       }
       loader.updateFromProjectionFile(projectionFile);
+    }
+
+    if (cl.hasOption(OPTION_PROJECTED_INCHIS_SOURCE_DATA)) {
+      File projectedInchisFile = new File(cl.getOptionValue(OPTION_PROJECTED_INCHIS_SOURCE_DATA));
+      if (!projectedInchisFile.exists() || projectedInchisFile.isDirectory()) {
+        cliUtil.failWithMessage("InChI file at %s does not exist or is a directory",
+            projectedInchisFile.getAbsolutePath());
+      }
+      loader.updateFromInchiFile(projectedInchisFile);
     }
   }
 
@@ -737,5 +755,15 @@ public class Loader {
     List<ReachablesProjectionUpdate> projectionUpdates = projectionResults.stream().map(
         ReachablesProjectionUpdate::new).collect(Collectors.toList());
     projectionUpdates.forEach(this::updateFromProjection);
+  }
+
+  public void updateFromInchiFile(File file) throws IOException {
+    LOGGER.info("Processing InChI file: %s", file.getName());
+    L2InchiCorpus inchiCorpus = new L2InchiCorpus();
+    inchiCorpus.loadCorpus(file);
+    inchiCorpus.getInchiList().forEach(inchi -> {
+      Reachable reachable = constructOrFindReachable(inchi);
+      upsert(reachable);
+    });
   }
 }

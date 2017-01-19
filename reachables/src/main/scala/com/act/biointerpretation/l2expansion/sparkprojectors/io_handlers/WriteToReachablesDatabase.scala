@@ -6,7 +6,7 @@ import org.apache.commons.cli.{CommandLine, Option => CliOption}
 
 trait WriteToReachablesDatabase extends ReadFromDatabase with BasicProjectorOutput {
   final def handleOutput(cli: CommandLine)(results: Stream[ProjectionResult]) = {
-    val loader = new Loader(getReadDbName(cli), getReadDbPort(cli), getReadDbHost(cli), getReadDbCollection(cli))
+    val loader = new Loader(getReadDbHost(cli), getReadDbPort(cli), getReadDbName(cli), getReadDbCollection(cli))
     writeToReachablesDatabaseThroughLoader(results, loader)
   }
 
