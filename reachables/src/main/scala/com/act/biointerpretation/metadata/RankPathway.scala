@@ -10,6 +10,8 @@ import org.mongojack.JacksonDBCollection
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
+import java.util.{List => JavaList}
+
 object RankPathway {
   /* Filtering Settings */
   private val MAX_PROTEINS_PER_PATH = 4
@@ -148,6 +150,14 @@ object RankPathway {
     })
 
     Option(proteinPaths.map(x => x.map(y => y._2)))
+  }
+
+  def processSinglePathAsJava(pathway: ReactionPath): JavaList[JavaList[Pair[ProteinMetadata, Integer]]] = {
+    val processSinglePathVal = processSinglePath(pathway)
+    processSinglePathVal match {
+      case Some(x) => x.map(_.asJava).asJava;
+      case None => null;
+    }
   }
 
   private def getDummyMetadata(rid: Long): ProteinMetadata = {

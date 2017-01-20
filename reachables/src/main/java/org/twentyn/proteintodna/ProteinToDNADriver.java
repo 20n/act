@@ -4,6 +4,8 @@ import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import act.shared.Seq;
+import com.act.biointerpretation.metadata.ProteinMetadata;
+import com.act.biointerpretation.metadata.RankPathway;
 import com.act.reachables.Cascade;
 import com.act.reachables.ReactionPath;
 import com.act.utils.CLIUtil;
@@ -15,6 +17,7 @@ import com.mongodb.MongoInternalException;
 import com.mongodb.ServerAddress;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
@@ -191,6 +194,12 @@ public class ProteinToDNADriver {
 
     for (String pathwayId : pathwayIds) {
       ReactionPath reactionPath = inputPathwayCollection.findOne(DBQuery.is("_id", pathwayId));
+
+      List<List<Pair<ProteinMetadata, Integer>>> processedP = RankPathway.processSinglePathAsJava(reactionPath);
+      if (processedP == null) {
+        continue;
+      }
+
       Boolean atleastOneSeqMissingInPathway = false;
       List<Set<String>> proteinPaths = new ArrayList<>();
 
