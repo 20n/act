@@ -84,7 +84,7 @@ public class BingSearcher {
         Integer.parseInt(cl.getOptionValue(OPTION_DB_PORT, DEFAULT_PORT)),
         cl.getOptionValue(OPTION_DB_NAME, DEFAULT_DATABASE)
     );
-    BingSearcher bingSearcher = new BingSearcher(db, false, cl.hasOption(OPTION_CACHE_ONLY));
+    BingSearcher bingSearcher = new BingSearcher(db, true, cl.hasOption(OPTION_CACHE_ONLY));
     bingSearcher.addBingSearchResultsForEntireDatabase();
   }
 
@@ -171,7 +171,7 @@ public class BingSearcher {
         LOGGER.error("Could not add bing results for %s. Skipping.", inchi);
       }
       if (++counter % 100 == 0) {
-        LOGGER.info("Added Bing Search results for %d chemicals (total %d)", inchis.size(), counter);
+        LOGGER.info("Added Bing Search results for %d chemicals (total %d)", counter, inchis.size());
       }
     }
   }
