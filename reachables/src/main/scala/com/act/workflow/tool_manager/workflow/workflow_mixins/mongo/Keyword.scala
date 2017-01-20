@@ -18,7 +18,6 @@ object MongoKeywords {
   object IN extends Keyword("$in")
   object REGEX extends Keyword("$regex")
   object NOT_EQUAL extends Keyword("$ne")
-  object WHERE extends Keyword("$where")
 
   object OPTIONS extends Keyword("$options")
   object LENGTH extends Keyword("length")
