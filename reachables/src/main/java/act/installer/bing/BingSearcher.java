@@ -56,7 +56,7 @@ public class BingSearcher {
     );
     add(Option.builder(OPTION_DB_PORT)
         .argName("DB port")
-        .desc(String.format("The port on which to connect to the database (default: %d)", DEFAULT_PORT))
+        .desc(String.format("The port on which to connect to the database (default: %s)", DEFAULT_PORT))
         .hasArg()
         .longOpt("db-port")
     );
@@ -73,8 +73,9 @@ public class BingSearcher {
   private BingSearchResults bingSearchResults;
   private Set<String> usageTerms;
   private boolean forceUpdate;
+  private boolean cacheOnly;
 
-  public void main(String args[]) {
+  public static void main(String args[]) {
 
     CLIUtil cliUtil = new CLIUtil(BingSearcher.class, HELP_MESSAGE, OPTION_BUILDERS);
     CommandLine cl = cliUtil.parseCommandLine(args);
@@ -83,18 +84,19 @@ public class BingSearcher {
         Integer.parseInt(cl.getOptionValue(OPTION_DB_PORT, DEFAULT_PORT)),
         cl.getOptionValue(OPTION_DB_NAME, DEFAULT_DATABASE)
     );
-    BingSearcher bingSearcher = new BingSearcher(db, false);
+    BingSearcher bingSearcher = new BingSearcher(db, false, cl.hasOption(OPTION_CACHE_ONLY));
     bingSearcher.addBingSearchResultsForEntireDatabase();
   }
 
   public BingSearcher(MongoDB db) {
-    this(db, false);
+    this(db, false, false);
   }
 
-  public BingSearcher(MongoDB db, boolean forceUpdate) {
+  public BingSearcher(MongoDB db, boolean forceUpdate, boolean cacheOnly) {
     this.db = db;
     this.forceUpdate = forceUpdate;
-    this.bingSearchResults = new BingSearchResults();
+    this.cacheOnly = cacheOnly;
+    this.bingSearchResults = new BingSearchResults(true);
     // Get the usage terms
     LOGGER.debug("Getting usage terms corpus.");
     UsageTermsCorpus usageTermsCorpus = new UsageTermsCorpus(USAGE_TERMS_FILENAME);
@@ -126,8 +128,15 @@ public class BingSearcher {
     if (bestName.equals("")) { return; }
 
     // Get the total number of hits and the top search results
-    Long totalCountSearchResults = bingSearchResults.getAndCacheTotalCountSearchResults(bestName);
-    Set<SearchResult> topSearchResults = bingSearchResults.getAndCacheTopSearchResults(bestName);
+    Long totalCountSearchResults;
+    Set<SearchResult> topSearchResults;
+    if (cacheOnly) {
+      totalCountSearchResults = bingSearchResults.getTotalCountSearchResultsFromCache(bestName);
+      topSearchResults = bingSearchResults.getTopSearchResultsFromCache(bestName);
+    } else {
+      totalCountSearchResults = bingSearchResults.getAndCacheTotalCountSearchResults(bestName);
+      topSearchResults = bingSearchResults.getAndCacheTopSearchResults(bestName);
+    }
     NameSearchResults nameSearchResults = new NameSearchResults(bestName);
     nameSearchResults.setTotalCountSearchResults(totalCountSearchResults);
     nameSearchResults.setTopSearchResults(topSearchResults);

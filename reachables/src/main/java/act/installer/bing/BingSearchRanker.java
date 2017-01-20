@@ -174,7 +174,7 @@ public class BingSearchRanker {
                           Boolean includeUsageExplorerUrl,
                           Boolean forceUpdate) {
     this.mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_INSTALLER_DATABASE);
-    this.bingSearcher = new BingSearcher(this.mongoDB, forceUpdate);
+    this.bingSearcher = new BingSearcher(this.mongoDB, forceUpdate, false);
     this.includeChebiApplications = includeChebiApplications;
     this.includeWikipediaUrl = includeWikipediaUrl;
     this.includeUsageExplorerUrl = includeUsageExplorerUrl;

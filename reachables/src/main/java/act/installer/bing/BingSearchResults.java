@@ -64,16 +64,23 @@ public class BingSearchResults {
   private BingCacheMongoDB bingCacheMongoDB;
   private BasicHttpClientConnectionManager basicConnManager;
   private String accountKey;
+  private boolean cacheOnly;
 
   public BingSearchResults() {
     this(ACCOUNT_KEY_FILEPATH);
   }
 
+  public BingSearchResults(boolean cacheOnly) {
+    this.cacheOnly = cacheOnly;
+    this.bingCacheMongoDB = new BingCacheMongoDB(BING_CACHE_HOST, BING_CACHE_MONGO_PORT, BING_CACHE_MONGO_DATABASE);
+  }
+
   public BingSearchResults(String accountKeyFilepath) {
-    bingCacheMongoDB = new BingCacheMongoDB(BING_CACHE_HOST, BING_CACHE_MONGO_PORT, BING_CACHE_MONGO_DATABASE);
-    basicConnManager = new BasicHttpClientConnectionManager();
+    this.cacheOnly = false;
+    this.bingCacheMongoDB = new BingCacheMongoDB(BING_CACHE_HOST, BING_CACHE_MONGO_PORT, BING_CACHE_MONGO_DATABASE);
+    this.basicConnManager = new BasicHttpClientConnectionManager();
     try {
-      accountKey = getAccountKey(accountKeyFilepath);
+      this.accountKey = getAccountKey(accountKeyFilepath);
     } catch (IOException e) {
       String msg = String.format("Bing Searcher could not find account key at %s", accountKeyFilepath);
       LOGGER.error(msg);
@@ -305,6 +312,40 @@ public class BingSearchResults {
     return searchResults;
   }
 
+  public Set<SearchResult> getTopSearchResultsFromCache(String name) {
+    Set<SearchResult> searchResults = new HashSet<>();
+    String formattedName = name.toLowerCase();
+    BasicDBObject nameSearchResultDBObject = bingCacheMongoDB.getNameSearchResultDBObjectFromName(formattedName);
+    if (nameSearchResultDBObject == null) {
+      return searchResults;
+    }
+    BasicDBList topSearchResultsList = (BasicDBList) nameSearchResultDBObject.get("topSearchResults");
+    if (topSearchResultsList == null) {
+      return searchResults;
+    }
+    for (Object topSearchResult : topSearchResultsList) {
+      SearchResult searchResult = new SearchResult();
+      BasicDBObject topSearchResultDBObject = (BasicDBObject) topSearchResult;
+      searchResult.populateFromBasicDBObject(topSearchResultDBObject);
+      searchResults.add(searchResult);
+    }
+    return searchResults;
+  }
+
+  public Long getTotalCountSearchResultsFromCache(String name) {
+    String formattedName = name.toLowerCase();
+    BasicDBObject nameSearchResultDBObject = bingCacheMongoDB.getNameSearchResultDBObjectFromName(formattedName);
+    Long totalCountSearchResults;
+    if (nameSearchResultDBObject == null) {
+      return -1L;
+    }
+    totalCountSearchResults = (Long) nameSearchResultDBObject.get("totalCountSearchResults");
+    if (totalCountSearchResults == null) {
+      return -1L;
+    }
+    return totalCountSearchResults;
+  }
+
   /** This key function caches in a MongoDB collection and returns the total count of Bing search results.
    * If present, the results are returned from the cache. If not, the results are queried and returned after updating
    * the cache.
@@ -392,7 +433,7 @@ public class BingSearchResults {
           continue;
         }
         LOGGER.debug("Getting search hits for %s", name);
-        Long count = getAndCacheTotalCountSearchResults(name);
+        Long count = (cacheOnly) ? getTotalCountSearchResultsFromCache(name) : getAndCacheTotalCountSearchResults(name);
         // Ignore name if there was a previous better candidate
         if (count <= maxCount) {
           continue;
