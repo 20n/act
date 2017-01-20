@@ -158,7 +158,8 @@ public class BingSearcher {
 
   public void addBingSearchResultsForInchiSet(Set<String> inchis) {
 
-    LOGGER.debug("Annotating chemicals with Bing Search results and usage terms.");
+    LOGGER.info("Annotating %d chemicals with Bing Search results and usage terms.", inchis.size());
+    int counter = 0;
     for (String inchi : inchis) {
       if (!forceUpdate && db.hasBingSearchResultsFromInchi(inchi)) {
         LOGGER.debug("Existing Bing search results found for %s. Skipping.", inchi);
@@ -168,6 +169,9 @@ public class BingSearcher {
         addBingSearchResultsForInChI(inchi);
       } catch (IOException e) {
         LOGGER.error("Could not add bing results for %s. Skipping.", inchi);
+      }
+      if (++counter % 100 == 0) {
+        LOGGER.info("Added Bing Search results for %d chemicals (total %d)", inchis.size(), counter);
       }
     }
   }
