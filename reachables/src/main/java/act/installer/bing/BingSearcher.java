@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.act.utils.CLIUtil;
 import org.apache.commons.cli.CommandLine;
@@ -157,10 +158,10 @@ public class BingSearcher {
   }
 
   public void addBingSearchResultsForInchiSet(Set<String> inchis) {
-
-    LOGGER.info("Annotating %d chemicals with Bing Search results and usage terms.", inchis.size());
+    Set<String> filteredInchis = inchis.stream().filter(inchi -> inchi.contains("FAKE")).collect(Collectors.toSet());
+    LOGGER.info("Annotating %d chemicals with Bing Search results and usage terms.", filteredInchis.size());
     int counter = 0;
-    for (String inchi : inchis) {
+    for (String inchi : filteredInchis) {
       if (!forceUpdate && db.hasBingSearchResultsFromInchi(inchi)) {
         LOGGER.debug("Existing Bing search results found for %s. Skipping.", inchi);
         continue;
