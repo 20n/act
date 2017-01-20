@@ -158,7 +158,7 @@ public class BingSearcher {
   }
 
   public void addBingSearchResultsForInchiSet(Set<String> inchis) {
-    Set<String> filteredInchis = inchis.stream().filter(inchi -> inchi.contains("FAKE")).collect(Collectors.toSet());
+    Set<String> filteredInchis = inchis.stream().filter(inchi -> !inchi.contains("FAKE")).collect(Collectors.toSet());
     LOGGER.info("Annotating %d chemicals with Bing Search results and usage terms.", filteredInchis.size());
     int counter = 0;
     for (String inchi : filteredInchis) {
@@ -172,7 +172,7 @@ public class BingSearcher {
         LOGGER.error("Could not add bing results for %s. Skipping.", inchi);
       }
       if (++counter % 100 == 0) {
-        LOGGER.info("Added Bing Search results for %d chemicals (total %d)", counter, inchis.size());
+        LOGGER.info("Added Bing Search results for %d chemicals (total %d)", counter, filteredInchis.size());
       }
     }
   }
