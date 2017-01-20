@@ -387,12 +387,6 @@ object Cascade extends Falls {
   }
 
   def getAllPaths(network: Network, target: Long): Option[List[Path]] = {
-    val checkIfExists = Cascade.pathwayCollection.count(new BasicDBObject("target", target))
-    // Hey it is already in the db
-    if (checkIfExists > 0){
-      return None
-    }
-
     // Natives don't have pathways, so let's not let these create any edge cases.
     if (is_universal(target)) {
       return None

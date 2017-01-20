@@ -1,24 +1,25 @@
 package com.act.reachables
 
-
 import com.act.reachables.PathwayConstructor.ComplexPath
 
 import scala.collection.JavaConverters._
 
-
 class PathwayConstructor(sourceNetwork: Network) {
   def getAllPaths(target: Long, level: Int = 0): List[Option[ComplexPath]] = {
+    val targetNode: Node = sourceNetwork.idToNode.get(target)
+    val edgesGoingIntoTargetNode: java.util.Set[Edge] = sourceNetwork.getEdgesGoingInto(target)
+    
     if (Cascade.is_universal(target)) {
-      List(Some(ComplexPath(sourceNetwork.idToNode.get(target), None, None, level)))
-    } else if (sourceNetwork.getEdgesGoingInto(target) == null || sourceNetwork.getEdgesGoingInto(target).isEmpty) {
+      List(Some(ComplexPath(targetNode, None, None, level)))
+    } else if (edgesGoingIntoTargetNode == null || edgesGoingIntoTargetNode.isEmpty) {
       // Caused by cofactor filtering wherein the chemical is only produced by cofactors, 
       // but we didn't add the cofactors to the network originally.
-      List(Some(ComplexPath(sourceNetwork.idToNode.get(target), None, None, level)))
+      List(Some(ComplexPath(targetNode, None, None, level)))
     } else if (level > 10) {
       // Probably a cycle and even if not the pathway is likely too long
       List(None)
     } else {
-      val reactionsThatProduceTarget: List[Edge] = sourceNetwork.getEdgesGoingInto(target).asScala.toList
+      val reactionsThatProduceTarget: List[Edge] = edgesGoingIntoTargetNode.asScala.toList
 
       reactionsThatProduceTarget.map(reactionEdge => {
         val reactionNode = reactionEdge.src
