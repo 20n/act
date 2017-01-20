@@ -7,13 +7,14 @@ import act.server.MongoDB
 import com.act.analysis.chemicals.molecules.MoleculeExporter
 import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{AbstractChemicalInfo, ChemicalInformation, ReactionInformation}
 import com.act.biointerpretation.sars.SerializableReactor
-import com.act.utils.TSVWriter
+import com.act.utils.{CLIUtil, TSVWriter}
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.{MongoKeywords, MongoWorkflowUtilities, ReactionKeywords}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
+import org.apache.commons.cli.{CommandLine, Option => CliOption}
 import org.apache.log4j.LogManager
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable
-import scala.collection.parallel.immutable.{ParMap, ParSeq}
 
 /**
   * Full pipeline for finding abstract reactions from a DB, finding ROs to match them, and generating SARs for each one
@@ -21,21 +22,64 @@ import scala.collection.parallel.immutable.{ParMap, ParSeq}
   * Picks out only one substrate -> one product reactions
   */
 object SingleSarReactionsPipeline {
+
+  val OPTION_MONGO_DATABASE = "d"
+  val OPTION_OUTPUT_FILE = "o"
+  val OPTION_PORT = "p"
+  val OPTION_HOST = "l"
+
+  private val HELP_MESSAGE: String =
+    """
+      | Used to generate L3 projections based on SARs and input chemicals.
+    """.stripMargin
+
+  val OPTION_BUILDERS: util.List[CliOption.Builder] = List(
+    CliOption.builder(OPTION_MONGO_DATABASE).
+      argName("database").
+      desc("The database to use").
+      hasArg.
+      required.
+      longOpt("database"),
+
+    CliOption.builder(OPTION_PORT).
+      argName("port").
+      desc("Which port to use").
+      hasArg.
+      required.
+      longOpt("port"),
+
+    CliOption.builder(OPTION_HOST).
+      argName("host").
+      desc("Which host to use").
+      hasArg.
+      required.
+      longOpt("host"),
+
+    CliOption.builder(OPTION_OUTPUT_FILE).
+      argName("output-file").
+      desc("Where the file should be output.").
+      hasArg.
+      required.
+      longOpt("output-file")
+  ).asJava
+  
+  
   val logger = LogManager.getLogger(getClass)
-
-  // TODO: These should definitely be changed into command line args
-  val mongoDb: String = "validator_profiling_2"
-  val outputFile = new File("/mnt/shared-data/Gil/abstract_reactions/sars.tsv")
-
-  val host: String = "localhost"
-  val port: Int = 27017
-
+  
   // Mongo expression to test for one substrate-one product
   val ONE_SUBSTRATE = "this.enz_summary.substrates.length==1"
   val ONE_PRODUCT = "this.enz_summary.products.length==1"
 
   def main(args: Array[String]): Unit = {
-    val db = Mongo.connectToMongoDatabase(mongoDb, host, port)
+    val cliUtil: CLIUtil = new CLIUtil(getClass, HELP_MESSAGE, OPTION_BUILDERS)
+    val cl: CommandLine = cliUtil.parseCommandLine(args)
+    
+    val outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_FILE))
+    
+    val db = Mongo.connectToMongoDatabase(
+      cl.getOptionValue(OPTION_MONGO_DATABASE), 
+      cl.getOptionValue(OPTION_HOST), 
+      cl.getOptionValue(OPTION_PORT).toInt)
 
     val chemicalSearcher: SingleSarChemicals = new SingleSarChemicals(db)
     val chemicalList: List[AbstractChemicalInfo] = chemicalSearcher.getAbstractChemicals()
