@@ -470,12 +470,20 @@ public class MongoDB {
     return doc;
   }
 
-  public void submitToActChemicalDB(Chemical c, Long ID) {
+  /**
+   * Inserts or updates a chemical document in the DB, returning the id of the chemical document that represents the
+   * specified Chemical object.
+   * @param c The chemical to update in the DB.
+   * @param ID The ID to use if the chemical is new.
+   * @return That actual ID of the chemical document, either ID if the chemical was new or the existing ID if the
+   *         chemical was found in the DB.
+   */
+  public long submitToActChemicalDB(Chemical c, Long ID) {
     // check if this is already in the DB.
     long alreadyid = alreadyEntered(c);
     if (alreadyid != -1) {
       mergeIntoDB(alreadyid, c); // chemical already exists: merge
-      return;
+      return alreadyid;
     }
 
     BasicDBObject doc = createChemicalDoc(c, ID);
@@ -483,6 +491,7 @@ public class MongoDB {
     // insert a new doc to the collection
     this.dbChemicals.insert(doc);
 
+    return ID;
   }
 
   public void updateActChemical(Chemical c, Long id) {

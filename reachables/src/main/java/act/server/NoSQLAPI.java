@@ -173,8 +173,7 @@ public class NoSQLAPI {
 
   public long writeToOutKnowlegeGraph(Chemical c) {
     long installid = this.writeDB.getNextAvailableChemicalDBid();
-    this.writeDB.submitToActChemicalDB(c, installid);
-    return installid;
+    return this.writeDB.submitToActChemicalDB(c, installid);
   }
 
   public Map<Long, String> reachables(Set<String> natives, Set<String> cofactors, boolean restrictToSeq) {

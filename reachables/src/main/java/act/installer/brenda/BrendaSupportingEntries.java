@@ -14,7 +14,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -30,7 +29,7 @@ public class BrendaSupportingEntries {
   public static final Charset UTF8 = Charset.forName("utf-8");
 
   public static class Ligand {
-    public static final String QUERY = "select LigandID, Ligand, inchi, molfile, groupID from ligand_molfiles";
+    static final String QUERY = "select LigandID, Ligand, inchi, molfile, groupID from ligand_molfiles";
 
     protected Integer ligandId; // The BRENDA identifier for a particular ligand (references one row in the table).
     protected String ligand; // The textual name of the ligand.
@@ -85,7 +84,7 @@ public class BrendaSupportingEntries {
   }
 
   public static class Organism {
-    public static final String QUERY = StringUtils.join(new String[]{
+    static final String QUERY = StringUtils.join(new String[]{
         "select", // Equivalent of `select distinct` but w/ multiple columns.
         "  Organism,",
         "  Organism_no,",
@@ -126,7 +125,17 @@ public class BrendaSupportingEntries {
   }
 
   public static class Sequence {
-    public static final String QUERY = StringUtils.join(new String[]{
+    /* BRENDA's sequence to protein linkage is weak: on the BRENDA site, clicking on the "AA Sequence" link of an
+     * EC Number's page takes you to the complete list of all sequences for that EC Number without reference to the
+     * literature or reaction to which it relates.  The BRENDA DB has *some* precise linkage between sequences and
+     * reactions (Substrates_Products in BRENDA parlance) via the `ProtID2SwissProtID` table.  This table links
+     * Substrates_Products's is to UniProt ids, which can then be used to look up entries in the `Sequences` page.
+     * Unfortunately, `ProtID2SwissProtID` is very sparsely populated, linking only about 40k reactions to their
+     * sequences by id.  To capitalize on the remaining BRENDA sequences (of which there are several millions), we
+     * fall back to linking sequences by EC Number and organism when id-based sequences association is unavailable.
+     * This provides a much weaker guarantee about the catalysis of the enzymes linked to a reaction in the installer
+     * DB, but gives us many more options to work with when designing complete DNA constructs for a complete pathway. */
+    private static final String QUERY_EXACT = StringUtils.join(new String[]{
         "select",
         "  s.ID,",
         "  s.First_Accession_Code,",
@@ -144,6 +153,22 @@ public class BrendaSupportingEntries {
         "  and p2s.first_no = 1" // Necessary to ensure lookup in sequence DB.
     }, " ");
 
+    private static final String QUERY_VAGUE = StringUtils.join(new String[]{
+        "select",
+        "  s.ID,",
+        "  s.First_Accession_Code,",
+        "  s.Entry_Name,",
+        "  s.Source,",
+        "  s.Sequence",
+        "from Sequence s",
+        "join Substrates_Products sp on sp.EC_Number = s.EC_Number and sp.Organism_Substrates = s.Organism",
+        "where sp.EC_Number = ?",
+        "  and sp.Substrates = ?",
+        "  and sp.Products = ?",
+        "  and sp.Literature_Substrates = ?",
+        "  and sp.Organism_Substrates = ?",
+    }, " ");
+
     /**
      * Prepare a query for the sequence based on a reaction, with all required arguments in the query bound to values.
      * This method lives here to keep the binding next to the statement, which makes sense given the complexity of the
@@ -154,8 +179,9 @@ public class BrendaSupportingEntries {
      * @return A prepared statement that will fetch results of query.
      * @throws SQLException
      */
-    public static PreparedStatement prepareStatement(Connection conn, BrendaRxnEntry rxnEntry) throws SQLException {
-      PreparedStatement stmt = conn.prepareStatement(QUERY);
+    public static PreparedStatement prepareStatementVague(
+        Connection conn, BrendaRxnEntry rxnEntry, boolean requireExactMatch) throws SQLException {
+      PreparedStatement stmt = conn.prepareStatement(requireExactMatch ? QUERY_EXACT : QUERY_VAGUE);
       stmt.setString(1, rxnEntry.ecNumber);
       stmt.setString(2, rxnEntry.substrates);
       stmt.setString(3, rxnEntry.products);
@@ -164,9 +190,9 @@ public class BrendaSupportingEntries {
       return stmt;
     }
 
-    public static Sequence sequenceFromResultSet(ResultSet resultSet) throws SQLException {
+    public static Sequence sequenceFromResultSet(ResultSet resultSet, boolean fromExactMatch) throws SQLException {
       return new Sequence(resultSet.getInt(1), resultSet.getString(2), resultSet.getString(3),
-          resultSet.getString(4), resultSet.getString(5));
+          resultSet.getString(4), resultSet.getString(5), fromExactMatch);
     }
 
     protected Integer brendaId;
@@ -174,13 +200,16 @@ public class BrendaSupportingEntries {
     protected String entryName;
     protected String source;
     protected String sequence;
+    protected Boolean fromExactMatch;
 
-    public Sequence(Integer brendaId, String firstAccessionCode, String entryName, String source, String sequence) {
+    public Sequence(Integer brendaId, String firstAccessionCode, String entryName,
+                    String source, String sequence, Boolean fromExactMatch) {
       this.brendaId = brendaId;
       this.firstAccessionCode = firstAccessionCode;
       this.entryName = entryName;
       this.source = source;
       this.sequence = sequence;
+      this.fromExactMatch = fromExactMatch;
     }
 
     public Integer getBrendaId() {
@@ -202,10 +231,14 @@ public class BrendaSupportingEntries {
     public String getSequence() {
       return sequence;
     }
+
+    public Boolean getFromExactMatch() {
+      return fromExactMatch;
+    }
   }
 
   public static class RecommendNameTable {
-    public static final String ALL_QUERY = "select EC_Number, Recommended_Name, GO_number from Recommended_Name";
+    static final String ALL_QUERY = "select EC_Number, Recommended_Name, GO_number from Recommended_Name";
 
     protected Map<String, RecommendName> table = new HashMap<>(7000); // Current Recommend_Name table has ~6700 entries.
 
@@ -290,13 +323,163 @@ public class BrendaSupportingEntries {
     return false;
   }
 
+  public static class PosttranslationalModification implements FromBrendaDB<PosttranslationalModification> {
+    static final String QUERY = StringUtils.join(new String[]{
+        "SELECT",
+        "  Posttranslational_Modification,",
+        "  Commentary,",
+        "  Literature",
+        "FROM Posttranslational_Modification",
+        "WHERE EC_Number = ? and Literature like ? and Organism = ?"},
+        " ");
+      public static final String ALL_QUERY = StringUtils.join(new String[]{
+          "SELECT",
+          "  Posttranslational_Modification,",
+          "  Commentary,",
+          "  Literature,",
+          "  EC_Number,",
+          "  Organism",
+          "FROM Posttranslational_Modification"},
+          " ");
+    public static final String COLUMN_FAMILY_NAME = "PosttranslationalModification";
+    protected static final PosttranslationalModification INSTANCE = new PosttranslationalModification();
+
+    protected String commentary;
+    protected String posttranslationalModification;
+
+    private PosttranslationalModification() {}
+
+    public PosttranslationalModification(String posttranslationalModification, String commentary) {
+      this.commentary = commentary;
+      this.posttranslationalModification = posttranslationalModification;
+    }
+
+    public String getCommentary() {
+      return commentary;
+    }
+
+    public String getPosttranslationalModification() { return posttranslationalModification; }
+
+    @Override
+    public String getQuery() {
+      return QUERY;
+    }
+
+    @Override
+    public PosttranslationalModification fromResultSet(ResultSet resultSet) throws SQLException {
+      return new PosttranslationalModification(resultSet.getString(1), resultSet.getString(2));
+    }
+
+    @Override
+    public int getLiteratureField() {
+      return 3;
+    }
+
+    @Override
+    public String getAllQuery() {
+      return ALL_QUERY;
+    }
+
+    @Override
+    public int getLiteratureFieldForAllQuery() {
+      return 3;
+    }
+
+    @Override
+    public int getECNumberFieldForAllQuery() {
+      return 4;
+    }
+
+    @Override
+    public int getOrganismFieldForAllQuery() {
+      return 5;
+    }
+
+    @Override
+    public String getColumnFamilyName() {
+      return COLUMN_FAMILY_NAME;
+    }
+  }
+
+  public static class Cloned implements FromBrendaDB<Cloned> {
+    static final String QUERY = StringUtils.join(new String[] {
+        "SELECT",
+        "  Commentary,",
+        "  Literature",
+        "FROM Cloned",
+        "WHERE EC_Number = ? and Literature like ? and Organism = ?"
+    }, " ");
+    static final String ALL_QUERY = StringUtils.join(new String[] {
+        "SELECT",
+        "  Commentary,",
+        "  Literature,",
+        "  EC_Number,",
+        "  Organism",
+        "FROM Cloned"
+    }, " ");
+    static final String COLUMN_FAMILY_NAME = "Cloned";
+    protected static final Cloned INSTANCE = new Cloned();
+
+    protected String commentary;
+
+    private Cloned() {}
+
+    public Cloned(String commentary) {
+      this.commentary = commentary;
+    }
+
+    public String getCommentary() {
+      return commentary;
+    }
+
+    @Override
+    public String getQuery() {
+      return QUERY;
+    }
+
+    @Override
+    public Cloned fromResultSet(ResultSet resultSet) throws SQLException {
+      return new Cloned(resultSet.getString(1));
+    }
+
+    @Override
+    public int getLiteratureField() {
+      return 2;
+    }
+
+    @Override
+    public String getAllQuery() {
+      return ALL_QUERY;
+    }
+
+    @Override
+    public int getLiteratureFieldForAllQuery() {
+      return 2;
+    }
+
+    @Override
+    public int getECNumberFieldForAllQuery() {
+      return 3;
+    }
+
+    @Override
+    public int getOrganismFieldForAllQuery() {
+      return 4;
+    }
+
+    @Override
+    public String getColumnFamilyName() {
+      return COLUMN_FAMILY_NAME;
+    }
+  }
+
   // Classes representing data linked to the Substrates_Products and Natural_Substrates_Products tables.
   public static class KMValue implements FromBrendaDB<KMValue> {
-    public static final String QUERY = "select KM_Value, Commentary, Literature from KM_Value " +
+    static final String QUERY = "select KM_Value, Commentary, Literature from KM_Value " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
-    public static final String ALL_QUERY =
+    static final String ALL_QUERY =
         "select KM_Value, Commentary, Literature, EC_Number, Organism from KM_Value";
-    public static final String COLUMN_FAMILY_NAME = "KM_Value";
+    static final String COLUMN_FAMILY_NAME = "KM_Value";
     protected static final KMValue INSTANCE = new KMValue();
     private static final long serialVersionUID = 4014251635935240023L;
 
@@ -430,11 +613,11 @@ public class BrendaSupportingEntries {
   }
 
   public static class OrganismCommentary implements FromBrendaDB<OrganismCommentary> {
-    public static final String QUERY = "select Commentary, Literature from Organism " +
+    static final String QUERY = "select Commentary, Literature from Organism " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
-    public static final String ALL_QUERY =
+    static final String ALL_QUERY =
         "select Commentary, Literature, EC_Number, Organism from Organism";
-    public static final String COLUMN_FAMILY_NAME = "Organism_Commentary";
+    static final String COLUMN_FAMILY_NAME = "Organism_Commentary";
     protected static final OrganismCommentary INSTANCE = new OrganismCommentary();
     private static final long serialVersionUID = -2085699584700496115L;
 
@@ -493,12 +676,12 @@ public class BrendaSupportingEntries {
   }
 
   public static class GeneralInformation implements FromBrendaDB<GeneralInformation> {
-    public static final String QUERY =
+    static final String QUERY =
         "select General_Information, Commentary, Literature from General_Information " +
             "where EC_Number = ? and Literature like ? and Organism = ?";
-    public static final String ALL_QUERY =
+    static final String ALL_QUERY =
         "select General_Information, Commentary, Literature, EC_Number, Organism from General_Information";
-    public static final String COLUMN_FAMILY_NAME = "General_Information";
+    static final String COLUMN_FAMILY_NAME = "General_Information";
     public static final GeneralInformation INSTANCE = new GeneralInformation();
     private static final long serialVersionUID = 1157007471920187876L;
 
@@ -564,11 +747,11 @@ public class BrendaSupportingEntries {
   }
 
   public static class Cofactor implements FromBrendaDB<Cofactor> {
-    public static final String QUERY = "select Cofactor, Commentary, Literature from Cofactor " +
+    static final String QUERY = "select Cofactor, Commentary, Literature from Cofactor " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
-    public static final String ALL_QUERY =
+    static final String ALL_QUERY =
         "select Cofactor, Commentary, Literature, EC_Number, Organism from Cofactor";
-    public static final String COLUMN_FAMILY_NAME = "Cofactor";
+    static final String COLUMN_FAMILY_NAME = "Cofactor";
     protected static final Cofactor INSTANCE = new Cofactor();
     private static final long serialVersionUID = -520309053864923030L;
 
@@ -633,11 +816,11 @@ public class BrendaSupportingEntries {
   }
 
   public static class Inhibitors implements FromBrendaDB<Inhibitors> {
-    public static final String QUERY = "select Inhibitors, Commentary, Literature from Inhibitors " +
+    static final String QUERY = "select Inhibitors, Commentary, Literature from Inhibitors " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
-    public static final String ALL_QUERY =
+    static final String ALL_QUERY =
         "select Inhibitors, Commentary, Literature, EC_Number, Organism from Inhibitors";
-    public static final String COLUMN_FAMILY_NAME = "Inhibitors";
+    static final String COLUMN_FAMILY_NAME = "Inhibitors";
     protected static final Inhibitors INSTANCE = new Inhibitors();
     private static final long serialVersionUID = -6978439225811251470L;
 
@@ -702,11 +885,11 @@ public class BrendaSupportingEntries {
   }
 
   public static class ActivatingCompound implements FromBrendaDB<ActivatingCompound> {
-    public static final String QUERY = "select Activating_Compound, Commentary, Literature from Activating_Compound " +
+    static final String QUERY = "select Activating_Compound, Commentary, Literature from Activating_Compound " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
-    public static final String ALL_QUERY =
+    static final String ALL_QUERY =
         "select Activating_Compound, Commentary, Literature, EC_Number, Organism from Activating_Compound";
-    public static final String COLUMN_FAMILY_NAME = "Activating_Compound";
+    static final String COLUMN_FAMILY_NAME = "Activating_Compound";
     protected static final ActivatingCompound INSTANCE = new ActivatingCompound();
     private static final long serialVersionUID = -3326349402641253159L;
 
@@ -771,11 +954,11 @@ public class BrendaSupportingEntries {
   }
 
   public static class KCatKMValue implements FromBrendaDB<KCatKMValue> {
-    public static final String QUERY = "select KCat_KM_Value, Substrate, Commentary, Literature from KCat_KM_Value " +
+    static final String QUERY = "select KCat_KM_Value, Substrate, Commentary, Literature from KCat_KM_Value " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
-    public static final String ALL_QUERY =
+    static final String ALL_QUERY =
         "select KCat_KM_Value, Substrate, Commentary, Literature, EC_Number, Organism from KCat_KM_Value";
-    public static final String COLUMN_FAMILY_NAME = "KCat_KM_Value";
+    static final String COLUMN_FAMILY_NAME = "KCat_KM_Value";
     protected static final KCatKMValue INSTANCE = new KCatKMValue();
     private static final long serialVersionUID = -9166694433469659408L;
 
@@ -846,11 +1029,11 @@ public class BrendaSupportingEntries {
   }
 
   public static class Expression implements FromBrendaDB<Expression> {
-    public static final String QUERY = "select Expression, Commentary, Literature from Expression " +
+    static final String QUERY = "select Expression, Commentary, Literature from Expression " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
-    public static final String ALL_QUERY =
+    static final String ALL_QUERY =
         "select Expression, Commentary, Literature, EC_Number, Organism from Expression";
-    public static final String COLUMN_FAMILY_NAME = "Expression";
+    static final String COLUMN_FAMILY_NAME = "Expression";
     protected static final Expression INSTANCE = new Expression();
     private static final long serialVersionUID = 49938329620615767L;
 
@@ -915,11 +1098,11 @@ public class BrendaSupportingEntries {
   }
 
   public static class Subunits implements FromBrendaDB<Subunits> {
-    public static final String QUERY = "select Subunits, Commentary, Literature from Subunits " +
+    static final String QUERY = "select Subunits, Commentary, Literature from Subunits " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
-    public static final String ALL_QUERY =
+    static final String ALL_QUERY =
         "select Subunits, Commentary, Literature, EC_Number, Organism from Subunits";
-    public static final String COLUMN_FAMILY_NAME = "Subunits";
+    static final String COLUMN_FAMILY_NAME = "Subunits";
     protected static final Subunits INSTANCE = new Subunits();
     private static final long serialVersionUID = -3048744632876384569L;
 
@@ -984,11 +1167,11 @@ public class BrendaSupportingEntries {
   }
 
   public static class Localization implements FromBrendaDB<Localization> {
-    public static final String QUERY = "select Localization, Commentary, Literature from Localization " +
+    static final String QUERY = "select Localization, Commentary, Literature from Localization " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
-    public static final String ALL_QUERY =
+    static final String ALL_QUERY =
         "select Localization, Commentary, Literature, EC_Number, Organism from Localization";
-    public static final String COLUMN_FAMILY_NAME = "Localization";
+    static final String COLUMN_FAMILY_NAME = "Localization";
     protected static final Localization INSTANCE = new Localization();
     private static final long serialVersionUID = -7765943450126973420L;
 
@@ -1190,6 +1373,8 @@ public class BrendaSupportingEntries {
     // Note: update this list whenever new FromBrendaDB classes are created.
     List<FromBrendaDB> instances = new ArrayList<>();
     instances.add(KMValue.INSTANCE);
+    instances.add(Cloned.INSTANCE);
+    instances.add(PosttranslationalModification.INSTANCE);
     instances.add(SpecificActivity.INSTANCE);
     instances.add(OrganismCommentary.INSTANCE);
     instances.add(GeneralInformation.INSTANCE);

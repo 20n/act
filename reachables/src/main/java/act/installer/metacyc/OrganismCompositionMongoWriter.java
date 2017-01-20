@@ -325,6 +325,10 @@ public class OrganismCompositionMongoWriter {
     // add it to the in-memory object
     rxn.addProteinData(proteinInfo);
 
+    for (Long orgId : seqAndOrgIds.getRight()) {
+      rxn.addReference(Reaction.RefDataSource.METACYC, String.format("OrganismId:%d", orgId));
+    }
+
     // rewrite the rxn to update the protein data
     // ** Reason for double write: It is the wierdness of us
     // wanting to install a back pointer from the db.seq
@@ -472,11 +476,11 @@ public class OrganismCompositionMongoWriter {
     String ec, readable, dir, spont, typ;
 
     String metacycURL = getMetaCycURL(catalyzed);
-    Boolean isSpontaneous = catalyzed.getSpontaneous();
+    Boolean isSpontaneous = catalyzed.getSpontaneous(); // BioPaxFile should guarantee this is non-null.
     Object dirO = catalyzed.getDir();
     Object typO = catalyzed.getTyp();
     ec = singletonSet2Str(catalyzed.getEc(), metacycURL);
-    spont = isSpontaneous == null ? "" : (isSpontaneous ? "Spontaneous" : "");
+    spont = isSpontaneous ? "Spontaneous" : "";
     dir = dirO == null ? "" : dirO.toString(); // L->R, L<->R, or L<-R
     typ = typO == null ? "" : typO.toString(); // bioc_rxn, transport, or transport+bioc
 
@@ -508,6 +512,9 @@ public class OrganismCompositionMongoWriter {
 
     rxn.addReference(Reaction.RefDataSource.METACYC, this.originDB + " " + this.originDBSubID);
     rxn.addReference(Reaction.RefDataSource.METACYC, metacycURL);
+    if (isSpontaneous) {
+      rxn.addReference(Reaction.RefDataSource.METACYC, "isSpontaneous");
+    }
 
     return rxn;
   }

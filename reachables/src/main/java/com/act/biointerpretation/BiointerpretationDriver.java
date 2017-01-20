@@ -179,7 +179,7 @@ public class BiointerpretationDriver {
     }
   }
 
-  public static final Pattern VALID_DB_NAME_REGEX = Pattern.compile("[a-zA-Z][\\w]+");
+  public static final Pattern VALID_DB_NAME_REGEX = Pattern.compile("[a-zA-Z][\\w-]+");
   public static String crashIfInvalidDBName(String dbName) {
     if (!VALID_DB_NAME_REGEX.matcher(dbName).matches()) {
       String msg = String.format("Invalid database name: %s", dbName);
