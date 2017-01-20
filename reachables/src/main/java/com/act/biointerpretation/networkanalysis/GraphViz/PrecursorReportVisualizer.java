@@ -1,6 +1,6 @@
 package com.act.biointerpretation.networkanalysis.GraphViz;
 
-import com.act.biointerpretation.networkanalysis.MetabolismNetwork;
+import com.act.biointerpretation.networkanalysis.ImmutableNetwork;
 import com.act.biointerpretation.networkanalysis.NetworkEdge;
 import com.act.biointerpretation.networkanalysis.NetworkNode;
 import com.act.biointerpretation.networkanalysis.PrecursorReport;
@@ -13,10 +13,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Class for turning a PrecursorReport into a DotGraph that can be visualized.
@@ -26,52 +24,57 @@ public class PrecursorReportVisualizer {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(PrecursorReportVisualizer.class);
 
+  private static final Double FULL_CONFIDENCE = 1.0;
+  private static final DotColor LCMS_HIT_COLOR =  DotColor.RED;
+  private static final DotColor LCMS_MISS_COLOR = DotColor.DEFAULT_BLACK;
+  private static final DotEdge.EdgeStyle REACTION_EDGE_STYLE = DotEdge.EdgeStyle.DEFAULT_SOLID;
+  private static final DotEdge.EdgeStyle PREDICTION_EDGE_STYLE = DotEdge.EdgeStyle.DOTTED;
+
   // A map from organisms of interest to their respective colors.
   // Any edge with any organism name which contains one of these strings will be colored.
   // An edge which matches multiple keys of this map will be given one edge per distinct color specified by its
   // org matches.
-  private final Map<String, DotEdge.EdgeColor> orgToColor;
+  private final Map<String, DotColor> orgToColor;
 
-  public void addOrgOfInterest(String org, DotEdge.EdgeColor color) {
+  public void addOrgOfInterest(String org, DotColor color) {
     orgToColor.put(org, color);
   }
 
   public PrecursorReportVisualizer() {
-    orgToColor = new HashMap<>();
+    this.orgToColor = new HashMap<>();
   }
 
-  public Runner getRunner(File inputNetwork, File workingDir) {
-    return new Runner(inputNetwork, workingDir);
+  public Runner getRunner(File inputNetwork, File outputFile) {
+    return new Runner(inputNetwork, outputFile);
   }
 
   /**
    * Builds DOT graph representation of the precursor report.  The graph is printed out with the target metabolite
    * on the bottom, all its direct precursors one level up, all their precursors two levels up, etc.  Only edges
    * between adjacent levels are drawn, resulting in a reverse BFS tree representation of the precursors.
-   *
    * @param report The PrecursorReport.
    * @return The DotGraph.
    */
   public DotGraph buildDotGraph(PrecursorReport report) {
-    MetabolismNetwork network = report.getNetwork();
+    ImmutableNetwork network = report.getNetwork();
     DotGraph graph = new DotGraph();
 
-    // Assign every inchi in the graph an ID, so we can label graph nodes by ID rather than inchi.
-    Map<String, String> inchiToIdMap = new HashMap<>();
-    Integer id = 0;
     for (NetworkNode node : network.getNodes()) {
-      inchiToIdMap.put(node.getMetabolite().getInchi(), id.toString());
-      graph.setNodeName(id.toString(), node.getMetabolite().getInchi());
-      id++;
+      if (report.isPrecursor(node) && report.getLcmsConfidence(node) != null &&
+          report.getLcmsConfidence(node).equals(FULL_CONFIDENCE)) {
+        graph.addNode(new DotNode(node.getUID().toString(), LCMS_HIT_COLOR));
+      } else {
+        graph.addNode(new DotNode(node.getUID().toString(), LCMS_MISS_COLOR));
+      }
     }
 
     // Add edges to the graph.  One or more DotEdges are added for each (substrate, product) pair where the substrate
     // is one level farther back in the tree than the product.
     for (NetworkEdge edge : network.getEdges()) {
-      for (String substrate : edge.getSubstrates()) {
-        for (String product : edge.getProducts()) {
-          if (report.edgeInBfsTree(network.getNode(substrate), network.getNode(product))) {
-            buildDotEdges(edge, inchiToIdMap.get(substrate), inchiToIdMap.get(product)).forEach(graph::addEdge);
+      for (Integer substrate : edge.getSubstrates()) {
+        for (Integer product : edge.getProducts()) {
+          if (report.edgeInBfsTree(network.getNodeByUID(substrate), network.getNodeByUID(product))) {
+            addEdgesToGraph(edge, substrate.toString(), product.toString(), graph);
           }
         }
       }
@@ -86,22 +89,20 @@ public class PrecursorReportVisualizer {
    * If the NetworkEdge matches multiple orgs of interest, one edge is drawn for each one it matches,
    * in the appropriate color.
    */
-  private List<DotEdge> buildDotEdges(NetworkEdge edge, String substrateId, String productId) {
-    DotEdge.EdgeStyle style = edge.getReactionIds().isEmpty() ?
-        DotEdge.EdgeStyle.DOTTED : DotEdge.EdgeStyle.DEFAULT_SOLID;
+  private void addEdgesToGraph(NetworkEdge edge, String substrateId, String productId, DotGraph graph) {
+    DotEdge.EdgeStyle style = edge.getReactionIds().isEmpty() ? PREDICTION_EDGE_STYLE : REACTION_EDGE_STYLE;
 
-    Set<DotEdge.EdgeColor> colors = new HashSet<>();
+    Set<DotColor> colors = new HashSet<>();
     for (String orgOfInterest : orgToColor.keySet()) {
       if (matchesOrg(edge, orgOfInterest)) {
         colors.add(orgToColor.get(orgOfInterest));
       }
     }
     if (colors.isEmpty()) {
-      colors.add(DotEdge.EdgeColor.DEFAULT_BLACK);
+      colors.add(DotColor.DEFAULT_BLACK);
     }
 
-    return colors.stream().map(c -> new DotEdge(substrateId, productId).setColor(c).setStyle(style))
-        .collect(Collectors.toList());
+    colors.stream().map(c -> new DotEdge(substrateId, productId, c, style)).forEach(graph::addEdge);
   }
 
   /**
@@ -120,32 +121,22 @@ public class PrecursorReportVisualizer {
    */
   public class Runner implements JavaRunnable {
 
-    private static final String OUTPUT_NAME = "precursor_graph";
-    private static final String ID_FILE_NAME = "node_ids";
-
     private final File inputFile;
-    private final File workingDir;
+    private final File outputFile;
 
-    public Runner(File inputFile, File workingDir) {
+    public Runner(File inputFile, File outputFile) {
       this.inputFile = inputFile;
-      this.workingDir = workingDir;
+      this.outputFile = outputFile;
     }
 
     /**
      * Loads in a precursorReport from file, builds a DotGraph from it, and writes it to file.
      * The graph can be visualized with an online GraphViz viewer like http://www.webgraphviz.com/.
-     *
      * @throws IOException
      */
     @Override
     public void run() throws IOException {
       FileChecker.verifyInputFile(inputFile);
-      FileChecker.verifyOrCreateDirectory(workingDir);
-
-      File outputFile = new File(workingDir, OUTPUT_NAME);
-      File idFile = new File(workingDir, ID_FILE_NAME);
-
-      FileChecker.verifyAndCreateOutputFile(idFile);
       FileChecker.verifyAndCreateOutputFile(outputFile);
 
       PrecursorReport report = PrecursorReport.readFromJsonFile(inputFile);
@@ -153,12 +144,9 @@ public class PrecursorReportVisualizer {
       LOGGER.info("Handled input files. Building dot graph.");
       DotGraph graph = buildDotGraph(report);
 
-      LOGGER.info("Build graph. Writing output files.");
+      LOGGER.info("Build graph. Writing out graph.");
       graph.writeGraphToFile(outputFile);
-      LOGGER.info("Graph written to: %s", outputFile.getAbsolutePath());
-      graph.writeNodeNamesToFile(idFile);
-      LOGGER.info("Node label to name mapping written to: %s", idFile.getAbsolutePath());
-      LOGGER.info("Complete!");
+      LOGGER.info("Graph written to %s. Visualization complete!", outputFile.getAbsolutePath());
     }
   }
 }

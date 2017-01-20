@@ -307,6 +307,7 @@ public class MS1 {
     }
   }
 
+  // TODO: create an ion Enum rather than having to access this list by String name
   public static final MetlinIonMass[] ionDeltas = new MetlinIonMass[] {
     new MetlinIonMass(IonMode.POS,   "M+H-2H2O",  1,  35.0128),
     new MetlinIonMass(IonMode.POS,    "M+H-H2O",  1,  17.0028),

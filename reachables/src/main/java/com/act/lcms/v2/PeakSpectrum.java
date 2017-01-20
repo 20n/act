@@ -43,13 +43,13 @@ public interface PeakSpectrum {
    * Partition the spectrum by scan file id.
    * @return a mapping between scan files and their corresponding detected peaks.
    */
-  Map<String, PeakSpectrum> getPeakSpectraByScanFile();
+  Map<String, List<DetectedPeak>> getPeaksByScanFile();
 
   /**
-   * Extract a spectrum corresponding to a given scan file
+   * Extract a list of peaks corresponding to a given scan file
    * @param scanFileId id of the desired scan file
    * @return the corresponding PeakSpectrum
    */
-  PeakSpectrum getSpectrum(String scanFileId);
+  List<DetectedPeak> getPeaks(String scanFileId);
 
 }

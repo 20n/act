@@ -1,34 +1,56 @@
 package com.act.biointerpretation.networkanalysis;
 
+import com.act.lcms.v2.Metabolite;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Represents a node, or chemical, in the metabolism network
  */
 public class NetworkNode {
 
+  private static AtomicInteger uidCounter = new AtomicInteger(0);
+
+  @JsonProperty("uid")
+  private final Integer UID;
+
   @JsonProperty("metabolite")
   private Metabolite metabolite;
 
-  private List<NetworkEdge> outEdges;
+  private Set<NetworkEdge> outEdges;
 
-  private List<NetworkEdge> inEdges;
+  private Set<NetworkEdge> inEdges;
 
   @JsonCreator
-  public NetworkNode(@JsonProperty("metabolite") Metabolite metabolite) {
-    this.outEdges = new ArrayList<>();
-    this.inEdges = new ArrayList<>();
+  private NetworkNode(@JsonProperty("metabolite") Metabolite metabolite,
+                      @JsonProperty("uid") Integer UID) {
+    this.outEdges = new HashSet<>();
+    this.inEdges = new HashSet<>();
     this.metabolite = metabolite;
+    this.UID = UID;
+    uidCounter.set(Math.max(UID + 1, uidCounter.get()));
+  }
+
+  public NetworkNode(Metabolite metabolite) {
+    this.outEdges = new HashSet<>();
+    this.inEdges = new HashSet<>();
+    this.metabolite = metabolite;
+    this.UID = uidCounter.getAndIncrement();
   }
 
   public Metabolite getMetabolite() {
     return metabolite;
+  }
+
+  public Integer getUID() {
+    return UID;
   }
 
   /**
@@ -37,12 +59,8 @@ public class NetworkNode {
    * The node -> edge pointers can thus be reconstructed on deserialization.
    */
   @JsonIgnore
-  public List<NetworkEdge> getOutEdges() {
-    return Collections.unmodifiableList(outEdges);
-  }
-
-  public void setOutEdges(List<NetworkEdge> outEdges) {
-    this.outEdges = outEdges;
+  public Collection<NetworkEdge> getOutEdges() {
+    return Collections.unmodifiableSet(outEdges);
   }
 
   public void addOutEdge(NetworkEdge edge) {
@@ -55,12 +73,8 @@ public class NetworkNode {
    * The node -> edge pointers can thus be reconstructed on deserialization.
    */
   @JsonIgnore
-  public List<NetworkEdge> getInEdges() {
-    return Collections.unmodifiableList(inEdges);
-  }
-
-  public void setInEdges(List<NetworkEdge> inEdges) {
-    this.inEdges = inEdges;
+  public Collection<NetworkEdge> getInEdges() {
+    return Collections.unmodifiableSet(inEdges);
   }
 
   public void addInEdge(NetworkEdge edge) {

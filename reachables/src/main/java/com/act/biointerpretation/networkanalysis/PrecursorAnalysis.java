@@ -2,6 +2,9 @@ package com.act.biointerpretation.networkanalysis;
 
 import com.act.jobs.FileChecker;
 import com.act.jobs.JavaRunnable;
+import com.act.lcms.v2.IonCalculator;
+import com.act.lcms.v2.LcmsIonCalculator;
+import com.act.lcms.v2.PeakSpectrum;
 import com.act.utils.TSVWriter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -10,9 +13,11 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Workflow component to take in a graph, calculate a precursor subgraph, and write the subgraph to file.
@@ -21,10 +26,13 @@ public class PrecursorAnalysis implements JavaRunnable {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(PrecursorAnalysis.class);
 
+  public static final String PRECURSOR_PREFIX = "precursors_target_";
+
   private static final String TARGET_ID_HEADER = "target_id";
   private static final String INCHI_HEADER = "InChI";
 
   private final File networkInput;
+  private final Optional<File> lcmsInput;
 
   // The targets of the analysis: InChI strings of molecules whose network precursors we would like to identify.
   private final List<String> targets;
@@ -32,11 +40,30 @@ public class PrecursorAnalysis implements JavaRunnable {
   // The number of edges/hops/steps to search backwards from the targets to identify relevant precursors in the network.
   private final int numSteps;
 
+  private Set<String> ionSet = new HashSet<String>() {{
+    add("M+H");
+    add("M+Na");
+    add("M+H-H2O");
+  }};
+
   public PrecursorAnalysis(File networkInput, List<String> targets, int numSteps, File outputDirectory) {
+    this(networkInput, null, targets, numSteps, outputDirectory);
+  }
+
+  public PrecursorAnalysis(File networkInput,
+                           Optional<File> lcmsInput,
+                           List<String> targets,
+                           int numSteps,
+                           File outputDirectory) {
     this.networkInput = networkInput;
+    this.lcmsInput = lcmsInput;
     this.targets = targets;
     this.numSteps = numSteps;
     this.outputDirectory = outputDirectory;
+  }
+
+  public void setIons(Set<String> ions) {
+    this.ionSet = ions;
   }
 
   @Override
@@ -55,12 +82,16 @@ public class PrecursorAnalysis implements JavaRunnable {
 
     Map<String, Integer> targetIdMap = new HashMap<>();
     int id = 0;
+    IonCalculator ionCalculator = lcmsInput.isPresent() ? new LcmsIonCalculator() : null;
+    PeakSpectrum lcmsSpectrum = lcmsInput.isPresent() ? LcmsTSVParser.parseTSV(lcmsInput.get()) : null;
+
     // Do precursor analyses on each target.  Give each found target an ID so we can track which report is which.
     for (String target : targets) {
-      Optional<NetworkNode> targetNode = network.getNodeOption(target);
+      Optional<NetworkNode> targetNode = network.getNodeOptionByInchi(target);
       if (targetNode.isPresent()) {
         PrecursorReport report = network.getPrecursorReport(targetNode.get(), numSteps);
-        File outputFile = new File(outputDirectory, "precursors_target_" + id);
+        lcmsInput.ifPresent(a -> report.addLcmsData(lcmsSpectrum, ionCalculator, ionSet));
+        File outputFile = new File(outputDirectory, PRECURSOR_PREFIX + id);
         report.writeToJsonFile(outputFile);
         LOGGER.info("Wrote target %s report to file %s", target, outputFile.getAbsolutePath());
         targetIdMap.put(target, id);
@@ -77,7 +108,6 @@ public class PrecursorAnalysis implements JavaRunnable {
 
   /**
    * Write out the target ID map. This is a TSV file where each line contains the ID followed by the target's InChI.
-   *
    * @param targetIdMap The map to write.
    * @param targetIdFile The file to write to.
    * @throws IOException
