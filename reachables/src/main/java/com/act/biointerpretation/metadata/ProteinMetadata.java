@@ -16,6 +16,10 @@ public class ProteinMetadata {
     Boolean heteroSubunits;
     Boolean modifications;
 
+    public void setReactionId(Long reactionId) {
+        this.reactionId = reactionId;
+    }
+
     public boolean isValid(Host host) {
         if (sequences.isEmpty()) {
             return false;

@@ -15,7 +15,7 @@ import java.util.Set;
 
 public class ProteinMetadataComparator implements Comparator {
     private static String DATABASE = "jarvis_2016-12-09";
-    private static String COLLECTION = "actv01_vijay_proteins";
+    private static String COLLECTION = "reactions";
     
     //The ranking is contextualized on a host
     private Host host;  
@@ -150,6 +150,8 @@ public class ProteinMetadataComparator implements Comparator {
 
             for (JSONObject json : jsons) {
                 ProteinMetadata meta = factory.create(json);
+                Long rxnId = (long) rxn.getUUID();
+                meta.setReactionId(rxnId);
                 agg.add(meta);
             }
         }

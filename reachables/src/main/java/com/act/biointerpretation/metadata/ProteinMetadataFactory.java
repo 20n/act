@@ -41,7 +41,7 @@ public class ProteinMetadataFactory {
         Set<String>  modFalse = new HashSet<>();
 
         // TODO: Move this to resources directory?
-        File termfile = new File("/mnt/data-level1/data/ProteinMetadata/2016_12_07-modification_terms.txt");
+        File termfile = new File("/Volumes/data-level1/data/ProteinMetadata/2016_12_07-modification_terms.txt");
         String data = FileUtils.readFileToString(termfile);
         String[] lines = data.split("\\r|\\r?\\n");
         for(int i=1; i<lines.length; i++) {
@@ -61,7 +61,7 @@ public class ProteinMetadataFactory {
         Map<String,String> termToGenus = new HashMap<>();
 
         // TODO: Move this to resources directory?
-        termfile = new File("/mnt/data-level1/data/ProteinMetadata/2016_12_07-cloned_term_to_genus.txt");
+        termfile = new File("/Volumes/data-level1/data/ProteinMetadata/2016_12_07-cloned_term_to_genus.txt");
         data = FileUtils.readFileToString(termfile);
         lines = data.split("\\r|\\r?\\n");
         for(int i=1; i<lines.length; i++) {
@@ -93,7 +93,7 @@ public class ProteinMetadataFactory {
         Map<String, Map<Host, Localization>> locMap = new HashMap<>();
 
         // TODO: Move this to resources directory?
-        termfile = new File("/mnt/data-level1/data/ProteinMetadata/2016_12_06-localization.txt");
+        termfile = new File("/Volumes/data-level1/data/ProteinMetadata/2016_12_06-localization.txt");
         data = FileUtils.readFileToString(termfile);
         lines = data.split("\\r|\\r?\\n");
         for(int i=1; i<lines.length; i++) {
@@ -155,6 +155,7 @@ public class ProteinMetadataFactory {
         Boolean modifications = handleModifications(json);
         Map<Host, Integer> cloning = handleCloned(json);
         Map<Host, Localization> localization = handleLocalization(json);
+        List<Long> seqIds = handleSequences(json);
 
         ProteinMetadata out = new ProteinMetadata();
         out.kcatkm = kcatkm;
@@ -163,7 +164,33 @@ public class ProteinMetadataFactory {
         out.modifications = modifications;
         out.cloned = cloning;
         out.localization = localization;
+        out.sequences = seqIds;
+        //out.reactionId =
         return out;
+    }
+
+    private List<Long> handleSequences(JSONObject json) {
+        //Try to pull the data
+        JSONArray jarray = null;
+        List<Long> seqIds = new ArrayList<>();
+
+        try {
+            jarray = json.getJSONArray("sequences");
+        } catch (Exception err) {
+            return seqIds;
+        }
+
+        //If there is no data, the value is undefined
+        if (jarray.length() == 0) {
+            return seqIds;
+        }
+
+        for (int i = 0; i < jarray.length(); i++) {
+            Long data = (Long) jarray.get(i);
+            seqIds.add(data);
+        }
+
+        return seqIds;
     }
 
     private Double handleKcatKm(JSONObject json) {
@@ -340,7 +367,7 @@ public class ProteinMetadataFactory {
      */
     private boolean testHandlesubunits() throws Exception {
         // TODO: Move this to resources directory?
-        File testfile = new File("/mnt/data-level1/data/ProteinMetadata/2016_12_07-subunit_testset.txt");
+        File testfile = new File("/Volumes/data-level1/data/ProteinMetadata/2016_12_07-subunit_testset.txt");
         String data = FileUtils.readFileToString(testfile);
         data = data.replaceAll("\"\"", "\"");
         String[] lines = data.split("\\r|\\r?\\n");

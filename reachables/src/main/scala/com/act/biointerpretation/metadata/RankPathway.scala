@@ -29,7 +29,14 @@ object RankPathway {
   // This is a table of all the reactions in the database w/ metadata and their associated score.
   // Looked up once, used for all pathways.
   private lazy val rankingTable: Map[Long, List[Pair[ProteinMetadata, Integer]]] =
-    ProteinMetadataComparator.createProteinMetadataTable().asScala.map(v => (v._1: Long, v._2.asScala.toList)).toMap
+    ProteinMetadataComparator.createProteinMetadataTable().asScala.map(
+      v => {
+        if (v._2 == null || v._1 == null) {
+          val j = 0;
+        }
+        (v._1: Long, v._2.asScala.toList)
+      }
+    ).toMap
 
   object Mongo extends MongoWorkflowUtilities
 
