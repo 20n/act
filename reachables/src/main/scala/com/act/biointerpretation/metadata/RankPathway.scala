@@ -170,6 +170,13 @@ object RankPathway {
   private def getDummyMetadata(rid: Long): ProteinMetadata = {
     val p = new ProteinMetadata()
 
+    var newId:Long = 0
+    if (rid < 0) {
+      newId = -(rid + 1)
+    } else {
+      newId = rid
+    }
+
     val reaction = sourceDb.getReactionFromUUID(rid)
 
     var jarray: JSONArray = new JSONArray()
