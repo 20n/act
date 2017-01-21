@@ -47,6 +47,8 @@ object SarProjection {
       longOpt("output-file")
   ).asJava
 
+  private val TSV_HEADERS = List("SUBSTRATE", "PRODUCT", "SAR")
+
   def main(args: Array[String]): Unit = {
     // CLI Parsing
     val cliUtil: CLIUtil = new CLIUtil(getClass, HELP_MESSAGE, OPTION_BUILDERS)
@@ -67,15 +69,15 @@ object SarProjection {
 
     var nextLine : Option[String] = None
 
-    def getNextChemicalString(): Boolean = {
+    def getNextChemicalString: Boolean = {
       nextLine = Option(chemicalReader.readLine())
       nextLine.isDefined
     }
 
-    val results : mutable.ListBuffer[(String, String, String)] = new mutable.ListBuffer[(String, String, String)]
+    val results : mutable.ListBuffer[List[String]] = new mutable.ListBuffer[List[String]]
 
     // Iterate over chemicals in input
-    while (getNextChemicalString()) {
+    while (getNextChemicalString) {
       try {
         val chemical = MoleculeImporter.importMolecule(nextLine.get.trim, MoleculeFormat.inchi)
         val substrates = Array(chemical)
@@ -92,7 +94,11 @@ object SarProjection {
           }
 
           while (reactReactor()) {
-              results.append((nextLine.get.trim, MoleculeExporter.exportAsStdInchi(products.get.head), MoleculeExporter.exportAsSmarts(reactor.getReaction)))
+              results.append(List(
+                nextLine.get.trim, 
+                MoleculeExporter.exportAsStdInchi(products.get.head), 
+                MoleculeExporter.exportAsSmarts(reactor.getReaction)
+              ))
           }
         }
       }
@@ -104,20 +110,12 @@ object SarProjection {
     }
 
     // Write output to TSV file, one line per projection
-    val substrateHeader = "SUBSTRATE"
-    val productHeader = "PRODUCT"
-    val sarHeader = "SAR"
-    val headers = List(substrateHeader, productHeader, sarHeader).asJava
-     val writer = new TSVWriter[String, String](headers)
+    val headers = TSV_HEADERS.asJava
+    val writer = new TSVWriter[String, String](headers)
+    
     writer.open(outputFile)
-    results.foreach(element => {
-      val row : java.util.Map[String, String] = new util.HashMap[String, String]()
-      row.put(substrateHeader, element._1)
-      row.put(productHeader, element._2)
-      row.put(sarHeader, element._3)
-      writer.append(row)
-    })
-    writer.flush()
+    results.foreach(element => writer.append((TSV_HEADERS zip element).toMap.asJava))
+    writer.close()
   }
 
   // Gets a reactor object from a row of the TSV reader. THe only relevant header is the SAR header
@@ -125,7 +123,7 @@ object SarProjection {
     val SAR_HEADER = "SAR"
 
     // SARs may not be present in every row. Wherever one is present, make it into a reactor
-    if (!row.get(SAR_HEADER).trim().isEmpty) {
+    if (row.get(SAR_HEADER).trim().nonEmpty) {
       val reactor = new Reactor
       reactor.setReactionString(row.get(SAR_HEADER))
       Some(reactor)
