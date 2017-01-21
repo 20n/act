@@ -177,7 +177,7 @@ object RankPathway {
       newId = rid
     }
 
-    val reaction = sourceDb.getReactionFromUUID(rid)
+    val reaction = sourceDb.getReactionFromUUID(newId)
 
     var jarray: JSONArray = new JSONArray()
     try {
