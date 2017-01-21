@@ -150,7 +150,14 @@ public class ProteinMetadataComparator implements Comparator {
 
             for (JSONObject json : jsons) {
                 ProteinMetadata meta = factory.create(json);
-                Long rxnId = (long) rxn.getUUID();
+
+                Long rxnId;
+                if (rxn.getUUID() < 0) {
+                    rxnId = (long) Reaction.reverseID(rxn.getUUID());
+                } else {
+                    rxnId = (long) rxn.getUUID();
+                }
+
                 meta.setReactionId(rxnId);
                 agg.add(meta);
             }
