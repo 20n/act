@@ -40,7 +40,7 @@ public class CodonIndexer {
         
         //Gather up all the orfs with greater copy than the limit
         List<String> orfs = new ArrayList<>();
-        String data = FileUtils.readFile2("/Volumes/shared-data/Vijay/CodonOptimization/coli_genes.txt");
+        String data = FileUtils.readFile2("/mnt/shared-data/Vijay/CodonOptimization/coli_genes.txt");
         String[] lines = data.split("\\r|\\r?\\n");
         for(String line : lines) {
             try {
