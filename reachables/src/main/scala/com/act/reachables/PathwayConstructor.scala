@@ -37,12 +37,12 @@ class PathwayConstructor(sourceNetwork: Network) {
         if (producerPaths.exists(_.isEmpty)) 
           None 
         else {
-          val reaction = if (producerPaths.exists(_.nonEmpty))
+          val reaction = if (producerPaths.nonEmpty)
             Option(reactionEdge)
           else 
             None
 
-          val complexPathsThatProduceCurrentTarget = if (producerPaths.exists(_.nonEmpty))
+          val complexPathsThatProduceCurrentTarget = if (producerPaths.nonEmpty)
             Option(producerPaths.map(x => x.flatMap(y => y)))
           else 
             None
