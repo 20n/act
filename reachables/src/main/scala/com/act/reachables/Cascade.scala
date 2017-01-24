@@ -94,6 +94,9 @@ object Cascade extends Falls {
   def clearAndRecreateCaches(): Unit = {
     cache_bestpre_rxn = getCaffeineCache[Long, Map[SubProductPair, List[ReachRxn]]](cacheBnd)
     cache_nw = getCaffeineCache[Long, Option[Network]](cacheBnd)
+    
+    // Making nodeMerger into a caffeine cache may fix the memory issues 
+    // that cause us to need to do this recreation in the first place.
     nodeMerger = new mutable.HashMap()
   }
 
