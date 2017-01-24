@@ -424,6 +424,8 @@ object Cascade extends Falls {
       }
 
       try {
+        // This was a hack to ensure that any parsing errors were not that bad.  
+        // I am not proud of it, but when trying to guarantee things are done by a certain time we use heuristics.
         println("Attempting to determine branched paths.")
         Await.result(future, 1 minute)
       } catch {
@@ -553,7 +555,7 @@ object Cascade extends Falls {
     }
   }
 
-  // TODO make this discrete blocks so that we seperate concerns better
+  // TODO make this discrete blocks so that we separate concerns better
   @JsonIgnoreProperties(ignoreUnknown = true)
   @JsonCreator
   class NodeInformation(@JsonProperty("isReaction") var isReaction: Boolean,
