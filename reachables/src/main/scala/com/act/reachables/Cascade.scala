@@ -3,6 +3,8 @@ package com.act.reachables
 import java.io.File
 import java.lang.Long
 import java.util
+import java.util.NoSuchElementException
+import java.util.concurrent.TimeoutException
 
 import act.shared.{Seq => DbSeq}
 import com.act.analysis.proteome.scripts.OddSequencesToProteinPredictionFlow
@@ -18,6 +20,9 @@ import org.mongojack.JacksonDBCollection
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future, blocking}
 
 // Default host. If running on a laptop, please set a SSH bridge to access speakeasy
 
@@ -26,6 +31,7 @@ object Cascade extends Falls {
   val db: DB = mongoClient.getDB("wiki_reachables")
   var collectionName: String = "pathways_jarvis_dec21"
   def setCollectionName(c: String) {
+    println(s"Output collection changed to $c")
     collectionName = c
   }
 
@@ -71,17 +77,27 @@ object Cascade extends Falls {
     case false => None
   }
   // the best precursor reaction
-  val cache_bestpre_rxn = getCaffeineCache[Long, Map[SubProductPair, List[ReachRxn]]](cacheBnd)
+  var cache_bestpre_rxn = getCaffeineCache[Long, Map[SubProductPair, List[ReachRxn]]](cacheBnd)
 
   // the cache of the cascade if it has been previously computed
-  val cache_nw = getCaffeineCache[Long, Option[Network]](cacheBnd)
+  var cache_nw = getCaffeineCache[Long, Option[Network]](cacheBnd)
 
   def getCaffeineCache[T, S](optBound: Option[Int]) = {
     val caffeine = Caffeine.newBuilder().asInstanceOf[Caffeine[T, S]]
     if (optBound.isDefined)
       caffeine.maximumSize(optBound.get)
+    caffeine.recordStats()
     val cache = caffeine.build[T, S]()
     cache
+  }
+  
+  def clearAndRecreateCaches(): Unit = {
+    cache_bestpre_rxn = getCaffeineCache[Long, Map[SubProductPair, List[ReachRxn]]](cacheBnd)
+    cache_nw = getCaffeineCache[Long, Option[Network]](cacheBnd)
+    
+    // Making nodeMerger into a caffeine cache may fix the memory issues 
+    // that cause us to need to do this recreation in the first place.
+    nodeMerger = new mutable.HashMap()
   }
 
   // We only pick rxns that lead monotonically backwards in the tree.
@@ -374,10 +390,14 @@ object Cascade extends Falls {
   }
 
   def getAllPaths(network: Network, target: Long): Option[List[Path]] = {
+    // Natives don't have pathways, so let's not let these create any edge cases.
+    if (is_universal(target)) {
+      return None
+    }
+    
     val sourceEdgesSet: util.Set[Edge] = network.getEdgesGoingInto(target)
 
     // If the target is a native then the only path is the node itself.
-    var counter: Int = -1
     if (sourceEdgesSet == null) {
       if (network.nodes.isEmpty) {
         return None
@@ -387,15 +407,84 @@ object Cascade extends Falls {
 
     val sourceEdges = sourceEdgesSet.asScala.toList
 
-    Option(sourceEdges.flatMap(e => {
+    val paths = Option(sourceEdges.flatMap(e => {
       val path = getPath(network, e)
       if (path.isDefined) {
-        counter = counter + 1
         Option(path.get.map(p => new Path(List(e.dst) ::: p.getPath)))
       } else {
         None
       }
     }).flatten)
+
+    if (paths.isEmpty || paths.get.isEmpty) {
+      val future: Future[Option[List[Path]]] = Future { 
+        blocking {
+          getBranchedPathways(network, target)
+        }
+      }
+
+      try {
+        // This was a hack to ensure that any parsing errors were not that bad.  
+        // I am not proud of it, but when trying to guarantee things are done by a certain time we use heuristics.
+        println("Attempting to determine branched paths.")
+        Await.result(future, 1 minute)
+      } catch {
+        case e: TimeoutException => {
+          println("Future failed because of timeout.")
+          None
+        }
+      }
+    } else {
+      paths
+    }
+  }
+  
+  
+  def getBranchedPathways(network: Network, target: Long)(): Option[List[Path]] = {
+    // If no paths found, lets see if we can construct paths by considering branched pathways
+    val pathwayConstructor = new PathwayConstructor(network)
+    val branchedPaths: List[PathwayConstructor.ComplexPath] = pathwayConstructor.getAllPaths(target).flatten
+    val MAX_PATHS = 100
+    val pathAsNetwork: List[Network] = pathwayConstructor.createNetworksFromPath(branchedPaths).take(MAX_PATHS)
+    println(s"Constructed Pathways: ${pathAsNetwork.length}.${if (pathAsNetwork.length >= MAX_PATHS) " A value of $MAX_PATHS means that the result is likely not complete." else ""}")
+    // Sometimes we create hundreds of thousands of paths.
+    Option(pathAsNetwork.map(convertNetworkToPath(_, target)))
+  }
+  
+  
+  def convertNetworkToPath(nw: Network, target: Long): Cascade.Path = {
+    val pathList = mutable.ListBuffer[Node]()
+    pathList.append(nw.idToNode(target))
+
+    var current: List[Edge] = nw.edgesGoingToId(target).toList
+    var frontier = mutable.ListBuffer[Edge]()
+    // Cycle prevention by noting which edges we've already dealt with.
+    val seen = mutable.HashSet[Edge]()
+    while(current.nonEmpty) {
+      current.foreach(e => {
+        // Compound => Reaction Edges
+        // Add to current
+        pathList.append(e.dst)
+        pathList.append(e.src)
+
+        // Add all the edges going into this one to the list
+        try {
+          val resultingNodes = nw.edgesGoingToId(e.src.id)
+          resultingNodes.filter(e => !seen.contains(e)).foreach(e => {
+            seen.add(e)
+            frontier.append(e)
+          })
+        } catch {
+          case e: NoSuchElementException =>
+        }
+      })
+
+      // Switch frontier with current to get the next level.
+      current = frontier.toList
+      frontier = mutable.ListBuffer[Edge]()
+    }
+
+    new Path(pathList.distinct.toList)
   }
 
 
@@ -466,7 +555,7 @@ object Cascade extends Falls {
     }
   }
 
-  // TODO make this discrete blocks so that we seperate concerns better
+  // TODO make this discrete blocks so that we separate concerns better
   @JsonIgnoreProperties(ignoreUnknown = true)
   @JsonCreator
   class NodeInformation(@JsonProperty("isReaction") var isReaction: Boolean,
@@ -608,9 +697,10 @@ class Cascade(target: Long) {
     val withinTheseReactions = new BasicDBObject(MongoKeywords.IN.toString, theseReactions)
     abstractOrQuestionableSequencesQuery.put(SequenceKeywords.ID.toString, withinTheseReactions)
 
-    val mongoConnection = OddSequencesToProteinPredictionFlow.connectToMongoDatabase(cascades.DEFAULT_DB._3)
+    // Only connect if we are doing HMMer Seq
+    lazy val mongoConnection = OddSequencesToProteinPredictionFlow.connectToMongoDatabase(cascades.DEFAULT_DB._3)
 
-    val oddSeqs: List[DbSeq] = mongoConnection.getSeqIterator(abstractOrQuestionableSequencesQuery).asScala.toList
+    lazy val oddSeqs: List[DbSeq] = mongoConnection.getSeqIterator(abstractOrQuestionableSequencesQuery).asScala.toList
 
     // TODO Maybe we should only try to infer if there are no/few good sequences.
     // Evaluate how much this helps.  It makes sense as we don't really want to add more to places
@@ -641,8 +731,14 @@ class Cascade(target: Long) {
     }
   })
 
+  if (Cascade.VERBOSITY > 1){
+    println("##Started constructing paths.")
+  }
   val viablePaths: Option[List[Cascade.Path]] = Cascade.getAllPaths(nw, t)
-
+  if (Cascade.VERBOSITY > 1){
+    println("##Finished constructing paths.")
+  }
+  
   val allPaths: List[Cascade.Path] = if (viablePaths.isDefined) {
     viablePaths.get.sortBy(p => (-p.getDegree(), -p.getReactionSum()))
   } else {
@@ -651,26 +747,14 @@ class Cascade(target: Long) {
 
   var c = -1
 
+  if (Cascade.VERBOSITY > 1){
+    println("## Determining Organism Frequenecy.")
+  }
   // Do any formatting necessary that will be used later on.
   // Things such as coloring interesting paths, setting up strings,
   // and converting reactionIds to the db form are done here.
   val constructedAllPaths: List[ReactionPath] = allPaths.map(p => {
     c += 1
-
-    if (c == 0) {
-      val reversePath = p.getPath.reverse
-      for (i <- reversePath.indices) {
-        if (i >= reversePath.length - 1) {
-          // Skip last node, has no edge
-        } else {
-          val edgesGoingInto = network().edgesGoingToNode(reversePath.get(i + 1))
-          val currentEdge: Edge = edgesGoingInto.find(e => e.src.equals(reversePath.get(i))).get
-
-          Edge.setAttribute(currentEdge, "color", "\"#cc3300\", penwidth=5")
-        }
-      }
-    }
-
     val rp = new ReactionPath(s"${target}w$c", p.getPath.map(node => {
       val isRxn = getOrDefault[String](node, "isrxn").toBoolean
       val isSpontaneous = getOrDefault[Boolean](node, "isSpontaneous", false)
@@ -699,8 +783,14 @@ class Cascade(target: Long) {
 
     rp
   })
+  if (Cascade.VERBOSITY > 1){
+    println("## Finished determining organism frequency.")
+  }
 
 
+  if (Cascade.VERBOSITY > 1){
+    println("## Sorting by organism frequency.")
+  }
   val sortedPaths = constructedAllPaths.sortBy(p => {
     try {
       -p.getMostCommonOrganismCount.max
@@ -708,40 +798,13 @@ class Cascade(target: Long) {
       case e: Exception => 0
     }
   })
+  if (Cascade.VERBOSITY > 1){
+    println("## Finished sorting by organism frequency.")
+  }
 
   if (sortedPaths.nonEmpty) {
     sortedPaths.head.setMostNative(true)
-
-    val limeGreen = "#009933"
-
-    val mostNativePath = sortedPaths.head.getPath.toList.reverse
-    for (i <- mostNativePath.indices) {
-      if (i >= mostNativePath.length - 1) {
-        // Skip last node, has no edge
-      } else {
-        val sourceNode: Node = network().getNodeById(mostNativePath(i).getId())
-        val destNode: Node = network().getNodeById(mostNativePath(i + 1).getId())
-
-        val edgesGoingInto = network().edgesGoingToNode(destNode)
-        val currentEdge: Edge = edgesGoingInto.find(e => e.src.equals(sourceNode)).get
-
-        if (getOrDefault[String](sourceNode, "isrxn").toBoolean) {
-          val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](sourceNode, "organisms", new util.HashSet[String]())
-
-          if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
-            Edge.setAttribute(currentEdge, "color", f""""$limeGreen", penwidth=5""")
-          }
-        }
-
-        if (getOrDefault[String](destNode, "isrxn").toBoolean) {
-          val orgs: util.HashSet[String] = getOrDefault[util.HashSet[String]](destNode, "organisms", new util.HashSet[String]())
-          if (sortedPaths.head.getMostCommonOrganism.nonEmpty && orgs.contains(sortedPaths.head.getMostCommonOrganism.head)) {
-            Edge.setAttribute(currentEdge, "color", f""""$limeGreen", penwidth=5""")
-          }
-        }
-      }
-    }
-
+    
     if (Cascade.VERBOSITY > 1) {
       logger.debug(
         s"""
@@ -752,10 +815,14 @@ class Cascade(target: Long) {
       )
     }
 
+    if (Cascade.VERBOSITY > 1){
+      println(s"## Inserting pathways into pathway collection ${Cascade.pathwayCollection.getFullName}.")
+    }
+    
     try {
-      sortedPaths.foreach(Cascade.pathwayCollection.insert)
+      Cascade.pathwayCollection.insert(sortedPaths)
     } catch {
-      case e: Exception => None
+      case e: Exception => logger.info(s"Failed to insert pathways for target $target.  Error was ${e.getMessage}.")
     }
   }
 

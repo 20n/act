@@ -151,15 +151,21 @@ object cascades {
     // TODO Allow CLI options here
     // These reachables are ordered such that common biosynthesizable molecules are done first.
     val reach: List[Long] = List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
-
-    reach.foreach(reachid => {
+    
+    reach.distinct.foreach(reachid => {
       val msg = f"id=$reachid%6d\tcount=${counter.getAndIncrement()}%5d\tCACHE: {cascades=${Cascade.cache_nw.stats.hitCount}%4d, pre_rxns=${Cascade.cache_bestpre_rxn.stats.hitCount}%4d, nodeMerger=${Cascade.nodeMerger.size}%5d}"
       Cascade.time(msg) {
         if (Cascade.VERBOSITY > 0)
-          print(f"Reachable ID: $reachid%6d: ")
+          print(f"\n\nReachable ID: $reachid%6d: ")
 
         // constructInformationForReachable modifies global scope variables, so can't run in parallel.
         constructInformationForReachable(reachid, dir)
+      }
+      
+      if (counter.get() % 1000 == 0) {
+        // Clear every 1000 to keep mem usage low so we don't slow down too much.
+        Cascade.clearAndRecreateCaches()
+        Node.clearAttributeData()
       }
     })
 
@@ -221,18 +227,24 @@ object cascades {
 
   def constructInformationForReachable(reachid: Long, dir: String): Unit = {
     // write to disk; JS front end uses json
-    val waterfall = new Waterfall(reachid)
-    val json    = waterfall.json()
-    val jsonstr = json.toString(2)
-    write_to(new File(dir, s"p$reachid.json").getAbsolutePath, jsonstr)
+    val waterfallFile = new File(dir, s"p$reachid.json")
+    if (!waterfallFile.exists()) {
+      val waterfall = new Waterfall(reachid)
+      val json = waterfall.json()
+      val jsonstr = json.toString(2)
+      write_to(waterfallFile.getAbsolutePath, jsonstr)
+    }
 
     // write to disk; cascade as dot file
-    val cascade = new Cascade(reachid)
-    val dot     = cascade.dot()
-    write_to(new File(dir, s"cscd$reachid.dot").getAbsolutePath, dot)
-    val writer = new FileWriter(new File(dir, s"paths$reachid.txt"))
-    writer.write(cascade.allStringPaths.mkString("\n"))
-    writer.close()
+    val cascadesFile = new File(dir, s"cscd$reachid.dot")
+    if (!cascadesFile.exists()) {
+      val cascade = new Cascade(reachid)
+      val dot = cascade.dot()
+      write_to(cascadesFile.getAbsolutePath, dot)
+      val writer = new FileWriter(new File(dir, s"paths$reachid.txt"))
+      writer.write(cascade.allStringPaths.mkString("\n"))
+      writer.close()
+    }
 
     // color attributes are cascade specific. so we clear them after each
     // cascade run. otherwise because we cache nodes, colors bleed across cascades
