@@ -165,7 +165,6 @@ public class ProteinMetadataFactory {
         out.cloned = cloning;
         out.localization = localization;
         out.sequences = seqIds;
-        //out.reactionId =
         return out;
     }
 
