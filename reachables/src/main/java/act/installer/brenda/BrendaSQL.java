@@ -73,6 +73,7 @@ public class BrendaSQL {
     SQLConnection brendaDB = new SQLConnection();
     // This expects an SSH tunnel to be running, one created with the command
     // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
+    // TODO - Make this DB connection changeable without a code change.
     brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
 
     // Convert cofactor InChIs list to a set for faster lookup than List.contains.
@@ -211,6 +212,7 @@ public class BrendaSQL {
     System.out.println("Connecting to brenda DB.");
     // This expects an SSH tunnel to be running, like the one created with the command
     // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
+    // TODO - Make this DB connection changeable without a code change.
     brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
     System.out.println("Connection established.");
 
@@ -312,6 +314,7 @@ public class BrendaSQL {
     SQLConnection brendaDB = new SQLConnection();
     // This expects an SSH tunnel to be running, like the one created with the command
     // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
+    // TODO - Make this DB connection changeable without a code change.
     brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
 
     Iterator<BrendaSupportingEntries.Organism> organisms = brendaDB.getOrganisms();
@@ -333,6 +336,7 @@ public class BrendaSQL {
 
   public void installChebiApplications() throws IOException, SQLException {
     SQLConnection brendaDB = new SQLConnection();
+    // TODO - Make this DB connection changeable without a code change.
     brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
     BrendaChebiOntology brendaChebiOntology = new BrendaChebiOntology();
     brendaChebiOntology.addChebiApplications(db, brendaDB);
@@ -372,7 +376,7 @@ public class BrendaSQL {
     // get modified should go into {substrate, product}Cofactors above.
     // But that comes in un-populated from the raw data, but will be 
     // inferred by the biointerpretation layer.
-    // TODO: Later we will look into the "Cofactors" table of BRENDA SQL
+    // Later we will look into the "Cofactors" table of BRENDA SQL
     // and populate this field with it. 
     // E.g., http://brenda-enzymes.org/enzyme.php?ecno=1.3.1.1#COFACTOR
     Map<Long, Integer> coenzymes = new HashMap<>();
@@ -430,7 +434,7 @@ public class BrendaSQL {
       return new ArrayList<>(0);
     }
     ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes));
-    List<T> vals = (List<T>) ois.readObject(); // TODO: check this?
+    List<T> vals = (List<T>) ois.readObject();
     return vals;
   }
 

@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+// TODO - Update this message for the general case where we might host on azure.
 /***
  * The PubchemMeshSynonyms class provides an API to get Pubchem synonyms and MeSH terms given an InChI string.
  * It assumes that a Virtuoso SPARQL endpoint is running on 10.0.20.19 (Chimay), port 8890 and that the necessary data

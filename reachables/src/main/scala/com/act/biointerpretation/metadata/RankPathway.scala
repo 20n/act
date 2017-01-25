@@ -19,6 +19,8 @@ object RankPathway {
   val MAX_DESIGNS_PER_TARGET = 5
 
   /* Database connections */
+  // TODO - Update this class to take CLI args in general
+  // Will wait until @vijay merges his changes to this class before to avoid conflict.
   private val sourceDataDb = "jarvis_2016-12-09"
   private lazy val sourceDb = Mongo.connectToMongoDatabase(sourceDataDb)
   private lazy val mongoClient: MongoClient = new MongoClient(new ServerAddress("localhost", 27017))

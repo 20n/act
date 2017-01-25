@@ -21,6 +21,7 @@ public class BingCacheMongoDB {
   private DB mongoDB;
 
   private static final String BING_CACHE_COLLECTION_NAME = "cache";
+  // TODO - Update this for the general case
   private static final String WARNING_MESSAGE =
       "\nWARNING!!!\n" +
           "No \"cache\" collection seems to exist in the \"bingsearch\" Mongo database.\n" +

@@ -11,6 +11,7 @@ import org.json.{JSONArray, JSONObject}
 import scala.collection.JavaConversions._
 
 object cascades {
+  // TODO - Add args in to change this default, currently it is just used all over the place (ReachRxn, cascades, Cascade)
   val DEFAULT_DB = ("localhost", 27017, "jarvis_2016-12-09")
 
   def main(args: Array[String]) {

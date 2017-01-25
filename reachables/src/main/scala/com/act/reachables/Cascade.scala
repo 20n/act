@@ -41,13 +41,13 @@ object Cascade extends Falls {
     CACHE_CASCADES = onOff
   }
 
-  var DO_HMMER_SEQ = true
+  var DO_HMMER_SEQ = false
   def doHmmerSeqFinding(enable: Boolean) {
     println("HMMER sequence finding is: " + (if (enable) "ON" else "OFF"))
     DO_HMMER_SEQ = enable
   }
 
-  var RUN_LONGER_BUT_USE_LESS_MEM = false
+  var RUN_LONGER_BUT_USE_LESS_MEM = true
   def doFrequentCachePurges(enable: Boolean) {
     println("Frequent cache purges to save memory (but run longer): " + (if (enable) "ON" else "OFF"))
     RUN_LONGER_BUT_USE_LESS_MEM = enable
