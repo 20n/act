@@ -198,6 +198,7 @@ public class ProteinToDNADriver {
       List<List<Pair<ProteinMetadata, Integer>>> processedP = RankPathway.processSinglePathAsJava(reactionPath);
       if (processedP == null) {
         LOGGER.info("Process pathway was filtered out possibly because there were more than 5 seqs for a given pathway");
+        outputPathwayCollection.insert(reactionPath);
         continue;
       }
 
