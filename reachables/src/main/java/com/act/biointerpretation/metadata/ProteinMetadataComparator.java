@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class ProteinMetadataComparator implements Comparator {
+
+    // TODO: Make these into CLI options
     private static String DATABASE = "jarvis_2016-12-09";
     private static String COLLECTION = "reactions";
     
