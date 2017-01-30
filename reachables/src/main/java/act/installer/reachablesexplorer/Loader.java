@@ -254,7 +254,7 @@ public class Loader {
     db = new MongoDB(host, port, chemicalsDB);
     pubchemSynonymsDriver = new PubchemMeshSynonyms();
     moleculeRenderer = new MoleculeRenderer(new File(renderingCache));
-    // TODO Does this need to be <Host, port>?
+    // TODO Does this need to pass in the strings from the constructor?
     wordCloudGenerator = new WordCloudGenerator(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_CHEMICALS_DATABASE, renderingCache);
 
     MongoClient mongoClient;
