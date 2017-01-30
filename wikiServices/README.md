@@ -406,10 +406,24 @@ $ rsync -azP my_local_directory private-${n}-wiki-west2:
 $ rsync -azP my_local_directory/ private-${n}-wiki-west2:
 
 # This is also fine--note that the destination is explicitly specified:
-$ rsync -azP my_local_directory/ private-1-wiki-west2:my_local_directory
+$ rsync -azP my_local_directory/ private-${n}-wiki-west2:my_local_directory
 ```
 
 Note that running `rsync` from a `screen` session when copying many files is perilous: once you disconnect from `screen`, `rsync` and `ssh` will no longer have access to your `ssh agent`, and so will be unable to create new connections to the remote host.  Moving single large files (like `tar` files) is fine in screen, however.
+
+### Upload {Reachables, Paths, Sequences} and Images (renderings, and cascade dot renderings) ###
+
+```
+# upload {Reachables, Paths, Sequences} that are within the wiki_pages dir
+$ rsync -azP wiki_pages private-${n}-wiki-west2:
+
+# upload the cascade image renderings
+#   Note that in the "Dot File Rendering" step above, we shoved all cscd*dot.png images 
+#   into `reachables-explorer-rendering-cache` (where the mol/wordclouds live)
+#   and so the command below will upload all of them in one go.
+# upload the wordcloud and molecule renderings
+$ rsync -azP /mnt/data-level1/data/reachables-explorer-rendering-cache private-${n}-wiki-west2:wiki_pages/renderings
+```
 
 ### Create, Upload, and Install a Reachables List ###
 
