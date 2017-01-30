@@ -73,8 +73,7 @@ public class BrendaSQL {
     SQLConnection brendaDB = new SQLConnection();
     // This expects an SSH tunnel to be running, one created with the command
     // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
-    // TODO - Make this DB connection changeable without a code change.
-    brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
+    establishDefaultBrendaConnection(brendaDB);
 
     // Convert cofactor InChIs list to a set for faster lookup than List.contains.
     Set<String> cofactorInchisSet = new HashSet<>(cofactorInchis);
@@ -212,8 +211,8 @@ public class BrendaSQL {
     System.out.println("Connecting to brenda DB.");
     // This expects an SSH tunnel to be running, like the one created with the command
     // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
-    // TODO - Make this DB connection changeable without a code change.
-    brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
+    establishDefaultBrendaConnection(brendaDB);
+    
     System.out.println("Connection established.");
 
     // Create a local index of the BRENDA tables that share the same simple access pattern.
@@ -309,13 +308,22 @@ public class BrendaSQL {
     return numEntriesAdded;
   }
 
+  private void establishDefaultBrendaConnection(SQLConnection brendaDB) throws SQLException {
+    try {
+      brendaDB.connect("127.0.0.1", 3306, "brendauser", "");
+    } catch(Exception e) {
+      // There are some cases where an underscore exists between brenda and user, 
+      // but we still want to establish a valid connection.
+      brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
+    }
+  }
+  
   public void installOrganisms() throws SQLException {
     int numEntriesAdded = 0;
     SQLConnection brendaDB = new SQLConnection();
     // This expects an SSH tunnel to be running, like the one created with the command
     // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
-    // TODO - Make this DB connection changeable without a code change.
-    brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
+    establishDefaultBrendaConnection(brendaDB);
 
     Iterator<BrendaSupportingEntries.Organism> organisms = brendaDB.getOrganisms();
     while (organisms.hasNext()) {
@@ -336,8 +344,7 @@ public class BrendaSQL {
 
   public void installChebiApplications() throws IOException, SQLException {
     SQLConnection brendaDB = new SQLConnection();
-    // TODO - Make this DB connection changeable without a code change.
-    brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
+    establishDefaultBrendaConnection(brendaDB);
     BrendaChebiOntology brendaChebiOntology = new BrendaChebiOntology();
     brendaChebiOntology.addChebiApplications(db, brendaDB);
   }
