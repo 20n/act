@@ -92,6 +92,19 @@ You should now have `r-${today}.reachables.txt` and `r-${today}-data` in your `r
 need these to complete the remaining steps.
 
 
+### Augment the Installer with Bing Search data
+
+In the absence of a subscription to the Bing Search API, the Bing Searcher relies on a local cache to populate installer
+data with Bing cross-references. The cache stores the results of raw queries made to the Bing Search API and the Bing 
+Searcher processes them to output relevant usage words and search count.
+
+We run the Bing Searcher, to populate the installer with Bing results using the `-c` option to use only the cache and
+not make queries to the Bing Search API.
+```
+sbt "runMain act.installer.bing.BingSearcher -n jarvis_${today} -h localhost -p 27017 -c"
+```
+
+
 ### Run Word Cloud Generation ###
 
 Word cloud generation must be done before the reachables collection is loaded, as the word cloud images must exist for
@@ -109,10 +122,10 @@ $ sbt "runMain act.installer.reachablesexplorer.WordCloudGenerator -l r-${today}
 Run the loader to produce a collection of `reachable` documents in MongoDB.
 
 ```
-$ sbt "runMain act.installer.reachablesexplorer.Loader -c reachables_${today} -i jarvis_${today} -r $dirName -s sequences_${today} -P /mnt/shared-data/Gil/L4N2pubchem/n1_inchis/projectedReactions"
+$ sbt "runMain act.installer.reachablesexplorer.Loader -c reachables_${today} -i jarvis_${today} -r $dirName -s sequences_${today} -l /mnt/shared-data/Mark/L4n1_in_pubchem"
 ```
 
-The `-P` option installs a set of L4 projections, and can be omitted if necessary.  This command will output any missing
+The `-l` option installs a set of L4 projections, and can be omitted if necessary.  This command will output any missing
 molecule renderings to the rendering cache at `/mnt/data-level1/data/reachables-explorer-rendering-cache/`.  It
 depends on a Virtuoso RDF store process being available to find synonyms and MeSH headings; **the target of these requests
 is hardcoded as `chimay`, so this needs DNS in order to work without modification.**  The Virtuoso host can be changed
