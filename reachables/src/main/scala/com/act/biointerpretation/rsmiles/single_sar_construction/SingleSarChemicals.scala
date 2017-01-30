@@ -1,8 +1,8 @@
 package com.act.biointerpretation.rsmiles.single_sar_construction
 
 import act.server.MongoDB
-import chemaxon.calculations.hydrogenize.Hydrogenize
-import chemaxon.formats.MolFormatException
+import chemaxon.formats.{MolImporter, MolFormatException}
+import chemaxon.standardizer.Standardizer
 import com.act.analysis.chemicals.molecules.{MoleculeExporter, MoleculeFormat, MoleculeImporter}
 import com.act.analysis.chemicals.molecules.MoleculeFormat.Cleaning
 import com.act.biointerpretation.Utils.ReactionProjector
@@ -24,13 +24,15 @@ class SingleSarChemicals(mongoDb: MongoDB) {
 
   private val REGEX_TO_SEARCH = "\\[R[0-9]*\\]"
   private val REGEX_TO_REPLACE = "\\[[^\\[]*R(\\]|[^euh][^\\]]*\\])"
-  private val CARBON_REPLACEMENT = "\\[C\\]"
+  private val CARBON_REPLACEMENT = "\\[Au\\]"
 
   val cleanSmartsFormat = new MoleculeFormat.MoleculeFormatType(MoleculeFormat.smarts,
     List(Cleaning.clean2d, Cleaning.aromatize))
 
   val desalter: Desalter = new Desalter(new ReactionProjector())
   desalter.initReactors()
+
+  val standardizer: Standardizer = new Standardizer("addexplicith");
 
   // There are many, many repeated abstract smiles in the DB
   // This cache ensures we only process each one once
@@ -115,37 +117,39 @@ class SingleSarChemicals(mongoDb: MongoDB) {
     }
 
     try {
+      println("Original R-smiles: " + chemicalSmiles)
+
+      //Replace the R with Gold (Au)
+      val goldSmiles = replaceRWithGold(chemicalSmiles)
+
+      println("Goldsmiles: " + goldSmiles)
+      
+      //Load the gold-modified substrate into ChemAxon as a concrete molecule, not as SMARTs
+      val substrateMolecule = MolImporter.importMol(goldSmiles)
+
       // Make substrate hydrogens explicit
-      val substrateMolecule = MoleculeImporter.importMolecule(chemicalSmiles, cleanSmartsFormat) // first import uses cleaned smarts
-      Hydrogenize.convertImplicitHToExplicit(substrateMolecule)
-      val hydrogenizedSubstrate = MoleculeExporter.exportAsSmarts(substrateMolecule)
+      standardizer.standardize(substrateMolecule)
 
-      println(hydrogenizedSubstrate)
-
-      // Replace Rs with Cs
-      val replacedSubstrate = replaceRWithC(hydrogenizedSubstrate)
-      val replacedProduct = replaceRWithC(chemicalSmiles)
-
-      println(replacedSubstrate)
-      val replacedSubstrateMolecule = MoleculeImporter.importMolecule(replacedSubstrate, MoleculeFormat.smarts)
-      val replacedProductMolecule = MoleculeImporter.importMolecule(replacedProduct, cleanSmartsFormat) // first import uses cleaned smarts
-
-      // Desalt substrate and product
-      val desaltedSubstrateList = desalter.desaltMoleculeForAbstractReaction(replacedSubstrateMolecule.clone()) // clone to avoid destroying molecule
-      val desaltedProductList = desalter.desaltMoleculeForAbstractReaction(replacedProductMolecule.clone()) // clone to avoid destroying molecule
-
-      if (desaltedSubstrateList.size() != 1 || desaltedProductList.size() != 1) {
+      // Desalt the substrate
+      val desaltedSubstrateList = desalter.desaltMoleculeForAbstractReaction(substrateMolecule.clone()) // clone to avoid destroying molecule
+      if (desaltedSubstrateList.size() != 1) {
         // I haven't seen this case so far
         println(s"Found multiple fragments after desalting chemical $chemicalSmiles. Don't handle this case yet. Exiting!")
         return None
       }
+      val desaltedSubstrate = desaltedSubstrateList.get(0)
+      
+      //Export the substrate as SMILES (I'ts still concrete)
+      val desaltedSmiles = MoleculeExporter.exportAsSmiles(desaltedSubstrate)
 
-      val desaltedSubstrate = MoleculeExporter.exportAsSmarts(desaltedSubstrateList.get(0))
-      val desaltedProduct = MoleculeExporter.exportAsSmarts(desaltedProductList.get(0))
+      println("Hydrogenized and desalted smiles: " + desaltedSmiles)
 
-      println(desaltedSubstrate)
+      // Replace Gold with Carbon, which will convert it to abstract SMARTS
+      val finalSmarts = replaceGoldWithCarbon(desaltedSmiles)
 
-      val result = new AbstractChemicalInfo(chemicalId, chemicalSmiles, desaltedSubstrate, desaltedProduct)
+      println("Final SMARTS: " + finalSmarts)
+
+      val result = new AbstractChemicalInfo(chemicalId, chemicalSmiles, finalSmarts, finalSmarts)
       smilesCache.put(chemicalSmiles, Some(result))
       return Some(result)
     } catch {
@@ -156,9 +160,12 @@ class SingleSarChemicals(mongoDb: MongoDB) {
     }
   }
 
-  def replaceRWithC(chemical: String): String = {
+  def replaceRWithGold(chemical: String): String = {
     chemical.replaceAll(REGEX_TO_REPLACE, CARBON_REPLACEMENT)
   }
 
+  def replaceGoldWithCarbon(chemical: String): String = {
+    chemical.replaceAll("Au", "C")
+  }
 
 }
