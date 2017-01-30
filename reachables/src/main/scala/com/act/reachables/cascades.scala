@@ -44,7 +44,7 @@ object cascades {
 
     val params = new CmdLine(args)
     val prefix = params.get("prefix") match {
-      case Some(x) => x
+      case Some(x) => x 
       case None => println("Need --prefix. Abort"); System.exit(-1); ""
     }
 
