@@ -686,7 +686,7 @@ class Cascade(target: Long) {
     }).flatten.map(_.asInstanceOf[Long])
 
     // Here we choose to add inferred sequences for all entries matching
-    val sequenceSearch: (DbSeq) => Boolean =
+    lazy val sequenceSearch: (DbSeq) => Boolean =
       OddSequencesToProteinPredictionFlow.defineSequenceSearch(workingDir)(None)(cascades.DEFAULT_DB._3)
 
     val abstractOrQuestionableSequencesQuery = OddSequencesToProteinPredictionFlow.oddQuery()
