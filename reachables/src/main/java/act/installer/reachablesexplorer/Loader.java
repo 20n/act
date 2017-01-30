@@ -78,6 +78,7 @@ public class Loader {
   private static final Long BASE_ID_PROJECTIONS = 5000000L;
 
   // All of the source data on reactions and chemicals comes from jarvis_2016-12-09
+  // TODO make this a changeable param
   private static final String DEFAULT_CHEMICALS_DATABASE = "jarvis_2016-12-09";
 
   // Default host. If running on a laptop, please set a SSH bridge to access speakeasy
@@ -253,13 +254,14 @@ public class Loader {
     db = new MongoDB(host, port, chemicalsDB);
     pubchemSynonymsDriver = new PubchemMeshSynonyms();
     moleculeRenderer = new MoleculeRenderer(new File(renderingCache));
+    // TODO Does this need to be <Host, port>?
     wordCloudGenerator = new WordCloudGenerator(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_CHEMICALS_DATABASE, renderingCache);
 
     MongoClient mongoClient;
     try {
       mongoClient = new MongoClient(new ServerAddress(host, port));
     } catch (UnknownHostException e) {
-      LOGGER.error("Connexion to MongoClient failed. Please double check the target database's host and port.");
+      LOGGER.error("Connection to MongoClient failed. Please double check the target database's host and port.");
       throw new RuntimeException(e);
     }
     DB reachables = mongoClient.getDB(targetDB);
