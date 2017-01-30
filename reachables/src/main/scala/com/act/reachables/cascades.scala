@@ -6,8 +6,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import act.server.MongoDB
 import act.shared.helpers.MongoDBToJSON
 import act.shared.{Chemical, Reaction}
-import org.apache.hadoop.yarn.webapp.hamlet.HamletSpec.PRE
-import org.apache.jena.sparql.function.library.max
 import org.json.{JSONArray, JSONObject}
 
 import scala.collection.JavaConversions._
@@ -102,9 +100,9 @@ object cascades {
     println("Done deserializing data.")
 
     val cascade_depth = params.get("max-depth") match {
-      case Some(d) => d.toInt
-      case None => GlobalParams.MAX_CASCADE_DEPTH
-    }
+                           case Some(d) => d.toInt
+                           case None => GlobalParams.MAX_CASCADE_DEPTH
+                        }
 
     /* -------- Where we start the cascade stuff --------- */
     write_node_cascades(prefix, cascade_depth, outputDirectory)
@@ -141,16 +139,16 @@ object cascades {
     lazy val db = new MongoDB(DEFAULT_DB._1, DEFAULT_DB._2, DEFAULT_DB._3)
 
     // Set(nodeIDs) = nids from the tree minus those artificially asserted as reachable
-    val reachableSet = get_set(ActData.instance.ActTree.nids.values()) diff
-      get_set(ActData.instance.chemicalsWithUserField_treeArtificial)
+    val reachableSet = get_set(ActData.instance.ActTree.nids.values()) diff 
+                        get_set(ActData.instance.chemicalsWithUserField_treeArtificial)
 
     // List(nodesIDs) = nids as a List
     val reachables = reachableSet.toList.filter(x => !ActData.instance().cofactors.contains(x))
     println(s"Reachables count is ${reachables.length}")
 
     // do we use Classes of rxns or all unbinned rxns? Based on flag.
-    val producers = if (GlobalParams.USE_RXN_CLASSES) ActData.instance.rxnClassesThatProduceChem else ActData.instance.rxnsThatProduceChem
-    val consumers = if (GlobalParams.USE_RXN_CLASSES) ActData.instance.rxnClassesThatConsumeChem else ActData.instance.rxnsThatConsumeChem
+    val producers = if (GlobalParams.USE_RXN_CLASSES) ActData.instance.rxnClassesThatProduceChem else ActData.instance.rxnsThatProduceChem 
+    val consumers = if (GlobalParams.USE_RXN_CLASSES) ActData.instance.rxnClassesThatConsumeChem else ActData.instance.rxnsThatConsumeChem 
 
     // List(Set(rxnids)) : all outgoing connections to this node
     // Not just the ones that are in the tree, but all potential children
@@ -190,15 +188,21 @@ object cascades {
     // TODO Allow CLI options here
     // These reachables are ordered such that common biosynthesizable molecules are done first.
     val reach: List[Long] = List(878L, 1209L, 552L, 716L, 475L, 4026L, 750L, 1536L, 1490L, 1496L, 341L, 448L, 1293L, 1443L, 45655, 19637L, 684L, 358L, 2124L, 6790L) ::: reachables
-
-    reach.foreach(reachid => {
+    
+    reach.distinct.foreach(reachid => {
       val msg = f"id=$reachid%6d\tcount=${counter.getAndIncrement()}%5d\tCACHE: {cascades=${Cascade.cache_nw.stats.hitCount}%4d, pre_rxns=${Cascade.cache_bestpre_rxn.stats.hitCount}%4d, nodeMerger=${Cascade.nodeMerger.size}%5d}"
       Cascade.time(msg) {
         if (Cascade.VERBOSITY > 0)
-          print(f"Reachable ID: $reachid%6d: ")
+          print(f"\n\nReachable ID: $reachid%6d: ")
 
         // constructInformationForReachable modifies global scope variables, so can't run in parallel.
         constructInformationForReachable(reachid, dir)
+      }
+      
+      if (counter.get() % 1000 == 0) {
+        // Clear every 1000 to keep mem usage low so we don't slow down too much.
+        Cascade.clearAndRecreateCaches()
+        Node.clearAttributeData()
       }
     })
 
@@ -260,18 +264,24 @@ object cascades {
 
   def constructInformationForReachable(reachid: Long, dir: String): Unit = {
     // write to disk; JS front end uses json
-    val waterfall = new Waterfall(reachid)
-    val json    = waterfall.json()
-    val jsonstr = json.toString(2)
-    write_to(new File(dir, s"p$reachid.json").getAbsolutePath, jsonstr)
+    val waterfallFile = new File(dir, s"p$reachid.json")
+    if (!waterfallFile.exists()) {
+      val waterfall = new Waterfall(reachid)
+      val json = waterfall.json()
+      val jsonstr = json.toString(2)
+      write_to(waterfallFile.getAbsolutePath, jsonstr)
+    }
 
     // write to disk; cascade as dot file
-    val cascade = new Cascade(reachid)
-    val dot     = cascade.dot()
-    write_to(new File(dir, s"cscd$reachid.dot").getAbsolutePath, dot)
-    val writer = new FileWriter(new File(dir, s"paths$reachid.txt"))
-    writer.write(cascade.allStringPaths.mkString("\n"))
-    writer.close()
+    val cascadesFile = new File(dir, s"cscd$reachid.dot")
+    if (!cascadesFile.exists()) {
+      val cascade = new Cascade(reachid)
+      val dot = cascade.dot()
+      write_to(cascadesFile.getAbsolutePath, dot)
+      val writer = new FileWriter(new File(dir, s"paths$reachid.txt"))
+      writer.write(cascade.allStringPaths.mkString("\n"))
+      writer.close()
+    }
 
     // color attributes are cascade specific. so we clear them after each
     // cascade run. otherwise because we cache nodes, colors bleed across cascades
@@ -311,7 +321,7 @@ object cascades {
     } else {
       val mongo_moljson = MongoDB.createChemicalDoc(c, c.getUuid())
       val json = MongoDBToJSON.conv(mongo_moljson)
-      json
+      json 
     }
   }
 
@@ -366,25 +376,25 @@ object cascades {
     })
 
     def vectorize(m: Option[String]) = m match {
-      case None => emptybasis
-      case Some(inchi) => {
-        val spl = inchi.split('/')
-        if (spl.size <= 2)
-          emptybasis
-        else {
-          val formula = spl(1)
-          val atomcounts = get_atom_counts(formula)
-          basis.map(atom => atomcounts(atom))
-        }
-      }
-    }
+                                          case None => emptybasis
+                                          case Some(inchi) => {
+                                            val spl = inchi.split('/')
+                                            if (spl.size <= 2)
+                                              emptybasis
+                                            else {
+                                              val formula = spl(1)
+                                              val atomcounts = get_atom_counts(formula)
+                                              basis.map(atom => atomcounts(atom))
+                                            }
+                                          }
+                                       }
     def edit_dist(s: Option[String], p: Option[String]) = {
       val pvec = vectorize(p)
       val svec = vectorize(s)
       if (pvec == emptybasis || svec == emptybasis)
         Int.MaxValue
       else
-      // compute the \sum_{b=basis_elem} \abs(diff on b)
+        // compute the \sum_{b=basis_elem} \abs(diff on b)
         (pvec zip svec).map{ case (pv, sv) => math.abs(pv-sv) }.reduce(_ + _)
     }
     val distances = substrates.map(s => get_inchi(s)).map(edit_dist(_, get_inchi(prod)))
