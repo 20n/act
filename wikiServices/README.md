@@ -149,13 +149,15 @@ them to live at `/mnt/data-level1/data/reachables-explorer-rendering-cache/`.
 
 To render the dot PNGs, run this command:
 ```
-$ find r-${today}-data -name '*.dot' | xargs dot -Tpng -O
+$ find r-${today}-data -name '*.dot' -exec dot -Tpng {} -O \;
 ```
 Note that this will write the images in the same directory as the dot files.  If this is not desired, you can copy them
 to another directory with this command:
 ```
-$ find r-${today}-data -name '*.dot.png' -exec cp {} dest \;
+$ find r-${today}-data -name '*.dot.png' -exec cp {} <dest> \;
 ```
+
+Note: The currently expected <dest> is `/mnt/data-level1/data/reachables-explorer-rendering-cache/`, though this may change depending on if on Azure or not.
 
 ### Wiki Page Rendering ###
 
