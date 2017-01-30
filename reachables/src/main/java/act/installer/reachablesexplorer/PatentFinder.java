@@ -33,6 +33,7 @@ public class PatentFinder {
   private static final Integer DEFAULT_PORT = 27017;
 
   // Target database and collection. We populate these with reachables
+  // TODO These should all be turned into more long-term collections
   private static final String DEFAULT_TARGET_DATABASE = "wiki_reachables";
   private static final String DEFAULT_TARGET_COLLECTION = "reachablesv6_test_thomas";
 

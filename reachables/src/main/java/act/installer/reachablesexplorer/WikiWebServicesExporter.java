@@ -38,6 +38,7 @@ public class WikiWebServicesExporter {
 
   private static final String DEFAULT_HOST = "localhost";
   private static final String DEFAULT_PORT = "27017";
+  // TODO change the defaults to something more plain/easy to know why they are like they are (No version numbers etc.)
   private static final String DEFAULT_DB = "wiki_reachables";
   private static final String DEFAULT_COLLECTION = "reachablesv7";
   private static final String DEFAULT_SEQUENCES_COLLECTION = "sequencesv7";
