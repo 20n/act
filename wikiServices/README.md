@@ -87,8 +87,8 @@ $ DEFAULT_DB=<Edit this to be your database name>
 
 Then, run the commands as shown below.
 ```SHELL
-$ sbt "runMain com.act.reachables.reachables --prefix=$PRE --defaultDb=$DEFAULT_DB --useNativesFile=/mnt/shared-data/Michael/ReachablesInputFiles/valid_starting_points.txt --useCofactorsFile=/mnt/shared-data/Michael/ReachablesInputFiles/my_cofactors_file.txt -o $dirName";
-$ sbt "runMain com.act.reachables.postprocess_reachables --prefix=$PRE --output-dir=$dirName --extractReachables --writeGraphToo --defaultDb=$DEFAULT_DB";
+$ sbt "runMain com.act.reachables.reachables --prefix=$PRE --defaultDbName=$DEFAULT_DB --useNativesFile=/mnt/shared-data/Michael/ReachablesInputFiles/valid_starting_points.txt --useCofactorsFile=/mnt/shared-data/Michael/ReachablesInputFiles/my_cofactors_file.txt -o $dirName";
+$ sbt "runMain com.act.reachables.postprocess_reachables --prefix=$PRE --output-dir=$dirName --extractReachables --writeGraphToo --defaultDbName=$DEFAULT_DB";
 $ sbt "runMain com.act.reachables.cascades --prefix=r-$today --output-dir=$dirName --cache-cascades=true --do-hmmer=false --out-collection=pathways_jarvis_$today --db-name=$DEFAULT_DB --verbosity=1”
 ```
 
