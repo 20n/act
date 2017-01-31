@@ -484,7 +484,7 @@ If you are using the preview data from the NAS `<directory of page text files>` 
 The Tabs extension we rely on doesn't automatically render the tab assets when using the maintenance script, so we have to force mediawiki to purge its cache and rebuild the page.  Below, you will need the username and password credentials you [created for NGINX above](https://github.com/20n/act/tree/master/wikiServices#set-an-nginx-password).  We can do this via the `api.php` endpoint:
 ```shell
 $ export CRED=<user>:<pass>
-$ function rebuild() { for i in $(ls $1); do echo $i; curl --insecure -vvv -X POST "https://${CRED}localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP"; done; }
+$ function rebuild() { for i in $(ls $1); do echo $i; curl --insecure -vvv -X POST "https://${CRED}@localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP"; done; }
 $ rebuild <directory of page text files>
 ```
 If you are using the preview data from the NAS then rerun `rebuild` with  each of `demo_wiki_2016-12-21/{Paths,Reachables}`. Make sure the output of `rebuild` only output "200 OK" messages.
