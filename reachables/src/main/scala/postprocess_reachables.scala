@@ -8,18 +8,24 @@ import scala.collection.JavaConversions._
 import scala.io.Source
 
 object postprocess_reachables {
-  val defaultDb = "jarvis_2016-12-09"
+  private var currentDatabase = "jarvis_2016-12-09"
+  
+  private lazy val defaultDb = getDefaultDb
+
+  private def getDefaultDb: String = {
+    currentDatabase
+  }
 
   def main(args: Array[String]) {
     if (args.length == 0) {
-      println("Usage: run --prefix=PRE --regressionSuiteDir=path --extractReachables --writeGraphToo")
+      println("Usage: run --prefix=PRE --regressionSuiteDir=path --extractReachables --writeGraphToo --defaultDb=DB_NAME")
       println("Example: run --prefix=r")
       println("         will create reachables tree with prefix r and by default with only enzymes that have seq")
       println("Example: run --prefix=r --regressionSuiteDir=path ")
       println("         will just run the regressions over a dataset with prefix 'r'")
       println("Example: run --prefix=r --extractReachables ")
       println("         will convert the actdata structure with the specified prefix to trees/tables")
-      System.exit(-1);
+      System.exit(-1)
     }
 
     val params = new CmdLine(args)
@@ -32,6 +38,11 @@ object postprocess_reachables {
     val outputDirectory = params.get("output-dir") match {
       case Some(x) => x
       case None => ""
+    }
+
+    params.get("defaultDb") match {
+      case Some(x) => currentDatabase = x
+      case None => // Let the default hold
     }
 
     val regression_suite_files: Set[String] =

@@ -11,9 +11,9 @@ import org.json.{JSONArray, JSONObject}
 import scala.collection.JavaConversions._
 
 object cascades {
-  var DB_HOST: String = "localhost"
-  var DB_PORT: Int = 27017
-  var DB_NAME: String = "jarvis_2016-12-09"
+  private var DB_HOST: String = "localhost"
+  private var DB_PORT: Int = 27017
+  private var DB_NAME: String = "jarvis_2016-12-09"
 
   lazy val DEFAULT_DB: (String, Int, String) = getDefaultDb
 
