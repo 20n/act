@@ -437,7 +437,7 @@ The substructure search and orders services require a static TSV of reachable mo
 
 ```
 # Run this command on the server where the MongoDB instance with the Reachables collection lives.
-$ sbt 'runMain act.installer.reachablesexplorer.WikiWebServicesExporter -c <reachables collection> -o reachables.out'
+$ sbt 'runMain act.installer.reachablesexplorer.WikiWebServicesExporter -c <reachables collection> -s <sequence collection> -o reachables.out'
 # Copy the output file to the wiki host.
 $ n=1
 $ rsync -azP reachables.out private-${n}-wiki-west2:
