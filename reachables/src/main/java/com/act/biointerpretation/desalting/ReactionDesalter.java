@@ -259,7 +259,7 @@ public class ReactionDesalter extends BiointerpretationProcessor {
 
     Map<String, Integer> cleanedInchis = null;
     try {
-      cleanedInchis = desalter.desaltMolecule(inchi);
+      cleanedInchis = desalter.desaltInchi(inchi);
     } catch (Exception e) {
       // TODO: probably should handle this error differently, currently just letting pass unaltered
       LOGGER.error(String.format("Exception caught when desalting chemical %d: %s", originalId, e.getMessage()));

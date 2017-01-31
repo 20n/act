@@ -1,4 +1,4 @@
-package com.act.biointerpretation.rsmiles.sar_construction
+package com.act.biointerpretation.rsmiles.cluster_sar_construction
 
 import java.io.File
 
@@ -8,7 +8,7 @@ import chemaxon.struc.Molecule
 import com.act.analysis.chemicals.molecules.{MoleculeFormat, MoleculeImporter}
 import com.act.biointerpretation.mechanisminspection.ErosCorpus
 import com.act.biointerpretation.rsmiles.DataSerializationJsonProtocol._
-import com.act.biointerpretation.rsmiles.sar_construction.ReactionRoAssignment.RoAssignments
+import com.act.biointerpretation.rsmiles.cluster_sar_construction.ReactionRoAssignment.RoAssignments
 import com.act.biointerpretation.sarinference.SarTree
 import com.act.biointerpretation.sars.{CharacterizedGroup, Sar, SarCorpus, SerializableReactor}
 import org.apache.log4j.LogManager

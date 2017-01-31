@@ -10,6 +10,7 @@ object MongoKeywords {
   object ID extends Keyword("_id")
 
   // General Use
+  object WHERE extends Keyword("$where")
   object EXISTS extends Keyword("$exists")
   object NOT extends Keyword("$not")
   object OR extends Keyword("$or")
@@ -17,9 +18,9 @@ object MongoKeywords {
   object IN extends Keyword("$in")
   object REGEX extends Keyword("$regex")
   object NOT_EQUAL extends Keyword("$ne")
-  object WHERE extends Keyword("$where")
 
   object OPTIONS extends Keyword("$options")
+  object LENGTH extends Keyword("length")
 
   // Aggregation
   object MATCH extends Keyword("$match")

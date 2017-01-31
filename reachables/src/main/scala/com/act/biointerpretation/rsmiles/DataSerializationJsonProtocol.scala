@@ -1,7 +1,7 @@
 package com.act.biointerpretation.rsmiles
 
 import com.act.biointerpretation.rsmiles.chemicals.JsonInformationTypes.{ChemicalInformation, ReactionInformation}
-import com.act.biointerpretation.rsmiles.sar_construction.ReactionRoAssignment
+import com.act.biointerpretation.rsmiles.cluster_sar_construction.ReactionRoAssignment
 import spray.json
 
 object DataSerializationJsonProtocol extends json.DefaultJsonProtocol {

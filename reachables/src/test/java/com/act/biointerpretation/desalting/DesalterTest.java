@@ -6,7 +6,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,7 +41,7 @@ public class DesalterTest {
         String expectedOutput = ro.getTestCases().get(i).getExpected();
         String name = ro.getTestCases().get(i).getLabel();
 
-        Map<String, Integer> results = desalter.desaltMolecule(input);
+        Map<String, Integer> results = desalter.desaltInchi(input);
         assertNotNull(results);
         assertEquals(String.format("Desalting RO Test: %s", name), results.size(), 1);
 
@@ -62,7 +61,7 @@ public class DesalterTest {
     String inchi = null;
     while ((inchi = desaltConstantsReader.readLine()) != null) {
 
-      Map<String, Integer> results = desalter.desaltMolecule(inchi);
+      Map<String, Integer> results = desalter.desaltInchi(inchi);
       assertTrue(results.size() == 1);
       String desaltedMolecule = results.keySet().iterator().next();
       assertEquals(inchi, desaltedMolecule);
@@ -112,7 +111,7 @@ public class DesalterTest {
     for (Pair<String, Map<String, Integer>> testCase : testCases) {
       String inchi = testCase.getLeft();
       Map<String, Integer> expectedFragmentCounts = testCase.getRight();
-      Map<String, Integer> actual = desalter.desaltMolecule(inchi);
+      Map<String, Integer> actual = desalter.desaltInchi(inchi);
       assertEquals(String.format("Fragments and counts match for %s", inchi),
           expectedFragmentCounts, actual);
     }
@@ -153,7 +152,7 @@ public class DesalterTest {
       String input = row.get("input");
       String expected = row.get("expected_output");
 
-      Map<String, Integer> results = desalter.desaltMolecule(input);
+      Map<String, Integer> results = desalter.desaltInchi(input);
       assertNotNull(String.format("Case %d: desalter results are not null", i), results);
       assertEquals(String.format("Case %d: only one desalted molecule is produced", i), 1, results.size());
       assertEquals(String.format("Case %d: desalter produces expected results", i),
