@@ -13,9 +13,9 @@ import scala.io.Source
 object reachables {
   private var currentDatabase = "jarvis_2016-12-09"
 
-  private lazy val defaultDb = getDefaultDb
+  private lazy val defaultDbName = getDefaultDbName
 
-  private def getDefaultDb: String = {
+  private def getDefaultDbName: String = {
     currentDatabase
   }
 
@@ -24,7 +24,7 @@ object reachables {
   val LOGGER = LogManager.getLogger(getClass.getName)
 
   private val HELP_MESSAGE =
-    """Usage: run --prefix=PRE --hasSeq=true|false --regressionSuiteDir=path [--defaultDb=DB_NAME] --extra=[semicolon-sep db.chemical fields]
+    """Usage: run --prefix=PRE --hasSeq=true|false --regressionSuiteDir=path [--defaultDbName=DB_NAME] --extra=[semicolon-sep db.chemical fields]
       |
       |Example: run --prefix=r
       | will create reachables tree with prefix r and by default with only enzymes that have seq
@@ -83,7 +83,7 @@ object reachables {
       
       CliOption.builder(OPTION_DATABASE).
         hasArg.
-        longOpt("defaultDb").
+        longOpt("defaultDbName").
         desc("The database that the reachables collection will use."),
 
 
@@ -147,7 +147,7 @@ object reachables {
                          nativesFile: String,
                          cofactorsFile: Option[String], outputFile: Option[String]) {
     // Connect to the DB so that extended attributes for chemicals can be fetched as we serialize.
-    val db = new MongoDB("localhost", 27017, defaultDb)
+    val db = new MongoDB("localhost", 27017, defaultDbName)
 
     /* --------------- Parse Options ------------------ */
     val regressionOutputDirectory = s"$prefix.regressions/"

@@ -2,6 +2,7 @@ package com.act.biointerpretation.metadata
 
 import java.util.{List => JavaList}
 
+import act.server.MongoDB
 import act.shared.Reaction
 import com.act.reachables.ReactionPath
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
@@ -18,8 +19,8 @@ object RankPathway {
   val MAX_DESIGNS_PER_TARGET = 5
 
   /* Database connections */
-  private val sourceDataDbDefault = "jarvis_2016-12-09"
-  private var sourceDb = Mongo.connectToMongoDatabase(sourceDataDbDefault)
+  private val sourceDataDbDefault: String = "jarvis_2016-12-09"
+  private var sourceDb: MongoDB = Mongo.connectToMongoDatabase(sourceDataDbDefault)
   private lazy val mongoClient: MongoClient = new MongoClient(new ServerAddress("localhost", 27017))
   
   // This is a table of all the reactions in the database w/ metadata and their associated score.

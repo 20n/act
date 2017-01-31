@@ -10,15 +10,15 @@ import scala.io.Source
 object postprocess_reachables {
   private var currentDatabase = "jarvis_2016-12-09"
   
-  private lazy val defaultDb = getDefaultDb
+  private lazy val defaultDbName = getDefaultDbName
 
-  private def getDefaultDb: String = {
+  private def getDefaultDbName: String = {
     currentDatabase
   }
 
   def main(args: Array[String]) {
     if (args.length == 0) {
-      println("Usage: run --prefix=PRE --regressionSuiteDir=path --extractReachables --writeGraphToo --defaultDb=DB_NAME")
+      println("Usage: run --prefix=PRE --regressionSuiteDir=path --extractReachables --writeGraphToo --defaultDbName=DB_NAME")
       println("Example: run --prefix=r")
       println("         will create reachables tree with prefix r and by default with only enzymes that have seq")
       println("Example: run --prefix=r --regressionSuiteDir=path ")
@@ -40,7 +40,7 @@ object postprocess_reachables {
       case None => ""
     }
 
-    params.get("defaultDb") match {
+    params.get("defaultDbName") match {
       case Some(x) => currentDatabase = x
       case None => // Let the default hold
     }
@@ -104,7 +104,7 @@ object postprocess_reachables {
     val e = new File(outputDirectory, prefix + ".expansion.txt").getAbsolutePath  // output file for tree structure of reachables expansion
 
     // Connect to the DB so that extended attributes for chemicals can be fetched as we serialize.
-    val db = new MongoDB("localhost", 27017, defaultDb)
+    val db = new MongoDB("localhost", 27017, defaultDbName)
 
     println("Writing disjoint graphs to " + g + " and forest to " + t)
 
