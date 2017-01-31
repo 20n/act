@@ -38,7 +38,6 @@ public class BingSearcher {
   public static final String DEFAULT_PORT = "27017";
   public static final String DEFAULT_DATABASE = "actv01";
 
-
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_DB_NAME)
         .argName("db name")
@@ -68,7 +67,6 @@ public class BingSearcher {
         .type(String.class)
     );
   }};
-
 
   private MongoDB db;
   private BingSearchResults bingSearchResults;
