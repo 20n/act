@@ -1,17 +1,16 @@
 package com.act.biointerpretation.metadata
 
+import java.util.{List => JavaList}
+
 import act.shared.Reaction
 import com.act.reachables.ReactionPath
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
-import com.mongodb.{BasicDBObject, DB, MongoClient, ServerAddress}
+import com.mongodb.{MongoClient, ServerAddress}
 import org.apache.commons.lang3.tuple.Pair
 import org.json.JSONArray
-import org.mongojack.JacksonDBCollection
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-
-import java.util.{List => JavaList}
 
 object RankPathway {
   /* Filtering Settings */
@@ -19,49 +18,17 @@ object RankPathway {
   val MAX_DESIGNS_PER_TARGET = 5
 
   /* Database connections */
-  // TODO - Update this class to take CLI args in general
-  // Will wait until @vijay merges his changes to this class before to avoid conflict.
-  private val sourceDataDb = "jarvis_2016-12-09"
-  private lazy val sourceDb = Mongo.connectToMongoDatabase(sourceDataDb)
+  private val sourceDataDbDefault = "jarvis_2016-12-09"
+  private var sourceDb = Mongo.connectToMongoDatabase(sourceDataDbDefault)
   private lazy val mongoClient: MongoClient = new MongoClient(new ServerAddress("localhost", 27017))
-
-  private val collectionName: String = "pathways_jarvis"
-  private lazy val collectionsDb: DB = mongoClient.getDB("wiki_reachables")
-  private lazy val pathwayCollection: JacksonDBCollection[ReactionPath, String] = JacksonDBCollection.wrap(collectionsDb.getCollection(collectionName), classOf[ReactionPath], classOf[String])
-
+  
   // This is a table of all the reactions in the database w/ metadata and their associated score.
   // Looked up once, used for all pathways.
   private lazy val rankingTable: Map[Long, List[Pair[ProteinMetadata, Integer]]] =
     ProteinMetadataComparator.createProteinMetadataTable().asScala.map(v => (v._1: Long, v._2.asScala.toList)).toMap
 
   object Mongo extends MongoWorkflowUtilities
-
-  def main(args: Array[String]) {
-    // Get all the pathways from the database
-    val pathway: Iterator[ReactionPath] = pathwayCollection.find(new BasicDBObject("target", 878)).iterator().asScala
-
-    // For each pathway, enumerate protein paths such that
-    val allValidProteinPaths: Iterator[List[(String, List[Pair[ProteinMetadata, Integer]])]] = pathway.flatMap(p => {
-      val processedP = processSinglePath(p)
-
-      if (processedP.isEmpty) {
-        None
-      } else {
-        Option(chooseOneFromEach[Pair[ProteinMetadata, Integer]](processedP.get).map(x => (p.getId, x)))
-      }
-    })
-
-    val flatValidPaths: List[(String, List[Pair[ProteinMetadata, Integer]])] = allValidProteinPaths.flatten.toList
-
-    val unpaired = flatValidPaths.map(x => x._2.map(y => (x._1, y.getLeft, y.getRight)))
-    val sorted: List[List[(String, ProteinMetadata, Integer)]] = unpaired.sortBy(scoringFunction).reverse
-
-    val duplicatesRemoved = removeDuplicateProteins(sorted)
-
-    // TODO implement what should be done with these.
-    println(duplicatesRemoved.map(x => (x.head._1, scoringFunction(x))))
-  }
-
+  
   private def chooseOneFromEach[T](input: List[List[T]]): List[List[T]] = {
     val fullList = mutable.ListBuffer[List[T]]()
 
@@ -127,7 +94,8 @@ object RankPathway {
     })
   }
 
-  def processSinglePath(pathway: ReactionPath): Option[List[List[Pair[ProteinMetadata, Integer]]]] = {
+  def processSinglePath(pathway: ReactionPath, database: String): Option[List[List[Pair[ProteinMetadata, Integer]]]] = {
+    sourceDb = Mongo.connectToMongoDatabase(database)
     // Error checking and input forming
     val reactionNodes = pathway.getPath.asScala.toList.filter(_.isReaction)
     if (reactionNodes.length > MAX_PROTEINS_PER_PATH || !reactionNodes.forall(x => x.sequences.size() > 0)) return None
@@ -156,7 +124,11 @@ object RankPathway {
   }
 
   def processSinglePathAsJava(pathway: ReactionPath): JavaList[JavaList[Pair[ProteinMetadata, Integer]]] = {
-    val processSinglePathVal = processSinglePath(pathway)
+    processSinglePathAsJava(pathway, sourceDataDbDefault)
+  }
+
+  def processSinglePathAsJava(pathway: ReactionPath, database: String): JavaList[JavaList[Pair[ProteinMetadata, Integer]]] = {
+    val processSinglePathVal = processSinglePath(pathway, database)
     processSinglePathVal match {
       case Some(x) => x.map(_.asJava).asJava;
       case None => null;

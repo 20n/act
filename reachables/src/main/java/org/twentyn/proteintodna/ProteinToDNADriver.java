@@ -20,7 +20,6 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.poi.ss.formula.functions.Rank;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.mongojack.DBCursor;
@@ -192,11 +191,11 @@ public class ProteinToDNADriver {
     while (cursor.hasNext()) {
       pathwayIds.add(cursor.next().getId());
     }
-
+    
     for (String pathwayId : pathwayIds) {
       ReactionPath reactionPath = inputPathwayCollection.findOne(DBQuery.is("_id", pathwayId));
 
-      List<List<Pair<ProteinMetadata, Integer>>> processedP = RankPathway.processSinglePathAsJava(reactionPath);
+      List<List<Pair<ProteinMetadata, Integer>>> processedP = RankPathway.processSinglePathAsJava(reactionPath, reactionDbName);
       if (processedP == null) {
         LOGGER.info(String.format("Process pathway was filtered out possibly because there were more than %s seqs for a given pathway",
             RankPathway.MAX_PROTEINS_PER_PATH()));
