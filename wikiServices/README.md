@@ -137,7 +137,7 @@ in `act.installer.pubchem.PubchemMeshSynonyms`.
 
 ### Enrich the Reachables with Patents ###
 
-To find recent patents for reachable molecules, use the `PatentFinder`
+To find recent patents for reachable molecules, use the `PatentFinder` (The `-c` flag indicates which Reachables Collection should be used):
 ```
 $ sbt "runMain act.installer.reachablesexplorer.PatentFinder -c reachables_${today}"
 ```
