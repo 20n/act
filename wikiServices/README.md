@@ -92,6 +92,19 @@ You should now have `r-${today}.reachables.txt` and `r-${today}-data` in your `r
 need these to complete the remaining steps.
 
 
+### Augment the Installer with Bing Search data
+
+In the absence of a subscription to the Bing Search API, the Bing Searcher relies on a local cache to populate installer
+data with Bing cross-references. The cache stores the results of raw queries made to the Bing Search API and the Bing 
+Searcher processes them to output relevant usage words and search count.
+
+We run the Bing Searcher, to populate the installer with Bing results using the `-c` option to use only the cache and
+not make queries to the Bing Search API.
+```
+sbt "runMain act.installer.bing.BingSearcher -n jarvis_${today} -h localhost -p 27017 -c"
+```
+
+
 ### Run Word Cloud Generation ###
 
 Word cloud generation must be done before the reachables collection is loaded, as the word cloud images must exist for
@@ -109,10 +122,10 @@ $ sbt "runMain act.installer.reachablesexplorer.WordCloudGenerator -l r-${today}
 Run the loader to produce a collection of `reachable` documents in MongoDB.
 
 ```
-$ sbt "runMain act.installer.reachablesexplorer.Loader -c reachables_${today} -i jarvis_${today} -r $dirName -s sequences_${today} -P /mnt/shared-data/Gil/L4N2pubchem/n1_inchis/projectedReactions"
+$ sbt "runMain act.installer.reachablesexplorer.Loader -c reachables_${today} -i jarvis_${today} -r $dirName -s sequences_${today} -l /mnt/shared-data/Mark/L4n1_in_pubchem"
 ```
 
-The `-P` option installs a set of L4 projections, and can be omitted if necessary.  This command will output any missing
+The `-l` option installs a set of L4 projections, and can be omitted if necessary.  This command will output any missing
 molecule renderings to the rendering cache at `/mnt/data-level1/data/reachables-explorer-rendering-cache/`.  It
 depends on a Virtuoso RDF store process being available to find synonyms and MeSH headings; **the target of these requests
 is hardcoded as `chimay`, so this needs DNS in order to work without modification.**  The Virtuoso host can be changed
@@ -136,13 +149,15 @@ them to live at `/mnt/data-level1/data/reachables-explorer-rendering-cache/`.
 
 To render the dot PNGs, run this command:
 ```
-$ find r-${today}-data -name '*.dot' | xargs dot -Tpng -O
+$ find r-${today}-data -name '*.dot' -exec dot -Tpng {} -O \;
 ```
 Note that this will write the images in the same directory as the dot files.  If this is not desired, you can copy them
 to another directory with this command:
 ```
-$ find r-${today}-data -name '*.dot.png' -exec cp {} dest \;
+$ find r-${today}-data -name '*.dot.png' -exec cp {} <dest> \;
 ```
+
+Note: The currently expected <dest> is `/mnt/data-level1/data/reachables-explorer-rendering-cache/`, though this may change depending on if on Azure or not.
 
 ### Wiki Page Rendering ###
 
@@ -393,10 +408,24 @@ $ rsync -azP my_local_directory private-${n}-wiki-west2:
 $ rsync -azP my_local_directory/ private-${n}-wiki-west2:
 
 # This is also fine--note that the destination is explicitly specified:
-$ rsync -azP my_local_directory/ private-1-wiki-west2:my_local_directory
+$ rsync -azP my_local_directory/ private-${n}-wiki-west2:my_local_directory
 ```
 
 Note that running `rsync` from a `screen` session when copying many files is perilous: once you disconnect from `screen`, `rsync` and `ssh` will no longer have access to your `ssh agent`, and so will be unable to create new connections to the remote host.  Moving single large files (like `tar` files) is fine in screen, however.
+
+### Upload {Reachables, Paths, Sequences} and Images (renderings, and cascade dot renderings) ###
+
+```
+# upload {Reachables, Paths, Sequences} that are within the wiki_pages dir
+$ rsync -azP wiki_pages private-${n}-wiki-west2:
+
+# upload the cascade image renderings
+#   Note that in the "Dot File Rendering" step above, we shoved all cscd*dot.png images 
+#   into `reachables-explorer-rendering-cache` (where the mol/wordclouds live)
+#   and so the command below will upload all of them in one go.
+# upload the wordcloud and molecule renderings
+$ rsync -azP /mnt/data-level1/data/reachables-explorer-rendering-cache private-${n}-wiki-west2:wiki_pages/renderings
+```
 
 ### Create, Upload, and Install a Reachables List ###
 
@@ -452,9 +481,10 @@ $ find <directory of page text files> -type f | sort -S1G | xargs sudo -u www-da
 ```
 If you are using the preview data from the NAS `<directory of page text files>` = `demo_wiki_2016-12-21/{Paths/,Reachables/}`, i.e., you run the command twice.
 
-The Tabs extension we rely on doesn't automatically render the tab assets when using the maintenance script, so we have to force mediawiki to purge its cache and rebuild the page.  We can do this via the `api.php` endpoint:
+The Tabs extension we rely on doesn't automatically render the tab assets when using the maintenance script, so we have to force mediawiki to purge its cache and rebuild the page.  Below, you will need the username and password credentials you [created for NGINX above](https://github.com/20n/act/tree/master/wikiServices#set-an-nginx-password).  We can do this via the `api.php` endpoint:
 ```shell
-$ function rebuild() { for i in $(ls $1); do echo $i; curl --insecure -vvv -X POST "https://localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP"; done; }
+$ export CRED=<user>:<pass>
+$ function rebuild() { for i in $(ls $1); do echo $i; curl --insecure -vvv -X POST "https://${CRED}@localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP"; done; }
 $ rebuild <directory of page text files>
 ```
 If you are using the preview data from the NAS then rerun `rebuild` with  each of `demo_wiki_2016-12-21/{Paths,Reachables}`. Make sure the output of `rebuild` only output "200 OK" messages.
@@ -494,7 +524,14 @@ $ for page in `ls $dir`; do molecule=`cat $dir/$page | head -1 | sed 's/=//g'`; 
 $ find wiki_front_matter/pages -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
 ```
 
-To edit the side bar content (i.e. to remove `Random Page` and `Recent Changes`), navigate to `/index.php?title=MediaWiki:Sidebar` and edit the source.  Use http://preview.bioreachables.20n.com/index.php?title=MediaWiki:Sidebar as an example of this.
+To edit the side bar content (i.e. to remove `Random Page` and `Recent Changes`), navigate to `/index.php?title=MediaWiki:Sidebar` and edit the source.  You will need to login as wiki_admin (ask SS for password from imp-20n_mdaly_credentials).  Use http://heartofgold.bioreachables.com/index.php?title=MediaWiki:Sidebar as an example of this.  Change it to:
+```
+* navigation
+** mainpage|mainpage-description
+** All_Chemicals|List of chemicals
+** {{SERVER}}/substructure/|Substructure search
+** helppage|help
+```
 
 #### Example: Loading the Preview Wiki Content ####
 
