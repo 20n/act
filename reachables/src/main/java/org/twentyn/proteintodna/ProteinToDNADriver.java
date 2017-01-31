@@ -4,6 +4,8 @@ import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import act.shared.Seq;
+import com.act.biointerpretation.metadata.ProteinMetadata;
+import com.act.biointerpretation.metadata.RankPathway;
 import com.act.reachables.Cascade;
 import com.act.reachables.ReactionPath;
 import com.act.utils.CLIUtil;
@@ -15,8 +17,10 @@ import com.mongodb.MongoInternalException;
 import com.mongodb.ServerAddress;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.poi.ss.formula.functions.Rank;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.mongojack.DBCursor;
@@ -191,6 +195,15 @@ public class ProteinToDNADriver {
 
     for (String pathwayId : pathwayIds) {
       ReactionPath reactionPath = inputPathwayCollection.findOne(DBQuery.is("_id", pathwayId));
+
+      List<List<Pair<ProteinMetadata, Integer>>> processedP = RankPathway.processSinglePathAsJava(reactionPath);
+      if (processedP == null) {
+        LOGGER.info(String.format("Process pathway was filtered out possibly because there were more than %s seqs for a given pathway",
+            RankPathway.MAX_PROTEINS_PER_PATH()));
+        outputPathwayCollection.insert(reactionPath);
+        continue;
+      }
+
       Boolean atleastOneSeqMissingInPathway = false;
       List<Set<String>> proteinPaths = new ArrayList<>();
 

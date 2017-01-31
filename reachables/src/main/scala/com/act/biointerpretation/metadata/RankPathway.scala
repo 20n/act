@@ -1,5 +1,6 @@
 package com.act.biointerpretation.metadata
 
+import act.shared.Reaction
 import com.act.reachables.ReactionPath
 import com.act.workflow.tool_manager.workflow.workflow_mixins.mongo.MongoWorkflowUtilities
 import com.mongodb.{BasicDBObject, DB, MongoClient, ServerAddress}
@@ -10,10 +11,12 @@ import org.mongojack.JacksonDBCollection
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
+import java.util.{List => JavaList}
+
 object RankPathway {
   /* Filtering Settings */
-  private val MAX_PROTEINS_PER_PATH = 4
-  private val MAX_DESIGNS_PER_TARGET = 5
+  val MAX_PROTEINS_PER_PATH = 4
+  val MAX_DESIGNS_PER_TARGET = 5
 
   /* Database connections */
   private val sourceDataDb = "jarvis_2016-12-09"
@@ -150,10 +153,24 @@ object RankPathway {
     Option(proteinPaths.map(x => x.map(y => y._2)))
   }
 
+  def processSinglePathAsJava(pathway: ReactionPath): JavaList[JavaList[Pair[ProteinMetadata, Integer]]] = {
+    val processSinglePathVal = processSinglePath(pathway)
+    processSinglePathVal match {
+      case Some(x) => x.map(_.asJava).asJava;
+      case None => null;
+    }
+  }
+
   private def getDummyMetadata(rid: Long): ProteinMetadata = {
     val p = new ProteinMetadata()
 
-    val reaction = sourceDb.getReactionFromUUID(rid)
+    val newId: Long = if (rid < 0) {
+      Reaction.reverseID(rid)
+    } else {
+      rid
+    }
+
+    val reaction = sourceDb.getReactionFromUUID(newId)
 
     var jarray: JSONArray = new JSONArray()
     try {

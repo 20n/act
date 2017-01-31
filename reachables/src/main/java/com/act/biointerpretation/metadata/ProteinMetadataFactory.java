@@ -155,6 +155,7 @@ public class ProteinMetadataFactory {
         Boolean modifications = handleModifications(json);
         Map<Host, Integer> cloning = handleCloned(json);
         Map<Host, Localization> localization = handleLocalization(json);
+        List<Long> seqIds = handleSequences(json);
 
         ProteinMetadata out = new ProteinMetadata();
         out.kcatkm = kcatkm;
@@ -163,7 +164,32 @@ public class ProteinMetadataFactory {
         out.modifications = modifications;
         out.cloned = cloning;
         out.localization = localization;
+        out.sequences = seqIds;
         return out;
+    }
+
+    private List<Long> handleSequences(JSONObject json) {
+        //Try to pull the data
+        JSONArray jarray = null;
+        List<Long> seqIds = new ArrayList<>();
+
+        try {
+            jarray = json.getJSONArray("sequences");
+        } catch (Exception err) {
+            return seqIds;
+        }
+
+        //If there is no data, the value is undefined
+        if (jarray.length() == 0) {
+            return seqIds;
+        }
+
+        for (int i = 0; i < jarray.length(); i++) {
+            Long data = (Long) jarray.get(i);
+            seqIds.add(data);
+        }
+
+        return seqIds;
     }
 
     private Double handleKcatKm(JSONObject json) {
