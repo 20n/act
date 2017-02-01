@@ -51,6 +51,7 @@ public class WordCloudGenerator {
   private static final String DEFAULT_ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
 
   // Default host. If running on a laptop, please set a SSH bridge to access speakeasy
+  // TODO change the defaults to something more plain/easy to know why they are like they are (No dates)
   private static final String DEFAULT_HOST = "localhost";
   private static final String DEFAULT_PORT = "27017";
   private static final String DEFAULT_CHEMICALS_DATABASE = "jarvis_2016-12-09";

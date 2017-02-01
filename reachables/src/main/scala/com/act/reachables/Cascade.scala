@@ -41,13 +41,13 @@ object Cascade extends Falls {
     CACHE_CASCADES = onOff
   }
 
-  var DO_HMMER_SEQ = true
+  var DO_HMMER_SEQ = false
   def doHmmerSeqFinding(enable: Boolean) {
     println("HMMER sequence finding is: " + (if (enable) "ON" else "OFF"))
     DO_HMMER_SEQ = enable
   }
 
-  var RUN_LONGER_BUT_USE_LESS_MEM = false
+  var RUN_LONGER_BUT_USE_LESS_MEM = true
   def doFrequentCachePurges(enable: Boolean) {
     println("Frequent cache purges to save memory (but run longer): " + (if (enable) "ON" else "OFF"))
     RUN_LONGER_BUT_USE_LESS_MEM = enable
@@ -686,7 +686,7 @@ class Cascade(target: Long) {
     }).flatten.map(_.asInstanceOf[Long])
 
     // Here we choose to add inferred sequences for all entries matching
-    val sequenceSearch: (DbSeq) => Boolean =
+    lazy val sequenceSearch: (DbSeq) => Boolean =
       OddSequencesToProteinPredictionFlow.defineSequenceSearch(workingDir)(None)(cascades.DEFAULT_DB._3)
 
     val abstractOrQuestionableSequencesQuery = OddSequencesToProteinPredictionFlow.oddQuery()

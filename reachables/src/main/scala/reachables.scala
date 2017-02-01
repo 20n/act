@@ -11,14 +11,20 @@ import scala.collection.JavaConverters._
 import scala.io.Source
 
 object reachables {
-  val defaultDb = "jarvis_2016-12-09"
+  private var currentDatabase = "jarvis_2016-12-09"
+
+  private lazy val defaultDbName = getDefaultDbName
+
+  private def getDefaultDbName: String = {
+    currentDatabase
+  }
 
   private val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   HELP_FORMATTER.setWidth(100)
   val LOGGER = LogManager.getLogger(getClass.getName)
 
   private val HELP_MESSAGE =
-    """Usage: run --prefix=PRE --hasSeq=true|false --regressionSuiteDir=path --extra=[semicolon-sep db.chemical fields]
+    """Usage: run --prefix=PRE --hasSeq=true|false --regressionSuiteDir=path [--defaultDbName=DB_NAME] --extra=[semicolon-sep db.chemical fields]
       |
       |Example: run --prefix=r
       | will create reachables tree with prefix r and by default with only enzymes that have seq
@@ -34,6 +40,7 @@ object reachables {
   private val OPTION_REGRESSION_DIR = "r"
   private val OPTION_EXTRA_INFORMATION = "e"
   private val OPTION_OUTPUT_DIRECTORY = "o"
+  private val OPTION_DATABASE = "d"
 
   private def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
@@ -73,6 +80,11 @@ object reachables {
         hasArg.
         longOpt("output-dir").
         desc("Ensure chemicals with certain information are included."),
+      
+      CliOption.builder(OPTION_DATABASE).
+        hasArg.
+        longOpt("defaultDbName").
+        desc("The database that the reachables collection will use."),
 
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
@@ -119,6 +131,8 @@ object reachables {
     val params = parseCommandLineOptions(args)
 
     val prefix = params.getOptionValue(OPTION_PREFIX)
+    
+    currentDatabase = params.getOptionValue(OPTION_DATABASE, currentDatabase)
 
     writeReachableTree(prefix, params.hasOption(OPTION_HAS_SEQ),
       Option(params.getOptionValues(OPTION_EXTRA_INFORMATION)),
@@ -133,7 +147,7 @@ object reachables {
                          nativesFile: String,
                          cofactorsFile: Option[String], outputFile: Option[String]) {
     // Connect to the DB so that extended attributes for chemicals can be fetched as we serialize.
-    val db = new MongoDB("localhost", 27017, defaultDb)
+    val db = new MongoDB("localhost", 27017, defaultDbName)
 
     /* --------------- Parse Options ------------------ */
     val regressionOutputDirectory = s"$prefix.regressions/"

@@ -33,10 +33,10 @@ import java.util.regex.Pattern;
 
 /***
  * The PubchemMeshSynonyms class provides an API to get Pubchem synonyms and MeSH terms given an InChI string.
- * It assumes that a Virtuoso SPARQL endpoint is running on 10.0.20.19 (Chimay), port 8890 and that the necessary data
- * has been loaded in.
+ * It assumes that a Virtuoso SPARQL endpoint is running on a connected server, port 8890 and that the necessary data
+ * has been loaded in.  The default is connecting to 10.0.20.19 (Chimay).
  * TODO(thomas): create a Wiki page describing the Virtuoso setup and how to load the data
- * The HTML serveur can be accessed at http://10.0.20.19:8890/sparql, with a UI to run SPARQL queries. Try it!
+ * The HTML server can be accessed at http://<LOCAL IP OR Alias>:8890/sparql, with a UI to run SPARQL queries. Try it!
  */
 
 public class PubchemMeshSynonyms {

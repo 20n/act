@@ -11,20 +11,42 @@ import org.json.{JSONArray, JSONObject}
 import scala.collection.JavaConversions._
 
 object cascades {
-  val DEFAULT_DB = ("localhost", 27017, "jarvis_2016-12-09")
+  private var DB_HOST: String = "localhost"
+  private var DB_PORT: Int = 27017
+  private var DB_NAME: String = "jarvis_2016-12-09"
+
+  lazy val DEFAULT_DB: (String, Int, String) = getDefaultDb
+
+  private def getDefaultDb: (String, Int, String) = {
+    (DB_HOST, DB_PORT, DB_NAME)
+  }
 
   def main(args: Array[String]) {
     /* -------- Command Line Options, TODO Use normal CLI parsing tools --------- */
     if (args.length == 0) {
-      println("Usage: run --prefix=PRE [--max-depth=DEPTH]")
+      println(f""""
+                  | Usage: run 
+                  | 
+           | Required Args:
+                  | --prefix=PRE 
+                  | 
+           | Optional Args:
+                  | --max-depth=INT
+                  | --db-host=STRING 
+                  | --db-port=INT 
+                  | --db-name=STRING
+                  | --do-hmmer=BOOLEAN
+                  | --regularly-purge-cache=BOOLEAN
+                  | --verbosity=BOOLEAN
+              """.stripMargin)
       System.exit(-1)
     }
 
     val params = new CmdLine(args)
     val prefix = params.get("prefix") match {
-                    case Some(x) => x
-                    case None => println("Need --prefix. Abort"); System.exit(-1); ""
-                 }
+      case Some(x) => x 
+      case None => println("Need --prefix. Abort"); System.exit(-1); ""
+    }
 
     val outputDirectory = params.get("output-dir") match {
       case Some(x) => x
@@ -53,6 +75,21 @@ object cascades {
 
     params.get("verbosity") match {
       case Some(x) => Cascade.setVerbosity(x.toInt)
+      case None => // let the default hold
+    }
+
+    params.get("db-host") match {
+      case Some(x) => DB_HOST = x
+      case None => // let the default hold
+    }
+
+    params.get("db-port") match {
+      case Some(x) => DB_PORT = x.toInt
+      case None => // let the default hold
+    }
+
+    params.get("db-name") match {
+      case Some(x) => DB_NAME = x
       case None => // let the default hold
     }
 
@@ -99,7 +136,7 @@ object cascades {
     }
 
     // We use this DB to get information about the chemicals and reactions.
-    val db = new MongoDB(DEFAULT_DB._1, DEFAULT_DB._2, DEFAULT_DB._3)
+    lazy val db = new MongoDB(DEFAULT_DB._1, DEFAULT_DB._2, DEFAULT_DB._3)
 
     // Set(nodeIDs) = nids from the tree minus those artificially asserted as reachable
     val reachableSet = get_set(ActData.instance.ActTree.nids.values()) diff 

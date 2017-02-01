@@ -24,8 +24,8 @@ public class BingCacheMongoDB {
   private static final String WARNING_MESSAGE =
       "\nWARNING!!!\n" +
           "No \"cache\" collection seems to exist in the \"bingsearch\" Mongo database.\n" +
-          "Bing Cache queries are cached in a MongoDB instance running on Chimay (port 27777).\n" +
-          "Please check that Chimay can be accessed from the host you are running the Bing Searcher on.\n" +
+          "Bing Cache queries should be found in a MongoDB instance running on Chimay on port 27777.\n" +
+          "Please check that Chimay (Or your provided database) can be accessed from the host you are running the Bing Searcher on.\n" +
           "Note that it is possible to restore the Bing Search cache dump living on the NAS with " +
           "the \"mongorestore\" command.\n" +
           "If you don't take any action before continuing, all queries will be counted against our " +

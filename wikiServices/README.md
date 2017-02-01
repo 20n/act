@@ -77,15 +77,19 @@ The output of the installer pipeline will be a database named `jarvis_2017-01-11
 
 **TODO: validate this section**
 
-To run reachables computation on your new database, alter the `DEFAULT_DB` parameters in your `reachables.scala`,
-`postprocess_reachables.scala`, and `cascades.scala` files.  Then run this command:
-```
+To run reachables computation on your new database, set all the appropriate variables as shown below:
+```SHELL
 $ today=`date +%Y%m%d`;
 $ dirName="reachables-$today";
 $ PRE="r-$today";
-$ sbt "runMain com.act.reachables.reachables --prefix=$PRE --useNativesFile=/mnt/shared-data/Michael/ReachablesInputFiles/valid_starting_points.txt --useCofactorsFile=/mnt/shared-data/Michael/ReachablesInputFiles/my_cofactors_file.txt -o $dirName";
-$ sbt "runMain com.act.reachables.postprocess_reachables --prefix=$PRE --output-dir=$dirName --extractReachables --writeGraphToo";
-$ sbt "runMain com.act.reachables.cascades --prefix=r-$today --output-dir=$dirName --cache-cascades=true --do-hmmer=false --out-collection=pathways_jarvis_$today --verbosity=1”
+$ DEFAULT_DB=<Edit this to be your database name>
+```
+
+Then, run the commands as shown below.
+```SHELL
+$ sbt "runMain com.act.reachables.reachables --prefix=$PRE --defaultDbName=$DEFAULT_DB --useNativesFile=/mnt/shared-data/Michael/ReachablesInputFiles/valid_starting_points.txt --useCofactorsFile=/mnt/shared-data/Michael/ReachablesInputFiles/my_cofactors_file.txt -o $dirName";
+$ sbt "runMain com.act.reachables.postprocess_reachables --prefix=$PRE --output-dir=$dirName --extractReachables --writeGraphToo --defaultDbName=$DEFAULT_DB";
+$ sbt "runMain com.act.reachables.cascades --prefix=r-$today --output-dir=$dirName --cache-cascades=true --do-hmmer=false --out-collection=pathways_jarvis_$today --db-name=$DEFAULT_DB --verbosity=1”
 ```
 
 You should now have `r-${today}.reachables.txt` and `r-${today}-data` in your `reachables-$today` directory.  We'll
@@ -133,7 +137,7 @@ in `act.installer.pubchem.PubchemMeshSynonyms`.
 
 ### Enrich the Reachables with Patents ###
 
-To find recent patents for reachable molecules, use the `PatentFinder`
+To find recent patents for reachable molecules, use the `PatentFinder` (The `-c` flag indicates which Reachables Collection should be used):
 ```
 $ sbt "runMain act.installer.reachablesexplorer.PatentFinder -c reachables_${today}"
 ```
@@ -433,7 +437,7 @@ The substructure search and orders services require a static TSV of reachable mo
 
 ```
 # Run this command on the server where the MongoDB instance with the Reachables collection lives.
-$ sbt 'runMain act.installer.reachablesexplorer.WikiWebServicesExporter -c <reachables collection> -o reachables.out'
+$ sbt 'runMain act.installer.reachablesexplorer.WikiWebServicesExporter -c <reachables collection> -s <sequence collection> -o reachables.out'
 # Copy the output file to the wiki host.
 $ n=1
 $ rsync -azP reachables.out private-${n}-wiki-west2:

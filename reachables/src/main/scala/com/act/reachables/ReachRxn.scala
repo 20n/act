@@ -18,7 +18,7 @@ object ReachRxnDescs {
   // reactions that eventually make it the reachables computation; not
   // everything.
 
-  val db: MongoDB = new MongoDB(cascades.DEFAULT_DB._1, cascades.DEFAULT_DB._2, cascades.DEFAULT_DB._3)
+  lazy val db: MongoDB = new MongoDB(cascades.DEFAULT_DB._1, cascades.DEFAULT_DB._2, cascades.DEFAULT_DB._3)
 
   val meta = Memo.mutableHashMapMemo[Long, Option[Reaction]] { rid => Option(cascades.get_reaction_by_UUID(db, rid)) }
 

@@ -35,9 +35,11 @@ public class WikiWebServicesExporter {
   private static final String OPTION_INPUT_DB_COLLECTION = "c";
   private static final String OPTION_OUTPUT_FILE = "o";
   private static final String OPTION_EXPORT_SOME = "m";
+  private static final String OPTION_INPUT_SEQUENCE_COLLECTION = "s";
 
   private static final String DEFAULT_HOST = "localhost";
   private static final String DEFAULT_PORT = "27017";
+  // TODO change the defaults to something more plain/easy to know why they are like they are (No version numbers etc.)
   private static final String DEFAULT_DB = "wiki_reachables";
   private static final String DEFAULT_COLLECTION = "reachablesv7";
   private static final String DEFAULT_SEQUENCES_COLLECTION = "sequencesv7";
@@ -74,6 +76,12 @@ public class WikiWebServicesExporter {
         .hasArg().required()
         .longOpt("out")
     );
+    add(Option.builder(OPTION_INPUT_SEQUENCE_COLLECTION)
+            .argName("sequence-collection")
+            .desc("The sequence collection that should be used for export.")
+            .hasArg()
+            .longOpt("sequence-collection")
+    );
     add(Option.builder(OPTION_EXPORT_SOME)
         .argName("ids")
         .desc("Only export molecules with the specified ids")
@@ -99,9 +107,10 @@ public class WikiWebServicesExporter {
     Integer port = Integer.parseInt(cl.getOptionValue(OPTION_INPUT_DB_PORT, DEFAULT_PORT));
     String dbName = cl.getOptionValue(OPTION_INPUT_DB, DEFAULT_DB);
     String collection = cl.getOptionValue(OPTION_INPUT_DB_COLLECTION, DEFAULT_COLLECTION);
+    String sequenceCollection = cl.getOptionValue(OPTION_INPUT_SEQUENCE_COLLECTION, DEFAULT_SEQUENCES_COLLECTION);
 
     LOGGER.info("Attempting to connect to DB %s:%d/%s, collection %s", host, port, dbName, collection);
-    Loader loader = new Loader(host, port, dbName, collection, DEFAULT_SEQUENCES_COLLECTION, DEFAULT_RENDERING_CACHE);
+    Loader loader = new Loader(host, port, dbName, collection, sequenceCollection, DEFAULT_RENDERING_CACHE);
 
     JacksonDBCollection<Reachable, String> reachables = loader.getJacksonReachablesCollection();
 

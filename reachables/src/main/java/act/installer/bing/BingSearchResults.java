@@ -50,6 +50,7 @@ public class BingSearchResults {
   private static final Integer TOP_N = 50;
   
   // The centralized location for caching Bing Search queries.
+  // TODO: make this changeable without a code change (with CLI maybe?)
   private static final String BING_CACHE_HOST = "bing-cache";
   private static final int BING_CACHE_MONGO_PORT = 27777;
   private static final String BING_CACHE_MONGO_DATABASE = "bingsearch";
