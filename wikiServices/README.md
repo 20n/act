@@ -538,7 +538,34 @@ To edit the side bar content (i.e. to remove `Random Page` and `Recent Changes`)
 ** helppage|help
 ```
 
-Still TODO: category pages.
+### Category pages
+
+The category pages can be found here (relative to the wiki url, example: http://wiki/Category_Page_Name):
+a) Aroma
+b) Analgesic
+c) Flavor
+d) Monomer
+e) Polymer
+f) Sigma_Molecules
+g) Wikipedia_Molecules
+h) Drug_Molecules
+
+These urls have to added to the index page of the wiki. Copy/Paste the following mediawiki markup to the bottom of the
+index page:
+
+```
+Explore molecules by:
+* [[Drug_Molecules|Molecules found in DrugBank]]
+* [[Sigma_Molecules|Molecules in the Sigma-Aldrich catalog]]
+* [[Wikipedia_Molecules|Molecules found in Wikipedia]]
+
+Or explore by use-cases:
+* [[Analgesic|Analgesic Molecules]]
+* [[Aroma|Aromatic Molecules]]
+* [[Flavor|Flavor Molecules]]
+* [[Monomer|Monomer Molecules]]
+* [[Polymer|Polymer Molecules]]
+```
 
 #### Example: Loading the Preview Wiki Content ####
 
