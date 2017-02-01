@@ -514,9 +514,10 @@ $ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwri
 $ find wiki_front_matter/pages -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
 
 # Ensure they're re-rendered.  Don't use find, as we just want the page names.
+$ export CRED=<user>:<pass>
 for i in $(ls wiki_front_matter/pages); do
   echo $i;
-  curl --insecure -vvv -X POST "https://localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP";
+  curl --insecure -vvv -X POST "https://${CRED}@localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP";
 done
 # Make sure all responses codes are "200 OK"
 ```
@@ -537,7 +538,11 @@ To edit the side bar content (i.e. to remove `Random Page` and `Recent Changes`)
 ** helppage|help
 ```
 
+Still TODO: category pages.
+
 #### Example: Loading the Preview Wiki Content ####
+
+This is an example for a limited version of the wiki. You should skip to the next section if you are not installing a "Preview Wiki".
 
 On an office server:
 ```
@@ -563,7 +568,6 @@ $ find demo_wiki_2016-12-21/Reachables -type f | sort -S1G | xargs -n 400 sudo -
 # Invalid cached version of the reachables docs to ensure tabs are rendered correctly:
 $ for i in $(ls demo_wiki_2016-12-21/Reachables/); do echo $i; curl --insecure -vvv -X POST "https://localhost:80/api.php?action=purge&titles=${i}&format=json"; done
 ```
-Still TODO: all molecule and category pages.
 
 ### Making the VM Publicly Accessible ###
 
