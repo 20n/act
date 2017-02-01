@@ -701,10 +701,9 @@ class Cascade(target: Long) {
     lazy val mongoConnection = OddSequencesToProteinPredictionFlow.connectToMongoDatabase(cascades.DEFAULT_DB._3)
 
     lazy val oddSeqs: List[DbSeq] = mongoConnection.getSeqIterator(abstractOrQuestionableSequencesQuery).asScala.toList
-
-    // TODO Maybe we should only try to infer if there are no/few good sequences.
-    // Evaluate how much this helps.  It makes sense as we don't really want to add more to places
-    // where there are a lot, but to add some where there are none or few.
+    
+    // This is a step that tries to infer sequences when sequences make otherwise be 
+    // fragmented or in some be suspect in regard to concreteness.
     if (Cascade.DO_HMMER_SEQ && matchingSequences.diff(oddSeqs.map(_.getUUID.toLong: Long).toSet).size < 5) {
       // Filter with side effects, eep.
       val anyInferredSeqs: List[DbSeq] = oddSeqs.filter(sequenceSearch)
