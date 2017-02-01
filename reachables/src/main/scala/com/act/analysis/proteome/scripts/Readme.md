@@ -4,11 +4,13 @@
 This workflow utilizes the HMMer utility to attempt to infer the actual sequence (Based on reference proteomes) 
 of a sequences describe as odd [1].
 
-[1] While the definition of odd may vary based on the exact implementation in `OddSequencesToProteinPredictionFlow`, the current definition is as follows:
-Satisfies one or more of the position below:
-1) Sequence does not start with M (Methionine, this is a biochemical property)
-2) Sequence length is less than 80 (Arbitrarily chosen to attempt to detect sequence fragments)
-3) Sequence contains the '*' character (Used by the FASTA format to indicate wildcard characters)
+_[1] While the definition of odd may vary based on the exact implementation in `OddSequencesToProteinPredictionFlow`, the definition at the time of writing is_
+
+_1) Sequence does not start with M (Methionine, this is a biochemical property) **OR**_
+
+_2) Sequence length is less than 80 (Arbitrarily chosen to attempt to detect sequence fragments) **OR**_
+
+_3) Sequence contains the `*` character (Used by the FASTA format to indicate wildcard characters)_
 
 ### How it works
 #### 1 Reference Proteome Indexing
