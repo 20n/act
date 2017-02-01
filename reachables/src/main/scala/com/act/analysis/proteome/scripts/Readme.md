@@ -13,10 +13,10 @@ _2) Sequence length is less than 80 (Arbitrarily chosen to attempt to detect seq
 _3) Sequence contains the `*` character (Used by the FASTA format to indicate wildcard characters)_
 
 ### _How it works_
-#### 1 Reference Proteome Indexing
+#### 1) Reference Proteome Indexing
 Creates an index of the reference proteomes based on the organism that they match.
 
-#### 2 For each sequence
+#### 2) For each sequence
 1) Concatenates the reference proteomes that match the organism of the sequence.
 
 2) Compares the current sequence against the reference sequences based on the HMMer protocol.
