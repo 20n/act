@@ -34,9 +34,10 @@ This package has been tested locally on OSx using the Theano backend and on Linu
 
 ## 4) Installation
 
-### 4.0 Anaconda
-The easiest way to install the needed dependencies is using Anaconda.
+### 4.0 Anaconda and PIP
+The easiest way to install the needed dependencies is using Anaconda and PIP
 `conda create -n new environment --file conda_req.txt`
+`pip install -r pip_req.txt`
 
 ### 4.1 Manually
 You can also individually install dependencies.  The primary dependencies are as follows:
