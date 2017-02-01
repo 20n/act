@@ -1,6 +1,6 @@
 ## Odd Sequences to Protein Prediction Flow
 
-### Goal
+### _Goal_
 This workflow utilizes the HMMer utility to attempt to infer the actual sequence (Based on reference proteomes) 
 of a sequences describe as odd [1].
 
@@ -12,15 +12,18 @@ _2) Sequence length is less than 80 (Arbitrarily chosen to attempt to detect seq
 
 _3) Sequence contains the `*` character (Used by the FASTA format to indicate wildcard characters)_
 
-### How it works
+### _How it works_
 #### 1 Reference Proteome Indexing
 Creates an index of the reference proteomes based on the organism that they match.
 
 #### 2 For each sequence
-1) Concatenates the reference proteomes that match the organism index
+1) Concatenates the reference proteomes that match the organism of the sequence.
+
 2) Compares the current sequence against the reference sequences based on the HMMer protocol.
-3) Outputs a list of the top results, based on the score assigned by HMMer
-4) Writes that list to the sequence database.
+
+3) Outputs a ranked list of the HMMer results, based on the score assigned by HMMer.
+
+4) Modify the original sequence entry to contain additional metadata regarding the inferred sequences.
 
 ### Use
 Can run as a stand-alone module by running the class `OddSequencesToProteinPredictionFlow` and using 
