@@ -27,9 +27,9 @@ if not os.path.exists(categoryPath):
 def makePage(fileName, chemicals):
     with open(os.path.join(categoryPath, fileName), 'w') as target:
         for chemical in chemicals:
-            if (chemical["inchikey"] is not None):
-                inchiKey = chemical["inchikey"].encode("utf-8")
-                chemName = chemical["page_name"].encode("utf-8")
+            if (chemical["inchiKey"] is not None):
+                inchiKey = chemical["inchiKey"].encode("utf-8")
+                chemName = chemical["pageName"].encode("utf-8")
                 chemLink = "[[{0} | {1}]]".format(inchiKey, chemName)
                 target.write(chemLink)
                 target.write("\n\n")
@@ -54,18 +54,19 @@ usageTerms = {"aroma": [], "flavor": [], "monomer": [], "polymer": [], "analgesi
 ### to the chemical.
 
 ### First we find all the chemicals that have usage terms associated with them.
-for chemical in db[reachables_db].find({"usage-wordcloud-filename": {"$ne": None}}):
-    if (chemical["inchikey"] is not None):
-        inchiKey = chemical["inchikey"].encode("utf-8")
-        chemName = chemical["page_name"].encode("utf-8")
+for chemical in db[reachables_db].find({"wordCloudFilename": {"$ne": None}}):
+    if (chemical["inchiKey"] is not None):
+        inchiKey = chemical["inchiKey"].encode("utf-8")
+        chemName = chemical["pageName"].encode("utf-8")
         chemLink = "[[{0} | {1}]]".format(inchiKey, chemName)
 
         dictOfUsageTerms = {}
         totalCount = 0
 
-        for usage_term in chemical["xref"]["BING"]["metadata"]["usage_terms"]:
-            dictOfUsageTerms[usage_term["usage_term"]] = len(usage_term["urls"])
-            totalCount += len(usage_term["urls"])
+        if (chemical["xref"] is not None and "BING" in chemical["xref"]):
+            for usage_term in chemical["xref"]["BING"]["metadata"]["usage_terms"]:
+                dictOfUsageTerms[usage_term["usage_term"]] = len(usage_term["urls"])
+                totalCount += len(usage_term["urls"])
 
         for key in dictOfUsageTerms.keys():
             for usageKey in usageTerms.keys():
