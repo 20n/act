@@ -1,15 +1,17 @@
 from __future__ import absolute_import, division, print_function
 
+import numpy as np
 import operator
 from collections import namedtuple
-
-import numpy as np
 from tqdm import tqdm
 
 from ..utility.utility_functions import assign_row_by_mz, assign_column_by_time
 
 
 class ScanConverter:
+    def __init__(self):
+        pass
+
     @staticmethod
     def process_lcms_trace(loaded_triples, mz_min, mz_max, mz_step, time_min, time_max, time_step, verbose=False):
         """
@@ -144,6 +146,9 @@ class LcmsScan:
 
 
 class ScanWindower:
+    def __init__(self):
+        pass
+
     @staticmethod
     def prepare_matrix_for_encoding(input_matrix, experimental_grid, control_grid, threshold, block_size,
                                     local_halfwidth, verbose=False, snr=None):
