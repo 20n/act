@@ -8,7 +8,6 @@ import com.mongodb.BasicDBObject;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.ContentType;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -51,7 +50,7 @@ public class BingSearchResults {
   
   // The centralized location for caching Bing Search queries.
   // TODO: make this changeable without a code change (with CLI maybe?)
-  private static final String BING_CACHE_HOST = "bing-cache";
+  private static final String BING_CACHE_HOST = "localhost";
   private static final int BING_CACHE_MONGO_PORT = 27777;
   private static final String BING_CACHE_MONGO_DATABASE = "bingsearch";
 
@@ -96,10 +95,6 @@ public class BingSearchResults {
     FileInputStream fs = new FileInputStream(accountKeyFilename);
     BufferedReader br = new BufferedReader(new InputStreamReader(fs));
     String account_key = br.readLine();
-    if (account_key.length() != 32) {
-      String msg = String.format("Unexpected account key length. Key: %s", account_key);
-      throw new IOException(msg);
-    }
     return account_key;
   }
 

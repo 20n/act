@@ -1993,6 +1993,27 @@ public class MongoDB {
     };
   }
 
+  public Iterator<String> getIteratorOverInchis(BasicDBObject matchCriterion) {
+    BasicDBObject keys = new BasicDBObject(ChemicalKeywords.INCHI$.MODULE$.toString(), true);
+    final DBIterator iter = getIteratorOverChemicals(matchCriterion, keys);
+
+    return new Iterator<String>() {
+      @Override
+      public boolean hasNext() {
+        boolean hasNext = iter.hasNext();
+        if (!hasNext)
+          iter.close();
+        return hasNext;
+      }
+
+      @Override
+      public String next() {
+        DBObject o = iter.next();
+        return (String) o.get("InChI");
+      }
+    };
+  }
+
   public Iterator<Chemical> getChemicalsbyIds(List<Long> ids, boolean notimeout){
     BasicDBList queryList = new BasicDBList();
     for (Long id : ids) {

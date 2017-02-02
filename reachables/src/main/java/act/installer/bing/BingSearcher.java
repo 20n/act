@@ -3,8 +3,8 @@ package act.installer.bing;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -109,9 +109,19 @@ public class BingSearcher {
   }
 
   private void addBingSearchResultsForEntireDatabase() {
-    Map<String, Long> m = db.constructAllInChIs();
-    Set<String> inchis = m.keySet();
-    addBingSearchResultsForInchiSet(inchis);
+    Iterator<String> it = db.getIteratorOverInchis(new BasicDBObject());
+    while (it.hasNext()) {
+      String inchi = it.next();
+      if (inchi.contains("FAKE")) {
+        continue;
+      }
+      try {
+        addBingSearchResultsForInChI(inchi);
+      } catch (IOException e) {
+        LOGGER.error("Bing Search results could not be added for: %s", inchi);
+      }
+
+    }
   }
 
   private void addBingSearchResultsForInChI(String inchi) throws IOException {
