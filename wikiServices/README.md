@@ -190,6 +190,15 @@ Then render just the pages for the molecules you're interested using the command
 $ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages_custom --pathways pathways_jarvis_w_designs_${today} -r reachables_${today} -i jarvis_2017-01-11 -m $inchi_key
 ```
 
+### Building category pages
+
+To produce the category pages, the following command has to be run:
+
+```
+python src/main/python/Wiki/generate_category_pages.py $reachables_c $dest $wiki_reachables
+```
+
+Make sure the $dest dir is the same dir as the other pages generated in the FreemarkerRenderer process.
 
 ## 2. New Wiki Instance Setup Steps ##
 
@@ -466,6 +475,7 @@ Reachables | `importTextFiles.php` | N/A | Reachables
 Pathways | `importTextFiles.php` | N/A | Paths
 DNA Designs | `importImages.php` | txt | Sequences
 Renderings/word clouds | `importImages.php` | png | renderings
+Category Pages | `importTextFiles.php` | N/A | Categories
 
 Check out the demo wiki content on the NAS at `/shared-data/Mark/demo_wiki_2016-12-21` for an example of these files.
 
