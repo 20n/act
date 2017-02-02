@@ -81,7 +81,7 @@ object OddSequencesToProteinPredictionFlow extends ConditionalToSequence {
       CliOption.builder(OPTION_COMPARE_PROTEOME_LOCATION).
         longOpt("reference-proteomes-directory").
         hasArg.
-        desc("The file path of the proteome directory containing all the reference proteomes").
+        desc(s"The file path of the proteome directory containing all the reference proteomes. Default is $defaultReferenceProteomes.").
         required(true),
 
       CliOption.builder(OPTION_DATABASE).
