@@ -2,7 +2,7 @@
 
 ### _Goal_
 This workflow utilizes the HMMer utility to attempt to infer the actual sequence (Based on reference proteomes) 
-of a sequences describe as odd [1].
+of a sequence described as odd [1].
 
 _[1] While the definition of odd may vary based on the exact implementation in `OddSequencesToProteinPredictionFlow`, the definition at the time of writing is_
 
