@@ -195,8 +195,11 @@ $ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages
 To produce the category pages, the following command has to be run:
 
 ```
-python src/main/python/Wiki/generate_category_pages.py $reachables_c $dest $wiki_reachables
+$ dbName="wiki_reachables"
+$ dest="wiki_pages/Category_Pages" # for example
+$ python src/main/python/Wiki/generate_category_pages.py reachables_${today} $dest $dbName
 ```
+Since the script might be running at a later date, ensure that you do not overwrite `today` from when it was originally set. I.e., make sure this `reachables_` variable matches the above. 
 
 Make sure the $dest dir is the same dir as the other pages generated in the FreemarkerRenderer process.
 
