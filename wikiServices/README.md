@@ -572,21 +572,28 @@ g) Wikipedia_Molecules
 h) Drug_Molecules
 ```
 
-These urls have to added to the index page of the wiki. Copy/Paste the following mediawiki markup to the bottom of the
-index page:
+These urls have to added to the index page of the wiki. 
+Edit the main page of the wiki `https://wiki/index.php?title=Main_Page&action=edit` to be the following:
 
 ```
-Explore molecules by:
-* [[Drug_Molecules|Molecules found in DrugBank]]
-* [[Sigma_Molecules|Molecules in the Sigma-Aldrich catalog]]
-* [[Wikipedia_Molecules|Molecules found in Wikipedia]]
+Welcome to the 20n Bio-reachables Repository.  Please see the [[Introduction]] for an overview of this repository's contents.
 
-Or explore by use-cases:
-* [[Analgesic|Analgesic Molecules]]
-* [[Aroma|Aromatic Molecules]]
-* [[Flavor|Flavor Molecules]]
-* [[Monomer|Monomer Molecules]]
-* [[Polymer|Polymer Molecules]]
+View:
+* [[All_Chemicals|Entire bio-reachables set]]
+
+* Or explore molecules by:
+** [[Drug_Molecules|Molecules found in DrugBank]]
+** [[Sigma_Molecules|Molecules in the Sigma-Aldrich catalog]]
+** [[Wikipedia_Molecules|Molecules found in Wikipedia]]
+
+* Or explore by use-cases:
+** [[Analgesic|Analgesic Molecules]]
+** [[Aroma|Aromatic Molecules]]
+** [[Flavor|Flavor Molecules]]
+** [[Monomer|Monomer Molecules]]
+** [[Polymer|Polymer Molecules]]
+
+[[File:Bio-reachable-chemicals.jpg|600px|center|]]
 ```
 
 ### Example: Loading the Preview Wiki Content ###
