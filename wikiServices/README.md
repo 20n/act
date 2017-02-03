@@ -17,19 +17,13 @@ Note: it's best to run all of the following commands in a `screen` session, as t
 
 
 It is likely that you'll have an ACT database on hand from which to produce reachables and cascades.  If not, run this
-command on `speakeasy`:
+command (on physical server `speakeasy`, or azure `twentyn-speakeasy-west2`):
 ```
 $ time sbt 'runMain com.act.reachables.initdb install omit_kegg omit_infer_ops omit_vendors omit_patents omit_infer_rxnquants omit_infer_sar omit_infer_ops omit_keywords omit_chebi'
 ```
 
 This process will install a DB to `actv01` on machine.  This process will probably take somewhere on the
-order of 48 hours to complete.  Note that this process has several external dependencies that would have to be moved
-and their locations changed in order for this process to run outside of our office network:
-
-* The BRENDA MySQL DB (currently on `speakeasy`) would need to be replicated, and the connection parameters changed to match.
-* The Metacyc Biopax XML would need to be copied and its location updated.
-* Other static data files on the NAS in `/data-leve1/data` would need to be copied to the correct location, like wikipedia molecules and the important molecules lists.
-* The Bing search result cache would need to be copied and its location updated (in `act.installer.bing.BingSearchResults`).
+order of 48 hours to complete.  To setup a server to run this from scratch various external data dependencies are needed. The setup process is described in (Azure Server Setup)[https://github.com/20n/act/wiki/Architecture:-On-Azure#buildup-notes].
 
 Once the installer has run, the biointerpretation pipeline should be run on `actv01`.  The configuration file for
 the `BiointepretationDriver` class looks like this:
