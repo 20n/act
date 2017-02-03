@@ -378,11 +378,13 @@ public class Main {
       new BrendaSQL(db, new File("")).installChebiApplications();
       System.out.println("Done adding ChEBI applications.");
     } else if (args[0].equals("BING")) {
-      BingSearcher bingSearcher = new BingSearcher();
-      System.out.println("\nInstalling Bing Search cross-references.");
       try {
         System.out.println("Initializing Mongo database.");
         MongoDB db = new MongoDB(server, dbPort, dbname);
+        Boolean forceUpdate = false;
+        Boolean useOnlyCache = true;
+        BingSearcher bingSearcher = new BingSearcher(db, forceUpdate, useOnlyCache);
+        System.out.println("\nInstalling Bing Search cross-references.");
         System.out.println("Constructing the list of priority InChIs to install Bing Search annotations.");
         String path = System.getProperty("user.dir") + "/" + args[4];
         MoleculeCorpus moleculeCorpus = new MoleculeCorpus();
@@ -390,7 +392,7 @@ public class Main {
         Set<String> inchis = moleculeCorpus.getMolecules();
         System.out.format("%d InChIs were found.\n", inchis.size());
         System.out.println("Adding Bing Search annotations for the list of priority InChIs.");
-        bingSearcher.addBingSearchResultsForInchiSet(db, inchis, false);
+        bingSearcher.addBingSearchResultsForInchiSet(inchis);
         System.out.println("Done adding Bing Search results.");
       } catch (Exception e) {
         System.err.format("An exception occurred while trying to install Bing Search results: %s", e);
