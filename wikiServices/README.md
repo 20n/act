@@ -190,6 +190,18 @@ Then render just the pages for the molecules you're interested using the command
 $ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages_custom --pathways pathways_jarvis_w_designs_${today} -r reachables_${today} -i jarvis_2017-01-11 -m $inchi_key
 ```
 
+### Building category pages
+
+To produce the category pages, the following command has to be run:
+
+```
+$ dbName="wiki_reachables"
+$ dest="wiki_pages/Category_Pages" # for example
+$ python src/main/python/Wiki/generate_category_pages.py reachables_${today} $dest $dbName
+```
+Since the script might be running at a later date, ensure that you do not overwrite `today` from when it was originally set. I.e., make sure this `reachables_` variable matches the above. 
+
+Make sure the $dest dir is the same dir as the other pages generated in the FreemarkerRenderer process.
 
 ## 2. New Wiki Instance Setup Steps ##
 
@@ -417,10 +429,10 @@ $ rsync -azP my_local_directory/ private-${n}-wiki-west2:my_local_directory
 
 Note that running `rsync` from a `screen` session when copying many files is perilous: once you disconnect from `screen`, `rsync` and `ssh` will no longer have access to your `ssh agent`, and so will be unable to create new connections to the remote host.  Moving single large files (like `tar` files) is fine in screen, however.
 
-### Upload {Reachables, Paths, Sequences} and Images (renderings, and cascade dot renderings) ###
+### Upload {Reachables, Paths, Sequences, Categories} and Images (renderings, and cascade dot renderings) ###
 
 ```
-# upload {Reachables, Paths, Sequences} that are within the wiki_pages dir
+# upload {Reachables, Paths, Sequences, Categories} that are within the wiki_pages dir
 $ rsync -azP wiki_pages private-${n}-wiki-west2:
 
 # upload the cascade image renderings
@@ -466,6 +478,7 @@ Reachables | `importTextFiles.php` | N/A | Reachables
 Pathways | `importTextFiles.php` | N/A | Paths
 DNA Designs | `importImages.php` | txt | Sequences
 Renderings/word clouds | `importImages.php` | png | renderings
+Category Pages | `importTextFiles.php` | N/A | Categories
 
 Check out the demo wiki content on the NAS at `/shared-data/Mark/demo_wiki_2016-12-21` for an example of these files.
 
@@ -477,13 +490,13 @@ $ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwri
 ```
 E.g., if you are using the preview data from the NAS `<directory of images>` =  `demo_wiki_2016-12-21/renderings/`. Replace `png` with a different image type/extension if you need to upload other kinds of images.
 
-#### Loading Page Text ####
+### Loading Page Text ###
 
 To load a directory of only pages into the wiki (no other files, please), use this command:
 ```
 $ find <directory of page text files> -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
 ```
-If you are using the preview data from the NAS `<directory of page text files>` = `demo_wiki_2016-12-21/{Paths/,Reachables/}`, i.e., you run the command twice.
+If you are using the preview data from the NAS `<directory of page text files>` = `demo_wiki_2016-12-21/{Paths/,Reachables/,Categories/}`, i.e., you run the command three times.
 
 The Tabs extension we rely on doesn't automatically render the tab assets when using the maintenance script, so we have to force mediawiki to purge its cache and rebuild the page.  Below, you will need the username and password credentials you [created for NGINX above](https://github.com/20n/act/tree/master/wikiServices#set-an-nginx-password).  We can do this via the `api.php` endpoint:
 ```shell
@@ -499,7 +512,14 @@ You can redirect the output of `curl` to `/dev/null` if you want, but it's good 
 
 Note that this must be done on the wiki host itself: public access `api.php` is blocked to all traffic sources except `localhost`.
 
-#### Example: Loading the Wiki Front-Matter ####
+### Loading Protein and DNA design files ###
+
+```
+sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions txt Sequences/
+```
+We use the `importImages` script because we need the DNA and Protein designs to be loaded as attachments. 
+
+### Loading the Wiki Front-Matter ###
 
 There is a directory in this repository called `wiki_front_matter` that contains the main page and assets for our wiki.  Let's install it!
 
@@ -514,9 +534,10 @@ $ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwri
 $ find wiki_front_matter/pages -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
 
 # Ensure they're re-rendered.  Don't use find, as we just want the page names.
+$ export CRED=<user>:<pass>
 for i in $(ls wiki_front_matter/pages); do
   echo $i;
-  curl --insecure -vvv -X POST "https://localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP";
+  curl --insecure -vvv -X POST "https://${CRED}@localhost/api.php?action=purge&titles=${i}&format=json" 2>&1 | grep "HTTP";
 done
 # Make sure all responses codes are "200 OK"
 ```
@@ -537,7 +558,47 @@ To edit the side bar content (i.e. to remove `Random Page` and `Recent Changes`)
 ** helppage|help
 ```
 
-#### Example: Loading the Preview Wiki Content ####
+### Category pages
+
+The category pages can be found here (relative to the wiki url, example: `http://wiki/Category_Page_Name`):
+```
+a) Aroma
+b) Analgesic
+c) Flavor
+d) Monomer
+e) Polymer
+f) Sigma_Molecules
+g) Wikipedia_Molecules
+h) Drug_Molecules
+```
+
+These urls have to added to the index page of the wiki. 
+Edit the main page of the wiki `https://wiki/index.php?title=Main_Page&action=edit` to be the following:
+
+```
+Welcome to the 20n Bio-reachables Repository.  Please see the [[Introduction]] for an overview of this repository's contents.
+
+View:
+* [[All_Chemicals|Entire bio-reachables set]]
+
+* Or explore molecules by:
+** [[Drug_Molecules|Molecules found in DrugBank]]
+** [[Sigma_Molecules|Molecules in the Sigma-Aldrich catalog]]
+** [[Wikipedia_Molecules|Molecules found in Wikipedia]]
+
+* Or explore by use-cases:
+** [[Analgesic|Analgesic Molecules]]
+** [[Aroma|Aromatic Molecules]]
+** [[Flavor|Flavor Molecules]]
+** [[Monomer|Monomer Molecules]]
+** [[Polymer|Polymer Molecules]]
+
+[[File:Bio-reachable-chemicals.jpg|600px|center|]]
+```
+
+### Example: Loading the Preview Wiki Content ###
+
+This is an example for a limited version of the wiki. You should skip to the next section if you are not installing a "Preview Wiki".
 
 On an office server:
 ```
@@ -563,7 +624,6 @@ $ find demo_wiki_2016-12-21/Reachables -type f | sort -S1G | xargs -n 400 sudo -
 # Invalid cached version of the reachables docs to ensure tabs are rendered correctly:
 $ for i in $(ls demo_wiki_2016-12-21/Reachables/); do echo $i; curl --insecure -vvv -X POST "https://localhost:80/api.php?action=purge&titles=${i}&format=json"; done
 ```
-Still TODO: all molecule and category pages.
 
 ### Making the VM Publicly Accessible ###
 
