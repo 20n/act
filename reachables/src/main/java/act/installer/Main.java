@@ -381,9 +381,9 @@ public class Main {
       try {
         System.out.println("Initializing Mongo database.");
         MongoDB db = new MongoDB(server, dbPort, dbname);
-        // Options for Bing Searcher: no force update - cache only
-        // If you wish to make queries to the Bing Search API, please switch cache-only to false.
-        BingSearcher bingSearcher = new BingSearcher(db, false, true);
+        Boolean forceUpdate = false;
+        Boolean useOnlyCache = true;
+        BingSearcher bingSearcher = new BingSearcher(db, forceUpdate, useOnlyCache);
         System.out.println("\nInstalling Bing Search cross-references.");
         System.out.println("Constructing the list of priority InChIs to install Bing Search annotations.");
         String path = System.getProperty("user.dir") + "/" + args[4];

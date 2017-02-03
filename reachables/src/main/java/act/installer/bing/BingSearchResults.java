@@ -42,7 +42,7 @@ public class BingSearchResults {
   private static final Logger LOGGER = LogManager.getFormatterLogger(BingSearchResults.class);
 
   // Full path to the account key for the Bing Search API (on the NAS)
-  private static final String ACCOUNT_KEY_FILEPATH = "/mnt/data-level1/data/bing/bing_search_api_account_key.txt";
+  private static final String ACCOUNT_KEY_FILEPATH = "data/bing/bing_search_api_account_key.txt";
   // Maximum number of results possible per API call. This is the maximum value for URL parameter "count"
   private static final Integer MAX_RESULTS_PER_CALL = 50;
   // How many search results should be retrieved when getting topSearchResults
