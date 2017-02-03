@@ -487,7 +487,7 @@ $ sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwri
 ```
 E.g., if you are using the preview data from the NAS `<directory of images>` =  `demo_wiki_2016-12-21/renderings/`. Replace `png` with a different image type/extension if you need to upload other kinds of images.
 
-#### Loading Page Text ####
+### Loading Page Text ###
 
 To load a directory of only pages into the wiki (no other files, please), use this command:
 ```
@@ -509,7 +509,14 @@ You can redirect the output of `curl` to `/dev/null` if you want, but it's good 
 
 Note that this must be done on the wiki host itself: public access `api.php` is blocked to all traffic sources except `localhost`.
 
-#### Example: Loading the Wiki Front-Matter ####
+### Loading Protein and DNA design files ###
+
+```
+sudo -u www-data php /var/www/mediawiki/maintenance/importImages.php --overwrite --extensions txt Sequences/
+```
+We use the `importImages` script because we need the DNA and Protein designs to be loaded as attachments. 
+
+### Loading the Wiki Front-Matter ###
 
 There is a directory in this repository called `wiki_front_matter` that contains the main page and assets for our wiki.  Let's install it!
 
@@ -550,7 +557,8 @@ To edit the side bar content (i.e. to remove `Random Page` and `Recent Changes`)
 
 ### Category pages
 
-The category pages can be found here (relative to the wiki url, example: http://wiki/Category_Page_Name):
+The category pages can be found here (relative to the wiki url, example: `http://wiki/Category_Page_Name`):
+```
 a) Aroma
 b) Analgesic
 c) Flavor
@@ -559,6 +567,7 @@ e) Polymer
 f) Sigma_Molecules
 g) Wikipedia_Molecules
 h) Drug_Molecules
+```
 
 These urls have to added to the index page of the wiki. Copy/Paste the following mediawiki markup to the bottom of the
 index page:
@@ -577,7 +586,7 @@ Or explore by use-cases:
 * [[Polymer|Polymer Molecules]]
 ```
 
-#### Example: Loading the Preview Wiki Content ####
+### Example: Loading the Preview Wiki Content ###
 
 This is an example for a limited version of the wiki. You should skip to the next section if you are not installing a "Preview Wiki".
 
