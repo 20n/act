@@ -429,10 +429,10 @@ $ rsync -azP my_local_directory/ private-${n}-wiki-west2:my_local_directory
 
 Note that running `rsync` from a `screen` session when copying many files is perilous: once you disconnect from `screen`, `rsync` and `ssh` will no longer have access to your `ssh agent`, and so will be unable to create new connections to the remote host.  Moving single large files (like `tar` files) is fine in screen, however.
 
-### Upload {Reachables, Paths, Sequences} and Images (renderings, and cascade dot renderings) ###
+### Upload {Reachables, Paths, Sequences, Categories} and Images (renderings, and cascade dot renderings) ###
 
 ```
-# upload {Reachables, Paths, Sequences} that are within the wiki_pages dir
+# upload {Reachables, Paths, Sequences, Categories} that are within the wiki_pages dir
 $ rsync -azP wiki_pages private-${n}-wiki-west2:
 
 # upload the cascade image renderings
