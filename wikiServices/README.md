@@ -496,7 +496,7 @@ To load a directory of only pages into the wiki (no other files, please), use th
 ```
 $ find <directory of page text files> -type f | sort -S1G | xargs sudo -u www-data php /var/www/mediawiki/maintenance/importTextFiles.php --overwrite
 ```
-If you are using the preview data from the NAS `<directory of page text files>` = `demo_wiki_2016-12-21/{Paths/,Reachables/}`, i.e., you run the command twice.
+If you are using the preview data from the NAS `<directory of page text files>` = `demo_wiki_2016-12-21/{Paths/,Reachables/,Categories/}`, i.e., you run the command three times.
 
 The Tabs extension we rely on doesn't automatically render the tab assets when using the maintenance script, so we have to force mediawiki to purge its cache and rebuild the page.  Below, you will need the username and password credentials you [created for NGINX above](https://github.com/20n/act/tree/master/wikiServices#set-an-nginx-password).  We can do this via the `api.php` endpoint:
 ```shell
