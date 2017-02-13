@@ -32,20 +32,21 @@ the `BiointepretationDriver` class looks like this:
   {
     "operation": "MERGE_REACTIONS",
     "read": "actv01",
-    "write": "drknow_20170111"
+    "write": "drknow_OPTIONALSUFFIX"
   },
   {
     "operation": "DESALT",
-    "read": "drknow_20170111",
-    "write": "synapse_20170111"
+    "read": "drknow_OPTIONALSUFFIX",
+    "write": "synapse_OPTIONALSUFFIX"
   },
   {
     "operation": "REMOVE_COFACTORS",
-    "read": "synapse_20170111",
-    "write": "jarvis_20170111"
+    "read": "synapse_OPTIONALSUFFIX",
+    "write": "jarvis_OPTIONALSUFFIX"
   }
 ]
 ```
+You can add `_OPTIONALSUFFIX` if you need to identify the run, e.g., tag it with a date `_20170111`.
 This process will take on the order of 12-15 hours to complete.
 
 Note that mechanistic validation is not included in this pipeline due to performance reasons.  To enable it, add the
@@ -53,11 +54,11 @@ following block to the array of operations above:
 ```JSON
   {
     "operation": "VALIDATE",
-    "read": "jarvis_2017-01-11",
-    "write": "marvin_2017-01-11"
+    "read": "jarvis_OPTIONALSUFFIX",
+    "write": "marvin_OPTIONALSUFFIX"
   }
 ```
-Validation on `master` may take up to a week to complete.  The `limit-reactor-products-for-validation` branch has
+Validation on `master` may take up to a week to complete (Last time on azure took 8.53 days to complete).  The `limit-reactor-products-for-validation` branch has
 WIP fixes that limit the scope of the validator's search, and may increase its performance by a significant margin.
 
 Save your JSON configuration in a file, in our case `biointerpretation_config.json`, and run this command:
