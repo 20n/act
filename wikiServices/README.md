@@ -66,7 +66,7 @@ Save your JSON configuration in a file, in our case `biointerpretation_config.js
 $ sbt 'runMain com.act.biointerpretation.BiointerpretationDriver -c biointerpretation_config.json'
 ```
 
-The output of the installer pipeline will be a database named `jarvis_2017-01-11`.
+The output of the installer pipeline will be a database named `jarvis_OPTIONALSUFFIX` (or `marvin_OPTIONALSUFFIX` if you ran mechanistic validation).
 
 ### Run Reachables and Cascades ###
 
