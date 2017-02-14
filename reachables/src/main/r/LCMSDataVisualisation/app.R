@@ -1,4 +1,4 @@
-# This file (app.R) contains the core of teh visualisation app.
+# This file (app.R) contains the core of the visualisation app.
 # Its main tasks are as follows:
 # - loading the various libraries needed across the app
 # - sourcing the modules
@@ -35,6 +35,7 @@ library(digest)
 basicConfig('DEBUG')
 
 source("lcms_lib.R")
+source("lcms_interface.R")
 source("mz_scope.R")
 source("plot_parameters.R")
 source("lcms_data.R")
