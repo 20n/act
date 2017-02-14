@@ -41,7 +41,6 @@ getIonMz <- {
   
   # We use the scala interpreter to compute the ion m/z value.
   # Warning: this will break if you don't have access to 20n.com internal libraries
-  
   # Alternatives include R package like: OrgMassSpecR
   kScalaInterpreter%~%'import com.act.lcms.MS1'
   getIonMzFunctionDef <- 'MS1.computeIonMz(mass, MS1.ionDeltas.filter(i => i.getName.equals(mode)).head)'
