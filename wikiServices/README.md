@@ -19,7 +19,14 @@ Note: it's best to run all of the following commands in a `screen` session, as t
 It is likely that you'll have an ACT database on hand from which to produce reachables and cascades.  If not, run this
 command (on physical server `speakeasy`, or azure `twentyn-speakeasy-west2`):
 ```
-$ time sbt 'runMain com.act.reachables.initdb install omit_kegg omit_infer_ops omit_vendors omit_patents omit_infer_rxnquants omit_infer_sar omit_infer_ops omit_keywords omit_chebi'
+$ screen -S mongo-database
+  $ mongod --version 
+     // should be over v3.0.0 or else will crash during reachables computation
+     // upgrade if needed: https://docs.mongodb.com/master/tutorial/install-mongodb-on-ubuntu/
+  $ mongod --dbpath /PATH_TO_DIR_ON_AT_LEAST_250GB_DISK
+
+$ screen -S installer
+  $ time sbt 'runMain com.act.reachables.initdb install omit_kegg omit_infer_ops omit_vendors omit_patents omit_infer_rxnquants omit_infer_sar omit_infer_ops omit_keywords omit_chebi'
 ```
 
 This process will install a DB to `actv01` on machine.  This process will probably take somewhere on the
@@ -67,6 +74,16 @@ $ sbt 'runMain com.act.biointerpretation.BiointerpretationDriver -c biointerpret
 ```
 
 The output of the installer pipeline will be a database named `jarvis_OPTIONALSUFFIX` (or `marvin_OPTIONALSUFFIX` if you ran mechanistic validation).
+Your full db should now look like the following (`$ mongo localhost`):
+```
+> show dbs
+actv01   59.925GB
+drknow   37.936GB
+jarvis   33.938GB
+local     0.078GB
+marvin   33.938GB
+synapse  35.937GB
+```
 
 ### Run Reachables and Cascades ###
 
