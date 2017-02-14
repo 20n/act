@@ -9,6 +9,7 @@ name := "reachables"
   If we did not use this option, Spark will not able to correctly establish a class path.
  */
 fork := true
+
 /*
   Because we have fork=true (universally), by default forked execution
   does not attach the stdin to the process, *unless* we tell it to

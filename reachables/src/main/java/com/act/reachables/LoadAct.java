@@ -31,7 +31,6 @@ public class LoadAct extends SteppedTask {
 
   private static final String DEFAULT_DB_HOST = "localhost";
   private static final int DEFAULT_PORT = 27017;
-  private static final String DEFAULT_DATABASE = "jarvis_2016-12-09";
 
   // Fields
   private MongoDB db;
@@ -40,11 +39,11 @@ public class LoadAct extends SteppedTask {
   private int loaded, total;
   private List<String> fieldSetForChemicals;
 
-  private LoadAct(Set<String> optional_universal_inchis, Set<String> optional_cofactor_inchis) {
+  private LoadAct(String dbToUse, Set<String> optional_universal_inchis, Set<String> optional_cofactor_inchis) {
     this.optional_universal_inchis = optional_universal_inchis;
     this.optional_cofactor_inchis = optional_cofactor_inchis;
     this.fieldSetForChemicals = new ArrayList<>();
-    this.db = new MongoDB(DEFAULT_DB_HOST, DEFAULT_PORT, DEFAULT_DATABASE);
+    this.db = new MongoDB(DEFAULT_DB_HOST, DEFAULT_PORT, dbToUse);
 
     ActData.instance().Act = new Network("Act");
     ActData.instance().ActTree = new Network("Act Tree");
@@ -68,11 +67,11 @@ public class LoadAct extends SteppedTask {
     loaded = -1;
   }
 
-  public static Network getReachablesTree(Set<String> natives, Set<String> cofactors, boolean restrictToSeq, String[] extra_chem_fields) {
+  public static Network getReachablesTree(String dbToUse, Set<String> natives, Set<String> cofactors, boolean restrictToSeq, String[] extra_chem_fields) {
     GlobalParams._actTreeOnlyIncludeRxnsWithSequences = restrictToSeq;
 
     // init loader
-    LoadAct act = new LoadAct(natives, cofactors);
+    LoadAct act = new LoadAct(dbToUse, natives, cofactors);
 
     // set fields to include in the tree even if they are not reachables
     if (extra_chem_fields != null)
@@ -85,12 +84,12 @@ public class LoadAct extends SteppedTask {
     return ActData.instance().ActTree;
   }
 
-  public static Network getReachablesTree(Set<String> natives, Set<String> cofactors, boolean restrictToSeq) {
-    return getReachablesTree(natives, cofactors, restrictToSeq, null);
+  public static Network getReachablesTree(String dbToUse, Set<String> natives, Set<String> cofactors, boolean restrictToSeq) {
+    return getReachablesTree(dbToUse, natives, cofactors, restrictToSeq, null);
   }
 
-  public static Network getReachablesTree(Set<String> natives, Set<String> cofactors) {
-    return getReachablesTree(natives, cofactors, true);
+  public static Network getReachablesTree(String dbToUse, Set<String> natives, Set<String> cofactors) {
+    return getReachablesTree(dbToUse, natives, cofactors, true);
   }
 
   public static String toInChI(Long id) {

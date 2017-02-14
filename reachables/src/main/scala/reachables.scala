@@ -11,20 +11,19 @@ import scala.collection.JavaConverters._
 import scala.io.Source
 
 object reachables {
-  private var currentDatabase = "jarvis_2016-12-09"
-
-  private lazy val defaultDbName = getDefaultDbName
-
-  private def getDefaultDbName: String = {
-    currentDatabase
-  }
-
   private val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   HELP_FORMATTER.setWidth(100)
   val LOGGER = LogManager.getLogger(getClass.getName)
 
   private val HELP_MESSAGE =
-    """Usage: run --prefix=PRE --hasSeq=true|false --regressionSuiteDir=path [--defaultDbName=DB_NAME] --extra=[semicolon-sep db.chemical fields]
+    """Usage: run --prefix=PRE 
+      |           --useNativesFile=FILE
+      |           --useCofactorsFile=FILE
+      |           --defaultDbName=DB_NAME
+      |           --output-dir=DIR
+      |           [--hasSeq=true|false]
+      |           [--regressionSuiteDir=path]
+      |           [--extra=semicolon-sep db.chemical fields]
       |
       |Example: run --prefix=r
       | will create reachables tree with prefix r and by default with only enzymes that have seq
@@ -60,7 +59,8 @@ object reachables {
       CliOption.builder(OPTION_COFACTORS_FILE).
         hasArg().
         longOpt("useCofactorsFile").
-        desc("Path to file containing cofactor chemicals."),
+        desc("Path to file containing cofactor chemicals.").
+        required(true),
 
       CliOption.builder(OPTION_HAS_SEQ).
         longOpt("hasSeq").
@@ -79,12 +79,14 @@ object reachables {
       CliOption.builder(OPTION_OUTPUT_DIRECTORY).
         hasArg.
         longOpt("output-dir").
-        desc("Ensure chemicals with certain information are included."),
+        desc("Ensure chemicals with certain information are included.").
+        required(true),
       
       CliOption.builder(OPTION_DATABASE).
         hasArg.
         longOpt("defaultDbName").
-        desc("The database that the reachables collection will use."),
+        desc("The database that the reachables collection will use.").
+        required(true),
 
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
@@ -132,9 +134,9 @@ object reachables {
 
     val prefix = params.getOptionValue(OPTION_PREFIX)
     
-    currentDatabase = params.getOptionValue(OPTION_DATABASE, currentDatabase)
+    val currentDatabase = params.getOptionValue(OPTION_DATABASE)
 
-    writeReachableTree(prefix, params.hasOption(OPTION_HAS_SEQ),
+    writeReachableTree(prefix, currentDatabase, params.hasOption(OPTION_HAS_SEQ),
       Option(params.getOptionValues(OPTION_EXTRA_INFORMATION)),
       Option(params.getOptionValue(OPTION_REGRESSION_DIR)),
       params.getOptionValue(OPTION_NATIVES_FILE),
@@ -142,12 +144,10 @@ object reachables {
       Option(params.getOptionValue(OPTION_OUTPUT_DIRECTORY)))
   }
 
-  def writeReachableTree(prefix: String, needSeq: Boolean, extraInformation: Option[Array[String]],
+  def writeReachableTree(prefix: String, currentDb: String, needSeq: Boolean, extraInformation: Option[Array[String]],
                          regressionDir: Option[String],
                          nativesFile: String,
                          cofactorsFile: Option[String], outputFile: Option[String]) {
-    // Connect to the DB so that extended attributes for chemicals can be fetched as we serialize.
-    val db = new MongoDB("localhost", 27017, defaultDbName)
 
     /* --------------- Parse Options ------------------ */
     val regressionOutputDirectory = s"$prefix.regressions/"
@@ -195,7 +195,7 @@ object reachables {
     // set parameter for whether we want to exclude rxns that dont have seq
     GlobalParams._actTreeOnlyIncludeRxnsWithSequences = needSeq
 
-    val tree = LoadAct.getReachablesTree(universal_natives, universal_cofactors, needSeq, chems_w_extra_fields)
+    val tree = LoadAct.getReachablesTree(currentDb, universal_natives, universal_cofactors, needSeq, chems_w_extra_fields)
     LOGGER.info(s"Done: L2 reachables computed. Num reachables found: ${tree.nodesAndIds.size}")
 
     // get inchis for all the reachables
