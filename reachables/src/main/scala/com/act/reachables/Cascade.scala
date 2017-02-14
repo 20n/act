@@ -29,7 +29,7 @@ import scala.concurrent.{Await, Future, blocking}
 object Cascade extends Falls {
   val mongoClient: MongoClient = new MongoClient(new ServerAddress("localhost", 27017))
   val db: DB = mongoClient.getDB("wiki_reachables")
-  var collectionName: String = "pathways_jarvis_dec21"
+  var collectionName: String = "SHOULD_BE_SET_ON_CMDLINE"
   def setCollectionName(c: String) {
     println(s"Output collection changed to $c")
     collectionName = c

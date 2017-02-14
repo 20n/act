@@ -102,7 +102,7 @@ Then, run the commands as shown below.
 $ cd act/reachables
 $ sbt "runMain com.act.reachables.reachables --prefix=$PRE --defaultDbName=$DEFAULT_DB --useNativesFile=src/main/resources/reachables_input_files/valid_starting_points.txt --useCofactorsFile=src/main/resources/reachables_input_files/my_cofactors_file.txt -o $dirName";
 $ sbt "runMain com.act.reachables.postprocess_reachables --prefix=$PRE --output-dir=$dirName --extractReachables --writeGraphToo --defaultDbName=$DEFAULT_DB";
-$ sbt "runMain com.act.reachables.cascades --prefix=r-$today --output-dir=$dirName --cache-cascades=true --do-hmmer=false --out-collection=pathways_jarvis_$today --db-name=$DEFAULT_DB --verbosity=1”
+$ sbt "runMain com.act.reachables.cascades --prefix=r-$today --output-dir=$dirName --cache-cascades=true --do-hmmer=false --out-collection=pathways_${DEFAULT_DB}_${today} --db-name=$DEFAULT_DB --verbosity=1"
 ```
 
 You should now have `r-${today}.reachables.txt` and `r-${today}-data` in your `reachables-$today` directory.  We'll
