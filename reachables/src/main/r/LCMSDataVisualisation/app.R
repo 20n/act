@@ -1,4 +1,4 @@
-# This file (app.R) contains the core of teh visualisation app.
+# This file (app.R) contains the core of the visualisation app.
 # Its main tasks are as follows:
 # - loading the various libraries needed across the app
 # - sourcing the modules
