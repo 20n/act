@@ -35,6 +35,7 @@ library(digest)
 basicConfig('DEBUG')
 
 source("lcms_lib.R")
+source("lcms_interface.R")
 source("mz_scope.R")
 source("plot_parameters.R")
 source("lcms_data.R")

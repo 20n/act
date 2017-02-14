@@ -6,27 +6,6 @@ kPeakDisplaySep <- " - "
 kIntensityThreshold <- 10000
 kSSRatio <- 20
 
-saveMoleculeStructure <- {
-  # Documentation for `saveMoleculeStructure`
-  # Render a molecule's structure and saves a .png to file.
-  #
-  # Args:
-  #   inchiString: input inchi string 
-  #   file: absolute file path for saving the structure image file
-}
-
-getIonMz <- {
-  # Documentation for `getIonMz`
-  # Compute the m/z value for a molecular mass and ion mode
-  #
-  # Args:
-  #   mass: Molecular mass
-  #   mode: Ion for the m/z computation. One of com.act.lcms.MS1.ionDeltas
-  #
-  # Returns:
-  #   A Double representing the Ion m/z value
-}
-
 getAndCacheScanFile <- function(scan.file.name) {
   # Get and serialize a netCDF scan file.
   #
