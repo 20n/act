@@ -140,7 +140,7 @@ For this step we need R to be installed (specially `/usr/bin/Rscript`). Use `sud
 
 ```
 $ cut -d$'\t' -f 3 reachables-${today}/r-${today}.reachables.txt >  reachables-${today}/r-${today}.reachables.just_inchis.txt
-$ sbt "runMain act.installer.reachablesexplorer.WordCloudGenerator -l reachables-${today}/r-${today}.reachables.just_inchis.txt -r /usr/bin/Rscript"
+$ sbt "runMain act.installer.reachablesexplorer.WordCloudGenerator --inchis-path reachables-${today}/r-${today}.reachables.just_inchis.txt --r-location /usr/bin/Rscript --source-db-name ${DEFAULT_DB}"
 ```
 
 ### Run the Loader to Create a Reachables Collection ###
