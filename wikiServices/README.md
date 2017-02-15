@@ -120,7 +120,7 @@ Searcher processes them to output relevant usage words and search count.
 We run the Bing Searcher, to populate the installer with Bing results using the `-c` option to use only the cache and
 not make queries to the Bing Search API.
 ```
-sbt "runMain act.installer.bing.BingSearcher -n jarvis_${today} -h localhost -p 27017 -c"
+sbt "runMain act.installer.bing.BingSearcher -n ${DEFAULT_DB} -h localhost -p 27017 -c"
 ```
 
 
