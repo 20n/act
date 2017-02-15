@@ -48,13 +48,12 @@ public class WordCloudGenerator {
   private static final String OPTION_INPUT_INCHIS = "l";
   private static final String OPTION_RSCRIPT_EXE_PATH = "r";
 
-  private static final String DEFAULT_ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
+  private static final String DEFAULT_ASSETS_LOCATION = "data/reachables-explorer-rendering-cache";
 
   // Default host. If running on a laptop, please set a SSH bridge to access speakeasy
-  // TODO change the defaults to something more plain/easy to know why they are like they are (No dates)
   private static final String DEFAULT_HOST = "localhost";
   private static final String DEFAULT_PORT = "27017";
-  private static final String DEFAULT_CHEMICALS_DATABASE = "jarvis_2016-12-09";
+  private static final String DEFAULT_CHEMICALS_DATABASE = "SHOULD_COME_FROM_CMDLINE"; // "jarvis_2016-12-09";
 
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
@@ -106,7 +105,7 @@ public class WordCloudGenerator {
             RSCRIPT_EXE_PATH))
         .hasArg()
         .required()
-        .longOpt("inchis-path")
+        .longOpt("r-location")
     );
   }};
 

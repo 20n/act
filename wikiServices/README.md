@@ -122,6 +122,11 @@ not make queries to the Bing Search API.
 ```
 sbt "runMain act.installer.bing.BingSearcher -n ${DEFAULT_DB} -h localhost -p 27017 -c"
 ```
+To check the outcome, run the following command before and after the execution:
+```
+mongo localhost/marvin --quiet --eval "db.chemicals.count({'xref.BING.metadata.usage_terms.0': {\$exists: true}});"
+```
+Before running `BingSearcher` you should expect `12004` and afterwards `21485`.
 
 
 ### Run Word Cloud Generation ###
@@ -131,9 +136,11 @@ them to be recognized by the loader.  We cut out the InChIs from the reachables 
 loader.  Note that Bing data must have been made available to the installer in the first step and the Bing search cache
 be available for this process to work.
 
+For this step we need R to be installed (specially `/usr/bin/Rscript`). Use `sudo apt-get install r-base` if needed.
+
 ```
-$ cut -d$'\t' -f 3 r-${today}.reachables.txt >  r-${today}.reachables.just_inchis.txt
-$ sbt "runMain act.installer.reachablesexplorer.WordCloudGenerator -l r-${today}.reachables.just_inchis.txt -r /usr/bin/Rscript"
+$ cut -d$'\t' -f 3 reachables-${today}/r-${today}.reachables.txt >  reachables-${today}/r-${today}.reachables.just_inchis.txt
+$ sbt "runMain act.installer.reachablesexplorer.WordCloudGenerator -l reachables-${today}/r-${today}.reachables.just_inchis.txt -r /usr/bin/Rscript"
 ```
 
 ### Run the Loader to Create a Reachables Collection ###
