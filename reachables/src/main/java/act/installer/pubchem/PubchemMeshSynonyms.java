@@ -51,7 +51,7 @@ public class PubchemMeshSynonyms {
       "This class provides an API to get Pubchem synonyms and MeSH terms given an InChI string.";
 
   // The Virtuoso SPARQL endpoint, lives by default on Chimay at port 8890
-  private static final String DEFAULT_SERVICE_HOST = "chimay";
+  private static final String DEFAULT_SERVICE_HOST = "localhost"; // chimay
   private static final String DEFAULT_SERVICE_PORT = "8890";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
