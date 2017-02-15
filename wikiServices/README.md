@@ -172,10 +172,9 @@ $ sbt "runMain act.installer.reachablesexplorer.Loader --source-db-name ${DEFAUL
 ```
 
 The `-l` option installs a set of L4 projections, and can be omitted if necessary.  This command will output any missing
-molecule renderings to the rendering cache at `/mnt/data-level1/data/reachables-explorer-rendering-cache/`.  It
-depends on a Virtuoso RDF store process being available to find synonyms and MeSH headings; **the target of these requests
-is hardcoded as `chimay`, so this needs DNS in order to work without modification.**  The Virtuoso host can be changed
-in `act.installer.pubchem.PubchemMeshSynonyms`.
+molecule renderings to the rendering cache at `data/reachables-explorer-rendering-cache/`.  It
+depends on a Virtuoso RDF store process being available to find synonyms and MeSH headings;
+The Virtuoso host is assumed to be `localhost:8890` and if it is different setup an ssh tunnel appropriately. (If you followed the instructions in the [architecture doc](https://github.com/20n/act/wiki/Architecture:-On-Azure#buildup-notes), you should already have a virtuoso host running.)
 
 ### Enrich the Reachables with Patents ###
 
