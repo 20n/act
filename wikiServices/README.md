@@ -156,10 +156,12 @@ $ sudo -i R
 > install.packages("wordcloud")
 ```
 
+Run the generator:
 ```
 $ cut -d$'\t' -f 3 reachables-${today}/r-${today}.reachables.txt >  reachables-${today}/r-${today}.reachables.just_inchis.txt
 $ sbt "runMain act.installer.reachablesexplorer.WordCloudGenerator --inchis-path reachables-${today}/r-${today}.reachables.just_inchis.txt --r-location /usr/bin/Rscript --source-db-name ${DEFAULT_DB}"
 ```
+Note that this reads the cache first, so if you already have `52971` files (`ls -l data/reachables-explorer-rendering-cache/ | wc -l`) then it might just run and say "success" without any additional output.
 
 ### Run the Loader to Create a Reachables Collection ###
 
