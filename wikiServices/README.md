@@ -105,6 +105,8 @@ $ sbt "runMain com.act.reachables.postprocess_reachables --prefix=$PRE --output-
 $ sbt "runMain com.act.reachables.cascades --prefix=r-$today --output-dir=$dirName --cache-cascades=true --do-hmmer=false --out-collection=pathways_${DEFAULT_DB}_${today} --db-name=$DEFAULT_DB --verbosity=1"
 ```
 
+Note that the last command `cascades` is a memory hog. There is a `.sbtopts` file in the repository ([sbtopts ref](https://medium.com/@jan______/sbtconfig-is-deprecated-650d6ff10236])) that sets the java flag for heap size to 25G (overestimated). Ensure that is read by running with the debug flag `sbt -d`, and check the presence of `-Xmx25G`. Change that to the appropriate size if needed. Also, if the process runs out of memory, just rerun. It will skip already computed cascades and continue. 
+
 You should now have `r-${today}.reachables.txt` and `r-${today}-data` in your `reachables-$today` directory.  We'll
 need these to complete the remaining steps.
 
