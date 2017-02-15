@@ -136,7 +136,25 @@ them to be recognized by the loader.  We cut out the InChIs from the reachables 
 loader.  Note that Bing data must have been made available to the installer in the first step and the Bing search cache
 be available for this process to work.
 
-For this step we need R to be installed (specially `/usr/bin/Rscript`). Use `sudo apt-get install r-base` if needed.
+For this step we need R to be installed (specially `/usr/bin/Rscript`). Do the following if needed:
+```
+# install >3.3.1 version of R:
+# instructions from https://www.digitalocean.com/community/tutorials/how-to-install-r-on-ubuntu-16-04-2
+$ sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9
+$ sudo add-apt-repository 'deb [arch=amd64,i386] https://cran.rstudio.com/bin/linux/ubuntu xenial/'
+$ sudo apt-get update
+$ sudo apt-get install r-base
+
+# install dependency libraries needed by R install.packages below
+$ sudo apt-get install libssl-dev
+$ sudo apt-get install libsasl2-dev
+
+# install reqd R package dependencies (also ensure R version is >3.3.1)
+$ sudo -i R
+> install.packages("mongolite")
+> install.packages("slam")
+> install.packages("wordcloud")
+```
 
 ```
 $ cut -d$'\t' -f 3 reachables-${today}/r-${today}.reachables.txt >  reachables-${today}/r-${today}.reachables.just_inchis.txt

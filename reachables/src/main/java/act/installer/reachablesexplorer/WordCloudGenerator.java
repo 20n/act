@@ -115,6 +115,7 @@ public class WordCloudGenerator {
 
   private String host;
   private Integer port;
+  private String database;
   private MongoDB bingDb;
   private Set<String> inchisSet;
   private File assetLocation;
@@ -122,6 +123,7 @@ public class WordCloudGenerator {
   public WordCloudGenerator(String host, Integer port, String database, String assetLocation, String rScriptExePath) {
     this.host = host;
     this.port = port;
+    this.database = database;
     this.bingDb = new MongoDB(host, port, database);
     this.inchisSet = getBingInchis();
     this.assetLocation = new File(assetLocation);
@@ -188,7 +190,7 @@ public class WordCloudGenerator {
         ProcessRunner.runProcess(
             rScriptExePath,
             // TODO: remove hardcoded database from R script
-            Arrays.asList(rScript.getAbsolutePath(), inchi, wordcloud.getAbsolutePath(), host, port.toString()),
+            Arrays.asList(rScript.getAbsolutePath(), inchi, wordcloud.getAbsolutePath(), host, port.toString(), database),
             CHILD_PROCESS_TIMEOUT_IN_SECONDS);
         FileChecker.verifyInputFile(wordcloud);
       } catch (IOException e) {
