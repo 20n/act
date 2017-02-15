@@ -82,6 +82,7 @@ public class WordCloudGenerator {
             DEFAULT_CHEMICALS_DATABASE))
         .hasArg()
         .longOpt("source-db-name")
+        .required()
     );
     add(Option.builder(OPTION_RENDERING_CACHE)
         .argName("path to cache")
