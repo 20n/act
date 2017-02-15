@@ -39,7 +39,7 @@ import org.apache.logging.log4j.Logger;
  * an important chemicals wikipedia file to be used by the Installer database.
  * Usage:
  * sbt 'runMain act.installer.wikipedia.ImportantChemicalsWikipedia
- *                 -i /mnt/data-level1/data/enwiki-20160501-pages-articles.xml
+ *                 -i data/enwiki-20160501-pages-articles.xml
  *                 -o /mnt/shared-data/Thomas/imp_chemicals_wikipedia.txt
  *                 -t'
  */
@@ -63,7 +63,7 @@ public class ImportantChemicalsWikipedia {
     add(Option.builder(OPTION_WIKIPEDIA_DUMP_FULL_PATH)
         .argName("WIKIPEDIA_DUMP_PATH")
         .desc("The full path to the Wikipedia XML dump to parse. It should be located on the NAS " +
-            "(/mnt/data-level1/data/enwiki-20160501-pages-articles.xml) but can also be obtained from " +
+            "(data/enwiki-20160501-pages-articles.xml) but can also be obtained from " +
             "https://dumps.wikimedia.org/enwiki/")
         .hasArg().required()
         .longOpt("wikipedia_dump_path")

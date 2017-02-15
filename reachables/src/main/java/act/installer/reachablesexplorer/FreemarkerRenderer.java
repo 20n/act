@@ -98,7 +98,7 @@ public class FreemarkerRenderer {
   private static final String DEFAULT_REACHABLES_COLLECTION = "reachables_2016-12-26";
   private static final String DEFAULT_SEQUENCES_COLLECTION = "sequences_2016-12-26";
   private static final String DEFAULT_DNA_COLLECTION = "designs_2016-12-26";
-  private static final String DEFAULT_RENDERING_CACHE = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
+  private static final String DEFAULT_RENDERING_CACHE = "data/reachables-explorer-rendering-cache";
   private static final String DEFAULT_PATHWAY_COLLECTION = "pathways_jarvis_dec21";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
