@@ -168,7 +168,7 @@ Note that this reads the cache first, so if you already have `52971` files (`ls 
 Run the loader to produce a collection of `reachable` documents in MongoDB.
 
 ```
-$ sbt "runMain act.installer.reachablesexplorer.Loader --source-db-name ${DEFAULT_DB} --reachables-dir $dirName --out-reachables-coll reachables_${today} --out-seq-coll sequences_${today} --projected-inchis-file data/L4n1_in_pubchem"
+sbt "runMain act.installer.reachablesexplorer.Loader --source-db-name ${DEFAULT_DB} --reachables-dir $dirName --out-reachables-coll reachables_${today} --out-seq-coll sequences_${today} --projected-inchis-file data/L4n1\,2-Dec2016/L4n1_in_pubchem"
 ```
 
 The `-l` option installs a set of L4 projections, and can be omitted if necessary.  This command will output any missing
