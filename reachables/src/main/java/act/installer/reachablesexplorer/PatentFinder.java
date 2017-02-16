@@ -42,7 +42,7 @@ public class PatentFinder {
   private static final String UNUSED_SOURCE_DB = "dummy_source_db"; 
 
   // A directory of directories.  Each directory is one year's index, and ends in `.index`.
-  private static final String DEFAULT_PATENT_INDEX_LOCATION = "/mnt/shared-data/Mark/patents";
+  private static final String DEFAULT_PATENT_INDEX_LOCATION = "data/patents";
 
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{

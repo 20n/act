@@ -183,7 +183,7 @@ To find recent patents for reachable molecules, use the `PatentFinder` (The `-c`
 $ sbt "runMain act.installer.reachablesexplorer.PatentFinder -c reachables_${today}"
 ```
 
-This expects a collection of patent indexes to live at `/mnt/shared-data/Mark/patents`.  An alternative path can be
+This expects a collection of patent indexes to live at `data/patents` (containing subdirs such as `2005.index` -- `2014.index`).  An alternative path can be
 specified on the command line.
 
 ### Dot File Rendering ###
