@@ -841,7 +841,10 @@ public class FreemarkerRenderer {
         File reachablesDest, File pathsDest, File seqsDest)
         throws IOException {
       Loader loader =
-          new Loader(dbHost, dbPort, dbName, reachablesCollection, sequencesCollection, renderingCache, chemicalsDB);
+          new Loader(dbHost, dbPort, 
+                     null, // sourceDB -- not needed since FreemarkerRenderer only reads from dbName (wiki_reachables)
+                     dbName, // targetDB -- wiki_reachables, from which the reachables/sequences/pathway data is read
+                     reachablesCollection, sequencesCollection, renderingCache);
       FreemarkerRenderer renderer = new FreemarkerRenderer(loader, hidePathways, reachablesDest, pathsDest, seqsDest);
       renderer.init(dbHost, dbPort, dbName, dnaCollection, pathwayCollection);
       return renderer;

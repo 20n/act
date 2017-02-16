@@ -210,7 +210,7 @@ Note: The currently expected <dest> is `data/reachables-explorer-rendering-cache
 
 To render pathway-free wiki pages for all reachable molecules, run this command:
 ```
-$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages --source-db-name ${DEFAULT_DB} --pathways pathways_${DEFAULT_DB}_${today} --reachables-collection reachables_${today} --seq-collection sequences_${today} --dna-collection designs_${today} --no-pathways
+$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages --source-db-name ${DEFAULT_DB} --pathways pathways_${DEFAULT_DB}_${today} --reachables-collection reachables_${today} --seq-collection sequences_${today} --dna-collection designs_${today} --no-pathways"
 ```
 Note that we specify a pathways collection here to make sure that no molecules are opportunistically loaded into the reachables collection from stale pathways.
 
