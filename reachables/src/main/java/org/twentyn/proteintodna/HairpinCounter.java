@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package org.twentyn.proteintodna;
 
 import java.util.ArrayList;
@@ -21,8 +15,6 @@ import java.util.Set;
  * of the arms is log-scale dependence
  * 
  * * G:C is 3 HBonds; A:T is 2 HBonds; G:U is 2 HBonds; these are scored linearly
- * 
- * @author jca20n
  */
 public class HairpinCounter {
     public static void main(String[] args) throws Exception {

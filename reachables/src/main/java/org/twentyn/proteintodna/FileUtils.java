@@ -1,4 +1,3 @@
-
 package org.twentyn.proteintodna;
 
 import java.io.File;
@@ -10,13 +9,9 @@ import java.io.InputStream;
 import java.io.Writer;
 
 
-/**
- * @author sixpi
- */
 public class FileUtils {
     /**
      * dump an InputStream, returning a newly created byte[] array
-     * @author Kelvin Li
      */
     public static byte[] dumpInputStream(InputStream instream) 
                                         throws IOException {

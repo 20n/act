@@ -45,6 +45,7 @@ public class ProteinToDNADriver {
   private static final String DEFAULT_DB_HOST = "localhost";
   private static final String DEFAULT_DB_PORT = "27017";
   private static final String DEFAULT_OUTPUT_DB_NAME = "wiki_reachables";
+  private static final String DEFAULT_INPUT_RXNS_COLLECTIONS = "reactions"; // in jarvis/marvin
   private static final String DEFAULT_INPUT_DB_NAME = "SHOULD_COME_FROM_CMDLINE"; // "jarvis_2016-12-09";
   public static final String DEFAULT_INPUT_PATHWAY_COLLECTION_NAME = "SHOULD_COME_FROM_CMDLINE"; // "pathways_jarvis";
   public static final String DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME = "SHOULD_COME_FROM_CMDLINE"; // "pathways_vijay";
@@ -199,7 +200,7 @@ public class ProteinToDNADriver {
     for (String pathwayId : pathwayIds) {
       ReactionPath reactionPath = inputPathwayCollection.findOne(DBQuery.is("_id", pathwayId));
 
-      List<List<Pair<ProteinMetadata, Integer>>> processedP = RankPathway.processSinglePathAsJava(reactionPath, reactionDbName);
+      List<List<Pair<ProteinMetadata, Integer>>> processedP = RankPathway.processSinglePathAsJava(reactionPath, reactionDbName, DEFAULT_INPUT_RXNS_COLLECTIONS);
       if (processedP == null) {
         LOGGER.info(String.format("Process pathway was filtered out possibly because there were more than %s seqs for a given pathway",
             RankPathway.MAX_PROTEINS_PER_PATH()));

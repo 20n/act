@@ -18,15 +18,14 @@ object RankPathway {
   val MAX_PROTEINS_PER_PATH = 4
   val MAX_DESIGNS_PER_TARGET = 5
 
-  /* Database connections */
-  private val sourceDataDbDefault: String = "jarvis_2016-12-09"
-  private var sourceDb: MongoDB = Mongo.connectToMongoDatabase(sourceDataDbDefault)
-  private lazy val mongoClient: MongoClient = new MongoClient(new ServerAddress("localhost", 27017))
-  
   // This is a table of all the reactions in the database w/ metadata and their associated score.
-  // Looked up once, used for all pathways.
-  private lazy val rankingTable: Map[Long, List[Pair[ProteinMetadata, Integer]]] =
-    ProteinMetadataComparator.createProteinMetadataTable().asScala.map(v => (v._1: Long, v._2.asScala.toList)).toMap
+  var rankingTable: Map[Long, List[Pair[ProteinMetadata, Integer]]] = null
+
+  // Created once, used for all pathways.
+  private def createRankingTable(db: String, coll: String): Map[Long, List[Pair[ProteinMetadata, Integer]]] = {
+    val tbl = ProteinMetadataComparator.createProteinMetadataTable(db, coll).asScala.map(v => (v._1: Long, v._2.asScala.toList)).toMap
+    tbl
+  }
 
   object Mongo extends MongoWorkflowUtilities
   
@@ -95,8 +94,13 @@ object RankPathway {
     })
   }
 
-  def processSinglePath(pathway: ReactionPath, database: String): Option[List[List[Pair[ProteinMetadata, Integer]]]] = {
-    sourceDb = Mongo.connectToMongoDatabase(database)
+  def processSinglePath(pathway: ReactionPath, database: String, coll: String): Option[List[List[Pair[ProteinMetadata, Integer]]]] = {
+    val sourceDb = Mongo.connectToMongoDatabase(database)
+
+    if (rankingTable == null) {
+      rankingTable = createRankingTable(database, coll)
+    }
+
     // Error checking and input forming
     val reactionNodes = pathway.getPath.asScala.toList.filter(_.isReaction)
     if (reactionNodes.length > MAX_PROTEINS_PER_PATH || !reactionNodes.forall(x => x.sequences.size() > 0)) return None
@@ -108,7 +112,7 @@ object RankPathway {
           if (v._2.isDefined) {
             (v._1: Long, v._2.get.map(x => Pair.of(x.getLeft, x.getLeft.sequences.size + x.getRight.toInt: Integer)).sortBy(r => -r.getRight))
           } else {
-            val dummyMetadata = getDummyMetadata(v._1)
+            val dummyMetadata = getDummyMetadata(sourceDb, v._1)
             (v._1: Long, List(Pair.of(dummyMetadata, Integer.valueOf(dummyMetadata.sequences.size()))))
           }
         }))
@@ -124,19 +128,15 @@ object RankPathway {
     Option(proteinPaths.map(x => x.map(y => y._2)))
   }
 
-  def processSinglePathAsJava(pathway: ReactionPath): JavaList[JavaList[Pair[ProteinMetadata, Integer]]] = {
-    processSinglePathAsJava(pathway, sourceDataDbDefault)
-  }
-
-  def processSinglePathAsJava(pathway: ReactionPath, database: String): JavaList[JavaList[Pair[ProteinMetadata, Integer]]] = {
-    val processSinglePathVal = processSinglePath(pathway, database)
+  def processSinglePathAsJava(pathway: ReactionPath, database: String, coll: String): JavaList[JavaList[Pair[ProteinMetadata, Integer]]] = {
+    val processSinglePathVal = processSinglePath(pathway, database, coll)
     processSinglePathVal match {
       case Some(x) => x.map(_.asJava).asJava;
       case None => null;
     }
   }
 
-  private def getDummyMetadata(rid: Long): ProteinMetadata = {
+  private def getDummyMetadata(srcDB: MongoDB, rid: Long): ProteinMetadata = {
     val p = new ProteinMetadata()
 
     val newId: Long = if (rid < 0) {
@@ -145,7 +145,7 @@ object RankPathway {
       rid
     }
 
-    val reaction = sourceDb.getReactionFromUUID(newId)
+    val reaction = srcDB.getReactionFromUUID(newId)
 
     var jarray: JSONArray = new JSONArray()
     try {

@@ -301,7 +301,7 @@ public class FreemarkerRenderer {
       LOGGER.error(msg);
       throw new IllegalArgumentException(msg);
     }
-    String msg = String.format("Unable to find matching chemical for query %s", someKey);
+    String msg = String.format("Unable to find matching chemical for query '%s'", someKey);
     LOGGER.error(msg);
     throw new IllegalArgumentException(msg);
   }
@@ -842,7 +842,7 @@ public class FreemarkerRenderer {
         throws IOException {
       Loader loader =
           new Loader(dbHost, dbPort, 
-                     null, // sourceDB -- not needed since FreemarkerRenderer only reads from dbName (wiki_reachables)
+                     chemicalsDB, // sourceDB -- only needed if rendering a specific mol (to lookup id from inchikey)
                      dbName, // targetDB -- wiki_reachables, from which the reachables/sequences/pathway data is read
                      reachablesCollection, sequencesCollection, renderingCache);
       FreemarkerRenderer renderer = new FreemarkerRenderer(loader, hidePathways, reachablesDest, pathsDest, seqsDest);

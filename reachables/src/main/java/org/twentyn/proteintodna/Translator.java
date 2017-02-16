@@ -1,18 +1,8 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package org.twentyn.proteintodna;
 
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- *
- * @author J. Christopher Anderson
- */
 public class Translator {
     
     private  Map<String,String> GeneticCode;
