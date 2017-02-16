@@ -190,16 +190,18 @@ specified on the command line.
 
 Once you have run the `Loader`, molecule renderings for all reachable molecules should be available at
 `data/reachables-explorer-rendering-cache/`.  These are referenced by the dot files, which expect
-them to live at `data/reachables-explorer-rendering-cache/`.
+them to live at `data/reachables-explorer-rendering-cache/`. If the command below dumps error messages
+mentioning missing files from `/mnt/data-level1/data/..` then your dot files refer to stale data. Debug
+how that happened and change them to relative paths.
 
 To render the dot PNGs, run this command:
 ```
-$ find r-${today}-data -name '*.dot' -exec dot -Tpng {} -O \;
+$ find reachables-${today}/r-${today}-data -name '*.dot'  -exec dot -Tpng {} -O \;
 ```
 Note that this will write the images in the same directory as the dot files.  If this is not desired, you can copy them
 to another directory with this command:
 ```
-$ find r-${today}-data -name '*.dot.png' -exec cp {} <dest> \;
+$ find reachables-${today}/r-${today}-data -name '*.dot.png' -exec cp {} <dest> \;
 ```
 
 Note: The currently expected <dest> is `data/reachables-explorer-rendering-cache/`.
@@ -481,7 +483,7 @@ $ rsync -azP wiki_pages private-${n}-wiki-west2:
 #   into `reachables-explorer-rendering-cache` (where the mol/wordclouds live)
 #   and so the command below will upload all of them in one go.
 # upload the wordcloud and molecule renderings
-$ rsync -azP /mnt/data-level1/data/reachables-explorer-rendering-cache private-${n}-wiki-west2:wiki_pages/renderings
+$ rsync -azP data/reachables-explorer-rendering-cache private-${n}-wiki-west2:wiki_pages/renderings
 ```
 
 ### Create, Upload, and Install a Reachables List ###
