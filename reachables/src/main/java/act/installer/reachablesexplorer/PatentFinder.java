@@ -37,9 +37,9 @@ public class PatentFinder {
   private static final String DEFAULT_TARGET_DATABASE = "wiki_reachables";
   private static final String DEFAULT_TARGET_COLLECTION = "reachablesv6_test_thomas";
 
-  private static final String UNUSED_SEQUENCES_COLLECTION = "dummy_sequences_v0"; // We won't touch these but need
+  private static final String UNUSED_SEQUENCES_COLLECTION = null; // "dummy_sequences_v0"; // We won't touch these but need
   private static final String UNUSED_ASSETS_DIR = "/tmp";                         // them for Loader's constructor.
-  private static final String UNUSED_SOURCE_DB = "dummy_source_db"; 
+  private static final String UNUSED_SOURCE_DB = null; // "dummy_source_db"; 
 
   // A directory of directories.  Each directory is one year's index, and ends in `.index`.
   private static final String DEFAULT_PATENT_INDEX_LOCATION = "data/patents";

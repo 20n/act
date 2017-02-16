@@ -249,11 +249,15 @@ public class Loader {
    */
   public Loader(String host, Integer port, String sourceDB, String targetDB,
                 String targetCollection, String targetSequenceCollection, String renderingCache) {
-    sourceDBconn = new MongoDB(host, port, sourceDB);
+    // when the caller does not intend to touch the sourceDB, it can pass null as a param and we
+    // won't setup a "source" connection. Creating a connection with "dummy" params leads mongod
+    // to create (!) those dummy collections, mucking up our database with empty dbs/collections
+    if (sourceDB != null) {
+      sourceDBconn = new MongoDB(host, port, sourceDB);
+      wordCloudGenerator = new WordCloudGenerator(host, port, sourceDB, renderingCache);
+    }
     pubchemSynonymsDriver = new PubchemMeshSynonyms();
     moleculeRenderer = new MoleculeRenderer(new File(renderingCache));
-    // TODO Does this need to pass in the strings from the constructor?
-    wordCloudGenerator = new WordCloudGenerator(host, port, sourceDB, renderingCache);
 
     MongoClient mongoClient;
     try {
@@ -272,14 +276,18 @@ public class Loader {
       throw new RuntimeException(e);
     }
 
-    jacksonReachablesCollection =
-            JacksonDBCollection.wrap(reachables.getCollection(targetCollection), Reachable.class, String.class);
-    jacksonSequenceCollection =
-            JacksonDBCollection.wrap(reachables.getCollection(targetSequenceCollection), SequenceData.class, String.class);
+    if (targetCollection != null) {
+      jacksonReachablesCollection =
+              JacksonDBCollection.wrap(reachables.getCollection(targetCollection), Reachable.class, String.class);
+      jacksonReachablesCollection.ensureIndex(new BasicDBObject(Reachable.INCHI_FIELD_NAME, "hashed"));
+    }
 
-    jacksonReachablesCollection.ensureIndex(new BasicDBObject(Reachable.INCHI_FIELD_NAME, "hashed"));
-    jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.SEQUENCE_FIELD_NAME, "hashed"));
-    jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.ORGANISM_FIELD_NAME, 1));
+    if (targetSequenceCollection != null) {
+      jacksonSequenceCollection =
+              JacksonDBCollection.wrap(reachables.getCollection(targetSequenceCollection), SequenceData.class, String.class);
+      jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.SEQUENCE_FIELD_NAME, "hashed"));
+      jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.ORGANISM_FIELD_NAME, 1));
+    }
   }
 
   JacksonDBCollection<Reachable, String> getJacksonReachablesCollection() {
