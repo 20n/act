@@ -188,9 +188,9 @@ specified on the command line.
 
 ### Dot File Rendering ###
 
-Once you have run the `Loader`, molecule renderings for all reachable molecules should be available on the NAS at
-`/mnt/data-level1/data/reachables-explorer-rendering-cache/`.  These are referenced by the dot files, which expect
-them to live at `/mnt/data-level1/data/reachables-explorer-rendering-cache/`.
+Once you have run the `Loader`, molecule renderings for all reachable molecules should be available at
+`data/reachables-explorer-rendering-cache/`.  These are referenced by the dot files, which expect
+them to live at `data/reachables-explorer-rendering-cache/`.
 
 To render the dot PNGs, run this command:
 ```
@@ -202,7 +202,7 @@ to another directory with this command:
 $ find r-${today}-data -name '*.dot.png' -exec cp {} <dest> \;
 ```
 
-Note: The currently expected <dest> is `/mnt/data-level1/data/reachables-explorer-rendering-cache/`, though this may change depending on if on Azure or not.
+Note: The currently expected <dest> is `data/reachables-explorer-rendering-cache/`.
 
 ### Wiki Page Rendering ###
 
