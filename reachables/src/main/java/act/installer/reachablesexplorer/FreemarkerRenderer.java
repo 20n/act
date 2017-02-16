@@ -93,13 +93,13 @@ public class FreemarkerRenderer {
 
   private static final String DEFAULT_HOST = "localhost";
   private static final Integer DEFAULT_PORT = 27017;
-  private static final String DEFAULT_CHEMICALS_DATABASE = "jarvis_2016-12-09";
   private static final String DEFAULT_DB_NAME = "wiki_reachables";
-  private static final String DEFAULT_REACHABLES_COLLECTION = "reachables_2016-12-26";
-  private static final String DEFAULT_SEQUENCES_COLLECTION = "sequences_2016-12-26";
-  private static final String DEFAULT_DNA_COLLECTION = "designs_2016-12-26";
   private static final String DEFAULT_RENDERING_CACHE = "data/reachables-explorer-rendering-cache";
-  private static final String DEFAULT_PATHWAY_COLLECTION = "pathways_jarvis_dec21";
+  private static final String DEFAULT_REACHABLES_COLLECTION = "SHOULD_COME_FROM_CMDLINE"; // "reachables_2016-12-26";
+  private static final String DEFAULT_CHEMICALS_DATABASE = "SHOULD_COME_FROM_CMDLINE"; // "jarvis_2016-12-09";
+  private static final String DEFAULT_SEQUENCES_COLLECTION = "SHOULD_COME_FROM_CMDLINE"; // "sequences_2016-12-26";
+  private static final String DEFAULT_DNA_COLLECTION = "SHOULD_COME_FROM_CMDLINE"; // "designs_2016-12-26";
+  private static final String DEFAULT_PATHWAY_COLLECTION = "SHOULD_COME_FROM_CMDLINE"; // "pathways_jarvis_dec21";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class consumes and renders a DB of reachable molecules, pathways, and DNA designs."
@@ -124,6 +124,7 @@ public class FreemarkerRenderer {
             "The name of the database from which to fetch chemicals and reactions (default: %s)",
             DEFAULT_CHEMICALS_DATABASE))
         .hasArg()
+        .required()
         .longOpt("source-db-name")
     );
     add(Option.builder(OPTION_DB_NAME)
@@ -139,6 +140,7 @@ public class FreemarkerRenderer {
             "The name of the collection from which to read reachables data (default: %s)",
             DEFAULT_REACHABLES_COLLECTION))
         .hasArg()
+        .required()
         .longOpt("reachables-collection")
     );
     add(Option.builder(OPTION_SEQUENCES_COLLECTION)
@@ -147,6 +149,7 @@ public class FreemarkerRenderer {
             "The name of the collection from which to read sequence documents (default: %s)",
             DEFAULT_SEQUENCES_COLLECTION))
         .hasArg()
+        .required()
         .longOpt("seq-collection")
     );
     add(Option.builder(OPTION_DNA_COLLECTION)
@@ -154,6 +157,7 @@ public class FreemarkerRenderer {
         .desc(String.format(
             "The name of the collection from which to read DNA designs (default: %s)", DEFAULT_DNA_COLLECTION))
         .hasArg()
+        .required()
         .longOpt("dna-collection")
     );
     add(Option.builder(OPTION_RENDERING_CACHE)
