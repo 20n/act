@@ -216,7 +216,7 @@ Note that we specify a pathways collection here to make sure that no molecules a
 
 You can later specify specific pages to re-render with pathways and sequence designs (we'll get to designs in a moment):
 ```
-$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages_custom --pathways pathways_jarvis_${today} -r reachables_${today} -i jarvis_2017-01-11 -m MWOOGOJBHIARFG-UHFFFAOYSA-N
+$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages_custom --pathways pathways_${DEFAULT_DB}_${today} --reachables-collection reachables_${today} --source-db-name ${DEFAULT_DB} -m MWOOGOJBHIARFG-UHFFFAOYSA-N
 ```
 
 Once the pages are generated, follow the upload and import instructions below.
@@ -226,11 +226,11 @@ Once the pages are generated, follow the upload and import instructions below.
 To produce DNA designs for just a few molcules, run the following:
 ```
 $ inchi_key=<inchi key>
-$ sbt "runMain org.twentyn.proteintodna.ProteinToDNADriver -c pathways_jarvis_${today} -d pathways_jarvis_w_designs_${today} -e designs_jarvis_${today} -m $inchi_key"
+$ sbt "runMain org.twentyn.proteintodna.ProteinToDNADriver --source-db-name ${DEFAULT_DB} --input-pathway-collection pathways_${DEFAULT_DB}_${today} --output-pathway-collection pathways_${DEFAULT_DB}_w_designs_${today} --output-dna-seq-collection designs_${DEFAULT_DB}_${today} -m $inchi_key"
 ```
 Then render just the pages for the molecules you're interested using the command above, like this:
 ```
-$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages_custom --pathways pathways_jarvis_w_designs_${today} -r reachables_${today} -i jarvis_2017-01-11 -m $inchi_key
+$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages_custom --pathways pathways_${DEFAULT_DB}_w_designs_${today} --reachables-collection reachables_${today} --source-db-name ${DEFAULT_DB} -m $inchi_key
 ```
 
 ### Building category pages
