@@ -176,9 +176,9 @@ public class NoSQLAPI {
     return this.writeDB.submitToActChemicalDB(c, installid);
   }
 
-  public Map<Long, String> reachables(Set<String> natives, Set<String> cofactors, boolean restrictToSeq) {
+  public Map<Long, String> reachables(String db, Set<String> natives, Set<String> cofactors, boolean restrictToSeq) {
 
-    Network l2tree = LoadAct.getReachablesTree(natives, cofactors, restrictToSeq);
+    Network l2tree = LoadAct.getReachablesTree(db, natives, cofactors, restrictToSeq);
 
     Map<Long, String> l2 = new HashMap<Long, String>();
     for (Long reachable_id : l2tree.nodesAndIds().values()) {

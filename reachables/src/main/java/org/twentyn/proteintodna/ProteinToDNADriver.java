@@ -45,10 +45,10 @@ public class ProteinToDNADriver {
   private static final String DEFAULT_DB_HOST = "localhost";
   private static final String DEFAULT_DB_PORT = "27017";
   private static final String DEFAULT_OUTPUT_DB_NAME = "wiki_reachables";
-  private static final String DEFAULT_INPUT_DB_NAME = "jarvis_2016-12-09";
-  public static final String DEFAULT_INPUT_PATHWAY_COLLECTION_NAME = "pathways_jarvis";
-  public static final String DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME = "pathways_vijay";
-  public static final String DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME = "dna_designs";
+  private static final String DEFAULT_INPUT_DB_NAME = "SHOULD_COME_FROM_CMDLINE"; // "jarvis_2016-12-09";
+  public static final String DEFAULT_INPUT_PATHWAY_COLLECTION_NAME = "SHOULD_COME_FROM_CMDLINE"; // "pathways_jarvis";
+  public static final String DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME = "SHOULD_COME_FROM_CMDLINE"; // "pathways_vijay";
+  public static final String DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME = "SHOULD_COME_FROM_CMDLINE"; // "dna_designs";
 
   private static final String OPTION_DB_HOST = "H";
   private static final String OPTION_DB_PORT = "p";
@@ -83,31 +83,35 @@ public class ProteinToDNADriver {
         .argName("output-db-name")
         .desc(String.format("The name of the database to read pathways and write seqs to (default: %s)", DEFAULT_OUTPUT_DB_NAME))
         .hasArg()
-        .longOpt("db-name")
+        .longOpt("output-db-name")
     );
     add(Option.builder(OPTION_INPUT_DB_NAME)
         .argName("input-db-name")
         .desc(String.format("The name of the database to read reactions from (default: %s)", DEFAULT_INPUT_DB_NAME))
         .hasArg()
-        .longOpt("db-name")
+        .required()
+        .longOpt("source-db-name")
     );
     add(Option.builder(OPTION_INPUT_PATHWAY_COLLECTION_NAME)
         .argName("collection-name")
         .desc(String.format("The name of the input pathway collection to read from (default: %s)", DEFAULT_INPUT_PATHWAY_COLLECTION_NAME))
         .hasArg()
-        .longOpt("input-pathway-collection-name")
+        .required()
+        .longOpt("input-pathway-collection")
     );
     add(Option.builder(OPTION_OUTPUT_PATHWAY_COLLECTION_NAME)
         .argName("collection-name")
         .desc(String.format("The name of the output pathway collection to write to (default: %s)", DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME))
         .hasArg()
-        .longOpt("output-pathway-collection-name")
+        .required()
+        .longOpt("output-pathway-collection")
     );
     add(Option.builder(OPTION_OUTPUT_DNA_SEQ_COLLECTION_NAME)
         .argName("collection-name")
         .desc(String.format("The name of the output dna seq collection to write to (default: %s)", DEFAULT_OUTPUT_DNA_SEQ_COLLECTION_NAME))
         .hasArg()
-        .longOpt("output-dna-seq-collection-name")
+        .required()
+        .longOpt("output-dna-seq-collection")
     );
     add(Option.builder(OPTION_DESIGN_SOME)
         .argName("molecule")
@@ -162,7 +166,8 @@ public class ProteinToDNADriver {
     MongoDB reactionDB = new MongoDB(dbHost, dbPort, reactionDbName);
 
     MongoClient inputClient = new MongoClient(new ServerAddress(dbHost, dbPort));
-    DB db = inputClient.getDB(cl.getOptionValue(OPTION_OUTPUT_DB_NAME, DEFAULT_OUTPUT_DB_NAME));
+    String outDB = cl.getOptionValue(OPTION_OUTPUT_DB_NAME, DEFAULT_OUTPUT_DB_NAME);
+    DB db = inputClient.getDB(outDB);
 
     String inputPathwaysCollectionName = cl.getOptionValue(OPTION_INPUT_PATHWAY_COLLECTION_NAME, DEFAULT_INPUT_PATHWAY_COLLECTION_NAME);
     String outputPathwaysCollectionName = cl.getOptionValue(OPTION_OUTPUT_PATHWAY_COLLECTION_NAME, DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME);
@@ -195,7 +200,7 @@ public class ProteinToDNADriver {
     for (String pathwayId : pathwayIds) {
       ReactionPath reactionPath = inputPathwayCollection.findOne(DBQuery.is("_id", pathwayId));
 
-      List<List<Pair<ProteinMetadata, Integer>>> processedP = RankPathway.processSinglePathAsJava(reactionPath, reactionDbName);
+      List<List<Pair<ProteinMetadata, Integer>>> processedP = RankPathway.processSinglePathAsJava(reactionPath, reactionDbName, outDB);
       if (processedP == null) {
         LOGGER.info(String.format("Process pathway was filtered out possibly because there were more than %s seqs for a given pathway",
             RankPathway.MAX_PROTEINS_PER_PATH()));

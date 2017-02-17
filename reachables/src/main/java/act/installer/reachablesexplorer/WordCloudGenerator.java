@@ -48,13 +48,12 @@ public class WordCloudGenerator {
   private static final String OPTION_INPUT_INCHIS = "l";
   private static final String OPTION_RSCRIPT_EXE_PATH = "r";
 
-  private static final String DEFAULT_ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
+  private static final String DEFAULT_ASSETS_LOCATION = "data/reachables-explorer-rendering-cache";
 
   // Default host. If running on a laptop, please set a SSH bridge to access speakeasy
-  // TODO change the defaults to something more plain/easy to know why they are like they are (No dates)
   private static final String DEFAULT_HOST = "localhost";
   private static final String DEFAULT_PORT = "27017";
-  private static final String DEFAULT_CHEMICALS_DATABASE = "jarvis_2016-12-09";
+  private static final String DEFAULT_CHEMICALS_DATABASE = "SHOULD_COME_FROM_CMDLINE"; // "jarvis_2016-12-09";
 
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
@@ -83,6 +82,7 @@ public class WordCloudGenerator {
             DEFAULT_CHEMICALS_DATABASE))
         .hasArg()
         .longOpt("source-db-name")
+        .required()
     );
     add(Option.builder(OPTION_RENDERING_CACHE)
         .argName("path to cache")
@@ -106,7 +106,7 @@ public class WordCloudGenerator {
             RSCRIPT_EXE_PATH))
         .hasArg()
         .required()
-        .longOpt("inchis-path")
+        .longOpt("r-location")
     );
   }};
 
@@ -115,6 +115,7 @@ public class WordCloudGenerator {
 
   private String host;
   private Integer port;
+  private String database;
   private MongoDB bingDb;
   private Set<String> inchisSet;
   private File assetLocation;
@@ -122,6 +123,7 @@ public class WordCloudGenerator {
   public WordCloudGenerator(String host, Integer port, String database, String assetLocation, String rScriptExePath) {
     this.host = host;
     this.port = port;
+    this.database = database;
     this.bingDb = new MongoDB(host, port, database);
     this.inchisSet = getBingInchis();
     this.assetLocation = new File(assetLocation);
@@ -188,7 +190,7 @@ public class WordCloudGenerator {
         ProcessRunner.runProcess(
             rScriptExePath,
             // TODO: remove hardcoded database from R script
-            Arrays.asList(rScript.getAbsolutePath(), inchi, wordcloud.getAbsolutePath(), host, port.toString()),
+            Arrays.asList(rScript.getAbsolutePath(), inchi, wordcloud.getAbsolutePath(), host, port.toString(), database),
             CHILD_PROCESS_TIMEOUT_IN_SECONDS);
         FileChecker.verifyInputFile(wordcloud);
       } catch (IOException e) {

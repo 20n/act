@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package org.twentyn.proteintodna;
 
 import java.util.ArrayList;
@@ -13,10 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- *
- * @author jca20n
- */
 public class CodonIndexer {
     private static final double limit = 3.0;
     Map<String,Map<String,Integer>> peptideToCodons = new HashMap<>();
@@ -40,7 +30,7 @@ public class CodonIndexer {
         
         //Gather up all the orfs with greater copy than the limit
         List<String> orfs = new ArrayList<>();
-        String data = FileUtils.readFile2("/mnt/shared-data/Vijay/CodonOptimization/coli_genes.txt");
+        String data = FileUtils.readFile2("data/CodonOptimization/coli_genes.txt");
         String[] lines = data.split("\\r|\\r?\\n");
         for(String line : lines) {
             try {

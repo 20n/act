@@ -19,7 +19,14 @@ Note: it's best to run all of the following commands in a `screen` session, as t
 It is likely that you'll have an ACT database on hand from which to produce reachables and cascades.  If not, run this
 command (on physical server `speakeasy`, or azure `twentyn-speakeasy-west2`):
 ```
-$ time sbt 'runMain com.act.reachables.initdb install omit_kegg omit_infer_ops omit_vendors omit_patents omit_infer_rxnquants omit_infer_sar omit_infer_ops omit_keywords omit_chebi'
+$ screen -S mongo-database
+  $ mongod --version 
+     // should be over v3.0.0 or else will crash during reachables computation
+     // upgrade if needed: https://docs.mongodb.com/master/tutorial/install-mongodb-on-ubuntu/
+  $ mongod --dbpath /PATH_TO_DIR_ON_AT_LEAST_250GB_DISK
+
+$ screen -S installer
+  $ time sbt 'runMain com.act.reachables.initdb install omit_kegg omit_infer_ops omit_vendors omit_patents omit_infer_rxnquants omit_infer_sar omit_infer_ops omit_keywords omit_chebi'
 ```
 
 This process will install a DB to `actv01` on machine.  This process will probably take somewhere on the
@@ -32,20 +39,21 @@ the `BiointepretationDriver` class looks like this:
   {
     "operation": "MERGE_REACTIONS",
     "read": "actv01",
-    "write": "drknow_20170111"
+    "write": "drknow_OPTIONALSUFFIX"
   },
   {
     "operation": "DESALT",
-    "read": "drknow_20170111",
-    "write": "synapse_20170111"
+    "read": "drknow_OPTIONALSUFFIX",
+    "write": "synapse_OPTIONALSUFFIX"
   },
   {
     "operation": "REMOVE_COFACTORS",
-    "read": "synapse_20170111",
-    "write": "jarvis_20170111"
+    "read": "synapse_OPTIONALSUFFIX",
+    "write": "jarvis_OPTIONALSUFFIX"
   }
 ]
 ```
+You can add `_OPTIONALSUFFIX` if you need to identify the run, e.g., tag it with a date `_20170111`.
 This process will take on the order of 12-15 hours to complete.
 
 Note that mechanistic validation is not included in this pipeline due to performance reasons.  To enable it, add the
@@ -53,11 +61,11 @@ following block to the array of operations above:
 ```JSON
   {
     "operation": "VALIDATE",
-    "read": "jarvis_2017-01-11",
-    "write": "marvin_2017-01-11"
+    "read": "jarvis_OPTIONALSUFFIX",
+    "write": "marvin_OPTIONALSUFFIX"
   }
 ```
-Validation on `master` may take up to a week to complete.  The `limit-reactor-products-for-validation` branch has
+Validation on `master` may take up to a week to complete (Last time on azure took 8.53 days to complete).  The `limit-reactor-products-for-validation` branch has
 WIP fixes that limit the scope of the validator's search, and may increase its performance by a significant margin.
 
 Save your JSON configuration in a file, in our case `biointerpretation_config.json`, and run this command:
@@ -65,7 +73,17 @@ Save your JSON configuration in a file, in our case `biointerpretation_config.js
 $ sbt 'runMain com.act.biointerpretation.BiointerpretationDriver -c biointerpretation_config.json'
 ```
 
-The output of the installer pipeline will be a database named `jarvis_2017-01-11`.
+The output of the installer pipeline will be a database named `jarvis_OPTIONALSUFFIX` (or `marvin_OPTIONALSUFFIX` if you ran mechanistic validation).
+Your full db should now look like the following (`$ mongo localhost`):
+```
+> show dbs
+actv01   59.925GB
+drknow   37.936GB
+jarvis   33.938GB
+local     0.078GB
+marvin   33.938GB
+synapse  35.937GB
+```
 
 ### Run Reachables and Cascades ###
 
@@ -81,10 +99,13 @@ $ DEFAULT_DB=<Edit this to be your database name>
 
 Then, run the commands as shown below.
 ```SHELL
-$ sbt "runMain com.act.reachables.reachables --prefix=$PRE --defaultDbName=$DEFAULT_DB --useNativesFile=/mnt/shared-data/Michael/ReachablesInputFiles/valid_starting_points.txt --useCofactorsFile=/mnt/shared-data/Michael/ReachablesInputFiles/my_cofactors_file.txt -o $dirName";
+$ cd act/reachables
+$ sbt "runMain com.act.reachables.reachables --prefix=$PRE --defaultDbName=$DEFAULT_DB --useNativesFile=src/main/resources/reachables_input_files/valid_starting_points.txt --useCofactorsFile=src/main/resources/reachables_input_files/my_cofactors_file.txt -o $dirName";
 $ sbt "runMain com.act.reachables.postprocess_reachables --prefix=$PRE --output-dir=$dirName --extractReachables --writeGraphToo --defaultDbName=$DEFAULT_DB";
-$ sbt "runMain com.act.reachables.cascades --prefix=r-$today --output-dir=$dirName --cache-cascades=true --do-hmmer=false --out-collection=pathways_jarvis_$today --db-name=$DEFAULT_DB --verbosity=1”
+$ sbt "runMain com.act.reachables.cascades --prefix=r-$today --output-dir=$dirName --cache-cascades=true --do-hmmer=false --out-collection=pathways_${DEFAULT_DB}_${today} --db-name=$DEFAULT_DB --verbosity=1"
 ```
+
+Note that the last command `cascades` is a memory hog. There is a `.sbtopts` file in the repository ([sbtopts ref](https://medium.com/@jan______/sbtconfig-is-deprecated-650d6ff10236])) that sets the java flag for heap size to 25G (overestimated). Ensure that is read by running with the debug flag `sbt -d`, and check the presence of `-Xmx25G`. Change that to the appropriate size if needed. Also, if the process runs out of memory, just rerun. It will skip already computed cascades and continue. 
 
 You should now have `r-${today}.reachables.txt` and `r-${today}-data` in your `reachables-$today` directory.  We'll
 need these to complete the remaining steps.
@@ -99,8 +120,13 @@ Searcher processes them to output relevant usage words and search count.
 We run the Bing Searcher, to populate the installer with Bing results using the `-c` option to use only the cache and
 not make queries to the Bing Search API.
 ```
-sbt "runMain act.installer.bing.BingSearcher -n jarvis_${today} -h localhost -p 27017 -c"
+sbt "runMain act.installer.bing.BingSearcher -n ${DEFAULT_DB} -h localhost -p 27017 -c"
 ```
+To check the outcome, run the following command before and after the execution:
+```
+mongo localhost/marvin --quiet --eval "db.chemicals.count({'xref.BING.metadata.usage_terms.0': {\$exists: true}});"
+```
+Before running `BingSearcher` you should expect `12004` and afterwards `21485`.
 
 
 ### Run Word Cloud Generation ###
@@ -110,24 +136,45 @@ them to be recognized by the loader.  We cut out the InChIs from the reachables 
 loader.  Note that Bing data must have been made available to the installer in the first step and the Bing search cache
 be available for this process to work.
 
+For this step we need R to be installed (specially `/usr/bin/Rscript`). Do the following if needed:
 ```
-$ cut -d$'\t' -f 3 r-${today}.reachables.txt >  r-${today}.reachables.just_inchis.txt
-$ sbt "runMain act.installer.reachablesexplorer.WordCloudGenerator -l r-${today}.reachables.just_inchis.txt -r /usr/bin/Rscript"
+# install >3.3.1 version of R:
+# instructions from https://www.digitalocean.com/community/tutorials/how-to-install-r-on-ubuntu-16-04-2
+$ sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9
+$ sudo add-apt-repository 'deb [arch=amd64,i386] https://cran.rstudio.com/bin/linux/ubuntu xenial/'
+$ sudo apt-get update
+$ sudo apt-get install r-base
+
+# install dependency libraries needed by R install.packages below
+$ sudo apt-get install libssl-dev
+$ sudo apt-get install libsasl2-dev
+
+# install reqd R package dependencies (also ensure R version is >3.3.1)
+$ sudo -i R
+> install.packages("mongolite")
+> install.packages("slam")
+> install.packages("wordcloud")
 ```
+
+Run the generator:
+```
+$ cut -d$'\t' -f 3 reachables-${today}/r-${today}.reachables.txt >  reachables-${today}/r-${today}.reachables.just_inchis.txt
+$ sbt "runMain act.installer.reachablesexplorer.WordCloudGenerator --inchis-path reachables-${today}/r-${today}.reachables.just_inchis.txt --r-location /usr/bin/Rscript --source-db-name ${DEFAULT_DB}"
+```
+Note that this reads the cache first, so if you already have `52971` files (`ls -l data/reachables-explorer-rendering-cache/ | wc -l`) then it might just run and say "success" without any additional output.
 
 ### Run the Loader to Create a Reachables Collection ###
 
 Run the loader to produce a collection of `reachable` documents in MongoDB.
 
 ```
-$ sbt "runMain act.installer.reachablesexplorer.Loader -c reachables_${today} -i jarvis_${today} -r $dirName -s sequences_${today} -l /mnt/shared-data/Mark/L4n1_in_pubchem"
+sbt "runMain act.installer.reachablesexplorer.Loader --source-db-name ${DEFAULT_DB} --reachables-dir $dirName --out-reachables-coll reachables_${today} --out-seq-coll sequences_${today} --projected-inchis-file data/L4n1\,2-Dec2016/L4n1_in_pubchem"
 ```
 
 The `-l` option installs a set of L4 projections, and can be omitted if necessary.  This command will output any missing
-molecule renderings to the rendering cache at `/mnt/data-level1/data/reachables-explorer-rendering-cache/`.  It
-depends on a Virtuoso RDF store process being available to find synonyms and MeSH headings; **the target of these requests
-is hardcoded as `chimay`, so this needs DNS in order to work without modification.**  The Virtuoso host can be changed
-in `act.installer.pubchem.PubchemMeshSynonyms`.
+molecule renderings to the rendering cache at `data/reachables-explorer-rendering-cache/`.  It
+depends on a Virtuoso RDF store process being available to find synonyms and MeSH headings;
+The Virtuoso host is assumed to be `localhost:8890` and if it is different setup an ssh tunnel appropriately. (If you followed the instructions in the [architecture doc](https://github.com/20n/act/wiki/Architecture:-On-Azure#buildup-notes), you should already have a virtuoso host running.)
 
 ### Enrich the Reachables with Patents ###
 
@@ -136,52 +183,72 @@ To find recent patents for reachable molecules, use the `PatentFinder` (The `-c`
 $ sbt "runMain act.installer.reachablesexplorer.PatentFinder -c reachables_${today}"
 ```
 
-This expects a collection of patent indexes to live at `/mnt/shared-data/Mark/patents`.  An alternative path can be
+This expects a collection of patent indexes to live at `data/patents` (containing subdirs such as `2005.index` -- `2014.index`).  An alternative path can be
 specified on the command line.
 
 ### Dot File Rendering ###
 
-Once you have run the `Loader`, molecule renderings for all reachable molecules should be available on the NAS at
-`/mnt/data-level1/data/reachables-explorer-rendering-cache/`.  These are referenced by the dot files, which expect
-them to live at `/mnt/data-level1/data/reachables-explorer-rendering-cache/`.
+Once you have run the `Loader`, molecule renderings for all reachable molecules should be available at
+`data/reachables-explorer-rendering-cache/`.  These are referenced by the dot files, which expect
+them to live at `data/reachables-explorer-rendering-cache/`. If the command below dumps error messages
+mentioning missing files from `/mnt/data-level1/data/..` then your dot files refer to stale data. Debug
+how that happened and change them to relative paths.
 
 To render the dot PNGs, run this command:
 ```
-$ find r-${today}-data -name '*.dot' -exec dot -Tpng {} -O \;
+$ find reachables-${today}/r-${today}-data -name '*.dot'  -exec dot -Tpng {} -O \;
 ```
 Note that this will write the images in the same directory as the dot files.  If this is not desired, you can copy them
 to another directory with this command:
 ```
-$ find r-${today}-data -name '*.dot.png' -exec cp {} <dest> \;
+$ find reachables-${today}/r-${today}-data -name '*.dot.png' -exec cp {} <dest> \;
 ```
 
-Note: The currently expected <dest> is `/mnt/data-level1/data/reachables-explorer-rendering-cache/`, though this may change depending on if on Azure or not.
+Note: The currently expected <dest> is `data/reachables-explorer-rendering-cache/`.
 
 ### Wiki Page Rendering ###
 
 To render pathway-free wiki pages for all reachable molecules, run this command:
 ```
-$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages --pathways pathways_jarvis_${today} -r reachables_${today} -i jarvis_2017-01-11 --no-pathways
+$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages --source-db-name ${DEFAULT_DB} --pathways pathways_${DEFAULT_DB}_${today} --reachables-collection reachables_${today} --seq-collection sequences_${today} --dna-collection designs_${today} --no-pathways"
 ```
 Note that we specify a pathways collection here to make sure that no molecules are opportunistically loaded into the reachables collection from stale pathways.
 
 You can later specify specific pages to re-render with pathways and sequence designs (we'll get to designs in a moment):
 ```
-$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages_custom --pathways pathways_jarvis_${today} -r reachables_${today} -i jarvis_2017-01-11 -m MWOOGOJBHIARFG-UHFFFAOYSA-N
+$ SAMPLE_REACHABLE_INCHI=`mongo localhost/wiki_reachables --quiet --eval "reach=db.reachables_${today}.findOne({}, {InChI:1}); print(reach.InChI);"`
+$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages_custom --pathways pathways_${DEFAULT_DB}_${today} --reachables-collection reachables_${today} --source-db-name ${DEFAULT_DB} --seq-collection sequences_${today} --dna-collection designs_${today} -m ${SAMPLE_REACHABLE_INCHI}"
+```
+
+The usual flow involves only generating pages, and omitting pathway information. Instead there would be an "Order" link. Pathway information would be generated/uploaded when the subscriber orders. *Do not run* the below in usual flow, but if you wanted to generate all pathways, this is how:
+```
+sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages_custom --pathways pathways_${DEFAULT_DB}_${today} --reachables-collection reachables_${today} --source-db-name ${DEFAULT_DB} --seq-collection sequences_${today} --dna-collection designs_${today}"
 ```
 
 Once the pages are generated, follow the upload and import instructions below.
 
 ### Building DNA Designs ###
 
-To produce DNA designs for just a few molcules, run the following:
+To produce DNA designs for just a few molcules, run the command below. (If, in the unlikely case, you want to build pathways to *all* molecules, just omit the `-m` param in the last command).
 ```
-$ inchi_key=<inchi key>
-$ sbt "runMain org.twentyn.proteintodna.ProteinToDNADriver -c pathways_jarvis_${today} -d pathways_jarvis_w_designs_${today} -e designs_jarvis_${today} -m $inchi_key"
+$ inchi_key=<inchi key> # OR...
+$ inchi=<inchi> # OR...
+$ SAMPLE_REACHABLE_INCHI=`mongo localhost/wiki_reachables --quiet --eval "reach=db.reachables_${today}.findOne({}, {InChI:1}); print(reach.InChI);"`
+$ molecule=$SAMPLE_REACHABLE_INCHI # OR inchi OR inchi_key
+$ sbt "runMain org.twentyn.proteintodna.ProteinToDNADriver --source-db-name ${DEFAULT_DB} --input-pathway-collection pathways_${DEFAULT_DB}_${today} --output-pathway-collection pathways_${DEFAULT_DB}_w_designs_${today} --output-dna-seq-collection designs_${DEFAULT_DB}_${today} -m $molecule"
 ```
+
+Due to wierdness within `org.twentyn.proteintodna.ProteinToDNADriver`, it will create empty collections `wiki_reachables.{chemicals, cofactors, organismnames, seq}` (This usually happens when a MongoDB/NoSQLapi call is made over a non-act db, such as `wiki_reachables`). So you can safely dump 
+```
+# confirm that these are empty collections
+$ for coll in chemicals cofactors organismnames seq; do mongo localhost/wiki_reachables --quiet --eval "sz=db.${coll}.count(); print('${coll} size = ' + sz);"; done
+# delete them
+$ for coll in chemicals cofactors organismnames seq; do mongo localhost/wiki_reachables --quiet --eval "sz=db.${coll}.drop();"; done
+```
+
 Then render just the pages for the molecules you're interested using the command above, like this:
 ```
-$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages_custom --pathways pathways_jarvis_w_designs_${today} -r reachables_${today} -i jarvis_2017-01-11 -m $inchi_key
+$ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages_custom --pathways pathways_${DEFAULT_DB}_w_designs_${today} --reachables-collection reachables_${today} --source-db-name ${DEFAULT_DB} -m $molecule
 ```
 
 ### Building category pages
@@ -196,6 +263,14 @@ $ python src/main/python/Wiki/generate_category_pages.py reachables_${today} $de
 Since the script might be running at a later date, ensure that you do not overwrite `today` from when it was originally set. I.e., make sure this `reachables_` variable matches the above. 
 
 Make sure the $dest dir is the same dir as the other pages generated in the FreemarkerRenderer process.
+
+You might need to install pymongo:
+```
+$ sudo apt-get install python-setuptools python-dev build-essential 
+$ sudo easy_install pip
+$ python -m pip install pymongo
+$ sudo python -m pip install pymongo
+```
 
 ## 2. New Wiki Instance Setup Steps ##
 
@@ -434,7 +509,7 @@ $ rsync -azP wiki_pages private-${n}-wiki-west2:
 #   into `reachables-explorer-rendering-cache` (where the mol/wordclouds live)
 #   and so the command below will upload all of them in one go.
 # upload the wordcloud and molecule renderings
-$ rsync -azP /mnt/data-level1/data/reachables-explorer-rendering-cache private-${n}-wiki-west2:wiki_pages/renderings
+$ rsync -azP data/reachables-explorer-rendering-cache private-${n}-wiki-west2:wiki_pages/renderings
 ```
 
 ### Create, Upload, and Install a Reachables List ###

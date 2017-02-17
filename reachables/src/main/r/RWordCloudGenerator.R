@@ -7,9 +7,9 @@ input.inchi <- kArgs[1]
 output.file <- kArgs[2]
 host <- kArgs[3]
 port <- kArgs[4]
+databaseName <- kArgs[5] # "SHOULD_COME_FROM_CMDLINE" # "jarvis_2016-12-09"
 
 options(mongodb = list("host" = paste(host, port, sep = ":")))
-databaseName <- "jarvis_2016-12-09"
 collectionName <- "chemicals"
 
 db <- mongo(collection = collectionName,

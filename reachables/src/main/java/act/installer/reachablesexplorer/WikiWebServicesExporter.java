@@ -45,6 +45,9 @@ public class WikiWebServicesExporter {
   private static final String DEFAULT_SEQUENCES_COLLECTION = "sequencesv7";
   private static final String DEFAULT_RENDERING_CACHE = "/tmp";
 
+  // We wont touch this db, but need it for the Loader's constructor
+  private static final String UNUSED_SOURCE_DB = "dummy_source_db";
+
   private static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_INPUT_DB)
         .argName("db name")
@@ -110,7 +113,7 @@ public class WikiWebServicesExporter {
     String sequenceCollection = cl.getOptionValue(OPTION_INPUT_SEQUENCE_COLLECTION, DEFAULT_SEQUENCES_COLLECTION);
 
     LOGGER.info("Attempting to connect to DB %s:%d/%s, collection %s", host, port, dbName, collection);
-    Loader loader = new Loader(host, port, dbName, collection, sequenceCollection, DEFAULT_RENDERING_CACHE);
+    Loader loader = new Loader(host, port, UNUSED_SOURCE_DB, dbName, collection, sequenceCollection, DEFAULT_RENDERING_CACHE);
 
     JacksonDBCollection<Reachable, String> reachables = loader.getJacksonReachablesCollection();
 

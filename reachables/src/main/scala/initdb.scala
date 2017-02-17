@@ -192,7 +192,9 @@ object initdb {
     */
 
     // installs brenda; and the rest of the core system
-    installer() 
+    if (!cargs.contains("omit_brenda")) {
+      installer_brenda()
+    }
 
     // installs kegg, metacyc, swissprot; unless told to omit
     if (!cargs.contains("omit_kegg")) {
@@ -236,7 +238,7 @@ object initdb {
     }
   }
 
-  def installer() {
+  def installer_brenda() {
     /* Original script source (unused-scripts/installer.sh)
         if [ $# -ne 1 ]; then
         	echo "----> Aborting(installer.sh). Need port as argument!"

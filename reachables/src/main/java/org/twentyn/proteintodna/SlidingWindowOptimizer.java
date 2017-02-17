@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package org.twentyn.proteintodna;
 
 import java.util.ArrayList;
@@ -20,8 +14,6 @@ import java.util.Set;
  * initial 18 bp.  It differs in that it considers alternate fill-in codons chosen
  * to eliminate secondary structure.  The remaining codons in the sequence are done
  * by a more conventional CAI process.  Throughout, forbidden sequences are eliminated.
- * 
- * @author jca20n
  */
 public class SlidingWindowOptimizer {
     

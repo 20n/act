@@ -37,11 +37,12 @@ public class PatentFinder {
   private static final String DEFAULT_TARGET_DATABASE = "wiki_reachables";
   private static final String DEFAULT_TARGET_COLLECTION = "reachablesv6_test_thomas";
 
-  private static final String UNUSED_SEQUENCES_COLLECTION = "sequencesv0"; // We won't touch these but need them for
-  private static final String UNUSED_ASSETS_DIR = "/tmp";                  // the Loader's constructor.
+  private static final String UNUSED_SEQUENCES_COLLECTION = null; // "dummy_sequences_v0"; // We won't touch these but need
+  private static final String UNUSED_ASSETS_DIR = "/tmp";                         // them for Loader's constructor.
+  private static final String UNUSED_SOURCE_DB = null; // "dummy_source_db"; 
 
   // A directory of directories.  Each directory is one year's index, and ends in `.index`.
-  private static final String DEFAULT_PATENT_INDEX_LOCATION = "/mnt/shared-data/Mark/patents";
+  private static final String DEFAULT_PATENT_INDEX_LOCATION = "data/patents";
 
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
@@ -101,11 +102,11 @@ public class PatentFinder {
 
     String host = cl.getOptionValue(OPTION_DB_HOST, DEFAULT_HOST);
     Integer port = Integer.parseInt(cl.getOptionValue(OPTION_DB_PORT, DEFAULT_PORT.toString()));
-    String dbName = cl.getOptionValue(OPTION_TARGET_DB, DEFAULT_TARGET_DATABASE);
+    String targetDB = cl.getOptionValue(OPTION_TARGET_DB, DEFAULT_TARGET_DATABASE);
     String collection = cl.getOptionValue(OPTION_TARGET_REACHABLES_COLLECTION, DEFAULT_TARGET_COLLECTION);
-    LOGGER.info("Connecting to %s:%d/%s, using collection %s", host, port, dbName, collection);
+    LOGGER.info("Connecting to %s:%d/%s, using collection %s", host, port, targetDB, collection);
 
-    Loader loader = new Loader(host, port, dbName, collection, UNUSED_SEQUENCES_COLLECTION, UNUSED_ASSETS_DIR);
+    Loader loader = new Loader(host, port, UNUSED_SOURCE_DB, targetDB, collection, UNUSED_SEQUENCES_COLLECTION, UNUSED_ASSETS_DIR);
 
     File indexesTopDir = new File(cl.getOptionValue(OPTION_PATENT_INDEX_DIR, DEFAULT_PATENT_INDEX_LOCATION));
     if (!indexesTopDir.exists() || !indexesTopDir.isDirectory()) {

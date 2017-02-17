@@ -70,16 +70,15 @@ public class Loader {
   private static final String OPTION_TARGET_SEQUENCES_COLLECTION = "s";
   private static final String OPTION_RENDERING_CACHE = "e";
 
-  private static final String DEFAULT_ASSETS_LOCATION = "/mnt/data-level1/data/reachables-explorer-rendering-cache";
+  private static final String DEFAULT_ASSETS_LOCATION = "data/reachables-explorer-rendering-cache";
 
   private static final String DEFAULT_REACHABLES_PATH = "/mnt/shared-data/Michael/WikipediaProject/MinimalReachables";
 
   private static final String DEFAULT_PROJECTIONS_PATH = "/mnt/shared-data/Gil/L4N2pubchem/n1_inchis/projectedReactions";
   private static final Long BASE_ID_PROJECTIONS = 5000000L;
 
-  // All of the source data on reactions and chemicals comes from jarvis_2016-12-09
-  // TODO make this a changeable param
-  private static final String DEFAULT_CHEMICALS_DATABASE = "jarvis_2016-12-09";
+  // All of the source data on reactions and chemicals come from the specified source db
+  private static final String DEFAULT_CHEMICALS_DATABASE = "SHOULD_COME_FROM_CMDLINE"; // "jarvis_2016-12-09";
 
   // Default host. If running on a laptop, please set a SSH bridge to access speakeasy
   private static final String DEFAULT_HOST = "localhost";
@@ -87,6 +86,8 @@ public class Loader {
 
   // Target database and collection. We populate these with reachables
   private static final String DEFAULT_TARGET_DATABASE = "wiki_reachables";
+  private static final String DUMMY_TARGET_DB = "dummy_DB";
+  private static final String DUMMY_TARGET_COLLECTION = "dummy_target_collection";
   private static final String DUMMY_SEQUENCE_COLLECTION = "dummy_sequences_collection";
 
   private static final int ORGANISM_CACHE_SIZE = 1000;
@@ -126,6 +127,7 @@ public class Loader {
             "The name of the database from which to fetch chemicals and reactions (default: %s)",
             DEFAULT_CHEMICALS_DATABASE))
         .hasArg()
+        .required()
         .longOpt("source-db-name")
     );
     add(Option.builder(OPTION_REACHABLES_SOURCE_DATA)
@@ -162,14 +164,14 @@ public class Loader {
         .desc("The name of the collection in the dest DB into which to write reachables documents (no default)")
         .hasArg()
         .required()
-        .longOpt("reachables-collection")
+        .longOpt("out-reachables-coll")
     );
     add(Option.builder(OPTION_TARGET_SEQUENCES_COLLECTION)
         .argName("collection name")
         .desc("The name of the collection in the dest DB into which to write sequence documents (no default)")
         .hasArg()
         .required()
-        .longOpt("seq-collection")
+        .longOpt("out-seq-coll")
     );
     add(Option.builder(OPTION_RENDERING_CACHE)
         .argName("path to cache")
@@ -183,7 +185,7 @@ public class Loader {
 
 
   // Database stuff
-  private MongoDB db;
+  private MongoDB sourceDBconn;
   private JacksonDBCollection<Reachable, String> jacksonReachablesCollection;
   private JacksonDBCollection<SequenceData, String> jacksonSequenceCollection;
   private PubchemMeshSynonyms pubchemSynonymsDriver;
@@ -207,6 +209,7 @@ public class Loader {
     Loader loader = new Loader(
         cl.getOptionValue(OPTION_DB_HOST, DEFAULT_HOST),
         Integer.parseInt(cl.getOptionValue(OPTION_DB_PORT, DEFAULT_PORT.toString())),
+        cl.getOptionValue(OPTION_INSTALLER_SOURCE_DB, DEFAULT_CHEMICALS_DATABASE),
         cl.getOptionValue(OPTION_TARGET_DB, DEFAULT_TARGET_DATABASE),
         cl.getOptionValue(OPTION_TARGET_REACHABLES_COLLECTION),
         cl.getOptionValue(OPTION_TARGET_SEQUENCES_COLLECTION),
@@ -234,11 +237,6 @@ public class Loader {
   }
 
 
-  public Loader(String host, Integer port, String targetDB,
-                String targetCollection, String targetSequenceCollection, String renderingCache) {
-    this(host, port, targetDB, targetCollection, targetSequenceCollection, renderingCache, DEFAULT_CHEMICALS_DATABASE);
-  }
-
   /**
    * Constructor for Loader. Instantiates connexions to Mongo databases
    * and Virtuoso triple store (Pubchem synonyms only)
@@ -249,13 +247,17 @@ public class Loader {
    * @param targetSequenceCollection The collection for the target SequenceData MongoDB
    * @param renderingCache A directory where rendered images should live
    */
-  public Loader(String host, Integer port, String targetDB,
-                String targetCollection, String targetSequenceCollection, String renderingCache, String chemicalsDB) {
-    db = new MongoDB(host, port, chemicalsDB);
+  public Loader(String host, Integer port, String sourceDB, String targetDB,
+                String targetCollection, String targetSequenceCollection, String renderingCache) {
+    // when the caller does not intend to touch the sourceDB, it can pass null as a param and we
+    // won't setup a "source" connection. Creating a connection with "dummy" params leads mongod
+    // to create (!) those dummy collections, mucking up our database with empty dbs/collections
+    if (sourceDB != null) {
+      sourceDBconn = new MongoDB(host, port, sourceDB);
+      wordCloudGenerator = new WordCloudGenerator(host, port, sourceDB, renderingCache);
+    }
     pubchemSynonymsDriver = new PubchemMeshSynonyms();
     moleculeRenderer = new MoleculeRenderer(new File(renderingCache));
-    // TODO Does this need to pass in the strings from the constructor?
-    wordCloudGenerator = new WordCloudGenerator(DEFAULT_HOST, DEFAULT_PORT, DEFAULT_CHEMICALS_DATABASE, renderingCache);
 
     MongoClient mongoClient;
     try {
@@ -274,14 +276,18 @@ public class Loader {
       throw new RuntimeException(e);
     }
 
-    jacksonReachablesCollection =
-            JacksonDBCollection.wrap(reachables.getCollection(targetCollection), Reachable.class, String.class);
-    jacksonSequenceCollection =
-            JacksonDBCollection.wrap(reachables.getCollection(targetSequenceCollection), SequenceData.class, String.class);
+    if (targetCollection != null) {
+      jacksonReachablesCollection =
+              JacksonDBCollection.wrap(reachables.getCollection(targetCollection), Reachable.class, String.class);
+      jacksonReachablesCollection.ensureIndex(new BasicDBObject(Reachable.INCHI_FIELD_NAME, "hashed"));
+    }
 
-    jacksonReachablesCollection.ensureIndex(new BasicDBObject(Reachable.INCHI_FIELD_NAME, "hashed"));
-    jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.SEQUENCE_FIELD_NAME, "hashed"));
-    jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.ORGANISM_FIELD_NAME, 1));
+    if (targetSequenceCollection != null) {
+      jacksonSequenceCollection =
+              JacksonDBCollection.wrap(reachables.getCollection(targetSequenceCollection), SequenceData.class, String.class);
+      jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.SEQUENCE_FIELD_NAME, "hashed"));
+      jacksonSequenceCollection.createIndex(new BasicDBObject(SequenceData.ORGANISM_FIELD_NAME, 1));
+    }
   }
 
   JacksonDBCollection<Reachable, String> getJacksonReachablesCollection() {
@@ -293,7 +299,7 @@ public class Loader {
   }
 
   MongoDB getChemicalSourceDB() {
-    return db;
+    return sourceDBconn;
   }
 
   /**
@@ -303,8 +309,8 @@ public class Loader {
    * @param targetDB The database for the target Reachables MongoDB
    * @param targetCollection The collection for the target Reachables MongoDB
    */
-  public Loader(String host, Integer port, String targetDB, String targetCollection) {
-    this(host, port, targetDB, targetCollection, DUMMY_SEQUENCE_COLLECTION, DEFAULT_ASSETS_LOCATION);
+  public Loader(String host, Integer port, String sourceDB, String sourceDBColl) {
+    this(host, port, sourceDB, DUMMY_TARGET_DB, DUMMY_TARGET_COLLECTION, DUMMY_SEQUENCE_COLLECTION, DEFAULT_ASSETS_LOCATION);
   }
 
   // TODO Move these getters to a different place/divide up concerns better?
@@ -353,7 +359,7 @@ public class Loader {
 
   /**
    * Construct a Reachable.
-   * Gets names and xref from `db` collection `chemicals`
+   * Gets names and xref from `sourceDBconn` collection `chemicals`
    * Tries to import to molecule and export names
    */
   // TODO let's have Optional<Reachable> be the return type here
@@ -365,7 +371,7 @@ public class Loader {
       return preconstructedReachable;
     }
 
-    Chemical chemical = db.getChemicalFromInChI(inchi);
+    Chemical chemical = sourceDBconn.getChemicalFromInChI(inchi);
 
     // For L3/L4 molecules, we won't find them in the DB but still need to construct a Reachable object.
     // In this case, fall back to `constructReachableFromInchi`
@@ -383,7 +389,7 @@ public class Loader {
       return preconstructedReachable;
     }
 
-    Chemical chemical = db.getChemicalFromChemicalUUID(id);
+    Chemical chemical = sourceDBconn.getChemicalFromChemicalUUID(id);
 
     if (chemical != null) {
       Reachable reachable = constructReachableFromChemical(chemical);
@@ -533,7 +539,7 @@ public class Loader {
       return cachedName;
     }
 
-    String name = db.getOrganismNameFromId(id);
+    String name = sourceDBconn.getOrganismNameFromId(id);
     if (name != null) {
       this.organismCache.put(id, name);
     } else {
@@ -557,7 +563,7 @@ public class Loader {
     Set<SequenceData> uniqueSequences = new HashSet<>();
     for (Long rxnId : rxnIds) {
       // Note: this exploits a new index on seq.rxn_refs to make this quicker than an indirect lookup through rxns.
-      List<Seq> sequences = db.getSeqWithRxnRef(rxnId);
+      List<Seq> sequences = sourceDBconn.getSeqWithRxnRef(rxnId);
       for (Seq seq : sequences) {
         if (seq.getSequence() == null) {
           LOGGER.debug("Found seq entry with id %d has null sequence.  How did that happen?", seq.getUUID());
@@ -614,7 +620,7 @@ public class Loader {
         InchiDescriptor parentDescriptor;
         if (subId >= 0 && !substrateCache.containsKey(subId)) {
           try {
-            Chemical parent = db.getChemicalFromChemicalUUID(subId);
+            Chemical parent = sourceDBconn.getChemicalFromChemicalUUID(subId);
             upsert(constructOrFindReachable(parent.getInChI()));
             parentDescriptor = new InchiDescriptor(constructOrFindReachable(parent.getInChI()));
             thisRxnSubstrates.add(parentDescriptor);
@@ -674,7 +680,7 @@ public class Loader {
       LOGGER.info("Chem id is: " + currentId);
 
       // Get the actual chemical that is the product of the above chemical.  Bail quickly if we can't find it.
-      Chemical current = db.getChemicalFromChemicalUUID(currentId);
+      Chemical current = sourceDBconn.getChemicalFromChemicalUUID(currentId);
       LOGGER.info("Tried to fetch chemical id %d: %s", currentId, current);
 
       if (current == null) {

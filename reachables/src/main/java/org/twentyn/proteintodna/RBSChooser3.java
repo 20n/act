@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package org.twentyn.proteintodna;
 
 import java.util.ArrayList;
@@ -16,8 +10,6 @@ import java.util.Set;
 /**
  * This is a hacked down version of RBSChooser2 that doesn't do the update portion.
  * It just chooses an RBS.
- * 
- * @author jca20n
  */
 public class RBSChooser3 {
     private List<RBSOption> rbss;
@@ -28,7 +20,7 @@ public class RBSChooser3 {
         
         //Gather up all the genes, index by gene name
         Map<String,String[]> geneToData = new HashMap<>();
-        String data = FileUtils.readFile2("/mnt/shared-data/Vijay/CodonOptimization/coli_genes.txt");
+        String data = FileUtils.readFile2("data/CodonOptimization/coli_genes.txt");
         String[] lines = data.split("\\r|\\r?\\n");
         for(String line : lines) {
             try {
@@ -42,7 +34,7 @@ public class RBSChooser3 {
         
         //Populate the RBS choices
         out.rbss = new ArrayList<>();
-        data = FileUtils.readFile2("/mnt/shared-data/Vijay/CodonOptimization/rbs_options.txt");
+        data = FileUtils.readFile2("data/CodonOptimization/rbs_options.txt");
         lines = data.split("\\r|\\r?\\n");
         for(int i=0; i<lines.length; i++) {
             String line = lines[i];
@@ -63,7 +55,6 @@ public class RBSChooser3 {
             out.rbss.add(opt);
         }
         
-//        System.out.println("RBSChooser3 done initiating");
         return out;
     }
         
@@ -144,5 +135,3 @@ public class RBSChooser3 {
       return dist[s1len][s2len];
     }
 }
-
-

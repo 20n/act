@@ -10,6 +10,13 @@ name := "reachables"
  */
 fork := true
 
+/*
+  Because we have fork=true (universally), by default forked execution
+  does not attach the stdin to the process, *unless* we tell it to
+  http://www.scala-sbt.org/0.12.3/docs/Detailed-Topics/Forking.html#configuring-input
+ */
+connectInput in run := true
+
 version := "0.1"
 
 scalaVersion := "2.10.3"

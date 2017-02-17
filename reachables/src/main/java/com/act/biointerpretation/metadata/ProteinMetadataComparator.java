@@ -15,10 +15,6 @@ import java.util.Set;
 
 public class ProteinMetadataComparator implements Comparator {
 
-    // TODO: Make these into CLI options
-    private static String DATABASE = "jarvis_2016-12-09";
-    private static String COLLECTION = "reactions";
-    
     //The ranking is contextualized on a host
     private Host host;  
     //The ranking is contextualized on a location within that host
@@ -122,15 +118,17 @@ public class ProteinMetadataComparator implements Comparator {
 
 
     public static void main(String[] args) throws Exception {
-        createProteinMetadataTable();
+        // THIS main appears to be a debugging call. Does not seem to be used anywhere
+        String INDB = "SHOULD_COME_FROM_CMDLINE"; // "jarvis_2016-12-09";
+        String OUTDB = "SHOULD_COME_FROM_CMDLINE"; // was collection reactions
+    
+        createProteinMetadataTable(INDB, OUTDB);
     }
 
-    public static Map<Long, List<Pair<ProteinMetadata, Integer>>>  createProteinMetadataTable() throws Exception {
+    public static Map<Long, List<Pair<ProteinMetadata, Integer>>>  createProteinMetadataTable(String sourceDB, String destDB) throws Exception {
         ProteinMetadataComparator comp = new ProteinMetadataComparator(Host.Ecoli, Localization.cytoplasm);
 
-        // TODO: This is referencing a temporary collection. Change it!
-        // TODO: FIX THIS BEFORE MERGE!
-        NoSQLAPI api = new NoSQLAPI(DATABASE, COLLECTION);
+        NoSQLAPI api = new NoSQLAPI(sourceDB, destDB);
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
 
         //Create a single instance of the factory method to use for all json
