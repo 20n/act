@@ -119,17 +119,16 @@ public class ProteinMetadataComparator implements Comparator {
 
     public static void main(String[] args) throws Exception {
         // THIS main appears to be a debugging call. Does not seem to be used anywhere
-        // TODO: Make these into CLI options
-        String DATABASE = "SHOULD_COME_FROM_CMDLINE"; // "jarvis_2016-12-09";
-        String COLLECTION = "reactions";
+        String INDB = "SHOULD_COME_FROM_CMDLINE"; // "jarvis_2016-12-09";
+        String OUTDB = "SHOULD_COME_FROM_CMDLINE"; // was collection reactions
     
-        createProteinMetadataTable(DATABASE, COLLECTION);
+        createProteinMetadataTable(INDB, OUTDB);
     }
 
-    public static Map<Long, List<Pair<ProteinMetadata, Integer>>>  createProteinMetadataTable(String db, String collection) throws Exception {
+    public static Map<Long, List<Pair<ProteinMetadata, Integer>>>  createProteinMetadataTable(String sourceDB, String destDB) throws Exception {
         ProteinMetadataComparator comp = new ProteinMetadataComparator(Host.Ecoli, Localization.cytoplasm);
 
-        NoSQLAPI api = new NoSQLAPI(db, collection);
+        NoSQLAPI api = new NoSQLAPI(sourceDB, destDB);
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
 
         //Create a single instance of the factory method to use for all json

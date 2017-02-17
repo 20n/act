@@ -45,7 +45,6 @@ public class ProteinToDNADriver {
   private static final String DEFAULT_DB_HOST = "localhost";
   private static final String DEFAULT_DB_PORT = "27017";
   private static final String DEFAULT_OUTPUT_DB_NAME = "wiki_reachables";
-  private static final String DEFAULT_INPUT_RXNS_COLLECTIONS = "reactions"; // in jarvis/marvin
   private static final String DEFAULT_INPUT_DB_NAME = "SHOULD_COME_FROM_CMDLINE"; // "jarvis_2016-12-09";
   public static final String DEFAULT_INPUT_PATHWAY_COLLECTION_NAME = "SHOULD_COME_FROM_CMDLINE"; // "pathways_jarvis";
   public static final String DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME = "SHOULD_COME_FROM_CMDLINE"; // "pathways_vijay";
@@ -167,7 +166,8 @@ public class ProteinToDNADriver {
     MongoDB reactionDB = new MongoDB(dbHost, dbPort, reactionDbName);
 
     MongoClient inputClient = new MongoClient(new ServerAddress(dbHost, dbPort));
-    DB db = inputClient.getDB(cl.getOptionValue(OPTION_OUTPUT_DB_NAME, DEFAULT_OUTPUT_DB_NAME));
+    String outDB = cl.getOptionValue(OPTION_OUTPUT_DB_NAME, DEFAULT_OUTPUT_DB_NAME);
+    DB db = inputClient.getDB(outDB);
 
     String inputPathwaysCollectionName = cl.getOptionValue(OPTION_INPUT_PATHWAY_COLLECTION_NAME, DEFAULT_INPUT_PATHWAY_COLLECTION_NAME);
     String outputPathwaysCollectionName = cl.getOptionValue(OPTION_OUTPUT_PATHWAY_COLLECTION_NAME, DEFAULT_OUTPUT_PATHWAY_COLLECTION_NAME);
@@ -200,7 +200,7 @@ public class ProteinToDNADriver {
     for (String pathwayId : pathwayIds) {
       ReactionPath reactionPath = inputPathwayCollection.findOne(DBQuery.is("_id", pathwayId));
 
-      List<List<Pair<ProteinMetadata, Integer>>> processedP = RankPathway.processSinglePathAsJava(reactionPath, reactionDbName, DEFAULT_INPUT_RXNS_COLLECTIONS);
+      List<List<Pair<ProteinMetadata, Integer>>> processedP = RankPathway.processSinglePathAsJava(reactionPath, reactionDbName, outDB);
       if (processedP == null) {
         LOGGER.info(String.format("Process pathway was filtered out possibly because there were more than %s seqs for a given pathway",
             RankPathway.MAX_PROTEINS_PER_PATH()));

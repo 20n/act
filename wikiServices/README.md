@@ -229,7 +229,7 @@ Once the pages are generated, follow the upload and import instructions below.
 
 ### Building DNA Designs ###
 
-To produce DNA designs for just a few molcules, run the following:
+To produce DNA designs for just a few molcules, run the command below. (If, in the unlikely case, you want to build pathways to *all* molecules, just omit the `-m` param in the last command).
 ```
 $ inchi_key=<inchi key> # OR...
 $ inchi=<inchi> # OR...
@@ -237,6 +237,15 @@ $ SAMPLE_REACHABLE_INCHI=`mongo localhost/wiki_reachables --quiet --eval "reach=
 $ molecule=$SAMPLE_REACHABLE_INCHI # OR inchi OR inchi_key
 $ sbt "runMain org.twentyn.proteintodna.ProteinToDNADriver --source-db-name ${DEFAULT_DB} --input-pathway-collection pathways_${DEFAULT_DB}_${today} --output-pathway-collection pathways_${DEFAULT_DB}_w_designs_${today} --output-dna-seq-collection designs_${DEFAULT_DB}_${today} -m $molecule"
 ```
+
+Due to wierdness within `org.twentyn.proteintodna.ProteinToDNADriver`, it will create empty collections `wiki_reachables.{chemicals, cofactors, organismnames, seq}` (This usually happens when a MongoDB/NoSQLapi call is made over a non-act db, such as `wiki_reachables`). So you can safely dump 
+```
+# confirm that these are empty collections
+$ for coll in chemicals cofactors organismnames seq; do mongo localhost/wiki_reachables --quiet --eval "sz=db.${coll}.count(); print('${coll} size = ' + sz);"; done
+# delete them
+$ for coll in chemicals cofactors organismnames seq; do mongo localhost/wiki_reachables --quiet --eval "sz=db.${coll}.drop();"; done
+```
+
 Then render just the pages for the molecules you're interested using the command above, like this:
 ```
 $ sbt "runMain act.installer.reachablesexplorer.FreemarkerRenderer -o wiki_pages_custom --pathways pathways_${DEFAULT_DB}_w_designs_${today} --reachables-collection reachables_${today} --source-db-name ${DEFAULT_DB} -m $molecule
@@ -254,6 +263,14 @@ $ python src/main/python/Wiki/generate_category_pages.py reachables_${today} $de
 Since the script might be running at a later date, ensure that you do not overwrite `today` from when it was originally set. I.e., make sure this `reachables_` variable matches the above. 
 
 Make sure the $dest dir is the same dir as the other pages generated in the FreemarkerRenderer process.
+
+You might need to install pymongo:
+```
+$ sudo apt-get install python-setuptools python-dev build-essential 
+$ sudo easy_install pip
+$ python -m pip install pymongo
+$ sudo python -m pip install pymongo
+```
 
 ## 2. New Wiki Instance Setup Steps ##
 

@@ -22,8 +22,8 @@ object RankPathway {
   var rankingTable: Map[Long, List[Pair[ProteinMetadata, Integer]]] = null
 
   // Created once, used for all pathways.
-  private def createRankingTable(db: String, coll: String): Map[Long, List[Pair[ProteinMetadata, Integer]]] = {
-    val tbl = ProteinMetadataComparator.createProteinMetadataTable(db, coll).asScala.map(v => (v._1: Long, v._2.asScala.toList)).toMap
+  private def createRankingTable(srcDB: String, dstDB: String): Map[Long, List[Pair[ProteinMetadata, Integer]]] = {
+    val tbl = ProteinMetadataComparator.createProteinMetadataTable(srcDB, dstDB).asScala.map(v => (v._1: Long, v._2.asScala.toList)).toMap
     tbl
   }
 
@@ -94,11 +94,11 @@ object RankPathway {
     })
   }
 
-  def processSinglePath(pathway: ReactionPath, database: String, coll: String): Option[List[List[Pair[ProteinMetadata, Integer]]]] = {
-    val sourceDb = Mongo.connectToMongoDatabase(database)
+  def processSinglePath(pathway: ReactionPath, sourceDB: String, outDB: String): Option[List[List[Pair[ProteinMetadata, Integer]]]] = {
+    val sourceDb = Mongo.connectToMongoDatabase(sourceDB)
 
     if (rankingTable == null) {
-      rankingTable = createRankingTable(database, coll)
+      rankingTable = createRankingTable(sourceDB, outDB)
     }
 
     // Error checking and input forming
@@ -128,8 +128,8 @@ object RankPathway {
     Option(proteinPaths.map(x => x.map(y => y._2)))
   }
 
-  def processSinglePathAsJava(pathway: ReactionPath, database: String, coll: String): JavaList[JavaList[Pair[ProteinMetadata, Integer]]] = {
-    val processSinglePathVal = processSinglePath(pathway, database, coll)
+  def processSinglePathAsJava(pathway: ReactionPath, sourceDB: String, outDB: String): JavaList[JavaList[Pair[ProteinMetadata, Integer]]] = {
+    val processSinglePathVal = processSinglePath(pathway, sourceDB, outDB)
     processSinglePathVal match {
       case Some(x) => x.map(_.asJava).asJava;
       case None => null;
