@@ -20,13 +20,13 @@ Answers _"what DNA do I insert if I want to make my chemical?"_
   |   | Module | Achieves |
   |---|---|---|
   | 1 | Installer | Integrates heterogeneous raw data |
-  | 2 | RO inference | Derives rules of enzymatic biochemistry (reaction operators = RO) from known evidence |
-  | 3 | Biointerpretation | Mechanistic validation of enzymatic transforms |
+  | 2 | Reaction operator (RO) inference | Mines rules of enzymatic biochemistry from observations |
+  | 3 | Biointerpretation | Mechanistic validation of enzymatic transforms (using ROs) |
   | 4 | Reachables computation | Exhaustively enumerates all biosynthesizable chemicals |
   | 5 | Cascades computation | Exhaustively enumerates all enzymatic routes from metabolic natives to bioreachable target |
   | 6 | DNA designer | Computes protein & DNA design (coli specific) for each non-natural enzymatic path |
   | 7 | Application miner | Mines chemical applications using web searches [Bing] |
-  | 8 | Enzymatic biochemistry NLP | Text -> Chemical tokens -> Biologically feasible reactions [text-to-rxns](https://github.com/20n/act/pull/525) |
+  | 8 | Enzymatic biochemistry NLP | Text -> Chemical tokens -> Biologically feasible reactions using me [PR:text-to-rxns](https://github.com/20n/act/pull/525) |
   | 9 | Bioreachables wiki | Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface |
   
 #### Analytics
