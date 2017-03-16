@@ -5,8 +5,11 @@
 
 Getting started
 ===
-* Those who want the data (biologists, maybe?): Use login:pass as public:preview at [Bioreachables Preview](https://preview.bioreachables.com/). Due to limitations we can only make a preview version available for public use. If you'd like the full version [please contact us](mailto:info@20n.com).
-* Those who want the code (softwarers, maybe?): Checkout the repo and follow [Instructions to run](https://github.com/20n/act/tree/master/wikiServices#1-wiki-content-generation)
+#### Those who want the data (biologists, maybe?)
+Use login:pass as public:preview at [Bioreachables Preview](https://preview.bioreachables.com/). Due to limitations we can only make a preview version available for public use. If you'd like the full version [please contact us](mailto:info@20n.com).
+
+#### Those who want the code (softwarers, maybe?)
+Checkout the repo and follow [Instructions to run](https://github.com/20n/act/tree/master/wikiServices#1-wiki-content-generation)
 
 Components of 20n/act
 ===
