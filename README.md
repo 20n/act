@@ -8,10 +8,11 @@ Getting started
 * Those who want the data (biologists, maybe?): Use login:pass as public:preview at [Bioreachables Preview](https://preview.bioreachables.com/). Due to limitations we can only make a preview version available for public use. If you'd like the full version [please contact us](mailto:info@20n.com).
 * Those who want the code (softwarers, maybe?): Checkout the repo and follow [Instructions to run](https://github.com/20n/act/tree/master/wikiServices#1-wiki-content-generation)
 
-Components of 20n/act:
+Components of 20n/act
 ===
 
-* Predictor stack. Answers _"what DNA do I insert if I want to make my chemical?"_
+#### Predictor stack
+Answers _"what DNA do I insert if I want to make my chemical?"_
   
   |   | Module | Achieves |
   |---|---|---|
@@ -24,13 +25,15 @@ Components of 20n/act:
   | 7 | Application miner | Mines chemical applications using web searches [Bing] |
   | 8 | Bioreachables wiki | Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface |
   
-* Analytics. Answers _"Is my bio-engineered cell doing what I want it to?"_  
+#### Analytics
+Answers _"Is my bio-engineered cell doing what I want it to?"_  
 
   |   | Module | Achieves |
   |---|---|---|
   | 1 | LCMS: untargeted metabolomics | Deep-learnt signal processing to identify all chemical [side]effects of DNA engineering on cell |
   
-* Unit economics of bioproduction. Answers _"Can I use bio-production to make this chemical at scale?"_  
+#### Unit economics of bioproduction
+Answers _"Can I use bio-production to make this chemical at scale?"_  
 
   |   | Module | Achieves |
   |---|---|---|
