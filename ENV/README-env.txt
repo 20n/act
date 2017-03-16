@@ -42,7 +42,6 @@ export PATH=$PATH:$MONGO_HOME/bin
 
 # These are root keys to our AWS account.
 # For other users have them use another account with permissions using AWS IAM
-# See imp-sw-infra for details on AWS
 export AWS_ACCESS_KEY=XXXXXXXXXXXXXXXXXXXX
 export AWS_SECRET_KEY=XXXXXXXXXxxxXXXXXXXXxxxXXXXXXXXXXxxxXXxX
 
