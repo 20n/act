@@ -26,7 +26,8 @@ Answers _"what DNA do I insert if I want to make my chemical?"_
   | 5 | Cascades computation | Exhaustively enumerates all enzymatic routes from metabolic natives to bioreachable target |
   | 6 | DNA designer | Computes protein & DNA design (coli specific) for each non-natural enzymatic path |
   | 7 | Application miner | Mines chemical applications using web searches [Bing] |
-  | 8 | Bioreachables wiki | Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface |
+  | 8 | Enzymatic biochemistry NLP | Text -> Chemical tokens -> Biologically feasible reactions [text-to-rxns](https://github.com/20n/act/pull/525) |
+  | 9 | Bioreachables wiki | Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface |
   
 #### Analytics
 Answers _"Is my bio-engineered cell doing what I want it to?"_  
