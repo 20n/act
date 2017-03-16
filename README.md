@@ -11,19 +11,30 @@ Getting started
 Components of 20n/act:
 ===
 
-* Predictions (what DNA do I insert if I want to make my chemical?):
-  * Installer: Integrates heterogeneous raw data
-  * RO inference: Derives rules of enzymatic biochemistry from known evidence
-  * Biointerpretation: Mechanistic validation of enzymatic transforms
-  * Reachables computation: Exhaustively enumerates all biosynthesizable chemicals
-  * Cascades computation: Exhaustively enumerates all enzymatic routes from metabolic natives to bioreachable target
-  * DNA computation: Assigns DNA design to each non-natural enzymatic path
-  * Application miner: Mines chemical applications using web searches [Bing]
-  * Bioreachables wiki: Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface
-* Analytics (Is my bio-engineered cell doing what I want it to?):
-  * LCMS (untargeted metabolomics): Deep-learnt signal processing to identify all chemical [side]effects of DNA engineering on cell
-* Unit economics of bioproduction (Can I use bio-production to make this chemical at scale?):
-  * Cost model: Manufacturing unit economics for large scale production. It backcalculates cell efficiency (yield, titers, productivity) objectives based on given COGS ($ per ton) of target chemical. From cell efficiency objectives it guesstimates the R&D investment (money and time) and ROI expectations.
+* Predictor stack. Answers _"what DNA do I insert if I want to make my chemical?"_
+  
+  |   | Module | Achieves |
+  |---|---|---|
+  | 1 | Installer | Integrates heterogeneous raw data |
+  | 2 | RO inference | Derives rules of enzymatic biochemistry (reaction operators = RO) from known evidence |
+  | 3 | Biointerpretation | Mechanistic validation of enzymatic transforms |
+  | 4 | Reachables computation | Exhaustively enumerates all biosynthesizable chemicals |
+  | 5 | Cascades computation | Exhaustively enumerates all enzymatic routes from metabolic natives to bioreachable target |
+  | 6 | DNA designer | Computes protein & DNA design (coli specific) for each non-natural enzymatic path |
+  | 7 | Application miner | Mines chemical applications using web searches [Bing] |
+  | 8 | Bioreachables wiki | Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface |
+  
+* Analytics. Answers _"Is my bio-engineered cell doing what I want it to?"_  
+
+  |   | Module | Achieves |
+  |---|---|---|
+  | 1 | LCMS: untargeted metabolomics | Deep-learnt signal processing to identify all chemical [side]effects of DNA engineering on cell |
+  
+* Unit economics of bioproduction. Answers _"Can I use bio-production to make this chemical at scale?"_  
+
+  |   | Module | Achieves |
+  |---|---|---|
+  | 1 | Cost model: Manufacturing unit economics for large scale production | It backcalculates cell efficiency (yield, titers, productivity) objectives based on given COGS ($ per ton) of target chemical. From cell efficiency objectives it guesstimates the R&D investment (money and time) and ROI expectations |
 
 Documentation Entrypoints
 ===
