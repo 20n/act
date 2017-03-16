@@ -3,6 +3,11 @@
 
 20n/act is the data aggregation and prediction system for bioengineering applications, specifically fermentation-based bio-manufacturing. Given any target chemical to be bioproduced, it can tell you what DNA to insert into a cell (usually a microbe such as _E. coli_ or _S. cerevisiae_) so that it makes the target chemical when fed sugar, i.e., by fermentation. We call these "target chemicals" the __bioreachables__. One surprising discovery from this system was the bioproduction of Acetaminophen (blog post, patents covering coli fermentation, yeast fermentation and separation).
 
+Getting started
+===
+* Those who want the data (biologists, maybe?): Use login:pass as public:preview at (Bioreachables Preview)[https://preview.bioreachables.com/]. Due to limitations we can only make a preview version available for public use. If you'd like the full version (please contact us)[mailto:info@20n.com]
+* Those who want the code (softwarers, maybe?): Checkout the repo and follow (Instructions to run)[https://github.com/20n/act/tree/master/wikiServices#1-wiki-content-generation]
+
 Components of 20n/act:
 ===
 
