@@ -166,7 +166,7 @@ The configuration file for the orders service contains AWS credentials that **mu
 {
   "port": 8889,
   "reachables_file": "/etc/wiki_web_services/reachables",
-  "admin_email": "saurabh@20n.com",
+  "admin_email": "act@20n.com",
   "wiki_url_prefix": "/",
   "image_url_prefix": "/assets/img/",
   "client_keyword": "PICK_A_KEYWORD",

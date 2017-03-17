@@ -254,7 +254,7 @@ object Defaults {
 
   sealed trait Location { def name: String; def rentalRate: Money }
   def cmoRate(centsPerLiterDay: Double): Money = { USD(centsPerLiterDay / 100.00) }
-  // See email thread "Model" between Saurabh, Jeremiah, Tim Revak for cost quotes from various places
+  // See email thread "Model" between for cost quotes from various places
   case object GER extends Location { val name = "Germany"; val rentalRate = cmoRate(5.0) }
   case object ITL extends Location { val name = "Italy"; val rentalRate = cmoRate(8.0) }
   case object IND extends Location { val name = "India"; val rentalRate = cmoRate(10.0) }

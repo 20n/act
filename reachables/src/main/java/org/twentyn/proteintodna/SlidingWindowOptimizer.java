@@ -86,7 +86,7 @@ public class SlidingWindowOptimizer {
             codonValues[mrna.codons.length + i] = "TAA";
         }
 
-        // TODO: Saurabh says: More optimizations: The loop below takes about 100ms on average
+        // TODO: @saurabh20n says: More optimizations: The loop below takes about 100ms on average
         //       for each peptide sequence. We have heavily optimized the `for(Integer[] option : encodingOptions)`
         //       loop. But there are still other opportunities to shave away time. 
         //       One thought: Memoize the computation for unique `aas6`s. There are 20^6 = 64M possibilities,

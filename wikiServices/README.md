@@ -16,8 +16,8 @@ If you need fresh wiki content generated prior to loading, start this process in
 Note: it's best to run all of the following commands in a `screen` session, as they will take a long time to complete.
 
 
-It is likely that you'll have an ACT database on hand from which to produce reachables and cascades.  If not, run this
-command (on physical server `speakeasy`, or azure `twentyn-speakeasy-west2`):
+It is likely that you'll have an ACT database on hand from which to produce reachables and cascades.  If not, run the following
+commands (on physical server `speakeasy`, or azure `twentyn-speakeasy-west2`). The installer (and subsequent cmds) has external dependencies. Some of which are commercial (ChemAxon license, BRENDA MySQL install, BING), and some freely available for download (BioCyc MetaCyc, Wikipedia, etc.) The cmds below will unceremoniously crash when they cannot find the appropriate data and complain about it, so you'll know what to do. :)
 ```
 $ screen -S mongo-database
   $ mongod --version 
