@@ -70,10 +70,10 @@ public class PubmedEntry {
   }
 
   /*
-   * Encodes things such as { name: 'saurabh'; address: { num: '2319', street: 'Grant St' } }
+   * Encodes things such as { name: 'ava'; address: { num: '124', street: 'Mulholland Drive' } }
    * Data stored will be as:
-   * name -> JSONVal('saurabh')
-   * address -> JSONVal( JSONObj( num -> '2319', street -> 'Grant St' ) )
+   * name -> JSONVal('ava')
+   * address -> JSONVal( JSONObj( num -> '124', street -> 'Mulholland Drive' ) )
    */
   class JSONObj {
     HashMap<String, JSONVal> obj;

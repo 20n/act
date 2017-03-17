@@ -2,7 +2,7 @@
 
 This collection of scripts and config files can be used to automate the setup of azure VMs.
 
-Get started by visiting `http://portal.azure.com` in your browser and signing in.  If you can't sign in, stop here and ask Saurabh for credentials. Once you're logged in, run the following commands on your lappy:
+Get started by visiting `http://portal.azure.com` in your browser and signing in.  Once you're logged in, run the following commands on your lappy:
 ```Shell
 $ brew install azure-cli
 $ azure login
