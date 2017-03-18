@@ -50,7 +50,7 @@ object readwiki {
 object customer_patents {
   def main(args: Array[String]) {
     if (args.length != 2) {
-      println("Usage sbt \"runMain com.act.scripts.customer_patents \"L'Oreal\" absolute/path/to/inchi/list.txt\"")
+      println("Usage sbt \"runMain com.act.scripts.customer_patents \"DuPont\" absolute/path/to/inchi/list.txt\"")
       System.exit(-1)
     }
     val company = args(0)

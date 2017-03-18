@@ -1311,9 +1311,6 @@ light-emitting
 solar cell
 DSSC
 dye-sensitized
-L'Oreal
-Pepsi
-Coca-Cola
 inkjet
 3D print
 photovolta
