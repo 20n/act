@@ -2,7 +2,7 @@
 20n/act predicts how to engineer biology
 ===
 
-20n/act is the data aggregation and prediction system for bioengineering. Given any target molecule to be bioproduced, it can tell you what DNA to insert into a cell (usually a microbe such as _E. coli_ or _S. cerevisiae_) so that it makes the target molecule when fed sugar, i.e., by fermentation. We call these "target molecules/chemicals" the __bioreachables__. The system discovered that Acetaminophen can be bioproduced ([blog post](http://20n.com/blog.html#bio-acetaminophen), patents applications pending covering coli and yeast fermentation).
+20n/act is the data aggregation and prediction system for bioengineering. Given a target molecule, it predicts what DNA insertions into a cell (usually a microbe such as _E. coli_ or _S. cerevisiae_) will allow the cell to make the target when fed sugar, i.e., by fermentation. We call these "target molecules/chemicals" the __bioreachables__. The system discovered that Acetaminophen can be bioproduced. Our [blog post](http://20n.com/blog.html#bio-acetaminophen) gives the overview, and the technical details are present in the patents applications covering coli and yeast fermentation.
 
 Getting started
 ===
