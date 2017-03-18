@@ -48,7 +48,7 @@ public class ComputeReachablesTree {
   HashMap<Long, Double> subtreeSz;
   HashMap<Long, Double> subtreeVendorsSz;
   Tree<Long> tree;
-  private static final TargetSelectionSubstructs SUBSTRUCTURES = new TargetSelectionSubstructs();
+  private static final TargetSelection SUBSTRUCTURES = new TargetSelection();
   MongoDB db;
 
   ComputeReachablesTree(MongoDB db) {
