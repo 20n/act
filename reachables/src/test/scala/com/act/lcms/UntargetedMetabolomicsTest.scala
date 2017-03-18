@@ -35,7 +35,13 @@ class UntargetedMetabolomicsTest extends FlatSpec with Matchers {
   ignore should "correctly run end to end tests" in {
     // this data was collected with XCMS Centwave "optimzed" parameters: peak width 1-50 and ppm 20 (@vijay-20n?)
     def dataForWell(dataset: String)(repl: Int) = s"Plate_plate2016_09_08_$dataset${repl}_0908201601.tsv"
-    def fullLoc(well: String) = getClass.getResource(well).getPath
+    def fullLocResource(well: String) = getClass.getResource(well).getPath
+    // These blobs are 2MB each x 9. Moving them out of the resources dir
+    // and into the "data/" directory. Find them there, or if not write to
+    // act@20n.com and ask to have these pulled out the "act-private" repo
+    // Will definitely have it at commit `fb6757f` in directory
+    // `reachables/src/main/resources/com/act/lcms/Plate_plate2016_09_08_`
+    def fullLoc(well: String) = "data/UntargetedMetabolomicsTest/" + well
     def readSpectra(f: String) = {
       val src = new RawData(source = f)
       new RawPeaks(src, PeakSpectra.fromCalledPeaks(f))

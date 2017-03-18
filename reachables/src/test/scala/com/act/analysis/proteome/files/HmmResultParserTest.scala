@@ -28,31 +28,32 @@ import java.io.File
 import org.scalatest._
 
 class HmmResultParserTest extends FlatSpec with Matchers {
+  // The files required for this test:
+  //    analysis.proteome.files/output_result_negative_HmmResultParser.txt
+  //    analysis.proteome.files/output_result_positive_HmmResultParser.txt
+  // are pretty large. Moving them out of the resources dir and into
+  // "data/" directory. Find them there, or if not write to act@20n.com
+  // and ask for them to be pulled out of the "act-private" repo.
+  // Will definitely have it at commit `fb6757f` in directory
+  // `reachables/src/test/resources/com/act/analysis.proteome.files/output_result_*`
+  def readFile(f: String) = new File("data/analysis.proteome.files/" + f)
+  def readFileResource(f: String) = new File(getClass.getResource("/com/act/analysis.proteome.files/" + f).getFile)
   "The HmmParser" should "return no value for the negative output file" in {
-    val results =
-      HmmResultParser.parseFile(
-        new File(getClass.getResource("/com/act/analysis.proteome.files/output_result_negative_HmmResultParser.txt").getFile)
-      )
+    val results = HmmResultParser.parseFile(readFile("output_result_negative_HmmResultParser.txt"))
 
     results shouldNot be(null)
     results.size should be(0)
   }
 
   "The HmmParser" should "return all the lines above the cutoff line for the positive output file" in {
-    val results =
-      HmmResultParser.parseFile(
-        new File(getClass.getResource("/com/act/analysis.proteome.files/output_result_positive_HmmResultParser.txt").getFile)
-      )
+    val results = HmmResultParser.parseFile(readFile("output_result_positive_HmmResultParser.txt"))
 
     results shouldNot be(null)
     results.size shouldNot be(0)
   }
 
   "The HmmParser" should "trim any non protein values" in {
-    val results =
-      HmmResultParser.parseFile(
-        new File(getClass.getResource("/com/act/analysis.proteome.files/output_result_positive_HmmResultParser.txt").getFile)
-      ).toList
+    val results = HmmResultParser.parseFile(readFile("output_result_positive_HmmResultParser.txt")).toList
 
     results.head(HmmResultParser.HmmResultLine.SEQUENCE_NAME) should be("tr|A0A0A2K6V8|A0A0A2K6V8_PENEN")
     results.last(HmmResultParser.HmmResultLine.SEQUENCE_NAME) should be("tr|A0A0C1WNZ9|A0A0C1WNZ9_9CYAN")
