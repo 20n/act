@@ -1,7 +1,8 @@
-20n/act predicts what biology can help us manufacture
+
+20n/act predicts DNA for forward engineering of biology
 ===
 
-20n/act is the data aggregation and prediction system for bioengineering applications, specifically fermentation-based bio-manufacturing. Given any target chemical to be bioproduced, it can tell you what DNA to insert into a cell (usually a microbe such as _E. coli_ or _S. cerevisiae_) so that it makes the target chemical when fed sugar, i.e., by fermentation. We call these "target chemicals" the __bioreachables__. One surprising discovery from this system was the bioproduction of Acetaminophen (blog post, patents covering coli fermentation, yeast fermentation and separation).
+20n/act is the data aggregation and prediction system for bioengineering. Given any target chemical to be bioproduced, it can tell you what DNA to insert into a cell (usually a microbe such as _E. coli_ or _S. cerevisiae_) so that it makes the target chemical when fed sugar, i.e., by fermentation. We call these "target chemicals" the __bioreachables__. One surprising discovery from this system was the bioproduction of Acetaminophen (blog post, patents covering coli fermentation, yeast fermentation and separation).
 
 Getting started
 ===
@@ -10,10 +11,6 @@ Use login:pass as public:preview at [Bioreachables Preview](https://preview.bior
 
 #### Those who want the code: softwarers, maybe?
 Checkout the repo. Follow [instructions to run](https://github.com/20n/act/tree/master/wikiServices#1-wiki-content-generation). The codebase is public to further the state-of-the-art in automating biological engineering/synthetic biology. Some modules are specific to microbes, but most of the predictive stack deals with host-agnostic enzymatic biochemistry.
-
-License and Contributing
-===
-GPLv3 governs the use of this code. Contributions are welcome. If an alternative license is desired, [please contact 20n](info@20n.com).
 
 Components of 20n/act
 ===
@@ -47,12 +44,8 @@ Answers _"Can I use bio-production to make this chemical at scale?"_
   |---|---|---|
   | 1 | Cost model: Manufacturing unit economics for large scale production | It backcalculates cell efficiency (yield, titers, productivity) objectives based on given COGS ($ per ton) of target chemical. From cell efficiency objectives it guesstimates the R&D investment (money and time) and ROI expectations |
 
-Documentation Entrypoints
+License and Contributing
 ===
+Code licensed under the GNU General Public License v3.0.
+If an alternative license is desired, [please contact 20n](act@20n.com).
 
-* Wiki setup: https://github.com/20n/act/tree/master/wikiServices
-* Creating azure servers: https://github.com/20n/act/wiki/Architecture:-On-Azure
-* Azure administration: https://github.com/20n/act/tree/master/scripts/azure
-* After reboot setup:  https://github.com/20n/act/wiki/After-Reboot-Startup-Checklist
-* DNS + NGINX: https://github.com/20n/act/wiki/DNS-and-NGINX
-* VPN Access:  https://github.com/20n/act/wiki/OpenVPN
