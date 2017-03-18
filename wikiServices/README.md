@@ -1159,7 +1159,7 @@ We have purchased a wildcard SSL certificate for `*.bioreachables.com` that allo
 :moyai:
 
 ## A5. Libraries needed to compile ##
-There is the listing of `reachables/lib`. This might be a superset :shrug:
+There is the listing of `reachables/lib`. This might be a superset :pray:
 
 ```
 MarvinBeans.jar
