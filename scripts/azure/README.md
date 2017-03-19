@@ -46,29 +46,30 @@ also tell ssh to connect to the hosts in azure via a proxy: ssh will
 connect to the bastion and then make a second "hop" to the destination
 host based on the name of the final target.
 
-Add this to your ssh config to enable transparent ssh-ing through the bastion hosts:
+Add this to your .ssh/config to enable transparent ssh-ing through the bastion hosts:
 ```
 Host twentyn-*
-  ProxyCommand ssh 13.89.34.25 -W %h:%p
+  ProxyCommand ssh 13.XXX.XXX.XXX -W %h:%p
   ServerAliveInterval 30
   ForwardAgent Yes
 
 # Note: this must appear before the *-west2 block.
 Host *-wiki-west2
-  ProxyCommand ssh 52.183.73.127 -W %h:%p
+  ProxyCommand ssh 52.XXX.XXX.XXX -W %h:%p
   ServerAliveInterval 30
   ForwardAgent Yes
 
 Host *-west2
-  ProxyCommand ssh 13.66.211.16 -W %h:%p
+  ProxyCommand ssh 13.XXX.XXX.XXX -W %h:%p
   ServerAliveInterval 30
   ForwardAgent Yes
 
 Host *-scus
-  ProxyCommand ssh 13.65.25.6 -W %h:%p
+  ProxyCommand ssh 13.XXX.XXX.XXX -W %h:%p
   ServerAliveInterval 30
   ForwardAgent Yes
 ```
+(Of course replace XXXs appropriately. Get them from 20n machines.)
 
 If your local username is not the same as the one you use on remote
 servers (which is usually the same as your email address), add a
