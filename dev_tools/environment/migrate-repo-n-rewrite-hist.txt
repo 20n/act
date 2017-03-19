@@ -1,0 +1,50 @@
+
+# Sometimes it is necessary to rewrite history; bad code checkins; large files; etc.
+# This code is only needed once in a lifetime. But having used it successfully, lets log.
+# We used it to transition the 20n private repo to the open source GPL public 20n/act repo.
+
+Two scripts that come in handy:
+* ./git-bare-repo-blob-sizes.sh 
+* bfg repo-cleaner: https://rtyley.github.io/bfg-repo-cleaner/
+
+Run `./git-bare-repo-blob-sizes.sh 200` to pull out top 200 largest file sizes that we most want to optimize. Put them into whole directories you want to delete DEL-DIRS and individual files DEL-FILES.
+
+Below, we assume you want to migrate OLD-REPO to NEW-REPO, while cleaning out crud.
+
+////////
+COMMANDS TO RUN:
+////////
+
+git clone --bare git@github.com:20n/OLD-REPO.git
+git lfs fetch --all // failed.. so continued without it..
+
+alias reflg="cd OLD-REPO.git; git reflog expire --expire=now --all && git gc --prune=now --aggressive; cd .."
+function del-file() { bfg --delete-files $1 OLD-REPO.git; reflg; }
+function del-fldr() { bfg --delete-folders $1 OLD-REPO.git; reflg; }
+
+for i in `cat DEL-FILES`
+do
+  del-file $i
+done
+
+for i in `cat DEL-DIRS`
+do
+  del-fldr $i
+done
+
+cd OLD-REPO
+
+git remote -v
+| origin  git@github.com:20n/OLD-REPO.git (fetch)
+| origin  git@github.com:20n/OLD-REPO.git (push)
+
+git remote set-url --add origin git@github.com:20n/NEW-REPO.git
+git remote set-url --delete origin git@github.com:20n/OLD-REPO.git
+
+git remote -v
+| origin  git@github.com:20n/NEW-REPO.git (fetch)
+| origin  git@github.com:20n/NEW-REPO.git (push)
+
+git push -u origin master
+// push all other branches as well...
+for i in `git branch | grep -v master`; do echo $i; read; git push origin $i; done
