@@ -7,7 +7,7 @@
 Getting started
 ===
 #### Those who want the data: biologists, maybe?
-Use login:pass as public:preview at [Bioreachables Preview](https://preview.bioreachables.com/). Due to limitations we can only make a preview version available for public use. If you'd like the full version [please contact us](mailto:info@20n.com).
+See predicted DNA for 11 sample molecules at [Bioreachables Preview](https://preview.bioreachables.com/) (Login:Pass = public:preview). Due to limitations we can only make a preview version available. If you'd like the full version [please contact us](mailto:info@20n.com).
 
 #### Those who want the code: softwarers, maybe?
 Checkout the repo. Follow [instructions to run](https://github.com/20n/act/tree/master/wikiServices#1-wiki-content-generation). The codebase is public to further the state-of-the-art in automating biological engineering/synthetic biology. Some modules are specific to microbes, but most of the predictive stack deals with host-agnostic enzymatic biochemistry.
@@ -30,6 +30,8 @@ Answers _"what DNA do I insert if I want to make my chemical?"_
   | 8 | Enzymatic biochemistry NLP | Text -> Chemical tokens -> Biologically feasible reactions using ROs: [PR:text-to-rxns](https://github.com/20n/act/pull/525) |
   | 9 | Bioreachables wiki | Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface |
   
+  <p align="center"> <img width=65% src="http://20n.com/assets/video/making-apap-20n%3Aact-small.gif"> </p>
+
 #### Analytics
 Answers _"Is my bio-engineered cell doing what I want it to?"_  
 
