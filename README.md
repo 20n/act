@@ -6,11 +6,11 @@
 
 Getting started
 ===
-#### Those who want the data: biologists, maybe?
+#### Live preview
 See predicted DNA for 11 sample molecules at [Bioreachables Preview](https://preview.bioreachables.com/) (Login:Pass = public:preview). Due to limitations we can only make a preview version available. If you'd like the full version [please contact us](mailto:info@20n.com).
 
-#### Those who want the code: softwarers, maybe?
-Checkout the repo. Follow [instructions to run](https://github.com/20n/act/tree/master/wikiServices#1-wiki-content-generation). The codebase is public to further the state-of-the-art in automating biological engineering/synthetic biology. Some modules are specific to microbes, but most of the predictive stack deals with host-agnostic enzymatic biochemistry.
+#### Building the project
+Checkout the repo. Follow [instructions to run](wikiServices#1-wiki-content-generation). The codebase is public to further the state-of-the-art in automating biological engineering/synthetic biology. Some modules are specific to microbes, but most of the predictive stack deals with host-agnostic enzymatic biochemistry.
 
 Components of 20n/act
 ===
@@ -18,9 +18,9 @@ Components of 20n/act
 #### Predictor stack
 Answers _"what DNA do I insert if I want to make my chemical?"_
   
-  |   | Module | Achieves |
-  |---|---|---|
-  | 1 | Installer | Integrates heterogeneous raw data |
+  |   | Module | Function | Code |
+  |---|---|---|---|
+  | 1 | Installer | Integrates heterogeneous raw data | [com.act.reachables.initdb](reachables/src/main/scala/initdb.scala) with [doc](wikiServices#create-an-act-db)
   | 2 | Reaction operator (RO) inference | Mines rules of enzymatic biochemistry from observations |
   | 3 | Biointerpretation | Mechanistic validation of enzymatic transforms (using ROs) |
   | 4 | Reachables computation | Exhaustively enumerates all biosynthesizable chemicals |

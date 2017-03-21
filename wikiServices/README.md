@@ -32,7 +32,7 @@ $ screen -S installer
 ```
 
 This process will install a DB to `actv01` on machine.  This process will probably take somewhere on the
-order of 48 hours to complete.  To setup a server to run this from scratch various external data dependencies are needed. The setup process is described in (Azure Server Setup)[https://github.com/20n/act/wiki/Architecture:-On-Azure#buildup-notes].
+order of 48 hours to complete.  To setup a server to run this from scratch various external data dependencies are needed. The setup process is described in [Azure Server Setup](https://github.com/20n/act/wiki/Architecture:-On-Azure#buildup-notes).
 
 Once the installer has run, the biointerpretation pipeline should be run on `actv01`.  The configuration file for
 the `BiointepretationDriver` class looks like this:
