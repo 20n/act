@@ -18,10 +18,13 @@ Components of 20n/act
 #### Predictor stack
 Answers _"what DNA do I insert if I want to make my chemical?"_
   
+  <p align="center"> <img width=65% src="http://20n.com/assets/video/making-apap-20n%3Aact-small.gif"> </p>
+
   |   | Module | Function | Code |
   |---|---|---|---|
   | 1 | Installer | Integrates heterogeneous raw data | Code:[com.act.reachables.initdb](reachables/src/main/scala/initdb.scala) <br/>Run:[Instructions](wikiServices#create-an-act-db)
-  | 2 | Reaction operator (RO) inference | Mines rules of enzymatic biochemistry from observations | 
+  | 2 | Reaction operator (RO) inference | Mines rules of enzymatic catalysis | Code:[biointerpretation module](reachables/src/main/java/com/act/biointerpretation)
+  | 2 | Structure Activity Relationship (SAR) inference | Mines substrate specificities | Code:[biointerpretation module](reachables/src/main/java/com/act/biointerpretation)
   | 3 | Biointerpretation | Mechanistic validation of enzymatic transforms (using ROs) | Code:[com.act.biointerpretation.BiointerpretationDriver](reachables/src/main/java/com/act/biointerpretation/BiointerpretationDriver.java) <br> Run:[Instructions](wikiServices#run-biointerpretation)
   | 4 | Reachables computation | Exhaustively enumerates all biosynthesizable chemicals | Code:[com.act.reachables.reachables](reachables/src/main/scala/reachables.scala)<br>Code:[com.act.reachables.postprocess_reachables](reachables/src/main/scala/postprocess_reachables.scala)<br>Run:[Instructions](wikiServices#run-reachables-and-cascades)
   | 5 | Cascades computation | Exhaustively enumerates all enzymatic routes from metabolic natives to bioreachable target | Code:[com.act.reachables.cascades](reachables/src/main/scala/com/act/reachables/cascades.scala)<br>Run:[Instructions](wikiServices#run-reachables-and-cascades)
@@ -31,8 +34,6 @@ Answers _"what DNA do I insert if I want to make my chemical?"_
   | 9 | Patent search | Chemical -> Patents | Code:[act.installer.reachablesexplorer.PatentFinder](reachables/src/main/java/act/installer/reachablesexplorer/PatentFinder.java)<br>Run:[Instructions](wikiServices#enrich-the-reachables-with-patents)
   | 9 | Bioreachables wiki | Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface | [Documentation](wikiServices#2-new-wiki-instance-setup-steps)
   
-  <p align="center"> <img width=65% src="http://20n.com/assets/video/making-apap-20n%3Aact-small.gif"> </p>
-
 #### Analytics
 Answers _"Is my bio-engineered cell doing what I want it to?"_  
 
