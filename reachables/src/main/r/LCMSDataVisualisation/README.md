@@ -1,6 +1,6 @@
 This module lets you setup a visualization server that allows comparative display of UntargetedMetabolomics analysis.
 
-![](http://20n.com/assets/imgs/lcms-viz.png)
+![](http://20n.com/assets/img/lcms-viz.png)
 
 ## Requirements
 
@@ -66,3 +66,6 @@ library(shiny)
 runApp(port = 8083, host = "0.0.0.0")
 ```
 The app should be now accessible from `http://hostname:8083`
+
+### Test using demo UntargetMetabolomics file
+Try uploading the [lcms-demo.json](lcms-demo.json) file for sample visualization.
