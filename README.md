@@ -38,7 +38,10 @@ Answers _"Is my bio-engineered cell doing what I want it to?"_
 
   |   | Module | Function | Code |
   |---|---|---|---|
-  | 1 | LCMS: untargeted metabolomics | Deep-learnt signal processing to identify all chemical [side]effects of DNA engineering on cell |
+  | 1 | LCMS: Untargeted metabolomics | Deep-learnt signal processing to identify all chemical [side]effects of DNA engineering on cell | [bucketed_differential_deep.py](reachables/src/main/python/DeepLearningLcmsPeak) and [com.act.lcms.UntargetedMetabolomics](reachables/src/main/scala/com/act/lcms/UntargetedMetabolomics.scala)
+  | 2 | LCMS: Comparative visualization | Visualizing traces side-by-side from untargeted evaluation of over and underexpressed peaks | [LCMSDataVisualisation](reachables/src/main/r/LCMSDataVisualisation)
+
+  <p align="center"> <img width=65% src="http://20n.com/assets/img/lcms-viz.png"> </p>
   
 #### Unit economics of bioproduction
 Answers _"Can I use bio-production to make this chemical at scale?"_  

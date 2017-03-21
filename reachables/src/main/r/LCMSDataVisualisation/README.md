@@ -1,6 +1,6 @@
 This module lets you setup a visualization server that allows comparative display of UntargetedMetabolomics analysis.
 
-![](http://20n.com/assets/img/lcms-viz.png)
+  <p align="center"> <img width=65% src="http://20n.com/assets/img/lcms-viz.png"> </p>
 
 ## Requirements
 
