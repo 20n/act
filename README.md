@@ -18,8 +18,6 @@ Components of 20n/act
 #### Predictor stack
 Answers _"what DNA do I insert if I want to make my chemical?"_
   
-  <p align="center"> <img width=65% src="http://20n.com/assets/video/making-apap-20n%3Aact-small.gif"> </p>
-
   |   | Module | Function | Code |
   |---|---|---|---|
   | 1 | Installer | Integrates heterogeneous raw data | Code:[com.act.reachables.initdb](reachables/src/main/scala/initdb.scala) <br/>Run:[Instructions](wikiServices#create-an-act-db)
@@ -34,6 +32,8 @@ Answers _"what DNA do I insert if I want to make my chemical?"_
   | 9 | Patent search | Chemical -> Patents | Code:[act.installer.reachablesexplorer.PatentFinder](reachables/src/main/java/act/installer/reachablesexplorer/PatentFinder.java)<br>Run:[Instructions](wikiServices#enrich-the-reachables-with-patents)
   | 9 | Bioreachables wiki | Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface | [Documentation](wikiServices#2-new-wiki-instance-setup-steps)
   
+  <p align="center"> <img width=65% src="http://20n.com/assets/video/making-apap-20n%3Aact-small.gif"> </p>
+
 #### Analytics
 Answers _"Is my bio-engineered cell doing what I want it to?"_  
 
