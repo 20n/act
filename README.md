@@ -22,13 +22,13 @@ Answers _"what DNA do I insert if I want to make my chemical?"_
   |---|---|---|---|
   | 1 | Installer | Integrates heterogeneous raw data | Code: [com.act.reachables.initdb](reachables/src/main/scala/initdb.scala) <br/>Run: [Instructions](wikiServices#create-an-act-db)
   | 2 | Reaction operator (RO) inference | Mines rules of enzymatic biochemistry from observations | 
-  | 3 | Biointerpretation | Mechanistic validation of enzymatic transforms (using ROs) | [com.act.biointerpretation.BiointerpretationDriver](reachables/src/main/java/com/act/biointerpretation/BiointerpretationDriver.java) and [run instructions](wikiServices#run-biointerpretation)
-  | 4 | Reachables computation | Exhaustively enumerates all biosynthesizable chemicals | [com.act.reachables.reachables](reachables/src/main/scala/reachables.scala) + [com.act.reachables.postprocess_reachables](reachables/src/main/scala/postprocess_reachables.scala) and [run instructions](wikiServices#run-reachables-and-cascades)
-  | 5 | Cascades computation | Exhaustively enumerates all enzymatic routes from metabolic natives to bioreachable target | [com.act.reachables.cascades](reachables/src/main/scala/com/act/reachables/cascades.scala) and [run instructions](wikiServices#run-reachables-and-cascades)
-  | 6 | DNA designer | Computes protein & DNA design (coli specific) for each non-natural enzymatic path | [org.twentyn.proteintodna.ProteinToDNADriver](reachables/src/main/java/org/twentyn/proteintodna/ProteinToDNADriver.java) and [run instructions](wikiServices#building-dna-designs)
-  | 7 | Application miner | Mines chemical applications using web searches [Bing] | [act.installer.bing.BingSearcher](reachables/src/main/java/act/installer/bing/BingSearcher.java) and [run instructions](wikiServices#augment-the-installer-with-bing-search-data)
-  | 8 | Enzymatic biochemistry NLP | Text -> Chemical tokens -> Biologically feasible reactions using ROs | [PR:text-to-rxns](https://github.com/20n/act/pull/525) |
-  | 9 | Patent search | Chemical -> Patents | [act.installer.reachablesexplorer.PatentFinder](reachables/src/main/java/act/installer/reachablesexplorer/PatentFinder.java) and [run instructions](wikiServices#enrich-the-reachables-with-patents)
+  | 3 | Biointerpretation | Mechanistic validation of enzymatic transforms (using ROs) | Code: [com.act.biointerpretation.BiointerpretationDriver](reachables/src/main/java/com/act/biointerpretation/BiointerpretationDriver.java) <br> Run: [Instructions](wikiServices#run-biointerpretation)
+  | 4 | Reachables computation | Exhaustively enumerates all biosynthesizable chemicals | Code: [com.act.reachables.reachables](reachables/src/main/scala/reachables.scala)<br>Code: [com.act.reachables.postprocess_reachables](reachables/src/main/scala/postprocess_reachables.scala)<br>Run: [Instructions](wikiServices#run-reachables-and-cascades)
+  | 5 | Cascades computation | Exhaustively enumerates all enzymatic routes from metabolic natives to bioreachable target | Code: [com.act.reachables.cascades](reachables/src/main/scala/com/act/reachables/cascades.scala)<br>Run: [Instructions](wikiServices#run-reachables-and-cascades)
+  | 6 | DNA designer | Computes protein & DNA design (coli specific) for each non-natural enzymatic path | Code: [org.twentyn.proteintodna.ProteinToDNADriver](reachables/src/main/java/org/twentyn/proteintodna/ProteinToDNADriver.java)<br>Run: [Instructions](wikiServices#building-dna-designs)
+  | 7 | Application miner | Mines chemical applications using web searches [Bing] | Code: [act.installer.bing.BingSearcher](reachables/src/main/java/act/installer/bing/BingSearcher.java)<br>Run: [Instructions](wikiServices#augment-the-installer-with-bing-search-data)
+  | 8 | Enzymatic biochemistry NLP | Text -> Chemical tokens -> Biologically feasible reactions using ROs | PR: [text-to-rxns](https://github.com/20n/act/pull/525) |
+  | 9 | Patent search | Chemical -> Patents | Code: [act.installer.reachablesexplorer.PatentFinder](reachables/src/main/java/act/installer/reachablesexplorer/PatentFinder.java)<br>Run: [Instructions](wikiServices#enrich-the-reachables-with-patents)
   | 9 | Bioreachables wiki | Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface | [Documentation](wikiServices#2-new-wiki-instance-setup-steps)
   
   <p align="center"> <img width=65% src="http://20n.com/assets/video/making-apap-20n%3Aact-small.gif"> </p>
@@ -38,8 +38,8 @@ Answers _"Is my bio-engineered cell doing what I want it to?"_
 
   |   | Module | Function | Code |
   |---|---|---|---|
-  | 1 | LCMS: Untargeted metabolomics | Deep-learnt signal processing to identify all chemical [side]effects of DNA engineering on cell | [Code: DeepLearningLcmsPeak](reachables/src/main/python/DeepLearningLcmsPeak) and [code: com.act.lcms.UntargetedMetabolomics](reachables/src/main/scala/com/act/lcms/UntargetedMetabolomics.scala)
-  | 2 | LCMS: Comparative visualization | Visualizing traces side-by-side from untargeted evaluation of over and underexpressed peaks | [Doc: LCMSDataVisualisation](reachables/src/main/r/LCMSDataVisualisation)
+  | 1 | LCMS: Untargeted metabolomics | Deep-learnt signal processing to identify all chemical [side]effects of DNA engineering on cell | Code: [DeepLearningLcmsPeak](reachables/src/main/python/DeepLearningLcmsPeak)<br>Code: [com.act.lcms.UntargetedMetabolomics](reachables/src/main/scala/com/act/lcms/UntargetedMetabolomics.scala)
+  | 2 | LCMS: Comparative visualization | Visualizing traces side-by-side from untargeted evaluation of over and underexpressed peaks | Doc: [LCMSDataVisualisation](reachables/src/main/r/LCMSDataVisualisation)
 
   <p align="center"> <img width=65% src="http://20n.com/assets/img/lcms-viz.png"> </p>
   
@@ -48,7 +48,7 @@ Answers _"Can I use bio-production to make this chemical at scale?"_
 
   |   | Module | Function | Code
   |---|---|---|---|
-  | 1 | Cost model: Manufacturing unit economics for large scale production | It backcalculates cell efficiency (yield, titers, productivity) objectives based on given COGS ($ per ton) of target chemical. From cell efficiency objectives it guesstimates the R&D investment (money and time) and ROI expectations | [Code: act.installer.bing.CostModel](reachables/src/main/scala/costmodel.scala), [viz server: costModelUI](reachables/src/main/r/costModelUI) and [source model: XLS](http://20n.com/assets/spreadsheet/cost-model.xlsx)
+  | 1 | Cost model: Manufacturing unit economics for large scale production | It backcalculates cell efficiency (yield, titers, productivity) objectives based on given COGS ($ per ton) of target chemical. From cell efficiency objectives it guesstimates the R&D investment (money and time) and ROI expectations | Code: [act.installer.bing.CostModel](reachables/src/main/scala/costmodel.scala)<br>Code: [Viz server: costModelUI](reachables/src/main/r/costModelUI)<br>Source model: [XLS](http://20n.com/assets/spreadsheet/cost-model.xlsx)
 
 License and Contributing
 ===
