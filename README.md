@@ -20,7 +20,7 @@ Answers _"what DNA do I insert if I want to make my chemical?"_
   
   |   | Module | Function | Code |
   |---|---|---|---|
-  | 1 | Installer | Integrates heterogeneous raw data | [Code:com.act.reachables.initdb](reachables/src/main/scala/initdb.scala) <br/> [Run instructions](wikiServices#create-an-act-db)
+  | 1 | Installer | Integrates heterogeneous raw data | Code: [com.act.reachables.initdb](reachables/src/main/scala/initdb.scala) <br/>Run: [Instructions](wikiServices#create-an-act-db)
   | 2 | Reaction operator (RO) inference | Mines rules of enzymatic biochemistry from observations | 
   | 3 | Biointerpretation | Mechanistic validation of enzymatic transforms (using ROs) | [com.act.biointerpretation.BiointerpretationDriver](reachables/src/main/java/com/act/biointerpretation/BiointerpretationDriver.java) and [run instructions](wikiServices#run-biointerpretation)
   | 4 | Reachables computation | Exhaustively enumerates all biosynthesizable chemicals | [com.act.reachables.reachables](reachables/src/main/scala/reachables.scala) + [com.act.reachables.postprocess_reachables](reachables/src/main/scala/postprocess_reachables.scala) and [run instructions](wikiServices#run-reachables-and-cascades)
