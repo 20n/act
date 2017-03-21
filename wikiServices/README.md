@@ -32,7 +32,9 @@ $ screen -S installer
 ```
 
 This process will install a DB to `actv01` on machine.  This process will probably take somewhere on the
-order of 48 hours to complete.  To setup a server to run this from scratch various external data dependencies are needed. The setup process is described in (Azure Server Setup)[https://github.com/20n/act/wiki/Architecture:-On-Azure#buildup-notes].
+order of 48 hours to complete.  To setup a server to run this from scratch various external data dependencies are needed. The setup process is described in [Azure Server Setup](https://github.com/20n/act/wiki/Architecture:-On-Azure#buildup-notes).
+
+### Run Biointerpretation ###
 
 Once the installer has run, the biointerpretation pipeline should be run on `actv01`.  The configuration file for
 the `BiointepretationDriver` class looks like this:
@@ -88,8 +90,6 @@ synapse  35.937GB
 ```
 
 ### Run Reachables and Cascades ###
-
-**TODO: validate this section**
 
 To run reachables computation on your new database, set all the appropriate variables as shown below:
 ```SHELL
@@ -810,7 +810,7 @@ $ echo $pkgs | xargs sudo apt-get install -y
 
 This will start a PHP 7.0 FPM service that will accept traffic on a UNIX domain socket in /var/run.  Ensure `/var/run/php/php7.0-fpm.sock` exists or the wiki's PHP processing requests will fail.
 
-The default PHP-FPM configuration should be sufficient for our purposes.  TODO: do we need to harden this?
+The default PHP-FPM configuration should be sufficient for our purposes.
 
 ### Install and Configure NGINX ###
 
