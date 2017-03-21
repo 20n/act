@@ -16,12 +16,12 @@ mkdir lcms-viz
 git clone git@github.com:20n/act.git lcms-viz/
 ```
 
-- Sync your lib directory with the NAS and install the Chemaxon license
+- Sync your lib directory as instructed here [reachables/lib](wikiServices#a5-libraries-needed-to-compile) and install the Chemaxon license
 
 ```
 cd lcms-viz/reachables/ 
-rsync -azP /mnt/data-level1/lib/ lib/ 
-license /mnt/shared-data/3rdPartySoftware/Chemaxon/license_Start-up.cxl
+rsync -azP LOC_LIB lib/ 
+license CHEMAXON_LICENSE.cxl
 ```
 At this point, you should be able to fully compile your SBT project.
 Try performing a clean compilation and running tests on the project: `sbt clean compile test`.
@@ -37,11 +37,11 @@ sbt assembly
 - Create symlinks in the app directory: 
 ```
 cd src/main/r/LCMSDataVisualisation/
-ln -s /var/20n/home/thomas/lcms-viz/reachables/target/scala-2.10/reachables-assembly-0.1.jar reachables-assembly-0.1.jar
-ln -s /var/20n/home/thomas/lcms-viz/reachables/src/main/resources/20n.png 20nlogo
+ln -s lcms-viz/reachables/target/scala-2.10/reachables-assembly-0.1.jar reachables-assembly-0.1.jar
+ln -s lcms-viz/reachables/src/main/resources/20n.png 20nlogo
 ```
 
-- Finally, make sure that the directory `/home/thomas/data/mol-structure-cache/` exists. This is where molecule structure images will be stored. TODO: add a symlink for this too!
+- Finally, make sure that the directory `data/mol-structure-cache/` exists. This is where molecule structure images will be stored. TODO: add a symlink for this too!
 
 ### Get R dependencies and install Scala through R
 - Start R and install the required packages
