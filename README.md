@@ -20,15 +20,15 @@ Answers _"what DNA do I insert if I want to make my chemical?"_
   
   |   | Module | Function | Code |
   |---|---|---|---|
-  | 1 | Installer | Integrates heterogeneous raw data | [com.act.reachables.initdb](reachables/src/main/scala/initdb.scala) with [doc](wikiServices#create-an-act-db)
-  | 2 | Reaction operator (RO) inference | Mines rules of enzymatic biochemistry from observations |
-  | 3 | Biointerpretation | Mechanistic validation of enzymatic transforms (using ROs) |
-  | 4 | Reachables computation | Exhaustively enumerates all biosynthesizable chemicals |
-  | 5 | Cascades computation | Exhaustively enumerates all enzymatic routes from metabolic natives to bioreachable target |
-  | 6 | DNA designer | Computes protein & DNA design (coli specific) for each non-natural enzymatic path |
-  | 7 | Application miner | Mines chemical applications using web searches [Bing] |
+  | 1 | Installer | Integrates heterogeneous raw data | [com.act.reachables.initdb](reachables/src/main/scala/initdb.scala) and [run instructions](wikiServices#create-an-act-db)
+  | 2 | Reaction operator (RO) inference | Mines rules of enzymatic biochemistry from observations | 
+  | 3 | Biointerpretation | Mechanistic validation of enzymatic transforms (using ROs) | []() and [run instructions](wikiServices#run-biointerpretation)
+  | 4 | Reachables computation | Exhaustively enumerates all biosynthesizable chemicals | []() and [run instructions](wikiServices#run-reachables-and-cascades)
+  | 5 | Cascades computation | Exhaustively enumerates all enzymatic routes from metabolic natives to bioreachable target | []() and [run instructions](wikiServices#run-reachables-and-cascades)
+  | 6 | DNA designer | Computes protein & DNA design (coli specific) for each non-natural enzymatic path | []() and [run instructions](wikiServices#building-dna-designs)
+  | 7 | Application miner | Mines chemical applications using web searches [Bing] | []() and [run instructions](wikiServices#augment-the-installer-with-bing-search-data)
   | 8 | Enzymatic biochemistry NLP | Text -> Chemical tokens -> Biologically feasible reactions using ROs: [PR:text-to-rxns](https://github.com/20n/act/pull/525) |
-  | 9 | Bioreachables wiki | Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface |
+  | 9 | Bioreachables wiki | Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface | []() and [build instructions](wikiServices#2-new-wiki-instance-setup-steps)
   
   <p align="center"> <img width=65% src="http://20n.com/assets/video/making-apap-20n%3Aact-small.gif"> </p>
 
