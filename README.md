@@ -48,7 +48,7 @@ Answers _"Can I use bio-production to make this chemical at scale?"_
 
   |   | Module | Function | Code
   |---|---|---|---|
-  | 1 | Cost model: Manufacturing unit economics for large scale production | It backcalculates cell efficiency (yield, titers, productivity) objectives based on given COGS ($ per ton) of target chemical. From cell efficiency objectives it guesstimates the R&D investment (money and time) and ROI expectations | Code: [act.installer.bing.CostModel](reachables/src/main/scala/costmodel.scala)<br>Code: [Viz server: costModelUI](reachables/src/main/r/costModelUI)<br>Source model: [XLS](http://20n.com/assets/spreadsheet/cost-model.xlsx)
+  | 1 | Cost model: Manufacturing unit economics for large scale production | It backcalculates cell efficiency (yield, titers, productivity) objectives based on given COGS ($ per ton) of target chemical. From cell efficiency objectives it guesstimates the R&D investment (money and time) and ROI expectations | Code:[act.installer.bing.CostModel](reachables/src/main/scala/costmodel.scala)<br>Code (viz server):[costModelUI](reachables/src/main/r/costModelUI)<br>Source model:[XLS](http://20n.com/assets/spreadsheet/cost-model.xlsx)
 
 License and Contributing
 ===
