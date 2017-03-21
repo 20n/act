@@ -22,29 +22,30 @@ Answers _"what DNA do I insert if I want to make my chemical?"_
   |---|---|---|---|
   | 1 | Installer | Integrates heterogeneous raw data | [com.act.reachables.initdb](reachables/src/main/scala/initdb.scala) and [run instructions](wikiServices#create-an-act-db)
   | 2 | Reaction operator (RO) inference | Mines rules of enzymatic biochemistry from observations | 
-  | 3 | Biointerpretation | Mechanistic validation of enzymatic transforms (using ROs) | []() and [run instructions](wikiServices#run-biointerpretation)
-  | 4 | Reachables computation | Exhaustively enumerates all biosynthesizable chemicals | []() and [run instructions](wikiServices#run-reachables-and-cascades)
-  | 5 | Cascades computation | Exhaustively enumerates all enzymatic routes from metabolic natives to bioreachable target | []() and [run instructions](wikiServices#run-reachables-and-cascades)
-  | 6 | DNA designer | Computes protein & DNA design (coli specific) for each non-natural enzymatic path | []() and [run instructions](wikiServices#building-dna-designs)
-  | 7 | Application miner | Mines chemical applications using web searches [Bing] | []() and [run instructions](wikiServices#augment-the-installer-with-bing-search-data)
-  | 8 | Enzymatic biochemistry NLP | Text -> Chemical tokens -> Biologically feasible reactions using ROs: [PR:text-to-rxns](https://github.com/20n/act/pull/525) |
-  | 9 | Bioreachables wiki | Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface | []() and [build instructions](wikiServices#2-new-wiki-instance-setup-steps)
+  | 3 | Biointerpretation | Mechanistic validation of enzymatic transforms (using ROs) | [com.act.biointerpretation.BiointerpretationDriver](reachables/src/main/java/com/act/biointerpretation/BiointerpretationDriver.java) and [run instructions](wikiServices#run-biointerpretation)
+  | 4 | Reachables computation | Exhaustively enumerates all biosynthesizable chemicals | [com.act.reachables.reachables](reachables/src/main/scala/reachables.scala) + [com.act.reachables.postprocess_reachables](reachables/src/main/scala/postprocess_reachables.scala) and [run instructions](wikiServices#run-reachables-and-cascades)
+  | 5 | Cascades computation | Exhaustively enumerates all enzymatic routes from metabolic natives to bioreachable target | [com.act.reachables.cascades](reachables/src/main/scala/com/act/reachables/cascades.scala) and [run instructions](wikiServices#run-reachables-and-cascades)
+  | 6 | DNA designer | Computes protein & DNA design (coli specific) for each non-natural enzymatic path | [org.twentyn.proteintodna.ProteinToDNADriver](reachables/src/main/java/org/twentyn/proteintodna/ProteinToDNADriver.java) and [run instructions](wikiServices#building-dna-designs)
+  | 7 | Application miner | Mines chemical applications using web searches [Bing] | [act.installer.bing.BingSearcher](reachables/src/main/java/act/installer/bing/BingSearcher.java) and [run instructions](wikiServices#augment-the-installer-with-bing-search-data)
+  | 8 | Enzymatic biochemistry NLP | Text -> Chemical tokens -> Biologically feasible reactions using ROs | [PR:text-to-rxns](https://github.com/20n/act/pull/525) |
+  | 9 | Patent search | Chemical -> Patents | [act.installer.reachablesexplorer.PatentFinder](reachables/src/main/java/act/installer/reachablesexplorer/PatentFinder.java) and [run instructions](wikiServices#enrich-the-reachables-with-patents)
+  | 9 | Bioreachables wiki | Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface | [documentation](wikiServices#2-new-wiki-instance-setup-steps)
   
   <p align="center"> <img width=65% src="http://20n.com/assets/video/making-apap-20n%3Aact-small.gif"> </p>
 
 #### Analytics
 Answers _"Is my bio-engineered cell doing what I want it to?"_  
 
-  |   | Module | Achieves |
-  |---|---|---|
+  |   | Module | Function | Code |
+  |---|---|---|---|
   | 1 | LCMS: untargeted metabolomics | Deep-learnt signal processing to identify all chemical [side]effects of DNA engineering on cell |
   
 #### Unit economics of bioproduction
 Answers _"Can I use bio-production to make this chemical at scale?"_  
 
-  |   | Module | Achieves |
-  |---|---|---|
-  | 1 | Cost model: Manufacturing unit economics for large scale production | It backcalculates cell efficiency (yield, titers, productivity) objectives based on given COGS ($ per ton) of target chemical. From cell efficiency objectives it guesstimates the R&D investment (money and time) and ROI expectations |
+  |   | Module | Function | Code
+  |---|---|---|---|
+  | 1 | Cost model: Manufacturing unit economics for large scale production | It backcalculates cell efficiency (yield, titers, productivity) objectives based on given COGS ($ per ton) of target chemical. From cell efficiency objectives it guesstimates the R&D investment (money and time) and ROI expectations | [act.installer.bing.CostModel](reachables/src/main/scala/costmodel.scala) and [XLS Model](http://20n.com/assets/spreadsheet/cost-model.xlsx)
 
 License and Contributing
 ===
