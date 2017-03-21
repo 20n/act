@@ -29,7 +29,7 @@ Answers _"what DNA do I insert if I want to make my chemical?"_
   | 7 | Application miner | Mines chemical applications using web searches [Bing] | [act.installer.bing.BingSearcher](reachables/src/main/java/act/installer/bing/BingSearcher.java) and [run instructions](wikiServices#augment-the-installer-with-bing-search-data)
   | 8 | Enzymatic biochemistry NLP | Text -> Chemical tokens -> Biologically feasible reactions using ROs | [PR:text-to-rxns](https://github.com/20n/act/pull/525) |
   | 9 | Patent search | Chemical -> Patents | [act.installer.reachablesexplorer.PatentFinder](reachables/src/main/java/act/installer/reachablesexplorer/PatentFinder.java) and [run instructions](wikiServices#enrich-the-reachables-with-patents)
-  | 9 | Bioreachables wiki | Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface | [documentation](wikiServices#2-new-wiki-instance-setup-steps)
+  | 9 | Bioreachables wiki | Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface | [Documentation](wikiServices#2-new-wiki-instance-setup-steps)
   
   <p align="center"> <img width=65% src="http://20n.com/assets/video/making-apap-20n%3Aact-small.gif"> </p>
 
@@ -38,8 +38,8 @@ Answers _"Is my bio-engineered cell doing what I want it to?"_
 
   |   | Module | Function | Code |
   |---|---|---|---|
-  | 1 | LCMS: Untargeted metabolomics | Deep-learnt signal processing to identify all chemical [side]effects of DNA engineering on cell | Code: [DeepLearningLcmsPeak](reachables/src/main/python/DeepLearningLcmsPeak) and [com.act.lcms.UntargetedMetabolomics](reachables/src/main/scala/com/act/lcms/UntargetedMetabolomics.scala)
-  | 2 | LCMS: Comparative visualization | Visualizing traces side-by-side from untargeted evaluation of over and underexpressed peaks | Doc: [LCMSDataVisualisation](reachables/src/main/r/LCMSDataVisualisation)
+  | 1 | LCMS: Untargeted metabolomics | Deep-learnt signal processing to identify all chemical [side]effects of DNA engineering on cell | [Code: DeepLearningLcmsPeak](reachables/src/main/python/DeepLearningLcmsPeak) and [code: com.act.lcms.UntargetedMetabolomics](reachables/src/main/scala/com/act/lcms/UntargetedMetabolomics.scala)
+  | 2 | LCMS: Comparative visualization | Visualizing traces side-by-side from untargeted evaluation of over and underexpressed peaks | [Doc: LCMSDataVisualisation](reachables/src/main/r/LCMSDataVisualisation)
 
   <p align="center"> <img width=65% src="http://20n.com/assets/img/lcms-viz.png"> </p>
   
@@ -48,10 +48,21 @@ Answers _"Can I use bio-production to make this chemical at scale?"_
 
   |   | Module | Function | Code
   |---|---|---|---|
-  | 1 | Cost model: Manufacturing unit economics for large scale production | It backcalculates cell efficiency (yield, titers, productivity) objectives based on given COGS ($ per ton) of target chemical. From cell efficiency objectives it guesstimates the R&D investment (money and time) and ROI expectations | Code: [act.installer.bing.CostModel](reachables/src/main/scala/costmodel.scala) <br/> Viz Server: [costModelUI](reachables/src/main/r/costModelUI) <br/> Raw Model for APAP: [XLS](http://20n.com/assets/spreadsheet/cost-model.xlsx)
+  | 1 | Cost model: Manufacturing unit economics for large scale production | It backcalculates cell efficiency (yield, titers, productivity) objectives based on given COGS ($ per ton) of target chemical. From cell efficiency objectives it guesstimates the R&D investment (money and time) and ROI expectations | [Code: act.installer.bing.CostModel](reachables/src/main/scala/costmodel.scala), [viz server: costModelUI](reachables/src/main/r/costModelUI) and [source model: XLS](http://20n.com/assets/spreadsheet/cost-model.xlsx)
 
 License and Contributing
 ===
 Code licensed under the GNU General Public License v3.0.
 If an alternative license is desired, [please contact 20n](act@20n.com).
+
+Original Authors
+===
+[Saurabh Srivastava](http://saurabh-srivastava/)
+[J. Christopher Anderson](https://www.linkedin.com/in/j-christopher-anderson-682b0594/)
+Mark T. Daly
+Michael Lampe
+Thomas Legrand
+Vijay Ramakrishnan
+Gil Goldshlager
+Nishant Kakar
 
