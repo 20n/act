@@ -57,7 +57,7 @@ If an alternative license is desired, [please contact 20n](act@20n.com).
 
 Original Authors
 ===
-* [Saurabh Srivastava](http://saurabh-srivastava/)
+* [Saurabh Srivastava](http://saurabh-srivastava.com/)
 * [J. Christopher Anderson](https://www.linkedin.com/in/j-christopher-anderson-682b0594/)
 * Mark T. Daly
 * Michael Lampe
