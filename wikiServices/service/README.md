@@ -150,7 +150,7 @@ For non-standard setups, set the URL prefixes to match the (soon to be) location
 {
   "port": 8888,
   "reachables_file": "/etc/wiki_web_services/reachables",
-  "license_file": "/etc/wiki_web_services/20n_Start-up_license.cxl",
+  "license_file": "/etc/wiki_web_services/CHEMAXON-LICENSE.cxl",
   "wiki_url_prefix": "/",
   "image_url_prefix": "/assets/img/"
 }
@@ -245,7 +245,7 @@ Do a sanity check that all of these files exist.  Everything but `/var/log/java`
 /usr/local/software/wiki_web_services/current.jar
 /etc/wiki_web_services/substructure_config.json
 /etc/wiki_web_services/orders_config.json
-/etc/wiki_web_services/20n_Start-up_license.cxl
+/etc/wiki_web_services/CHEMAXON-LICENSE.cxl
 /etc/wiki_web_services/reachables
 /var/log/java
 /var/www/mediawiki/assets

@@ -81,7 +81,7 @@ class AbstractReactionsToL3ProjectionWorkflow extends Workflow {
         longOpt("chemaxon-license-file").
         hasArg.
         required.
-        desc("Location of the \"license_Start-up.cxl\" file."),
+        desc("Location of the \"CHEMAXON-LICENSE.cxl\" file."),
 
       CliOption.builder(OPTION_METABOLITE_FILE)
         .hasArg

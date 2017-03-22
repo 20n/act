@@ -1,7 +1,7 @@
 {
   "port": 8888,
   "reachables_file": "/etc/wiki_web_services/reachables",
-  "license_file": "/etc/wiki_web_services/20n_Start-up_license.cxl",
+  "license_file": "/etc/wiki_web_services/CHEMAXON-LICENSE.cxl",
   "wiki_url_prefix": "/",
   "image_url_prefix": "/assets/img/"
 }
