@@ -344,7 +344,7 @@ All of the setup instructions can now be run from your lappy (which is a better 
 While the actual VM image setup is convoluted, creating a new wiki instance is not difficult.  In fact, we'll reuse `spawn_vm` in `act/scripts/azure` to create a new wiki instance with no data loaded and only vanillin available via the substructure search:
 ```
 $ n=1 # Set a host number or designator accordingly.
-$ ./spawn_vm reachables_wiki twentyn-azure-west-us-2 private-${n}-wiki-west2
+$ ./spawn_vm reachables_wiki twentyn-azure-west-us-2 act-${n}-wiki-west2
 ```
 
 This will create a wiki instance **without** a public IP so that you can set it up without it being exposed to the public Internet.  We'll need to make some modifications before exposing it to the public Internet, but we'll do that after the wiki is ready to go.
@@ -354,7 +354,7 @@ This will create a wiki instance **without** a public IP so that you can set it 
 To make the remaining modifications to your new wiki VM, you'll need to `ssh` to it.  If you followed the [SSH configuration instructions](#ssh-configuration) above, `ssh` will automatically proxy your connections through the appropriate Azure bastion (the bastions are the only hosts who serve `ssh` traffic from the public Internet).  Connect to your host like this:
 ```
 $ n=1
-$ ssh private-${n}-wiki-west2
+$ ssh act-${n}-wiki-west2
 ```
 
 You may have to specify a user if your server username doesn't match your laptop username (the name used on the VMs is the same username on our office servers).  If this is the case, add a `Username <server username>` directive to the `Host *-wiki-west2` block in your `~/.ssh/config` file.
@@ -477,7 +477,7 @@ Now, what remains is to move data (generated locally, using [the instructions ab
 
 Assuming you've followed the [SSH configuration instructions](#ssh-configuration) above, you should be able to move files to Azure VMs using `rsync`.  By default `rsync` will use `ssh` as its transport, and `ssh` will transparently proxy all connections through the bastion.  In general, the command to use is:
 ```
-$ rsync -azP my_local_directory_or_file private-${n}-wiki-west2:
+$ rsync -azP my_local_directory_or_file act-${n}-wiki-west2:
 ```
 This will copy files into your home directory on the VM.  The options used here are:
 ```
@@ -489,13 +489,13 @@ This will copy files into your home directory on the VM.  The options used here 
 **Important**: when copying directories to your home dir on the wiki VM, **do not include a trailing slash!**  That will likely result in your home directory being made globally writeable, which **will lock you out of the VM.**  Here's an example:
 ```
 # This is fine:
-$ rsync -azP my_local_directory private-${n}-wiki-west2:
+$ rsync -azP my_local_directory act-${n}-wiki-west2:
 
 # This is bad, do not do this:
-$ rsync -azP my_local_directory/ private-${n}-wiki-west2:
+$ rsync -azP my_local_directory/ act-${n}-wiki-west2:
 
 # This is also fine--note that the destination is explicitly specified:
-$ rsync -azP my_local_directory/ private-${n}-wiki-west2:my_local_directory
+$ rsync -azP my_local_directory/ act-${n}-wiki-west2:my_local_directory
 ```
 
 Note that running `rsync` from a `screen` session when copying many files is perilous: once you disconnect from `screen`, `rsync` and `ssh` will no longer have access to your `ssh agent`, and so will be unable to create new connections to the remote host.  Moving single large files (like `tar` files) is fine in screen, however.
@@ -504,14 +504,14 @@ Note that running `rsync` from a `screen` session when copying many files is per
 
 ```
 # upload {Reachables, Paths, Sequences, Categories} that are within the wiki_pages dir
-$ rsync -azP wiki_pages private-${n}-wiki-west2:
+$ rsync -azP wiki_pages act-${n}-wiki-west2:
 
 # upload the cascade image renderings
 #   Note that in the "Dot File Rendering" step above, we shoved all cscd*dot.png images 
 #   into `reachables-explorer-rendering-cache` (where the mol/wordclouds live)
 #   and so the command below will upload all of them in one go.
 # upload the wordcloud and molecule renderings
-$ rsync -azP data/reachables-explorer-rendering-cache private-${n}-wiki-west2:wiki_pages/renderings
+$ rsync -azP data/reachables-explorer-rendering-cache act-${n}-wiki-west2:wiki_pages/renderings
 ```
 
 ### Create, Upload, and Install a Reachables List ###
@@ -523,9 +523,9 @@ The substructure search and orders services require a static TSV of reachable mo
 $ sbt 'runMain act.installer.reachablesexplorer.WikiWebServicesExporter -c <reachables collection> -s <sequence collection> -o reachables.out'
 # Copy the output file to the wiki host.
 $ n=1
-$ rsync -azP reachables.out private-${n}-wiki-west2:
+$ rsync -azP reachables.out act-${n}-wiki-west2:
 # Connect to the host for the next commands.
-$ ssh private-${n}-wiki-west2
+$ ssh act-${n}-wiki-west2
 
 # Run these commands on the remote host.
 $ Put the new reachables file in place.
@@ -675,9 +675,9 @@ On an office server:
 ```
 $ n=1
 # Note no trailing slash on the source directory.
-$ rsync -azP /mnt/shared-data/Mark/demo_wiki_2016-12-21 private-${n}-wiki-west:
+$ rsync -azP /mnt/shared-data/Mark/demo_wiki_2016-12-21 act-${n}-wiki-west:
 # Now connect and complete the remaining steps.
-$ ssh private-${n}-wiki-west
+$ ssh act-${n}-wiki-west
 ```
 
 Run these commands on the remote server:
@@ -703,20 +703,20 @@ The wiki VM we created earlier only has a private IP address, which is fine whil
 # Pick your host number.
 $ n=1
 
-$ azure network public-ip create --allocation-method Static --name private-${n}-wiki-west2-public-ip --resource-group twentyn-azure-west-us-2 --idle-timeout 4 --location westus2
+$ azure network public-ip create --allocation-method Static --name act-${n}-wiki-west2-public-ip --resource-group twentyn-azure-west-us-2 --idle-timeout 4 --location westus2
 # IP is allocated!  Now let's associate it with an NIC.
 
 # First, we'll look up the configuration name for the NIC on our wiki host
-$ azure network nic ip-config list twentyn-azure-west-us-2 private-${n}-wiki-west2-nic
+$ azure network nic ip-config list twentyn-azure-west-us-2 act-${n}-wiki-west2-nic
 
 # The name column says it's `ipconfig1`.  Let's take a closer look.
-$ azure network nic ip-config show twentyn-azure-west-us-2 private-${n}-wiki-west2-nic ipconfig1
+$ azure network nic ip-config show twentyn-azure-west-us-2 act-${n}-wiki-west2-nic ipconfig1
 
 # We should not see any public IP associated with the NIC at this time.  Let's connect the two!
-$ azure network nic ip-config set --public-ip-name private-${n}-wiki-west2-public-ip twentyn-azure-west-us-2 private-${n}-wiki-west2-nic ipconfig1
+$ azure network nic ip-config set --public-ip-name act-${n}-wiki-west2-public-ip twentyn-azure-west-us-2 act-${n}-wiki-west2-nic ipconfig1
 
 # Run `show` again to make sure we did the right thing.
-$ azure network nic ip-config show twentyn-azure-west-us-2 private-${n}-wiki-west2-nic ipconfig1
+$ azure network nic ip-config show twentyn-azure-west-us-2 act-${n}-wiki-west2-nic ipconfig1
 # Now there should be a looong resource id in place for the public IP field.
 
 # We're almost done, but our wiki is still closed to the public internet.  Let's change that.
@@ -724,13 +724,13 @@ $ azure network nic ip-config show twentyn-azure-west-us-2 private-${n}-wiki-wes
 $ azure network nsg list twentyn-azure-west-us-2
 
 # If it's there, we can associate it with the wiki's NIC.
-$ azure network nic set --network-security-group-name twentyn-public-access-wiki-west-us-2-nsg twentyn-azure-west-us-2 private-${n}-wiki-west2-nic
+$ azure network nic set --network-security-group-name twentyn-public-access-wiki-west-us-2-nsg twentyn-azure-west-us-2 act-${n}-wiki-west2-nic
 ```
 
 The network security group changes can take a little while to take effect.  You should be able to `curl` the public IP of your wiki instance about 90 seconds after the network security group change completes:
 ```
 # First, let's check what the public IP is (in case we forgot what was printed at allocation time)
-$ azure network public-ip show twentyn-azure-west-us-2 private-${n}-wiki-west2-public-ip
+$ azure network public-ip show twentyn-azure-west-us-2 act-${n}-wiki-west2-public-ip
 ...
 data:    IP Address                      : 52.183.69.103
 ...
@@ -1007,7 +1007,7 @@ So once we have a template wiki set up, the Azure-specific bits are:
 * `deallocate+generalize+capture`: so the VM's OS disk image is prepared for reuse
 * `update JSON templates`: so `act/scripts/azure/spawn_vm` can make more using the correct disk image.
 
-These instructions will omit the first step, as wiki host setup procedures were documented [in an earlier section](#mediawiki-setup-from-scratch).  For now, we'll assume that a fully configured and functioning wiki instance exists at `private-1-wiki-west2` in the resource group `twentyn-azure-west-us-2`, and we'll proceed from step 2 (de-provisioning) above.
+These instructions will omit the first step, as wiki host setup procedures were documented [in an earlier section](#mediawiki-setup-from-scratch).  For now, we'll assume that a fully configured and functioning wiki instance exists at `act-1-wiki-west2` in the resource group `twentyn-azure-west-us-2`, and we'll proceed from step 2 (de-provisioning) above.
 
 **Hopefully you will never need to create a fresh image, and can instead just reuse the current one.**
 
@@ -1034,11 +1034,11 @@ We'll run three Azure CLI commands to shut the host down, prep its OS disk for r
 On your laptop (see the login instructions above if needed):
 ```
 # Shut the host down.
-$ azure vm deallocate twentyn-azure-west-us-2 private-1-wiki-west2
+$ azure vm deallocate twentyn-azure-west-us-2 act-1-wiki-west2
 # Important: after generalization, you will not be able to boot this host again.  But if you de-provisioned it, you can't log in anyway.
-$ azure vm generalize twentyn-azure-west-us-2 private-1-wiki-west2
+$ azure vm generalize twentyn-azure-west-us-2 act-1-wiki-west2
 # Create a `twentyn-wiki` image in Azure's default location for images, and write the configuration info to `twentyn-wiki-image-template.json`.
-$ azure vm capture twentyn-azure-west-us-2 private-1-wiki-west2 -p twentyn-wiki -t twentyn-wiki-image-template.json
+$ azure vm capture twentyn-azure-west-us-2 act-1-wiki-west2 -p twentyn-wiki -t twentyn-wiki-image-template.json
 ```
 
 #### Update the Reachables Wiki Template File ####
