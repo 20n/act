@@ -310,7 +310,7 @@ object PeakSpectra extends CanReadTSV {
     // example TSV
     //    mz  mzmin mzmax rt  rtmin rtmax into  intb  maxo  sn  sample
     //    244.98272  244.97964  244.985247  2.56099  1.91800  2.98900  130.32171 129.46491  253.17785  252 1
-    // Such are the files in /mnt/shared-data/Vijay/perlstein_xcms_centwave_optimized_output
+    // Such are the files in MNT_SHARED_DATA/Vijay/perlstein_xcms_centwave_optimized_output
     val rows: List[Map[XCMSCol, Double]] = readTSV(file, hdrsXCMS, toMass _)
     val peaks: Set[Peak] = rows.map(peaksFromRow).toSet
     new PeakSpectra(peaks)

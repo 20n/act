@@ -468,7 +468,7 @@ public class BingSearchResults {
   }
 
   public static void main(String[] args) {
-    String apiKeyFilepath = "/mnt/shared-data-1/Thomas/test-bing/microsoft-cognitive-service-api-key";
+    String apiKeyFilepath = "MNT_SHARED_DATA/Thomas/test-bing/microsoft-cognitive-service-api-key";
     BingSearchResults bingSearchResults = new BingSearchResults(apiKeyFilepath);
     try {
       Set<SearchResult> res = bingSearchResults.getAndCacheTopSearchResults("new query");

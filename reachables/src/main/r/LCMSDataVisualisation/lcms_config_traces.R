@@ -30,7 +30,7 @@ lcmsConfigTracesInput <- function(id, label = "LCMS config traces") {
   tagList(
     h3("Input configuration"),
     fileInput(ns("config.file"), label = "Choose a configuration file"),
-    p("Sample config: /shared-data/Thomas/lcms_viz/FR_config_file/sample_config.json"),
+    p("Sample config: MNT_SHARED_DATA/Thomas/lcms_viz/FR_config_file/sample_config.json"),
     h3("Peak selection"),
     uiOutput(ns("ui.peaks")),
     em("Peak format is {mz-value} - {retention-time} - {rank-factor} - {molecular-mass (optional)}"),

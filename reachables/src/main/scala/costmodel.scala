@@ -228,7 +228,7 @@ class CostModel {
   }
 
   // Note: The TODOs that remain below need to be filled out from Tim Revak's models under
-  // NAS/shared-data/Tim Revak/Cost Models/20n COG, v2 25JUL16.xlsx
+  // MNT_SHARED_DATA/Tim Revak/Cost Models/20n COG, v2 25JUL16.xlsx
 
   /********************************************************************************************
   *  Bottom Up Model: Cost with Build Your Own Plant
@@ -268,7 +268,7 @@ object Defaults {
   val maxYield: Yield = Yield(60 grams, 100 grams) // 60% g/g
   val defaultTiter: Titer = Titer(84 grams, 1 litres) // 84 g/L
   val maxTiter: Titer = Titer(200 grams, 1 liters) // 170g/L is probably the max that has ever been accomplished
-  val defaultPricePerTon: Money = USD(5547) // current price of acetaminophen, from market report in NAS/shared-data/Reports and Documents/Market Reports/Global Acetaminophen Industry Report 2015 (02_15_2016).pdf
+  val defaultPricePerTon: Money = USD(5547) // current price of acetaminophen, from market report in MNT_SHARED_DATA/Reports and Documents/Market Reports/Global Acetaminophen Industry Report 2015 (02_15_2016).pdf
 
   sealed abstract class OperationMode
   case object CMOS extends OperationMode
@@ -345,7 +345,7 @@ class ROIModel {
   // An estimate of how much this money would be worth over a period
   def getNPV(invested: Money, profits: List[Money]): Money = {
     // TODO: Change the NPV calculation to use Danielle's model
-    // NAS/shared-data/Danielle/Final Docs/Other Stuff/Molecule NPV.xlsx
+    // MNT_SHARED_DATA/Danielle/Final Docs/Other Stuff/Molecule NPV.xlsx
 
     def discountfn(yrProfit: (Money, Int)) = yrProfit._1 / math.pow(1 + rate.value, 1.0 * yrProfit._2)
     val discountedProfits = profits.zip(1 until profits.length).map(discountfn)

@@ -63,7 +63,7 @@ import org.apache.logging.log4j.Logger;
  * Usage:
  * sbt 'runMain act.installer.wikipedia.ImportantChemicalsWikipedia
  *                 -i data/enwiki-20160501-pages-articles.xml
- *                 -o /mnt/shared-data/Thomas/imp_chemicals_wikipedia.txt
+ *                 -o MNT_SHARED_DATA/Thomas/imp_chemicals_wikipedia.txt
  *                 -t'
  */
 

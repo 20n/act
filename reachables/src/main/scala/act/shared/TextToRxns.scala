@@ -134,8 +134,8 @@ object TextToRxns {
     getRxnsFromURL(testURL1)
 
     // test extractions from a PDF file
-    // getRxnsFromPDF("/mnt/shared-data/Saurabh/text2rxns/coli-paper.pdf")
-    getRxnsFromPDF("/mnt/shared-data/Saurabh/text2rxns/limitedchems.pdf")
+    // getRxnsFromPDF("MNT_SHARED_DATA/Saurabh/text2rxns/coli-paper.pdf")
+    getRxnsFromPDF("MNT_SHARED_DATA/Saurabh/text2rxns/limitedchems.pdf")
   }
 
   def getRxnsFrom(dataSrc: Option[InputType]): List[ValidatedRxn] = {

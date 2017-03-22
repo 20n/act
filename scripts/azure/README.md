@@ -242,7 +242,7 @@ YMMV.
 
 Use the `spawn_vm` command to create instances from existing machine templates.  You will need to have logged in via the Azure CLI; follow the instructions in the preliminary documentation in `spawn_vm`.
 ```
-$ ./spawn_vm reachables_wiki twentyn-azure-west-us-2 private-1-wiki-west2
+$ ./spawn_vm reachables_wiki twentyn-azure-west-us-2 act-1-wiki-west2
 ```
 Hosts will be created with sensible configurations, and can be accessed via `ssh` once provisioning is complete.
 
@@ -266,11 +266,11 @@ And navigate to `http://twentyn-worker-2` in your web browser to access web serv
 
 To do the same for another zone:
 ```
-$ ssh private-1-wiki-west-2
+$ ssh act-1-wiki-west-2
 $ ssh -L 20144:127.0.0.1:3128 azure-wiki-west-us-2
 # In a separate terminal (on your lappy), do a quick check that the tunnel and HTTP proxy are working correctly.
-$ $ curl -vvv -x http://localhost:20144 http://private-1-wiki-west2/index.php?title=Main_Page
+$ $ curl -vvv -x http://localhost:20144 http://act-1-wiki-west2/index.php?title=Main_Page
 # Make sure you get an HTTP 200 in the response.  If so, you're good to go.
 
-# Now navigate to http://private-1-wiki-west2/index.php?title=Main_Page in your web browser.
+# Now navigate to http://act-1-wiki-west2/index.php?title=Main_Page in your web browser.
 ```

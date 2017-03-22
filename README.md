@@ -1,16 +1,16 @@
 
-20n/act predicts how to engineer biology
+20n/act: An open source platform for bioengineering
 ===
 
-20n/act is the data aggregation and prediction system for bioengineering. Given a target molecule, it predicts what DNA insertions into a cell (usually a microbe such as _E. coli_ or _S. cerevisiae_) will allow the cell to make the target when fed sugar, i.e., by fermentation. We call these "target molecules/chemicals" the __bioreachables__. The system discovered that Acetaminophen can be bioproduced. Our [blog post](http://20n.com/blog.html#bio-acetaminophen) gives the overview, and the technical details are present in the patents applications covering coli and yeast fermentation.
+20n/act is the data aggregation and prediction system for bioengineering. For a target molecule, 20n/act predicts DNA insertions into cells (usually a microbe such as _E. coli_ or _S. cerevisiae_) that modify the cell. These modified cells make the target molecule by fermentation from sugar. We call these "target molecules/chemicals" the __bioreachables__. The system predicted/invented the first bio-route to Acetaminophen/Tylenol/APAP. Read more on our [blog post](http://20n.com/blog.html#bio-acetaminophen). The technical details of the APAP work can be found in patents applications on coli and yeast fermentation.
 
 Getting started
 ===
 #### Live preview
-See predicted DNA for 11 sample molecules at [Bioreachables Preview](https://preview.bioreachables.com/) (Login:Pass = public:preview). Due to limitations we can only make a preview version available. If you'd like the full version [please contact us](mailto:info@20n.com).
+See predicted DNA for 11 sample molecules at [Bioreachables Preview](https://preview.bioreachables.com/) (Login:Pass = public:preview). Due to limitations we can only make a preview version available. If you'd like the full version [please contact us](mailto:act@20n.com?Subject=Purchase%20request%20for%20Enterprise%20Edition%20of%20Bioreachables%20Wiki).
 
 #### Building the project
-Checkout the repo. Follow [instructions to run](wikiServices#1-wiki-content-generation). The codebase is public to further the state-of-the-art in automating biological engineering/synthetic biology. Some modules are specific to microbes, but most of the predictive stack deals with host-agnostic enzymatic biochemistry.
+Checkout the repo. Follow [instructions to run](wikiServices#1-wiki-content-generation) to create the database and prediction corpus. If you'd rather get a pre-packaged DB without creating it yourself [please contact us](mailto:act@20n.com?Subject=Purchase%20request%20for%20pre-packaged%2020n-act%20DB.). The codebase is public to further the state-of-the-art in automating biological engineering/synthetic biology. Some modules are specific to microbes, but most of the predictive stack deals with host-agnostic enzymatic biochemistry.
 
 Components of 20n/act
 ===
@@ -54,16 +54,16 @@ Answers _"Can I use bio-production to make this chemical at scale?"_
 License and Contributing
 ===
 Code licensed under the GNU General Public License v3.0.
-If an alternative license is desired, [please contact 20n](act@20n.com).
+If an alternative license is desired, [please contact 20n](mailto:act@20n.com?Subject=Purchase%20request%20for%2020n-act%20codebase%20under%20commercial%20license).
 
 Original Authors
 ===
 * [Saurabh Srivastava](http://saurabh-srivastava.com/)
 * [J. Christopher Anderson](https://www.linkedin.com/in/j-christopher-anderson-682b0594/)
-* Mark T. Daly
-* Michael Lampe
-* Thomas Legrand
-* Vijay Ramakrishnan
-* Gil Goldshlager
-* Nishant Kakar
+* [Mark T. Daly](https://www.linkedin.com/in/marktdaly/)
+* [Michael Lampe](https://www.linkedin.com/in/michael-lampe-57750761/)
+* [Thomas Legrand](https://www.linkedin.com/in/thomaslegrand1/)
+* [Vijay Ramakrishnan](https://www.linkedin.com/in/viramakrishnan/)
+* [Gil Goldshlager](https://www.linkedin.com/in/gil-goldshlager-a78aa4b8/)
+* [Nishant Kakar](https://www.linkedin.com/in/nishant-kakar-44937b74/)
 

@@ -55,17 +55,17 @@ import java.util.Set;
  * database. It supports two types of input: raw list of InChI and TSV file with an InChI header.
  * Usage (raw input):
  *       sbt 'runMain act.installer.bing.BingSearchRanker
- *                -i /mnt/shared-data/Thomas/bing_ranker/l2chemicalsProductFiltered.txt
- *                -o /mnt/shared-data/Thomas/bing_ranker/l2chemicalsProductFiltered_BingSearchRanker_results.tsv'
+ *                -i MNT_SHARED_DATA/Thomas/bing_ranker/l2chemicalsProductFiltered.txt
+ *                -o MNT_SHARED_DATA/Thomas/bing_ranker/l2chemicalsProductFiltered_BingSearchRanker_results.tsv'
  * Usage (TSV input):
  *       sbt 'runMain act.installer.bing.BingSearchRanker
- *                -i /mnt/shared-data/Thomas/bing_ranker/benzene_search_results_wikipedia_20160617T1723.txt.hits
- *                -o /mnt/shared-data/Thomas/bing_ranker/benzene_search_results_wikipedia_BingSearchRanker_results.tsv'
+ *                -i MNT_SHARED_DATA/Thomas/bing_ranker/benzene_search_results_wikipedia_20160617T1723.txt.hits
+ *                -o MNT_SHARED_DATA/Thomas/bing_ranker/benzene_search_results_wikipedia_BingSearchRanker_results.tsv'
  *                -t
  * Usage (TSV input & all extra options, including force update):
  *       sbt 'runMain act.installer.bing.BingSearchRanker
- *                -i /mnt/shared-data/Thomas/bing_ranker/benzene_search_results_wikipedia_20160617T1723.txt.hits
- *                -o /mnt/shared-data/Thomas/bing_ranker/benzene_search_results_wikipedia_BingSearchRanker_results.tsv'
+ *                -i MNT_SHARED_DATA/Thomas/bing_ranker/benzene_search_results_wikipedia_20160617T1723.txt.hits
+ *                -o MNT_SHARED_DATA/Thomas/bing_ranker/benzene_search_results_wikipedia_BingSearchRanker_results.tsv'
  *                -t -c -w -u -f
  */
 
