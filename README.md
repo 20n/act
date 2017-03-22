@@ -60,10 +60,10 @@ Original Authors
 ===
 * [Saurabh Srivastava](http://saurabh-srivastava.com/)
 * [J. Christopher Anderson](https://www.linkedin.com/in/j-christopher-anderson-682b0594/)
-* Mark T. Daly
-* Michael Lampe
-* Thomas Legrand
-* Vijay Ramakrishnan
-* Gil Goldshlager
-* Nishant Kakar
+* [Mark T. Daly](https://www.linkedin.com/in/marktdaly/)
+* [Michael Lampe](https://www.linkedin.com/in/michael-lampe-57750761/)
+* [Thomas Legrand](https://www.linkedin.com/in/thomaslegrand1/)
+* [Vijay Ramakrishnan](https://www.linkedin.com/in/viramakrishnan/)
+* [Gil Goldshlager](https://www.linkedin.com/in/gil-goldshlager-a78aa4b8/)
+* [Nishant Kakar](https://www.linkedin.com/in/nishant-kakar-44937b74/)
 
