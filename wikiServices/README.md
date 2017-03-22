@@ -2,8 +2,10 @@
 
 This directory contains source and config files for web services that support our mediawiki installation.  These should only be enabled on **private** wiki installations, not on the public preview wiki.  The high-level steps to setting up a wiki are:
 
-1. create wiki data (or use preview wiki data on NAS)
-1. setup a wiki VM and upload data to it.
+1. Create Act DB and wiki data (or use preview wiki data on NAS)
+1. Setup a wiki VM and upload data to it.
+
+If you'd rather get a pre-packaged DB without creating it yourself [please contact us](mailto:act@20n.com?Subject=Purchase%20request%20for%20pre-packaged%2020n-act%20DB.).
 
 Private wikis should be created by launching new instances of existing wiki Azure VM images (or, if necessary, EC2 AMIs).  Instructions on creating VM images and AMIs from scratch appear in the [appendices of this document](#appendices) and in `service/README.md`; creating from-scratch images should *not* be necessary during normal wiki instance deployment.
 
