@@ -132,7 +132,7 @@ echo "Biointerpretation done."
 # Reachables and Cascades computation
 
 echo "Running reachables/cascades."
-sbt "runMain com.act.reachables.reachables --prefix=$PRE --useNativesFile=/mnt/shared-data/Michael/ReachablesInputFiles/valid_starting_points.txt --useCofactorsFile=/mnt/shared-data/Michael/ReachablesInputFiles/my_cofactors_file.txt -o $dirName";
+sbt "runMain com.act.reachables.reachables --prefix=$PRE --useNativesFile=MNT_SHARED_DATA/Michael/ReachablesInputFiles/valid_starting_points.txt --useCofactorsFile=MNT_SHARED_DATA/Michael/ReachablesInputFiles/my_cofactors_file.txt -o $dirName";
 sbt "runMain com.act.reachables.postprocess_reachables --prefix=$PRE --output-dir=$dirName --extractReachables --writeGraphToo";
 sbt "runMain com.act.reachables.cascades --prefix=r-$today --output-dir=$dirName --cache-cascades=true --do-hmmer=false --out-collection=pathways_jarvis_$today --verbosity=1"
 echo "Done reachables/cascades."
@@ -147,7 +147,7 @@ echo "Done generating word clouds."
 # Reachable document loading and data enrichment
 
 echo "Running loader."
-sbt "runMain act.installer.reachablesexplorer.Loader -c $reachables_c -i $act_db -r $dirName -s $sequences_c -P /mnt/shared-data/Gil/L4N2pubchem/n1_inchis/projectedReactions"
+sbt "runMain act.installer.reachablesexplorer.Loader -c $reachables_c -i $act_db -r $dirName -s $sequences_c -P MNT_SHARED_DATA/Gil/L4N2pubchem/n1_inchis/projectedReactions"
 echo "Done running loader."
 
 echo "Running patent finder."

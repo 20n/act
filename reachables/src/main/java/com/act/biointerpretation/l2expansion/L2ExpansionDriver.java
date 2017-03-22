@@ -74,7 +74,7 @@ public class L2ExpansionDriver {
   public static final String HELP_MESSAGE =
       "This class is used to carry out L2 expansion. It first applies every RO from the input RO list to " +
           "every metabolite in the input metabolite list.  Example input lists can be found on the NAS at " +
-          "shared-data/Gil/resources. This creates a list of predicted reactions, which are augmented " +
+          "MNT_SHARED_DATA/Gil/resources. This creates a list of predicted reactions, which are augmented " +
           "with chemical ids and names, as well as reaction ids from the database. At the end of the run, " +
           "the predictions are printed to a json file.";
 

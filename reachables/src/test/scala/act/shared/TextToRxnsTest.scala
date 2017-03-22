@@ -59,7 +59,7 @@ class TextToRxnsTest extends FlatSpec with Matchers {
   }
 
   ignore should "be able to extract sentences from pdfs" in {
-    TextToRxns.getRxnsFromPDF("/Volumes/shared-data/Saurabh/text2rxns/limitedchems.pdf").length should be > 0
+    TextToRxns.getRxnsFromPDF("MNT_SHARED_DATA/Saurabh/text2rxns/limitedchems.pdf").length should be > 0
   }
   
   ignore should "be able to extract sentences from URLs" in {

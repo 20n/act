@@ -95,9 +95,9 @@ public class Loader {
 
   private static final String DEFAULT_ASSETS_LOCATION = "data/reachables-explorer-rendering-cache";
 
-  private static final String DEFAULT_REACHABLES_PATH = "/mnt/shared-data/Michael/WikipediaProject/MinimalReachables";
+  private static final String DEFAULT_REACHABLES_PATH = "MNT_SHARED_DATA/Michael/WikipediaProject/MinimalReachables";
 
-  private static final String DEFAULT_PROJECTIONS_PATH = "/mnt/shared-data/Gil/L4N2pubchem/n1_inchis/projectedReactions";
+  private static final String DEFAULT_PROJECTIONS_PATH = "MNT_SHARED_DATA/Gil/L4N2pubchem/n1_inchis/projectedReactions";
   private static final Long BASE_ID_PROJECTIONS = 5000000L;
 
   // All of the source data on reactions and chemicals come from the specified source db

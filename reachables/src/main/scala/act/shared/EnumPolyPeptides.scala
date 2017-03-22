@@ -372,7 +372,7 @@ object EnumPolyPeptides {
     // https://metlin.scripps.edu/metabo_list_adv.php?molid=&mass_min=463.1840&mass_max=463.1890
     //
     // See email thread on 08/30/16, subject "min of replicates across all samples using new algorithm"
-    // Mark created plots for these masses under /shared-data/Mark/jaffna_lcms/issue_371/set3
+    // Mark created plots for these masses under MNT_SHARED_DATA/Mark/jaffna_lcms/issue_371/set3
     // where we can clearly see (in fine grained analysis) that our search for the mz 463.184234
     // was pulling up the fourPeptideInUrineB mass.
     //

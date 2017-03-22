@@ -99,7 +99,7 @@ $ PRE="r-$today";
 $ DEFAULT_DB=<Edit this to be your database name>
 ```
 
-Then, run the commands as shown below.
+Then, run the commands as shown below. Pending TODO: In Jan 2017, the reachables command was run with `--useNativesFile=MNT_SHARED_DATA/Michael/ReachablesInputFiles/valid_starting_points.txt --useCofactorsFile=MNT_SHARED_DATA/Michael/ReachablesInputFiles/my_cofactors_file.txt`. @saurabh20n will retrieve those files from archives at some point and check them into the repo. For now old files will suffice.
 ```SHELL
 $ cd act/reachables
 $ sbt "runMain com.act.reachables.reachables --prefix=$PRE --defaultDbName=$DEFAULT_DB --useNativesFile=src/main/resources/reachables_input_files/valid_starting_points.txt --useCofactorsFile=src/main/resources/reachables_input_files/my_cofactors_file.txt -o $dirName";
@@ -473,7 +473,7 @@ for the config change to take place.
 
 ### Moving Files to the Wiki Host ###
 
-Now, what remains is to move data (generated locally, using [the instructions above](#wiki-content-generation)) to the server, and we'll then use that data to populate the wiki. For example, for the preview wiki, the data lives on the NAS at `/shared-data/Mark/demo_wiki_2016-12-21`.
+Now, what remains is to move data (generated locally, using [the instructions above](#wiki-content-generation)) to the server, and we'll then use that data to populate the wiki. For example, for the preview wiki, the data lives on the NAS at `MNT_SHARED_DATA/Mark/demo_wiki_2016-12-21`.
 
 Assuming you've followed the [SSH configuration instructions](#ssh-configuration) above, you should be able to move files to Azure VMs using `rsync`.  By default `rsync` will use `ssh` as its transport, and `ssh` will transparently proxy all connections through the bastion.  In general, the command to use is:
 ```
@@ -551,7 +551,7 @@ DNA Designs | `importImages.php` | txt | Sequences
 Renderings/word clouds | `importImages.php` | png | renderings
 Category Pages | `importTextFiles.php` | N/A | Categories
 
-Check out the demo wiki content on the NAS at `/shared-data/Mark/demo_wiki_2016-12-21` for an example of these files.
+Check out the demo wiki content on the NAS at `MNT_SHARED_DATA/Mark/demo_wiki_2016-12-21` for an example of these files.
 
 ### Loading Images ###
 
@@ -675,7 +675,7 @@ On an office server:
 ```
 $ n=1
 # Note no trailing slash on the source directory.
-$ rsync -azP /mnt/shared-data/Mark/demo_wiki_2016-12-21 act-${n}-wiki-west:
+$ rsync -azP MNT_SHARED_DATA/Mark/demo_wiki_2016-12-21 act-${n}-wiki-west:
 # Now connect and complete the remaining steps.
 $ ssh act-${n}-wiki-west
 ```
