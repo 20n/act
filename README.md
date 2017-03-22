@@ -54,7 +54,7 @@ Answers _"Can I use bio-production to make this chemical at scale?"_
 License and Contributing
 ===
 Code licensed under the GNU General Public License v3.0.
-If an alternative license is desired, [please contact 20n](act@20n.com).
+If an alternative license is desired, [please contact 20n](mailto:act@20n.com?Subject=Purchase%20request%20for%2020n-act%20codebase%20under%20commercial%20license).
 
 Original Authors
 ===
