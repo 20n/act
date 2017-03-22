@@ -1159,7 +1159,7 @@ We have purchased a wildcard SSL certificate for `*.bioreachables.com` that allo
 :moyai:
 
 ## A5. Libraries needed to compile ##
-Below is the listing of `reachables/lib`. This might be a superset :pray: Copy this [GDrive folder](https://drive.google.com/drive/folders/0B-6jd34E6Q6fek5rUWhISERXQVU?usp=sharing) to `reachables/lib` after you check out the repo.
+Below is the listing of `reachables/lib`. Download the [tarball](http://data.20n.com/act-reachables-lib.tar.gz) if needed.
 
 ```
 MarvinBeans.jar
