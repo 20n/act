@@ -11,7 +11,7 @@ We assume the following to be true:
 ```
 R
 > install.packages(c("shiny", "rscala"))
-> scalaInstall()
+> rscala::scalaInstall()
 ```
 - symlinks to a `reachables` project fat jar and to the 20n logo are present in the working directory `reachables/src/main/r/costModelUI`
 ```
@@ -25,7 +25,7 @@ Start R, then load the `shiny` library and start the app
 ```
 R
 > library(shiny)
-> runApp(port = 8080, host = "0.0.0.0")
+> runApp(port = 8080, host = "0.0.0.0", launch.browser = FALSE)
 ```
 You can then access the app from `https://<host-public-IP>:8080`
 

@@ -28,56 +28,7 @@ Each of script contains documentation regarding its usage.
 
 ## SSH Configuration
 
-The `twentyn-worker` VM cluster is protected behind a "bastion" host,
-which obviates the need for machines with potentially sensitive data
-and code to be directly accessible via the public Internet (we do a
-similar thing with the office network, where only orval can be
-accessed from the Internet).  Bastions are common in large host
-deployments, and become completely transparent with the addition of
-some simple ssh configuration directives.
-
-The bastion for the `twentyn-worker` cluster is named
-`twentyn-bastion-1`.  However, this hostname does not appear in any
-public DNS records (this is intentional: only we need to know what
-this host is and what it does).  We can ssh to the bastion by IP, and
-then connect to any of the worker nodes by name--azure's internal DNS
-registers our worker hosts automatically as they are created.  We can
-also tell ssh to connect to the hosts in azure via a proxy: ssh will
-connect to the bastion and then make a second "hop" to the destination
-host based on the name of the final target.
-
-Add this to your .ssh/config to enable transparent ssh-ing through the bastion hosts:
-```
-Host twentyn-*
-  ProxyCommand ssh 13.XXX.XXX.XXX -W %h:%p
-  ServerAliveInterval 30
-  ForwardAgent Yes
-
-# Note: this must appear before the *-west2 block.
-Host *-wiki-west2
-  ProxyCommand ssh 52.XXX.XXX.XXX -W %h:%p
-  ServerAliveInterval 30
-  ForwardAgent Yes
-
-Host *-west2
-  ProxyCommand ssh 13.XXX.XXX.XXX -W %h:%p
-  ServerAliveInterval 30
-  ForwardAgent Yes
-
-Host *-scus
-  ProxyCommand ssh 13.XXX.XXX.XXX -W %h:%p
-  ServerAliveInterval 30
-  ForwardAgent Yes
-```
-(Of course replace XXXs appropriately. Get them from 20n machines.)
-
-If your local username is not the same as the one you use on remote
-servers (which is usually the same as your email address), add a
-`User <username>` directive to each of these config blocks with the
-correct value set for `<username>`.
-
-Note that if the bastion host's public IP changes, this will need to
-be updated.
+Update your `.ssh/config` from one of the 20n machines. This would allow you the directly connect to the azure machines by name.
 
 ### Naming conventions
 

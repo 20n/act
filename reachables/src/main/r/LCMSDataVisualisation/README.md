@@ -53,7 +53,7 @@ In the R console:
 R.Version() # Should be > 3.1
 install.packages(c("shiny", "rscala", "dplyr", "plot3D", "classInt", "jsonlite", "logging", "digest"))
 library(rscala) # loads the "rscala" library
-scalaInstall() # downloads and installs Scala
+rscala::scalaInstall() # downloads and installs Scala
 # Package "mzR" needs to be installed through the bioconductor package
 source("https://bioconductor.org/biocLite.R") # try replacing http:// with https:// if it gives you an error
 biocLite("mzR")
@@ -63,9 +63,9 @@ biocLite("mzR")
 In the R console:
 ```R
 library(shiny)
-runApp(port = 8083, host = "0.0.0.0")
+runApp(port = 9090, host = "0.0.0.0", launch.browser = FALSE)
 ```
-The app should be now accessible from `http://hostname:8083`
+The app should be now accessible from `http://hostname:9090`
 
 ### Test using demo UntargetMetabolomics file
 Try uploading the [lcms-demo.json](lcms-demo.json) file for sample visualization.

@@ -19,7 +19,7 @@ Note: it's best to run all of the following commands in a `screen` session, as t
 
 
 It is likely that you'll have an ACT database on hand from which to produce reachables and cascades.  If not, run the following
-commands (on physical server `speakeasy`, or azure `twentyn-speakeasy-west2`). The installer (and subsequent cmds) has external dependencies:
+commands (on physical server `speakeasy`, or corresponding azure mirror). The installer (and subsequent cmds) has external dependencies:
 * Library jars: `sbt` will get some of the libraries, but some need to be downloaded. The [appendix at the end of this doc](#a5-libraries-needed-to-compile) lists out the libraries (superset) that definitely works.
 * Data: Some of which are commercial (ChemAxon license, BRENDA MySQL install, BING), and some freely available for download (BioCyc MetaCyc, Wikipedia, etc.) The cmds below will unceremoniously crash when they cannot find the appropriate data and complain about it, so you'll know what to do. :)
 ```
