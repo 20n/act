@@ -149,9 +149,9 @@ Deallocated | Host has been shutdown and its resources returned to the pool | Af
 The Azure CLI tools can be used to report and set these states:
 ```
 $ azure vm list
-$ azure vm start twentyn-azure-central-us twentyn-worker-2
-$ azure vm stop twentyn-azure-central-us twentyn-worker-2
-$ azure vm deallocate twentyn-azure-central-us twentyn-worker-2
+$ azure vm start twentyn-azure-central-us twentyn-act-worker
+$ azure vm stop twentyn-azure-central-us twentyn-act-worker
+$ azure vm deallocate twentyn-azure-central-us twentyn-act-worker
 ```
 
 **Important**: Stopping or deallocating a VM will wipe its ephemeral
@@ -177,10 +177,10 @@ Resizing a running host will cause it to stop, erasing all data on
 
 The Azure CLI tools can be used to resize a VM:
 ```
-azure vm show twentyn-azure-central-us twentyn-worker-2
-azure vm stop twentyn-azure-central-us twentyn-worker-2
-azure vm set -g twentyn-azure-central-us --vm-size Standard_DS12_v2 -n twentyn-worker-2
-azure vm start twentyn-azure-central-us twentyn-worker-2
+azure vm show twentyn-azure-central-us twentyn-act-worker
+azure vm stop twentyn-azure-central-us twentyn-act-worker
+azure vm set -g twentyn-azure-central-us --vm-size Standard_DS12_v2 -n twentyn-act-worker
+azure vm start twentyn-azure-central-us twentyn-act-worker
 ```
 
 Note that these commands explicitly stop and then start the VM being
@@ -207,13 +207,13 @@ One exception to this rule is the `location` field.  The VM classes are currentl
 
 Once the ssh and HTTP proxy auto config setup explained above is complete, you should be able to connect to hosts as if you were in the same network:
 ```
-$ ssh twentyn-worker-2
+$ ssh twentyn-act-worker
 ```
 Open an ssh tunnel like this:
 ```
 $ ssh -L 20141:127.0.0.1:3128 azure-central-us
 ```
-And navigate to `http://twentyn-worker-2` in your web browser to access web services on the remote host.
+And navigate to `http://twentyn-act-worker` in your web browser to access web services on the remote host.
 
 To do the same for another zone:
 ```
