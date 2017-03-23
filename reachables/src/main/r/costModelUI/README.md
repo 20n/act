@@ -25,7 +25,7 @@ Start R, then load the `shiny` library and start the app
 ```
 R
 > library(shiny)
-> runApp(port = 8080, host = "0.0.0.0")
+> runApp(port = 8080, host = "0.0.0.0", launch.browser = FALSE)
 ```
 You can then access the app from `https://<host-public-IP>:8080`
 
