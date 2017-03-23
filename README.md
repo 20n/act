@@ -30,7 +30,7 @@ Answers _"what DNA do I insert if I want to make my chemical?"_
   | 7 | Application miner | Mines chemical applications using web searches [Bing] | Code:[act.installer.bing.BingSearcher](reachables/src/main/java/act/installer/bing/BingSearcher.java)<br>Run:[Instructions](wikiServices#augment-the-installer-with-bing-search-data)
   | 8 | Enzymatic biochemistry NLP | Text -> Chemical tokens -> Biologically feasible reactions using ROs | Code:[act.shared.TextToRxns](reachables/src/main/scala/act/shared/TextToRxns.scala)<br>Frontend:[TextToRxnsUI](reachables/src/main/r/TextToRxnsUI) |
   | 9 | Patent search | Chemical -> Patents | Code:[act.installer.reachablesexplorer.PatentFinder](reachables/src/main/java/act/installer/reachablesexplorer/PatentFinder.java)<br>Run:[Instructions](wikiServices#enrich-the-reachables-with-patents)
-  | 9 | Bioreachables wiki | Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface | [Documentation](wikiServices#2-new-wiki-instance-setup-steps)
+  | 10 | Bioreachables wiki | Aggregates reachables, cascades, use cases, protein and DNA designs into a user friendly wiki interface | [Documentation](wikiServices#2-new-wiki-instance-setup-steps)
   
   <p align="center"> <img width=65% src="http://20n.com/assets/video/making-apap-20n%3Aact-small.gif"> </p>
 
