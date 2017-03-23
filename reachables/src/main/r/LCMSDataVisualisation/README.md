@@ -53,7 +53,7 @@ In the R console:
 R.Version() # Should be > 3.1
 install.packages(c("shiny", "rscala", "dplyr", "plot3D", "classInt", "jsonlite", "logging", "digest"))
 library(rscala) # loads the "rscala" library
-scalaInstall() # downloads and installs Scala
+rscala::scalaInstall() # downloads and installs Scala
 # Package "mzR" needs to be installed through the bioconductor package
 source("https://bioconductor.org/biocLite.R") # try replacing http:// with https:// if it gives you an error
 biocLite("mzR")

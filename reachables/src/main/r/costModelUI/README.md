@@ -11,7 +11,7 @@ We assume the following to be true:
 ```
 R
 > install.packages(c("shiny", "rscala"))
-> scalaInstall()
+> rscala::scalaInstall()
 ```
 - symlinks to a `reachables` project fat jar and to the 20n logo are present in the working directory `reachables/src/main/r/costModelUI`
 ```
