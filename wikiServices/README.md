@@ -300,11 +300,11 @@ Before manipulating any Azure instances, you'll need to set up you `~/.ssh/confi
 The bastion does not have a meaningful public DNS name, but does have a static IP.  Add this block to your Azure configuration file:
 ```
 Host *-wiki-west2
-  ProxyCommand ssh 52.183.73.127 -W %h:%p
+  ProxyCommand ssh BA.STI.ON.SIP -W %h:%p
   ServerAliveInterval 30
   ForwardAgent Yes
 ```
-Note that you may also need to specify a `User` directive if your laptop username is not the same as your server username.
+Get the actual IP from one of the 20n machines. Note that you may also need to specify a `User` directive if your laptop username is not the same as your server username.
 
 We can also use the bastion as an HTTP proxy host, granting us easy web browser access to Azure hosts that are not publicly accessible.  You can enable HTTP proxying via ssh tunnels to the `-wiki-west2` zone the same way is done for other zones; consult `act/scripts/azure/README.md` for instructions.
 
