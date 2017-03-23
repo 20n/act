@@ -242,8 +242,8 @@ class QueryGoogleAPI {
 //   - Edit Search Engine -> Business -> XML & JSON
 // Custom search engine identifier from above
 // API_KEY is the key allowing us to access google apis
-  private static final String CSE="017093137427180703493:nlngl0nhkxg";
-  private static final String API_KEY="AIzaSyCMGfdDaSfjqv5zYoS0mTJnOT3e9MURWkU";
+  private static final String CSE="XXXXXXXXXXXXXXXXXXXXX:xxxxxxxxxxx";
+  private static final String API_KEY="AAAAAAAAAAAAPPPPPPPPPPPPPPIIIIIIIIIIIII";
 
 // curl -s "https://www.googleapis.com/customsearch/v1?key=$API_KEY&cx=$CSE&q=$QUERY" > $QUERY.firstpage
 // "template": "https://www.googleapis.com/customsearch/v1?q={searchTerms}&num={count?}&start={startIndex?}&lr={language?}&safe={safe?}&cx={cx?}&cref={cref?}&sort={sort?}&filter={filter?}&gl={gl?}&cr={cr?}&googlehost={googleHost?}&c2coff={disableCnTwTranslation?}&hq={hq?}&hl={hl?}&siteSearch={siteSearch?}&siteSearchFilter={siteSearchFilter?}&exactTerms={exactTerms?}&excludeTerms={excludeTerms?}&linkSite={linkSite?}&orTerms={orTerms?}&relatedSite={relatedSite?}&dateRestrict={dateRestrict?}&lowRange={lowRange?}&highRange={highRange?}&searchType={searchType}&fileType={fileType?}&rights={rights?}&imgSize={imgSize?}&imgType={imgType?}&imgColorType={imgColorType?}&imgDominantColor={imgDominantColor?}&alt=json"
