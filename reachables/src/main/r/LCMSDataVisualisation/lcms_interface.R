@@ -28,7 +28,7 @@
 kFatJarLocation <- "reachables-assembly-0.1.jar"
 
 loginfo("Loading Scala interpreter from fat jar at %s.", kFatJarLocation)
-kScalaInterpreter=scalaInterpreter(kFatJarLocation)
+kScalaInterpreter=scala(kFatJarLocation)
 loginfo("Done loading Scala interpreter.")
 
 saveMoleculeStructure <- {

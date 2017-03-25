@@ -110,7 +110,7 @@ plotGraph <- function(input, data, outcome) {
 
 shinyServer(function(input, output, session) {
   
-  sc=scalaInterpreter(kFatJarLocation)
+  sc=scala(kFatJarLocation)
   sc%~%kImportBingPackageCommand
   
   output$logo <- renderImage({

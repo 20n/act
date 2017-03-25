@@ -25,7 +25,7 @@
 kFatJarLocation <- "reachables-assembly-0.1.jar"
 
 loginfo("Loading Scala interpreter from fat jar at %s.", kFatJarLocation)
-sc=scalaInterpreter(kFatJarLocation, heap.maximum="2096M")
+sc=scala(kFatJarLocation, heap.maximum="2096M")
 loginfo("Done loading Scala interpreter.")
 
 extractFromPlainText <- {
