@@ -44,6 +44,13 @@ ln -s lcms-viz/reachables/src/main/resources/20n.png 20nlogo
 - Finally, make sure that the directory `data/mol-structure-cache/` exists. This is where molecule structure images will be stored. TODO: add a symlink for this too!
 
 ### Get R dependencies and install Scala through R
+- Install libraries netCDF and BOOST:
+```
+sudo apt-get install libnetcdf-dev
+sudo apt-get install libboost-all-dev
+```
+You might have to upgrade to the latest version of R (e.g., in case "mzR" below fails). Search for "r install ubuntu" and follow instructions.
+
 - Start R and install the required packages
 ```
 sudo R

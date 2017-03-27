@@ -48,7 +48,7 @@ saveMoleculeStructure <- {
   defineReactionRenderer <- 'val reactionRenderer: ReactionRenderer = new ReactionRenderer'
   kScalaInterpreter%~%defineReactionRenderer
   getSaveMolStructFunctionDef <- 'reactionRenderer.drawMolecule(MoleculeImporter.importMolecule(inchiString), new File(file))'
-  intpDef(kScalaInterpreter, 'inchiString: String, file: String', getSaveMolStructFunctionDef) 
+  scalaDef(kScalaInterpreter, 'inchiString: String, file: String', getSaveMolStructFunctionDef)
 }
 
 getIonMz <- {
@@ -67,5 +67,5 @@ getIonMz <- {
   # Alternatives include R package like: OrgMassSpecR
   kScalaInterpreter%~%'import com.act.lcms.MS1'
   getIonMzFunctionDef <- 'MS1.computeIonMz(mass, MS1.ionDeltas.filter(i => i.getName.equals(mode)).head)'
-  intpDef(kScalaInterpreter, 'mass: Double, mode: String', getIonMzFunctionDef) 
+  scalaDef(kScalaInterpreter, 'mass: Double, mode: String', getIonMzFunctionDef)
 }
