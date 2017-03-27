@@ -118,9 +118,10 @@ class LcmsAutoencoder:
         # Scan file stuff
         lcms_directory = os.path.join(lcms_directory, '')
         lcms_scan_name = utility_functions.parse_lcms_scan_file_name(scan_file_name)
-        assert lcms_scan_name.endswith("01"), "This module only processes MS1 data which should always have a " \
-                                              "file ending of '01'.  Your supplied file " \
-                                              "was {}".format(scan_file_name)
+        if not lcms_scan_name.endswith("01"):
+            print("This module only processes MS1 data. The raw NetCDF files exported from Waters instruments" \
+                  "typically had an ending of '01'. Yours does not. Results not guaranteed. Your file " \
+                  "was {}".format(scan_file_name))
 
         current_trace_file = os.path.join(lcms_directory, scan_file_name)
         assert os.path.exists(current_trace_file), "The trace file at {} does not exist.".format(current_trace_file)
